@@ -1297,18 +1297,10 @@ func (p *part) searchByTenantIDs(so *searchOptions, bhss *blockHeaders, workCh c
 	tenantIDs := so.tenantIDs
 
 	bswb := getBlockSearchWorkBatch()
-	// seq holds the global block index inside the part (0..BlocksCount-1).
-	// It must be incremented for every block header we iterate over, even if the
-	// block is eventually skipped by the search filter. This guarantees that the
-	// same physical block always receives the same sequence number across
-	// different queries, which is essential for stable delete-marker mapping.
-	seq := uint32(0)
-
-	scheduleBlockSearch := func(bh *blockHeader, seqCurr uint32) bool {
-		if bswb.appendBlockSearchWork(p, so, bh, seqCurr) {
+	scheduleBlockSearch := func(bh *blockHeader) bool {
+		if bswb.appendBlockSearchWork(p, so, bh) {
 			return true
 		}
-		// Current batch is full – flush it and continue.
 		select {
 		case <-stopCh:
 			return false
@@ -1365,19 +1357,15 @@ func (p *part) searchByTenantIDs(so *searchOptions, bhss *blockHeaders, workCh c
 			n = sort.Search(len(bhs), func(i int) bool {
 				return !bhs[i].streamID.tenantID.less(tenantID)
 			})
-			// Account for skipped blocks in sequence numbering.
-			seq += uint32(n)
 			bhs = bhs[n:]
 			for len(bhs) > 0 && bhs[0].streamID.tenantID.equal(tenantID) {
 				bh := &bhs[0]
 				bhs = bhs[1:]
-				seqCurr := seq
-				seq++
 				th := &bh.timestampsHeader
 				if so.minTimestamp > th.maxTimestamp || so.maxTimestamp < th.minTimestamp {
 					continue
 				}
-				if !scheduleBlockSearch(bh, seqCurr) {
+				if !scheduleBlockSearch(bh) {
 					return
 				}
 			}
@@ -1411,15 +1399,8 @@ func (p *part) searchByStreamIDs(so *searchOptions, bhss *blockHeaders, workCh c
 	streamIDs := so.streamIDs
 
 	bswb := getBlockSearchWorkBatch()
-	// seq holds the global block index inside the part (0..BlocksCount-1).
-	// It must be incremented for every block header we iterate over, even if the
-	// block is eventually skipped by the search filter. This guarantees that the
-	// same physical block always receives the same sequence number across
-	// different queries, which is essential for stable delete-marker mapping.
-	seq := uint32(0)
-
-	scheduleBlockSearch := func(bh *blockHeader, seqCurr uint32) bool {
-		if bswb.appendBlockSearchWork(p, so, bh, seqCurr) {
+	scheduleBlockSearch := func(bh *blockHeader) bool {
+		if bswb.appendBlockSearchWork(p, so, bh) {
 			return true
 		}
 		select {
@@ -1479,19 +1460,15 @@ func (p *part) searchByStreamIDs(so *searchOptions, bhss *blockHeaders, workCh c
 			n = sort.Search(len(bhs), func(i int) bool {
 				return !bhs[i].streamID.less(streamID)
 			})
-			// Account for skipped blocks in sequence numbering.
-			seq += uint32(n)
 			bhs = bhs[n:]
 			for len(bhs) > 0 && bhs[0].streamID.equal(streamID) {
 				bh := &bhs[0]
 				bhs = bhs[1:]
-				seqCurr := seq
-				seq++
 				th := &bh.timestampsHeader
 				if so.minTimestamp > th.maxTimestamp || so.maxTimestamp < th.minTimestamp {
 					continue
 				}
-				if !scheduleBlockSearch(bh, seqCurr) {
+				if !scheduleBlockSearch(bh) {
 					return
 				}
 			}
