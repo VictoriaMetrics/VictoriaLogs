@@ -2,6 +2,7 @@ package netselect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -243,6 +244,13 @@ func (sn *storageNode) getStreamIDs(qctx *logstorage.QueryContext, limit uint64)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
 	return sn.getValuesWithHits(qctx, "/internal/select/stream_ids", args)
+}
+
+func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]byte, error) {
+	args := url.Values{}
+	args.Set("start", fmt.Sprintf("%d", start))
+	args.Set("end", fmt.Sprintf("%d", end))
+	return sn.executeRequestAt(ctx, "/internal/select/tenant_ids", args)
 }
 
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
@@ -561,6 +569,59 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	}
 
 	return tasks, nil
+}
+
+/ GetTenantIDs returns tenantIDs for the given start and end.
+func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]byte, error) {
+	return s.getTenantIDs(ctx, start, end)
+}
+
+func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]byte, error) {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	results := make([][]byte, len(s.sns))
+	errs := make([]error, len(s.sns))
+
+	var wg sync.WaitGroup
+	for i := range s.sns {
+		wg.Add(1)
+		go func(nodeIdx int) {
+			defer wg.Done()
+
+			sn := s.sns[nodeIdx]
+			tenantIDs, err := sn.getTenantIDs(ctxWithCancel, start, end)
+			results[nodeIdx] = tenantIDs
+			errs[nodeIdx] = err
+			if err != nil {
+				// Cancel the remaining parallel requests
+				cancel()
+			}
+		}(i)
+	}
+	wg.Wait()
+	if err := getFirstNonCancelError(errs); err != nil {
+		return nil, err
+	}
+
+	unique := make(map[logstorage.TenantID]struct{}, len(results))
+	for i := range results {
+		var tenats []logstorage.TenantID
+		if err := json.Unmarshal(results[i], &tenats); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal tenantIDs from storage node %d: %w", i, err)
+		}
+		for _, tenat := range tenats {
+			unique[tenat] = struct{}{}
+		}
+	}
+
+	// Deduplicate tenantIDs
+	tenantIDs := make([]logstorage.TenantID, 0, len(unique))
+	for key := range unique {
+		tenantIDs = append(tenantIDs, key)
+	}
+
+	return json.Marshal(tenantIDs)
 }
 
 func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64, resetHitsOnLimitExceeded bool,

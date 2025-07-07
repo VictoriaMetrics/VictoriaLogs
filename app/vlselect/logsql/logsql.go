@@ -2,6 +2,7 @@ package logsql
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -1071,6 +1072,67 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// This call is needed for the case when the response didn't return any results.
 	writeResponseHeadersOnce()
+}
+
+// ProcessAdminTenantsRequest processes /select/admin/tenants request.
+func ProcessAdminTenantsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	start, okStart, err := getTimeNsec(r, "start")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	end, okEnd, err := getTimeNsec(r, "end")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	if !okStart {
+		start = math.MinInt64
+	}
+	if !okEnd {
+		end = math.MaxInt64
+	}
+
+	if start > end {
+		httpserver.Errorf(w, r, "'start' time must be less than 'end' time")
+		return
+	}
+
+	sw := &syncWriter{
+		w: w,
+	}
+
+	var bwShards atomicutil.Slice[bufferedWriter]
+	bwShards.Init = func(shard *bufferedWriter) {
+		shard.sw = sw
+	}
+	defer func() {
+		shards := bwShards.All()
+		for _, shard := range shards {
+			shard.FlushIgnoreErrors()
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+
+	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
+		return
+	}
+
+	var t []logstorage.TenantID
+	if err := json.Unmarshal(tenants, &t); err != nil {
+		httpserver.Errorf(w, r, "cannot unmarshal tenantIDs: %s", err)
+		return
+	}
+
+	resp := make([]string, 0, len(t))
+	for _, tenantID := range t {
+		resp = append(resp, fmt.Sprintf("%d:%d", tenantID.AccountID, tenantID.ProjectID))
+	}
+
+	WriteTenantsResponse(w, resp)
 }
 
 type syncWriter struct {

@@ -112,7 +112,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	// non-existing-tag-re
 	f(`{job="job-0",instance="instance-0",non_existing_tag=~"foo.+"}`, nil)
 
-	//non-existing-non-empty-tag-re
+	// non-existing-non-empty-tag-re
 	f(`{job="job-0",instance="instance-0",non_existing_tag!~""}`, nil)
 
 	// match-job-instance
