@@ -50,12 +50,7 @@ type Storage struct {
 
 // WriteMetrics writes internal storage metrics to the provided writer in Prometheus text exposition format.
 func (s *Storage) WriteMetrics(w io.Writer) {
-	activeStreams := s.GetActiveStreams()
-	if activeStreams == 0 {
-		return
-	}
-
-	metrics.WriteGaugeUint64(w, `vl_insert_active_streams`, activeStreams)
+	metrics.WriteGaugeUint64(w, `vl_insert_active_streams`, s.GetActiveStreams())
 	metrics.WriteCounterUint64(w, `vl_insert_remote_send_errors_total`, s.RemoteSendFailed.Load())
 }
 
