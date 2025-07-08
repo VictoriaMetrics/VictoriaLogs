@@ -105,11 +105,11 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 		sn.backgroundFlusher()
 	}()
 
-	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_broken{url=%q}`, addr), func() float64 {
+	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_is_reachable{url=%q}`, addr), func() float64 {
 		if sn.isBroken.Load() == 1 {
-			return 1
+			return 0
 		}
-		return 0
+		return 1
 	})
 
 	return sn
