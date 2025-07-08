@@ -3,8 +3,8 @@ weight: 501
 title: Release process guidance for VictoriaLogs
 menu:
   docs:
-    parent: 'victorialogs'
-    identifier: "release-process-guidance"
+    parent: victorialogs
+    identifier: victorialogs-release-process-guidance
     weight: 501
 tags: []
 aliases:
