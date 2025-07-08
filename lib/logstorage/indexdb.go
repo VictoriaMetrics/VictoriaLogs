@@ -56,11 +56,11 @@ type IndexdbStats struct {
 	// IndexdbActiveInmemoryMerges is the number of active merges in indexdb.
 	IndexdbActiveInmemoryMerges uint64
 
-	// IndexdbFileMergesTotal is the number of merges in indexdb.
-	IndexdbFileMergesTotal uint64
+	// IndexdbFileMergesCount is the number of merges in indexdb.
+	IndexdbFileMergesCount uint64
 
-	// IndexdbInmemoryMergesTotal is the number of merges in indexdb.
-	IndexdbInmemoryMergesTotal uint64
+	// IndexdbInmemoryMergesCount is the number of merges in indexdb.
+	IndexdbInmemoryMergesCount uint64
 
 	// IndexdbFileItemsMerged is the number of items merged in indexdb.
 	IndexdbFileItemsMerged uint64
@@ -133,8 +133,8 @@ func (idb *indexdb) updateStats(d *IndexdbStats) {
 	d.IndexdbBlocksCount += tm.InmemoryBlocksCount + tm.FileBlocksCount
 	d.IndexdbActiveFileMerges = tm.ActiveFileMerges
 	d.IndexdbActiveInmemoryMerges = tm.ActiveInmemoryMerges
-	d.IndexdbFileMergesTotal += tm.FileMergesCount
-	d.IndexdbInmemoryMergesTotal += tm.InmemoryMergesCount
+	d.IndexdbFileMergesCount += tm.FileMergesCount
+	d.IndexdbInmemoryMergesCount += tm.InmemoryMergesCount
 	d.IndexdbFileItemsMerged += tm.FileItemsMerged
 	d.IndexdbInmemoryItemsMerged += tm.InmemoryItemsMerged
 }

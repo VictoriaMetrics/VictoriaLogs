@@ -17,10 +17,10 @@ import (
 
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
 type StorageStats struct {
-	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is smaller than the minimum allowed.
+	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed.
 	RowsDroppedTooBigTimestamp uint64
 
-	// RowsDroppedTooSmallTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed.
+	// RowsDroppedTooSmallTimestamp is the number of rows dropped during data ingestion because their timestamp is smaller than the minimum allowed.
 	RowsDroppedTooSmallTimestamp uint64
 
 	// PartitionsCount is the number of partitions in the storage.
