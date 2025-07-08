@@ -367,21 +367,21 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	}
 	metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_storage_is_read_only{path=%q}`, *storageDataPath), isReadOnly)
 
-	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/inmemory"}`, ss.InmemoryActiveMerges)
-	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/small"}`, ss.SmallPartActiveMerges)
-	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/big"}`, ss.BigPartActiveMerges)
+	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/inmemory"}`, ss.ActiveInmemoryMerges)
+	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/small"}`, ss.ActiveSmallMerges)
+	metrics.WriteGaugeUint64(w, `vl_active_merges{type="storage/big"}`, ss.ActiveBigMerges)
 	metrics.WriteGaugeUint64(w, `vl_active_merges{type="indexdb/inmemory"}`, ss.IndexdbActiveInmemoryMerges)
 	metrics.WriteGaugeUint64(w, `vl_active_merges{type="indexdb/file"}`, ss.IndexdbActiveFileMerges)
 
-	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/inmemory"}`, ss.InmemoryMergesTotal)
-	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/small"}`, ss.SmallPartMergesTotal)
-	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/big"}`, ss.BigPartMergesTotal)
-	metrics.WriteCounterUint64(w, `vl_merges_total{type="indexdb/inmemory"}`, ss.IndexdbInmemoryMergesTotal)
-	metrics.WriteCounterUint64(w, `vl_merges_total{type="indexdb/file"}`, ss.IndexdbFileMergesTotal)
+	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/inmemory"}`, ss.InmemoryMergesCount)
+	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/small"}`, ss.SmallMergesCount)
+	metrics.WriteCounterUint64(w, `vl_merges_total{type="storage/big"}`, ss.BigMergesCount)
+	metrics.WriteCounterUint64(w, `vl_merges_total{type="indexdb/inmemory"}`, ss.IndexdbInmemoryMergesCount)
+	metrics.WriteCounterUint64(w, `vl_merges_total{type="indexdb/file"}`, ss.IndexdbFileMergesCount)
 
-	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/inmemory"}`, ss.InmemoryMergeRowsTotal)
-	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/small"}`, ss.SmallPartMergeRowsTotal)
-	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/big"}`, ss.BigPartMergeRowsTotal)
+	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/inmemory"}`, ss.InmemoryRowsMerged)
+	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/small"}`, ss.SmallRowsMerged)
+	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="storage/big"}`, ss.BigRowsMerged)
 	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="indexdb/inmemory"}`, ss.IndexdbInmemoryItemsMerged)
 	metrics.WriteCounterUint64(w, `vl_rows_merged_total{type="indexdb/file"}`, ss.IndexdbFileItemsMerged)
 

@@ -815,32 +815,32 @@ func (ddb *datadb) mustFlushLogRows(lr *logRows) {
 
 // DatadbStats contains various stats for datadb.
 type DatadbStats struct {
-	// InmemoryMergesTotal is the number of inmemory merges performed in the given datadb.
-	InmemoryMergesTotal uint64
+	// InmemoryMergesCount is the number of inmemory merges performed in the given datadb.
+	InmemoryMergesCount uint64
 
-	// InmemoryActiveMerges is the number of currently active inmemory merges performed by the given datadb.
-	InmemoryActiveMerges uint64
+	// ActiveInmemoryMerges is the number of currently active inmemory merges performed by the given datadb.
+	ActiveInmemoryMerges uint64
 
-	// InmemoryMergeRowsTotal is the number of rows merged to inmemory parts.
-	InmemoryMergeRowsTotal uint64
+	// InmemoryRowsMerged is the number of rows merged to inmemory parts.
+	InmemoryRowsMerged uint64
 
-	// SmallPartMergesTotal is the number of small file merges performed in the given datadb.
-	SmallPartMergesTotal uint64
+	// SmallMergesCount is the number of small file merges performed in the given datadb.
+	SmallMergesCount uint64
 
-	// SmallPartActiveMerges is the number of currently active small file merges performed by the given datadb.
-	SmallPartActiveMerges uint64
+	// ActiveSmallMerges is the number of currently active small file merges performed by the given datadb.
+	ActiveSmallMerges uint64
 
-	// SmallPartMergeRowsTotal is the number of rows merged to small parts.
-	SmallPartMergeRowsTotal uint64
+	// SmallRowsMerged is the number of rows merged to small parts.
+	SmallRowsMerged uint64
 
-	// BigPartMergesTotal is the number of big file merges performed in the given datadb.
-	BigPartMergesTotal uint64
+	// BigMergesCount is the number of big file merges performed in the given datadb.
+	BigMergesCount uint64
 
-	// BigPartActiveMerges is the number of currently active big file merges performed by the given datadb.
-	BigPartActiveMerges uint64
+	// ActiveBigMerges is the number of currently active big file merges performed by the given datadb.
+	ActiveBigMerges uint64
 
-	// BigPartMergeRowsTotal is the number of rows merged to big parts.
-	BigPartMergeRowsTotal uint64
+	// BigRowsMerged is the number of rows merged to big parts.
+	BigRowsMerged uint64
 
 	// PendingRows is the number of rows, which weren't flushed to searchable part yet.
 	PendingRowsCount uint64
@@ -902,15 +902,15 @@ func (s *DatadbStats) RowsCount() uint64 {
 
 // updateStats updates s with ddb stats.
 func (ddb *datadb) updateStats(s *DatadbStats) {
-	s.InmemoryMergesTotal += ddb.inmemoryMergesTotal.Load()
-	s.InmemoryActiveMerges += uint64(ddb.inmemoryActiveMerges.Load())
-	s.InmemoryMergeRowsTotal += ddb.inmemoryMergeRowsTotal.Load()
-	s.SmallPartMergesTotal += ddb.smallPartMergesTotal.Load()
-	s.SmallPartActiveMerges += uint64(ddb.smallPartActiveMerges.Load())
-	s.SmallPartMergeRowsTotal += ddb.smallPartMergeRowsTotal.Load()
-	s.BigPartMergesTotal += ddb.bigPartMergesTotal.Load()
-	s.BigPartActiveMerges += uint64(ddb.bigPartActiveMerges.Load())
-	s.BigPartMergeRowsTotal += ddb.bigPartMergeRowsTotal.Load()
+	s.InmemoryMergesCount += ddb.inmemoryMergesTotal.Load()
+	s.ActiveInmemoryMerges += uint64(ddb.inmemoryActiveMerges.Load())
+	s.InmemoryRowsMerged += ddb.inmemoryMergeRowsTotal.Load()
+	s.SmallMergesCount += ddb.smallPartMergesTotal.Load()
+	s.ActiveSmallMerges += uint64(ddb.smallPartActiveMerges.Load())
+	s.SmallRowsMerged += ddb.smallPartMergeRowsTotal.Load()
+	s.BigMergesCount += ddb.bigPartMergesTotal.Load()
+	s.ActiveBigMerges += uint64(ddb.bigPartActiveMerges.Load())
+	s.BigRowsMerged += ddb.bigPartMergeRowsTotal.Load()
 
 	s.PendingRowsCount = ddb.rb.Len()
 
