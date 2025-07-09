@@ -2,7 +2,6 @@ package logstorage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
