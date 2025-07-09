@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"sync"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
@@ -38,8 +37,7 @@ type partition struct {
 	// asyncTasks holds outstanding background tasks (delete, ttl, etc.) for the partition.
 	// The length of this slice equals to the latest sequence number of tasks created for the partition.
 	// Access must be protected with asyncTasksLock.
-	asyncTasks     []asyncTask
-	asyncTasksLock sync.Mutex
+	asyncTasks *asyncTasks
 }
 
 // mustCreatePartition creates a partition at the given path.
@@ -103,7 +101,6 @@ func mustOpenPartition(s *Storage, path string) *partition {
 
 	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
 
-	// Load async tasks from disk
 	pt.mustLoadAsyncTasks()
 
 	return pt
@@ -224,45 +221,11 @@ func (pt *partition) mustForceMerge() {
 	pt.ddb.mustForceMergeAllParts()
 }
 
-// addDeleteTask appends a delete task to the partition's task list
-func (pt *partition) addDeleteTask(tenantIDs []TenantID, q *Query, seq uint64) uint64 {
-	pt.asyncTasksLock.Lock()
-	defer pt.asyncTasksLock.Unlock()
-
-	task := asyncTask{
-		Seq:       seq,
-		Type:      asyncTaskDelete,
-		TenantIDs: append([]TenantID(nil), tenantIDs...),
-		Query:     q.String(),
-		Status:    taskPending,
-	}
-
-	pt.mustSaveAsyncTasksLocked(task)
-	return seq
-}
-
-// TODO(phuong): use atomic
-func (pt *partition) getPendingAsyncTask() asyncTask {
-	var result asyncTask
-
-	pt.asyncTasksLock.Lock()
-	for i := len(pt.asyncTasks) - 1; i >= 0; i-- {
-		task := pt.asyncTasks[i]
-		if task.Status == taskPending {
-			result = task
-			break
-		}
-	}
-	pt.asyncTasksLock.Unlock()
-
-	return result
-}
-
 // mustSaveAsyncTasksLocked persists the current async tasks to disk.
 // p.asyncTasksLock must be held before calling.
 func (pt *partition) mustSaveAsyncTasksLocked(tasks ...asyncTask) {
 	if len(tasks) > 0 {
-		pt.asyncTasks = append(pt.asyncTasks, tasks...)
+		pt.asyncTasks.ts = append(pt.asyncTasks.ts, tasks...)
 	}
 
 	data := marshalAsyncTasks(tasks)
@@ -270,22 +233,9 @@ func (pt *partition) mustSaveAsyncTasksLocked(tasks ...asyncTask) {
 	fs.MustWriteAtomic(tasksPath, data, true)
 }
 
-func (pt *partition) markAsyncTaskAsApplied(seq uint64, status asyncTaskStatus) {
-	pt.asyncTasksLock.Lock()
-	defer pt.asyncTasksLock.Unlock()
-
-	for i := range pt.asyncTasks {
-		if pt.asyncTasks[i].Seq == seq && pt.asyncTasks[i].Status == taskPending {
-			pt.asyncTasks[i].Status = status
-			pt.mustSaveAsyncTasksLocked()
-			return
-		}
-	}
-}
-
-func (pt *partition) isPayingAsyncTask() (seq uint64, ok bool) {
-	seq = pt.getPendingAsyncTask().Seq
-	ok = seq == pt.s.asyncTaskSeq.Load()
+func (pt *partition) isPayingAsyncTask() (taskSeq uint64, ok bool) {
+	taskSeq = pt.asyncTasks.currentSeq.Load()
+	ok = taskSeq == pt.s.asyncTaskSeq.Load()
 	return
 }
 
@@ -293,7 +243,7 @@ func (pt *partition) isPayingAsyncTask() (seq uint64, ok bool) {
 func (pt *partition) mustLoadAsyncTasks() {
 	tasksPath := filepath.Join(pt.path, asyncTasksFilename)
 	if !fs.IsPathExist(tasksPath) {
-		// No tasks file exists yet
+		pt.asyncTasks = newAsyncTasks(pt, nil)
 		return
 	}
 
@@ -303,8 +253,5 @@ func (pt *partition) mustLoadAsyncTasks() {
 	}
 
 	tasks := unmarshalAsyncTasks(data)
-
-	pt.asyncTasksLock.Lock()
-	pt.asyncTasks = tasks
-	pt.asyncTasksLock.Unlock()
+	pt.asyncTasks = newAsyncTasks(pt, tasks)
 }

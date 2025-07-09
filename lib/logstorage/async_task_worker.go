@@ -27,7 +27,6 @@ func (s *Storage) startAsyncTaskWorker() {
 		const maxFailedTime = 3
 		var failedTime int
 
-		s.asyncTaskStop.init()
 		for {
 			select {
 			case <-s.stopCh:
@@ -38,7 +37,7 @@ func (s *Storage) startAsyncTaskWorker() {
 				return
 			case <-timer.C:
 				// Honour pause requests, if any. If cannot process, just reset timer and continue.
-				if !s.asyncTaskStop.canProcess() {
+				if !s.asyncTaskState.canProcess() {
 					timer.Reset(5 * time.Second)
 					continue
 				}
@@ -99,7 +98,7 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 		allPws := [][]*partWrapper{pt.ddb.inmemoryParts, pt.ddb.smallParts, pt.ddb.bigParts}
 		for _, arr := range allPws {
 			for _, pw := range arr {
-				if pw.p.appliedTSeq.Load() >= task.Seq {
+				if pw.taskSeq.Load() >= task.Seq {
 					continue
 				}
 				if pw.isInMerge || pw.mustDrop.Load() {
@@ -142,10 +141,10 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 	// Update parts as caught up.
 	var caughtUpParts []string
 	for _, pw := range lagging {
-		if pw.p.appliedTSeq.Load() < task.Seq {
+		if pw.taskSeq.Load() < task.Seq {
 			caughtUpParts = append(caughtUpParts, pw.p.path)
 		}
-		pw.p.setAppliedTSeq(task.Seq)
+		pw.setTaskSeq(task.Seq)
 	}
 
 	logger.Infof("DEBUG (task): task (seq=%d, query=%q) applied to %d parts (caught up: %v)", task.Seq, task.Query, len(lagging), caughtUpParts)
@@ -180,27 +179,26 @@ func (s *Storage) setTaskAsDone(ptws []*partitionWrapper, taskSeq uint64, ats as
 		pt := ptw.pt
 
 		if includeParts {
-			// 1) Ensure every part in this partition has appliedTSeq at least `sequence`.
+			// Ensure every part in this partition has taskSeq at least `sequence`.
 			pt.ddb.partsLock.Lock()
 			all := [][]*partWrapper{pt.ddb.inmemoryParts, pt.ddb.smallParts, pt.ddb.bigParts}
 			for _, arr := range all {
 				for _, pw := range arr {
-					if pw.p.appliedTSeq.Load() < taskSeq {
-						pw.p.setAppliedTSeq(taskSeq)
+					if pw.taskSeq.Load() < taskSeq {
+						pw.setTaskSeq(taskSeq)
 					}
 				}
 			}
 			pt.ddb.partsLock.Unlock()
 		}
 
-		// 2) Update task status in this partition, if present and still pending.
-		pt.markAsyncTaskAsApplied(taskSeq, ats)
+		pt.asyncTasks.markResolvedOnDisk(taskSeq, ats)
 	}
 
 	logger.Infof("DEBUG (task): setTaskAsDone: taskSeq=%d, ats=%s, includeParts=%t", taskSeq, ats, includeParts)
 }
 
-func (s *Storage) runDeleteTask(ctx context.Context, task asyncTask, lagging []*partWrapper) error {
+func (s *Storage) runDeleteTask(ctx context.Context, task *asyncTask, lagging []*partWrapper) error {
 	// Build allowed set
 	allowed := make(map[*partition][]*partWrapper, len(lagging))
 	for _, pw := range lagging {
@@ -215,25 +213,24 @@ func (s *Storage) runDeleteTask(ctx context.Context, task asyncTask, lagging []*
 	return err
 }
 
-func (s *Storage) advanceNextAsyncTask(ptws []*partitionWrapper) ([]*partitionWrapper, asyncTask) {
+func (s *Storage) advanceNextAsyncTask(ptws []*partitionWrapper) ([]*partitionWrapper, *asyncTask) {
 	var minSeq uint64 = math.MaxUint64
-	var result asyncTask
+	var result *asyncTask
 	var resultPtws []*partitionWrapper
 
 	for _, ptw := range ptws {
 		pt := ptw.pt
 
-		task := pt.getPendingAsyncTask()
-		if task.Type == asyncTaskNone {
+		task := pt.asyncTasks.advancePending()
+		if task == nil {
 			continue
 		}
 
 		// If we find a smaller sequence, reset the slice to start a new collection.
 		if task.Seq < minSeq {
-			result = task
 			minSeq = task.Seq
-			resultPtws = resultPtws[:0]
-			resultPtws = append(resultPtws, ptw)
+			resultPtws = append(resultPtws[:0], ptw)
+			result = task
 			continue
 		}
 

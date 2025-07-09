@@ -118,6 +118,12 @@ type partWrapper struct {
 
 	// The deadline when in-memory part must be flushed to disk.
 	flushDeadline time.Time
+
+	// taskSeq is the highest task sequence applied to this part.
+	// Avoid storing this field on disk, as it requires updating every part of the affected partitions.
+	// The drawback is that on restart, it doesn't remember whether the task was completed and will re-run it.
+	// Therefore, the task must be idempotent to ensure this works correctly.
+	taskSeq atomic.Uint64
 }
 
 func (pw *partWrapper) incRef() {
@@ -434,7 +440,7 @@ func (ddb *datadb) bigPartsMerger() {
 func getPartsToMergeLocked(pws []*partWrapper, maxOutBytes uint64) []*partWrapper {
 	pwsRemaining := make([]*partWrapper, 0, len(pws))
 	for _, pw := range pws {
-		if !pw.isInMerge && !pw.p.isPayingAsyncTask() {
+		if !pw.isInMerge && !pw.isPayingAsyncTask() {
 			pwsRemaining = append(pwsRemaining, pw)
 		}
 	}
@@ -541,8 +547,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		// Fast path: flush a single in-memory part to disk.
 		mp := pws[0].mp
 		// Persist applied sequence from the source part so the newly flushed part is immediately up-to-date.
-		appliedSeq := pws[0].p.appliedTSeq.Load()
-		mp.MustStoreToDisk(dstPartPath, appliedSeq)
+		mp.MustStoreToDisk(dstPartPath)
 		pwNew := ddb.openCreatedPart(&mp.ph, pws, nil, dstPartPath)
 		ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
 		return
@@ -568,16 +573,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		bsw.MustInitForInmemoryPart(mpNew)
 	} else {
 		nocache := dstPartType == partBig
-
-		minSeq := uint64(math.MaxUint64)
-		for _, pw := range pws {
-			seq := pw.p.appliedTSeq.Load()
-			if seq < minSeq {
-				minSeq = seq
-			}
-		}
-
-		bsw.MustInitForFilePart(dstPartPath, nocache, minSeq)
+		bsw.MustInitForFilePart(dstPartPath, nocache)
 	}
 
 	// Merge source parts to destination part.
@@ -621,6 +617,20 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	dstRowsCount := uint64(0)
 	dstBlocksCount := uint64(0)
 	if pwNew != nil {
+		// Find the minimum taskSeq across all the source parts.
+		// This is the sequence number of the last applied task.
+		minSeq := uint64(math.MaxUint64)
+		for _, pw := range pws {
+			seq := pw.taskSeq.Load()
+			if seq < minSeq {
+				minSeq = seq
+			}
+		}
+		if minSeq == math.MaxUint64 {
+			minSeq = 0
+		}
+
+		pwNew.setTaskSeq(minSeq)
 		pDst := pwNew.p
 		dstSize = pDst.ph.CompressedSizeBytes
 		dstRowsCount = pDst.ph.RowsCount
@@ -1008,17 +1018,33 @@ func mustOpenBlockStreamReaders(pws []*partWrapper) []*blockStreamReader {
 
 func newPartWrapper(p *part, mp *inmemoryPart, flushDeadline time.Time) *partWrapper {
 	pw := &partWrapper{
-		p:  p,
-		mp: mp,
-
+		p:             p,
+		mp:            mp,
 		flushDeadline: flushDeadline,
 	}
+	seq := p.pt.asyncTasks.currentSeq.Load()
+	pw.taskSeq.Store(seq)
 
 	// Increase reference counter for newly created part - it is decreased when the part
 	// is removed from the list of open parts.
 	pw.incRef()
 
 	return pw
+}
+
+// setTaskSeq updates the applied sequence for the wrapper and persists it for file-based parts.
+func (pw *partWrapper) setTaskSeq(seq uint64) {
+	if pw.taskSeq.Load() >= seq {
+		return
+	}
+	pw.taskSeq.Store(seq)
+
+	// In-memory only - no disk persistence
+}
+
+func (pw *partWrapper) isPayingAsyncTask() bool {
+	seq, ok := pw.p.pt.isPayingAsyncTask()
+	return ok && pw.taskSeq.Load() < seq
 }
 
 func (ddb *datadb) getFlushToDiskDeadline(pws []*partWrapper) time.Time {
@@ -1420,20 +1446,4 @@ func appendAllPartsForForceMergeLocked(dst, src []*partWrapper) []*partWrapper {
 		}
 	}
 	return dst
-}
-
-func mustReadAppliedTSeq(partPath string) uint64 {
-	seqPath := filepath.Join(partPath, appliedTSeqFilename)
-	if !fs.IsPathExist(seqPath) {
-		return 0
-	}
-	data, err := os.ReadFile(seqPath)
-	if err != nil {
-		logger.Panicf("FATAL: cannot read %q: %s", seqPath, err)
-	}
-	var seq uint64
-	if _, err := fmt.Sscanf(string(data), "%d", &seq); err != nil {
-		logger.Panicf("FATAL: cannot parse appliedTSeq from %q: %s", seqPath, err)
-	}
-	return seq
 }

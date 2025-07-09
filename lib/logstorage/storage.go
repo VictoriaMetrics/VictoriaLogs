@@ -145,19 +145,19 @@ type Storage struct {
 	// It reduces the load on persistent storage during querying by _stream:{...} filter.
 	filterStreamCache *cache
 
-	// asyncTaskStop is used to stop the async task worker.
-	asyncTaskStop asyncTaskStop
-	asyncTaskSeq  atomic.Uint64
+	// asyncTaskState is used to stop the async task worker.
+	asyncTaskState asyncTaskState
+	asyncTaskSeq   atomic.Uint64
 }
 
-type asyncTaskStop struct {
+type asyncTaskState struct {
 	waiter atomic.Int32
 	mu     sync.Mutex
 	ch     chan struct{}
 }
 
 // init prepares the pause channel; must be called once at storage startup.
-func (ats *asyncTaskStop) init() {
+func (ats *asyncTaskState) init() {
 	ats.mu.Lock()
 	if ats.ch == nil {
 		ats.ch = make(chan struct{})
@@ -167,7 +167,7 @@ func (ats *asyncTaskStop) init() {
 
 // addWaiter increments the waiter counter and returns the channel
 // that will be closed when the async-task worker acknowledges the pause.
-func (ats *asyncTaskStop) addWaiter() <-chan struct{} {
+func (ats *asyncTaskState) addWaiter() <-chan struct{} {
 	ats.mu.Lock()
 	ch := ats.ch
 	ats.waiter.Add(1)
@@ -177,7 +177,7 @@ func (ats *asyncTaskStop) addWaiter() <-chan struct{} {
 
 // doneWaiter decrements the waiter counter, signalling that the caller has
 // finished the critical section.
-func (ats *asyncTaskStop) doneWaiter() {
+func (ats *asyncTaskState) doneWaiter() {
 	if n := ats.waiter.Add(-1); n == 0 {
 		// All waiters are done – prepare a fresh channel for the next pause.
 		ats.mu.Lock()
@@ -191,7 +191,7 @@ func (ats *asyncTaskStop) doneWaiter() {
 // canProcess returns true if the async-task worker may proceed with work. If
 // there are active waiters, it closes the channel to acknowledge the pause and
 // returns false.
-func (ats *asyncTaskStop) canProcess() bool {
+func (ats *asyncTaskState) canProcess() bool {
 	if ats.waiter.Load() == 0 {
 		return true
 	}
@@ -325,7 +325,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	}
 
 	// Initialize the async-task pause mechanism.
-	s.asyncTaskStop.init()
+	s.asyncTaskState.init()
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
@@ -574,8 +574,8 @@ func (s *Storage) MustForceMerge(partitionNamePrefix string) {
 	s.partitionsLock.Unlock()
 
 	// Pause the async-task worker.
-	ch := s.asyncTaskStop.addWaiter()
-	defer s.asyncTaskStop.doneWaiter()
+	ch := s.asyncTaskState.addWaiter()
+	defer s.asyncTaskState.doneWaiter()
 
 	// Wait until the worker acknowledges pause by closing the channel.
 	<-ch
@@ -786,7 +786,7 @@ func (s *Storage) DeleteRows(ctx context.Context, tenantIDs []TenantID, q *Query
 		if ptw.day < minDay || ptw.day > maxDay {
 			continue // outside time window
 		}
-		ptw.pt.addDeleteTask(tenantIDs, q, seq)
+		ptw.pt.asyncTasks.addDeleteTask(tenantIDs, q, seq)
 		tasksAdded++
 	}
 	s.partitionsLock.Unlock()

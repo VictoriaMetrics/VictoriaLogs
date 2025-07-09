@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"encoding/json"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -17,14 +18,7 @@ const (
 	asyncTaskDelete                      // delete rows matching a query
 )
 
-// asyncTask describes a durable task that must be eventually applied to every part in the partition.
-// For now only delete tasks are supported.
-
 // Status field tracks the outcome of the task.
-//
-//	0 - pending (not attempted or still running)
-//	1 - success (completed without errors)
-//	2 - error   (attempted but failed; worker will skip the task but it can be inspected)
 type asyncTaskStatus int
 
 const (
@@ -42,6 +36,71 @@ type asyncTask struct {
 	// Status tracks the last execution state; omitted from JSON when zero (pending) to
 	// preserve compatibility with tasks created before this field existed.
 	Status asyncTaskStatus `json:"status,omitempty"`
+}
+
+type asyncTasks struct {
+	pt *partition
+
+	lock       sync.Mutex
+	ts         []asyncTask
+	currentSeq atomic.Uint64
+}
+
+func newAsyncTasks(pt *partition, tasks []asyncTask) *asyncTasks {
+	res := &asyncTasks{
+		pt: pt,
+		ts: tasks,
+	}
+	res.advancePending()
+
+	return res
+}
+
+func (at *asyncTasks) advancePending() *asyncTask {
+	var result asyncTask
+
+	at.lock.Lock()
+	for i := len(at.ts) - 1; i >= 0; i-- {
+		task := at.ts[i]
+		if task.Status == taskPending {
+			result = task
+			break
+		}
+	}
+	at.lock.Unlock()
+
+	at.currentSeq.Store(result.Seq)
+	return &result
+}
+
+func (at *asyncTasks) markResolvedOnDisk(seq uint64, status asyncTaskStatus) {
+	at.lock.Lock()
+	defer at.lock.Unlock()
+
+	for i := range at.ts {
+		if at.ts[i].Seq == seq && at.ts[i].Status == taskPending {
+			at.ts[i].Status = status
+			at.pt.mustSaveAsyncTasksLocked()
+			return
+		}
+	}
+}
+
+// addDeleteTask appends a delete task to the partition's task list
+func (at *asyncTasks) addDeleteTask(tenantIDs []TenantID, q *Query, seq uint64) uint64 {
+	at.lock.Lock()
+	defer at.lock.Unlock()
+
+	task := asyncTask{
+		Seq:       seq,
+		Type:      asyncTaskDelete,
+		TenantIDs: append([]TenantID(nil), tenantIDs...),
+		Query:     q.String(),
+		Status:    taskPending,
+	}
+
+	at.pt.mustSaveAsyncTasksLocked(task)
+	return seq
 }
 
 // globalTaskSeq provides unique, monotonically increasing sequence numbers for async tasks.

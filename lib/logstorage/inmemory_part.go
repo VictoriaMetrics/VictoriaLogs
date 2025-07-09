@@ -1,15 +1,12 @@
 package logstorage
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/chunkedbuffer"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 // inmemoryPart is an in-memory part.
@@ -109,7 +106,7 @@ func (mp *inmemoryPart) mustInitFromRows(lr *logRows) {
 }
 
 // MustStoreToDisk stores mp to disk at the given path.
-func (mp *inmemoryPart) MustStoreToDisk(path string, appliedSeq uint64) {
+func (mp *inmemoryPart) MustStoreToDisk(path string) {
 	fs.MustMkdirFailIfExist(path)
 
 	columnNamesPath := filepath.Join(path, columnNamesFilename)
@@ -140,15 +137,6 @@ func (mp *inmemoryPart) MustStoreToDisk(path string, appliedSeq uint64) {
 	fs.MustWriteStreamSync(valuesPath, &mp.fieldBloomValues.values)
 
 	mp.ph.mustWriteMetadata(path)
-
-	// Persist applied delete-task sequence so newly flushed part isn't re-processed.
-	if appliedSeq > 0 {
-		seqPath := filepath.Join(path, appliedTSeqFilename)
-		if err := os.WriteFile(seqPath, fmt.Appendf(nil, "%d", appliedSeq), 0o644); err != nil {
-			// Panic, because failing here would leave an inconsistent part on disk.
-			logger.Panicf("FATAL: cannot write appliedTSeq to %q: %s", seqPath, err)
-		}
-	}
 
 	fs.MustSyncPath(path)
 	// Do not sync parent directory - it must be synced by the caller.

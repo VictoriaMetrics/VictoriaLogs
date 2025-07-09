@@ -356,7 +356,7 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 	fs.MustWriteAtomic(datPath, datBuf, true /*overwrite*/)
 	fs.MustSyncPath(partPath)
 
-	p.setAppliedTSeq(seq)
+	pw.setTaskSeq(seq)
 }
 
 // addInMemoryDeleteMarker merges dm into p.marker.delete without touching disk.
