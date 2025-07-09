@@ -153,7 +153,7 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 
 func (s *Storage) failAsyncTask(sequence uint64, err error) error {
 	if sequence == 0 || err == nil {
-		return nil // nothing to advance
+		return nil
 	}
 
 	// Take a snapshot of partitions
@@ -192,13 +192,13 @@ func (s *Storage) setTaskAsDone(ptws []*partitionWrapper, taskSeq uint64, ats as
 			pt.ddb.partsLock.Unlock()
 		}
 
-		pt.asyncTasks.markResolvedOnDisk(taskSeq, ats)
+		pt.ats.markResolvedSync(taskSeq, ats)
 	}
 
 	logger.Infof("DEBUG (task): setTaskAsDone: taskSeq=%d, ats=%s, includeParts=%t", taskSeq, ats, includeParts)
 }
 
-func (s *Storage) runDeleteTask(ctx context.Context, task *asyncTask, lagging []*partWrapper) error {
+func (s *Storage) runDeleteTask(ctx context.Context, task asyncTask, lagging []*partWrapper) error {
 	// Build allowed set
 	allowed := make(map[*partition][]*partWrapper, len(lagging))
 	for _, pw := range lagging {
@@ -213,20 +213,21 @@ func (s *Storage) runDeleteTask(ctx context.Context, task *asyncTask, lagging []
 	return err
 }
 
-func (s *Storage) advanceNextAsyncTask(ptws []*partitionWrapper) ([]*partitionWrapper, *asyncTask) {
+func (s *Storage) advanceNextAsyncTask(ptws []*partitionWrapper) ([]*partitionWrapper, asyncTask) {
 	var minSeq uint64 = math.MaxUint64
-	var result *asyncTask
+	var result asyncTask
 	var resultPtws []*partitionWrapper
 
 	for _, ptw := range ptws {
 		pt := ptw.pt
 
-		task := pt.asyncTasks.advancePending()
-		if task == nil {
+		task := pt.ats.updatePending()
+		if task.Type == asyncTaskNone {
 			continue
 		}
 
-		// If we find a smaller sequence, reset the slice to start a new collection.
+		// If we find a smaller sequence,
+		// reset the slice to start a new collection.
 		if task.Seq < minSeq {
 			minSeq = task.Seq
 			resultPtws = append(resultPtws[:0], ptw)
@@ -234,7 +235,6 @@ func (s *Storage) advanceNextAsyncTask(ptws []*partitionWrapper) ([]*partitionWr
 			continue
 		}
 
-		// If the sequence equals the current minimum, also include this partition.
 		if task.Seq == minSeq {
 			resultPtws = append(resultPtws, ptw)
 		}

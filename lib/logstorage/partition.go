@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,10 +35,10 @@ type partition struct {
 	// ddb is the datadb used for the given partition
 	ddb *datadb
 
-	// asyncTasks holds outstanding background tasks (delete, ttl, etc.) for the partition.
+	// ats holds outstanding background tasks (delete, ttl, etc.) for the partition.
 	// The length of this slice equals to the latest sequence number of tasks created for the partition.
 	// Access must be protected with asyncTasksLock.
-	asyncTasks *asyncTasks
+	ats *asyncTasks
 }
 
 // mustCreatePartition creates a partition at the given path.
@@ -221,20 +222,23 @@ func (pt *partition) mustForceMerge() {
 	pt.ddb.mustForceMergeAllParts()
 }
 
-// mustSaveAsyncTasksLocked persists the current async tasks to disk.
-// p.asyncTasksLock must be held before calling.
-func (pt *partition) mustSaveAsyncTasksLocked(tasks ...asyncTask) {
-	if len(tasks) > 0 {
-		pt.asyncTasks.ts = append(pt.asyncTasks.ts, tasks...)
+// mustSaveAsyncTasks persists the current async tasks to disk.
+func (pt *partition) mustSaveAsyncTasks() {
+	pt.ats.mu.Lock()
+	snapshot := append([]asyncTask(nil), pt.ats.ts...)
+	pt.ats.mu.Unlock()
+
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		logger.Panicf("FATAL: cannot marshal async tasks: %s", err)
 	}
 
-	data := marshalAsyncTasks(tasks)
 	tasksPath := filepath.Join(pt.path, asyncTasksFilename)
 	fs.MustWriteAtomic(tasksPath, data, true)
 }
 
 func (pt *partition) isPayingAsyncTask() (taskSeq uint64, ok bool) {
-	taskSeq = pt.asyncTasks.currentSeq.Load()
+	taskSeq = pt.ats.currentSeq.Load()
 	ok = taskSeq == pt.s.asyncTaskSeq.Load()
 	return
 }
@@ -243,7 +247,7 @@ func (pt *partition) isPayingAsyncTask() (taskSeq uint64, ok bool) {
 func (pt *partition) mustLoadAsyncTasks() {
 	tasksPath := filepath.Join(pt.path, asyncTasksFilename)
 	if !fs.IsPathExist(tasksPath) {
-		pt.asyncTasks = newAsyncTasks(pt, nil)
+		pt.ats = newAsyncTasks(pt, nil)
 		return
 	}
 
@@ -252,6 +256,9 @@ func (pt *partition) mustLoadAsyncTasks() {
 		logger.Panicf("FATAL: cannot read async tasks from %q: %s", tasksPath, err)
 	}
 
-	tasks := unmarshalAsyncTasks(data)
-	pt.asyncTasks = newAsyncTasks(pt, tasks)
+	tasks, err := unmarshalAsyncTasks(data)
+	if err != nil {
+		logger.Panicf("FATAL: cannot unmarshal async tasks from %q: %s", tasksPath, err)
+	}
+	pt.ats = newAsyncTasks(pt, tasks)
 }

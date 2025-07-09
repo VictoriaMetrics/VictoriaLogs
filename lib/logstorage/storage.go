@@ -776,22 +776,23 @@ func (s *Storage) DeleteRows(ctx context.Context, tenantIDs []TenantID, q *Query
 	minTS, maxTS := q.GetFilterTimeRange()
 	minDay := minTS / nsecsPerDay
 	maxDay := maxTS / nsecsPerDay
+	seq := taskSeq.Add(1)
 
-	// Iterate partitions in time order and add delete tasks where needed
 	s.partitionsLock.Lock()
-	var tasksAdded int
-
-	seq := globalTaskSeq.Add(1)
+	var ptws []*partitionWrapper
 	for _, ptw := range s.partitions {
 		if ptw.day < minDay || ptw.day > maxDay {
 			continue // outside time window
 		}
-		ptw.pt.asyncTasks.addDeleteTask(tenantIDs, q, seq)
-		tasksAdded++
+		ptw.incRef()
+		ptws = append(ptws, ptw)
 	}
 	s.partitionsLock.Unlock()
 
-	logger.Infof("DEBUG: DeleteRows scheduled %d delete tasks across partitions, query=%q", tasksAdded, q.String())
+	for _, ptw := range ptws {
+		ptw.pt.ats.addDeleteTaskSync(tenantIDs, q, seq)
+	}
+
 	return nil
 }
 

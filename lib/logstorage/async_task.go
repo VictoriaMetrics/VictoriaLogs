@@ -2,11 +2,10 @@ package logstorage
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 // asyncTaskType identifies the type of background (asynchronous) task attached to a partition.
@@ -41,56 +40,72 @@ type asyncTask struct {
 type asyncTasks struct {
 	pt *partition
 
-	lock       sync.Mutex
+	mu         sync.Mutex
 	ts         []asyncTask
 	currentSeq atomic.Uint64
 }
 
 func newAsyncTasks(pt *partition, tasks []asyncTask) *asyncTasks {
-	res := &asyncTasks{
+	ast := &asyncTasks{
 		pt: pt,
 		ts: tasks,
 	}
-	res.advancePending()
-
-	return res
+	return ast
 }
 
-func (at *asyncTasks) advancePending() *asyncTask {
+func (at *asyncTasks) updatePending() asyncTask {
 	var result asyncTask
 
-	at.lock.Lock()
-	for i := len(at.ts) - 1; i >= 0; i-- {
+	at.mu.Lock()
+	for i := range at.ts {
 		task := at.ts[i]
 		if task.Status == taskPending {
 			result = task
 			break
 		}
 	}
-	at.lock.Unlock()
+	at.mu.Unlock()
 
 	at.currentSeq.Store(result.Seq)
-	return &result
+	return result
 }
 
-func (at *asyncTasks) markResolvedOnDisk(seq uint64, status asyncTaskStatus) {
-	at.lock.Lock()
-	defer at.lock.Unlock()
+// unmarshalAsyncTasks converts JSON data back to async tasks
+func unmarshalAsyncTasks(data []byte) ([]asyncTask, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 
-	for i := range at.ts {
+	var tasks []asyncTask
+	if err := json.Unmarshal(data, &tasks); err != nil {
+		return nil, fmt.Errorf("unmarshal async tasks: %w", err)
+	}
+	return tasks, nil
+}
+
+// markResolvedSync updates task status and persists the change to disk.
+// It holds the internal mutex only for in‐memory modification; the slow fs write
+// is executed after the lock is released to avoid blocking other readers.
+func (at *asyncTasks) markResolvedSync(seq uint64, status asyncTaskStatus) {
+	var updated bool
+
+	at.mu.Lock()
+	for i := len(at.ts) - 1; i >= 0; i-- {
 		if at.ts[i].Seq == seq && at.ts[i].Status == taskPending {
 			at.ts[i].Status = status
-			at.pt.mustSaveAsyncTasksLocked()
-			return
+			updated = true
+			break
 		}
+	}
+	at.mu.Unlock()
+
+	if updated {
+		at.pt.mustSaveAsyncTasks()
 	}
 }
 
 // addDeleteTask appends a delete task to the partition's task list
-func (at *asyncTasks) addDeleteTask(tenantIDs []TenantID, q *Query, seq uint64) uint64 {
-	at.lock.Lock()
-	defer at.lock.Unlock()
-
+func (at *asyncTasks) addDeleteTaskSync(tenantIDs []TenantID, q *Query, seq uint64) uint64 {
 	task := asyncTask{
 		Seq:       seq,
 		Type:      asyncTaskDelete,
@@ -99,36 +114,18 @@ func (at *asyncTasks) addDeleteTask(tenantIDs []TenantID, q *Query, seq uint64) 
 		Status:    taskPending,
 	}
 
-	at.pt.mustSaveAsyncTasksLocked(task)
+	at.mu.Lock()
+	at.ts = append(at.ts, task)
+	at.mu.Unlock()
+
+	at.pt.mustSaveAsyncTasks()
 	return seq
 }
 
-// globalTaskSeq provides unique, monotonically increasing sequence numbers for async tasks.
-var globalTaskSeq atomic.Uint64
+// taskSeq provides unique, monotonically increasing sequence numbers for async tasks.
+var taskSeq atomic.Uint64
 
 func init() {
 	// Initialise with current unix-nano in order to minimise collision with seqs that may be present on disk.
-	globalTaskSeq.Store(uint64(time.Now().UnixNano()))
-}
-
-// marshalAsyncTasks converts async tasks to JSON for persistence
-func marshalAsyncTasks(tasks []asyncTask) []byte {
-	data, err := json.Marshal(tasks)
-	if err != nil {
-		logger.Panicf("FATAL: cannot marshal async tasks: %s", err)
-	}
-	return data
-}
-
-// unmarshalAsyncTasks converts JSON data back to async tasks
-func unmarshalAsyncTasks(data []byte) []asyncTask {
-	if len(data) == 0 {
-		return nil
-	}
-
-	var tasks []asyncTask
-	if err := json.Unmarshal(data, &tasks); err != nil {
-		logger.Panicf("FATAL: cannot unmarshal async tasks: %s", err)
-	}
-	return tasks
+	taskSeq.Store(uint64(time.Now().UnixNano()))
 }

@@ -1022,7 +1022,7 @@ func newPartWrapper(p *part, mp *inmemoryPart, flushDeadline time.Time) *partWra
 		mp:            mp,
 		flushDeadline: flushDeadline,
 	}
-	seq := p.pt.asyncTasks.currentSeq.Load()
+	seq := p.pt.ats.currentSeq.Load()
 	pw.taskSeq.Store(seq)
 
 	// Increase reference counter for newly created part - it is decreased when the part

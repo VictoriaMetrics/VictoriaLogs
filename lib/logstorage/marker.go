@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
@@ -21,6 +22,7 @@ const (
 // marker aggregates indexes for all marker types belonging to a single part.
 // Currently only Delete markers (type=1) are supported.
 type marker struct {
+	mu          sync.Mutex
 	blocksCount uint64 // total blocks in the part – needed for delete marker
 
 	// delete holds row-delete bitmap per block. Accessed without extra locking, so it
@@ -298,34 +300,12 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 		return // nothing to flush
 	}
 
-	if pw == nil {
-		logger.Panicf("FATAL: flushDeleteMarker: pw is nil")
-	}
+	maker := pw.p.marker
 
-	p := pw.p
-	ddb := p.pt.ddb
+	maker.mu.Lock()
+	defer maker.mu.Unlock()
 
-	// Serialize with other modifications to the same part and protect against
-	// concurrent merges that may delete / rename the directory.
-	ddb.partsLock.Lock()
-	defer ddb.partsLock.Unlock()
-	if pw.isInMerge || pw.mustDrop.Load() {
-		logger.Fatalf("DEBUG: PANIC: flushDeleteMarker: pw.isInMerge=%t, pw.mustDrop=%t", pw.isInMerge, pw.mustDrop.Load())
-		return
-	}
-
-	if p.path == "" {
-		addInMemoryDeleteMarker(p, dm)
-		return
-	}
-
-	// Make sure marker object exists.
-	if p.marker == nil {
-		p.marker = &marker{blocksCount: p.ph.BlocksCount}
-	}
-
-	current := p.marker.delete.Load()
-
+	current := maker.delete.Load()
 	var merged *deleteMarker
 	if current == nil {
 		// First marker – just deep-copy delMarker to avoid sharing mutable slices.
@@ -347,52 +327,16 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 	}
 
 	// Publish the new snapshot for readers.
-	p.marker.delete.Store(merged)
+	maker.delete.Store(merged)
 
 	// Persist to disk.
-	datBuf := p.marker.Marshal()
-	partPath := p.path
-	datPath := filepath.Join(partPath, rowMarkerDatFilename)
-	fs.MustWriteAtomic(datPath, datBuf, true /*overwrite*/)
-	fs.MustSyncPath(partPath)
+	if pw.p.path != "" {
+		datBuf := maker.Marshal()
+		partPath := pw.p.path
+		datPath := filepath.Join(partPath, rowMarkerDatFilename)
+		fs.MustWriteAtomic(datPath, datBuf, true /*overwrite*/)
+		fs.MustSyncPath(partPath)
+	}
 
 	pw.setTaskSeq(seq)
-}
-
-// addInMemoryDeleteMarker merges dm into p.marker.delete without touching disk.
-// It performs copy-on-write merge similar to flushDeleteMarker, but deliberately
-// skips fs writes, since the part directory may be concurrently renamed or
-// deleted by an ongoing merge. Readers are immediately able to observe the new
-// bitmap via atomic pointer publication.
-func addInMemoryDeleteMarker(p *part, dm *deleteMarker) {
-	if dm == nil || len(dm.blockIDs) == 0 {
-		return
-	}
-
-	// Ensure marker container exists.
-	if p.marker == nil {
-		p.marker = &marker{blocksCount: p.ph.BlocksCount}
-	}
-
-	current := p.marker.delete.Load()
-	var merged *deleteMarker
-	if current == nil {
-		merged = &deleteMarker{
-			markedBlocks: markedBlocks{
-				blockIDs: append([]uint64(nil), dm.blockIDs...),
-				rows:     append([]boolRLE(nil), dm.rows...),
-			},
-		}
-	} else {
-		merged = &deleteMarker{
-			markedBlocks: markedBlocks{
-				blockIDs: append([]uint64(nil), current.blockIDs...),
-				rows:     append([]boolRLE(nil), current.rows...),
-			},
-		}
-		merged.merge(dm)
-	}
-
-	// Publish for readers.
-	p.marker.delete.Store(merged)
 }

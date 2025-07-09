@@ -67,9 +67,7 @@ var blockSearchWorkBatchPool sync.Pool
 func (bswb *blockSearchWorkBatch) appendBlockSearchWork(p *part, so *searchOptions, bh *blockHeader) bool {
 	bsws := bswb.bsws
 	var dm *deleteMarker
-	if p.marker != nil {
-		dm = p.marker.delete.Load()
-	}
+	dm = p.marker.delete.Load()
 
 	bsws = append(bsws, blockSearchWork{
 		p:  p,

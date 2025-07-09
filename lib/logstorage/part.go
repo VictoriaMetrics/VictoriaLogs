@@ -16,6 +16,9 @@ type part struct {
 	// pt is the partition the part belongs to
 	pt *partition
 
+	// marker holds marker data for marker types (delete, ttl, etc.). May be nil if not present.
+	marker *marker
+
 	// path is the path to the part on disk.
 	//
 	// If the part is in-memory then the path is empty.
@@ -47,9 +50,6 @@ type part struct {
 	oldBloomValues     bloomValuesReaderAt
 
 	bloomValuesShards []bloomValuesReaderAt
-
-	// marker holds marker data for marker types (delete, ttl, etc.). May be nil if not present.
-	marker *marker
 }
 
 type bloomValuesReaderAt struct {
@@ -137,12 +137,13 @@ func mustOpenFilePart(pt *partition, path string) *part {
 	}
 
 	// Load marker data
+	p.marker = &marker{
+		blocksCount: p.ph.BlocksCount,
+	}
 	if fs.IsPathExist(markerDatPath) {
 		markerDatReader := filestream.MustOpen(markerDatPath, true)
 		p.marker = mustReadMarkerData(markerDatReader, p.ph.BlocksCount)
 		markerDatReader.MustClose()
-	} else {
-		p.marker = nil
 	}
 
 	// Read metaindex
