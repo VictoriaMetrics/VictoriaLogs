@@ -1,8 +1,84 @@
 import { describe, expect, it } from "vitest";
-import { findAllMatches, getOverlappedFragments, getSelectionPosition, parseDataToJsonArray } from "./utils";
+import {
+  getCurrentFocusEntry,
+  getOverlappedFragments,
+  getSelectionForShiftKey,
+  getSelectionPosition,
+} from "./utils";
 import { TextSelection, TextSelectionRange } from "./types";
 
 describe("utils", () => {
+  describe("getSelectionForShiftKey", () => {
+    it("should return start set to position if start is null", () => {
+      const position: TextSelection = { elementIndex: 2, positionIndex: 5 };
+      const result = getSelectionForShiftKey({ start: null, end: null }, position);
+
+      expect(result).toEqual({
+        start: position,
+        end: null,
+      });
+    });
+
+    it("should set end to position if end is null", () => {
+      const start: TextSelection = { elementIndex: 1, positionIndex: 2 };
+      const position: TextSelection = { elementIndex: 2, positionIndex: 5 };
+      const result = getSelectionForShiftKey({ start, end: null }, position);
+
+      expect(result).toEqual({
+        start,
+        end: position,
+      });
+    });
+
+    it("should update start to position if position is before current start", () => {
+      const start: TextSelection = { elementIndex: 2, positionIndex: 5 };
+      const end: TextSelection = { elementIndex: 4, positionIndex: 8 };
+      const position: TextSelection = { elementIndex: 1, positionIndex: 3 };
+      const result = getSelectionForShiftKey({ start, end }, position);
+
+      expect(result).toEqual({
+        start: position,
+        end,
+      });
+    });
+
+    it("should update end to position if position is after current end", () => {
+      const start: TextSelection = { elementIndex: 1, positionIndex: 2 };
+      const end: TextSelection = { elementIndex: 3, positionIndex: 5 };
+      const position: TextSelection = { elementIndex: 4, positionIndex: 6 };
+      const result = getSelectionForShiftKey({ start, end }, position);
+
+      expect(result).toEqual({
+        start,
+        end: position,
+      });
+    });
+
+    it("should update start if position is closer to start than end", () => {
+      const start: TextSelection = { elementIndex: 1, positionIndex: 0 };
+      const end: TextSelection = { elementIndex: 5, positionIndex: 0 };
+      const position: TextSelection = { elementIndex: 2, positionIndex: 0 };
+      const result = getSelectionForShiftKey({ start, end }, position);
+
+      expect(result).toEqual({
+        start: position,
+        end,
+      });
+    });
+
+    it("should update end if position is closer to end than start", () => {
+      const start: TextSelection = { elementIndex: 1, positionIndex: 0 };
+      const end: TextSelection = { elementIndex: 5, positionIndex: 0 };
+      const position: TextSelection = { elementIndex: 4, positionIndex: 0 };
+      const result = getSelectionForShiftKey({ start, end }, position);
+
+      expect(result).toEqual({
+        start,
+        end: position,
+      });
+    });
+  });
+
   describe("getSelectionPosition", () => {
     it("should return positions sorted when startPosition.elementIndex > endPosition.elementIndex", () => {
       const startPosition: TextSelection = { elementIndex: 2, positionIndex: 5 };
@@ -34,60 +110,6 @@ describe("utils", () => {
       const result = getSelectionPosition(startPosition, endPosition);
 
       expect(result).toEqual({ start: startPosition, end: endPosition });
-    });
-  });
-
-  describe("parseDataToJsonArray", () => {
-    it("should return an empty JSON array when input is an empty array", () => {
-      const result = parseDataToJsonArray([]);
-      expect(result).toEqual(["[", "]"]);
-    });
-
-    it("should return a JSON array with single object correctly parsed", () => {
-      const input = [{ key: "value" }];
-      const result = parseDataToJsonArray(input);
-      expect(result).toEqual([
-        "[",
-        "  {",
-        "    key: value",
-        "  }",
-        "]",
-      ]);
-    });
-
-    it("should correctly parse multiple objects into a JSON array", () => {
-      const input: Record<string, string>[] = [
-        { key1: "value1", key2: "value2" },
-        { key3: "value3" },
-      ];
-      const result = parseDataToJsonArray(input);
-      expect(result).toEqual([
-        "[",
-        "  {",
-        "    key1: value1",
-        "    key2: value2",
-        "  },",
-        "  {",
-        "    key3: value3",
-        "  }",
-        "]",
-      ]);
-    });
-
-    it("should handle string values with newlines correctly by splitting them into multiple lines", () => {
-      const input = [
-        { key: "line1\nline2\nline3" },
-      ];
-      const result = parseDataToJsonArray(input);
-      expect(result).toEqual([
-        "[",
-        "  {",
-        "    key: line1",
-        "         line2",
-        "         line3",
-        "  }",
-        "]",
-      ]);
     });
   });
 
@@ -236,71 +258,63 @@ describe("utils", () => {
     });
   });
 
-  describe("findAllMatches", () => {
-    it("should return no matches when the search value is an empty string", () => {
-      const data = ["hello", "world"];
-      const searchValue = "";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([]);
+  describe("getCurrentFocusEntry", () => {
+    it("should return null if search value is an empty string", () => {
+      const data = ["example", "test"];
+      const result = getCurrentFocusEntry(data, "", null, true);
+      expect(result).toBeNull();
     });
 
-    it("should return no matches when the search value is not found in the data", () => {
-      const data = ["hello", "world"];
-      const searchValue = "test";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([]);
-    });
-
-    it("should find a single match in one element", () => {
+    it("should return the first occurrence when no previous focus position is provided", () => {
       const data = ["hello", "world"];
       const searchValue = "wor";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([{ elementIndex: 1, positionIndex: 0 }]);
+      const result = getCurrentFocusEntry(data, searchValue, null, true);
+      expect(result).toEqual({ elementIndex: 1, positionIndex: 0 });
     });
 
-    it("should find multiple matches in a single element", () => {
-      const data = ["abababa"];
-      const searchValue = "aba";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([
-        { elementIndex: 0, positionIndex: 0 },
-        { elementIndex: 0, positionIndex: 2 },
-        { elementIndex: 0, positionIndex: 4 },
-      ]);
+    it("should return null if the search value is not found in the data", () => {
+      const data = ["hello", "world"];
+      const searchValue = "notfound";
+      const result = getCurrentFocusEntry(data, searchValue, null, true);
+      expect(result).toBeNull();
     });
 
-    it("should find matches across multiple elements", () => {
-      const data = ["hello", "world", "hello world"];
-      const searchValue = "lo";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([
-        { elementIndex: 0, positionIndex: 3 },
-        { elementIndex: 2, positionIndex: 3 },
-      ]);
-    });
-
-    it("should handle case-insensitive matches", () => {
-      const data = ["Hello", "World"];
+    it("should find the next occurrence when moving forward", () => {
+      const data = ["hello", "world", "hello again"];
       const searchValue = "hello";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([{ elementIndex: 0, positionIndex: 0 }]);
+      const prevFocus: TextSelection = { elementIndex: 0, positionIndex: 0 };
+      const result = getCurrentFocusEntry(data, searchValue, prevFocus, true);
+      expect(result).toEqual({ elementIndex: 2, positionIndex: 0 });
     });
 
-    it("should return no matches for an empty data array", () => {
+    it("should find the previous occurrence when moving backward", () => {
+      const data = ["hello", "world", "hello again"];
+      const searchValue = "hello";
+      const prevFocus: TextSelection = { elementIndex: 2, positionIndex: 0 };
+      const result = getCurrentFocusEntry(data, searchValue, prevFocus, false);
+      expect(result).toEqual({ elementIndex: 0, positionIndex: 0 });
+    });
+
+    it("should handle case-insensitive matches correctly", () => {
+      const data = ["Hello", "world"];
+      const searchValue = "hello";
+      const result = getCurrentFocusEntry(data, searchValue, null, true);
+      expect(result).toEqual({ elementIndex: 0, positionIndex: 0 });
+    });
+
+    it("should return null for an empty data array", () => {
       const data: string[] = [];
       const searchValue = "test";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([]);
+      const result = getCurrentFocusEntry(data, searchValue, null, true);
+      expect(result).toBeNull();
     });
 
-    it("should handle scenarios where search string partially overlaps itself in elements", () => {
-      const data = ["aaa"];
-      const searchValue = "aa";
-      const result = findAllMatches(data, searchValue);
-      expect(result).toEqual([
-        { elementIndex: 0, positionIndex: 0 },
-        { elementIndex: 0, positionIndex: 1 },
-      ]);
+    it("should handle overlapping matches within the same element", () => {
+      const data = ["aaabaaa"];
+      const searchValue = "aaa";
+      const prevFocus: TextSelection = { elementIndex: 0, positionIndex: 0 };
+      const result = getCurrentFocusEntry(data, searchValue, prevFocus, true);
+      expect(result).toEqual({ elementIndex: 0, positionIndex: 4 });
     });
   });
 });

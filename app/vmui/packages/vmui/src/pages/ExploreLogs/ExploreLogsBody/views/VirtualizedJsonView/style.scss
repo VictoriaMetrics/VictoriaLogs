@@ -1,6 +1,7 @@
 .vm-json-virtualized-list {
   user-select: none;
   overflow-y: hidden;
+  cursor: text;
 
   &__search {
     position: absolute;

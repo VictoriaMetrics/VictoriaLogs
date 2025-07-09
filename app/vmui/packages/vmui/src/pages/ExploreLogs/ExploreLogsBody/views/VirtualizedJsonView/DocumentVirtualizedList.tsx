@@ -1,20 +1,25 @@
 import { useRef, useState, useEffect, useCallback, useMemo, FC } from "preact/compat";
 import "./style.scss";
-import TextField from "../../../../../components/Main/TextField/TextField";
+import TextField, { TextFieldKeyboardEvent } from "../../../../../components/Main/TextField/TextField";
 import useBoolean from "../../../../../hooks/useBoolean";
 import { TextSelection } from "./types";
-import { findAllMatches, getMousePosition, getSelectionData, getSelectionPosition } from "./utils";
+import {
+  getCurrentFocusEntry,
+  getSelectionData,
+  getSelectionPosition
+} from "./utils";
 import { HighlightedText } from "./HighlightedText";
 import useCopyToClipboard from "../../../../../hooks/useCopyToClipboard";
 import { currentSearchFocusedElement } from "./constants";
+import { useTextSelection } from "./hooks/useTextSelection";
 
 const getSelectionText = (
   text: string,
   elementIndex: number,
   startSelection: TextSelection | null,
   endSelection: TextSelection | null,
-  searchValue?: string,
-  currentSearchPosition?: TextSelection
+  currentSearchPosition: TextSelection | null,
+  searchValue?: string
 ) => {
   const currentSearchPositionIndex =
     currentSearchPosition?.elementIndex === elementIndex
@@ -90,41 +95,40 @@ export const DocumentVirtualizedList: FC<Props> = ({
 
   const listRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const preVisibleHeightRef = useRef<number>(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [visibleItems, setVisibleItems] = useState({
     startIndex: 0,
     endIndex: Math.ceil(window.innerHeight / elementHeight) + elementOverhead,
   });
-  const [startSelection, setStartSelection] = useState<TextSelection | null>(null);
-  const [endSelection, setEndSelection] = useState<TextSelection | null>(null);
   const [searchValue, setSearchValue] = useState<string>("");
   const { value: isFixedSearch, setValue: setIsFixedSearch } = useBoolean(false);
-  const [currentSearchPos, setCurrentSearchPos] = useState<number>(0);
-  const [searchMatches, setSearchMatches] = useState<TextSelection[]>([]);
+  const [currentSearchFocusPosition, setCurrentSearchFocusPosition] = useState<TextSelection | null>(null);
   const { value: isSearchOpen, setValue: setIsSearchOpen } = useBoolean(false);
+
+  const blurSearch = () => {
+    searchInputRef.current?.blur();
+  };
+  const { startSelectionPosition, endSelectionPosition, selectionRef } = useTextSelection(listRef, blurSearch);
+
   const copyToClipboard = useCopyToClipboard();
   const itemsCount = data.length;
 
-  const mouseMoveHandler = useCallback((e: MouseEvent) => {
+  const onSearchKeyDown = (e: TextFieldKeyboardEvent) => {
+    if (e.key !== "Enter" && e.key !== "ArrowDown" && e.key !== "ArrowUp") {
+      return;
+    }
     e.preventDefault();
-    const position = getMousePosition(e);
-    if (!position) {
-      return;
-    }
-    setEndSelection(position);
-  }, []);
 
-  const onSearchKeyDown = () => {
-    const newSearchPos = currentSearchPos + 1 % searchMatches.length;
-    setCurrentSearchPos(newSearchPos);
-
-    if (!searchMatches[newSearchPos]) {
+    const forward = e.key !== "ArrowUp";
+    const currentFocusPosition = getCurrentFocusEntry(data, searchValue, currentSearchFocusPosition, forward);
+    setCurrentSearchFocusPosition(currentFocusPosition);
+    if (!currentFocusPosition) {
       return;
     }
 
-    if (searchMatches[newSearchPos].elementIndex < visibleItems.startIndex || searchMatches[currentSearchPos].elementIndex > visibleItems.endIndex) {
-      const newStartIndex = Math.max(0, searchMatches[currentSearchPos].elementIndex - elementOverhead);
+    if (currentFocusPosition.elementIndex < visibleItems.startIndex || currentFocusPosition.elementIndex > visibleItems.endIndex) {
+      const newStartIndex = Math.max(0, currentFocusPosition.elementIndex - elementOverhead);
       const newEndIndex = Math.min(itemsCount, newStartIndex + visibleItems.endIndex - visibleItems.startIndex);
       setVisibleItems({
         startIndex: newStartIndex,
@@ -134,15 +138,14 @@ export const DocumentVirtualizedList: FC<Props> = ({
   };
 
   const handleSearchChange = useCallback((value: string) => {
-    const allMatches = findAllMatches(data, value);
-    setCurrentSearchPos(0);
-    setSearchMatches(allMatches);
+    const currentFocusPosition = getCurrentFocusEntry(data, value, null, true);
+    setCurrentSearchFocusPosition(currentFocusPosition);
     setSearchValue(value);
   }, [data]);
 
   /** Scrolling to the current search position */
   useEffect(() => {
-    if (!searchMatches[currentSearchPos]) {
+    if (!currentSearchFocusPosition) {
       return;
     }
 
@@ -152,8 +155,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
         el.scrollIntoView({ block: "center", inline: "nearest" });
       }
     }
-  }, [searchMatches, currentSearchPos]);
-
+  }, [currentSearchFocusPosition]);
 
   /** Add listener for scroll to calculate visible items */
   useEffect(() => {
@@ -166,9 +168,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
         const visibleBottom = Math.min(rect?.bottom || 0, viewportHeight);
         const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
         let visibleElementStartIndex = 0;
-        if (rect.top > 0) {
-          preVisibleHeightRef.current = visibleHeight;
-        } else {
+        if (rect.top <= 0) {
           visibleElementStartIndex = Math.floor(Math.abs(rect.top) / elementHeight);
         }
 
@@ -194,75 +194,46 @@ export const DocumentVirtualizedList: FC<Props> = ({
 
   /** Add listener for search hotkey */
   useEffect(() => {
-    const handleSearch = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsSearchOpen(false);
         setSearchValue("");
       }
     };
 
+    const handleSearch = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        let newSearchValue = "";
+        if(selectionRef.current.start && selectionRef.current.end) {
+          newSearchValue = getSelectionData(data, selectionRef.current.start, selectionRef.current.end);
+        }
+        setSearchValue(newSearchValue);
+        setIsSearchOpen(true);
+        searchInputRef.current?.focus?.();
+      }
+    };
+
     window.addEventListener("keydown", handleSearch);
+    window.addEventListener("keydown", handleEscape, true);
+    searchRef.current?.addEventListener("keydown", handleEscape, true);
     return () => {
       window.removeEventListener("keydown", handleSearch);
+      window.removeEventListener("keydown", handleEscape, true);
+      searchRef.current?.removeEventListener("keydown", handleEscape, true);
     };
-  });
-
-  /** Add listeners for text selection */
-  useEffect(() => {
-    const startSelection = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-
-      e.preventDefault();
-      setEndSelection(null);
-      if (!listRef.current) {
-        return;
-      }
-
-      const position = getMousePosition(e);
-      if (!position) {
-        return;
-      }
-      setStartSelection(position);
-
-      listRef.current.addEventListener("mousemove", mouseMoveHandler);
-    };
-
-    const endSelection = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      if (!listRef.current) {
-        return;
-      }
-      listRef.current.removeEventListener("mousemove", mouseMoveHandler);
-    };
-
-    if (listRef.current) {
-      listRef.current.addEventListener("mousedown", startSelection);
-      listRef.current.addEventListener("mouseup", endSelection);
-    }
-
-    return () => {
-      if (listRef.current) {
-        listRef.current.removeEventListener("mousedown", startSelection);
-        listRef.current.removeEventListener("mouseup", endSelection);
-      }
-    };
-  }, []);
+  }, [data]);
 
   /** Add listener for copy to clipboard hotkeys */
   useEffect(() => {
-    if (!endSelection) {
+    if (!endSelectionPosition) {
       return;
     }
 
     const handleCopy = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && startSelection && endSelection) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && startSelectionPosition && endSelectionPosition) {
         e.preventDefault();
-        const selectedData = getSelectionData(data, startSelection, endSelection);
+        const selectedData = getSelectionData(data, startSelectionPosition, endSelectionPosition);
         copyToClipboard(selectedData, "Selected JSON data copied to clipboard");
       }
     };
@@ -270,7 +241,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
     return () => {
       window.removeEventListener("keydown", handleCopy);
     };
-  }, [endSelection]);
+  }, [endSelectionPosition]);
 
   const marginBottom = itemsCount * elementHeight - visibleItems.endIndex * elementHeight;
   const marginTop = visibleItems.startIndex * elementHeight;
@@ -287,7 +258,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
           style={{ lineHeight: `${elementHeight}px` }}
           data-id={idx + visibleItems.startIndex}
           key={idx + visibleItems.startIndex}
-        >{getSelectionText(item, idx + visibleItems.startIndex, startSelection, endSelection, searchValue, searchMatches[currentSearchPos])}</pre>)}
+        >{getSelectionText(item, idx + visibleItems.startIndex, startSelectionPosition, endSelectionPosition, currentSearchFocusPosition, searchValue)}</pre>)}
       </div>
       {isSearchOpen &&
         <div
@@ -296,11 +267,12 @@ export const DocumentVirtualizedList: FC<Props> = ({
           className="vm-json-virtualized-list__search"
         >
           <TextField
+            ref={searchInputRef}
             value={searchValue}
             onChange={handleSearchChange}
             onKeyDown={onSearchKeyDown}
             autofocus
-            inputmode={"search"}
+            type={"text"}
           />
         </div>
       }
