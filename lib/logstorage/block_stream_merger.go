@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
@@ -14,6 +15,7 @@ import (
 // Finalize() is guaranteed to be called on bsrs and bsw before returning from the func.
 func mustMergeBlockStreams(ph *partHeader, bsw *blockStreamWriter, bsrs []*blockStreamReader, stopCh <-chan struct{}) {
 	bsm := getBlockStreamMerger()
+	bsm.ID = time.Now().UnixNano()
 	bsm.mustInit(bsw, bsrs)
 	for len(bsm.readersHeap) > 0 {
 		if needStop(stopCh) {
@@ -48,6 +50,8 @@ func mustMergeBlockStreams(ph *partHeader, bsw *blockStreamWriter, bsrs []*block
 
 // blockStreamMerger merges block streams
 type blockStreamMerger struct {
+	ID int64
+
 	// bsw is the block stream writer to write the merged blocks.
 	bsw *blockStreamWriter
 
@@ -89,6 +93,9 @@ type blockStreamMerger struct {
 	//
 	// It is used for limiting the number of columns written per block
 	uniqueFields int
+
+	// Accumulated delete marker for blocks we keep and mark during merge.
+	dmNew *deleteMarker
 }
 
 func (bsm *blockStreamMerger) reset() {
@@ -102,6 +109,8 @@ func (bsm *blockStreamMerger) reset() {
 
 	bsm.streamID.reset()
 	bsm.resetRows()
+	bsm.uniqueFields = 0
+	bsm.dmNew = nil
 }
 
 func (bsm *blockStreamMerger) resetRows() {
@@ -335,6 +344,7 @@ func (h *blockStreamReadersHeap) Pop() any {
 //
 // In both cases the original reader is advanced to the next block or popped when exhausted.
 func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockID uint64) bool {
+
 	miAgg := bsr.marker
 	if miAgg == nil {
 		return false
@@ -351,15 +361,42 @@ func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockI
 
 	rowsTotal := int(bsr.blockData.rowsCount)
 	if rowsTotal == 0 {
-		logger.Panicf("BUG: this should not happen: rowsTotal == 0")
+		logger.Panicf("BUG: rowsTotal == 0")
 	}
 
-	// Delete all rows case
+	// FULL DELETE ─ drop block completely.
 	if bm.IsOnes(uint64(rowsTotal)) {
 		return true
 	}
 
-	// Worst case: unmarshal original rows so we can filter them.
+	// PARTIAL DELETE ─ keep compressed block, attach new marker because we must
+	// preserve ordering by minTimestamp and avoid heavy rewriting.
+	// Since we are about to write a block that originally followed everything
+	// already flushed, we must make sure nothing is buffered.
+	bsm.mustFlushRows()
+
+	// Write the original block bytes unchanged.
+	bsm.bsw.MustWriteBlockData(&bsr.blockData)
+
+	// Obtain the new blockID assigned by the writer.
+	newID := bsm.bsw.LastBlockID()
+
+	// Accumulate delete-marker pointing to the new blockID.
+	if bsm.dmNew == nil {
+		bsm.dmNew = &deleteMarker{}
+	}
+	bsm.dmNew.AddBlock(newID, bm)
+
+	// Uncomment the call below to enable the legacy re-queue logic instead of
+	// keeping the original compressed block.
+	// bsm.requeuePartialDeleteBlock(bsr, bm, rowsTotal)
+
+	return true // block handled; caller will advance reader
+}
+
+// requeuePartialDeleteBlock recreates a pruned block as an in-memory reader and
+// pushes it back into the merge heap so ordering is preserved.
+func (bsm *blockStreamMerger) requeuePartialDeleteBlock(bsr *blockStreamReader, bm boolRLE, rowsTotal int) {
 	if bsm.sbu == nil {
 		bsm.sbu = getStringsBlockUnmarshaler()
 	}
@@ -367,12 +404,13 @@ func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockI
 		bsm.vd = getValuesDecoder()
 	}
 
+	// Unmarshal original rows.
 	var rs rows
 	if err := bsr.blockData.unmarshalRows(&rs, bsm.sbu, bsm.vd); err != nil {
 		logger.Panicf("BUG: cannot unmarshal rows for partial delete pruning: %s", err)
 	}
 
-	// Collect rows that remain after applying delete marker without materializing a full bitmap.
+	// Collect rows that remain after applying delete marker.
 	keptTS := make([]int64, 0, rowsTotal)
 	keptRows := make([][]Field, 0, rowsTotal)
 	bm.ForEachZeroBit(rowsTotal, func(i int) {
@@ -384,7 +422,7 @@ func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockI
 		logger.Panicf("BUG: length of rows after partial delete marker pruning is 0")
 	}
 
-	// Construct an in-memory part that contains only the kept rows so it can be re-queued.
+	// Build a tiny in-memory part with the kept rows.
 	lr := getLogRows()
 	for i, ts := range keptTS {
 		lr.mustAddRow(bsr.blockData.streamID, ts, keptRows[i])
@@ -395,12 +433,10 @@ func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockI
 
 	bsrNew := getBlockStreamReader()
 	bsrNew.MustInitFromInmemoryPart(mp)
-	// Load the first block so blockData is valid when it enters the heap.
 	if !bsrNew.NextBlock() {
 		logger.Panicf("BUG: pruned in-memory reader has no blocks to merge")
 	}
+
 	heap.Push(&bsm.readersHeap, bsrNew)
 	bsm.bsrs = append(bsm.bsrs, bsrNew)
-
-	return true
 }

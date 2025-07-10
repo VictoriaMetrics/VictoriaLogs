@@ -100,10 +100,10 @@ func mustOpenPartition(s *Storage, path string) *partition {
 		mustCreateDatadb(datadbPath)
 	}
 
-	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
-
+	// async tasks must be loaded before datadb
 	pt.mustLoadAsyncTasks()
 
+	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
 	return pt
 }
 

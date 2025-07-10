@@ -151,7 +151,7 @@ type deleteMarker struct {
 }
 
 // Marshal serializes delete marker data to the provided buffer.
-// Format: [num_blocks:varuint64][block_id:uint32][rle_len:varuint64][rle_data:bytes]...
+// Format: [num_blocks:varuint64][block_id:uint64][rle_len:varuint64][rle_data:bytes]...
 func (dm *deleteMarker) Marshal(dst []byte) []byte {
 	// Number of blocks with markers
 	dst = encoding.MarshalVarUint64(dst, uint64(len(dm.blockIDs)))
@@ -301,9 +301,7 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 	}
 
 	maker := pw.p.marker
-
 	maker.mu.Lock()
-	defer maker.mu.Unlock()
 
 	current := maker.delete.Load()
 	var merged *deleteMarker
@@ -328,6 +326,7 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 
 	// Publish the new snapshot for readers.
 	maker.delete.Store(merged)
+	maker.mu.Unlock()
 
 	// Persist to disk.
 	if pw.p.path != "" {
@@ -338,5 +337,5 @@ func flushDeleteMarker(pw *partWrapper, dm *deleteMarker, seq uint64) {
 		fs.MustSyncPath(partPath)
 	}
 
-	pw.setTaskSeq(seq)
+	pw.taskSeq.Store(seq)
 }

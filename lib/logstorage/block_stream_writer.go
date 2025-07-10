@@ -245,6 +245,9 @@ type blockStreamWriter struct {
 
 	// indexBlockHeader is used for marshaling the data to metaindexData
 	indexBlockHeader indexBlockHeader
+
+	// lastBlockID is the columnsHeaderOffset of the most recently written block.
+	lastBlockID uint64
 }
 
 // reset resets bsw for subsequent reuse.
@@ -262,6 +265,7 @@ func (bsw *blockStreamWriter) reset() {
 	bsw.globalMinTimestamp = 0
 	bsw.globalMaxTimestamp = 0
 	bsw.indexBlockData = bsw.indexBlockData[:0]
+	bsw.lastBlockID = 0
 
 	if len(bsw.metaindexData) > 1024*1024 {
 		// The length of bsw.metaindexData is unbound, so drop too long buffer
@@ -421,6 +425,7 @@ func (bsw *blockStreamWriter) mustWriteBlockInternal(sid *streamID, b *block, bd
 
 	// Marshal bh
 	bsw.indexBlockData = bh.marshal(bsw.indexBlockData)
+	bsw.lastBlockID = bh.columnsHeaderOffset
 	putBlockHeader(bh)
 	if len(bsw.indexBlockData) > maxUncompressedIndexBlockSize {
 		bsw.mustFlushIndexBlock(bsw.indexBlockData)
@@ -490,3 +495,8 @@ func putBlockStreamWriter(bsw *blockStreamWriter) {
 }
 
 var blockStreamWriterPool sync.Pool
+
+// LastBlockID returns the blockID (columnsHeaderOffset) of the last written block.
+func (bsw *blockStreamWriter) LastBlockID() uint64 {
+	return bsw.lastBlockID
+}

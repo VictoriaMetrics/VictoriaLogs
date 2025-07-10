@@ -807,6 +807,22 @@ func (s *Storage) markDeleteRowsOnParts(ctx context.Context, tenantIDs []TenantI
 		return fmt.Errorf("query must not contain pipes")
 	}
 
+	minTs, maxTs := q.GetFilterTimeRange()
+	for pt, pws := range allowed {
+		kept := pws[:0] // reuse underlying array
+		for _, pw := range pws {
+			if pw.p.ph.MinTimestamp > maxTs || pw.p.ph.MaxTimestamp < minTs {
+				continue // part is fully outside [minTs, maxTs]
+			}
+			kept = append(kept, pw)
+		}
+		if len(kept) == 0 {
+			delete(allowed, pt) // drop partition entirely if nothing left
+		} else {
+			allowed[pt] = kept
+		}
+	}
+
 	// Build mapping of parts to wrappers and log allowed parts
 	pwMap := make(map[*part]*partWrapper)
 	for _, ptw := range allowed {
@@ -884,7 +900,12 @@ func (s *Storage) markDeleteRowsOnParts(ctx context.Context, tenantIDs []TenantI
 		flushDeleteMarker(pm.part, pm.delMarker, seq)
 	}
 
-	logger.Infof("DEBUG: affected (parts = %d, seq = %d)", len(partMarkers), seq)
+	// DEBUG:
+	partCount := 0
+	for i := range allowed {
+		partCount += len(allowed[i])
+	}
+	logger.Infof("DEBUG: affected (originalParts=%d, parts=%d, seq=%d)", partCount, len(partMarkers), seq)
 	return nil
 }
 

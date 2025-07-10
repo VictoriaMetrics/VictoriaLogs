@@ -91,6 +91,7 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 
 	// Gather all lagging parts in the target partition for this sequence.
 	var lagging []*partWrapper
+	var pendingPws []*partWrapper
 	pending := 0
 	for _, ptw := range oudatedPtws {
 		pt := ptw.pt
@@ -101,8 +102,14 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 				if pw.taskSeq.Load() >= task.Seq {
 					continue
 				}
-				if pw.isInMerge || pw.mustDrop.Load() {
+
+				if pw.isInMerge {
 					pending++
+					pendingPws = append(pendingPws, pw)
+					continue
+				}
+
+				if pw.mustDrop.Load() {
 					continue
 				}
 
@@ -116,12 +123,21 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 	// If there are no lagging parts, mark the task as success and return.
 	if len(lagging) == 0 {
 		if pending > 0 {
-			logger.Infof("DEBUG (task): no lagging parts, but there are pending parts, waiting for them to finish")
+			logger.Infof("DEBUG (task): no lagging parts, but there are pending parts (pending=%d), waiting for them to finish", pending)
+			for _, pw := range pendingPws {
+				fmt.Println("DEBUG (task): pending part", pw.p.path, pw.taskSeq.Load())
+			}
 			return nil
 		}
 
 		s.setTaskAsDone(oudatedPtws, task.Seq, taskSuccess, false)
 		return nil
+	}
+
+	if len(lagging) < 10 {
+		for _, pw := range lagging {
+			fmt.Println("DEBUG (task): lagging part", pw.p.path, pw.taskSeq.Load())
+		}
 	}
 
 	defer func() {
@@ -144,7 +160,7 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 		if pw.taskSeq.Load() < task.Seq {
 			caughtUpParts = append(caughtUpParts, pw.p.path)
 		}
-		pw.setTaskSeq(task.Seq)
+		pw.taskSeq.Store(task.Seq)
 	}
 
 	logger.Infof("DEBUG (task): task (seq=%d, query=%q) applied to %d parts (caught up: %v)", task.Seq, task.Query, len(lagging), caughtUpParts)
@@ -185,7 +201,7 @@ func (s *Storage) setTaskAsDone(ptws []*partitionWrapper, taskSeq uint64, ats as
 			for _, arr := range all {
 				for _, pw := range arr {
 					if pw.taskSeq.Load() < taskSeq {
-						pw.setTaskSeq(taskSeq)
+						pw.taskSeq.Store(taskSeq)
 					}
 				}
 			}

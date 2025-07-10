@@ -249,6 +249,89 @@ func TestBoolRLEIsSubsetOf(t *testing.T) {
 		true)
 }
 
+func TestBoolRLECountOnes(t *testing.T) {
+	f := func(runs []uint64, expected uint64) {
+		t.Helper()
+		rle := encodeTestRLE(runs)
+		got := rle.CountOnes()
+		if got != expected {
+			t.Fatalf("unexpected result for runs %v; got %d; want %d", runs, got, expected)
+		}
+	}
+
+	// Empty RLE
+	f([]uint64{}, 0)
+
+	// All zeros
+	f([]uint64{5}, 0)
+	f([]uint64{10}, 0)
+	f([]uint64{100}, 0)
+
+	// All ones
+	f([]uint64{0, 5}, 5)
+	f([]uint64{0, 10}, 10)
+	f([]uint64{0, 100}, 100)
+
+	// Single 1-bit
+	f([]uint64{0, 1}, 1)
+	f([]uint64{1, 1}, 1)
+	f([]uint64{5, 1}, 1)
+	f([]uint64{0, 1, 5}, 1)
+	f([]uint64{3, 1, 2}, 1)
+
+	// Multiple single bits
+	f([]uint64{0, 1, 1, 1}, 2)
+	f([]uint64{1, 1, 1, 1}, 2)
+	f([]uint64{0, 1, 1, 1, 1, 1}, 3)
+
+	// Basic patterns
+	f([]uint64{0, 2}, 2)
+	f([]uint64{2, 2}, 2)
+	f([]uint64{0, 2, 2}, 2)
+	f([]uint64{2, 2, 2}, 2)
+
+	// Mixed patterns
+	f([]uint64{1, 3, 2, 1}, 4)
+	f([]uint64{0, 2, 3, 4}, 6)
+	f([]uint64{5, 1, 1, 2, 3}, 3)
+
+	// Alternating patterns
+	f([]uint64{1, 1, 1, 1, 1, 1}, 3)
+	f([]uint64{0, 1, 1, 1, 1, 1, 1, 1}, 4)
+
+	// Zero-length runs (type flips)
+	f([]uint64{0, 0, 5}, 0)
+	f([]uint64{0, 5, 0}, 5)
+	f([]uint64{0, 0, 0, 3}, 3)
+	f([]uint64{3, 0, 0, 2}, 2)
+
+	// Large runs
+	f([]uint64{1000}, 0)
+	f([]uint64{0, 1000}, 1000)
+	f([]uint64{500, 300, 200}, 300)
+	f([]uint64{0, 100, 50, 200}, 300)
+
+	// Edge cases with very large numbers
+	f([]uint64{0, 1000000}, 1000000)
+	f([]uint64{1000000, 500000, 250000}, 500000)
+
+	// Complex real-world patterns
+	f([]uint64{1, 4, 1, 16, 1, 52, 2, 24, 1, 32}, 4+16+52+24+32)
+	f([]uint64{0, 1, 4, 1, 16, 1, 52, 2, 24}, 1+1+1+2)
+
+	// Patterns with many small runs
+	f([]uint64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 5)
+	f([]uint64{0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}, 5)
+
+	// Patterns ending with ones
+	f([]uint64{2, 3}, 3)
+	f([]uint64{0, 2, 1, 3}, 5)
+
+	// Patterns ending with zeros
+	f([]uint64{0, 3, 2}, 3)
+	f([]uint64{1, 2, 1, 3}, 5)
+}
+
 func encodeTestRLE(runs []uint64) boolRLE {
 	var b boolRLE
 	for _, x := range runs {

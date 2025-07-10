@@ -299,7 +299,7 @@ func (ddb *datadb) mustFlushInmemoryPartsToFiles(isFinal bool) {
 
 	ddb.partsLock.Lock()
 	for _, pw := range ddb.inmemoryParts {
-		if !pw.isInMerge && (isFinal || pw.flushDeadline.Before(currentTime)) {
+		if !pw.isInMerge && (isFinal || pw.flushDeadline.Before(currentTime)) && !pw.isPayingAsyncTask() {
 			pw.isInMerge = true
 			pws = append(pws, pw)
 		}
@@ -440,9 +440,11 @@ func (ddb *datadb) bigPartsMerger() {
 func getPartsToMergeLocked(pws []*partWrapper, maxOutBytes uint64) []*partWrapper {
 	pwsRemaining := make([]*partWrapper, 0, len(pws))
 	for _, pw := range pws {
-		if !pw.isInMerge && !pw.isPayingAsyncTask() {
-			pwsRemaining = append(pwsRemaining, pw)
+		if pw.isInMerge || pw.isPayingAsyncTask() {
+			continue
 		}
+
+		pwsRemaining = append(pwsRemaining, pw)
 	}
 
 	pwsToMerge := appendPartsToMerge(nil, pwsRemaining, maxOutBytes)
@@ -486,26 +488,6 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 
 	dstPartType := ddb.getDstPartType(pws, isFinal)
 	if dstPartType != partInmemory {
-		hasDelete := false
-		fullOnes := true
-		totalOnes := uint64(0)
-		for i := range pws {
-			if pws[i].p.marker != nil && pws[i].p.marker.delete.Load() != nil {
-				hasDelete = true
-				for _, rle := range pws[i].p.marker.delete.Load().rows {
-					fullOnes = fullOnes && rle.IsOnes(pws[i].p.ph.RowsCount)
-					totalOnes += rle.CountOnes()
-				}
-			}
-		}
-		if hasDelete && fullOnes {
-			logger.Infof("DEBUG: mustMergeParts (fullOnes): pws=%d, hasDelete=%t, fullOnes=%t, totalOnes=%d", len(pws), hasDelete, fullOnes, totalOnes)
-		} else if hasDelete {
-			logger.Infof("DEBUG: mustMergeParts: pws=%d, hasDelete=%t, fullOnes=%t, totalOnes=%d", len(pws), hasDelete, fullOnes, totalOnes)
-		}
-	}
-
-	if dstPartType != partInmemory {
 		// Make sure there is enough disk space for performing the merge
 		partsSize := getCompressedSize(pws)
 		needReleaseDiskSpace := tryReserveDiskSpace(ddb.path, partsSize)
@@ -520,6 +502,31 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 			// in order to persist in-memory data to disk.
 			// It is better to crash on out of memory error in this case.
 		}
+	}
+
+	id := time.Now().UnixNano()
+	var deleteMarkerBlocks int64
+	var deleteMarkerRows int64
+	var totalBlocks int64
+	var totalRows int64
+	for i := range pws {
+		pw := pws[i]
+		delete := pw.p.marker.delete.Load()
+		if delete != nil {
+			deleteMarkerBlocks += int64(len(delete.blockIDs))
+			for i := range delete.blockIDs {
+				deleteMarkerRows += int64(delete.rows[i].CountOnes())
+			}
+		}
+		totalBlocks += int64(pw.p.ph.BlocksCount)
+		totalRows += int64(pw.p.ph.RowsCount)
+	}
+
+	if deleteMarkerRows > 0 || dstPartType == partBig {
+		logger.Infof("DEBUG: mustMergeParts start: pws=%d, isFinal=%t, id=%d, partType=%d, deleteMarkerBlocks=%d/%d, deleteMarkerRows=%d/%d", len(pws), isFinal, id, dstPartType, deleteMarkerBlocks, totalBlocks, deleteMarkerRows, totalRows)
+		defer func() {
+			logger.Infof("DEBUG: mustMergeParts end: id=%d, duration=%s, partType=%d", id, time.Since(startTime), dstPartType)
+		}()
 	}
 
 	switch dstPartType {
@@ -607,30 +614,14 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 
 	// Atomically swap the source parts with the newly created part.
 	pwNew := ddb.openCreatedPart(&ph, pws, mpNew, dstPartPath)
-	if ph.RowsCount == 0 {
-		logger.Infof("DEBUG: mustMergeParts: result is an empty part, removing it: %s", dstPartPath)
-	} else if ph.RowsCount < srcRowsCount {
-		logger.Infof("DEBUG: mustMergeParts: result is a partial part, saving: %d rows, current: %d rows", srcRowsCount-ph.RowsCount, ph.RowsCount)
+	if ph.RowsCount < srcRowsCount {
+		logger.Infof("DEBUG: mustMergeParts: result is a partial part, saving: %d rows, current: %d rows, id: %d", srcRowsCount-ph.RowsCount, ph.RowsCount, id)
 	}
 
 	dstSize := uint64(0)
 	dstRowsCount := uint64(0)
 	dstBlocksCount := uint64(0)
 	if pwNew != nil {
-		// Find the minimum taskSeq across all the source parts.
-		// This is the sequence number of the last applied task.
-		minSeq := uint64(math.MaxUint64)
-		for _, pw := range pws {
-			seq := pw.taskSeq.Load()
-			if seq < minSeq {
-				minSeq = seq
-			}
-		}
-		if minSeq == math.MaxUint64 {
-			minSeq = 0
-		}
-
-		pwNew.setTaskSeq(minSeq)
 		pDst := pwNew.p
 		dstSize = pDst.ph.CompressedSizeBytes
 		dstRowsCount = pDst.ph.RowsCount
@@ -940,6 +931,20 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
 
 	if pwNew != nil {
+		// Find the minimum taskSeq across all the source parts.
+		// This is the sequence number of the last applied task.
+		minSeq := uint64(math.MaxUint64)
+		for _, pw := range pws {
+			seq := pw.taskSeq.Load()
+			if seq < minSeq {
+				minSeq = seq
+			}
+		}
+		if minSeq == math.MaxUint64 {
+			minSeq = 0
+		}
+		pwNew.taskSeq.Store(minSeq)
+
 		switch dstPartType {
 		case partInmemory:
 			ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
@@ -1030,16 +1035,6 @@ func newPartWrapper(p *part, mp *inmemoryPart, flushDeadline time.Time) *partWra
 	pw.incRef()
 
 	return pw
-}
-
-// setTaskSeq updates the applied sequence for the wrapper and persists it for file-based parts.
-func (pw *partWrapper) setTaskSeq(seq uint64) {
-	if pw.taskSeq.Load() >= seq {
-		return
-	}
-	pw.taskSeq.Store(seq)
-
-	// In-memory only - no disk persistence
 }
 
 func (pw *partWrapper) isPayingAsyncTask() bool {
