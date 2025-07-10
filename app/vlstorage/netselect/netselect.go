@@ -250,6 +250,7 @@ func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]by
 	args := url.Values{}
 	args.Set("start", fmt.Sprintf("%d", start))
 	args.Set("end", fmt.Sprintf("%d", end))
+	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
 	return sn.executeRequestAt(ctx, "/internal/select/tenant_ids", args)
 }
 
