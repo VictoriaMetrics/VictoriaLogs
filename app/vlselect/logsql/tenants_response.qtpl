@@ -10,7 +10,7 @@ TenantsResponse generates response for /admin/tenants .
 	"status":"success",
 	"data":[
 		{% for i, tenant := range tenants %}
-			{%d int(tenant.AccountID) %}:{%d int(tenant.ProjectID) %}
+			"{%d int(tenant.AccountID) %}:{%d int(tenant.ProjectID) %}"
 			{% if i+1 < len(tenants) %},{% endif %}
 		{% endfor %}
 	]

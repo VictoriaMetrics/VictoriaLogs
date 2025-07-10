@@ -606,13 +606,13 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 
 	unique := make(map[logstorage.TenantID]struct{}, len(results))
 	for i := range results {
-		var tenats []logstorage.TenantID
-		if err := json.Unmarshal(results[i], &tenats); err != nil {
+		var tenants []logstorage.TenantID
+		if err := json.Unmarshal(results[i], &tenants); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal tenantIDs from storage node %d: %w", i, err)
 		}
 		// Deduplicate tenantIDs
-		for _, tenat := range tenats {
-			unique[tenat] = struct{}{}
+		for _, tenant := range tenants {
+			unique[tenant] = struct{}{}
 		}
 	}
 

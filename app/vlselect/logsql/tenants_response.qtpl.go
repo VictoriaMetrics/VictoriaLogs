@@ -30,12 +30,16 @@ func StreamTenantsResponse(qw422016 *qt422016.Writer, tenants []logstorage.Tenan
 	qw422016.N().S(`{"status":"success","data":[`)
 //line app/vlselect/logsql/tenants_response.qtpl:12
 	for i, tenant := range tenants {
+//line app/vlselect/logsql/tenants_response.qtpl:12
+		qw422016.N().S(`"`)
 //line app/vlselect/logsql/tenants_response.qtpl:13
 		qw422016.N().D(int(tenant.AccountID))
 //line app/vlselect/logsql/tenants_response.qtpl:13
 		qw422016.N().S(`:`)
 //line app/vlselect/logsql/tenants_response.qtpl:13
 		qw422016.N().D(int(tenant.ProjectID))
+//line app/vlselect/logsql/tenants_response.qtpl:13
+		qw422016.N().S(`"`)
 //line app/vlselect/logsql/tenants_response.qtpl:14
 		if i+1 < len(tenants) {
 //line app/vlselect/logsql/tenants_response.qtpl:14
