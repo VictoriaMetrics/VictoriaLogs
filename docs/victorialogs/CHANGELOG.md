@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* FEATURE: expose `vl_insert_remote_send_errors_total`, `vl_select_remote_send_errors_total` and `vl_insert_remote_is_reachable` metrics for monitoring failed remote insert/select attempts and detecting temporarily disabled or broken remote storage nodes.
+
 * BUGFIX: properly return VictoriaLogs version at `./victoria-logs -version` and at the `vm_app_version` metric exposed via [`/metrics` page](https://docs.victoriametrics.com/victorialogs/#monitoring). See [#409](https://github.com/VictoriaMetrics/VictoriaLogs/issues/409). The bug has been introduced in [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).
 
 ## [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0)

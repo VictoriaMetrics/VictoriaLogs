@@ -21,6 +21,7 @@ import (
 	"github.com/valyala/fastrand"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+	"github.com/VictoriaMetrics/metrics"
 )
 
 // the maximum size of a single data block sent to storage node.
@@ -66,8 +67,12 @@ type storageNode struct {
 	pendingData          *bytesutil.ByteBuffer
 	pendingDataLastFlush time.Time
 
+	// sendErrors counts failed send attempts for this storage node.
+	sendErrors *metrics.Counter
+
 	// the unix timestamp until the storageNode is disabled for data writing.
 	disabledUntil atomic.Uint64
+	isBroken      atomic.Uint32
 }
 
 func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
@@ -89,6 +94,8 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 		},
 		ac: ac,
 
+		sendErrors: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_insert_remote_send_errors_total{url=%q}`, addr)),
+
 		pendingData: &bytesutil.ByteBuffer{},
 	}
 
@@ -97,6 +104,13 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 		defer s.wg.Done()
 		sn.backgroundFlusher()
 	}()
+
+	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_is_reachable{url=%q}`, addr), func() float64 {
+		if sn.isBroken.Load() == 1 {
+			return 0
+		}
+		return 1
+	})
 
 	return sn
 }
@@ -204,6 +218,7 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	}
 
 	if sn.disabledUntil.Load() > fasttime.UnixTimestamp() {
+		sn.sendErrors.Inc()
 		return errTemporarilyDisabled
 	}
 
@@ -236,14 +251,13 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 
 	resp, err := sn.c.Do(req)
 	if err != nil {
-		// Disable sn for data writing for 10 seconds.
-		sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
-
+		sn.setDisableTemporarily()
 		return fmt.Errorf("cannot send data block with the length %d to %q: %s", pendingData.Len(), reqURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 == 2 {
+		sn.isBroken.Store(0)
 		return nil
 	}
 
@@ -252,14 +266,19 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		respBody = []byte(fmt.Sprintf("%s", err))
 	}
 
-	// Disable sn for data writing for 10 seconds.
-	sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
+	sn.setDisableTemporarily()
 
 	return fmt.Errorf("unexpected status code returned when sending data block to %q: %d; want 2xx; response body: %q", reqURL, resp.StatusCode, respBody)
 }
 
 func (sn *storageNode) getRequestURL(path string) string {
 	return fmt.Sprintf("%s://%s%s?version=%s", sn.scheme, sn.addr, path, url.QueryEscape(ProtocolVersion))
+}
+
+func (sn *storageNode) setDisableTemporarily() {
+	sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
+	sn.isBroken.Store(1)
+	sn.sendErrors.Inc()
 }
 
 var zstdBufPool bytesutil.ByteBufferPool
