@@ -81,6 +81,25 @@ func (lex *lexer) getQueryOptions() *queryOptions {
 	return lex.optss[len(lex.optss)-1]
 }
 
+// getTimeOffset returns the timestamp offset that should be applied to all time filters.
+//
+// See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
+func (lex *lexer) getTimeOffset() int64 {
+	opts := lex.getQueryOptions()
+	if opts != nil {
+		return opts.timeOffset
+	}
+	return 0
+}
+
+// getAdjustedTimestamp returns the current timestamp, adjusted according to the time offset option.
+//
+// See getTimeOffset for details.
+func (lex *lexer) getAdjustedTimestamp() int64 {
+	offset := lex.getTimeOffset()
+	return lex.currentTimestamp - offset
+}
+
 // newLexer returns new lexer for the given s at the given timestamp.
 //
 // The timestamp is used for properly parsing relative timestamps such as _time:1d.
@@ -266,6 +285,9 @@ type queryOptions struct {
 
 	// if ignoreGlobalTimeFilter is set, then Query.AddTimeFilter doesn't add the time filter to the query and to all its subqueries.
 	ignoreGlobalTimeFilter *bool
+
+	// timeOffset is the number of nanoseconds to apply as an offset to all time filters.
+	timeOffset int64
 }
 
 func (opts *queryOptions) String() string {
@@ -278,6 +300,9 @@ func (opts *queryOptions) String() string {
 	}
 	if opts.ignoreGlobalTimeFilter != nil {
 		a = append(a, fmt.Sprintf("ignore_global_time_filter=%v", *opts.ignoreGlobalTimeFilter))
+	}
+	if opts.timeOffset != 0 {
+		a = append(a, fmt.Sprintf("time_offset=%d", opts.timeOffset))
 	}
 	if len(a) == 0 {
 		return ""
@@ -529,9 +554,13 @@ func (q *Query) AddTimeFilter(start, end int64) {
 	startStr := marshalTimestampRFC3339NanoString(nil, start)
 	endStr := marshalTimestampRFC3339NanoString(nil, end)
 
+	offset := q.GetTimeOffset()
+	start -= offset
+	end -= offset
+	end = getMatchingEndTime(end, string(endStr))
 	ft := &filterTime{
 		minTimestamp: start,
-		maxTimestamp: getMatchingEndTime(end, string(endStr)),
+		maxTimestamp: end,
 		stringRepr:   fmt.Sprintf("[%s,%s]", startStr, endStr), // should be matched with parsing logic
 	}
 
@@ -1258,6 +1287,16 @@ func (q *Query) GetTimestamp() int64 {
 	return q.timestamp
 }
 
+// GetTimeOffset returns the timestamp offset that should be applied to all time filters.
+//
+// See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
+func (q *Query) GetTimeOffset() int64 {
+	if q.opts != nil {
+		return q.opts.timeOffset
+	}
+	return 0
+}
+
 func parseQueryInParens(lex *lexer) (*Query, error) {
 	if !lex.isKeyword("(") {
 		return nil, fmt.Errorf("missing '('")
@@ -1383,6 +1422,12 @@ func parseQueryOptions(lex *lexer) (*queryOptions, error) {
 				return nil, fmt.Errorf("cannot parse 'ignore_global_time_filter=%q' option as boolean: %w", v, err)
 			}
 			opts.ignoreGlobalTimeFilter = &ignoreGlobalTimeFilter
+		case "time_offset":
+			timeOffset, ok := tryParseDuration(v)
+			if !ok {
+				return nil, fmt.Errorf("cannot parse 'time_offset=%q' option as duration", v)
+			}
+			opts.timeOffset = timeOffset
 		default:
 			return nil, fmt.Errorf("unexpected option %q with value %q", k, v)
 		}
@@ -2578,9 +2623,10 @@ func getWeekRangeArg(lex *lexer) (time.Weekday, string, error) {
 
 func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if lex.isKeyword("offset") {
+		ts := lex.getAdjustedTimestamp()
 		ft := &filterTime{
 			minTimestamp: math.MinInt64,
-			maxTimestamp: lex.currentTimestamp,
+			maxTimestamp: ts,
 		}
 		offset, offsetStr, err := parseTimeOffset(lex)
 		if err != nil {
@@ -2734,9 +2780,10 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 	if prefix == ">" {
 		d++
 	}
+	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
 		minTimestamp: math.MinInt64,
-		maxTimestamp: lex.currentTimestamp - d,
+		maxTimestamp: ts - d,
 
 		stringRepr: prefix + s,
 	}
@@ -2784,9 +2831,10 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 	if prefix == "<" {
 		d--
 	}
+	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
-		minTimestamp: lex.currentTimestamp - d,
-		maxTimestamp: lex.currentTimestamp,
+		minTimestamp: ts - d,
+		maxTimestamp: ts,
 
 		stringRepr: prefix + s,
 	}
@@ -2826,9 +2874,10 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
+	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
-		minTimestamp: lex.currentTimestamp - d,
-		maxTimestamp: lex.currentTimestamp,
+		minTimestamp: ts - d,
+		maxTimestamp: ts,
 
 		stringRepr: prefix + s,
 	}
@@ -3029,6 +3078,7 @@ func parseTime(lex *lexer) (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
+	nsecs -= lex.getTimeOffset()
 	return nsecs, s, nil
 }
 
