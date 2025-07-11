@@ -1033,38 +1033,8 @@ func (db *DataBlock) initFromBlockResult(br *blockResult) {
 //
 // It calls writeBlock for each matching block.
 func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
-	// Spin up workers
-	var wgWorkers sync.WaitGroup
-	workCh := make(chan *blockSearchWorkBatch, workersCount)
-	wgWorkers.Add(workersCount)
-	for i := 0; i < workersCount; i++ {
-		go func(workerID uint) {
-			bs := getBlockSearch()
-			bm := getBitmap(0)
-			for bswb := range workCh {
-				bsws := bswb.bsws
-				for i := range bsws {
-					bsw := &bsws[i]
-					if needStop(stopCh) {
-						// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
-						bsw.reset()
-						continue
-					}
-
-					bs.search(bsw, bm)
-					if bs.br.rowsLen > 0 {
-						writeBlock(workerID, &bs.br)
-					}
-					bsw.reset()
-				}
-				bswb.bsws = bswb.bsws[:0]
-				putBlockSearchWorkBatch(bswb)
-			}
-			putBlockSearch(bs)
-			putBitmap(bm)
-			wgWorkers.Done()
-		}(uint(i))
-	}
+	// Setup workers and work channel
+	workCh, wgWorkers := setupSearchWorkers(workersCount, stopCh, writeBlock)
 
 	// Select partitions according to the selected time range
 	s.partitionsLock.Lock()
@@ -1105,9 +1075,8 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-ch
 	}
 	wgSearchers.Wait()
 
-	// Wait until workers finish their work
-	close(workCh)
-	wgWorkers.Wait()
+	// Wait for workers to complete and finalize
+	finishSearchWorkers(workCh, wgWorkers)
 
 	// Finalize partition search
 	for _, psf := range psfs {
@@ -1118,6 +1087,48 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-ch
 	for _, ptw := range ptws {
 		ptw.decRef()
 	}
+}
+
+// setupSearchWorkers creates worker goroutines and returns the work channel and wait group
+func setupSearchWorkers(workersCount int, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) (chan *blockSearchWorkBatch, *sync.WaitGroup) {
+	var wgWorkers sync.WaitGroup
+	workCh := make(chan *blockSearchWorkBatch, workersCount)
+	wgWorkers.Add(workersCount)
+	for i := 0; i < workersCount; i++ {
+		go func(workerID uint) {
+			bs := getBlockSearch()
+			bm := getBitmap(0)
+			for bswb := range workCh {
+				bsws := bswb.bsws
+				for i := range bsws {
+					bsw := &bsws[i]
+					if needStop(stopCh) {
+						// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
+						bsw.reset()
+						continue
+					}
+
+					bs.search(bsw, bm)
+					if bs.br.rowsLen > 0 {
+						writeBlock(workerID, &bs.br)
+					}
+					bsw.reset()
+				}
+				bswb.bsws = bswb.bsws[:0]
+				putBlockSearchWorkBatch(bswb)
+			}
+			putBlockSearch(bs)
+			putBitmap(bm)
+			wgWorkers.Done()
+		}(uint(i))
+	}
+	return workCh, &wgWorkers
+}
+
+// finishSearchWorkers closes the work channel and waits for all workers to complete
+func finishSearchWorkers(workCh chan *blockSearchWorkBatch, wgWorkers *sync.WaitGroup) {
+	close(workCh)
+	wgWorkers.Wait()
 }
 
 // partitionSearchConcurrencyLimitCh limits the number of concurrent searches in partition.
@@ -1570,5 +1581,51 @@ func parseStreamFields(dst []Field, s string) ([]Field, error) {
 			return dst, fmt.Errorf("missing ',' after %s=%q", name, value)
 		}
 		s = s[1:]
+	}
+}
+
+// searchSpecificParts performs a targeted search only on the specified parts.
+// This is more efficient than regular search when we only need to process specific parts.
+func (pt *partition) searchSpecificParts(sf *StreamFilter, f filter, so *genericSearchOptions, allowedParts []*partWrapper, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+	if needStop(stopCh) {
+		// Do not spend CPU time on search, since it is already stopped.
+		return
+	}
+
+	tenantIDs := so.tenantIDs
+	var streamIDs []streamID
+	if sf != nil {
+		streamIDs = pt.idb.searchStreamIDs(tenantIDs, sf)
+		if len(so.streamIDs) > 0 {
+			streamIDs = intersectStreamIDs(streamIDs, so.streamIDs)
+		}
+		tenantIDs = nil
+	} else if len(so.streamIDs) > 0 {
+		streamIDs = getStreamIDsForTenantIDs(so.streamIDs, tenantIDs)
+		tenantIDs = nil
+	}
+	if hasStreamFilters(f) {
+		f = initStreamFilters(so.tenantIDs, pt.idb, f)
+	}
+	soInternal := &searchOptions{
+		tenantIDs:    tenantIDs,
+		streamIDs:    streamIDs,
+		minTimestamp: so.minTimestamp,
+		maxTimestamp: so.maxTimestamp,
+		filter:       f,
+		fieldsFilter: so.fieldsFilter,
+	}
+
+	// Search only the allowed parts, skipping the datadb layer
+	for _, part := range allowedParts {
+		if needStop(stopCh) {
+			return
+		}
+
+		if part.p.ph.MinTimestamp > soInternal.maxTimestamp || part.p.ph.MaxTimestamp < soInternal.minTimestamp {
+			continue
+		}
+
+		part.p.search(soInternal, workCh, stopCh)
 	}
 }

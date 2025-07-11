@@ -24,6 +24,9 @@ type blockSearchWork struct {
 
 	// bh is the header of the block to search.
 	bh blockHeader
+
+	// dm is the delete marker for the block.
+	dm *deleteMarker
 }
 
 func (bsw *blockSearchWork) reset() {
@@ -63,10 +66,15 @@ var blockSearchWorkBatchPool sync.Pool
 
 func (bswb *blockSearchWorkBatch) appendBlockSearchWork(p *part, so *searchOptions, bh *blockHeader) bool {
 	bsws := bswb.bsws
+	var dm *deleteMarker
+	if p.marker != nil {
+		dm = p.marker.delete.Load()
+	}
 
 	bsws = append(bsws, blockSearchWork{
 		p:  p,
 		so: so,
+		dm: dm,
 	})
 	bsw := &bsws[len(bsws)-1]
 	bsw.bh.copyFrom(bh)
@@ -212,8 +220,21 @@ func (bs *blockSearch) search(bsw *blockSearchWork, bm *bitmap) {
 	// search rows matching the given filter
 	bm.init(int(bsw.bh.rowsCount))
 	bm.setBits()
-	bs.bsw.so.filter.applyToBlockSearch(bs, bm)
 
+	if bsw.dm != nil {
+		if ent, ok := bsw.dm.GetMarkedRows(bsw.bh.columnsHeaderOffset); ok {
+			if ent.IsOnes(bsw.bh.rowsCount) {
+				// Full-block delete – skip the block entirely.
+				return
+			}
+
+			// Partial delete – measure rows before/after applying the marker for investigation.
+			ent.AndNotRLE(bm)
+		}
+	}
+
+	// Apply query filter.
+	bs.bsw.so.filter.applyToBlockSearch(bs, bm)
 	if bm.isZero() {
 		// The filter doesn't match any logs in the current block.
 		return
