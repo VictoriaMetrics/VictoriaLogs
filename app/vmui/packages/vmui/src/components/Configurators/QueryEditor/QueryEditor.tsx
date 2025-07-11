@@ -1,9 +1,8 @@
-import React, { FC, useEffect, useRef, useState } from "preact/compat";
+import { FC, useEffect, useRef, useState, RefObject } from "preact/compat";
 import { ErrorTypes } from "../../../types";
 import TextField, { TextFieldKeyboardEvent } from "../../Main/TextField/TextField";
 import "./style.scss";
 import { QueryStats } from "../../../api/types";
-import { partialWarning, seriesFetchedWarning } from "./warningText";
 import { AutocompleteOptions } from "../../Main/Autocomplete/Autocomplete";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { useQueryState } from "../../../state/query/QueryStateContext";
@@ -11,7 +10,7 @@ import debounce from "lodash.debounce";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
-  anchorEl: React.RefObject<HTMLInputElement>;
+  anchorEl: RefObject<HTMLInputElement>;
   caretPosition: [number, number]; // [start, end]
   hasHelperText: boolean;
   includeFunctions: boolean;
@@ -59,17 +58,6 @@ const QueryEditor: FC<QueryEditorProps> = ({
 
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const debouncedSetShowAutocomplete = useRef(debounce(setShowAutocomplete, 500)).current;
-
-  const warning = [
-    {
-      show: stats?.seriesFetched === "0" && !stats.resultLength,
-      text: seriesFetchedWarning
-    },
-    {
-      show: stats?.isPartial,
-      text: partialWarning
-    }
-  ].filter((w) => w.show).map(w => w.text).join("");
 
   if (stats) {
     label = `${label} (${stats.executionTimeMsec || 0}ms)`;
@@ -142,7 +130,6 @@ const QueryEditor: FC<QueryEditorProps> = ({
         type={"textarea"}
         autofocus={!isMobile}
         error={error}
-        warning={warning}
         onKeyDown={handleKeyDown}
         onChange={onChange}
         onChangeCaret={handleChangeCaret}
@@ -155,7 +142,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
           value={value}
           anchorEl={autocompleteAnchorEl}
           caretPosition={caretPositionAutocomplete}
-          hasHelperText={Boolean(warning || error)}
+          hasHelperText={Boolean(error)}
           includeFunctions={includeFunctions}
           onSelect={handleSelect}
           onFoundOptions={handleChangeFoundOptions}

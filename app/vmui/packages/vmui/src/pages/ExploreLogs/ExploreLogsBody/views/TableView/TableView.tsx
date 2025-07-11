@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useState } from "preact/compat";
+import { FC, memo, useMemo, useCallback, useState } from "preact/compat";
 import DownloadLogsButton from "../../../DownloadLogsButton/DownloadLogsButton";
 import { createPortal } from "preact/compat";
 import "./style.scss";
@@ -9,9 +9,8 @@ import SelectLimit from "../../../../../components/Main/Pagination/SelectLimit/S
 import TableSettings from "../../../../../components/Table/TableSettings/TableSettings";
 import useSearchParamsFromObject from "../../../../../hooks/useSearchParamsFromObject";
 import EmptyLogs from "../components/EmptyLogs/EmptyLogs";
-import { useCallback } from "react";
 
-const MemoizedTableView = React.memo(TableLogs);
+const MemoizedTableView = memo(TableLogs);
 
 const TableView: FC<ViewProps> = ({ data, settingsRef }) => {
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();

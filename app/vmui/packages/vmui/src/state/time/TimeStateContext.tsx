@@ -1,7 +1,5 @@
-import React, { createContext, FC, useContext, useMemo, useReducer } from "preact/compat";
+import { createContext, FC, useContext, useMemo, useReducer, Dispatch } from "preact/compat";
 import { TimeAction, TimeState, initialTimeState, reducer } from "./reducer";
-
-import { Dispatch } from "react";
 
 type TimeStateContextType = { state: TimeState, dispatch: Dispatch<TimeAction> };
 

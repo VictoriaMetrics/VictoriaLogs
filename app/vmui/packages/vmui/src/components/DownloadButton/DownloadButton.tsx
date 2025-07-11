@@ -1,9 +1,8 @@
-import React, { FC, useCallback, useState } from "preact/compat";
+import { FC, useCallback, useRef } from "preact/compat";
 import Tooltip from "../Main/Tooltip/Tooltip";
 import Button from "../Main/Button/Button";
 import { DownloadIcon } from "../Main/Icons";
 import Popper from "../Main/Popper/Popper";
-import { useRef } from "react";
 import "./style.scss";
 import useBoolean from "../../hooks/useBoolean";
 

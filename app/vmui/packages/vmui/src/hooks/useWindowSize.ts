@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "preact/compat";
 import useEventListener from "./useEventListener";
-import { useEffect } from "preact/compat";
 
 interface WindowSize {
     width: number

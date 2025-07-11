@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "preact/compat";
+import { Dispatch, MutableRefObject, SetStateAction, useCallback, useEffect, useRef, useState } from "preact/compat";
 import { ErrorTypes } from "../../../../../types";
 import { Logs } from "../../../../../api/types";
 import { useAppState } from "../../../../../state/common/StateContext";
@@ -14,8 +14,8 @@ const CONNECTION_TIMEOUT_MS = 5000;
 const PROCESSING_INTERVAL_MS = 1000;
 
 const createStreamProcessor = (
-  bufferRef: React.MutableRefObject<string>,
-  bufferLinesRef: React.MutableRefObject<string[]>,
+  bufferRef: MutableRefObject<string>,
+  bufferLinesRef: MutableRefObject<string[]>,
   setError: (error: string) => void,
   restartTailing: () => Promise<boolean>
 ) => {
@@ -53,7 +53,7 @@ const createStreamProcessor = (
   };
 };
 
-const parseLogLines = (lines: string[], counterRef: React.MutableRefObject<bigint>): Logs[] => {
+const parseLogLines = (lines: string[], counterRef: MutableRefObject<bigint>): Logs[] => {
   return lines
     .map(line => {
       try {
@@ -71,11 +71,11 @@ const parseLogLines = (lines: string[], counterRef: React.MutableRefObject<bigin
 interface ProcessBufferedLogsParams {
   lines: string[];
   limit: number;
-  counterRef: React.MutableRefObject<bigint>;
+  counterRef: MutableRefObject<bigint>;
   setIsLimitedLogsPerUpdate: (isLimited: boolean) => void;
-  setLogs: React.Dispatch<React.SetStateAction<Logs[]>>;
-  bufferLinesRef: React.MutableRefObject<string[]>;
-  logFlowAnalyzerRef?: React.MutableRefObject<LogFlowAnalyzer>;
+  setLogs: Dispatch<SetStateAction<Logs[]>>;
+  bufferLinesRef: MutableRefObject<string[]>;
+  logFlowAnalyzerRef?: MutableRefObject<LogFlowAnalyzer>;
 }
 
 const processBufferedLogs = ({
@@ -222,4 +222,4 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
     clearLogs,
     isLimitedLogsPerUpdate
   };
-}; 
+};

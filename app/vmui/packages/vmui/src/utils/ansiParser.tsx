@@ -1,4 +1,4 @@
-import React from "react";
+import { ReactNode } from "preact/compat";
 
 // Define a specific interface for the ANSI style properties.
 interface AnsiStyles {
@@ -118,11 +118,11 @@ const updateStyles = (
  * Parses a string containing ANSI escape codes and returns an array of React elements with inline styles.
  *
  * @param input - The string to parse.
- * @returns An array of React.ReactNode elements.
+ * @returns An array of ReactNode elements.
  */
-export const parseAnsiToHtml = (input: string): React.ReactNode[] => {
+export const parseAnsiToHtml = (input: string): ReactNode[] => {
   let lastIndex = 0;
-  const result: React.ReactNode[] = [];
+  const result: ReactNode[] = [];
   let currentStyles: AnsiStyles = {
     color: null,
     fontWeight: null,

@@ -1,5 +1,4 @@
-import React, { FC, useRef } from "preact/compat";
-import { useCustomPanelDispatch, useCustomPanelState } from "../../../state/customPanel/CustomPanelStateContext";
+import { FC, useRef } from "preact/compat";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
 import "./style.scss";
 import Switch from "../../Main/Switch/Switch";
@@ -12,28 +11,11 @@ import useBoolean from "../../../hooks/useBoolean";
 import useEventListener from "../../../hooks/useEventListener";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { AUTOCOMPLETE_QUICK_KEY } from "../../Main/ShortcutKeys/constants/keyList";
-import { QueryConfiguratorProps } from "../../../pages/CustomPanel/QueryConfigurator/QueryConfigurator";
 
-type Props = Pick<QueryConfiguratorProps, "hideButtons">;
-
-const AdditionalSettingsControls: FC<Props & {isMobile?: boolean}> = ({ isMobile, hideButtons }) => {
+const AdditionalSettingsControls: FC = () => {
+  const { isMobile } = useDeviceDetect();
   const { autocomplete } = useQueryState();
   const queryDispatch = useQueryDispatch();
-
-  const { nocache, isTracingEnabled, reduceMemUsage } = useCustomPanelState();
-  const customPanelDispatch = useCustomPanelDispatch();
-
-  const onChangeCache = () => {
-    customPanelDispatch({ type: "TOGGLE_NO_CACHE" });
-  };
-
-  const onChangeReduceMemUsage = () => {
-    customPanelDispatch({ type: "TOGGLE_REDUCE_MEM_USAGE" });
-  };
-
-  const onChangeQueryTracing = () => {
-    customPanelDispatch({ type: "TOGGLE_QUERY_TRACING" });
-  };
 
   const onChangeAutocomplete = () => {
     queryDispatch({ type: "TOGGLE_AUTOCOMPLETE" });
@@ -61,45 +43,19 @@ const AdditionalSettingsControls: FC<Props & {isMobile?: boolean}> = ({ isMobile
         "vm-additional-settings_mobile": isMobile
       })}
     >
-      {!hideButtons?.autocomplete && (
-        <Tooltip title={<>Quick tip: {AUTOCOMPLETE_QUICK_KEY}</>}>
-          <Switch
-            label={"Autocomplete"}
-            value={autocomplete}
-            onChange={onChangeAutocomplete}
-            fullWidth={isMobile}
-          />
-        </Tooltip>
-      )}
-      {!hideButtons?.disableCache && (
+      <Tooltip title={<>Quick tip: {AUTOCOMPLETE_QUICK_KEY}</>}>
         <Switch
-          label={"Disable cache"}
-          value={nocache}
-          onChange={onChangeCache}
+          label={"Autocomplete"}
+          value={autocomplete}
+          onChange={onChangeAutocomplete}
           fullWidth={isMobile}
         />
-      )}
-      {!hideButtons?.reduceMemUsage && (
-        <Switch
-          label={"Disable deduplication"}
-          value={reduceMemUsage}
-          onChange={onChangeReduceMemUsage}
-          fullWidth={isMobile}
-        />
-      )}
-      {!hideButtons?.traceQuery && (
-        <Switch
-          label={"Trace query"}
-          value={isTracingEnabled}
-          onChange={onChangeQueryTracing}
-          fullWidth={isMobile}
-        />
-      )}
+      </Tooltip>
     </div>
   );
 };
 
-const AdditionalSettings: FC<Props> = (props) => {
+const AdditionalSettings: FC = () => {
   const { isMobile } = useDeviceDetect();
   const targetRef = useRef<HTMLDivElement>(null);
 
@@ -127,16 +83,13 @@ const AdditionalSettings: FC<Props> = (props) => {
           onClose={handleCloseList}
           title={"Query settings"}
         >
-          <AdditionalSettingsControls
-            isMobile={isMobile}
-            {...props}
-          />
+          <AdditionalSettingsControls/>
         </Popper>
       </>
     );
   }
 
-  return <AdditionalSettingsControls {...props}/>;
+  return <AdditionalSettingsControls/>;
 };
 
 export default AdditionalSettings;

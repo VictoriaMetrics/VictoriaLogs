@@ -1,14 +1,11 @@
-import React, { FC, useEffect, useRef } from "preact/compat";
+import { FC, useEffect, useRef } from "preact/compat";
 import { useLocation } from "react-router-dom";
-import ShortcutKeys from "../../../components/Main/ShortcutKeys/ShortcutKeys";
 import classNames from "classnames";
 import HeaderNav from "../HeaderNav/HeaderNav";
 import useClickOutside from "../../../hooks/useClickOutside";
 import MenuBurger from "../../../components/Main/MenuBurger/MenuBurger";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import "./style.scss";
 import useBoolean from "../../../hooks/useBoolean";
-import { APP_TYPE_LOGS } from "../../../constants/appType";
 
 interface SidebarHeaderProps {
   background: string
@@ -20,7 +17,6 @@ const SidebarHeader: FC<SidebarHeaderProps> = ({
   color,
 }) => {
   const { pathname } = useLocation();
-  const { isMobile } = useDeviceDetect();
 
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -59,9 +55,6 @@ const SidebarHeader: FC<SidebarHeaderProps> = ({
           background={background}
           direction="column"
         />
-      </div>
-      <div className="vm-header-sidebar-menu-settings">
-        {!isMobile && !APP_TYPE_LOGS && <ShortcutKeys showTitle={true}/>}
       </div>
     </div>
   </div>;

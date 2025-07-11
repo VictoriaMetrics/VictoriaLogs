@@ -1,4 +1,4 @@
-import React, { FC } from "preact/compat";
+import { FC } from "preact/compat";
 import classNames from "classnames";
 import GlobalSettings from "../../components/Configurators/GlobalSettings/GlobalSettings";
 import { ControlsProps } from "../Header/HeaderControls/HeaderControls";

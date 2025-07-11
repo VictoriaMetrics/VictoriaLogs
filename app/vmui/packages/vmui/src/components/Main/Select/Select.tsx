@@ -1,7 +1,6 @@
-import React, { FC, useEffect, useMemo, useRef, useState, } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState, RefObject, FormEvent, MouseEvent } from "preact/compat";
 import classNames from "classnames";
 import { ArrowDropDownIcon, CloseIcon } from "../Icons";
-import { FormEvent, MouseEvent } from "react";
 import Autocomplete from "../Autocomplete/Autocomplete";
 import { useAppState } from "../../../state/common/StateContext";
 import "./style.scss";
@@ -40,7 +39,7 @@ const Select: FC<SelectProps> = ({
 
   const [search, setSearch] = useState("");
   const autocompleteAnchorEl = useRef<HTMLDivElement>(null);
-  const [wrapperRef, setWrapperRef] = useState<React.RefObject<HTMLElement> | null>(null);
+  const [wrapperRef, setWrapperRef] = useState<RefObject<HTMLElement> | null>(null);
   const [openList, setOpenList] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);

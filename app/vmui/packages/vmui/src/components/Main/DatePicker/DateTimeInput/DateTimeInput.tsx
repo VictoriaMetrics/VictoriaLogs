@@ -1,5 +1,4 @@
-import React, { FC, useEffect, useRef, useState } from "preact/compat";
-import { ChangeEvent, KeyboardEvent } from "react";
+import { FC, useEffect, useRef, useState, RefObject, ChangeEvent, KeyboardEvent } from "preact/compat";
 import { CalendarIcon } from "../../Icons";
 import DatePicker from "../DatePicker";
 import Button from "../../Button/Button";
@@ -17,7 +16,7 @@ interface DateTimeInputProps {
   value?:  string;
   label: string;
   pickerLabel: string;
-  pickerRef: React.RefObject<HTMLDivElement>;
+  pickerRef: RefObject<HTMLDivElement>;
   onChange: (date: string) => void;
   onEnter: () => void;
 }

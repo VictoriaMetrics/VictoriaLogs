@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "preact/compat";
 import { isMobileAgent } from "../utils/detect-device";
 import useWindowSize from "./useWindowSize";
 

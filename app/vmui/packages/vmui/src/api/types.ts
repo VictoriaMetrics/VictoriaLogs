@@ -1,5 +1,5 @@
 import uPlot from "uplot";
-import { ReactNode } from "react";
+import { ReactNode } from "preact/compat";
 
 export interface MetricBase {
   group: number;
@@ -16,17 +16,6 @@ export interface MetricResult extends MetricBase {
 export interface InstantMetricResult extends MetricBase {
   value?: [number, string];
   values?: [number, string][];
-}
-
-export interface ExportMetricResult extends MetricBase {
-  values: number[];
-  timestamps: number[];
-}
-
-export interface TracingData {
-  message: string;
-  duration_msec: number;
-  children: TracingData[];
 }
 
 export interface QueryStats {
@@ -64,14 +53,6 @@ export interface LegendLogHitsMenu {
   title: string;
   icon?: ReactNode;
   handler?: () => void;
-}
-
-export interface ReportMetaData {
-  id: number;
-  title: string;
-  endpoint: string;
-  comment: string;
-  params: Record<string, string>;
 }
 
 export interface LogsFiledValues {

@@ -1,5 +1,4 @@
-import { FC, useMemo } from "preact/compat";
-import { useCallback } from "react";
+import { FC, useMemo, useCallback } from "preact/compat";
 import dayjs from "dayjs";
 import DownloadButton from "../../../components/DownloadButton/DownloadButton";
 import { DATE_FILENAME_FORMAT } from "../../../constants/date";

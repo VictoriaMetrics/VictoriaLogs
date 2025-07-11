@@ -1,4 +1,4 @@
-import React, {
+import {
   FC,
   MouseEvent as ReactMouseEvent,
   ReactNode,
@@ -7,8 +7,9 @@ import React, {
   useRef,
   useState,
   useCallback,
-  createPortal
-} from "react";
+  createPortal,
+  RefObject
+} from "preact/compat";
 import classNames from "classnames";
 import "./style.scss";
 import useClickOutside from "../../../hooks/useClickOutside";
@@ -22,7 +23,7 @@ interface PopperProps {
   children: ReactNode
   open: boolean
   onClose: () => void
-  buttonRef: React.RefObject<HTMLElement>
+  buttonRef: RefObject<HTMLElement>
   placement?: "bottom-right" | "bottom-left" | "top-left" | "top-right" | "fixed"
   placementPosition?: { top: number, left: number } | null
   animation?: string

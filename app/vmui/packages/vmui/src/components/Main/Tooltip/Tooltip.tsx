@@ -1,6 +1,5 @@
-import React, { FC, useEffect, useMemo, useRef, useState, Fragment, createPortal } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState, Fragment, createPortal, ReactNode } from "preact/compat";
 import "./style.scss";
-import { ReactNode } from "react";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface TooltipProps {

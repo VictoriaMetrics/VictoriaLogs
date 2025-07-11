@@ -1,7 +1,6 @@
-import React, { FC } from "preact/compat";
+import { FC, MouseEvent } from "preact/compat";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import { CloseIcon } from "../../Icons";
-import { MouseEvent } from "react";
 
 interface MultipleSelectedValueProps {
   values: string[]

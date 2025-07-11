@@ -21,3 +21,7 @@ export const LOGS_URL_PARAMS = {
   DATE_FORMAT: "dateFormat",
   ROWS_PER_PAGE: "rows_per_page",
 };
+
+// Maximum values for the logs autocomplete.
+export const MAX_QUERY_FIELDS = 1;
+export const MAX_QUERIES_HISTORY = 25;

@@ -9,8 +9,8 @@ export type QueryAutocompleteCacheItem = {
 }
 
 export class QueryAutocompleteCache {
-  private maxSize: number;
-  private map: Map<string, string[]>;
+  readonly maxSize: number;
+  readonly map: Map<string, string[]>;
 
   constructor() {
     this.maxSize = AUTOCOMPLETE_LIMITS.cacheLimit;

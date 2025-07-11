@@ -1,10 +1,9 @@
-import { FC, useMemo, useRef } from "preact/compat";
+import { FC, useMemo, useRef, useState, useEffect, useCallback } from "preact/compat";
 import Button from "../../../../../../components/Main/Button/Button";
 import { SettingsIcon, SortArrowDownIcon, SortArrowUpIcon, SortIcon } from "../../../../../../components/Main/Icons";
 import Tooltip from "../../../../../../components/Main/Tooltip/Tooltip";
 import Select from "../../../../../../components/Main/Select/Select";
 import useBoolean from "../../../../../../hooks/useBoolean";
-import { useState, useEffect, useCallback } from "react";
 import Modal from "../../../../../../components/Main/Modal/Modal";
 import { useSearchParams } from "react-router-dom";
 import "./style.scss";
@@ -33,7 +32,7 @@ const JsonViewSettings: FC<JsonSettingsProps> = ({
     toggle: toggleOpenSettings,
     setFalse: handleClose,
   } = useBoolean(false);
-  
+
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 

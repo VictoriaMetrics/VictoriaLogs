@@ -1,10 +1,9 @@
-import React, { FC, useMemo, useRef } from "preact/compat";
+import { FC, useMemo, useRef } from "preact/compat";
 import uPlot, { AlignedData } from "uplot";
 import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import classNames from "classnames";
 import "./style.scss";
-import "../../ChartTooltip/style.scss";
 import { sortLogHits } from "../../../../utils/logs";
 
 interface Props {
@@ -27,7 +26,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
     const tooltipItems = values.map((value, i) => {
       const targetSeries = series[i + 1];
       const stroke = (targetSeries?.stroke as () => string)?.();
-      const label = targetSeries?.label;
+      const label = targetSeries?.label as string;
       const show = targetSeries?.show;
       return {
         label,

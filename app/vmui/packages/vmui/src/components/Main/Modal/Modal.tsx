@@ -1,7 +1,6 @@
-import React, { FC, useCallback, useEffect, createPortal } from "preact/compat";
+import { FC, useCallback, useEffect, createPortal, ReactNode, MouseEvent } from "preact/compat";
 import { CloseIcon } from "../Icons";
 import Button from "../Button/Button";
-import { ReactNode, MouseEvent } from "react";
 import "./style.scss";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import classNames from "classnames";

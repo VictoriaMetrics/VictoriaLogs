@@ -1,8 +1,7 @@
-import React, { FC, useEffect, useRef, useState } from "react";
+import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import useEventListener from "../../../hooks/useEventListener";
 import classNames from "classnames";
 import "./style.scss";
-import { useMemo } from "preact/compat";
 
 interface TextFieldErrorProps {
   error: string;

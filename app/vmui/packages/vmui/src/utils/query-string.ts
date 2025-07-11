@@ -1,6 +1,5 @@
 import qs from "qs";
-import get from "lodash.get";
-import { MAX_QUERY_FIELDS } from "../constants/graph";
+import { MAX_QUERY_FIELDS } from "../constants/logs";
 
 export const getQueryStringValue = (
   key: string,
@@ -8,7 +7,7 @@ export const getQueryStringValue = (
 ): unknown => {
   const queryString = window.location.hash.split("?")[1];
   const values = qs.parse(queryString, { ignoreQueryPrefix: true });
-  return get(values, key, defaultValue || "");
+  return values?.[key] ?? defaultValue ?? "";
 };
 
 export const getQueryArray = (): string[] => {
