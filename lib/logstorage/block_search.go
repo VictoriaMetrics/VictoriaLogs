@@ -239,7 +239,6 @@ func (bs *blockSearch) search(bsw *blockSearchWork, bm *bitmap) {
 	}
 
 	bs.br.mustInit(bs, bm)
-
 	// fetch the requested columns to bs.br.
 	bs.br.initColumns(bsw.so.fieldsFilter)
 }

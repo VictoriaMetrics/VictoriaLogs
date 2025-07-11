@@ -163,7 +163,7 @@ func (s *Storage) runAsyncTasksOnce(ctx context.Context, seq *uint64) error {
 		pw.taskSeq.Store(task.Seq)
 	}
 
-	logger.Infof("DEBUG (task): task (seq=%d, query=%q) applied to %d parts (caught up: %v)", task.Seq, task.Query, len(lagging), caughtUpParts)
+	logger.Infof("DEBUG (task): task (seq=%d, query=%q) applied to %d parts", task.Seq, task.Query, len(lagging))
 	return nil
 }
 

@@ -75,6 +75,7 @@ func (f WriteDataBlockFunc) newBlockResultWriter() writeBlockResultFunc {
 		if br.rowsLen == 0 {
 			return
 		}
+
 		db := dbs.Get(workerID)
 		db.initFromBlockResult(br)
 		f(workerID, db)
