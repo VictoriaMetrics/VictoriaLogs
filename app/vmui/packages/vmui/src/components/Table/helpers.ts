@@ -1,5 +1,5 @@
-import { Order } from "../../pages/CardinalityPanel/Table/types";
 import { getNanoTimestamp } from "../../utils/time";
+import { Order } from "../../types";
 
 const dateColumns = ["date", "timestamp", "time"];
 

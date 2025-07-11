@@ -1,4 +1,4 @@
-import React, {
+import {
   FC,
   useEffect,
   useRef,
@@ -8,7 +8,7 @@ import React, {
   MouseEvent,
   HTMLInputTypeAttribute,
   ReactNode
-} from "react";
+} from "preact/compat";
 import classNames from "classnames";
 import { useAppState } from "../../../state/common/StateContext";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";

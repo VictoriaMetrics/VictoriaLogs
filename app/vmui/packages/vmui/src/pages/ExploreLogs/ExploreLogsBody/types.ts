@@ -1,6 +1,7 @@
 import { Logs } from "../../../api/types";
+import { RefObject } from "preact/compat";
 
 export interface ViewProps {
   data: Logs[];
-  settingsRef: React.RefObject<HTMLDivElement>;
+  settingsRef: RefObject<HTMLDivElement>;
 }

@@ -12,6 +12,7 @@
     &_mobile {
       flex-direction: column;
       gap: $padding-medium;
+      border: none!important;
     }
 
     &__arrow {

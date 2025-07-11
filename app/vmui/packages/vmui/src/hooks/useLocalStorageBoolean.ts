@@ -1,7 +1,6 @@
-import { useMemo, useState } from "preact/compat";
+import { useMemo, useState, useCallback } from "preact/compat";
 import { getFromStorage, saveToStorage, StorageKeys } from "../utils/storage";
 import useEventListener from "./useEventListener";
-import { useCallback } from "react";
 
 /**
  * A custom hook that synchronizes a boolean state with a value stored in localStorage.

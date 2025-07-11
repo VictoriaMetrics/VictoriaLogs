@@ -1,8 +1,8 @@
-import React, { FC, useMemo } from "preact/compat";
+import { FC, useMemo, ComponentType } from "preact/compat";
 import { useNavigate } from "react-router-dom";
 import router from "../../router";
 import { getAppModeEnable, getAppModeParams } from "../../utils/app-mode";
-import { LogoAnomalyIcon, LogoIcon, LogoLogsIcon } from "../../components/Main/Icons";
+import { LogoLogsIcon } from "../../components/Main/Icons";
 import { getCssVariable } from "../../utils/theme";
 import "./style.scss";
 import classNames from "classnames";
@@ -12,22 +12,11 @@ import SidebarHeader from "./SidebarNav/SidebarHeader";
 import HeaderControls, { ControlsProps } from "./HeaderControls/HeaderControls";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import useWindowSize from "../../hooks/useWindowSize";
-import { ComponentType } from "react";
-import { APP_TYPE, AppType } from "../../constants/appType";
 
 export interface HeaderProps {
   controlsComponent: ComponentType<ControlsProps>
 }
-const Logo = () => {
-  switch (APP_TYPE) {
-    case AppType.victorialogs:
-      return <LogoLogsIcon/>;
-    case AppType.vmanomaly:
-      return <LogoAnomalyIcon/>;
-    default:
-      return <LogoIcon/>;
-  }
-};
+const Logo = () => <LogoLogsIcon/>;
 
 const Header: FC<HeaderProps> = ({ controlsComponent }) => {
   const { isMobile } = useDeviceDetect();

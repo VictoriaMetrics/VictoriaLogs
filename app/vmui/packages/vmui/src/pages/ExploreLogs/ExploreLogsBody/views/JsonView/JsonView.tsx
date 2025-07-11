@@ -1,4 +1,4 @@
-import React, { FC, useMemo, useCallback, createPortal } from "preact/compat";
+import { FC, useMemo, useCallback, createPortal, memo } from "preact/compat";
 import DownloadLogsButton from "../../../DownloadLogsButton/DownloadLogsButton";
 import JsonViewComponent from "../../../../../components/Views/JsonView/JsonView";
 import { ViewProps } from "../../types";
@@ -10,7 +10,7 @@ import "./style.scss";
 import { Logs } from "../../../../../api/types";
 import { SortDirection } from "./types";
 
-const MemoizedJsonView = React.memo(JsonViewComponent);
+const MemoizedJsonView = memo(JsonViewComponent);
 
 const jsonQuerySortParam = "json_sort";
 const fieldSortQueryParamName = "json_field_sort";

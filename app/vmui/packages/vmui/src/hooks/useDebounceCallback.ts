@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef } from "preact/compat";
 import debounce from "lodash.debounce";
 import { useUnmount } from "./useUnmount";
 

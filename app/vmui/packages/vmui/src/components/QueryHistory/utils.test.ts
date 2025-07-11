@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, Mock, afterEach } from "vitest";
 import { getFromStorage, saveToStorage } from "../../utils/storage";
 import { getUpdatedHistory, setQueriesToStorage } from "./utils";
-import { MAX_QUERIES_HISTORY, MAX_QUERY_FIELDS } from "../../constants/graph";
+import { MAX_QUERIES_HISTORY, MAX_QUERY_FIELDS } from "../../constants/logs";
 
 vi.mock("../../utils/storage", () => ({
   getFromStorage: vi.fn(),
