@@ -352,7 +352,7 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, tenantIDs []logstorage.Tenant
 			})
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					s.sns[nodeIdx].sendErrors.Inc()
+					sn.sendErrors.Inc()
 				}
 				// Cancel the remaining parallel queries
 				cancel()
