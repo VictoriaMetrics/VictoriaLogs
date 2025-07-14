@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,9 +32,11 @@ var (
 	tailURL = flag.String("tail.url", "", "URL for live tailing queries to VictoriaLogs; see https://docs.victoriametrics.com/victorialogs/querying/#live-tailing ."+
 		"The url is automatically detected from -datasource.url by replacing /query with /tail at the end if -tail.url is empty")
 	historyFile = flag.String("historyFile", "vlogscli-history", "Path to file with command history")
-	header      = flagutil.NewArrayString("header", "Optional header to pass in request -datasource.url in the form 'HeaderName: value'")
-	accountID   = flag.Int("accountID", 0, "Account ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
-	projectID   = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
+	insecureTLS = flag.Bool("insecureTLS", false, "Allow insecure TLS connections, will not verify the certificate chain, useful for self signed certificates")
+
+	header    = flagutil.NewArrayString("header", "Optional header to pass in request -datasource.url in the form 'HeaderName: value'")
+	accountID = flag.Int("accountID", 0, "Account ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
+	projectID = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
 )
 
 const (
@@ -54,6 +57,14 @@ func main() {
 		fatalf("cannot parse -header command-line flag: %s", err)
 	}
 	headers = hes
+
+	httpClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: *insecureTLS,
+			},
+		},
+	}
 
 	incompleteLine := ""
 	cfg := &readline.Config{
