@@ -1,0 +1,17 @@
+.vm-json-virtualized-list {
+  user-select: none;
+  overflow-y: hidden;
+  cursor: text;
+
+  &__search {
+    position: absolute;
+    right: 10px;
+    top: 50px;
+    height: 40px;
+    z-index: 3;
+  }
+}
+
+#vm_current_search_focus {
+  background-color: #df7700;
+}
