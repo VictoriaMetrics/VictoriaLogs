@@ -315,9 +315,22 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 	}
 	s.sns = sns
 
+	// active streams tracker
 	s.srt = newStreamRowsTracker(len(sns))
+	_ = metrics.GetOrCreateGauge(`vl_insert_active_streams`, func() float64 {
+		return float64(s.getActiveStreams())
+	})
 
 	return s
+}
+
+// GetActiveStreams returns the number of log streams being tracked since the Storage start.
+func (s *Storage) getActiveStreams() uint64 {
+	s.srt.mu.Lock()
+	n := uint64(len(s.srt.rowsPerStream))
+	s.srt.mu.Unlock()
+
+	return n
 }
 
 // MustStop stops the s.
