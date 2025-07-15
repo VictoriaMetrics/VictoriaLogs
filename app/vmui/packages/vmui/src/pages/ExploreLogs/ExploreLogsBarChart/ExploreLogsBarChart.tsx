@@ -69,6 +69,8 @@ const ExploreLogsBarChart: FC<Props> = ({ logHits, period, error, isLoading, onA
   }, [logHits]);
 
   const noDataMessage: string = useMemo(() => {
+    if (isLoading) return "";
+
     const noData = data.every(d => d.length === 0);
     const noTimestamps = data[0].length === 0;
     const noValues = data[1].length === 0;
@@ -81,7 +83,7 @@ const ExploreLogsBarChart: FC<Props> = ({ logHits, period, error, isLoading, onA
     } else if (noValues) {
       return "No value information available for the current queries and time range.";
     } return "";
-  }, [data, hideChart]);
+  }, [data, hideChart, isLoading]);
 
   const setPeriod = ({ from, to }: {from: Date, to: Date}) => {
     timeDispatch({ type: "SET_PERIOD", payload: { from, to } });

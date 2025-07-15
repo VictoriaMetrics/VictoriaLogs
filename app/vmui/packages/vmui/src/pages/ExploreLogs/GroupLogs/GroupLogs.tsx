@@ -68,7 +68,10 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
   const handleToggleExpandAll = useCallback(() => {
-    setExpandGroups(new Array(groupData.length).fill(!expandAll));
+    setExpandGroups(prev => {
+      const keepClosed = (prev.every(v => !v) && prev.length) || isMobile;
+      return new Array(groupData.length).fill(!keepClosed);
+    });
   }, [expandAll, groupData.length]);
 
   const handleChangeExpand = useCallback((i: number) => (value: boolean) => {

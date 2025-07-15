@@ -19,6 +19,10 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/): add ability to configure auth options and TLS options for connections to the `-datasource.url`. See [auth options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#auth-options) and [TLS options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#tls-options). See [this feature request](https://github.com/VictoriaMetrics/VictoriaLogs/issues/54). Thanks to @thom-vend for [the initial pull request](https://github.com/VictoriaMetrics/VictoriaLogs/pull/457).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the ability to hide the logs panel to view only the graph. When the logs panel is hidden, the `/query` request is not executed.
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent groups from automatically expanding on list updates if all groups were previously collapsed. See [#92](https://github.com/VictoriaMetrics/VictoriaLogs/issues/92).
+
 
 ## [v1.25.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.1)
 
