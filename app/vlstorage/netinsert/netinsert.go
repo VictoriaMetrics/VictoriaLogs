@@ -325,9 +325,9 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 }
 
 // GetActiveStreams returns the number of log streams being tracked since the Storage start.
-func (s *Storage) getActiveStreams() uint64 {
+func (s *Storage) getActiveStreams() int {
 	s.srt.mu.Lock()
-	n := uint64(len(s.srt.rowsPerStream))
+	n := len(s.srt.rowsPerStream)
 	s.srt.mu.Unlock()
 
 	return n
