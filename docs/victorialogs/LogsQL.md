@@ -3676,7 +3676,7 @@ _time:5m | stats count_uniq_hash(ip) unique_ips_count
 The following query returns an estimated number of unique `(host, path)` pairs for the corresponding [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 over the last 5 minutes:
 
-```js
+```logsql
 _time:5m | stats count_uniq_hash(host, path) unique_host_path_pairs
 ```
 
