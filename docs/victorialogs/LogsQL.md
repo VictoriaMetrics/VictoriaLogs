@@ -4235,8 +4235,6 @@ VictoriaLogs supports the following options, which can be passed in the beginnin
 
 ## Troubleshooting
 
-## Troubleshooting
-
 LogsQL works well for most use cases when set up right. But sometimes you will see slow queries. The most common reason is querying too many logs without enough filtering. Usually, you only need a few logs to fix an issue. Always **be specific** when you build your queries.
 
 Use these steps to help you understand your query and improve its speed.
