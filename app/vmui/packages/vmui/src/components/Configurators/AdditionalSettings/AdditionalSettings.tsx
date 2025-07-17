@@ -8,33 +8,19 @@ import { TuneIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import classNames from "classnames";
 import useBoolean from "../../../hooks/useBoolean";
-import useEventListener from "../../../hooks/useEventListener";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { AUTOCOMPLETE_QUICK_KEY } from "../../Main/ShortcutKeys/constants/keyList";
+import { useQuickAutocomplete } from "../../../hooks/useQuickAutocomplete";
 
 const AdditionalSettingsControls: FC = () => {
   const { isMobile } = useDeviceDetect();
   const { autocomplete } = useQueryState();
   const queryDispatch = useQueryDispatch();
+  useQuickAutocomplete();
 
   const onChangeAutocomplete = () => {
     queryDispatch({ type: "TOGGLE_AUTOCOMPLETE" });
   };
-
-  const onChangeQuickAutocomplete = () => {
-    queryDispatch({ type: "SET_AUTOCOMPLETE_QUICK", payload: true });
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    /** @see AUTOCOMPLETE_QUICK_KEY */
-    const { code, ctrlKey, altKey } = e;
-    if (code === "Space" && (ctrlKey || altKey)) {
-      e.preventDefault();
-      onChangeQuickAutocomplete();
-    }
-  };
-
-  useEventListener("keydown", handleKeyDown);
 
   return (
     <div
