@@ -3676,7 +3676,7 @@ _time:5m | stats count_uniq_hash(ip) unique_ips_count
 The following query returns an estimated number of unique `(host, path)` pairs for the corresponding [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 over the last 5 minutes:
 
-```logsql
+```js
 _time:5m | stats count_uniq_hash(host, path) unique_host_path_pairs
 ```
 
@@ -4203,7 +4203,6 @@ Internally duration values are converted into nanoseconds.
 - If the selected logs are passed to [pipes](#pipes) for further transformations and statistics' calculations, then it is recommended
   reducing the number of selected logs by using more specific [filters](#filters), which return lower number of logs to process by [pipes](#pipes).
 
-
 ## Query options
 
 VictoriaLogs supports the following options, which can be passed in the beginning of [LogsQL query](#query-syntax) `<q>` via `options(opt1=v1, ..., optN=vN) <q>` syntax:
@@ -4233,3 +4232,166 @@ VictoriaLogs supports the following options, which can be passed in the beginnin
   ```logsql
   user_id:in(_time:2024-12Z | keep user_id) | count()
   ```
+
+## Troubleshooting
+
+## Troubleshooting
+
+LogsQL works well for most use cases when set up right. But sometimes you will see slow queries. The most common reason is querying too many logs without enough filtering. Usually, you only need a few logs to fix an issue. Always **be specific** when you build your queries.
+
+Use these steps to help you understand your query and improve its speed.
+
+1. Use the `count` pipe to check your query
+
+First, find out how much data your filters will match. You can do this by putting the `count` pipe after every filter or pipe that might change the number of rows.
+
+Here is an example:
+
+```bash
+$ _time:5m host:"api-*" level:error "database" | sort by (_time) desc | limit 10
+```
+
+Now add the `count` pipe after the filter. Run the updated query to see the total number of matching logs and how long it takes to execute.
+
+```bash
+$ _time:5m host:"api-*" level:error "database" | count()
+```
+
+Output:
+
+```bash
+executing [_time:5m level:error database host:"api-*" | stats count(*) as "count(*)"]...; duration: 0.474s  
+{  
+  "count(*)": "19217008"  
+}
+```
+
+If the execution time is high, try reordering your filters. Put the most selective and cheapest conditions first. Filters run one after another, so an early filter that removes a lot of logs will make later filters faster and easier to run. For more tips, see the [Performance Tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
+
+If you are not sure which filter is the most selective or the most expensive, you can add `count()` after each filter. This helps you see how many logs each filter matches and gives you an idea about their performance.
+
+```bash
+$ _time:5m level:error | count()
+
+$ _time:5m host:"api-*" | count()
+
+$ _time:5m "database" | count()
+```
+
+2. Test stream filters
+
+When you do not use a log stream, VictoriaLogs needs to scan or open many blocks of memory in the background to find your logs. If you add a log stream filter, like this:
+
+```bash
+$ {app="nginx"}
+
+$ _stream_id:abcdef...
+```
+
+You tell VictoriaLogs to skip all the blocks that do not match this stream. This is much faster. So, having a good log stream filter is important for speed in VictoriaLogs.
+
+However, if your stream has a stream field like `app="nginx"` but you write your filter as:
+
+```bash
+$ app:nginx
+```
+
+Then, VictoriaLogs treats it as a regular field filter. It will not be as fast as a stream filter. Make sure to use the correct stream filter syntax. See more in [stream filters](#stream-filter).
+
+3. Check log-stream cardinality
+
+Log streams can help, but they are not a magic fix for everything. Watch out for two common problems:
+
+- If you have too many log streams, and each stream only covers a few logs, your performance can drop.
+- If a log stream covers way more logs than the others, searching in that stream can be much slower.
+
+To check log-stream cardinality, keep only the time filter and add `| count_uniq(_stream_id)` at the end. This counts the number of unique log streams in the time range.
+
+For example, to see how many streams you have in the last day:
+
+```bash
+$ _time:1d | count_uniq(_stream_id)
+
+{
+  "count_uniq(_stream_id)": "954"
+}
+```
+
+To see how many logs are in each stream, use one of these queries. Both do the same thing:
+
+```bash
+$ _time:1d | stats by (_stream) count() | sort by (count) desc | limit 10
+
+$ _time:1d | top 10 by (_stream)
+```
+
+Streams with very few logs usually happen when one or more stream fields have too many different values. In these cases, it is better to remove those fields from the stream filter. If a stream has a much higher log count than average, you can split it by adding more fields to the stream filter.
+
+4. Identify the most costly parts
+
+To see which parts of your log data take up the most space or slow down searches, you can use the `block_stats` pipe in VictoriaLogs. This shows you detailed block statistics for your data.
+
+Start with your usual query. Then add the pipe `| keep <field list> | block_stats`:
+
+```bash
+$ _time:1d | keep kubernetes.pod_name,kubernetes.pod_namespace | block_stats
+```
+
+The `keep` pipe keeps only the fields you name and removes the others, so you get statistics just for the fields you care about. Usually, include every field that appears in your filters or pipes after this point.
+
+The `block_stats` pipe gives you metrics like how many blocks were scanned, how many bytes they use on disk, and how many rows were checked.
+
+Sometimes, the raw numbers are still too detailed to be useful. You can add the `stats` pipe to summarize the numbers:
+
+```bash
+$ _time:1d
+| keep kubernetes.pod_name,kubernetes.pod_namespace
+| block_stats        
+| stats by (field)
+    sum(values_bytes)  bytes_on_disk, 
+    avg(rows)          rows_per_block 
+| sort by (bytes_on_disk) desc
+```
+
+Example output:
+
+```
+bytes_on_disk: 561  field: kubernetes.pod_name       rows_per_block: 172  
+bytes_on_disk: 101  field: kubernetes.pod_namespace  rows_per_block: 172  
+```
+
+Summing up value bytes or averaging row counts lets you see, at a glance, which fields use the most space or force VictoriaLogs to scan more data.
+
+When you know which fields are expensive, you can decide whether to drop a noisy field, split it out, or change your filters to avoid reading extra data.
+
+You can find more details here: [FAQ - How to determine which log fields occupy the most of disk space?](https://docs.victoriametrics.com/victorialogs/faq/#how-to-determine-which-log-fields-occupy-the-most-of-disk-space)
+
+5. Profile pipes incrementally
+
+Start with a simple filter that runs very fast, like `_time:5m error`. Note how long it takes. Then, add the next stage you need and test again.
+
+```bash
+_time:5m error
+
+_time:5m error
+| extract 'user_id=(<uid>)' from _msg
+
+_time:5m error
+| extract 'user_id=(<uid>)' from _msg
+| stats by (uid) count() as errors
+
+_time:5m error
+| extract 'user_id=(<uid>)' from _msg
+| stats by (uid) count() as errors
+| sort by (errors) desc
+| limit 10
+```
+
+If a query suddenly gets much slower, you know the last step is the cause. Always add one stage at a time and check performance after each change. If something uses too much time or memory, you will know exactly which part to fix.
+
+If you find a slow step, try these ideas:
+
+- Regex matching and JSON parsing are expensive. Use faster alternatives if you can.
+- Sorting without a limit stores all logs in memory. Add a `limit` or reduce the input log set.
+- High-cardinality functions like `count_uniq()` track every unique value in memory. Lower the input volume or reduce cardinality.
+- Large group counts in `stats by (…)` can use a lot of memory. Filter or transform your data to reduce the number of groups.
