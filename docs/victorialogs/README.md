@@ -263,13 +263,15 @@ cloud provider, or third-party tools. Note that the snapshot must be **consisten
 
 ## vmalert
 
-VictoriaLogs is capable of proxying requests to [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/)
+VictoriaLogs is capable of proxying requests to [VMAlert](https://docs.victoriametrics.com/victoriametrics/vmalert/)
 when `-vmalert.proxyURL` flag is set. Use this feature for the following cases:
 * for proxying requests from [Grafana Alerting UI](https://grafana.com/docs/grafana/latest/alerting/);
-* for accessing vmalerts UI through VictoriaLogs Web interface.
+* for accessing VMAlert API through VictoriaLogs Web interface.
 
-For accessing vmalerts UI through VictoriaLogs configure `-vmalert.proxyURL` flag and visit
-`http://<victorialogs-addr>:9428/vmalert/` link.
+For accessing VMAlert API through VictoriaLogs configure `-vmalert.proxyURL` flag. List of proxied VMAlert endpoints:
+- `http://<victorialogs-addr>:9428/select/api/v1/alerts` - lists all alerts
+- `http://<victorialogs-addr>:9428/select/api/v1/rules` - lists groups of alerting and recording rules
+- `http://<victorialogs-addr>:9428/select/api/v1/notifiers` - lists VMAlert notifiers
 
 ## Multitenancy
 
