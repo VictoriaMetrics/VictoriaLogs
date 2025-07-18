@@ -2,6 +2,7 @@ package netselect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -231,6 +232,14 @@ func (sn *storageNode) getStreamIDs(ctx context.Context, tenantIDs []logstorage.
 	return sn.getValuesWithHits(ctx, "/internal/select/stream_ids", args)
 }
 
+func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]byte, error) {
+	args := url.Values{}
+	args.Set("start", fmt.Sprintf("%d", start))
+	args.Set("end", fmt.Sprintf("%d", end))
+	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
+	return sn.executeRequestAt(ctx, "/internal/select/tenant_ids", args)
+}
+
 func (sn *storageNode) getCommonArgs(version string, tenantIDs []logstorage.TenantID, q *logstorage.Query) url.Values {
 	args := url.Values{}
 	args.Set("version", version)
@@ -416,6 +425,59 @@ func (s *Storage) GetStreamIDs(ctx context.Context, tenantIDs []logstorage.Tenan
 	return s.getValuesWithHits(ctx, limit, true, func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error) {
 		return sn.getStreamIDs(ctx, tenantIDs, q, limit)
 	})
+}
+
+// GetTenantIDs returns tenantIDs for the given start and end.
+func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	return s.getTenantIDs(ctx, start, end)
+}
+
+func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	results := make([][]byte, len(s.sns))
+	errs := make([]error, len(s.sns))
+
+	var wg sync.WaitGroup
+	for i := range s.sns {
+		wg.Add(1)
+		go func(nodeIdx int) {
+			defer wg.Done()
+
+			sn := s.sns[nodeIdx]
+			tenantIDs, err := sn.getTenantIDs(ctxWithCancel, start, end)
+			results[nodeIdx] = tenantIDs
+			errs[nodeIdx] = err
+			if err != nil {
+				// Cancel the remaining parallel requests
+				cancel()
+			}
+		}(i)
+	}
+	wg.Wait()
+	if err := getFirstNonCancelError(errs); err != nil {
+		return nil, err
+	}
+
+	unique := make(map[logstorage.TenantID]struct{}, len(results))
+	for i := range results {
+		var tenants []logstorage.TenantID
+		if err := json.Unmarshal(results[i], &tenants); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal tenantIDs from storage node %d: %w", i, err)
+		}
+		// Deduplicate tenantIDs
+		for _, tenant := range tenants {
+			unique[tenant] = struct{}{}
+		}
+	}
+
+	tenantIDs := make([]logstorage.TenantID, 0, len(unique))
+	for key := range unique {
+		tenantIDs = append(tenantIDs, key)
+	}
+
+	return tenantIDs, nil
 }
 
 func (s *Storage) getValuesWithHits(ctx context.Context, limit uint64, resetHitsOnLimitExceeded bool,

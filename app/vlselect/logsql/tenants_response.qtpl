@@ -1,0 +1,19 @@
+{% stripspace %}
+
+{% import (
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+) %}
+
+TenantsResponse generates response for /admin/tenants .
+{% func TenantsResponse(tenants []logstorage.TenantID) %}
+{
+	"status":"success",
+	"data":[
+		{% for i, tenant := range tenants %}
+			"{%d int(tenant.AccountID) %}:{%d int(tenant.ProjectID) %}"
+			{% if i+1 < len(tenants) %},{% endif %}
+		{% endfor %}
+	]
+}
+{% endfunc %}
+{% endstripspace %}
