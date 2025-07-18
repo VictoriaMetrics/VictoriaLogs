@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
@@ -29,11 +30,15 @@ var (
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
 )
 
+const minInsertMaxLineSize = 2 * 1024 // 2KB hard minimum
+
 func main() {
 	// Write flags and help message to stdout, since it is easier to grep or pipe.
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.Usage = usage
 	envflag.Parse()
+	validateFlags()
+
 	buildinfo.Init()
 	logger.Init()
 
@@ -74,6 +79,16 @@ func main() {
 	fs.MustStopDirRemover()
 
 	logger.Infof("the VictoriaLogs has been stopped in %.3f seconds", time.Since(startTime).Seconds())
+}
+
+func validateFlags() {
+	if insertutil.MaxLineSizeBytes.IntN() < minInsertMaxLineSize {
+		logger.Warnf("-insert.maxLineSizeBytes=%d is lower than the supported minimum; forcing it to %d bytes", insertutil.MaxLineSizeBytes.IntN(), minInsertMaxLineSize)
+		err := insertutil.MaxLineSizeBytes.Set(strconv.Itoa(minInsertMaxLineSize))
+		if err != nil {
+			panic(fmt.Errorf("BUG: cannot set -insert.maxLineSizeBytes=%d: %w", minInsertMaxLineSize, err))
+		}
+	}
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {

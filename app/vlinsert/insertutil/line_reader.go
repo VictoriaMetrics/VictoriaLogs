@@ -28,6 +28,9 @@ type LineReader struct {
 	// buf is a buffer for reading the next line
 	buf []byte
 
+	// Skipped line that needs to be printed out for debugging
+	debugSkippedLine []byte
+
 	// bufOffset is the offset at buf to read the next line from
 	bufOffset int
 
@@ -102,9 +105,14 @@ func (lr *LineReader) readMoreData() bool {
 
 	bufLen := len(lr.buf)
 	if bufLen >= MaxLineSizeBytes.IntN() {
+		if len(lr.debugSkippedLine) == 0 {
+			lr.debugSkippedLine = make([]byte, MaxLineSizeBytes.IntN()/3)
+		}
+		copy(lr.debugSkippedLine, lr.buf)
+
 		ok, skippedBytes := lr.skipUntilNextLine()
-		logger.Warnf("%s: the line length exceeds -insert.maxLineSizeBytes=%d; skipping it; total skipped bytes=%d",
-			lr.name, MaxLineSizeBytes.IntN(), skippedBytes)
+		logger.Warnf("%s: the line length exceeds -insert.maxLineSizeBytes=%d; skipping it; skipped bytes=%d; trimmed log line=%q",
+			lr.name, MaxLineSizeBytes.IntN(), skippedBytes, lr.debugSkippedLine)
 		tooLongLinesSkipped.Inc()
 		return ok
 	}

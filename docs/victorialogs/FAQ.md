@@ -193,6 +193,8 @@ is `2MB`, because log records are stored in blocks of up to `2MB` size.
 Blocks of this size fit the L2 cache of a typical CPU, which gives an
 optimal performance during data ingestion and querying.
 
+The minimum size should be 2 KB to avoid the recursive log warning issue, where VictoriaLogs itself generates a log record that exceeds the `-insert.maxLineSizeBytes` flag value.
+
 Note that log records with sizes close to `2MB` aren't handled efficiently by
 VictoriaLogs because per-block overhead translates to a single log record, and
 this overhead is big.
