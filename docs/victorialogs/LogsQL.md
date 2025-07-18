@@ -4233,6 +4233,16 @@ VictoriaLogs supports the following options, which can be passed in the beginnin
   user_id:in(_time:2024-12Z | keep user_id) | count()
   ```
 
+- `time_offset` – subtracts the given offset from all the [time filters](#time-filter) in the query,
+  and then adds the given offset to the selected [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values.
+  Allows comparing query results for the same duration at different offsets.
+  Accepts any [duration value](#duration-values) like `12h`, `1d`, `1y`. For example, the following query returns the number of logs with `error` [words](#word)
+  over the last hour 7 days ago.
+
+  ```logsql
+  options (time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
+  ```
+
 ## Troubleshooting
 
 LogsQL works well for most use cases when set up right. But sometimes you will see slow queries. The most common reason is querying too many logs without enough filtering.
