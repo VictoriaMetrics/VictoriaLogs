@@ -3,13 +3,11 @@ name: 'CodeQL Go'
 on:
   push:
     branches:
-      - cluster
       - master
     paths:
       - '**.go'
   pull_request:
     branches:
-      - cluster
       - master
     paths:
       - '**.go'

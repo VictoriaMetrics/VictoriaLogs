@@ -1,19 +1,23 @@
-import { useCallback, useMemo, useRef, useState } from "preact/compat";
+import { useEffect, useCallback, useMemo, useRef, useState } from "preact/compat";
 import { getLogHitsUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
 import { getHitsTimeParams } from "../../../utils/logs";
 import { LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../constants/logs";
 import { isEmptyObject } from "../../../utils/object";
-import { useEffect } from "react";
 import { useTenant } from "../../../hooks/useTenant";
+import { useSearchParams } from "react-router-dom";
 
 export const useFetchLogHits = (server: string, query: string) => {
   const tenant = useTenant();
+  const [searchParams] = useSearchParams();
+
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{[key: number]: boolean;}>([]);
   const [error, setError] = useState<ErrorTypes | string>();
   const abortControllerRef = useRef(new AbortController());
+
+  const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
   const url = useMemo(() => getLogHitsUrl(server), [server]);
 
@@ -81,6 +85,13 @@ export const useFetchLogHits = (server: string, query: string) => {
       abortControllerRef.current.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (hideChart) {
+      setLogHits([]);
+      setError(undefined);
+    }
+  }, [hideChart]);
 
   return {
     logHits,

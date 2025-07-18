@@ -1,13 +1,11 @@
 module github.com/VictoriaMetrics/VictoriaLogs
 
-go 1.24.4
-
-replace github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250706151707-8646b73efc0e
+go 1.24.5
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-00010101000000-000000000000
+	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250718125606-9d9bea03485e
 	github.com/VictoriaMetrics/easyproto v0.1.4
-	github.com/VictoriaMetrics/metrics v1.37.0
+	github.com/VictoriaMetrics/metrics v1.38.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
@@ -26,6 +24,6 @@ require (
 	github.com/valyala/gozstd v1.22.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 )

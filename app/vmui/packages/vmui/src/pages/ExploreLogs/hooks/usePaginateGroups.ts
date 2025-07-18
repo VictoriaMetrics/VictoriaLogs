@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo } from "preact/compat";
 import { GroupLogsType } from "../../../types";
 
 export const usePaginateGroups = (

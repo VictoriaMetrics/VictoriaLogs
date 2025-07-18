@@ -19,7 +19,9 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envflag"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/ergochat/readline"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
@@ -31,9 +33,21 @@ var (
 	tailURL = flag.String("tail.url", "", "URL for live tailing queries to VictoriaLogs; see https://docs.victoriametrics.com/victorialogs/querying/#live-tailing ."+
 		"The url is automatically detected from -datasource.url by replacing /query with /tail at the end if -tail.url is empty")
 	historyFile = flag.String("historyFile", "vlogscli-history", "Path to file with command history")
-	header      = flagutil.NewArrayString("header", "Optional header to pass in request -datasource.url in the form 'HeaderName: value'")
-	accountID   = flag.Int("accountID", 0, "Account ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
-	projectID   = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
+
+	header    = flagutil.NewArrayString("header", "Optional header to pass in request -datasource.url in the form 'HeaderName: value'")
+	accountID = flag.Int("accountID", 0, "Account ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
+	projectID = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
+
+	username    = flag.String("username", "", "Optional basic auth username to use for the -datasource.url")
+	password    = flagutil.NewPassword("password", "Optional basic auth password to use for the -datsource.url")
+	bearerToken = flagutil.NewPassword("bearerToken", "Optional bearer auth token to use for the -datasource.url")
+
+	tlsCAFile     = flag.String("tlsCAFile", "", "Optional path to TLS CA file to use for verifying connections to the -datasource.url. By default, system CA is used")
+	tlsCertFile   = flag.String("tlsCertFile", "", "Optional path to client-side TLS certificate file to use when connecting to the -datasource.url")
+	tlsKeyFile    = flag.String("tlsKeyFile", "", "Optional path to client-side TLS certificate key to use when connecting to the -datasource.url")
+	tlsServerName = flag.String("tlsServerName", "", "Optional TLS server name to use for connections to the -datasource.url. "+
+		"By default, the server name from -datasource.url is used")
+	tlsInsecureSkipVerify = flag.Bool("tlsInsecureSkipVerify", false, "Whether to skip tls verification when connecting to the -datasource.url")
 )
 
 const (
@@ -54,6 +68,8 @@ func main() {
 		fatalf("cannot parse -header command-line flag: %s", err)
 	}
 	headers = hes
+
+	httpClient = newHTTPClient()
 
 	incompleteLine := ""
 	cfg := &readline.Config{
@@ -418,7 +434,48 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 	return jp
 }
 
-var httpClient = &http.Client{}
+func newHTTPClient() *http.Client {
+	ac := newAuthConfig()
+	tr := httputil.NewTransport(true, "vlogscli")
+	c := &http.Client{
+		Transport: ac.NewRoundTripper(tr),
+	}
+	return c
+}
+
+func newAuthConfig() *promauth.Config {
+	username := *username
+	password := password.Get()
+	var basicAuthCfg *promauth.BasicAuthConfig
+	if username != "" || password != "" {
+		basicAuthCfg = &promauth.BasicAuthConfig{
+			Username: username,
+			Password: promauth.NewSecret(password),
+		}
+	}
+
+	tlsCfg := &promauth.TLSConfig{
+		CAFile:             *tlsCAFile,
+		CertFile:           *tlsCertFile,
+		KeyFile:            *tlsKeyFile,
+		ServerName:         *tlsServerName,
+		InsecureSkipVerify: *tlsInsecureSkipVerify,
+	}
+
+	opts := &promauth.Options{
+		BasicAuth:   basicAuthCfg,
+		BearerToken: bearerToken.Get(),
+		TLSConfig:   tlsCfg,
+	}
+	ac, err := opts.NewConfig()
+	if err != nil {
+		logger.Panicf("FATAL: cannot populate auth config: %s", err)
+	}
+
+	return ac
+}
+
+var httpClient *http.Client
 
 var headers []headerEntry
 

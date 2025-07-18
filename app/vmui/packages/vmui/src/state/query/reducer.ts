@@ -28,7 +28,6 @@ export type QueryAction =
   | { type: "TOGGLE_AUTOCOMPLETE" }
   | { type: "SET_AUTOCOMPLETE_QUICK", payload: boolean }
   | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: QueryAutocompleteCacheItem, value: string[] } }
-  | { type: "SET_METRICSQL_FUNCTIONS", payload: AutocompleteOptions[] }
 
 const query = getQueryArray();
 export const initialQueryState: QueryState = {
@@ -76,11 +75,6 @@ export function reducer(state: QueryState, action: QueryAction): QueryState {
         ...state
       };
     }
-    case "SET_METRICSQL_FUNCTIONS":
-      return {
-        ...state,
-        metricsQLFunctions: action.payload
-      };
     default:
       throw new Error();
   }

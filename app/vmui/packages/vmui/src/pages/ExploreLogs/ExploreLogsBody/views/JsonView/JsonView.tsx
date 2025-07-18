@@ -1,16 +1,16 @@
-import React, { FC, useMemo, useCallback, createPortal } from "preact/compat";
+import { FC, useMemo, useCallback, createPortal, memo } from "preact/compat";
 import DownloadLogsButton from "../../../DownloadLogsButton/DownloadLogsButton";
 import JsonViewComponent from "../../../../../components/Views/JsonView/JsonView";
 import { ViewProps } from "../../types";
 import EmptyLogs from "../components/EmptyLogs/EmptyLogs";
 import JsonViewSettings from "./JsonViewSettings/JsonViewSettings";
 import { useSearchParams } from "react-router-dom";
-import orderBy from "lodash.orderBy";
+import orderby from "lodash.orderby";
 import "./style.scss";
 import { Logs } from "../../../../../api/types";
 import { SortDirection } from "./types";
 
-const MemoizedJsonView = React.memo(JsonViewComponent);
+const MemoizedJsonView = memo(JsonViewComponent);
 
 const jsonQuerySortParam = "json_sort";
 const fieldSortQueryParamName = "json_field_sort";
@@ -45,7 +45,7 @@ const JsonView: FC<ViewProps> = ({ data, settingsRef }) => {
 
   const sortedData = useMemo(() => {
     if (!sortField || !sortDirection) return orderedFieldsData;
-    return orderBy(orderedFieldsData, [sortField], [sortDirection]);
+    return orderby(orderedFieldsData, [sortField], [sortDirection]);
   }, [orderedFieldsData, sortField, sortDirection]);
 
   const renderSettings = () => {

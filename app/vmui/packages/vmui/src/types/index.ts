@@ -183,3 +183,5 @@ export interface GroupLogsType {
   pairs: string[]
   total: number
 }
+
+export type Order = "asc" | "desc";

@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useEffect, useMemo, useState } from "preact/compat";
+import { createPortal, FC, useCallback, useEffect, useMemo, useState, RefObject } from "preact/compat";
 import "./style.scss";
 import { Logs } from "../../../api/types";
 import Accordion from "../../../components/Main/Accordion/Accordion";
@@ -23,7 +23,7 @@ import { hasSortPipe } from "../../../components/Configurators/QueryEditor/LogsQ
 
 interface Props {
   logs: Logs[];
-  settingsRef: React.RefObject<HTMLElement>;
+  settingsRef: RefObject<HTMLElement>;
 }
 
 const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
@@ -68,7 +68,10 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
   const handleToggleExpandAll = useCallback(() => {
-    setExpandGroups(new Array(groupData.length).fill(!expandAll));
+    setExpandGroups(prev => {
+      const keepClosed = (prev.every(v => !v) && prev.length) || isMobile;
+      return new Array(groupData.length).fill(!keepClosed);
+    });
   }, [expandAll, groupData.length]);
 
   const handleChangeExpand = useCallback((i: number) => (value: boolean) => {
@@ -144,7 +147,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
       </div>
 
 
-      {settingsRef.current && React.createPortal((
+      {settingsRef.current && createPortal((
         <div className="vm-group-logs-header">
           <div className="vm-explore-logs-body-header__log-info">
             Total groups: <b>{groupData.length}</b>

@@ -51,7 +51,7 @@ jobs:
           git config --global user.email "${{ steps.import-gpg.outputs.email }}"
           if [[ -n $(git status --porcelain) ]]; then
             git add .
-            git commit -S -m "sync docs with VictoriaMetrics/VictoriaMetrics commit: ${{ steps.update.outputs.SHORT_SHA }}"
+            git commit -S -m "sync docs with VictoriaMetrics/VictoriaLogs commit: ${{ steps.update.outputs.SHORT_SHA }}"
             git push
           fi
         working-directory: __vm-docs

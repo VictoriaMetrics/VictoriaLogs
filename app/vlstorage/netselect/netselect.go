@@ -20,6 +20,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
+	"github.com/VictoriaMetrics/metrics"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
@@ -83,6 +84,9 @@ type storageNode struct {
 
 	// ac is auth config used for setting request headers such as Authorization and Host.
 	ac *promauth.Config
+
+	// sendErrors counts failed send attempts for this storage node.
+	sendErrors *metrics.Counter
 }
 
 func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
@@ -103,6 +107,8 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 			Transport: ac.NewRoundTripper(tr),
 		},
 		ac: ac,
+
+		sendErrors: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_select_remote_send_errors_total{addr=%q}`, addr)),
 	}
 	return sn
 }
@@ -340,11 +346,16 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, tenantIDs []logstorage.Tenant
 		wg.Add(1)
 		go func(nodeIdx int) {
 			defer wg.Done()
+
 			sn := s.sns[nodeIdx]
 			err := sn.runQuery(ctxWithCancel, tenantIDs, q, func(db *logstorage.DataBlock) {
 				writeBlock(uint(nodeIdx), db)
 			})
 			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					sn.sendErrors.Inc()
+				}
+
 				// Cancel the remaining parallel queries
 				cancel()
 			}
@@ -428,6 +439,10 @@ func (s *Storage) getValuesWithHits(ctx context.Context, limit uint64, resetHits
 			errs[nodeIdx] = err
 
 			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					sn.sendErrors.Inc()
+				}
+
 				// Cancel the remaining parallel requests
 				cancel()
 			}

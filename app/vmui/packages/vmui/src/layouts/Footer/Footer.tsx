@@ -1,7 +1,7 @@
-import React, { FC, memo } from "preact/compat";
+import { FC, memo } from "preact/compat";
 import { LogoShortIcon } from "../../components/Main/Icons";
 import "./style.scss";
-import { footerLinksByDefault } from "../../constants/footerLinks";
+import { footerLinksToLogs } from "../../constants/footerLinks";
 
 interface Props {
   links?: {
@@ -11,7 +11,7 @@ interface Props {
   }[]
 }
 
-const Footer: FC<Props> = memo(({ links = footerLinksByDefault }) => {
+const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
   const copyrightYears = `2019-${new Date().getFullYear()}`;
 
   return <footer className="vm-footer">
