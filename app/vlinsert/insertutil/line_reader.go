@@ -28,7 +28,8 @@ type LineReader struct {
 	// buf is a buffer for reading the next line
 	buf []byte
 
-	// Skipped line that needs to be printed out for debugging
+	// debugSkippedLine stores a trimmed portion of oversized lines for debugging purposes,
+	// not the complete skipped line.
 	debugSkippedLine []byte
 
 	// bufOffset is the offset at buf to read the next line from
