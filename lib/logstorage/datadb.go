@@ -569,8 +569,8 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		mpNew.ph = ph
 	} else {
 		ph.mustWriteMetadata(dstPartPath)
-		// Make sure the created part directory listing is synced and then
-		// ensure the parent directory entry is durable.
+		// Ensure the contents of the created part directory are synced first,
+		// followed by syncing the parent directory entry to make it durable.
 		fs.MustSyncPath(dstPartPath)
 		fs.MustSyncPath(ddb.path)
 	}
