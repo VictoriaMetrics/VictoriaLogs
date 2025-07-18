@@ -261,6 +261,18 @@ rsync -avh --progress --delete <username>@<host>:<path-to-victorialogs-backup> <
 It is also possible to use **the disk snapshot** in order to perform a backup. This feature could be provided by your operating system,
 cloud provider, or third-party tools. Note that the snapshot must be **consistent** to ensure reliable backup.
 
+## vmalert
+
+VictoriaLogs is capable of proxying requests to [VMAlert](https://docs.victoriametrics.com/victoriametrics/vmalert/)
+when `-vmalert.proxyURL` flag is set. Use this feature for the following cases:
+* for proxying requests from [Grafana Alerting UI](https://grafana.com/docs/grafana/latest/alerting/);
+* for accessing VMAlert API through VictoriaLogs Web interface.
+
+For accessing VMAlert API through VictoriaLogs configure `-vmalert.proxyURL` flag. List of proxied VMAlert endpoints:
+- `http://<victorialogs-addr>:9428/select/api/v1/alerts` - lists all alerts
+- `http://<victorialogs-addr>:9428/select/api/v1/rules` - lists groups of alerting and recording rules
+- `http://<victorialogs-addr>:9428/select/api/v1/notifiers` - lists VMAlert notifiers
+
 ## Multitenancy
 
 VictoriaLogs supports multitenancy. A tenant is identified by `(AccountID, ProjectID)` pair, where `AccountID` and `ProjectID` are arbitrary 32-bit unsigned integers.
