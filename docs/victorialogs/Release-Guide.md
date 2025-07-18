@@ -3,8 +3,8 @@ weight: 501
 title: Release process guidance for VictoriaLogs
 menu:
   docs:
-    parent: 'victorialogs'
-    identifier: "release-process-guidance"
+    parent: victorialogs
+    identifier: victorialogs-release-process-guidance
     weight: 501
 tags: []
 aliases:
@@ -57,11 +57,6 @@ Bumping the limits may significantly improve build speed.
       This step can be run manually with the command `make publish` from the needed git tag.
 
 1. Run `TAG=v1.xx.y make publish-latest` for publishing the `latest` tag for Docker images, which equals to the given `TAG`.
-1. Push the tag `v1.xx.y` created at the previous steps to public GitHub repository at https://github.com/VictoriaMetrics/VictoriaLogs :
-
-   ```shell
-   git push origin v1.xx.y
-   ```
 
 1. Run `TAG=v1.xx.y make github-create-release github-upload-assets`. This command performs the following tasks:
 
@@ -79,10 +74,16 @@ Bumping the limits may significantly improve build speed.
       - To run the command `TAG=v1.xx.y make github-create-release github-upload-assets`, so new release is created
         and all the needed assets are re-uploaded to it.
 
+1. Push the tag `v1.xx.y` created at the previous steps to public GitHub repository at https://github.com/VictoriaMetrics/VictoriaLogs :
+
+   ```shell
+   git push origin v1.xx.y
+   ```
+
 1. Go to <https://github.com/VictoriaMetrics/VictoriaLogs/releases> and verify that draft release with the name `TAG` has been created
    and this release contains all the needed binaries and checksums.
 1. Update the release description with the contents of [CHANGELOG](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/docs/victorialogs/CHANGELOG.md) for this release.
-1. Publish release by pressing "Publish release" green button in GitHub's UI.
+1. Publish release by pressing "Publish release" button in GitHub's UI.
 1. Update GitHub issues related to the new release - they are mentioned in the [CHANGELOG](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/docs/victorialogs/CHANGELOG.md).
    Put human-readable description on how the issue has been addressed and which particular release contains the change.
 1. Bump VictoriaLogs version at `deployment/docker/*.yml`. For example:
@@ -129,7 +130,7 @@ Once updated, run the following commands:
 
 1. Commit and push changes to `master`.
 1. Run "Release" action on Github.
-1. Merge new PRs *"Automatic update CHANGELOGs and READMEs"* and *"Synchronize docs"* after pipelines are complete.
+1. Merge new PR *"Automatic update CHANGELOGs and READMEs"* after pipelines are complete.
 
 ## Ansible Roles
 

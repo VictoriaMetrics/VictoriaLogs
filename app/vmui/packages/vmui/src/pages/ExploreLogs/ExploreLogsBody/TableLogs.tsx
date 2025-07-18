@@ -1,9 +1,8 @@
-import React, { FC, useMemo, useRef, useState } from "preact/compat";
+import { FC, useMemo, useEffect, useRef, useState } from "preact/compat";
 import "./style.scss";
 import Table from "../../../components/Table/Table";
 import { Logs } from "../../../api/types";
 import Pagination from "../../../components/Main/Pagination/Pagination";
-import { useEffect } from "react";
 
 interface TableLogsProps {
   logs: Logs[];

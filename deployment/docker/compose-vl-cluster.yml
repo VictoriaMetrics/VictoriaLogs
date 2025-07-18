@@ -11,8 +11,6 @@ services:
       - grafanadata:/var/lib/grafana
       - ./provisioning/datasources/victoriametrics-logs-datasource/cluster.yml:/etc/grafana/provisioning/datasources/cluster.yml
       - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards
-      - ./provisioning/plugins/:/var/lib/grafana/plugins
-      - ./../../dashboards/victoriametrics.json:/var/lib/grafana/dashboards/vm.json
       - ./../../dashboards/victorialogs-cluster.json:/var/lib/grafana/dashboards/vl.json
     environment:
       - "GF_INSTALL_PLUGINS=victoriametrics-logs-datasource"
@@ -36,30 +34,30 @@ services:
     user: root
 
   vlinsert:
-    image: victoriametrics/victoria-logs:v1.25.0
+    image: victoriametrics/victoria-logs:v1.25.1
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
 
   vlselect-1:
-    image: victoriametrics/victoria-logs:v1.25.0
+    image: victoriametrics/victoria-logs:v1.25.1
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
   vlselect-2:
-    image: victoriametrics/victoria-logs:v1.25.0
+    image: victoriametrics/victoria-logs:v1.25.1
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
 
   vlstorage-1:
-    image: victoriametrics/victoria-logs:v1.25.0
+    image: victoriametrics/victoria-logs:v1.25.1
     command:
       - "--storageDataPath=/vlogs"
     volumes:
       - vldata-1:/vlogs
   vlstorage-2:
-    image: victoriametrics/victoria-logs:v1.25.0
+    image: victoriametrics/victoria-logs:v1.25.1
     command:
       - "--storageDataPath=/vlogs"
     volumes:

@@ -3,7 +3,6 @@ name: 'CodeQL JS/TS'
 on:
   push:
     branches:
-      - cluster
       - master
     paths:
       - '**.js'
@@ -11,7 +10,6 @@ on:
       - '**.tsx'
   pull_request:
     branches:
-      - cluster
       - master
     paths:
       - '**.js'

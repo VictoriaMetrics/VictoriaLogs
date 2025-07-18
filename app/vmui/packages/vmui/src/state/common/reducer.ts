@@ -25,7 +25,7 @@ export type Action =
 const tenantId = getQueryStringValue("g0.tenantID", "") as string;
 
 export const initialState: AppState = {
-  serverUrl: removeTrailingSlash(getDefaultServer(tenantId)),
+  serverUrl: removeTrailingSlash(getDefaultServer()),
   tenantId,
   theme: (getFromStorage("THEME") || Theme.system) as Theme,
   isDarkTheme: null,

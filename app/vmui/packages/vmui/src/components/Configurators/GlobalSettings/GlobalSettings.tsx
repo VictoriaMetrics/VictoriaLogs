@@ -1,18 +1,15 @@
-import React, { FC, useRef } from "preact/compat";
-import ServerConfigurator from "./ServerConfigurator/ServerConfigurator";
+import { FC, useRef } from "preact/compat";
 import { ArrowDownIcon, SettingsIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import Modal from "../../Main/Modal/Modal";
 import "./style.scss";
 import Tooltip from "../../Main/Tooltip/Tooltip";
-import LimitsConfigurator from "./LimitsConfigurator/LimitsConfigurator";
 import { getAppModeEnable } from "../../../utils/app-mode";
 import classNames from "classnames";
 import Timezones from "./Timezones/Timezones";
 import ThemeControl from "../ThemeControl/ThemeControl";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
-import { APP_TYPE_LOGS } from "../../../constants/appType";
 
 const title = "Settings";
 
@@ -43,20 +40,6 @@ const GlobalSettings: FC = () => {
   };
 
   const controls = [
-    {
-      show: !appModeEnable && !APP_TYPE_LOGS,
-      component: <ServerConfigurator
-        ref={serverSettingRef}
-        onClose={handleClose}
-      />
-    },
-    {
-      show: !APP_TYPE_LOGS,
-      component: <LimitsConfigurator
-        ref={limitsSettingRef}
-        onClose={handleClose}
-      />
-    },
     {
       show: true,
       component: <Timezones ref={timezoneSettingRef}/>

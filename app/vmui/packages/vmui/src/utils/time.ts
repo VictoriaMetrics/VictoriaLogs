@@ -3,7 +3,6 @@ import dayjs, { UnitTypeShort } from "dayjs";
 import { getQueryStringValue } from "./query-string";
 import { DATE_ISO_FORMAT } from "../constants/date";
 import timezones from "../constants/timezones";
-import { APP_TYPE_LOGS } from "../constants/appType";
 
 const MAX_ITEMS_PER_CHART = window.innerWidth / 4;
 const MAX_ITEMS_PER_HISTOGRAM = window.innerWidth / 40;
@@ -140,21 +139,6 @@ export const getDurationFromPeriod = (p: TimePeriod): string => {
   return getDurationFromMilliseconds(ms);
 };
 
-export const checkDurationLimit = (dur: string): string => {
-  const durItems = dur.trim().split(" ");
-
-  const durObject = durItems.reduce((prev, curr) => {
-    const dur = isSupportedDuration(curr);
-    return dur ? { ...prev, ...dur } : { ...prev };
-  }, {});
-
-  const delta = dayjs.duration(durObject).asMilliseconds();
-
-  if (delta < limitsDurations.min) return getDurationFromMilliseconds(limitsDurations.min);
-  if (delta > limitsDurations.max) return getDurationFromMilliseconds(limitsDurations.max);
-  return dur;
-};
-
 export const dateFromSeconds = (epochTimeInSeconds: number): Date => {
   const date = dayjs(epochTimeInSeconds * 1000);
   return date.isValid() ? date.toDate() : new Date();
@@ -164,9 +148,9 @@ const getYesterday = () => dayjs().tz().subtract(1, "day").endOf("day").toDate()
 const getToday = () => dayjs().tz().endOf("day").toDate();
 
 export const relativeTimeOptions: RelativeTimeOption[] = [
-  { title: "Last 5 minutes", duration: "5m", isDefault: APP_TYPE_LOGS },
+  { title: "Last 5 minutes", duration: "5m", isDefault: true },
   { title: "Last 15 minutes", duration: "15m" },
-  { title: "Last 30 minutes", duration: "30m", isDefault: !APP_TYPE_LOGS },
+  { title: "Last 30 minutes", duration: "30m", },
   { title: "Last 1 hour", duration: "1h" },
   { title: "Last 3 hours", duration: "3h" },
   { title: "Last 6 hours", duration: "6h" },

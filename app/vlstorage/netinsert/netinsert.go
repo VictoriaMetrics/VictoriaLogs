@@ -18,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timerpool"
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastrand"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
@@ -66,8 +67,14 @@ type storageNode struct {
 	pendingData          *bytesutil.ByteBuffer
 	pendingDataLastFlush time.Time
 
-	// the unix timestamp until the storageNode is disabled for data writing.
+	// sendErrors counts failed send attempts for this storage node.
+	sendErrors *metrics.Counter
+
+	// disabledUntil contains unix timestamp until the storageNode is disabled for data writing.
 	disabledUntil atomic.Uint64
+
+	// isReachable is set to true if the given storageNode is available for data writing.
+	isReachable atomic.Bool
 }
 
 func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
@@ -89,14 +96,25 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 		},
 		ac: ac,
 
+		sendErrors: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_insert_remote_send_errors_total{addr=%q}`, addr)),
+
 		pendingData: &bytesutil.ByteBuffer{},
 	}
+
+	sn.isReachable.Store(true)
 
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
 		sn.backgroundFlusher()
 	}()
+
+	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_is_reachable{addr=%q}`, addr), func() float64 {
+		if sn.isReachable.Load() {
+			return 1
+		}
+		return 0
+	})
 
 	return sn
 }
@@ -137,6 +155,7 @@ func (sn *storageNode) addRow(r *logstorage.InsertRow) {
 
 	if len(b) > maxInsertBlockSize {
 		logger.Warnf("skipping too long log entry, since its length exceeds %d bytes; the actual log entry length is %d bytes; log entry contents: %s", maxInsertBlockSize, len(b), b)
+		bbPool.Put(bb)
 		return
 	}
 
@@ -181,7 +200,7 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 		logger.Warnf("%s; re-routing the data block to the remaining nodes", err)
 	}
 	for !sn.s.sendInsertRequestToAnyNode(pendingData) {
-		logger.Errorf("cannot send pending data to all storage nodes, since all of them are unavailable; re-trying to send the data in a second")
+		logger.Errorf("cannot send pending data to storage nodes, since all of them are unavailable; re-trying to send the data in a second")
 
 		t := timerpool.Get(time.Second)
 		select {
@@ -203,6 +222,7 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	}
 
 	if sn.disabledUntil.Load() > fasttime.UnixTimestamp() {
+		sn.sendErrors.Inc()
 		return errTemporarilyDisabled
 	}
 
@@ -230,19 +250,19 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		req.Header.Set("Content-Encoding", "zstd")
 	}
 	if err := sn.ac.SetHeaders(req, true); err != nil {
+		sn.sendErrors.Inc()
 		return fmt.Errorf("cannot set auth headers for %q: %w", reqURL, err)
 	}
 
 	resp, err := sn.c.Do(req)
 	if err != nil {
-		// Disable sn for data writing for 10 seconds.
-		sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
-
+		sn.setDisableTemporarily()
 		return fmt.Errorf("cannot send data block with the length %d to %q: %s", pendingData.Len(), reqURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 == 2 {
+		sn.isReachable.Store(true)
 		return nil
 	}
 
@@ -251,14 +271,21 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		respBody = []byte(fmt.Sprintf("%s", err))
 	}
 
-	// Disable sn for data writing for 10 seconds.
-	sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
+	sn.setDisableTemporarily()
 
 	return fmt.Errorf("unexpected status code returned when sending data block to %q: %d; want 2xx; response body: %q", reqURL, resp.StatusCode, respBody)
 }
 
 func (sn *storageNode) getRequestURL(path string) string {
 	return fmt.Sprintf("%s://%s%s?version=%s", sn.scheme, sn.addr, path, url.QueryEscape(ProtocolVersion))
+}
+
+func (sn *storageNode) setDisableTemporarily() {
+	// Disable sending data to this sn for 10 seconds.
+	sn.disabledUntil.Store(fasttime.UnixTimestamp() + 10)
+
+	sn.sendErrors.Inc()
+	sn.isReachable.Store(false)
 }
 
 var zstdBufPool bytesutil.ByteBufferPool

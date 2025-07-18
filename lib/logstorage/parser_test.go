@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -140,6 +141,108 @@ func TestQuery_AddTimeFilter(t *testing.T) {
 	f(`* | format if (x:contains_any(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_any(options(ignore_global_time_filter=true) y | fields x)) foo`)
 	f(`* | format if (x:contains_all(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
 	f(`* | format if (x:contains_all(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_all(options(ignore_global_time_filter=true) y | fields x)) foo`)
+
+	// queries with rate and sum_rate (the time filter must propagate to them)
+	f(`* | rate() x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate() as x`)
+	f(`* | rate_sum(requests) x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate_sum(requests) as x`)
+	f(`* | join on (x) (* | rate() y) | rate() z`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | join by (x) (_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate() as y) | stats rate() as z`)
+}
+
+func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
+	newQueryWithTimeFilter := func(qStr, tStartStr, tEndStr string) *Query {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			panic(fmt.Errorf("unexpected error in ParseQuery(%q): %s", qStr, err))
+		}
+
+		tStart, err := time.Parse(time.RFC3339, tStartStr)
+		if err != nil {
+			panic(fmt.Errorf("cannot parse tStartStr=%q: %s", tStartStr, err))
+		}
+		tEnd, err := time.Parse(time.RFC3339, tEndStr)
+		if err != nil {
+			panic(fmt.Errorf("cannot parse tEndStr=%q: %s", tEndStr, err))
+		}
+		q.AddTimeFilter(tStart.UnixNano(), tEnd.UnixNano())
+
+		return q
+	}
+
+	tStartStr := "2024-12-25T14:56:43Z"
+	tEndStr := "2024-12-26T14:56:42Z"
+	stepSecondsExpected := float64(86400)
+
+	// Verify step propagation to the query pipes
+	t.Run("query-pipes", func(t *testing.T) {
+		q := newQueryWithTimeFilter(`* | rate(), rate_sum(x)`, tStartStr, tEndStr)
+		if len(q.pipes) != 1 {
+			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+		}
+		ps, ok := q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", q.pipes[0])
+		}
+
+		if len(ps.funcs) != 2 {
+			t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+		}
+
+		sr, ok := ps.funcs[0].f.(*statsRate)
+		if !ok {
+			t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+		}
+		if sr.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+		}
+
+		srs, ok := ps.funcs[1].f.(*statsRateSum)
+		if !ok {
+			t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+		}
+		if srs.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+		}
+	})
+
+	// Verify step propagation to subquery pipes
+	t.Run("subquery-pipes", func(t *testing.T) {
+		q := newQueryWithTimeFilter(`* | join on (x) (* | rate(), rate_sum(x))`, tStartStr, tEndStr)
+		if len(q.pipes) != 1 {
+			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+		}
+
+		pj, ok := q.pipes[0].(*pipeJoin)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeJoin", q.pipes[0])
+		}
+
+		ps, ok := pj.q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", pj.q.pipes[0])
+		}
+
+		if len(ps.funcs) != 2 {
+			t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+		}
+
+		sr, ok := ps.funcs[0].f.(*statsRate)
+		if !ok {
+			t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+		}
+		if sr.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+		}
+
+		srs, ok := ps.funcs[1].f.(*statsRateSum)
+		if !ok {
+			t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+		}
+		if srs.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+		}
+	})
 }
 
 func TestParseQuery_OptimizeStarFilters(t *testing.T) {

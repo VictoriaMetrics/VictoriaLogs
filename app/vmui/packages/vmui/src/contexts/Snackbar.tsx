@@ -1,9 +1,8 @@
-import React, { createContext, FC, useContext, useEffect, useState } from "preact/compat";
+import { createContext, FC, useContext, useEffect, useState, ReactNode } from "preact/compat";
 import Alert from "../components/Main/Alert/Alert";
 import useDeviceDetect from "../hooks/useDeviceDetect";
 import classNames from "classnames";
 import { CloseIcon } from "../components/Main/Icons";
-import { ReactNode } from "react";
 
 interface SnackbarItem {
   text: string | ReactNode,

@@ -1,7 +1,6 @@
-import React, { FC, useEffect, useState } from "preact/compat";
+import { FC, useEffect, useState } from "preact/compat";
 import uPlot, { Series } from "uplot";
 import "./style.scss";
-import "../../Line/Legend/style.scss";
 import BarHitsLegendItem from "./BarHitsLegendItem";
 import { LegendLogHits } from "../../../../api/types";
 

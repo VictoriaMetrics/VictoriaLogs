@@ -1,5 +1,4 @@
-import { FC, RefObject, useCallback, useRef } from "preact/compat";
-import { createPortal } from "preact/compat";
+import { FC, RefObject, useCallback, useRef, createPortal } from "preact/compat";
 import DownloadLogsButton from "../../../DownloadLogsButton/DownloadLogsButton";
 import Button from "../../../../../components/Main/Button/Button";
 import SelectLimit from "../../../../../components/Main/Pagination/SelectLimit/SelectLimit";
@@ -93,7 +92,6 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
           <Button
             ref={settingButtonRef}
             variant="text"
-            color="secondary"
             onClick={openSettings}
             startIcon={<SettingsIcon/>}
             ariaLabel={"Settings"}

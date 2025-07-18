@@ -240,8 +240,8 @@ The following guide covers the following topics for Linux host:
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.25.0-victorialogs/victoria-logs-linux-amd64-v1.25.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.25.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.25.1-victorialogs/victoria-logs-linux-amd64-v1.25.1.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.25.1.tar.gz
 ```
 
 Start the first [`vlstorage` node](#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs at `victoria-logs-data-1` directory:

@@ -78,6 +78,7 @@ var localStorage *logstorage.Storage
 var localStorageMetrics *metrics.Set
 
 var netstorageInsert *netinsert.Storage
+
 var netstorageSelect *netselect.Storage
 
 // Init initializes vlstorage.

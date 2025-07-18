@@ -36,8 +36,8 @@ Just download archive for the needed Operating system and architecture, unpack i
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.25.0/victoria-logs-linux-amd64-v1.25.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.25.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.25.1/victoria-logs-linux-amd64-v1.25.1.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.25.1.tar.gz
 ./victoria-logs-prod -storageDataPath=victoria-logs-data
 ```
 
@@ -61,7 +61,7 @@ Here is the command to run VictoriaLogs in a Docker container:
 
 ```sh
 docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
-  docker.io/victoriametrics/victoria-logs:v1.25.0 -storageDataPath=victoria-logs-data
+  docker.io/victoriametrics/victoria-logs:v1.25.1 -storageDataPath=victoria-logs-data
 ```
 
 See also:
@@ -80,14 +80,14 @@ or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm ch
 
 Follow the following steps in order to build VictoriaLogs from source code:
 
-- Checkout VictoriaLogs source code. It is located in the VictoriaMetrics repository:
+- Checkout VictoriaLogs source code:
 
   ```sh
   git clone https://github.com/VictoriaMetrics/VictoriaLogs
   cd VictoriaLogs
   ```
 
-- Build VictoriaLogs. The build command requires [Go 1.22](https://golang.org/doc/install).
+- Build VictoriaLogs:
 
   ```sh
   make victoria-logs

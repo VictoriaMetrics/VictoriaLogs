@@ -19,6 +19,21 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: proxy requests to `/api/v1/notifiers`, `/api/v1/alerts` and `/api/v1/rules` to VMAlert, when `-vmalert.proxyURL` flag is set. See [#8272](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8272).
+* FEATURE: [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/): add ability to configure auth options and TLS options for connections to the `-datasource.url`. See [auth options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#auth-options) and [TLS options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#tls-options). See [this feature request](https://github.com/VictoriaMetrics/VictoriaLogs/issues/54). Thanks to @thom-vend for [the initial pull request](https://github.com/VictoriaMetrics/VictoriaLogs/pull/457).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the ability to hide the logs panel to view only the graph. When the logs panel is hidden, the `/query` request is not executed.
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve autocomplete functionality with enhanced quick autocomplete via hotkey support and removed special characters from autocomplete suggestions. See [this comment](https://github.com/VictoriaMetrics/VictoriaLogs/issues/70#issuecomment-3043591443) for details.
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent groups from automatically expanding on list updates if all groups were previously collapsed. See [#92](https://github.com/VictoriaMetrics/VictoriaLogs/issues/92).
+
+## [v1.25.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.1)
+
+Released at 2025-07-14
+
+* SECURITY: upgrade Go builder from Go1.24.4 to Go1.24.5. See [the list of issues addressed in Go1.24.5](https://github.com/golang/go/issues?q=milestone%3AGo1.24.5+label%3ACherryPickApproved).
+
+* FEATURE: [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/): expose `vl_insert_remote_send_errors_total`, `vl_select_remote_send_errors_total` and `vl_insert_remote_is_reachable` metrics at the [`/metrics` page](https://docs.victoriametrics.com/victorialogs/#monitoring) for monitoring failed remote insert/select attempts per `vlstorage` node and detecting temporarily unavailable `vlstorage` nodes.
+
+* BUGFIX: properly return VictoriaLogs version at `./victoria-logs -version` and at the `vm_app_version` metric exposed via [`/metrics` page](https://docs.victoriametrics.com/victorialogs/#monitoring). See [#409](https://github.com/VictoriaMetrics/VictoriaLogs/issues/409). The bug has been introduced in [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0).
 
 ## [v1.25.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.0)
 
