@@ -431,7 +431,7 @@ func (ddb *datadb) bigPartsMerger() {
 func getPartsToMergeLocked(pws []*partWrapper, maxOutBytes uint64) []*partWrapper {
 	pwsRemaining := make([]*partWrapper, 0, len(pws))
 	for _, pw := range pws {
-		if !pw.isInMerge {
+		if !pw.isInMerge && !pw.p.isPayingAsyncTask() {
 			pwsRemaining = append(pwsRemaining, pw)
 		}
 	}
@@ -477,6 +477,26 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 
 	dstPartType := ddb.getDstPartType(pws, isFinal)
 	if dstPartType != partInmemory {
+		hasDelete := false
+		fullOnes := true
+		totalOnes := uint64(0)
+		for i := range pws {
+			if pws[i].p.marker != nil && pws[i].p.marker.delete.Load() != nil {
+				hasDelete = true
+				for _, rle := range pws[i].p.marker.delete.Load().rows {
+					fullOnes = fullOnes && rle.IsOnes(pws[i].p.ph.RowsCount)
+					totalOnes += rle.CountOnes()
+				}
+			}
+		}
+		if hasDelete && fullOnes {
+			logger.Infof("DEBUG: mustMergeParts (fullOnes): pws=%d, hasDelete=%t, fullOnes=%t, totalOnes=%d", len(pws), hasDelete, fullOnes, totalOnes)
+		} else if hasDelete {
+			logger.Infof("DEBUG: mustMergeParts: pws=%d, hasDelete=%t, fullOnes=%t, totalOnes=%d", len(pws), hasDelete, fullOnes, totalOnes)
+		}
+	}
+
+	if dstPartType != partInmemory {
 		// Make sure there is enough disk space for performing the merge
 		partsSize := getCompressedSize(pws)
 		needReleaseDiskSpace := tryReserveDiskSpace(ddb.path, partsSize)
@@ -517,7 +537,9 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	if isFinal && len(pws) == 1 && pws[0].mp != nil {
 		// Fast path: flush a single in-memory part to disk.
 		mp := pws[0].mp
-		mp.MustStoreToDisk(dstPartPath)
+		// Persist applied sequence from the source part so the newly flushed part is immediately up-to-date.
+		appliedSeq := pws[0].p.appliedTSeq.Load()
+		mp.MustStoreToDisk(dstPartPath, appliedSeq)
 		pwNew := ddb.openCreatedPart(&mp.ph, pws, nil, dstPartPath)
 		ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
 		return
@@ -543,7 +565,16 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		bsw.MustInitForInmemoryPart(mpNew)
 	} else {
 		nocache := dstPartType == partBig
-		bsw.MustInitForFilePart(dstPartPath, nocache)
+
+		minSeq := uint64(math.MaxUint64)
+		for _, pw := range pws {
+			seq := pw.p.appliedTSeq.Load()
+			if seq < minSeq {
+				minSeq = seq
+			}
+		}
+
+		bsw.MustInitForFilePart(dstPartPath, nocache, minSeq)
 	}
 
 	// Merge source parts to destination part.
@@ -577,6 +608,11 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 
 	// Atomically swap the source parts with the newly created part.
 	pwNew := ddb.openCreatedPart(&ph, pws, mpNew, dstPartPath)
+	if ph.RowsCount == 0 {
+		logger.Infof("DEBUG: mustMergeParts: result is an empty part, removing it: %s", dstPartPath)
+	} else if ph.RowsCount < srcRowsCount {
+		logger.Infof("DEBUG: mustMergeParts: result is a partial part, saving: %d rows, current: %d rows", srcRowsCount-ph.RowsCount, ph.RowsCount)
+	}
 
 	dstSize := uint64(0)
 	dstRowsCount := uint64(0)
@@ -642,7 +678,6 @@ func (ddb *datadb) getDstPartPath(dstPartType partType, mergeIdx uint64) string 
 func (ddb *datadb) openCreatedPart(ph *partHeader, pws []*partWrapper, mpNew *inmemoryPart, dstPartPath string) *partWrapper {
 	// Open the created part.
 	if ph.RowsCount == 0 {
-		// The created part is empty. Remove it
 		if mpNew == nil {
 			fs.MustRemoveAll(dstPartPath)
 		}
@@ -1347,8 +1382,8 @@ func (ddb *datadb) mustForceMergeAllParts() {
 
 	// Collect all the file parts for forced merge
 	ddb.partsLock.Lock()
-	pws = appendAllPartsForMergeLocked(pws, ddb.smallParts)
-	pws = appendAllPartsForMergeLocked(pws, ddb.bigParts)
+	pws = appendAllPartsForForceMergeLocked(pws, ddb.smallParts)
+	pws = appendAllPartsForForceMergeLocked(pws, ddb.bigParts)
 	ddb.partsLock.Unlock()
 
 	// If len(pws) == 1, then the merge must run anyway.
@@ -1374,7 +1409,7 @@ func (ddb *datadb) mustForceMergeAllParts() {
 	putWaitGroup(wg)
 }
 
-func appendAllPartsForMergeLocked(dst, src []*partWrapper) []*partWrapper {
+func appendAllPartsForForceMergeLocked(dst, src []*partWrapper) []*partWrapper {
 	for _, pw := range src {
 		if !pw.isInMerge {
 			pw.isInMerge = true
@@ -1382,4 +1417,20 @@ func appendAllPartsForMergeLocked(dst, src []*partWrapper) []*partWrapper {
 		}
 	}
 	return dst
+}
+
+func mustReadAppliedTSeq(partPath string) uint64 {
+	seqPath := filepath.Join(partPath, appliedTSeqFilename)
+	if !fs.IsPathExist(seqPath) {
+		return 0
+	}
+	data, err := os.ReadFile(seqPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot read %q: %s", seqPath, err)
+	}
+	var seq uint64
+	if _, err := fmt.Sscanf(string(data), "%d", &seq); err != nil {
+		logger.Panicf("FATAL: cannot parse appliedTSeq from %q: %s", seqPath, err)
+	}
+	return seq
 }
