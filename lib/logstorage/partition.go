@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -53,6 +54,22 @@ func mustCreatePartition(path string) {
 //
 // The partition must be closed with MustClose before deleting it.
 func mustDeletePartition(path string) {
+	if !fs.IsPathExist(path) {
+		return
+	}
+
+	tombstone := filepath.Join(path, ".delete")
+	f, err := os.OpenFile(tombstone, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		if !os.IsExist(err) {
+			logger.Panicf("FATAL: cannot create delete marker %q: %s", tombstone, err)
+		}
+		// marker already exists – probably retry after crash
+	} else {
+		fs.MustClose(f)
+		fs.MustSyncPath(path)
+	}
+
 	fs.MustRemoveAll(path)
 }
 

@@ -15,6 +15,22 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 )
 
+// mustSweepPartitionsMarkedForDeletion removes directories inside dir that contain a ".delete" sentinel file.
+// These directories were marked for asynchronous removal by a previous run but weren't fully deleted
+// due to crash or interruption.
+func mustSweepPartialDeletedPartitions(dir string) {
+	des := fs.MustReadDir(dir)
+	for _, de := range des {
+		if !fs.IsDirOrSymlink(de) {
+			continue
+		}
+		p := filepath.Join(dir, de.Name())
+		if fs.IsPathExist(filepath.Join(p, ".delete")) {
+			fs.MustRemoveAll(p)
+		}
+	}
+}
+
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
 type StorageStats struct {
 	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is smaller than the minimum allowed
@@ -141,6 +157,11 @@ type Storage struct {
 	//
 	// It reduces the load on persistent storage during querying by _stream:{...} filter.
 	filterStreamCache *cache
+
+	// minKeptDay is set ONLY after the disk-space watcher removes recent partitions.
+	// It marks the earliest day still kept; older days are rejected during ingestion
+	// to avoid re-creating partitions just purged for space.
+	minKeptDay atomic.Int64
 }
 
 type partitionWrapper struct {
@@ -263,6 +284,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
+	mustSweepPartialDeletedPartitions(partitionsPath)
 	des := fs.MustReadDir(partitionsPath)
 	ptws := make([]*partitionWrapper, len(des))
 
@@ -423,6 +445,12 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 
 			break
 		}
+		// Update minKeptDay after deletions triggered by disk-space watcher.
+		if len(s.partitions) > 0 {
+			s.minKeptDay.Store(s.partitions[0].day)
+		} else {
+			s.minKeptDay.Store(0)
+		}
 		s.partitionsLock.Unlock()
 
 		for i, ptw := range ptwsToDelete {
@@ -542,6 +570,9 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 
 	// Slow path - rows cannot be added to the hot partition, so split rows among available partitions
 	minAllowedDay := s.getMinAllowedDay()
+	if d := s.minKeptDay.Load(); d > minAllowedDay {
+		minAllowedDay = d
+	}
 	maxAllowedDay := s.getMaxAllowedDay()
 	m := make(map[int64]*LogRows)
 	for i, ts := range lr.timestamps {
