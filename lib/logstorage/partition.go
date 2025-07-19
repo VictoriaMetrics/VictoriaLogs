@@ -64,7 +64,7 @@ func mustDeletePartition(path string) {
 		if !os.IsExist(err) {
 			logger.Panicf("FATAL: cannot create delete marker %q: %s", tombstone, err)
 		}
-		// marker already exists – probably retry after crash
+		// marker already exists – it will be eventually deleted.
 	} else {
 		fs.MustClose(f)
 		fs.MustSyncPath(path)
