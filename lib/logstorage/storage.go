@@ -15,7 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 )
 
-// mustSweepPartitionsMarkedForDeletion removes directories inside dir that contain a ".delete" sentinel file.
+// mustSweepPartialDeletedPartitions removes directories inside dir that contain a ".delete" sentinel file.
 // These directories were marked for asynchronous removal by a previous run but weren't fully deleted
 // due to crash or interruption.
 func mustSweepPartialDeletedPartitions(dir string) {
