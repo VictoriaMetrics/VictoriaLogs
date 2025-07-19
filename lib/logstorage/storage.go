@@ -284,9 +284,9 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
-	mustSweepPartialDeletedPartitions(partitionsPath)
-	des := fs.MustReadDir(partitionsPath)
+	des := getPartitionDirs(partitionsPath)
 	ptws := make([]*partitionWrapper, len(des))
+	mustSweepPartialDeletedPartitions(partitionsPath)
 
 	// Open partitions in parallel. This should improve VictoriaLogs initialization duration
 	// when it opens many partitions.
@@ -343,6 +343,26 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	s.runRetentionWatcher()
 	s.runMaxDiskSpaceUsageWatcher()
 	return s
+}
+
+func getPartitionDirs(partitionsPath string) []os.DirEntry {
+	des := fs.MustReadDir(partitionsPath)
+
+	var validDes []os.DirEntry
+	for _, de := range des {
+		if !fs.IsDirOrSymlink(de) {
+			continue
+		}
+		p := filepath.Join(partitionsPath, de.Name())
+		if fs.IsPathExist(filepath.Join(p, ".delete")) {
+			// Partition scheduled for deletion; finish removal and skip.
+			fs.MustRemoveAll(p)
+			continue
+		}
+		validDes = append(validDes, de)
+	}
+
+	return validDes
 }
 
 const partitionNameFormat = "20060102"
