@@ -3,6 +3,7 @@ package logstorage
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -141,6 +142,11 @@ type Storage struct {
 	//
 	// It reduces the load on persistent storage during querying by _stream:{...} filter.
 	filterStreamCache *cache
+
+	// minKeptDay is set ONLY after the disk-space watcher removes recent partitions.
+	// It marks the earliest day still kept; older days are rejected during ingestion
+	// to avoid re-creating partitions just purged for space.
+	minKeptDay atomic.Int64
 }
 
 type partitionWrapper struct {
@@ -414,14 +420,17 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 			s.partitions = ptws[i:]
 
 			// Remove reference to deleted partitions from s.ptwHot
-			for _, ptw := range ptwsToDelete {
-				if ptw == s.ptwHot {
-					s.ptwHot = nil
-					break
-				}
+			if slices.Contains(ptwsToDelete, s.ptwHot) {
+				s.ptwHot = nil
 			}
 
 			break
+		}
+		// Update minKeptDay after deletions triggered by disk-space watcher.
+		if len(s.partitions) > 0 {
+			s.minKeptDay.Store(s.partitions[0].day)
+		} else {
+			s.minKeptDay.Store(0)
 		}
 		s.partitionsLock.Unlock()
 
@@ -542,6 +551,9 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 
 	// Slow path - rows cannot be added to the hot partition, so split rows among available partitions
 	minAllowedDay := s.getMinAllowedDay()
+	if d := s.minKeptDay.Load(); d > minAllowedDay {
+		minAllowedDay = d
+	}
 	maxAllowedDay := s.getMaxAllowedDay()
 	m := make(map[int64]*LogRows)
 	for i, ts := range lr.timestamps {
