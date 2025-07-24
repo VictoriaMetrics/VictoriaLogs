@@ -20,7 +20,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * SECURITY: upgrade base docker image (Alpine) from 3.22.0 to 3.22.1. See [Alpine 3.22.1 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.8-3.20.7-3.21.4-3.22.1-released.html).
 
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix broken "Collapse all" button in Group view. See [#509](https://github.com/VictoriaMetrics/VictoriaLogs/issues/509).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix broken "Collapse all" button in Group view. See [#509](https://github.com/VictoriaMetrics/VictoriaLogs/issues/509). The bug has been introduced in [v1.26.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.26.0).
 
 ## [v1.26.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.26.0)
 
