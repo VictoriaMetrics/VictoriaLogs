@@ -209,9 +209,11 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 
 1. Run VictoriaLogs with `-syslog.listenAddr.tcp=:29514` command-line flag.
 1. Put the following line to [rsyslog](https://www.rsyslog.com/) config (this config is usually located at `/etc/rsyslog.conf`):
+
    ```
    *.* @@victoria-logs-server:29514
    ```
+
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs. See [these docs](https://www.rsyslog.com/sending-messages-to-a-remote-syslog-server/)
    for more details.
 
@@ -219,10 +221,12 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 
 1. Run VictoriaLogs with `-syslog.listenAddr.tcp=:29514` command-line flag.
 1. Put the following line to [syslog-ng](https://www.syslog-ng.com/) config:
+
    ```
    destination d_remote {
     tcp("victoria-logs-server" port(29514));
    };
    ```
+
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs.
    See [these docs](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.19/administration-guide/29#TOPIC-1094570) for details.

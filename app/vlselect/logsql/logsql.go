@@ -1137,7 +1137,7 @@ func parseCommonArgs(r *http.Request) (*logstorage.Query, []logstorage.TenantID,
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot obtain tenanID: %w", err)
+		return nil, nil, fmt.Errorf("cannot obtain tenantID: %w", err)
 	}
 	tenantIDs := []logstorage.TenantID{tenantID}
 

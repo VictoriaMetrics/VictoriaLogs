@@ -2876,7 +2876,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 		}
 		result := q.CanReturnLastNResults()
 		if result != resultExpected {
-			t.Fatalf("unexpected result for CanRetrurnLastNResults(%q); got %v; want %v", qStr, result, resultExpected)
+			t.Fatalf("unexpected result for CanReturnLastNResults(%q); got %v; want %v", qStr, result, resultExpected)
 		}
 	}
 
@@ -3161,7 +3161,7 @@ func TestQueryGetStatsByFields_Failure(t *testing.T) {
 			t.Fatalf("expecting non-nil error for ParseQuery(%q)", qStr)
 		}
 		if fields != nil {
-			t.Fatalf("expectig nil fields for ParseQuery(%q); got %q", qStr, fields)
+			t.Fatalf("expecting nil fields for ParseQuery(%q); got %q", qStr, fields)
 		}
 	}
 

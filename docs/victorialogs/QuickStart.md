@@ -53,7 +53,6 @@ See also:
 - [How to ingest logs into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/)
 
-
 ### Docker image
 
 You can run VictoriaLogs in a Docker container. It is the easiest way to start using VictoriaLogs.
@@ -111,7 +110,6 @@ See also:
 - [How to ingest logs into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/)
 
-
 ## How to configure VictoriaLogs
 
 VictoriaLogs is configured via command-line flags. All the command-line flags have sane defaults,
@@ -153,5 +151,5 @@ Docker-compose demos that integrate VictoriaLogs and various log collectors:
 - [Promtail demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/promtail)
 
 You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts as a demo for running Vector 
+or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts as a demo for running Vector
 in Kubernetes with VictoriaLogs.

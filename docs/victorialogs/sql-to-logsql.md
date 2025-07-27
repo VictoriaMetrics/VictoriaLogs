@@ -13,7 +13,6 @@ tags:
 This is a tutorial for the migration from SQL to [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
 It is expected you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
-
 ## data model
 
 SQL is usually used for querying relational tables. Every such table contains a pre-defined set of columns with pre-defined types.
@@ -68,31 +67,31 @@ See the [conversion rules](#conversion-rules) on how to convert SQL to LogsQL.
 
 The following rules must be used for converting SQL query into LogsQL query:
 
-* If the SQL query contains `WHERE`, then convert it into [LogsQL filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
+- If the SQL query contains `WHERE`, then convert it into [LogsQL filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
   Otherwise just start LogsQL query with [`*`](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter).
   For example, `SELECT * FROM table WHERE field1=value1 AND field2<>value2` is converted into `field1:=value1 field2:!=value2`,
   while `SELECT * FROM table` is converted into `*`.
-* `IN` subqueries inside `WHERE` must be converted into [`in` filters](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter).
+- `IN` subqueries inside `WHERE` must be converted into [`in` filters](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter).
   For example, `SELECT * FROM table WHERE id IN (SELECT id2 FROM table)` is converted into `id:in(* | fields id2)`.
-* If the `SELECT` part isn't equal to `*` and there are no `GROUP BY` / aggregate functions in the SQL query, then enumerate
+- If the `SELECT` part isn't equal to `*` and there are no `GROUP BY` / aggregate functions in the SQL query, then enumerate
   the selected columns at [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe).
   For example, `SELECT field1, field2 FROM table` is converted into `* | fields field1, field2`.
-* If the SQL query contains `JOIN`, then convert it into [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe).
-* If the SQL query contains `GROUP BY` / aggregate functions, then convert them to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
+- If the SQL query contains `JOIN`, then convert it into [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe).
+-- If the SQL query contains `GROUP BY` / aggregate functions, then convert them to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
   For example, `SELECT count(*) FROM table` is converted into `* | count()`, while `SELECT user_id, count(*) FROM table GROUP BY user_id`
   is converted to `* | stats by (user_id) count()`. Note how the LogsQL query mentions the `GROUP BY` fields only once,
   while SQL forces mentioning these fields twice - at the `SELECT` and at the `GROUP BY`. How many times did you hit the discrepancy
   between `SELECT` and `GROUP BY` fields?
-* If the SQL query contains additional calculations and/or transformations at the `SELECT`, which aren't covered yet by `GROUP BY`,
+- If the SQL query contains additional calculations and/or transformations at the `SELECT`, which aren't covered yet by `GROUP BY`,
   then convert them into the corresponding [LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
   The most frequently used pipes are [`math`](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe)
   and [`format`](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe).
   For example, `SELECT field1 + 10 AS x, CONCAT("foo", field2) AS y FROM table` is converted into `* | math field1 + 10 as x | format "foo<field2>" as y | fields x, y`.
-* If the SQL query contains `HAVING`, then convert it into [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe).
+- If the SQL query contains `HAVING`, then convert it into [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe).
   For example, `SELECT user_id, count(*) AS c FROM table GROUP BY user_id HAVING c > 100` is converted into `* | stats by (user_id) count() c | filter c:>100`.
-* If the SQL query contains `ORDER BY`, `LIMIT` and `OFFSET`, then convert them into [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe).
+- If the SQL query contains `ORDER BY`, `LIMIT` and `OFFSET`, then convert them into [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe).
   For example, `SELECT * FROM table ORDER BY field1, field2 LIMIT 10 OFFSET 20` is converted into `* | sort by (field1, field2) limit 10 offset 20`.
-* If the SQL query contains `UNION`, then convert it into [`union` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe).
+- If the SQL query contains `UNION`, then convert it into [`union` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe).
   For example `SELECT * FROM table WHERE filters1 UNION ALL SELECT * FROM table WHERE filters2` is converted into `filters1 | union (filters2)`.
 
 SQL queries are frequently used for obtaining top N column values, which are the most frequently seen in the selected rows.

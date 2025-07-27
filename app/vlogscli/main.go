@@ -39,7 +39,7 @@ var (
 	projectID = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
 
 	username    = flag.String("username", "", "Optional basic auth username to use for the -datasource.url")
-	password    = flagutil.NewPassword("password", "Optional basic auth password to use for the -datsource.url")
+	password    = flagutil.NewPassword("password", "Optional basic auth password to use for the -datasource.url")
 	bearerToken = flagutil.NewPassword("bearerToken", "Optional bearer auth token to use for the -datasource.url")
 
 	tlsCAFile     = flag.String("tlsCAFile", "", "Optional path to TLS CA file to use for verifying connections to the -datasource.url. By default, system CA is used")

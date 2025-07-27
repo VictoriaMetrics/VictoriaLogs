@@ -16,6 +16,7 @@ aliases:
 ### For MacOS users
 
 Make sure you have GNU version of utilities `zip`, `tar`, `sha256sum`. To install them run the following commands:
+
 ```sh
 brew install coreutils
 brew install gnu-tar
@@ -23,12 +24,13 @@ export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 ```
 
 Docker may need additional configuration changes:
-```sh 
+
+```sh
 docker buildx create --use --name=qemu
 docker buildx inspect --bootstrap  
 ```
 
-By default, docker on MacOS has limited amount of resources (CPU, mem) to use. 
+By default, docker on MacOS has limited amount of resources (CPU, mem) to use.
 Bumping the limits may significantly improve build speed.
 
 ## Release version and Docker images
@@ -49,11 +51,11 @@ Bumping the limits may significantly improve build speed.
       This step can be run manually with the command `make release` from the needed git tag.
    - b) Build and publish [multi-platform Docker images](https://docs.docker.com/build/buildx/multiplatform-images/) for the given `TAG`.
       The multi-platform Docker image is built for the following platforms:
-      * linux/amd64
-      * linux/arm64
-      * linux/arm
-      * linux/ppc64le
-      * linux/386
+      - linux/amd64
+      - linux/arm64
+      - linux/arm
+      - linux/ppc64le
+      - linux/386
       This step can be run manually with the command `make publish` from the needed git tag.
 
 1. Run `TAG=v1.xx.y make publish-latest` for publishing the `latest` tag for Docker images, which equals to the given `TAG`.
@@ -74,7 +76,7 @@ Bumping the limits may significantly improve build speed.
       - To run the command `TAG=v1.xx.y make github-create-release github-upload-assets`, so new release is created
         and all the needed assets are re-uploaded to it.
 
-1. Push the tag `v1.xx.y` created at the previous steps to public GitHub repository at https://github.com/VictoriaMetrics/VictoriaLogs :
+1. Push the tag `v1.xx.y` created at the previous steps to public GitHub repository at [https://github.com/VictoriaMetrics/VictoriaLogs](https://github.com/VictoriaMetrics/VictoriaLogs) :
 
    ```shell
    git push origin v1.xx.y
@@ -117,7 +119,7 @@ The helm chart repository [https://github.com/VictoriaMetrics/helm-charts/](http
 
 Bump `appVersion` field in `Chart.yaml` with new release version.
 Add new line to "Next release" section in `CHANGELOG.md` about version update (the line must always start with "`-`"). Do **NOT** change headers in `CHANGELOG.md`.
-Bump `version` field in `Chart.yaml` with incremental semver version (based on the `CHANGELOG.md` analysis). 
+Bump `version` field in `Chart.yaml` with incremental semver version (based on the `CHANGELOG.md` analysis).
 
 Do these updates to the following charts:
 

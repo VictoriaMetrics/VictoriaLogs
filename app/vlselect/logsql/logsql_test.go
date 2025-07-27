@@ -46,7 +46,7 @@ func TestParseExtraFilters_Failure(t *testing.T) {
 	f(`[1,2]`)
 	f(`{"foo":[1]}`)
 
-	// Invliad LogsQL filter
+	// Invalid LogsQL filter
 	f(`foo:(bar`)
 
 	// excess pipe
@@ -95,7 +95,7 @@ func TestParseExtraStreamFilters_Failure(t *testing.T) {
 	f(`[1,2]`)
 	f(`{"foo":[1]}`)
 
-	// Invliad LogsQL filter
+	// Invalid LogsQL filter
 	f(`foo:(bar`)
 
 	// excess pipe

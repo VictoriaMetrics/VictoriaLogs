@@ -596,7 +596,7 @@ func (q *Query) AddPipeLimit(n uint64) {
 	q.optimize()
 }
 
-// optimize applies various optimations to q.
+// optimize applies various optimizations to q.
 func (q *Query) optimize() {
 	q.visitSubqueries(func(q *Query) {
 		q.optimizeNoSubqueries()

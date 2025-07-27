@@ -159,7 +159,7 @@ func TestPipeExtract(t *testing.T) {
 		},
 	})
 
-	// single row, partial partern match
+	// single row, partial pattern match
 	f(`extract "foo=<bar> baz=<xx>" from x`, [][]Field{
 		{
 			{"x", `a foo="a\"b\\c" cde baz=aa`},

@@ -115,9 +115,9 @@ This enables [full-text search](https://docs.victoriametrics.com/victorialogs/lo
 
 VictoriaLogs supports the following special fields additionally to arbitrary [other fields](#other-fields):
 
-* [`_msg` field](#message-field)
-* [`_time` field](#time-field)
-* [`_stream` and `_stream_id` fields](#stream-fields)
+- [`_msg` field](#message-field)
+- [`_time` field](#time-field)
+- [`_stream` and `_stream_id` fields](#stream-fields)
 
 ### Message field
 
@@ -193,9 +193,11 @@ Every ingested log entry is associated with a log stream. Every log stream consi
   via [`_stream_id:...` filter](https://docs.victoriametrics.com/victorialogs/logsql/#_stream_id-filter).
 
 - `_stream` - this field contains stream labels in the format similar to [labels in Prometheus metrics](https://docs.victoriametrics.com/victoriametrics/keyconcepts/#labels):
+
   ```
   {field1="value1", ..., fieldN="valueN"}
   ```
+
   For example, if `host` and `app` fields are associated with the stream, then the `_stream` field will have `{host="host-123",app="my-app"}` value
   for the log entry with `host="host-123"` and `app="my-app"` fields. The `_stream` field can be searched
   with [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).

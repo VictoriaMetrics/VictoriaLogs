@@ -18,7 +18,7 @@ func TestU128MarshalUnmarshal(t *testing.T) {
 			t.Fatalf("unexpected error at unmarshal(%s): %s", u, err)
 		}
 		if len(tail) != 0 {
-			t.Fatalf("unexpected non-emtpy tail after unmarshal(%s): %X", u, tail)
+			t.Fatalf("unexpected non-empty tail after unmarshal(%s): %X", u, tail)
 		}
 		if !reflect.DeepEqual(u, &u2) {
 			t.Fatalf("unexpected value obtained from unmarshal(%s); got %s; want %s", u, &u2, u)

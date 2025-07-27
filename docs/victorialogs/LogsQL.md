@@ -30,6 +30,7 @@ LogsQL provides the following features:
 If you aren't familiar with VictoriaLogs, then start with [key concepts docs](https://docs.victoriametrics.com/victorialogs/keyconcepts/).
 
 Then follow these docs:
+
 - [How to run VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/).
 - [how to ingest data into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
@@ -284,7 +285,6 @@ The list of LogsQL filters:
 - [`Less than` filter](#lt_field-filter) - matches logs where the given field value is smaller than the other field value
 - [`Less than or equal` filter](#le_field-filter) - matches logs where the given field value doesn't exceed the other field value
 - [Logical filter](#logical-filter) - allows combining other filters
-
 
 ### Time filter
 
@@ -576,7 +576,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Phrase filter
 
 Is you need to search for log messages with the specific phrase inside them, then just wrap the phrase into quotes according to [these docs](#string-literals).
@@ -638,7 +637,6 @@ See also:
 - [Word filter](#word-filter)
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Prefix filter
 
@@ -715,7 +713,6 @@ See also:
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Substring filter
 
 If it is needed to find logs with some substring, then `~"substring"` filter can be used. The substring can be but in quotes according to [these docs](#string-literals).
@@ -743,7 +740,6 @@ See also:
 - [Word filter](#word-filter)
 - [Phrase filter](#phrase-filter)
 - [Regexp filter](#regexp-filter)
-
 
 ### Range comparison filter
 
@@ -782,7 +778,6 @@ See also:
 - [Word filter](#word-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Any value filter
 
 Sometimes it is needed to find log entries containing any non-empty value for the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -797,7 +792,6 @@ See also:
 - [Empty value filter](#empty-value-filter)
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Exact filter
 
@@ -849,7 +843,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Exact prefix filter
 
 Sometimes it is needed to find log messages starting with some prefix. This can be done with the `="prefix"*` filter.
@@ -900,7 +893,6 @@ See also:
 - [Phrase filter](#phrase-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Multi-exact filter
 
 Sometimes it is needed to locate log messages with a field containing one of the given values. This can be done with multiple [exact filters](#exact-filter)
@@ -932,7 +924,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### contains_all filter
 
 If it is needed to find logs, which contain all the given [words](#word) / phrases, then `v1 AND v2 ... AND vN` [logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter)
@@ -960,7 +951,6 @@ See also:
 - [`in` filter](#multi-exact-filter)
 - [`contains_any` filter](#contains_any-filter)
 
-
 ### contains_any filter
 
 Sometimes it is needed to find logs, which contain at least one [word](#word) or phrase out of many words / phrases.
@@ -981,14 +971,12 @@ foo OR "bar baz"
 It is possible to pass arbitrary [query](#query-syntax) inside `contains_any(...)` filter in order to match against the results of this query.
 See [these docs](#subquery-filter) for details.
 
-
 See also:
 
 - [word filter](#word-filter)
 - [phrase filter](#phrase-filter)
 - [`in` filter](#multi-exact-filter)
 - [`contains_all` filter](#contains_all-filter)
-
 
 ### Subquery filter
 
@@ -1030,7 +1018,6 @@ See also:
 - [`contains_any` filter](#contains_any-filter)
 - [`join` pipe](#join-pipe)
 - [`union` pipe](#union-pipe)
-
 
 ### Case-insensitive filter
 
@@ -1076,14 +1063,12 @@ Performance tips:
   when using [logical filter](#logical-filter).
 - See [other performance tips](#performance-tips).
 
-
 See also:
 
 - [Word filter](#word-filter)
 - [Phrase filter](#phrase-filter)
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Sequence filter
 
@@ -1122,7 +1107,6 @@ See also:
 - [Phrase filter](#phrase-filter)
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Regexp filter
 
@@ -1183,7 +1167,6 @@ See also:
 - [Case-insensitive filter](#case-insensitive-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Range filter
 
 If you need to filter log message by some field containing only numeric values, then the `range()` filter can be used.
@@ -1227,7 +1210,6 @@ See also:
 - [String range filter](#string-range-filter)
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
-
 
 ### IPv4 range filter
 
@@ -1279,7 +1261,6 @@ See also:
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
 
-
 ### String range filter
 
 If you need to filter log message by some field with string values in some range, then `string_range()` filter can be used.
@@ -1299,7 +1280,6 @@ See also:
 - [IPv4 range filter](#ipv4-range-filter)
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Length range filter
 
@@ -1347,7 +1327,6 @@ See also:
 - [Range filter](#range-filter)
 - [Logical filter](#logical-filter)
 
-
 ### value_type filter
 
 VictoriaLogs automatically detects types for the ingested [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) and stores log field values
@@ -1364,7 +1343,6 @@ See also:
 
 - [`block_stats` pipe](#block_stats-pipe)
 - [Logical filter](#logical-filter)
-
 
 ### eq_field filter
 
@@ -1385,7 +1363,6 @@ See also:
 - [`le_field` filter](#le_field-filter)
 - [`lt_field` filter](#lt_field-filter)
 
-
 ### le_field filter
 
 Sometimes it is needed to find logs where one [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value doesn't exceed the other field value.
@@ -1405,7 +1382,6 @@ See also:
 - [`lt_field` filter](#lt_field-filter)
 - [`eq_field` filter](#eq_field-filter)
 
-
 ### lt_field filter
 
 Sometimes it is needed to find logs where one [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value is smaller than the other field value.
@@ -1424,7 +1400,6 @@ See also:
 - [range comparison filter](#range-comparison-filter)
 - [`le_field` filter](#le_field-filter)
 - [`eq_field` filter](#eq_field-filter)
-
 
 ### Logical filter
 
@@ -1446,7 +1421,6 @@ Basic LogsQL [filters](#filters) can be combined into more complex filters with 
   For example, `-info` and `!info` are equivalent to `NOT info`.
   The `!` must be used instead of `-` in front of [`=`](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
   and [`~`](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter) filters like `!=` and `!~`.
-
 
 The `NOT` operation has the highest priority, `AND` has the middle priority and `OR` has the lowest priority.
 The priority order can be changed with parentheses. For example, `NOT info OR debug` is interpreted as `(NOT info) OR debug`,
@@ -1728,7 +1702,6 @@ See also:
 - [`filter` pipe](#filter-pipe)
 - [`extract` pipe](#extract-pipe)
 
-
 ### extract pipe
 
 `<q> | extract "pattern" from field_name` [pipe](#pipes) extracts text into output fields according to the [`pattern`](#format-for-extract-pipe-pattern) from the given
@@ -1791,7 +1764,7 @@ See also:
 
 #### Format for extract pipe pattern
 
-The `pattern` part from [`extract ` pipe](#extract-pipe) has the following format:
+The `pattern` part from [`extract` pipe](#extract-pipe) has the following format:
 
 ```
 text1<field1>text2<field2>...textN<fieldN>textN+1
@@ -2108,7 +2081,6 @@ See also:
 - [`last` pipe](#last-pipe)
 - [`sort` pipe](#sort-pipe)
 
-
 ### format pipe
 
 `<q> | format "pattern" as result_field` [pipe](#pipes) combines [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -2174,7 +2146,7 @@ String fields can be formatted with the following additional formatting rules:
 Numeric fields can be transformed into the following string representation at `format` pipe:
 
 - [RFC3339 time](https://www.rfc-editor.org/rfc/rfc3339) - by adding `time:` in front of the corresponding field name
-  containing [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time). 
+  containing [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time).
   The numeric timestamp can be in seconds, milliseconds, microseconds, or nanoseconds — the precision is automatically detected based on the value.
   Both integer and floating-point values are supported.
   For example, `format "time=<time:timestamp>"`.
@@ -2210,7 +2182,6 @@ See also:
 - [`replace` pipe](#replace-pipe)
 - [`replace_regexp` pipe](#replace_regexp-pipe)
 - [`extract` pipe](#extract-pipe)
-
 
 #### Conditional format
 
@@ -2459,7 +2430,6 @@ See also:
 - [`extract` pipe](#extract-pipe)
 - [`format` pipe](#format-pipe)
 
-
 ### offset pipe
 
 If some selected logs must be skipped after [`sort`](#sort-pipe), then `| offset N` [pipe](#pipes) can be used, where `N` can contain any [supported integer numeric value](#numeric-values).
@@ -2523,7 +2493,6 @@ See also:
 
 - [`pack_logfmt` pipe](#pack_logfmt-pipe)
 - [`unpack_json` pipe](#unpack_json-pipe)
-
 
 ### pack_logfmt pipe
 
@@ -2882,7 +2851,6 @@ See also:
 - [`top` pipe](#top-pipe)
 - [`join` pipe](#join-pipe)
 
-
 #### Stats by fields
 
 The following LogsQL syntax can be used for calculating independent stats per group of log fields:
@@ -2977,7 +2945,6 @@ See also:
 - [`stats` pipe](#stats-pipe)
 - [`stats` pipe functions](#stats-pipe-functions)
 - [`math` pipe](#math-pipe)
-
 
 #### Stats by field buckets
 

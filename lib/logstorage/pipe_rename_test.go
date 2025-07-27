@@ -61,7 +61,7 @@ func TestPipeRename(t *testing.T) {
 		},
 	})
 
-	// single row, rename from non-exsiting field
+	// single row, rename from non-existing field
 	f("rename x as b", [][]Field{
 		{
 			{"_msg", `{"foo":"bar"}`},
@@ -168,7 +168,7 @@ func TestPipeRename(t *testing.T) {
 		},
 	})
 
-	// wildcard rename fields with some prefix to a signle field
+	// wildcard rename fields with some prefix to a single field
 	f("rename a* as foo", [][]Field{
 		{
 			{"_msg", `{"foo":"bar"}`},

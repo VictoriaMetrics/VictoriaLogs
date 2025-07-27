@@ -118,7 +118,7 @@ type statsProcessor interface {
 	// It must return the internal state size increase after the import.
 	importState(src []byte, stopCh <-chan struct{}) (int, error)
 
-	// finalizeStats must append string represetnation of the collected stats result to dst and return it.
+	// finalizeStats must append string representation of the collected stats result to dst and return it.
 	//
 	// finalizeStats must immediately return if stopCh is closed.
 	finalizeStats(sf statsFunc, dst []byte, stopCh <-chan struct{}) []byte

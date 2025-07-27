@@ -398,7 +398,7 @@ func (csh *columnsHeader) resizeColumnHeaders(n int) []columnHeader {
 
 func (csh *columnsHeader) setColumnNames(cshIndex *columnsHeaderIndex, columnNames []string) error {
 	if len(cshIndex.columnHeadersRefs) != len(csh.columnHeaders) {
-		return fmt.Errorf("unpexected number of column headers; got %d; want %d", len(cshIndex.columnHeadersRefs), len(csh.columnHeaders))
+		return fmt.Errorf("unexpected number of column headers; got %d; want %d", len(cshIndex.columnHeadersRefs), len(csh.columnHeaders))
 	}
 	for i := range csh.columnHeaders {
 		columnNameID := cshIndex.columnHeadersRefs[i].columnNameID
@@ -959,7 +959,7 @@ type timestampsHeader struct {
 	// blockSize is the size of the timestamps block inside timestampsFilename file
 	blockSize uint64
 
-	// minTimestamp is the mimumum timestamp seen in the block in nanoseconds
+	// minTimestamp is the minimum timestamp seen in the block in nanoseconds
 	minTimestamp int64
 
 	// maxTimestamp is the maximum timestamp seen in the block in nanoseconds
