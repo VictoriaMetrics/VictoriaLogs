@@ -89,6 +89,13 @@ var (
 		"at the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
 	useLocalTimestampUDP = flagutil.NewArrayBool("syslog.useLocalTimestamp.udp", "Whether to use local timestamp instead of the original timestamp for the ingested syslog messages "+
 		"at the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
+
+	useRemoteIPTCP = flagutil.NewArrayBool("syslog.useRemoteIP.tcp", "Whether to add remote ip address as remote_ip log field for the ingested syslog messages.")
+	useRemoteIPUDP = flagutil.NewArrayBool("syslog.useRemoteIP.udp", "Whether to add remote ip address as remote_ip log field for the ingested syslog messages.")
+)
+
+const (
+	remoteIPField = "remote_ip"
 )
 
 // MustInit initializes syslog parser at the given -syslog.listenAddr.tcp and -syslog.listenAddr.udp ports
