@@ -187,6 +187,7 @@ func runUDPListener(addr string, argIdx int) {
 	checkCompressMethod(compressMethod, addr, "udp")
 
 	useLocalTimestamp := useLocalTimestampUDP.GetOptionalArg(argIdx)
+	useRemoteIP := useRemoteIPUDP.GetOptionalArg(argIdx)
 
 	streamFieldsStr := streamFieldsUDP.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
@@ -214,7 +215,7 @@ func runUDPListener(addr string, argIdx int) {
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveUDP(ln, tenantID, compressMethod, useLocalTimestamp, streamFields, ignoreFields, decolorizeFields, extraFields)
+		serveUDP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
 		close(doneCh)
 	}()
 
@@ -255,6 +256,8 @@ func runTCPListener(addr string, argIdx int) {
 
 	useLocalTimestamp := useLocalTimestampTCP.GetOptionalArg(argIdx)
 
+	useRemoteIP := useRemoteIPTCP.GetOptionalArg(argIdx)
+
 	streamFieldsStr := streamFieldsTCP.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
 	if err != nil {
@@ -281,7 +284,7 @@ func runTCPListener(addr string, argIdx int) {
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveTCP(ln, tenantID, compressMethod, useLocalTimestamp, streamFields, ignoreFields, decolorizeFields, extraFields)
+		serveTCP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
 		close(doneCh)
 	}()
 
@@ -303,7 +306,7 @@ func checkCompressMethod(compressMethod, addr, protocol string) {
 	}
 }
 
-func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
 	gomaxprocs := cgroup.AvailableCPUs()
 	var wg sync.WaitGroup
 	localAddr := ln.LocalAddr()
@@ -334,6 +337,11 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 					logger.Errorf("syslog: cannot read UDP data from %s at %s: %s", remoteAddr, localAddr, err)
 					continue
 				}
+
+				if useRemoteIP {
+					addRemoteIP(remoteAddr.String(), cp)
+				}
+
 				bb.B = bb.B[:n]
 				udpRequestsTotal.Inc()
 				if err := processStream("udp", bb.NewReader(), encoding, useLocalTimestamp, cp); err != nil {
@@ -345,7 +353,7 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 	wg.Wait()
 }
 
-func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
 	var cm ingestserver.ConnsMap
 	cm.Init("syslog")
 
@@ -376,6 +384,11 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 		wg.Add(1)
 		go func() {
 			cp := insertutil.GetCommonParamsForSyslog(tenantID, streamFields, ignoreFields, decolorizeFields, extraFields)
+
+			if useRemoteIP {
+				addRemoteIP(addr.String(), cp)
+			}
+
 			if err := processStream("tcp", c, encoding, useLocalTimestamp, cp); err != nil {
 				logger.Errorf("syslog: cannot process TCP data at %q: %s", addr, err)
 			}
