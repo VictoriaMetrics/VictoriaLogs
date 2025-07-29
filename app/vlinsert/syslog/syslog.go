@@ -592,6 +592,25 @@ func parseFieldsList(s string) ([]string, error) {
 	return a, err
 }
 
+func addRemoteIP(addr string, cp *insertutil.CommonParams) {
+
+	i := strings.Index(addr, ":")
+
+	for _, f := range cp.ExtraFields {
+		if f.Name == remoteIPField {
+			f.Value = addr[:i]
+			return
+		}
+	}
+
+	f := logstorage.Field{
+		Name:  remoteIPField,
+		Value: addr[:i],
+	}
+
+	cp.ExtraFields = append(cp.ExtraFields, f)
+}
+
 func parseExtraFields(s string) ([]logstorage.Field, error) {
 	if s == "" {
 		return nil, nil
