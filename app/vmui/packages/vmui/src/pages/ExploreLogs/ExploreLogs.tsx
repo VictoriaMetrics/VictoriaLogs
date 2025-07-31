@@ -106,7 +106,7 @@ const ExploreLogs: FC = () => {
   };
 
   const handleApplyFilter = (val: string) => {
-    setQuery(prev => `${val} AND (${prev})`);
+    setQuery(prev => `${val} AND ${prev}`);
     setIsUpdatingQuery(true);
   };
 

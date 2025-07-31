@@ -32,21 +32,6 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
   const label = fields.join(", ");
   const totalShortFormatted = formatNumberShort(legend.total);
 
-  const handleClickByStream = (e: MouseEvent<HTMLDivElement>) => {
-    if (!targetSeries) return;
-
-    if (e.metaKey || e.ctrlKey) {
-      targetSeries.show = !targetSeries.show;
-    } else {
-      const isOnlyTargetVisible = series.every(s => s === targetSeries || !s.show);
-      series.forEach(s => {
-        s.show = isOnlyTargetVisible || (s === targetSeries);
-      });
-    }
-
-    onRedrawGraph();
-  };
-
   const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     setClickPosition({ top: e.clientY, left: e.clientX });
@@ -59,10 +44,10 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
       className={classNames({
         "vm-bar-hits-legend-item": true,
         "vm-bar-hits-legend-item_other": legend.isOther,
+        "vm-bar-hits-legend-item_active": openContextMenu,
         "vm-bar-hits-legend-item_hide": !targetSeries?.show,
       })}
-      onClick={handleClickByStream}
-      onContextMenu={handleContextMenu}
+      onClick={handleContextMenu}
     >
       <div
         className="vm-bar-hits-legend-item__marker"
@@ -70,6 +55,7 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
       />
       <div className="vm-bar-hits-legend-item__label">{label}</div>
       <span className="vm-bar-hits-legend-item__total">({totalShortFormatted})</span>
+
       <Popper
         placement="fixed"
         open={openContextMenu}
@@ -80,7 +66,9 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
         <LegendHitsMenu
           legend={legend}
           fields={fields}
+          series={series}
           onApplyFilter={onApplyFilter}
+          onRedrawGraph={onRedrawGraph}
           onClose={handleCloseContextMenu}
         />
       </Popper>

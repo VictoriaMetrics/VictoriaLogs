@@ -12,7 +12,6 @@ interface Props {
 
 const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails, onApplyFilter }) => {
   const [series, setSeries] = useState<Series[]>([]);
-  const totalHits = legendDetails[0]?.totalHits || 0;
 
   const getSeries = () => {
     return uPlotInst.series.filter(s => s.scale !== "x");
@@ -42,15 +41,6 @@ const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails, onApplyFilter }) =
           onApplyFilter={onApplyFilter}
         />
       ))}
-      <div className="vm-bar-hits-legend-info">
-        <div>
-          Total hits: <b>{totalHits.toLocaleString("en-US")}</b>
-        </div>
-        <div>
-          <code>L-Click</code> toggles visibility.&nbsp;
-          <code>R-Click</code> opens menu.
-        </div>
-      </div>
     </div>
   );
 };

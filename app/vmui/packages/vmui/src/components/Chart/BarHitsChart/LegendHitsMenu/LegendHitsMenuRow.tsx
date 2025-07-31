@@ -6,7 +6,7 @@ import { ArrowDropDownIcon } from "../../../Main/Icons";
 import useClickOutside from "../../../../hooks/useClickOutside";
 
 interface Props {
-  title: string | ReactNode;
+  title: string;
   handler?: () => void;
   iconStart?: ReactNode;
   iconEnd?: ReactNode;
@@ -37,7 +37,6 @@ const LegendHitsMenuRow: FC<Props> = ({ title, handler, iconStart, iconEnd, clas
     handler && handler();
     hasSubmenu && handleToggleContextMenu();
   };
-
 
   useEffect(() => {
     if (!titleRef.current) return;
