@@ -22,6 +22,9 @@ tags: []
 * [VictoriaLogs Source Reading](https://medium.com/@waynest/victorialogs-source-reading-833db3e8511b)
 * [VictoriaLogs: The Space-Efficient Alternative to Elasticsearch for Log Management](https://medium.com/@kienlt.qn/victorialogs-the-space-efficient-alternative-to-elasticsearch-for-log-management-b9948f4ef05c)
 * [Centralized Logging with VictoriaLogs: Powering Up Your Observability](https://medium.com/@veivxl/centralized-logging-with-victorialogs-powering-up-your-observability-0bf1cdfdb91b)
+* [Production Kubernetes Logging-VictoriaLogs](https://kiraniyer88.medium.com/production-kubernetes-logging-victorialogs-73ae858aa3e4)
+* [Kubernetes Monitoring — A Complete Solution](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-1-architecture-eb5b998658d5)
+* [Kubernetes Monitoring — A Complete Solution, Part 8: Logging with VictoriaLogs](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-8-logging-with-victorialogs-f17c44461034)
 
 ## Our articles
 
