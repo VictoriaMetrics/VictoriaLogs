@@ -1216,6 +1216,7 @@ func mustRemoveUnusedDirs(path string, partNames []string) {
 		fn := de.Name()
 		if _, ok := m[fn]; !ok {
 			deletePath := filepath.Join(path, fn)
+			logger.Infof("removed unused directory %s (e.g. not listed in parts.json), which may have been left after an unclean shutdown", deletePath)
 			fs.MustRemoveDir(deletePath)
 			removedDirs++
 		}
