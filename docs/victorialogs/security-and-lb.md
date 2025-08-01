@@ -22,15 +22,15 @@ To configure secure communication between components in cluster mode of Victoria
 
 vmauth is not specifically aware of VictoriaLogs and does not offer any hidden features
 for tighter integration with other VictoriaMetrics components.
-Therefore, you can use any other HTTP proxy such as Nginx, Traefik, or Envoy.
+Therefore, you can use any other HTTP proxy such as Nginx, Traefik, Envoy or HAProxy.
 
-However, using vmauth makes it easy to configure authorization and [receive support](https://victoriametrics.com/support/community-support/)
+However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/).
 from the VictoriaMetrics team if any issues arise.
 
-For more detailed information and advanced vmauth configuration see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth).
+For more detailed information and advanced vmauth configuration see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/).
 
-All configuration examples in this documentation applies to
-[VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/#high-availability-ha-setup-with-victorialogs-single-node-instances),
+All configuration examples in this documentation apply to
+[VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/),
 [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/),
 [vinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
 [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
@@ -38,13 +38,14 @@ since they have the same search/write API.
 
 ## Search Authorization
 
-For log search, both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/#high-availability-ha-setup-with-victorialogs-single-node-instances)
-and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) use the same search API and expose HTTP endpoints starting with `/select/`.
-When configuring request authorization or load balancing, it is important to allow access to this path.
+For log search, both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
+and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints starting with `/select/`.
+When configuring request authorization or load balancing, it is important to allow access to this path prefix.
 
 Below is an example of a vmauth configuration that:
-- Uses Basic authentication to authorize requests to paths starting with `/select/`.
-- Distributes requests between two VictoriaLogs clusters: `victoria-logs-1` and `victoria-logs-2`.
+- Uses Basic auth for request authentication.
+- Authorizes access to paths starting with `/select/`.
+- Distributes requests between two VictoriaLogs instances: `victoria-logs-1` and `victoria-logs-2`.
 
 ```yaml
 users:
@@ -57,8 +58,9 @@ users:
           - http://victoria-logs-2:9428
 ```
 
-`victoria-logs-1` and `victoria-logs-2` can be either two VictoriaLogs Single instances with replicated data,
-or instances of vlselect pointing to a shared, replicated vlstorage backend.
+`victoria-logs-1` and `victoria-logs-2` can be either two VictoriaLogs single-node instances with replicated data according to [these docs](https://docs.victoriametrics.com/victorialogs/#high-availability),
+or `vlselect` instances in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
+Enumerate all the `vlselect` instances in the cluster under the `url_prefix` config above in order to spread load among all the available `vlselect` instances.
 
 The diagram below illustrates this architecture in the clustered version of VictoriaLogs:
 
@@ -85,14 +87,14 @@ flowchart BT
     vmauth --> vlselect-az2
 ```
 
-After configuring authorization, update the connection settings in all clients (like Grafana)
+Update the connection settings in all clients (like Grafana) after configuring the `vmauth` in order
 to match the selected authentication method and the vmauth endpoint.
 
 Important: Requests sent directly to VictoriaLogs bypass vmauth and are not authorized.
-To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized services.
+To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
 
-Also, note that if you use vlselect, you need to set the flag `-insert.disable=true` to disable the write API.
-This helps protect against unauthorized data insertion in case an attacker gains direct network access to vlselect outside of vmauth.
+It is recommended to pass the `-insert.disable` command-line flag at `vlselect` for disabling the write API.
+This helps protecting against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
 For configuration examples using Bearer token, Basic auth, and mTLS see [these docs](http://localhost:1313/victoriametrics/vmauth/#authorization).
 
@@ -114,12 +116,12 @@ unauthorized_user:
         drop_src_path_prefix_parts: 1
 ```
 
-The configuration above enables redirecting all requests that start with the path prefix `/cold/` to the cluster located at `http://victoria-logs-cold:9428`,
-and requests with the path prefix `/hot/` to the cluster located at `http://victoria-logs-hot:9428`.
+The configuration above enables proxying all requests that start with the path prefix `/cold/select/` to the backend at `http://victoria-logs-cold:9428`,
+and requests with the path prefix `/hot/select/` to the backend located at `http://victoria-logs-hot:9428`.
 
 This approach is useful when applying different retention policies for various types of logs.
-For example, you might store warn-level and higher severity logs in the cold cluster with longer retention,
-while keeping debug-level and higher severity logs only in the hot cluster with shorter retention.
+For example, you might store warn-level and higher severity logs in the cold instance / cluster with longer retention,
+while keeping debug-level and higher severity logs only in the hot instance / cluster with shorter retention.
 
 The `drop_src_path_prefix_parts` parameter is used to remove the prefix from the path when proxying the request to VictoriaLogs.
 For example, if vmauth receives a request to `/cold/select/logsql/query`,
@@ -127,7 +129,7 @@ VictoriaLogs will receive the path without the `/cold/` prefix, allowing it to p
 
 ### Tenant resolution
 
-To properly separate and access data across tenants, two headers must be set when writing logs: `AccountID` and `ProjectID`.
+To properly separate and access data across tenants, two headers must be set when writing logs: `AccountID` and `ProjectID` according to [these docs](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 When querying logs, you must provide the same headers to retrieve the corresponding data.
 
 You can use vmauth to enforce tenant-level access control by automatically setting the required headers after successful authentication.
@@ -230,10 +232,10 @@ This will grant all users access to logs for the specified tenant without additi
 Note that if you don't specify the `AccountID` or `ProjectID` header,
 VictoriaLogs will assume that the corresponding header has a value of 0.
 
-### In-Tenant access control
+### Access control inside a single tenant
 
-`VictoriaLogs` provides the ability to add extra filters to each request.
-This is useful when you need to give access to a subset of data within a tenant.
+`VictoriaLogs` can apply extra filters per each request to select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
+This is useful when you need to give access to a subset of data within a single tenant.
 If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`:
 
 ```yaml
@@ -251,9 +253,9 @@ With this configuration, vmauth will add the [empty filter](https://docs.victori
 `password:''` to each request, which means that the `password` field must be empty or missing in the log.
 This is useful in cases when sensitive information has leaked and needs to be hidden.
 
-To restrict log visibility within a specific stream, use the `extra_stream` query parameter.
+To restrict log visibility within a specific [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields), use the `extra_stream_filters` query parameter.
 The configuration below adds an additional [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter)
-to each request based on the request path, and routes `/audit-logs` to a separate VictoriaLogs cluster:
+to each request based on the request path, and routes `/audit-logs` to a separate VictoriaLogs instance:
 
 ```yaml
 users:
@@ -269,7 +271,7 @@ users:
     password: secret
     url_map:
       - src_paths: ["/mobile-logs/select/.*"]
-        url_prefix: http://victoria-logs:9428?extra_stream_filters=_stream%3A%7Bservice%3Dfrontend-logs%7D
+        url_prefix: http://victoria-logs:9428?extra_stream_filters=_stream%3A%7Bservice%3Dmobile-logs%7D
         # drop /mobile-logs/ path prefix from the original request before proxying it to url_prefix.
         drop_src_path_prefix_parts: 1
 
@@ -287,16 +289,16 @@ For example, the query `_stream:{service=frontend-logs}` should be written as `_
 
 Prefer using `extra_stream_filters` over `extra_filters` whenever possible.
 This can improve search query performance because VictoriaLogs
-processes searches using stream filters faster than regular filters.
+processes searches using stream filters faster than regular filters. See [LogsQL performance optimization tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
 
 ## Write Authorization
 
-For log writing, [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/#high-availability-ha-setup-with-victorialogs-single-node-instances)
-and [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) use the same write API and use HTTP endpoints
+For log writing, [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
+and [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same write API endpoints
 starting with `/insert/`, so when configuring write requests, it is important to set this path for request authorization.
 
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between `vlinsert`:
+with Basic auth authentication and distributes load between `vlinsert` nodes in the cluster:
 
 ```yaml
 users:
@@ -310,24 +312,24 @@ users:
         - "http://vlinsert-3:9428"
 ```
 
-Note that vmauth does not allow writing data to multiple clusters, instead, it handles load balancing.
-To replicate data to multiple clusters, use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/).
+Note that vmauth cannot replicate data to multiple destinations - it spreads incoming requests among the configured backends.
+Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replicating the data to multiple VictoriaLogs instances or multiple VictoriaLogs clusters.
 
 If you trust the writing side, for example when collecting logs within your own cluster, you can set
 the [query parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters)
-and [tenant headers](https://docs.victoriametrics.com/victorialogs/#multitenancy) directly at the write level without an extra proxy.
-In such cases, it's usually sufficient to restrict network access so only trusted agents can write to vlinsert or VictoriaLogs single-node.
+and [tenant headers](https://docs.victoriametrics.com/victorialogs/#multitenancy) directly at the log shipper side without an extra proxy.
+In such cases, it's usually sufficient to restrict network access so only trusted agents can write to VictoriaLogs.
 
 On the other hand, if you do not trust the writing side, for example, if the logs come from frontend or mobile apps,
 it is very important to secure the write API:
-- Set up a secure HTTPS connection for [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy) and [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/cluster/#security).
-- Place a load balancer before vmauth that can detect bots and DDoS attacks.
+- Set up a secure HTTPS connection for vmauth (see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy)) and VictoriaLogs (see [these docs](https://docs.victoriametrics.com/victorialogs/cluster/#security)).
+- Protect vmauth with anti-DDoS services if needed.
 - Consider the [max_concurrent_requests](https://docs.victoriametrics.com/victoriametrics/vmauth/#concurrency-limiting) parameter to control the number of concurrent write requests.
 - Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.
-- Write logs from untrusted applications to separate clusters so that the unpredictable write load does not affect other clusters.
+- Write logs from untrusted applications to dedicated VictoriaLogs instances or clusters so that the unpredictable write load does not affect other instances.
 
-Also note that for vlinsert, you need to set the flag `-select.disable=true` to disable the search API.
-This will secure data in case an attacker has direct network access to `vlinsert` outside of vmauth.
+It is recommended setting the `-select.disable` command-line flag at `vlinsert` in order to disable search API.
+This will secure access to the stored logs in case an attacker has direct network access to `vlinsert`.
 
 For configuration examples using Bearer token, Basic auth, and mTLS see [these docs](http://localhost:1313/victoriametrics/vmauth/#authorization).
 
@@ -335,7 +337,7 @@ For configuration examples using Bearer token, Basic auth, and mTLS see [these d
 
 vmauth allows redirecting requests to different tenants based on the request path.
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between `vlinsert` for three different tenants:
+with Basic auth authentication and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
 
 ```yaml
 users:
@@ -400,10 +402,10 @@ flowchart BT
 
 ### Adding extra fields
 
-You can use the `extra_fields` parameter in vmauth to automatically add fields to incoming log entries.
-This is helpful when the writing side cannot include certain metadata, such as the service name.
+You can use the `extra_fields` parameter in vmauth to automatically add fields to incoming log entries according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
+This is helpful when the writing side cannot include certain metadata, such as the source service name.
 
-The example below adds a `service` field with the value `frontend-logs` to all logs received at the `/frontend-logs/insert/*` path.
+The example below adds a `service` field with the value `frontend-logs` to all the logs received at the `/frontend-logs/insert/*` path.
 It also includes the `_stream_fields` parameter as an example of how to configure [stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) for such logs.
 
 ```yaml
@@ -420,4 +422,5 @@ users:
     max_concurrent_requests: 10
 ```
 
-Any field sent by the application will be overridden by the value set in `extra_fields`, if defined.
+Any field sent by the application will be overridden by the value set in the `extra_fields`, if defined.
+This protects from unexpected overriding of the provided `extra_fields` by the log shipper.
