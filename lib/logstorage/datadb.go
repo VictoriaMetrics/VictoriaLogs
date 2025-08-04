@@ -540,6 +540,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		mp.MustStoreToDisk(dstPartPath)
 		pwNew := ddb.openCreatedPart(&mp.ph, pws, nil, dstPartPath)
 		ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
+		ddb.updateMergeMetrics(dstPartType, mp.ph.RowsCount, startTime, mp.ph.CompressedSizeBytes)
 		return
 	}
 
@@ -609,21 +610,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	}
 
 	ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
-
-	switch dstPartType {
-	case partInmemory:
-		ddb.inmemoryMergeRowsTotal.Add(srcRowsCount)
-		ddb.inmemoryPartMergeDuration.UpdateDuration(startTime)
-		ddb.inmemoryPartMergeBytes.Update(float64(dstSize))
-	case partSmall:
-		ddb.smallPartMergeRowsTotal.Add(srcRowsCount)
-		ddb.smallPartMergeDuration.UpdateDuration(startTime)
-		ddb.smallPartMergeBytes.Update(float64(dstSize))
-	case partBig:
-		ddb.bigPartMergeRowsTotal.Add(srcRowsCount)
-		ddb.bigPartMergeDuration.UpdateDuration(startTime)
-		ddb.bigPartMergeBytes.Update(float64(dstSize))
-	}
+	ddb.updateMergeMetrics(dstPartType, srcRowsCount, startTime, dstSize)
 
 	d := time.Since(startTime)
 	if d <= time.Minute {
@@ -635,6 +622,23 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	rowsPerSec := int(float64(srcRowsCount) / durationSecs)
 	logger.Infof("merged (%d parts, %d rows, %d blocks, %d bytes) into (1 part, %d rows, %d blocks, %d bytes) in %.3f seconds at %d rows/sec to %q",
 		len(pws), srcRowsCount, srcBlocksCount, srcSize, dstRowsCount, dstBlocksCount, dstSize, durationSecs, rowsPerSec, dstPartPath)
+}
+
+func (ddb *datadb) updateMergeMetrics(partType partType, srcRowCount uint64, startTime time.Time, dstSize uint64) {
+	switch partType {
+	case partInmemory:
+		ddb.inmemoryMergeRowsTotal.Add(srcRowCount)
+		ddb.inmemoryPartMergeDuration.UpdateDuration(startTime)
+		ddb.inmemoryPartMergeBytes.Update(float64(dstSize))
+	case partSmall:
+		ddb.smallPartMergeRowsTotal.Add(srcRowCount)
+		ddb.smallPartMergeDuration.UpdateDuration(startTime)
+		ddb.smallPartMergeBytes.Update(float64(dstSize))
+	case partBig:
+		ddb.bigPartMergeRowsTotal.Add(srcRowCount)
+		ddb.bigPartMergeDuration.UpdateDuration(startTime)
+		ddb.bigPartMergeBytes.Update(float64(dstSize))
+	}
 }
 
 func (ddb *datadb) nextMergeIdx() uint64 {
@@ -843,7 +847,7 @@ type DatadbStats struct {
 	BigRowsMerged uint64
 
 	// PendingRows is the number of rows, which weren't flushed to searchable part yet.
-	PendingRowsCount uint64
+	PendingRows uint64
 
 	// InmemoryRowsCount is the number of rows, which weren't flushed to disk yet.
 	InmemoryRowsCount uint64
@@ -912,7 +916,7 @@ func (ddb *datadb) updateStats(s *DatadbStats) {
 	s.ActiveBigMerges += uint64(ddb.bigPartActiveMerges.Load())
 	s.BigRowsMerged += ddb.bigPartMergeRowsTotal.Load()
 
-	s.PendingRowsCount = ddb.rb.Len()
+	s.PendingRows = ddb.rb.Len()
 
 	ddb.partsLock.Lock()
 

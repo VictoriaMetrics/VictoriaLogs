@@ -397,7 +397,7 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	metrics.WriteGaugeUint64(w, `vl_storage_blocks{type="storage/small"}`, ss.SmallPartBlocks)
 	metrics.WriteGaugeUint64(w, `vl_storage_blocks{type="storage/big"}`, ss.BigPartBlocks)
 
-	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="storage"}`, ss.PendingRowsCount)
+	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="storage"}`, ss.PendingRows)
 	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="indexdb"}`, ss.IndexdbPendingItems)
 
 	metrics.WriteGaugeUint64(w, `vl_partitions`, ss.PartitionsCount)
