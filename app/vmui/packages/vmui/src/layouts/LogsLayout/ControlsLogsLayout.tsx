@@ -6,7 +6,7 @@ import { TimeSelector } from "../../components/Configurators/TimeRangeSettings/T
 import TenantsFields from "../../components/Configurators/GlobalSettings/TenantsConfiguration/TenantsFields";
 import { ExecutionControls } from "../../components/Configurators/TimeRangeSettings/ExecutionControls/ExecutionControls";
 
-const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile }) => {
+const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
 
   return (
     <div
@@ -15,9 +15,10 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile }) => {
         "vm-header-controls_mobile": isMobile,
       })}
     >
-      <TenantsFields/>
-      <TimeSelector/>
-      <ExecutionControls/>
+
+      {headerSetup?.tenant && <TenantsFields/>}
+      {headerSetup?.timeSelector && <TimeSelector/>}
+      {headerSetup?.executionControls &&  <ExecutionControls/>}
       <GlobalSettings/>
     </div>
   );

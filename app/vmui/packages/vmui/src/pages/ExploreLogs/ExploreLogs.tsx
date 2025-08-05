@@ -3,7 +3,6 @@ import ExploreLogsBody from "./ExploreLogsBody/ExploreLogsBody";
 import useStateSearchParams from "../../hooks/useStateSearchParams";
 import useSearchParamsFromObject from "../../hooks/useSearchParamsFromObject";
 import { useFetchLogs } from "./hooks/useFetchLogs";
-import { useAppState } from "../../state/common/StateContext";
 import Alert from "../../components/Main/Alert/Alert";
 import ExploreLogsHeader from "./ExploreLogsHeader/ExploreLogsHeader";
 import "./style.scss";
@@ -26,7 +25,6 @@ const defaultLimit = isNaN(storageLimit) ? LOGS_ENTRIES_LIMIT : storageLimit;
 type FetchFlags = { logs: boolean; hits: boolean };
 
 const ExploreLogs: FC = () => {
-  const { serverUrl } = useAppState();
   const { queryHistory } = useQueryState();
   const queryDispatch = useQueryDispatch();
   const { duration, relativeTime, period: periodState } = useTimeState();
@@ -57,17 +55,17 @@ const ExploreLogs: FC = () => {
   const [period, setPeriod] = useState<TimeParams>(periodState);
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs(serverUrl, query, limit);
-  const { fetchLogHits, ...dataLogHits } = useFetchLogHits(serverUrl, query);
+  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs(query, limit);
+  const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
 
-  const fetchData = async (p: TimeParams, flags: FetchFlags) => {
+  const fetchData = async (period: TimeParams, flags: FetchFlags) => {
     if (flags.logs) {
-      const isSuccess = await fetchLogs(p);
+      const isSuccess = await fetchLogs({ period });
       if (!isSuccess) return;
     }
 
     if (flags.hits) {
-      await fetchLogHits(p);
+      await fetchLogHits({ period });
     }
   };
 
@@ -132,13 +130,13 @@ const ExploreLogs: FC = () => {
 
   useEffect(() => {
     if (!hideChart && prevHideChart) {
-      fetchLogHits(period);
+      fetchLogHits({ period });
     }
   }, [hideChart, prevHideChart, period]);
 
   useEffect(() => {
     if (!hideLogs && prevHideLogs) {
-      fetchLogs(period);
+      fetchLogs({ period });
     }
   }, [hideLogs, prevHideLogs, period]);
 

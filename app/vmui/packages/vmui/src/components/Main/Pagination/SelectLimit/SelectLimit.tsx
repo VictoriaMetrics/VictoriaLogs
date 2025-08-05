@@ -8,6 +8,8 @@ import "./style.scss";
 
 interface SelectLimitProps {
   limit: number | string;
+  label?: string;
+  options?: number[];
   allowUnlimited?: boolean;
   onChange: (val: number) => void;
   onOpenSelect?: () => void;
@@ -15,13 +17,14 @@ interface SelectLimitProps {
 
 const defaultLimits = [10, 25, 50, 100, 250, 500, 1000];
 
-const SelectLimit: FC<SelectLimitProps> = ({ limit, allowUnlimited, onChange, onOpenSelect }) => {
+const SelectLimit: FC<SelectLimitProps> = ({ limit, label, options, allowUnlimited, onChange, onOpenSelect }) => {
   const { isMobile } = useDeviceDetect();
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const limits = useMemo(() => {
-    return allowUnlimited ? [...defaultLimits, 0] : defaultLimits;
-  }, [allowUnlimited]);
+    const arr = options && options.length > 0 ? options : defaultLimits;
+    return allowUnlimited ? [...arr, 0] : arr;
+  }, [allowUnlimited, options]);
 
   const {
     value: openList,
@@ -47,7 +50,7 @@ const SelectLimit: FC<SelectLimitProps> = ({ limit, allowUnlimited, onChange, on
         ref={buttonRef}
       >
         <div>
-          Rows per page: <b>{limit || "All"}</b>
+          {label || "Rows per page"}: <b>{limit || "All"}</b>
         </div>
         <ArrowDropDownIcon/>
       </div>

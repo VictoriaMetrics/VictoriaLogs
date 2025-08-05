@@ -16,15 +16,21 @@ import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
 import Button from "../../../components/Main/Button/Button";
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
+import StreamContextButton from "../../StreamContext/StreamContextButton";
+import { useAppState } from "../../../state/common/StateContext";
 
 interface Props {
   log: Logs;
   displayFields?: string[];
   hideGroupButton?: boolean;
+  isContextView?: boolean;
+  className?: string;
   onItemClick?: (log: Logs) => void;
 }
 
-const GroupLogsItem: FC<Props> = ({ log, displayFields = [], onItemClick, hideGroupButton }) => {
+const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hideGroupButton, className, onItemClick }) => {
+  const { isDarkTheme } = useAppState();
+
   const {
     value: isOpenFields,
     toggle: toggleOpenFields,
@@ -108,25 +114,16 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], onItemClick, hideGr
   }, [copied]);
 
   return (
-    <div className="vm-group-logs-row">
+    <div className={classNames("vm-group-logs-row", className)}>
       <div
         className={classNames({
           "vm-group-logs-row-content": true,
+          "vm-group-logs-row-content_dark": isDarkTheme,
+          "vm-group-logs-row-content_active": isOpenFields,
           "vm-group-logs-row-content_interactive": !disabledHovers,
         })}
         onClick={handleClick}
       >
-        <Tooltip title={copied ? "Copied" : "Copy to clipboard"}>
-          <Button
-            className="vm-group-logs-row-content__copy-row"
-            variant="text"
-            color="gray"
-            size="small"
-            startIcon={<CopyIcon/>}
-            onClick={handleCopy}
-            ariaLabel="copy to clipboard"
-          />
-        </Tooltip>
         {hasFields && (
           <div
             className={classNames({
@@ -163,11 +160,35 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], onItemClick, hideGr
             </span>
           ))}
         </div>
+        <div
+          className={classNames({
+            "vm-group-logs-row-content__actions": true,
+            "vm-group-logs-row-content__actions_active": isOpenFields,
+          })}
+        >
+          {!isContextView && (
+            <StreamContextButton
+              log={log}
+              displayFields={displayFields}
+            />
+          )}
+          <Tooltip title={copied ? "Copied" : "Copy to clipboard"}>
+            <Button
+              variant="text"
+              color="gray"
+              startIcon={<CopyIcon/>}
+              onClick={handleCopy}
+              ariaLabel="copy to clipboard"
+            />
+          </Tooltip>
+        </div>
       </div>
-      {hasFields && isOpenFields && <GroupLogsFields
-        hideGroupButton={hideGroupButton}
-        log={log}
-      />}
+      {hasFields && isOpenFields && (
+        <GroupLogsFields
+          hideGroupButton={hideGroupButton}
+          log={log}
+        />
+      )}
     </div>
   );
 };

@@ -1,11 +1,11 @@
 import { FC, useEffect } from "preact/compat";
 import Header from "../Header/Header";
-import { Outlet, useLocation } from "react-router-dom";
+import { matchPath, Outlet, useLocation } from "react-router-dom";
 import "./style.scss";
 import { getAppModeEnable } from "../../utils/app-mode";
 import classNames from "classnames";
 import Footer from "../Footer/Footer";
-import router, { routerOptions } from "../../router";
+import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
@@ -16,8 +16,12 @@ const LogsLayout: FC = () => {
   const { pathname } = useLocation();
 
   const setDocumentTitle = () => {
+    const matchedEntry = Object.entries(routerOptions).find(([path]) => {
+      return matchPath(path, pathname);
+    });
+
+    const routeTitle =  (matchedEntry?.[1] as RouterOptions)?.title;
     const defaultTitle = "UI for VictoriaLogs";
-    const routeTitle = routerOptions[router.home]?.title;
     document.title = routeTitle ? `${routeTitle} - ${defaultTitle}` : defaultTitle;
   };
 
