@@ -8,14 +8,9 @@ $chart-tooltip-x: -1 * ($padding-small + $padding-global + $chart-tooltip-date-w
 $chart-tooltip-y: -1 * ($padding-global + $chart-tooltip-half-icon);
 
 .vm-bar-hits-tooltip {
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   gap: $padding-small;
-
-  &_visible {
-    opacity: 1;
-    pointer-events: auto;
-  }
 
   &-item {
     display: grid;
