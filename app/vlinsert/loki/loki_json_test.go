@@ -54,9 +54,6 @@ func TestParseJSONRequest_Failure(t *testing.T) {
 
 	// invalid structured metadata type
 	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", ["metadata_1", "md_value"]]]}]}`)
-
-	// structured metadata with unexpected value type
-	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": 1}]] }]}`)
 }
 
 func TestParseJSONRequest_Success(t *testing.T) {
@@ -94,6 +91,16 @@ func TestParseJSONRequest_Success(t *testing.T) {
 ]}]}`, []int64{1577836800000000001, 1686026123620000000, 147783690000000000}, `{"label1":"value1","label2":"value2","_msg":"foo bar"}
 {"label1":"value1","label2":"value2","_msg":"abc"}
 {"label1":"value1","label2":"value2","_msg":"foobar"}`)
+
+	// structured metadata with integer value type
+	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": 1}]] }]}`, []int64{
+		1577836800000000001,
+	}, `{"metadata_1":"1","_msg":"foo bar"}`)
+
+	// structured metadata with null value
+	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": null}]] }]}`, []int64{
+		1577836800000000001,
+	}, `{"metadata_1":"null","_msg":"foo bar"}`)
 
 	// Multiple streams
 	f(`{

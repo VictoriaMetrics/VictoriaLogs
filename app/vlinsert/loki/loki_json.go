@@ -159,14 +159,17 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				if err != nil {
 					return fmt.Errorf("unexpected structured metadata type for %q; want JSON object", lineA[2])
 				}
-
 				structuredMetadata.Visit(func(k []byte, v *fastjson.Value) {
-					vStr, errLocal := v.StringBytes()
-					if errLocal != nil {
-						err = fmt.Errorf("unexpected label value type for %q:%q; want string", k, v)
+					var vStr []byte
+					switch v.Type() {
+					case fastjson.TypeNumber, fastjson.TypeNull:
+						vStr = v.MarshalTo(vStr[:0])
+					case fastjson.TypeString:
+						vStr = v.GetStringBytes()
+					default:
+						err = fmt.Errorf("unexpected label value type for %q:%q; want string, number or null; got: %s", k, v, v.Type().String())
 						return
 					}
-
 					fields.fields = append(fields.fields, logstorage.Field{
 						Name:  bytesutil.ToUnsafeString(k),
 						Value: bytesutil.ToUnsafeString(vStr),
