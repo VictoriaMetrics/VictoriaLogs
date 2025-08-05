@@ -256,6 +256,9 @@ type Query struct {
 
 	// timestamp is the timestamp context used for parsing the query.
 	timestamp int64
+
+	// searchStats contains search statistics for the query.
+	searchStats *searchStats
 }
 
 type queryOptions struct {
@@ -1355,9 +1358,10 @@ func parseQuery(lex *lexer) (*Query, error) {
 		return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 	}
 	q := &Query{
-		opts:      opts,
-		f:         f,
-		timestamp: lex.currentTimestamp,
+		opts:        opts,
+		f:           f,
+		timestamp:   lex.currentTimestamp,
+		searchStats: &searchStats{},
 	}
 
 	if lex.isKeyword("|") {

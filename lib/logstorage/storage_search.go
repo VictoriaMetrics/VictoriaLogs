@@ -101,7 +101,13 @@ func (f writeBlockResultFunc) newDataBlockWriter() WriteDataBlockFunc {
 // RunQuery runs the given q and calls writeBlock for results.
 func (s *Storage) RunQuery(ctx context.Context, tenantIDs []TenantID, q *Query, writeBlock WriteDataBlockFunc) error {
 	writeBlockResult := writeBlock.newBlockResultWriter()
-	return s.runQuery(ctx, tenantIDs, q, writeBlockResult)
+
+	err := s.runQuery(ctx, tenantIDs, q, writeBlockResult)
+
+	// Update metrics regardless of the error
+	updateSearchMetrics(q.searchStats)
+
+	return err
 }
 
 // runQueryFunc must run the given q and pass query results to writeBlock
@@ -130,20 +136,15 @@ func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, 
 		filter:       q.f,
 		fieldsFilter: fieldsFilter,
 	}
-	ss := &searchStats{}
 
 	workersCount := q.GetConcurrency()
 
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
-		s.search(workersCount, so, ss, stopCh, writeBlockToPipes)
+		s.search(workersCount, so, q.searchStats, stopCh, writeBlockToPipes)
 		return nil
 	}
 
-	err = runPipes(ctx, q.pipes, search, writeBlock, workersCount)
-
-	updateSearchMetrics(ss)
-
-	return err
+	return runPipes(ctx, q.pipes, search, writeBlock, workersCount)
 }
 
 // searchFunc must perform search and pass its results to writeBlock.
