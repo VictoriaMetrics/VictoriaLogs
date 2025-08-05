@@ -123,28 +123,54 @@ For example, the following command starts VictoriaLogs, which accepts logs with 
 
 ## Retention by disk space usage
 
-VictoriaLogs can be configured to automatically drop older per-day partitions if the total size of data at [`-storageDataPath` directory](#storage)
-becomes bigger than the given threshold at `-retention.maxDiskSpaceUsageBytes` command-line flag. For example, the following command starts VictoriaLogs,
-which drops old per-day partitions if the total [storage](#storage) size becomes bigger than `100GiB`:
+VictoriaLogs can be configured to automatically drop older per-day partitions based on disk space usage using one of two approaches:
+
+### Absolute disk space limit
+
+Use the `-retention.maxDiskSpaceUsageBytes` command-line flag to set a fixed threshold. VictoriaLogs will drop old per-day partitions 
+if the total size of data at [`-storageDataPath` directory](#storage) becomes bigger than the specified limit. 
+For example, the following command starts VictoriaLogs, which drops old per-day partitions if the total [storage](#storage) size becomes bigger than `100GiB`:
 
 ```sh
 /path/to/victoria-logs -retention.maxDiskSpaceUsageBytes=100GiB
 ```
 
+### Percentage-based disk space limit
+
+Use the `-retention.maxDiskUsagePercent` command-line flag to set a dynamic threshold based on the filesystem's total capacity. 
+VictoriaLogs will drop old per-day partitions if the filesystem containing the [`-storageDataPath` directory](#storage) exceeds the specified percentage usage.
+For example, the following command starts VictoriaLogs, which drops old per-day partitions if the filesystem usage exceeds 80%:
+
+```sh
+/path/to/victoria-logs -retention.maxDiskUsagePercent=80
+```
+
+This approach is particularly useful in environments where the total disk capacity may vary (e.g., cloud environments with resizable volumes) 
+or when you want to maintain a consistent percentage of free space regardless of the total disk size.
+
+**Important:** The `-retention.maxDiskSpaceUsageBytes` and `-retention.maxDiskUsagePercent` flags are mutually exclusive. 
+VictoriaLogs will refuse to start if both flags are set simultaneously.
+
 VictoriaLogs usually compresses logs by 10x or more times. This means that VictoriaLogs can store more than a terabyte of uncompressed
-logs when it runs with `-retention.maxDiskSpaceUsageBytes=100GiB`.
+logs when it runs with `-retention.maxDiskSpaceUsageBytes=100GiB` or when using percentage-based retention on a large filesystem.
 
 VictoriaLogs keeps at least two last days of data in order to guarantee that the logs for the last day can be returned in queries.
-This means that the total disk space usage may exceed the `-retention.maxDiskSpaceUsageBytes` if the size of the last two days of data
-exceeds the `-retention.maxDiskSpaceUsageBytes`.
+This means that the total disk space usage may exceed the configured threshold if the size of the last two days of data
+exceeds the limit.
 
-The [`-retentionPeriod`](#retention) is applied independently to the `-retention.maxDiskSpaceUsageBytes`. This means that
-VictoriaLogs automatically drops logs older than 7 days by default if only `-retention.maxDiskSpaceUsageBytes` command-line flag is set.
-Set the `-retentionPeriod` to some big value (e.g. `100y` - 100 years) if logs shouldn't be dropped because of some small `-retentionPeriod`.
+The [`-retentionPeriod`](#retention) is applied independently to the disk space usage limits. This means that
+VictoriaLogs automatically drops logs older than 7 days by default if only a disk space usage flag is set.
+Set the `-retentionPeriod` to some big value (e.g. `100y` - 100 years) if logs shouldn't be dropped because of time-based retention.
 For example:
 
 ```sh
 /path/to/victoria-logs -retention.maxDiskSpaceUsageBytes=10TiB -retentionPeriod=100y
+```
+
+or
+
+```sh
+/path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
 ## Storage
@@ -551,8 +577,10 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
   -retention.maxDiskSpaceUsageBytes size
         The maximum disk space usage at -storageDataPath before older per-day partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod
         Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
+  -retention.maxDiskUsagePercent int
+        The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage (default 0)
   -retentionPeriod value
-        Log entries with timestamps older than now-retentionPeriod are automatically deleted; log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes
+        Log entries with timestamps older than now-retentionPeriod are automatically deleted; log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent
         The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 7d)
   -search.maxConcurrentRequests int
         The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 14)

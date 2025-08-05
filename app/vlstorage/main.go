@@ -26,7 +26,8 @@ var (
 		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes")
 	maxDiskSpaceUsageBytes = flagutil.NewBytes("retention.maxDiskSpaceUsageBytes", 0, "The maximum disk space usage at -storageDataPath before older per-day "+
 		"partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod")
-	futureRetention = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
+	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent")
+	futureRetention     = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
@@ -100,9 +101,17 @@ func initLocalStorage() {
 	if retentionPeriod.Duration() < 24*time.Hour {
 		logger.Fatalf("-retentionPeriod cannot be smaller than a day; got %s", retentionPeriod)
 	}
+	// Validate mutually exclusive retention flags and their values
+	if maxDiskSpaceUsageBytes.N > 0 && *maxDiskUsagePercent > 0 {
+		logger.Fatalf("-retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent cannot be set simultaneously")
+	}
+	if *maxDiskUsagePercent < 0 || *maxDiskUsagePercent > 100 {
+		logger.Fatalf("-retention.maxDiskUsagePercent must be between 1 and 100; got %d", *maxDiskUsagePercent)
+	}
 	cfg := &logstorage.StorageConfig{
 		Retention:              retentionPeriod.Duration(),
 		MaxDiskSpaceUsageBytes: maxDiskSpaceUsageBytes.N,
+		MaxDiskUsagePercent:    *maxDiskUsagePercent,
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
 		LogNewStreams:          *logNewStreams,
@@ -360,10 +369,9 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	var ss logstorage.StorageStats
 	strg.UpdateStats(&ss)
 
-	if maxDiskSpaceUsageBytes.N > 0 {
-		metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_max_disk_space_usage_bytes{path=%q}`, *storageDataPath), uint64(maxDiskSpaceUsageBytes.N))
+	if ss.MaxDiskSpaceUsageBytes > 0 {
+		metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_max_disk_space_usage_bytes{path=%q}`, *storageDataPath), uint64(ss.MaxDiskSpaceUsageBytes))
 	}
-
 	metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_free_disk_space_bytes{path=%q}`, *storageDataPath), fs.MustGetFreeSpace(*storageDataPath))
 
 	isReadOnly := uint64(0)

@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,6 +24,9 @@ type StorageStats struct {
 
 	// RowsDroppedTooSmallTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed
 	RowsDroppedTooSmallTimestamp uint64
+
+	// MaxDiskSpaceUsageBytes is the maximum disk space logs can use.
+	MaxDiskSpaceUsageBytes int64
 
 	// PartitionsCount is the number of partitions in the storage
 	PartitionsCount uint64
@@ -50,6 +54,10 @@ type StorageConfig struct {
 	//
 	// The oldest per-day partitions are automatically dropped if the total disk space usage exceeds this limit.
 	MaxDiskSpaceUsageBytes int64
+
+	// MaxDiskUsagePercent is an optional threshold in percentage (1-100) for disk usage of the filesystem holding the storage path.
+	// When the current disk usage exceeds this percentage, the oldest per-day partitions are automatically dropped.
+	MaxDiskUsagePercent int
 
 	// FlushInterval is the interval for flushing the in-memory data to disk at the Storage.
 	FlushInterval time.Duration
@@ -92,6 +100,9 @@ type Storage struct {
 	//
 	// The oldest per-day partitions are automatically dropped if the total disk space usage exceeds this limit.
 	maxDiskSpaceUsageBytes int64
+
+	// maxDiskUsagePercent is an optional threshold for disk usage percentage at which the oldest partitions are automatically dropped.
+	maxDiskUsagePercent int
 
 	// flushInterval is the interval for flushing in-memory data to disk
 	flushInterval time.Duration
@@ -256,6 +267,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		path:                   path,
 		retention:              retention,
 		maxDiskSpaceUsageBytes: cfg.MaxDiskSpaceUsageBytes,
+		maxDiskUsagePercent:    cfg.MaxDiskUsagePercent,
 		flushInterval:          flushInterval,
 		futureRetention:        futureRetention,
 		minFreeDiskSpaceBytes:  minFreeDiskSpaceBytes,
@@ -348,8 +360,8 @@ func (s *Storage) runRetentionWatcher() {
 }
 
 func (s *Storage) runMaxDiskSpaceUsageWatcher() {
-	if s.maxDiskSpaceUsageBytes <= 0 {
-		return
+	if s.maxDiskSpaceUsageBytes <= 0 && s.maxDiskUsagePercent <= 0 {
+		return // nothing to watch
 	}
 	s.wg.Add(1)
 	go func() {
@@ -412,8 +424,27 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 	ticker := time.NewTicker(d)
 	defer ticker.Stop()
 	for {
-		s.partitionsLock.Lock()
+		// Determine dynamic limit in bytes
+		var limitBytes uint64
+		if s.maxDiskSpaceUsageBytes > 0 {
+			limitBytes = uint64(s.maxDiskSpaceUsageBytes)
+		} else if s.maxDiskUsagePercent > 0 {
+			total := fs.MustGetTotalSpace(s.path)
+			if total > 0 {
+				limitBytes = (total * uint64(s.maxDiskUsagePercent)) / 100
+			}
+		}
+		if limitBytes == 0 {
+			// Nothing to enforce
+			select {
+			case <-s.stopCh:
+				return
+			case <-ticker.C:
+				continue
+			}
+		}
 
+		s.partitionsLock.Lock()
 		var n uint64
 		ptws := s.partitions
 		var ptwsToDelete []*partitionWrapper
@@ -422,7 +453,7 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 			var ps PartitionStats
 			ptw.pt.updateStats(&ps)
 			n += ps.IndexdbSizeBytes + ps.CompressedSmallPartSize + ps.CompressedBigPartSize
-			if n <= uint64(s.maxDiskSpaceUsageBytes) {
+			if n <= limitBytes {
 				continue
 			}
 			if i >= len(ptws)-2 {
@@ -447,11 +478,15 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 		s.partitionsLock.Unlock()
 
 		for i, ptw := range ptwsToDelete {
-			logger.Infof("the partition %s is scheduled to be deleted because the total size of partitions exceeds -retention.maxDiskSpaceUsageBytes=%d",
-				ptw.pt.path, s.maxDiskSpaceUsageBytes)
+			var reason string
+			if s.maxDiskSpaceUsageBytes > 0 {
+				reason = fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
+			} else {
+				reason = fmt.Sprintf("-retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
+			}
+			logger.Infof("the partition %s is scheduled to be deleted because the total size of partitions exceeds %s", ptw.pt.path, reason)
 			ptw.mustDrop.Store(true)
 			ptw.decRef()
-
 			ptwsToDelete[i] = nil
 		}
 
@@ -614,8 +649,13 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 		} else {
 			// the lrPart must contain at least a single row, so log it.
 			line := MarshalFieldsToJSON(nil, lrPart.rows[0])
-			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp because of -retention.maxDiskSpaceUsageBytes=%d; log entry: %s",
-				s.maxDiskSpaceUsageBytes, line)
+			var reason string
+			if s.maxDiskSpaceUsageBytes > 0 {
+				reason = fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
+			} else {
+				reason = fmt.Sprintf("-retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
+			}
+			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp because of %s; log entry: %s", reason, line)
 		}
 		PutLogRows(lrPart)
 	}
@@ -689,6 +729,11 @@ func (s *Storage) getPartitionForDay(day int64) *partitionWrapper {
 func (s *Storage) UpdateStats(ss *StorageStats) {
 	ss.RowsDroppedTooBigTimestamp += s.rowsDroppedTooBigTimestamp.Load()
 	ss.RowsDroppedTooSmallTimestamp += s.rowsDroppedTooSmallTimestamp.Load()
+	if s.maxDiskSpaceUsageBytes > 0 {
+		ss.MaxDiskSpaceUsageBytes = s.maxDiskSpaceUsageBytes
+	} else {
+		ss.MaxDiskSpaceUsageBytes = int64(fs.MustGetTotalSpace(s.path) * uint64(s.maxDiskUsagePercent) / 100)
+	}
 
 	s.partitionsLock.Lock()
 	ss.PartitionsCount += uint64(len(s.partitions))
