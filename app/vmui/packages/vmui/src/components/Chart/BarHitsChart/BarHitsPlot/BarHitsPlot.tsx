@@ -14,6 +14,7 @@ import BarHitsTooltip from "../BarHitsTooltip/BarHitsTooltip";
 import { TimeParams } from "../../../../types";
 import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
+import { useAppState } from "../../../../state/common/StateContext";
 
 interface Props {
   logHits: LogHits[];
@@ -26,6 +27,7 @@ interface Props {
 }
 
 const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+  const { isDarkTheme } = useAppState();
   const [containerRef, containerSize] = useElementSize();
   const uPlotRef = useRef<HTMLDivElement>(null);
   const [uPlotInst, setUPlotInst] = useState<uPlot>();
@@ -96,7 +98,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     const uplot = new uPlot(options, data, uPlotRef.current);
     setUPlotInst(uplot);
     return () => uplot.destroy();
-  }, [uPlotRef.current]);
+  }, [uPlotRef.current, isDarkTheme]);
 
   useEffect(() => {
     if (!uPlotInst) return;
