@@ -289,6 +289,11 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given q and calls writeBlock for the returned data blocks
 func RunQuery(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query, writeBlock logstorage.WriteDataBlockFunc) error {
+	qOpt, limit := q.GetLastNResultsQuery()
+	if qOpt != nil {
+		return runOptimizedLastNResultsQuery(ctx, tenantIDs, qOpt, limit, writeBlock)
+	}
+
 	if localStorage != nil {
 		return localStorage.RunQuery(ctx, tenantIDs, q, writeBlock)
 	}

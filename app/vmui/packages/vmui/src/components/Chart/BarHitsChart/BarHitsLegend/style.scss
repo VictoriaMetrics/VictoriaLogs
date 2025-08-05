@@ -5,9 +5,10 @@
   flex-wrap: wrap;
   padding: 0 $padding-small $padding-small;
   color: $color-text;
+  gap: 2px;
 
   &-item {
-    max-width: 50%;
+    max-width: calc(50% - 2px);
     display: flex;
     align-items: center;
     gap: $padding-small;
@@ -17,6 +18,7 @@
     cursor: pointer;
     transition: 0.2s;
 
+    &_active,
     &:hover {
       background-color: rgba(0, 0, 0, 0.05);
     }
@@ -43,28 +45,6 @@
       color: $color-text-secondary;
       font-style: italic;
       grid-column: 2;
-    }
-  }
-
-  &-info {
-    flex-grow: 1;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: $padding-small;
-    color: $color-text-secondary;
-    font-size: $font-size-small;
-
-    code {
-      display: inline-block;
-      padding: calc($padding-small / 2) $padding-small;
-      font-size: $font-size-small;
-      text-align: center;
-      background-color: $color-background-body;
-      background-repeat: repeat-x;
-      border: $border-divider;
-      border-radius: 4px;
     }
   }
 }

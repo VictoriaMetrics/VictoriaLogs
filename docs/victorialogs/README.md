@@ -240,7 +240,7 @@ sending incremental file list
 victoria-logs-data/
 victoria-logs-data/flock.lock
               0 100%    0.00kB/s    0:00:00 (xfr#1, to-chk=78/80)
-              
+
 ...
 
 victoria-logs-data/partitions/20240809/indexdb/17E9ED7EF89BF422/metaindex.bin
@@ -312,7 +312,7 @@ This configuration allows `foo` to use the `/select/.*` and `/insert/.*` endpoin
 It is expected that VictoriaLogs runs in a protected environment, which is unreachable from the Internet without proper authorization.
 It is recommended providing access to VictoriaLogs [data ingestion APIs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 and [querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) via [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
-or similar authorization proxies.
+or similar authorization proxies. See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 ## Benchmarks
 
@@ -350,6 +350,13 @@ The command for collecting CPU profile waits for 30 seconds before returning.
 
 The collected profiles may be analyzed with [go tool pprof](https://github.com/google/pprof).
 It is safe sharing the collected profiles from security point of view, since they do not contain sensitive information.
+
+## Environment variables
+
+All VictoriaLogs components support configuring command-line flags via environment variables.
+You can define flags using environment variables, and you can also
+reference environment variables as values, allowing you to reuse or dynamically inject configuration values at application startup.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables) for details.
 
 ## List of command-line flags
 

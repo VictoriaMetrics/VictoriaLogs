@@ -19,4 +19,21 @@
   &_panning {
     pointer-events: none;
   }
+
+  &-header {
+    display: flex;
+    align-content: center;
+    justify-content: space-between;
+    gap: $padding-small;
+    padding: $padding-small $padding-small 0;
+
+    &-info {
+      display: flex;
+      align-items: center;
+      gap: $padding-small;
+      color: $color-text-secondary;
+      font-size: $font-size-small;
+      font-family: monospace;
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import useElementSize from "../../../../hooks/useElementSize";
 import uPlot, { AlignedData } from "uplot";
 import { GraphOptions } from "../types";
@@ -13,10 +13,11 @@ import classNames from "classnames";
 import BarHitsTooltip from "../BarHitsTooltip/BarHitsTooltip";
 import { TimeParams } from "../../../../types";
 import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
-import { calculateTotalHits, sortLogHits } from "../../../../utils/logs";
+import { sortLogHits } from "../../../../utils/logs";
 
 interface Props {
   logHits: LogHits[];
+  totalHits: number;
   data: AlignedData;
   period: TimeParams;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
@@ -24,7 +25,7 @@ interface Props {
   graphOptions: GraphOptions;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
   const [containerRef, containerSize] = useElementSize();
   const uPlotRef = useRef<HTMLDivElement>(null);
   const [uPlotInst, setUPlotInst] = useState<uPlot>();
@@ -48,8 +49,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, data: _data, period, se
     graphOptions
   });
 
-  const prepareLegend = useCallback((hits: LogHits[], totalHits: number): LegendLogHits[] => {
-    return hits.map((hit) => {
+  const legendDetails: LegendLogHits[] = useMemo(() => {
+    return logHits.map((hit) => {
       const label = getLabelFromLogHit(hit);
 
       const legendItem: LegendLogHits = {
@@ -63,13 +64,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, data: _data, period, se
 
       return legendItem;
     }).sort(sortLogHits("total"));
-  }, [series]);
-
-
-  const legendDetails: LegendLogHits[] = useMemo(() => {
-    const totalHits = calculateTotalHits(logHits);
-    return prepareLegend(logHits, totalHits);
-  }, [logHits, prepareLegend]);
+  }, [logHits, totalHits, series]);
 
   useEffect(() => {
     if (!uPlotInst) return;

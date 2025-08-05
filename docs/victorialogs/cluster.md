@@ -181,6 +181,7 @@ See [security docs](#security) on how to protect communications between multiple
 All the VictoriaLogs cluster components must run in protected internal network without direct access from the Internet.
 `vlstorage` must have no access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
+See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
 By default `vlinsert` and `vlselect` communicate with `vlstorage` via unencrypted HTTP. This is OK if all these components are located
 in the same protected internal network. This isn't OK if these components communicate over the Internet, since a third party can intercept / modify
@@ -215,7 +216,7 @@ It is also recommended authorizing HTTPS requests to `vlstorage` via Basic Auth:
 Another option is to use third-party HTTP proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/), `nginx`, etc. for authorizing and encrypting communications
 between VictoriaLogs cluster components over untrusted networks.
 
-By default, all the logs component (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`. It's recommended to disable select endpoints on `vlinsert` and insert endpoints on `vlselect`:
+By default, all the components (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`. It's recommended to disable select endpoints on `vlinsert` and insert endpoints on `vlselect`:
 
 ```sh
 # Disable select endpoints on vlinsert

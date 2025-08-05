@@ -4365,37 +4365,78 @@ You can find more details here: [How to determine which log fields occupy the mo
 
 ### Profile pipes incrementally
 
-Start with a simple filter that runs very fast, like `_time:5m error`. Note how long it takes. Then, add the next stage you need and measure the query performance again.
-It is recommended adding `| count()` at the end of the query at every stage in order to exclude the time needed for formatting all output logs.
+Suppose you need to profile and optimize the following query:
+
+```logsql
+_time:5m -"cannot open file" error
+  | extract "user_id=(<uid>)"
+  | top 5 by (uid)
+```
+
+Drop all the [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) from the query and leave only
+the [time range filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) like `_time:5m`.
+This query returns all the logs on the given time range. If the query is executed
+via [the built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) or
+via [the Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/),
+then just leave `*` in the query input field, since both the web UI and Grafana plugin for VictoriaLogs automatically filter
+logs on the selected time range. Add [`| count()`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats) at the end of the query and measure the time it takes to execute.
+This is the worst-case time needed for executing the query. The query also returns the number of logs, which need to be processed
+in the worst case during query execution:
+
+```logsql
+_time:5m | count()
+```
+
+Then add filters from the original query one-by-one and measure the resulting query performance. Try different filters from the original
+query and leaving the filter per each step, which executes faster.
 
 ```logsql
 _time:5m error | count()
 ```
 
 ```logsql
-_time:5m error
-  | extract 'user_id=(<uid>)' from _msg
+_time:5m error -"cannot open file" | count()
+```
+
+If you hit some slow filter, try replacing it with faster and more specific filter.
+See [the performance tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips) for details.
+For example, the slow `-"cannot open file"` filter can be replaced with the faster [`contains_any(phrase1, ..., phraseN)`](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter)
+filter where `phrase1`, ..., `phraseN` are phrases seen in the logs you want to select:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") | count()
+```
+
+After all the needed filters are added to the query, look at the number of matching logs.
+If the number is too big (e.g. exceeds tens of millions), then, probably, more specific
+filters can be added to the query in order to reduce the number of logs to process
+by the [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+For example, adding [phrase filters](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) on constant string parts
+from the [`extract`](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe) pattern can significantly reduce the number of logs
+to process by the `extract` pipe:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=(" | count()
+```
+
+Then add pipes from the original query one-by-one and measure the query duration per each step:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=("
+  | extract "user_id=(<uid>)"
   | count()
 ```
 
 ```logsql
-_time:5m error
-    | extract 'user_id=(<uid>)' from _msg
-    | stats by (uid) count() as errors
-    | count()
-```
-
-```logsql
-_time:5m error
-  | extract 'user_id=(<uid>)' from _msg
-  | stats by (uid) count() as errors
-  | sort by (errors) desc limit 10
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=("
+  | extract "user_id=(<uid>)"
+  | top 5 by (uid)
   | count()
 ```
 
-Always add one stage at a time and check query performance after each change. If something uses too much time or memory, you will know exactly which part of the query to fix.
+If the query becomes slow or starts using a lot of RAM after adding the next filter or pipe, you will know exactly which part of the query to fix.
 
-If you find a slow step, try these ideas:
+If you find a slow filter or pipe, try these ideas:
 
 - Regex matching and JSON parsing are expensive. Use faster alternatives if you can. See [performance tips](#performance-tips).
 - Sorting without a limit with [`sort` pipe](#sort-pipe) stores all logs in memory. Add a `limit` or reduce the input number of logs.

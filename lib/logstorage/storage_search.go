@@ -130,15 +130,20 @@ func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, 
 		filter:       q.f,
 		fieldsFilter: fieldsFilter,
 	}
+	ss := &searchStats{}
 
 	workersCount := q.GetConcurrency()
 
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
-		s.search(workersCount, so, stopCh, writeBlockToPipes)
+		s.search(workersCount, so, ss, stopCh, writeBlockToPipes)
 		return nil
 	}
 
-	return runPipes(ctx, q.pipes, search, writeBlock, workersCount)
+	err = runPipes(ctx, q.pipes, search, writeBlock, workersCount)
+
+	updateSearchMetrics(ss)
+
+	return err
 }
 
 // searchFunc must perform search and pass its results to writeBlock.
@@ -1032,13 +1037,14 @@ func (db *DataBlock) initFromBlockResult(br *blockResult) {
 // search searches for the matching rows according to so.
 //
 // It calls writeBlock for each matching block.
-func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
+func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
 	// Spin up workers
 	var wgWorkers sync.WaitGroup
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
 	wgWorkers.Add(workersCount)
 	for i := 0; i < workersCount; i++ {
 		go func(workerID uint) {
+			var ssLocal searchStats
 			bs := getBlockSearch()
 			bm := getBitmap(0)
 			for bswb := range workCh {
@@ -1051,7 +1057,7 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-ch
 						continue
 					}
 
-					bs.search(bsw, bm)
+					bs.search(&ssLocal, bsw, bm)
 					if bs.br.rowsLen > 0 {
 						writeBlock(workerID, &bs.br)
 					}
@@ -1062,6 +1068,7 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-ch
 			}
 			putBlockSearch(bs)
 			putBitmap(bm)
+			ss.updateAtomic(&ssLocal)
 			wgWorkers.Done()
 		}(uint(i))
 	}
@@ -1098,7 +1105,12 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, stopCh <-ch
 		partitionSearchConcurrencyLimitCh <- struct{}{}
 		wgSearchers.Add(1)
 		go func(idx int, pt *partition) {
-			psfs[idx] = pt.search(sf, f, so, workCh, stopCh)
+			var ssLocal searchStats
+
+			psfs[idx] = pt.search(sf, f, so, &ssLocal, workCh, stopCh)
+
+			ss.updateAtomic(&ssLocal)
+
 			wgSearchers.Done()
 			<-partitionSearchConcurrencyLimitCh
 		}(i, ptw.pt)
@@ -1127,7 +1139,7 @@ var partitionSearchConcurrencyLimitCh = make(chan struct{}, cgroup.AvailableCPUs
 
 type partitionSearchFinalizer func()
 
-func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
+func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
 	if needStop(stopCh) {
 		// Do not spend CPU time on search, since it is already stopped.
 		return func() {}
@@ -1156,7 +1168,7 @@ func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions
 		filter:       f,
 		fieldsFilter: so.fieldsFilter,
 	}
-	return pt.ddb.search(soInternal, workCh, stopCh)
+	return pt.ddb.search(soInternal, ss, workCh, stopCh)
 }
 
 func intersectStreamIDs(a, b []streamID) []streamID {
@@ -1218,7 +1230,7 @@ func initStreamFilters(tenantIDs []TenantID, idb *indexdb, f filter) filter {
 	return f
 }
 
-func (ddb *datadb) search(so *searchOptions, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
+func (ddb *datadb) search(so *searchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
 	// Select parts with data for the given time range
 	ddb.partsLock.Lock()
 	pws := appendPartsInTimeRange(nil, ddb.bigParts, so.minTimestamp, so.maxTimestamp)
@@ -1234,7 +1246,7 @@ func (ddb *datadb) search(so *searchOptions, workCh chan<- *blockSearchWorkBatch
 
 	// Apply search to matching parts
 	for _, pw := range pws {
-		pw.p.search(so, workCh, stopCh)
+		pw.p.search(so, ss, workCh, stopCh)
 	}
 
 	return func() {
@@ -1244,12 +1256,12 @@ func (ddb *datadb) search(so *searchOptions, workCh chan<- *blockSearchWorkBatch
 	}
 }
 
-func (p *part) search(so *searchOptions, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) search(so *searchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	bhss := getBlockHeaders()
 	if len(so.tenantIDs) > 0 {
-		p.searchByTenantIDs(so, bhss, workCh, stopCh)
+		p.searchByTenantIDs(so, ss, bhss, workCh, stopCh)
 	} else {
-		p.searchByStreamIDs(so, bhss, workCh, stopCh)
+		p.searchByStreamIDs(so, ss, bhss, workCh, stopCh)
 	}
 	putBlockHeaders(bhss)
 }
@@ -1281,7 +1293,7 @@ func (bhss *blockHeaders) reset() {
 	bhss.bhs = bhs[:0]
 }
 
-func (p *part) searchByTenantIDs(so *searchOptions, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) searchByTenantIDs(so *searchOptions, ss *searchStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	// it is assumed that tenantIDs are sorted
 	tenantIDs := so.tenantIDs
 
@@ -1338,7 +1350,7 @@ func (p *part) searchByTenantIDs(so *searchOptions, bhss *blockHeaders, workCh c
 			continue
 		}
 
-		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p)
+		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, ss)
 
 		bhs := bhss.bhs
 		for len(bhs) > 0 {
@@ -1383,7 +1395,7 @@ func (p *part) searchByTenantIDs(so *searchOptions, bhss *blockHeaders, workCh c
 	}
 }
 
-func (p *part) searchByStreamIDs(so *searchOptions, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) searchByStreamIDs(so *searchOptions, ss *searchStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	// it is assumed that streamIDs are sorted
 	streamIDs := so.streamIDs
 
@@ -1441,7 +1453,7 @@ func (p *part) searchByStreamIDs(so *searchOptions, bhss *blockHeaders, workCh c
 			continue
 		}
 
-		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p)
+		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, ss)
 
 		bhs := bhss.bhs
 		for len(bhs) > 0 {

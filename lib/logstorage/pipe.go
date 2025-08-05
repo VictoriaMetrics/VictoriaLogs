@@ -391,6 +391,9 @@ func mustParsePipes(s string, timestamp int64) []pipe {
 	if err != nil {
 		logger.Panicf("BUG: cannot parse [%s]: %s", s, err)
 	}
+	if !lex.isEnd() {
+		logger.Panicf("BUG: unexpected tail left after parsing [%s]: %s", s, lex.context())
+	}
 	return pipes
 }
 
@@ -399,6 +402,9 @@ func mustParsePipe(s string, timestamp int64) pipe {
 	p, err := parsePipe(lex)
 	if err != nil {
 		logger.Panicf("BUG: cannot parse [%s]: %s", s, err)
+	}
+	if !lex.isEnd() {
+		logger.Panicf("BUG: unexpected tail left after parsing [%s]: %s", s, lex.context())
 	}
 	return p
 }

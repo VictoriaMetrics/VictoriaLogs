@@ -2,6 +2,8 @@
 
 .vm-legend-hits-menu {
   min-width: 160px;
+  padding-inline: $padding-small;
+  font-size: $font-size-small;
   z-index: 1;
 
   &_submenu {
@@ -23,9 +25,15 @@
 
   &-section {
     border-bottom: $border-divider;
+    padding-block: $padding-small;
 
     &:last-child {
       border-bottom: none;
+    }
+
+    &_info {
+      font-size: $font-size-small;
+      font-weight: 500;
     }
   }
 
@@ -38,6 +46,7 @@
     padding: 0 $padding-global;
     transition: background-color 0.3s;
     color: $color-text;
+    border-radius:  $border-radius-small;
 
     &_interactive {
       cursor: pointer;
@@ -47,22 +56,13 @@
       }
     }
 
-    &_info {
-      font-size: $font-size-small;
-      font-weight: 500;
-      padding-block: $padding-small;
-    }
-
-    &_info &__icon {
-      color: $color-info;
-    }
-
     &__icon {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 14px;
       height: 14px;
+      color: $color-text-secondary;
 
       &_drop {
         transform: rotate(-90deg);
@@ -71,7 +71,7 @@
 
     &__title {
       flex-grow: 1;
-      padding: $padding-global 0;
+      padding: $padding-small 0;
       position: relative;
       max-width: 400px;
       white-space: nowrap;

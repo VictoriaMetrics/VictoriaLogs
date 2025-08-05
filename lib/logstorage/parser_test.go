@@ -2866,6 +2866,100 @@ func TestQueryGetFilterTimeRange(t *testing.T) {
 	f("_time:2024-05-31Z _time:day_range[08:00, 16:00]", 1717113600000000000, 1717199999999999999)
 }
 
+func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
+	f := func(qStr, qOptExpected string, limitExpected uint64) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("cannot parse [%s]: %s", qStr, err)
+		}
+		qOpt, limit := q.GetLastNResultsQuery()
+		if qOpt == nil {
+			t.Fatalf("unexpected nil qOpt")
+		}
+		qOptStr := qOpt.String()
+		if qOptStr != qOptExpected {
+			t.Fatalf("unexpected qOptStr; got %q; want %q", qOptStr, qOptExpected)
+		}
+		if limit != limitExpected {
+			t.Fatalf("unexpected limit; got %d; want %d", limit, limitExpected)
+		}
+	}
+
+	f("* | sort (_time) desc limit 10", "*", 10)
+	f("* | sort by (_time desc) limit 20", "*", 20)
+	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 30)
+	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 5)
+	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 5)
+
+	// fields pipe after the sort pipe
+	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 5)
+
+	// delete pipe after the sort pipe
+	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 5)
+
+	// multiple keep and rm pipes
+	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 5)
+}
+
+func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
+	f := func(qStr string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("cannot parse [%s]: %s", qStr, err)
+		}
+		qOpt, limit := q.GetLastNResultsQuery()
+		if qOpt != nil {
+			t.Fatalf("unexpected non-nil qOpt: [%s]", qOpt)
+		}
+		if limit != 0 {
+			t.Fatalf("unexpected limit; got %d; want 0", limit)
+		}
+	}
+
+	// No 'sort' pipe at the end
+	f("*")
+	f("foo")
+	f("foo | count()")
+	f("* | sort by (_time desc) | count()")
+
+	// sort by non-_time field
+	f("foo | sort by (x desc)")
+
+	// sort by multiple fields
+	f("* | sort (_time desc, x)")
+
+	// sort by _time in ascending order
+	f("* | sort (_time)")
+	f("* | sort (_time desc) desc")
+
+	// missing limit
+	f("* | sort (_time desc)")
+
+	// unexpected offset
+	f("* | sort (_time desc) offset 10")
+
+	// unexpected rank
+	f("* | sort (_time desc) limit 5 rank foo")
+
+	// unexpected partition
+	f("* | sort (_time desc) limit 5 partition by (x)")
+
+	// preceding pipes cannot be used for returning last N results with the biggest _time values
+	f("* | stats by (_time:hour) count() y | sort (_time desc) limit 5")
+
+	// missing _time field before the sort pipe
+	f("* | rm _time | sort (_time desc) limit 5")
+	f("* | keep x, y | sort (_time desc) limit 5")
+
+	// missing _time field after the sort pipe
+	f("* | sort (_time desc) limit 5 | keep x")
+	f("* | sort (_time desc) limit 5 | rm _time, x")
+}
+
 func TestQueryCanReturnLastNResults(t *testing.T) {
 	f := func(qStr string, resultExpected bool) {
 		t.Helper()

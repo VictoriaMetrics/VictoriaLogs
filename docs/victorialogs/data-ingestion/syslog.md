@@ -81,6 +81,7 @@ See also:
 - [Dropping fields](#dropping-fields)
 - [Decolorizing fields](#decolorizing-fields)
 - [Adding extra fields](#adding-extra-fields)
+- [Capturing remote ip address](#capturing-remote-ip-address)
 - [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
@@ -190,6 +191,19 @@ For example, the following command starts VictoriaLogs, which adds `source=foo` 
 
 ```sh
 ./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.extraFields.tcp='{"source":"foo","abc":"def"}'
+```
+
+## Capturing remote IP address
+
+VictoriaLogs can capture the remote IP address for the incoming syslog messages and can automatically store it
+into `remote_ip` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+Pass `-syslog.useRemoteIP.tcp=true` for capturing remote IP for the corresponding `-syslog.listenAddr.tcp`.
+Pass `-syslog.useRemoteIP.udp=true` for capturing remote IP for the corresponding `-syslog.listenAddr.udp`.
+
+For example, the following command starts VictoriaLogs, which captures remote IP into `remote_ip` field for logs received at TCP port 514:
+
+```sh
+./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.useRemoteIP.tcp=true
 ```
 
 ## Multiple configs
