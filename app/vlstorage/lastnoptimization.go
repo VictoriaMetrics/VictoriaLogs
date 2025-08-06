@@ -55,13 +55,14 @@ func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, 
 	start, end := q.GetFilterTimeRange()
 	d := end/2 - start/2
 	start += d
+	n := limit
 
 	var rowsFound []logRow
 
 	for {
 		timestamp := qOrig.GetTimestamp()
 		q = qOrig.CloneWithTimeFilter(timestamp, start, end)
-		q.AddPipeLimit(2 * limit)
+		q.AddPipeLimit(2 * n)
 		rows, err := getQueryResults(ctx, tenantIDs, q)
 		if err != nil {
 			return nil, err
@@ -77,14 +78,14 @@ func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, 
 		dLastBit := d & 1
 		d /= 2
 
-		if uint64(len(rows)) >= 2*limit {
-			// The number of found rows on the [start ... end] time range exceeds 2*limit,
+		if uint64(len(rows)) >= 2*n {
+			// The number of found rows on the [start ... end] time range exceeds 2*n,
 			// so reduce the time range to further to [start+d ... end].
 			start += d
 			continue
 		}
-		if uint64(len(rows)) >= limit {
-			// The number of found rows is in the range [limit ... 2*limit).
+		if uint64(len(rows)) >= n {
+			// The number of found rows is in the range [n ... 2*n).
 			// This means that found rows contains the needed limit rows with the biggest timestamps.
 			rowsFound = append(rowsFound, rows...)
 			rowsFound = getLastNRows(rowsFound, limit)
@@ -96,7 +97,7 @@ func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, 
 		// Append the found rows to rowsFound, adjust the limit, so it doesn't take into account already found rows
 		// and adjust the time range to search logs to [start-d ... start).
 		rowsFound = append(rowsFound, rows...)
-		limit -= uint64(len(rows))
+		n -= uint64(len(rows))
 
 		end = start - 1
 		start -= d + dLastBit
