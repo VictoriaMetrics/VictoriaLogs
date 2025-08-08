@@ -8,6 +8,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -104,11 +105,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			labels = o
 		}
 		labels.Visit(func(k []byte, v *fastjson.Value) {
-			vStr, errLocal := v.StringBytes()
-			if errLocal != nil {
-				err = fmt.Errorf("unexpected label value type for %q:%q; want string", k, v)
-				return
-			}
+			vStr := getMarshaledJSONValue(v)
 			fields.fields = append(fields.fields, logstorage.Field{
 				Name:  bytesutil.ToUnsafeString(k),
 				Value: bytesutil.ToUnsafeString(vStr),
@@ -159,14 +156,8 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				if err != nil {
 					return fmt.Errorf("unexpected structured metadata type for %q; want JSON object", lineA[2])
 				}
-
 				structuredMetadata.Visit(func(k []byte, v *fastjson.Value) {
-					vStr, errLocal := v.StringBytes()
-					if errLocal != nil {
-						err = fmt.Errorf("unexpected label value type for %q:%q; want string", k, v)
-						return
-					}
-
+					vStr := getMarshaledJSONValue(v)
 					fields.fields = append(fields.fields, logstorage.Field{
 						Name:  bytesutil.ToUnsafeString(k),
 						Value: bytesutil.ToUnsafeString(vStr),
@@ -227,4 +218,21 @@ func parseLokiTimestamp(s string) (int64, error) {
 		return 0, fmt.Errorf("cannot parse unix timestamp %q", s)
 	}
 	return nsecs, nil
+}
+
+func getMarshaledJSONValue(v *fastjson.Value) []byte {
+	vt := v.Type()
+
+	if vt == fastjson.TypeString {
+		sb, err := v.StringBytes()
+		if err != nil {
+			logger.Panicf("BUG: unexpected error from v.StringBytes(): %s", err)
+		}
+		return sb
+	}
+
+	// Convert any non-string value into string representation like Loki does.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/547
+	sb := v.MarshalTo(nil)
+	return sb
 }

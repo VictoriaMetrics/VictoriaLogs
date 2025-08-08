@@ -1,10 +1,10 @@
-import { FC, useMemo, useRef } from "preact/compat";
+import { FC, useLayoutEffect, useMemo, useRef, useState } from "preact/compat";
 import uPlot, { AlignedData } from "uplot";
 import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import classNames from "classnames";
-import "./style.scss";
 import { sortLogHits } from "../../../../utils/logs";
+import "./style.scss";
 
 interface Props {
   data: AlignedData;
@@ -12,45 +12,77 @@ interface Props {
   focusDataIdx: number;
 }
 
+type TooltipItem = {
+  label: string;
+  stroke?: string;
+  value: number;
+  show: boolean;
+};
+
+type TooltipData = {
+  point: { top: number; left: number };
+  values: TooltipItem[];
+  total: number;
+  timestamp: string;
+} | undefined;
+
 const timeFormat = (ts: number) => dayjs(ts * 1000).tz().format(DATE_TIME_FORMAT);
 
 const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
+  const [isTooltipReady, setTooltipReady] = useState(false);
+
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  const tooltipData = useMemo(() => {
-    const series = uPlotInst?.series || [];
-    const [time, ...values] = data.map((d) => d[focusDataIdx] || 0);
-    const step = (data[0][1] - data[0][0]);
-    const timeNext = time + step;
+  const tooltipData: TooltipData = useMemo(() => {
+    if (!uPlotInst || focusDataIdx < 0 || !data.length || !data[0]?.length) {
+      return;
+    }
 
-    const tooltipItems = values.map((value, i) => {
-      const targetSeries = series[i + 1];
-      const stroke = (targetSeries?.stroke as () => string)?.();
-      const label = targetSeries?.label as string;
-      const show = targetSeries?.show;
-      return {
-        label,
-        stroke,
+    const time = data[0][focusDataIdx] || 0;
+    const step = data[0][1] - data[0][0];
+    const timeNext = time + step;
+    const values = data.slice(1).map(row => row[focusDataIdx] || 0);
+    const series = uPlotInst.series.slice(1);
+
+    let total = 0;
+
+    const tooltipItems = series.reduce((acc, s, i) => {
+      if (!s?.show) return acc; // Skip hidden series
+
+      const value = values[i];
+      if (value <= 0) return acc; // Skip zero or negative values
+
+      acc.push({
         value,
-        show
-      };
-    }).filter(item => item.value > 0 && item.show).sort(sortLogHits("value"));
+        label: s.label as string,
+        stroke: (s.stroke as (() => string))?.(),
+        show: true,
+      });
+
+      total += value;
+
+      return acc;
+    }, [] as TooltipItem[]);
+
+    tooltipItems.sort(sortLogHits("value"));
+
+    if (!tooltipItems.length) return;
 
     const point = {
-      top: tooltipItems[0] ? uPlotInst?.valToPos?.(tooltipItems[0].value, "y") || 0 : 0,
-      left: uPlotInst?.valToPos?.(time, "x") || 0,
+      top: uPlotInst.valToPos?.(tooltipItems[0]?.value ?? 0, "y") || 0,
+      left: uPlotInst.valToPos?.(time, "x") || 0,
     };
 
     return {
       point,
+      total,
       values: tooltipItems,
-      total: tooltipItems.reduce((acc, item) => acc + item.value, 0),
       timestamp: `${timeFormat(time)} - ${timeFormat(timeNext)}`,
     };
   }, [focusDataIdx, uPlotInst, data]);
 
   const tooltipPosition = useMemo(() => {
-    if (!uPlotInst || !tooltipData.total || !tooltipRef.current) return;
+    if (!uPlotInst || !tooltipData || !tooltipRef.current || !isTooltipReady) return;
 
     const { top, left } = tooltipData.point;
     const uPlotPosition = {
@@ -81,7 +113,17 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
     if (position.top < 0) position.top = 20;
 
     return position;
-  }, [tooltipData, uPlotInst, tooltipRef.current]);
+  }, [tooltipData, uPlotInst, isTooltipReady]);
+
+  useLayoutEffect(() => {
+    if (tooltipRef.current) {
+      setTooltipReady(true);
+    } else {
+      setTooltipReady(false);
+    }
+  }, [tooltipData]);
+
+  if (!tooltipData) return null;
 
   return (
     <div
@@ -89,16 +131,15 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
         "vm-chart-tooltip": true,
         "vm-chart-tooltip_hits": true,
         "vm-bar-hits-tooltip": true,
-        "vm-bar-hits-tooltip_visible": focusDataIdx !== -1 && tooltipData.values.length
       })}
       ref={tooltipRef}
       style={tooltipPosition}
     >
       <div>
-        {tooltipData.values.map((item, i) => (
+        {tooltipData.values.map((item) => (
           <div
             className="vm-chart-tooltip-data"
-            key={i}
+            key={item.label}
           >
             <span
               className="vm-chart-tooltip-data__marker"
@@ -111,6 +152,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
           </div>
         ))}
       </div>
+
       {tooltipData.values.length > 1 && (
         <div className="vm-chart-tooltip-data">
           <span/>
@@ -120,6 +162,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
           </p>
         </div>
       )}
+
       <div className="vm-chart-tooltip-header">
         <div className="vm-chart-tooltip-header__title vm-bar-hits-tooltip__date">
           {tooltipData.timestamp}

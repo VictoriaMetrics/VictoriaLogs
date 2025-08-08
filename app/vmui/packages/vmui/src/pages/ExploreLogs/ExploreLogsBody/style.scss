@@ -4,11 +4,12 @@
   position: relative;
 
   &-header {
-    background-color: $color-background-block;
-    z-index: 3;
-    margin: -$padding-medium 0-$padding-medium 0;
     position: sticky;
     top: 0;
+    margin: -$padding-medium 0-$padding-medium 0;
+    grid-template-columns: 1fr auto auto;
+    background-color: $color-background-block;
+    z-index: 3;
 
     @media (max-width:1000px) {
       top: 51px;

@@ -83,6 +83,7 @@ Communication between `vlinsert` / `vlselect` and `vlstorage` is done via HTTP o
 
 This HTTP-based communication model allows you to use reverse proxies for authorization, routing, and encryption between components.  
 Use of [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) is recommended for managing access control.
+See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 For advanced setups, refer to the [multi-level cluster setup](#multi-level-cluster-setup) documentation.
 
@@ -90,9 +91,9 @@ For advanced setups, refer to the [multi-level cluster setup](#multi-level-clust
 
 In the cluster setup, the following rules apply:
 
-- The `vlselect` component requires **all relevant vlstorage nodes to be available** in order to return complete and correct query results. 
+- The `vlselect` component requires **all relevant vlstorage nodes to be available** in order to return complete and correct query results.
 
-  - If even one of the vlstorage nodes is temporarily unavailable, `vlselect` cannot safely return a full response, since some of the required data may reside on the missing node. Rather than risk delivering partial or misleading query results, which can cause confusion, trigger false alerts, or produce incorrect metrics, VictoriaLogs chooses to return an error instead. 
+  - If even one of the vlstorage nodes is temporarily unavailable, `vlselect` cannot safely return a full response, since some of the required data may reside on the missing node. Rather than risk delivering partial or misleading query results, which can cause confusion, trigger false alerts, or produce incorrect metrics, VictoriaLogs chooses to return an error instead.
 
 - The `vlinsert` component continues to function normally when some vlstorage nodes are unavailable. It automatically routes new logs to the remaining available nodes to ensure that data ingestion remains uninterrupted and newly received logs are not lost.
 
@@ -146,10 +147,13 @@ In this HA solution:
 
 - A log shipper at the top receives logs and replicates them in parallel to two VictoriaLogs clusters.
   - If one cluster fails completely (i.e., **all** of its storage nodes become unavailable), the log shipper continues to send logs to the remaining healthy cluster and buffers any logs that cannot be delivered. When the failed cluster becomes available again, the log shipper resumes sending both buffered and new logs to it.
-- On the read path, a load balancer (e.g., vmauth) sits in front of the VictoriaLogs clusters and routes query requests to any healthy cluster.
+- On the read path, a load balancer (e.g., [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)) sits in front of the VictoriaLogs clusters and routes query requests to any healthy cluster.
   - If one cluster fails (i.e., **at least one** of its storage nodes is unavailable), the load balancer detects this and automatically redirects all query traffic to the remaining healthy cluster.
 
-There's no hidden coordination logic or consensus algorithm. You can scale it horizontally and operate it safely, even in bare-metal Kubernetes clusters using local PVs, as long as the log shipper handles reliable replication and buffering.
+There's no hidden coordination logic or consensus algorithm. You can scale it horizontally and operate it safely, even in bare-metal Kubernetes clusters using local PVs,
+as long as the log shipper handles reliable replication and buffering.
+
+See also [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
   
 ## Single-node and cluster mode duality
 
@@ -181,6 +185,7 @@ See [security docs](#security) on how to protect communications between multiple
 All the VictoriaLogs cluster components must run in protected internal network without direct access from the Internet.
 `vlstorage` must have no access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
+See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
 By default `vlinsert` and `vlselect` communicate with `vlstorage` via unencrypted HTTP. This is OK if all these components are located
 in the same protected internal network. This isn't OK if these components communicate over the Internet, since a third party can intercept / modify
@@ -215,7 +220,7 @@ It is also recommended authorizing HTTPS requests to `vlstorage` via Basic Auth:
 Another option is to use third-party HTTP proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/), `nginx`, etc. for authorizing and encrypting communications
 between VictoriaLogs cluster components over untrusted networks.
 
-By default, all the logs component (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`. It's recommended to disable select endpoints on `vlinsert` and insert endpoints on `vlselect`:
+By default, all the components (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`. It's recommended to disable select endpoints on `vlinsert` and insert endpoints on `vlselect`:
 
 ```sh
 # Disable select endpoints on vlinsert
@@ -240,8 +245,8 @@ The following guide covers the following topics for Linux host:
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.25.1-victorialogs/victoria-logs-linux-amd64-v1.25.1.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.25.1.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.26.0-victorialogs/victoria-logs-linux-amd64-v1.26.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.26.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs at `victoria-logs-data-1` directory:
@@ -324,7 +329,7 @@ usage on systems with constrained resources:
 
 - `vlselect` requests compressed data from `vlstorage` nodes in order to reduce network bandwidth usage at the cost of slightly higher CPU usage
   at `vlselect` and `vlstorage` nodes. The compression can be disabled by passing `-select.disableCompression` command-line flag to `vlselect`.
-  This reduces CPU usage at `vlselect` and `vlstorage` nodes at the cost of significanlty higher network bandwidth usage.
+  This reduces CPU usage at `vlselect` and `vlstorage` nodes at the cost of significantly higher network bandwidth usage.
 
 ## Advanced usage
 

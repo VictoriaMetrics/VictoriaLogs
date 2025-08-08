@@ -17,7 +17,7 @@ import (
 // pipeFacetsDefaultLimit is the default number of entries pipeFacets returns per each log field.
 const pipeFacetsDefaultLimit = 10
 
-// pipeFacetsDefaulatMaxValuesPerField is the default number of unique values to track per each field.
+// pipeFacetsDefaultMaxValuesPerField is the default number of unique values to track per each field.
 const pipeFacetsDefaultMaxValuesPerField = 1000
 
 // pipeFacetsDefaultMaxValueLen is the default length of values in fields, which must be ignored when building facets.

@@ -16,7 +16,7 @@ import (
 //
 // Example LogsQL: `fieldName:i(prefix*)` or `fieldName:i("some prefix"*)`
 //
-// A special case `fieldName:i(*)` equals to `fieldName:*` and matches non-emtpy value for the given `fieldName` field.
+// A special case `fieldName:i(*)` equals to `fieldName:*` and matches non-empty value for the given `fieldName` field.
 type filterAnyCasePrefix struct {
 	fieldName string
 	prefix    string

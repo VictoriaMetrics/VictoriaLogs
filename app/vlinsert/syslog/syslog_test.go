@@ -86,7 +86,7 @@ func TestProcessStreamInternal_Success(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := bytes.NewBufferString(data)
-		if err := processStreamInternal(r, "", false, tlp); err != nil {
+		if err := processStreamInternal(r, "", false, "1.2.3.4", tlp); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
@@ -100,9 +100,9 @@ func TestProcessStreamInternal_Success(t *testing.T) {
 `
 	currentYear := 2023
 	timestampsExpected := []int64{1685794113000000000, 1685880513000000000, 1685814132345000000}
-	resultExpected := `{"format":"rfc3164","hostname":"abcd","app_name":"systemd","_msg":"Starting Update the local ESM caches..."}
-{"priority":"165","facility_keyword":"local4","level":"notice","facility":"20","severity":"5","format":"rfc3164","hostname":"abcd","app_name":"systemd","proc_id":"345","_msg":"abc defg"}
-{"priority":"123","facility_keyword":"solaris-cron","level":"error","facility":"15","severity":"3","format":"rfc5424","hostname":"mymachine.example.com","app_name":"appname","proc_id":"12345","msg_id":"ID47","exampleSDID@32473.iut":"3","exampleSDID@32473.eventSource":"Application 123 = ] 56","exampleSDID@32473.eventID":"11211","_msg":"This is a test message with structured data."}`
+	resultExpected := `{"format":"rfc3164","hostname":"abcd","app_name":"systemd","_msg":"Starting Update the local ESM caches...","remote_ip":"1.2.3.4"}
+{"priority":"165","facility_keyword":"local4","level":"notice","facility":"20","severity":"5","format":"rfc3164","hostname":"abcd","app_name":"systemd","proc_id":"345","_msg":"abc defg","remote_ip":"1.2.3.4"}
+{"priority":"123","facility_keyword":"solaris-cron","level":"error","facility":"15","severity":"3","format":"rfc5424","hostname":"mymachine.example.com","app_name":"appname","proc_id":"12345","msg_id":"ID47","exampleSDID@32473.iut":"3","exampleSDID@32473.eventSource":"Application 123 = ] 56","exampleSDID@32473.eventID":"11211","_msg":"This is a test message with structured data.","remote_ip":"1.2.3.4"}`
 	f(data, currentYear, timestampsExpected, resultExpected)
 }
 
@@ -115,7 +115,7 @@ func TestProcessStreamInternal_Failure(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := bytes.NewBufferString(data)
-		if err := processStreamInternal(r, "", false, tlp); err == nil {
+		if err := processStreamInternal(r, "", false, "1.2.3.4", tlp); err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
 	}

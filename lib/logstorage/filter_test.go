@@ -190,13 +190,14 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 
 	// Close and delete the test storage
 	s.MustClose()
-	fs.MustRemoveAll(storagePath)
+	fs.MustRemoveDir(storagePath)
 }
 
 func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f filter, neededColumnName string, expectedValues []string, expectedTimestamps []int64) {
 	t.Helper()
 
 	so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{neededColumnName, "_time"})
+	ss := &searchStats{}
 
 	type result struct {
 		value     string
@@ -206,7 +207,7 @@ func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f fi
 	var results []result
 
 	const workersCount = 3
-	s.search(workersCount, so, nil, func(_ uint, br *blockResult) {
+	s.search(workersCount, so, ss, nil, func(_ uint, br *blockResult) {
 		// Verify columns
 		cs := br.getColumns()
 		if len(cs) != 2 {

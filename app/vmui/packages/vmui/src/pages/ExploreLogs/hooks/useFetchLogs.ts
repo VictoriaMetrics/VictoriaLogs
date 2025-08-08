@@ -4,34 +4,70 @@ import { ErrorTypes, TimeParams } from "../../../types";
 import { Logs } from "../../../api/types";
 import dayjs from "dayjs";
 import { useTenant } from "../../../hooks/useTenant";
+import { useSearchParams } from "react-router-dom";
+import { useAppState } from "../../../state/common/StateContext";
 
-export const useFetchLogs = (server: string, query: string, limit: number) => {
+interface FetchLogsParams {
+  query?: string;
+  period?: TimeParams;
+  limit?: number;
+  preventAbortPrevious?: boolean;
+}
+
+interface FetchLogsOptions extends FetchLogsParams {
+  signal: AbortSignal;
+}
+
+export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
+  const { serverUrl } = useAppState();
   const tenant = useTenant();
+  const [searchParams] = useSearchParams();
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
   const [error, setError] = useState<ErrorTypes | string>();
   const abortControllerRef = useRef(new AbortController());
 
-  const url = useMemo(() => getLogsUrl(server), [server]);
+  const hideLogs = useMemo(() => searchParams.get("hide_logs"), [searchParams]);
 
-  const getOptions = (query: string, period: TimeParams, limit: number, signal: AbortSignal) => ({
-    signal,
-    method: "POST",
-    headers: {
-      ...tenant,
-      Accept: "application/stream+json",
-    },
-    body: new URLSearchParams({
+  const url = useMemo(() => getLogsUrl(serverUrl), [serverUrl]);
+
+  const getOptions = ({ query, period, limit, signal }: FetchLogsOptions) => {
+    if (!query) {
+      throw new Error("query is required to /select/logsql/query.");
+    }
+
+    const body = new URLSearchParams({
       query: query.trim(),
-      limit: `${limit}`,
-      start: dayjs(period.start * 1000).tz().toISOString(),
-      end: dayjs(period.end * 1000).tz().toISOString()
-    })
-  });
+    });
 
-  const fetchLogs = useCallback(async (period: TimeParams) => {
-    abortControllerRef.current.abort();
+    if (limit) {
+      body.append("limit", String(limit));
+    }
+
+    if (period) {
+      body.append("start", dayjs(period.start * 1000).tz().toISOString());
+      body.append("end", dayjs(period.end * 1000).tz().toISOString());
+    }
+
+    return {
+      body,
+      signal,
+      method: "POST",
+      headers: {
+        ...tenant,
+        Accept: "application/stream+json",
+      },
+    };
+  };
+
+  const fetchLogs = useCallback(async ({
+    query = defaultQuery,
+    limit = defaultLimit,
+    period,
+    preventAbortPrevious
+  }: FetchLogsParams) => {
+    !preventAbortPrevious && abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
 
@@ -40,7 +76,7 @@ export const useFetchLogs = (server: string, query: string, limit: number) => {
     setError(undefined);
 
     try {
-      const options = getOptions(query, period, limit, signal);
+      const options = getOptions({ query, limit, period, signal });
       const response = await fetch(url, options);
       const text = await response.text();
 
@@ -50,9 +86,9 @@ export const useFetchLogs = (server: string, query: string, limit: number) => {
         return false;
       }
 
-      const data = text.split("\n", limit).map(parseLineToJSON).filter(line => line) as Logs[];
+      const data = text.split("\n", defaultLimit).map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
-      return true;
+      return data;
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
         setError(String(e));
@@ -67,13 +103,20 @@ export const useFetchLogs = (server: string, query: string, limit: number) => {
         return rest;
       });
     }
-  }, [url, query, limit, tenant]);
+  }, [url, defaultQuery, defaultLimit, tenant]);
 
   useEffect(() => {
     return () => {
       abortControllerRef.current.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (hideLogs) {
+      setLogs([]);
+      setError(undefined);
+    }
+  }, [hideLogs]);
 
   return {
     logs,

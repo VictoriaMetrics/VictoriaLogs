@@ -1,15 +1,13 @@
 const router = {
   home: "/",
+  streamContext: "/stream-context/:_stream_id/:_time",
   icons: "/icons",
 };
 
 export interface RouterOptionsHeader {
   tenant?: boolean,
-  stepControl?: boolean,
   timeSelector?: boolean,
   executionControls?: boolean,
-  globalSettings?: boolean,
-  cardinalityDatePicker?: boolean
 }
 
 export interface RouterOptions {
@@ -20,12 +18,20 @@ export interface RouterOptions {
 export const routerOptions: { [key: string]: RouterOptions } = {
   [router.home]: {
     title: "Logs Explorer",
-    header: {}
+    header: {
+      tenant: true,
+      timeSelector: true,
+      executionControls: true,
+    }
   },
   [router.icons]: {
     title: "Icons",
     header: {}
   },
+  [router.streamContext]: {
+    title: "Stream context",
+    header: {}
+  }
 };
 
 export default router;

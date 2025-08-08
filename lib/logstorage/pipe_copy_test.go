@@ -70,7 +70,7 @@ func TestPipeCopy(t *testing.T) {
 		},
 	})
 
-	// single row, copy from non-exsiting field
+	// single row, copy from non-existing field
 	f("copy x as b", [][]Field{
 		{
 			{"_msg", `{"foo":"bar"}`},

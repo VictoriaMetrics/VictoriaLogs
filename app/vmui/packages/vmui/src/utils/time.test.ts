@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import dayjs from "dayjs";
-import { getNanoTimestamp } from "./time";
+import { getNanoTimestamp, toNanoPrecision } from "./time";
 
 describe("Time utils", () => {
   describe("getNanoTimestamp", () => {
@@ -50,4 +50,48 @@ describe("Time utils", () => {
       expect(getNanoTimestamp(dateStr)).toBe(expected);
     });
   });
+
+  describe("toNanoPrecision", () => {
+    it("should pad fraction to 9 digits (microseconds -> nanoseconds)", () => {
+      const input = "2024-09-19T14:41:13.76572Z";
+      const expected = "2024-09-19T14:41:13.765720000Z";
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+
+    it("should leave already correct 9-digit fraction untouched", () => {
+      const input = "2024-09-19T14:41:13.123456789Z";
+      const expected = "2024-09-19T14:41:13.123456789Z";
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+
+    it("should pad shorter fractions (milliseconds -> nanoseconds)", () => {
+      const input = "2024-09-19T14:41:13.123Z";
+      const expected = "2024-09-19T14:41:13.123000000Z";
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+
+    it("should add .000000000 if no fraction is present", () => {
+      const input = "2024-09-19T14:41:13Z";
+      const expected = "2024-09-19T14:41:13.000000000Z";
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+
+    it("should throw error on invalid format", () => {
+      const input = "invalid-date";
+      expect(() => toNanoPrecision(input)).toThrow("Invalid time format");
+    });
+
+    it("should handle one-digit fraction", () => {
+      const input = "2024-09-19T14:41:13.7Z";
+      const expected = "2024-09-19T14:41:13.700000000Z";
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+
+    it("should handle 10-digit fraction by trimming", () => {
+      const input = "2024-09-19T14:41:13.1234567891Z";
+      const expected = "2024-09-19T14:41:13.123456789Z"; // extra digits trimmed
+      expect(toNanoPrecision(input)).toBe(expected);
+    });
+  });
+
 });

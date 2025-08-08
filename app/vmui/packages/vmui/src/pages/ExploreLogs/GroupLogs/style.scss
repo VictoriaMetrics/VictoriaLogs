@@ -1,10 +1,15 @@
 @use "src/styles/variables" as *;
+@use "src/components/Main/Modal/style" as *;
 @use 'sass:color';
 
 $font-size-logs: var(--font-size-logs, $font-size-small);
 
+$actions-buttons: 2;
+$actions-width: calc(($actions-buttons*30px) + 10px);
+
 .vm-group-logs {
   margin-top: calc(-1 * $padding-medium);
+  padding-bottom: calc(1px + $padding-medium);
 
   &-header {
     display: flex;
@@ -23,6 +28,7 @@ $font-size-logs: var(--font-size-logs, $font-size-small);
 
   &-section {
     border-bottom: $border-divider;
+    padding-bottom: $padding-small;
 
     &-keys {
       position: relative;
@@ -126,37 +132,28 @@ $font-size-logs: var(--font-size-logs, $font-size-small);
   }
 
   &-row {
-    &:last-child {
-      margin-bottom: $padding-small;
+    position: relative;
+
+    &:hover {
+      z-index: 2;
     }
 
     &-content {
       display: flex;
-      padding: 2px 24px 2px 0;
+      padding: 2px $actions-width 2px 2px;
       cursor: pointer;
+
+      &_active {
+        padding-right: 0;
+      }
 
       &_interactive {
         contain: layout;
         will-change: background-color;
       }
 
-      &__copy-row {
-        position: absolute;
-        top: 0;
-        right: 0;
-        z-index: 1;
-        visibility: hidden;
-
-        &.vm-button {
-          padding: 2px;
-        }
-      }
-
       &_interactive:hover {
         background-color: $color-hover-black;
-        .vm-group-logs-row-content__copy-row {
-          visibility: visible;
-        }
       }
 
       &__arrow {
@@ -193,8 +190,10 @@ $font-size-logs: var(--font-size-logs, $font-size-small);
       }
 
       &__msg {
+        flex-grow: 1;
         font-family: $font-family-monospace;
         overflow-wrap: anywhere;
+        padding-right: $padding-small;
 
         &_single-line {
           overflow: hidden;
@@ -277,6 +276,32 @@ $font-size-logs: var(--font-size-logs, $font-size-small);
 
       &__sub-msg {
         padding-right: $padding-global;
+      }
+
+      &__actions {
+        position: absolute;
+        right: 2px;
+        top: 2px;
+        display: flex;
+        align-items: center;
+        align-self: flex-start;
+        border-radius: $border-radius-small;
+        padding: calc($padding-small/2);
+        visibility: hidden;
+        border: $border-divider;
+        background-color: $color-background-body;
+      }
+
+      &_active &__actions {
+        position: relative;
+        top: 0;
+        border-color: transparent;
+        background: transparent;
+        visibility:  visible;
+      }
+
+      &_interactive:hover &__actions {
+        visibility: visible;
       }
     }
 

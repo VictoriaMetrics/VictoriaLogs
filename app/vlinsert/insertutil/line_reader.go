@@ -10,6 +10,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/stringsutil"
 )
 
 // LineReader reads newline-delimited lines from the underlying reader
@@ -102,9 +103,10 @@ func (lr *LineReader) readMoreData() bool {
 
 	bufLen := len(lr.buf)
 	if bufLen >= MaxLineSizeBytes.IntN() {
+		lineSnippet := stringsutil.LimitStringLen(string(lr.buf), 1024)
 		ok, skippedBytes := lr.skipUntilNextLine()
-		logger.Warnf("%s: the line length exceeds -insert.maxLineSizeBytes=%d; skipping it; total skipped bytes=%d",
-			lr.name, MaxLineSizeBytes.IntN(), skippedBytes)
+		logger.Warnf("%s: the line length exceeds -insert.maxLineSizeBytes=%d; skipping it; total skipped bytes=%d; the line snippet=%q",
+			lr.name, MaxLineSizeBytes.IntN(), skippedBytes, lineSnippet)
 		tooLongLinesSkipped.Inc()
 		return ok
 	}
@@ -149,7 +151,7 @@ func (lr *LineReader) skipUntilNextLine() (bool, int) {
 			// Include skipped bytes before \n, including the newline itself.
 			skipSizeBytes += n + 1 - len(lr.buf)
 			// Include \n in the buf, so too long line is replaced with an empty line.
-			// This is needed for maintaining synchorinzation consistency between lines
+			// This is needed for maintaining synchronization consistency between lines
 			// in protocols such as Elasticsearch bulk import.
 			lr.buf = append(lr.buf[:0], lr.buf[n:]...)
 			return true, skipSizeBytes

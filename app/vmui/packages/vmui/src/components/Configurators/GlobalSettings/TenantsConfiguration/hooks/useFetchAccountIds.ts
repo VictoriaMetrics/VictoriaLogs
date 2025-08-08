@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "preact/compat";
 import { ErrorTypes } from "../../../../../types";
 import { getAccountIds } from "../../../../../api/accountId";
 import { getAppModeEnable, getAppModeParams } from "../../../../../utils/app-mode";
-import { getTenantIdFromUrl } from "../../../../../utils/tenants";
 
 export const useFetchAccountIds = () => {
   const { useTenantID } = getAppModeParams();
@@ -15,8 +14,7 @@ export const useFetchAccountIds = () => {
   const [accountIds, setAccountIds] = useState<string[]>([]);
 
   const fetchUrl = useMemo(() => getAccountIds(serverUrl), [serverUrl]);
-  const isServerUrlWithTenant = useMemo(() => !!getTenantIdFromUrl(serverUrl), [serverUrl]);
-  const preventFetch = appModeEnable ? !useTenantID : !isServerUrlWithTenant;
+  const preventFetch = appModeEnable ? !useTenantID : true;
 
   useEffect(() => {
     if (preventFetch) return;

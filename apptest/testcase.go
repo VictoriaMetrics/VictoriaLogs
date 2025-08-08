@@ -56,7 +56,7 @@ func (tc *TestCase) Stop() {
 		app.Stop()
 	}
 	if !tc.t.Failed() {
-		fs.MustRemoveAll(tc.Dir())
+		fs.MustRemoveDir(tc.Dir())
 	}
 }
 

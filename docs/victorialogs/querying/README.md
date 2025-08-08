@@ -24,7 +24,6 @@ VictoriaLogs provides the following HTTP endpoints:
 - [`/select/logsql/field_names`](#querying-field-names) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names.
 - [`/select/logsql/field_values`](#querying-field-values) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
 
-
 ### Querying logs
 
 Logs stored in VictoriaLogs can be queried at the `/select/logsql/query` HTTP endpoint.
@@ -57,14 +56,18 @@ By default the `/select/logsql/query` returns all the log entries matching the g
 - By specifying the maximum number of log entries, which can be returned in the response via `limit` query arg. For example, the following command returns
   up to 10 most recently added log entries with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
   in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
+
   ```sh
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10'
   ```
+
 - By adding [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe) to the query. For example, the following command returns up to 10 **random** log entries
   with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
+
   ```sh
   curl http://localhost:9428/select/logsql/query -d 'query=error | limit 10'
   ```
+
 - By adding [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter). The time range for the query can be specified via optional
   `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
@@ -123,7 +126,6 @@ See also:
 - [Querying stream field values](#querying-stream-field-values)
 - [Querying field names](#querying-field-names)
 - [Querying field values](#querying-field-values)
-
 
 ### Live tailing
 
@@ -915,7 +917,6 @@ See also:
 - [Querying streams](#querying-streams)
 - [HTTP API](#http-api)
 
-
 ## Extra filters
 
 All the [HTTP querying APIs](#http-api) provided by VictoriaLogs support the following optional query args:
@@ -943,7 +944,6 @@ The `extra_filters` may contain also arbitrary [LogsQL filter](https://docs.vict
 
 The arg passed to `extra_filters` and `extra_stream_filters` must be properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
-
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
@@ -958,7 +958,7 @@ There are three modes of displaying query results:
 
 See also [command line interface](#command-line).
 
-## Visualization in Grafana 
+## Visualization in Grafana
 
 [VictoriaLogs Grafana Datasource](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) allows you to query and visualize VictoriaLogs data in Grafana
 

@@ -2,11 +2,11 @@
 
 # Builds spellcheck image.
 codespell:
-	@docker build codespell -t codespell
+	docker build codespell -t codespell
 
 # Runs cspell container commands.
 codespell-check: codespell
-	@-docker run \
+	docker run \
 		--mount type=bind,src="$(PWD)",dst=/vm \
 		--rm \
 		codespell \
@@ -15,7 +15,7 @@ codespell-check: codespell
 
 # Automatically fixes spelling errors.
 codespell-fix: codespell
-	@-docker run \
+	docker run \
 		--mount type=bind,src="$(PWD)",dst=/vm \
 		--rm \
 		codespell \

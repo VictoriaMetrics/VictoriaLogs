@@ -20,7 +20,7 @@ const Modal: FC<ModalProps> = ({
   children,
   onClose,
   className,
-  isOpen = true
+  isOpen = true,
 }) => {
   const { isMobile } = useDeviceDetect();
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const Modal: FC<ModalProps> = ({
               {title}
             </div>
           )}
-          <div className="vm-modal-header__close">
+          <div className="vm-modal-content-header__close">
             <Button
               variant="text"
               size="small"

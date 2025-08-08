@@ -41,5 +41,5 @@ func benchmarkStorageMustAddRows(b *testing.B, rowsPerInsert int) {
 	})
 
 	s.MustClose()
-	fs.MustRemoveAll(testName)
+	fs.MustRemoveDir(testName)
 }

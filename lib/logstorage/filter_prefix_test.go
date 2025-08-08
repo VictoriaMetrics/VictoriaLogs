@@ -934,5 +934,5 @@ func TestFilterPrefix(t *testing.T) {
 	})
 
 	// Remove the remaining data files for the test
-	fs.MustRemoveAll(t.Name())
+	fs.MustRemoveDir(t.Name())
 }

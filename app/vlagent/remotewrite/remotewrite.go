@@ -120,7 +120,7 @@ func dropDanglingQueues() {
 		if _, ok := existingQueues[dirname]; !ok {
 			logger.Infof("removing dangling queue %q", dirname)
 			fullPath := filepath.Join(queuesDir, dirname)
-			fs.MustRemoveAll(fullPath)
+			fs.MustRemoveDir(fullPath)
 			removed++
 		}
 	}

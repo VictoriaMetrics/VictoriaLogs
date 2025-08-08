@@ -54,9 +54,6 @@ func TestParseJSONRequest_Failure(t *testing.T) {
 
 	// invalid structured metadata type
 	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", ["metadata_1", "md_value"]]]}]}`)
-
-	// structured metadata with unexpected value type
-	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": 1}]] }]}`)
 }
 
 func TestParseJSONRequest_Success(t *testing.T) {
@@ -86,14 +83,35 @@ func TestParseJSONRequest_Success(t *testing.T) {
 	// Non-empty stream labels
 	f(`{"streams":[{"stream":{
 	"label1": "value1",
-	"label2": "value2"
+	"label2": "value2",
+	"x": null,
+	"y": 1.23,
+	"z": [1,"b"]
 },"values":[
 	["1577836800000000001", "foo bar"],
 	["1686026123.62", "abc"],
 	["147.78369e9", "foobar"]
-]}]}`, []int64{1577836800000000001, 1686026123620000000, 147783690000000000}, `{"label1":"value1","label2":"value2","_msg":"foo bar"}
-{"label1":"value1","label2":"value2","_msg":"abc"}
-{"label1":"value1","label2":"value2","_msg":"foobar"}`)
+]}]}`, []int64{1577836800000000001, 1686026123620000000, 147783690000000000}, `{"label1":"value1","label2":"value2","x":"null","y":"1.23","z":"[1,\"b\"]","_msg":"foo bar"}
+{"label1":"value1","label2":"value2","x":"null","y":"1.23","z":"[1,\"b\"]","_msg":"abc"}
+{"label1":"value1","label2":"value2","x":"null","y":"1.23","z":"[1,\"b\"]","_msg":"foobar"}`)
+
+	// structured metadata with integer value type
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/547
+	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": 1}]] }]}`, []int64{
+		1577836800000000001,
+	}, `{"metadata_1":"1","_msg":"foo bar"}`)
+
+	// structured metadata with null value
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/547
+	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": null}]] }]}`, []int64{
+		1577836800000000001,
+	}, `{"metadata_1":"null","_msg":"foo bar"}`)
+
+	// structured metadata with complex value
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/547
+	f(`{"streams":[{"values":[["1577836800000000001", "foo bar", {"metadata_1": {"foo":"bar","baz":1}}]] }]}`, []int64{
+		1577836800000000001,
+	}, `{"metadata_1":"{\"foo\":\"bar\",\"baz\":1}","_msg":"foo bar"}`)
 
 	// Multiple streams
 	f(`{

@@ -293,8 +293,12 @@ test-full:
 test-full-386:
 	GOEXPERIMENT=synctest GOARCH=386 go test -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
 
-integration-test: victoria-logs vlagent vlogscli
-	go test ./apptest/... -skip="^TestCluster.*"
+integration-test:
+	$(MAKE) apptest
+
+apptest:
+	$(MAKE) victoria-logs vlagent vlogscli
+	go test ./apptest/...
 
 benchmark:
 	GOEXPERIMENT=synctest go test -bench=. ./lib/...

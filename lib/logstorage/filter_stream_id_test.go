@@ -79,7 +79,7 @@ func testFilterMatchForStreamID(t *testing.T, f filter, expectedRowIdxs []int) {
 
 	// Close and delete the test storage
 	s.MustClose()
-	fs.MustRemoveAll(storagePath)
+	fs.MustRemoveDir(storagePath)
 }
 
 func generateTestLogStreams(s *Storage, tenantID TenantID, getMsgValue func(int) string, rowsCount, streamsCount int) {

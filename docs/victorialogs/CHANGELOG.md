@@ -18,7 +18,43 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* SECURITY: upgrade base docker image (Alpine) from 3.22.0 to 3.22.1. See [Alpine 3.22.1 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.8-3.20.7-3.21.4-3.22.1-released.html).
+
+* FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): speed up execution of queries, which select big number of logs and end with [`| sort by (_time) desc limit N` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe). E.g. these queries return up to N logs with the biggest [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values from big number of selected logs (tens of millions and more). See [#46](https://github.com/VictoriaMetrics/VictoriaLogs/issues/46).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): update legend behavior in hits chart. The menu now opens on left-click, and visibility actions are moved to menu items. See [#58](https://github.com/VictoriaMetrics/VictoriaLogs/issues/58).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the ability to show stream context per each log line. See [#113](https://github.com/VictoriaMetrics/VictoriaLogs/issues/113).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve visibility of the Query History button. See [#540](https://github.com/VictoriaMetrics/VictoriaLogs/issues/540).
+* FEATURE: [Syslog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/): add an ability to record the remote IP address from the received syslog messages into the `remote_ip` log field. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address) for details. Thanks to @biancalana for [the pull request](https://github.com/VictoriaMetrics/VictoriaLogs/pull/527). See [#40](https://github.com/VictoriaMetrics/VictoriaLogs/issues/40).
+* FEATURE: [retention](https://docs.victoriametrics.com/victorialogs/#retention): support disk space percentage-based retention (`-retention.maxDiskUsagePercent`), which helps dynamically manage total disk space usage. Only one of `-retention.maxDiskSpaceUsageBytes` or `-retention.maxDiskUsagePercent` can be set; otherwise, the application will panic. See [#513](https://github.com/VictoriaMetrics/VictoriaLogs/issues/513).
+* FEATURE: add an ability to dynamically attach and detach per-day partitions. This simplifies creating multi-tier storage schemes when recently ingested logs are stored on a fast storage (such as NVMe or SSD), while historical logs are gradually migrated to less expensive storage with bigger capacity (such as HDD). See [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) and [#432](https://github.com/VictoriaMetrics/VictoriaLogs/issues/432).
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): expose `vl_storage_per_query_processed_blocks` [histogram](https://docs.victoriametrics.com/keyconcepts/#histogram), which shows the number of data blocks processed per every query. This histogram can be used for analysing query performance issues.
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): expose [histograms](https://docs.victoriametrics.com/keyconcepts/#histogram) on the number of bytes read from disk for various data types per each query:
+  * `vl_storage_per_query_total_read_bytes` - the total number of bytes read during query execition.
+  * `vl_storage_per_query_values_read_bytes` - the number of bytes read for [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
+  * `vl_storage_per_query_timestamps_read_bytes` - the number of bytes read for the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+  * `vl_storage_per_query_bloom_filters_read_bytes` - the number of bytes read for bloom filters (bloom filters is built from [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) seen in log fields and are used for quick skipping of blocks without the given words.
+  * `vl_storage_per_query_block_headers_read_bytes` - the number of bytes read for block headers (block headers contain various metainformation about data block).
+  * `vl_storage_per_query_columns_headers_read_bytes` - the number of bytes read for columns headers (columns headers contain information about column names in every data block).
+  * `vl_storage_per_query_columns_header_indexes_read_bytes` - the number of bytes read for columns header indexes (these indexes contain the location of the per-column information in the columns headers).
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix broken "Collapse all" button in Group view. See [#509](https://github.com/VictoriaMetrics/VictoriaLogs/issues/509). The bug has been introduced in [v1.26.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.26.0).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix chart axis label color on theme switch. See [#541](https://github.com/VictoriaMetrics/VictoriaLogs/issues/541).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix applying legend filter when using pipe filters. See [#546](https://github.com/VictoriaMetrics/VictoriaLogs/issues/546).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): optimize tooltip rendering. See [#531](https://github.com/VictoriaMetrics/VictoriaLogs/issues/531).
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): prevent from possible crash when ingesting logs for dates, which are concurrently removed because of [the configured retention](https://docs.victoriametrics.com/victorialogs/#retention). See [#505](https://github.com/VictoriaMetrics/VictoriaLogs/issues/505).
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): support numbers and null in Loki structured metadata. See [#547](https://github.com/VictoriaMetrics/VictoriaLogs/issues/547).
+
+## [v1.26.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.26.0)
+
+Released at 2025-07-18
+
 * FEATURE: [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/): add ability to configure auth options and TLS options for connections to the `-datasource.url`. See [auth options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#auth-options) and [TLS options docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#tls-options). See [this feature request](https://github.com/VictoriaMetrics/VictoriaLogs/issues/54). Thanks to @thom-vend for [the initial pull request](https://github.com/VictoriaMetrics/VictoriaLogs/pull/457).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the ability to hide the logs panel to view only the graph. When the logs panel is hidden, the `/query` request is not executed.
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve autocomplete functionality with enhanced quick autocomplete via hotkey support and removed special characters from autocomplete suggestions. See [this comment](https://github.com/VictoriaMetrics/VictoriaLogs/issues/70#issuecomment-3043591443) for details.
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent groups from automatically expanding on list updates if all groups were previously collapsed. See [#92](https://github.com/VictoriaMetrics/VictoriaLogs/issues/92).
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): restore logging of too long ingested lines in order to simplify debugging of such cases. See [#430](https://github.com/VictoriaMetrics/VictoriaLogs/issues/430). The regression has been introduced in [v1.24.0-victorialogs](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.24.0-victorialogs).
+* BUGFIX: properly persist newly created data on unclean shutdown such as power off, hardware crash or operating system crash. See [#505](https://github.com/VictoriaMetrics/VictoriaLogs/issues/505).
 
 ## [v1.25.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.25.1)
 

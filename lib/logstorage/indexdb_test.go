@@ -248,7 +248,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	f(`{instance="instance-2",job!="job-1"}`, streamIDs)
 
 	mustCloseIndexdb(idb)
-	fs.MustRemoveAll(path)
+	fs.MustRemoveDir(path)
 
 	closeTestStorage(s)
 }

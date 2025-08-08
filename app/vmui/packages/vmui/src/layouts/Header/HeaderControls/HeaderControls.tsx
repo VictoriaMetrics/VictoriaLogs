@@ -1,6 +1,6 @@
 import { FC, useMemo } from "preact/compat";
 import { RouterOptions, routerOptions, RouterOptionsHeader } from "../../../router";
-import { useLocation } from "react-router-dom";
+import { matchPath, useLocation } from "react-router-dom";
 import {
   useFetchAccountIds
 } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/hooks/useFetchAccountIds";
@@ -36,7 +36,11 @@ const HeaderControls: FC<ControlsProps & HeaderProps> = ({
   } = useBoolean(false);
 
   const headerSetup = useMemo(() => {
-    return ((routerOptions[pathname] || {}) as RouterOptions).header || {};
+    const matchedEntry = Object.entries(routerOptions).find(([path]) => {
+      return matchPath(path, pathname);
+    });
+
+    return (matchedEntry?.[1] as RouterOptions)?.header || {};
   }, [pathname]);
 
   const controls = (

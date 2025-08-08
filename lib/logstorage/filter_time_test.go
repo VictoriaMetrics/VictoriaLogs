@@ -119,7 +119,7 @@ func testFilterMatchForTimestamps(t *testing.T, timestamps []int64, f filter, ex
 
 	// Close and delete the test storage
 	s.MustClose()
-	fs.MustRemoveAll(storagePath)
+	fs.MustRemoveDir(storagePath)
 }
 
 func generateRowsFromTimestamps(s *Storage, tenantID TenantID, timestamps []int64, getValue func(rowIdx int) string) {

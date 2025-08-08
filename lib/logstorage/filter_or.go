@@ -9,7 +9,7 @@ import (
 
 // filterOr contains filters joined by OR operator.
 //
-// It is epxressed as `f1 OR f2 ... OR fN` in LogsQL.
+// It is expressed as `f1 OR f2 ... OR fN` in LogsQL.
 type filterOr struct {
 	filters []filter
 
