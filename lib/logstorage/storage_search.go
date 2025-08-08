@@ -1062,6 +1062,7 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchS
 						writeBlock(workerID, &bs.br)
 					}
 					bsw.reset()
+					ssLocal.blocksProcessed++
 				}
 				bswb.bsws = bswb.bsws[:0]
 				putBlockSearchWorkBatch(bswb)

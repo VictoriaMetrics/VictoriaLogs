@@ -23,10 +23,11 @@ import (
 var (
 	retentionPeriod = flagutil.NewRetentionDuration("retentionPeriod", "7d", "Log entries with timestamps older than now-retentionPeriod are automatically deleted; "+
 		"log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); "+
-		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes")
+		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent")
 	maxDiskSpaceUsageBytes = flagutil.NewBytes("retention.maxDiskSpaceUsageBytes", 0, "The maximum disk space usage at -storageDataPath before older per-day "+
 		"partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod")
-	futureRetention = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
+	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent")
+	futureRetention     = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
@@ -45,6 +46,9 @@ var (
 		"See https://docs.victoriametrics.com/victorialogs/#forced-merge")
 	forceFlushAuthKey = flagutil.NewPassword("forceFlushAuthKey", "authKey, which must be passed in query string to /internal/force_flush . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#forced-flush")
+
+	partitionManageAuthKey = flagutil.NewPassword("partitionManageAuthKey", "authKey, which must be passed in query string to /internal/partition/* . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle")
 
 	storageNodeAddrs = flagutil.NewArrayString("storageNode", "Comma-separated list of TCP addresses for storage nodes to route the ingested logs to and to send select queries to. "+
 		"If the list is empty, then the ingested logs are stored and queried locally from -storageDataPath")
@@ -100,9 +104,17 @@ func initLocalStorage() {
 	if retentionPeriod.Duration() < 24*time.Hour {
 		logger.Fatalf("-retentionPeriod cannot be smaller than a day; got %s", retentionPeriod)
 	}
+	// Validate mutually exclusive retention flags and their values
+	if maxDiskSpaceUsageBytes.N > 0 && *maxDiskUsagePercent > 0 {
+		logger.Fatalf("-retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent cannot be set simultaneously")
+	}
+	if *maxDiskUsagePercent < 0 || *maxDiskUsagePercent > 100 {
+		logger.Fatalf("-retention.maxDiskUsagePercent must be between 1 and 100; got %d", *maxDiskUsagePercent)
+	}
 	cfg := &logstorage.StorageConfig{
 		Retention:              retentionPeriod.Duration(),
 		MaxDiskSpaceUsageBytes: maxDiskSpaceUsageBytes.N,
+		MaxDiskUsagePercent:    *maxDiskUsagePercent,
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
 		LogNewStreams:          *logNewStreams,
@@ -212,6 +224,10 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processForceMerge(w, r)
 	case "/internal/force_flush":
 		return processForceFlush(w, r)
+	case "/internal/partition/attach":
+		return processPartitionAttach(w, r)
+	case "/internal/partition/detach":
+		return processPartitionDetach(w, r)
 	}
 	return false
 }
@@ -251,6 +267,44 @@ func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
 
 	logger.Infof("flushing storage to make pending data available for reading")
 	localStorage.DebugFlush()
+	return true
+}
+
+func processPartitionAttach(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	name := r.FormValue("name")
+	if err := localStorage.PartitionAttach(name); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return true
+	}
+
+	return true
+}
+
+func processPartitionDetach(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	name := r.FormValue("name")
+	if err := localStorage.PartitionDetach(name); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return true
+	}
+
 	return true
 }
 
@@ -360,10 +414,9 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	var ss logstorage.StorageStats
 	strg.UpdateStats(&ss)
 
-	if maxDiskSpaceUsageBytes.N > 0 {
-		metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_max_disk_space_usage_bytes{path=%q}`, *storageDataPath), uint64(maxDiskSpaceUsageBytes.N))
+	if ss.MaxDiskSpaceUsageBytes > 0 {
+		metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_max_disk_space_usage_bytes{path=%q}`, *storageDataPath), uint64(ss.MaxDiskSpaceUsageBytes))
 	}
-
 	metrics.WriteGaugeUint64(w, fmt.Sprintf(`vl_free_disk_space_bytes{path=%q}`, *storageDataPath), fs.MustGetFreeSpace(*storageDataPath))
 
 	isReadOnly := uint64(0)
