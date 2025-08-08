@@ -522,7 +522,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	startOffset := startOffsetMsecs * 1e6
 
-	offsetMsecs, err := httputil.GetDuration(r, "offset", 1000)
+	offsetMsecs, err := httputil.GetDuration(r, "offset", 5000)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
