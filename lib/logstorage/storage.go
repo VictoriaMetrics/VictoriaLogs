@@ -27,8 +27,8 @@ type StorageStats struct {
 
 	// PartitionsCount is the number of partitions in the storage.
 	PartitionsCount uint64
-  
-  	// MaxDiskSpaceUsageBytes is the maximum disk space logs can use.
+
+	// MaxDiskSpaceUsageBytes is the maximum disk space logs can use.
 	MaxDiskSpaceUsageBytes int64
 
 	// IsReadOnly indicates whether the storage is read-only.
