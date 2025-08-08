@@ -423,6 +423,7 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 			body = []byte(fmt.Sprintf("cannot read response body: %s", err))
 		}
 		fmt.Fprintf(output, "unexpected status code: %d; response body:\n%s\n", resp.StatusCode, body)
+		_ = resp.Body.Close()
 		return nil
 	}
 
