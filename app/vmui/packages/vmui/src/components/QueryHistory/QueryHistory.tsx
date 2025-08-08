@@ -1,7 +1,6 @@
 import { FC, useEffect, useMemo, useState } from "preact/compat";
 import Button from "../Main/Button/Button";
 import { ClockIcon, DeleteIcon } from "../Main/Icons";
-import Tooltip from "../Main/Tooltip/Tooltip";
 import useBoolean from "../../hooks/useBoolean";
 import Modal from "../Main/Modal/Modal";
 import Tabs from "../Main/Tabs/Tabs";
@@ -107,15 +106,15 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
 
   return (
     <>
-      <Tooltip title={"Show history"}>
-        <Button
-          color="primary"
-          variant="text"
-          onClick={handleOpenModal}
-          startIcon={<ClockIcon/>}
-          ariaLabel={"Show history"}
-        />
-      </Tooltip>
+      <Button
+        color="primary"
+        variant="outlined"
+        onClick={handleOpenModal}
+        startIcon={<ClockIcon/>}
+        ariaLabel={"Query history"}
+      >
+        Query history
+      </Button>
 
       {openModal && (
         <Modal

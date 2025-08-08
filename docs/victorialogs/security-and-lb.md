@@ -157,7 +157,8 @@ unauthorized_user:
     - "AccountID: 0"
 ```
 
-The similar configs can be created for VictoriaLogs data ingestion API endpoints, which [start with `/insert/` prefix](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis).
+See also [tenant-based data ingestion request proxying](#tenant-based-proxying-of-data-ingestion-requests).
+
 This allows building VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
@@ -434,6 +435,39 @@ flowchart BT
 
     vmauth -->|AccountID: X<br>ProjectID:Y| vlinsert-az1
 ```
+
+### Tenant-based proxying of data ingestion requests
+
+The following `vmauth` config proxies data ingestion requests with the `AccountID: 0` HTTP header
+to the long-term VictoriaLogs instance or cluster, while data ingestion requests with the `AccountID: 1` HTTP header
+are proxied to the short-term VictoriaLogs instance or cluster:
+
+```yaml
+unauthorized_user:
+  url_map:
+
+  # Proxy data ingestion requests for the given tenant (AccountID=0) to long-term VictoriaLogs
+  # and override the ProjectID with 0.
+  - src_paths: ["/insert/.*"]
+    src_headers:
+    - "AccountID: 0"
+    url_prefix: "http://victoria-logs-longterm:9428"
+    headers:
+    - "ProjectID: 0"
+
+  # Proxy data ingestion requests for the given tenant (AccountID=1) to short-term VictoriaLogs
+  # and override the AccountID with 0.
+  - src_paths: ["/insert/.*"]
+    src_headers:
+    - "AccountID: 1"
+    url_prefix: "http://victoria-logs-shortterm:9428"
+    headers:
+    - "AccountID: 0"
+```
+
+This allows building VictoriaLogs storage system with distinct per-tenant retention configs
+similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
+
 
 ### Adding extra fields
 
