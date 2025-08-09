@@ -195,7 +195,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -insert.maxFieldsPerLine int
         The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size
-        The maximum size of a single line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
+        The maximum size of a single line that can be read by /insert/* handlers. Regardless of this flag, entries above the 2 MB limit are ignored by storage layer, see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
         Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 262144)
   -insert.maxQueueDuration duration
         The maximum duration to wait in the queue when -maxConcurrentInserts concurrent insert requests are executed (default 1m0s)
