@@ -986,6 +986,13 @@ func (th *timestampsHeader) copyFrom(src *timestampsHeader) {
 	th.marshalType = src.marshalType
 }
 
+func (th *timestampsHeader) subTimeOffset(timeOffset int64) {
+	if timeOffset != 0 {
+		th.minTimestamp = subNoOverflowInt64(th.minTimestamp, timeOffset)
+		th.maxTimestamp = subNoOverflowInt64(th.maxTimestamp, timeOffset)
+	}
+}
+
 // marshal appends marshaled th to dst and returns the result.
 func (th *timestampsHeader) marshal(dst []byte) []byte {
 	dst = encoding.MarshalUint64(dst, th.blockOffset)

@@ -176,18 +176,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 		bb := blockResultPool.Get()
 		for i := 0; i < rowsCount; i++ {
-			var timestampStr string
-			if timeOffset := q.GetTimeOffset(); timeOffset > 0 {
-				timestamp, ok := logstorage.TryParseTimestampRFC3339Nano(timestampValues[i])
-				if !ok {
-					logger.Panicf("BUG: cannot parse timestamp %q", timestampValues[i])
-				}
-				timestamp += timeOffset
-				timestampStr = time.Unix(0, timestamp).UTC().Format(time.RFC3339Nano)
-			} else {
-				timestampStr = strings.Clone(timestampValues[i])
-			}
-
+			timestampStr := strings.Clone(timestampValues[i])
 			hitsStr := strings.Clone(hitsValues[i])
 			hits, err := strconv.ParseUint(hitsStr, 10, 64)
 			if err != nil {
@@ -739,7 +728,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 				if c.Name == "_time" {
 					nsec, ok := logstorage.TryParseTimestampRFC3339Nano(c.Values[i])
 					if ok {
-						ts = nsec + q.GetTimeOffset()
+						ts = nsec
 						continue
 					}
 				}

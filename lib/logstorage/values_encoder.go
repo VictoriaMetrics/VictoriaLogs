@@ -354,7 +354,7 @@ func TryParseTimestampRFC3339Nano(s string) (int64, bool) {
 	if !ok {
 		return 0, false
 	}
-	nsecs -= offsetNsecs
+	nsecs = subNoOverflowInt64(nsecs, offsetNsecs)
 	s = prefix
 
 	// Parse optional fractional part of seconds.

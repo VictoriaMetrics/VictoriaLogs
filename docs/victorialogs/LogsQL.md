@@ -338,6 +338,8 @@ It is possible to specify generic offset for the selected time range by appendin
 - `_time:2023-07Z offset 5h30m` matches logs on July, 2023 by UTC with offset 5h30m.
 - `_time:[2023-02-01Z, 2023-03-01Z) offset 1w` matches logs the week before the time range `[2023-02-01Z, 2023-03-01Z)` by UTC.
 
+See also [`time_offset` option](#query-options), which allows applying the given offset to all the filters on `_time` field without the need to modify the query.
+
 Performance tips:
 
 - It is recommended specifying the smallest possible time range during the search, since it reduces the amounts of log entries, which need to be scanned during the query.
@@ -4184,6 +4186,16 @@ VictoriaLogs supports the following options, which can be passed in the beginnin
   options(concurrency=2) _time:1d | count_uniq(user_id)
   ```
 
+- `time_offset` – subtracts the given offset from all the [time filters](#time-filter) in the query,
+  and then adds the given offset to the selected [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
+  before passing them to query [pipes](#pipes). Allows comparing query results for the same duration at different offsets.
+  Accepts any [duration value](#duration-values) like `12h`, `1d`, `1y`. For example, the following query returns the number of logs with `error` [words](#word)
+  over the last hour 7 days ago.
+
+  ```logsql
+  options(time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
+  ```
+
 - `ignore_global_time_filter` - allows ignoring time filter from `start` and `end` args of [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
   for the given (sub)query. For example, the following query returns the number of logs with `user_id` values seen in logs during December 2024, on the `[start...end]`
   time range passed to [`/api/v1/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
@@ -4198,16 +4210,6 @@ VictoriaLogs supports the following options, which can be passed in the beginnin
 
   ```logsql
   user_id:in(_time:2024-12Z | keep user_id) | count()
-  ```
-
-- `time_offset` – subtracts the given offset from all the [time filters](#time-filter) in the query,
-  and then adds the given offset to the selected [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values.
-  Allows comparing query results for the same duration at different offsets.
-  Accepts any [duration value](#duration-values) like `12h`, `1d`, `1y`. For example, the following query returns the number of logs with `error` [words](#word)
-  over the last hour 7 days ago.
-
-  ```logsql
-  options (time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
   ```
 
 ## Troubleshooting

@@ -40,7 +40,9 @@ type lexer struct {
 	// isSkippedSpace is set to true if there was a whitespace before the token in s
 	isSkippedSpace bool
 
-	// currentTimestamp is the current timestamp in nanoseconds
+	// currentTimestamp is the current timestamp in nanoseconds.
+	//
+	// It is used for proper initializing of _time filters with relative time ranges.
 	currentTimestamp int64
 
 	// opts is a stack of options for nested parsed queries
@@ -79,25 +81,6 @@ func (lex *lexer) getQueryOptions() *queryOptions {
 		return nil
 	}
 	return lex.optss[len(lex.optss)-1]
-}
-
-// getTimeOffset returns the timestamp offset that should be applied to all time filters.
-//
-// See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
-func (lex *lexer) getTimeOffset() int64 {
-	opts := lex.getQueryOptions()
-	if opts != nil {
-		return opts.timeOffset
-	}
-	return 0
-}
-
-// getAdjustedTimestamp returns the current timestamp, adjusted according to the time offset option.
-//
-// See getTimeOffset for details.
-func (lex *lexer) getAdjustedTimestamp() int64 {
-	offset := lex.getTimeOffset()
-	return lex.currentTimestamp - offset
 }
 
 // newLexer returns new lexer for the given s at the given timestamp.
@@ -267,7 +250,7 @@ again:
 
 // Query represents LogsQL query.
 type Query struct {
-	opts *queryOptions
+	opts queryOptions
 
 	f filter
 
@@ -278,6 +261,9 @@ type Query struct {
 }
 
 type queryOptions struct {
+	// needPrint is set to true if the queryOptions must be printed in the queryOptions.String().
+	needPrint bool
+
 	// concurrency is the number of concurrent workers to use for query execution on every.
 	//
 	// By default the number of concurrent workers equals to the number of available CPU cores.
@@ -286,12 +272,17 @@ type queryOptions struct {
 	// if ignoreGlobalTimeFilter is set, then Query.AddTimeFilter doesn't add the time filter to the query and to all its subqueries.
 	ignoreGlobalTimeFilter *bool
 
-	// timeOffset is the number of nanoseconds to apply as an offset to all time filters.
+	// timeOffset is the number of nanoseconds to subtracts from all time filters in the query.
+	//
+	// The timeOffset is also added to the selected _time field values before being passed to query pipes.
 	timeOffset int64
+
+	// timeOffsetStr is a string representation of the timeOffset.
+	timeOffsetStr string
 }
 
 func (opts *queryOptions) String() string {
-	if opts == nil {
+	if opts == nil || !opts.needPrint {
 		return ""
 	}
 	var a []string
@@ -301,8 +292,8 @@ func (opts *queryOptions) String() string {
 	if opts.ignoreGlobalTimeFilter != nil {
 		a = append(a, fmt.Sprintf("ignore_global_time_filter=%v", *opts.ignoreGlobalTimeFilter))
 	}
-	if opts.timeOffset != 0 {
-		a = append(a, fmt.Sprintf("time_offset=%d", opts.timeOffset))
+	if opts.timeOffsetStr != "" {
+		a = append(a, fmt.Sprintf("time_offset=%s", opts.timeOffsetStr))
 	}
 	if len(a) == 0 {
 		return ""
@@ -331,7 +322,7 @@ func (q *Query) String() string {
 // See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
 func (q *Query) GetConcurrency() int {
 	concurrency := cgroup.AvailableCPUs()
-	if q.opts != nil && q.opts.concurrency > 0 && int(q.opts.concurrency) < concurrency {
+	if q.opts.concurrency > 0 && int(q.opts.concurrency) < concurrency {
 		// Limit the number of workers by the number of available CPU cores,
 		// since bigger number of workers won't improve CPU-bound query performance -
 		// they just increase RAM usage and slow down query execution because
@@ -604,9 +595,9 @@ func (q *Query) AddTimeFilter(start, end int64) {
 	startStr := marshalTimestampRFC3339NanoString(nil, start)
 	endStr := marshalTimestampRFC3339NanoString(nil, end)
 
-	offset := q.GetTimeOffset()
-	start -= offset
-	end -= offset
+	start = subNoOverflowInt64(start, q.opts.timeOffset)
+	end = subNoOverflowInt64(end, q.opts.timeOffset)
+
 	end = getMatchingEndTime(end, string(endStr))
 	ft := &filterTime{
 		minTimestamp: start,
@@ -624,17 +615,21 @@ func (q *Query) addTimeFilterNoSubqueries(ft *filterTime) {
 		return
 	}
 
+	ftCopy := *ft
 	fa, ok := q.f.(*filterAnd)
 	if ok {
 		filters := make([]filter, len(fa.filters)+1)
-		filters[0] = ft
+		filters[0] = &ftCopy
 		copy(filters[1:], fa.filters)
 		fa.filters = filters
 	} else {
 		q.f = &filterAnd{
-			filters: []filter{ft, q.f},
+			filters: []filter{&ftCopy, q.f},
 		}
 	}
+
+	// Remove `*` filters after adding the `_time` filter, since they are no longer needed.
+	q.f = removeStarFilters(q.f)
 
 	// Initialize rate functions with the step calculated from HTTP time filter
 	// This fixes the bug where rate_sum() doesn't divide by stepSeconds when
@@ -1003,6 +998,30 @@ func getLastPipeStatsIdx(pipes []pipe) int {
 	return -1
 }
 
+func updateFilterWithTimeOffset(f filter, timeOffset int64) filter {
+	if timeOffset == 0 {
+		// Nothing to update
+		return f
+	}
+
+	visitFunc := func(f filter) bool {
+		_, ok := f.(*filterTime)
+		return ok
+	}
+	copyFunc := func(f filter) (filter, error) {
+		ft := f.(*filterTime)
+		ftCopy := *ft
+		ftCopy.minTimestamp = subNoOverflowInt64(ft.minTimestamp, timeOffset)
+		ftCopy.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, timeOffset)
+		return &ftCopy, nil
+	}
+	f, err := copyFilter(f, visitFunc, copyFunc)
+	if err != nil {
+		logger.Panicf("BUG: unexpected error: %s", err)
+	}
+	return f
+}
+
 func flattenFiltersAnd(f filter) filter {
 	visitFunc := func(f filter) bool {
 		fa, ok := f.(*filterAnd)
@@ -1355,16 +1374,6 @@ func (q *Query) GetTimestamp() int64 {
 	return q.timestamp
 }
 
-// GetTimeOffset returns the timestamp offset that should be applied to all time filters.
-//
-// See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
-func (q *Query) GetTimeOffset() int64 {
-	if q.opts != nil {
-		return q.opts.timeOffset
-	}
-	return 0
-}
-
 func parseQueryInParens(lex *lexer) (*Query, error) {
 	if !lex.isKeyword("(") {
 		return nil, fmt.Errorf("missing '('")
@@ -1385,22 +1394,20 @@ func parseQueryInParens(lex *lexer) (*Query, error) {
 }
 
 func parseQuery(lex *lexer) (*Query, error) {
-	opts, err := parseQueryOptions(lex)
-	if err != nil {
+	var q Query
+	if err := parseQueryOptions(&q.opts, lex); err != nil {
 		return nil, fmt.Errorf("cannot parse query options: %w; context: [%s]; see https://docs.victoriametrics.com/victorialogs/logsql/#query-options", err, lex.context())
 	}
-	lex.pushQueryOptions(opts)
+	lex.pushQueryOptions(&q.opts)
 	defer lex.popQueryOptions()
 
 	f, err := parseFilter(lex)
 	if err != nil {
 		return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 	}
-	q := &Query{
-		opts:      opts,
-		f:         f,
-		timestamp: lex.currentTimestamp,
-	}
+
+	q.f = updateFilterWithTimeOffset(f, q.opts.timeOffset)
+	q.timestamp = lex.currentTimestamp
 
 	if lex.isKeyword("|") {
 		lex.nextToken()
@@ -1411,7 +1418,7 @@ func parseQuery(lex *lexer) (*Query, error) {
 		q.pipes = pipes
 	}
 
-	return q, nil
+	return &q, nil
 }
 
 // Filter represents LogsQL filter
@@ -1446,66 +1453,71 @@ func ParseFilter(s string) (*Filter, error) {
 	return f, nil
 }
 
-func parseQueryOptions(lex *lexer) (*queryOptions, error) {
-	var opts queryOptions
+// parseQueryOptions parses option(...) from lex into dstOpts.
+func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 	defaultOpts := lex.getQueryOptions()
 	if defaultOpts != nil {
-		opts = *defaultOpts
+		*dstOpts = *defaultOpts
 	}
+	dstOpts.needPrint = false
 
 	if !lex.isKeyword("options") {
-		return &opts, nil
+		return nil
 	}
 	lex.nextToken()
 
 	if !lex.isKeyword("(") {
-		return nil, fmt.Errorf("missing '(' after 'options' keyword; wrap 'options' into quotes if you are searching for this word in the log message")
+		return fmt.Errorf("missing '(' after 'options' keyword; wrap 'options' into quotes if you are searching for this word in the log message")
 	}
 	lex.nextToken()
 
 	for {
 		if lex.isKeyword(")") {
 			lex.nextToken()
-			return &opts, nil
+			return nil
 		}
 
 		k, v, err := parseKeyValuePair(lex)
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse 'options': %w", err)
+			return fmt.Errorf("cannot parse 'options': %w", err)
 		}
 		switch k {
 		case "concurrency":
 			n, ok := tryParseUint64(v)
 			if !ok {
-				return nil, fmt.Errorf("cannot parse 'concurrency=%q' option as unsigned integer", v)
+				return fmt.Errorf("cannot parse 'concurrency=%q' option as unsigned integer", v)
 			}
 			if n > 1024 {
 				// There is zero sense in running too many workers.
 				n = 1024
 			}
-			opts.concurrency = uint(n)
+			dstOpts.concurrency = uint(n)
+			dstOpts.needPrint = true
 		case "ignore_global_time_filter":
 			ignoreGlobalTimeFilter, err := strconv.ParseBool(v)
 			if err != nil {
-				return nil, fmt.Errorf("cannot parse 'ignore_global_time_filter=%q' option as boolean: %w", v, err)
+				return fmt.Errorf("cannot parse 'ignore_global_time_filter=%q' option as boolean: %w", v, err)
 			}
-			opts.ignoreGlobalTimeFilter = &ignoreGlobalTimeFilter
+			dstOpts.ignoreGlobalTimeFilter = &ignoreGlobalTimeFilter
+			dstOpts.needPrint = true
 		case "time_offset":
 			timeOffset, ok := tryParseDuration(v)
 			if !ok {
-				return nil, fmt.Errorf("cannot parse 'time_offset=%q' option as duration", v)
+				return fmt.Errorf("cannot parse 'time_offset=%q' option as duration", v)
 			}
-			opts.timeOffset = timeOffset
+			dstOpts.timeOffset = timeOffset
+			dstOpts.timeOffsetStr = v
+			dstOpts.needPrint = true
 		default:
-			return nil, fmt.Errorf("unexpected option %q with value %q", k, v)
+			return fmt.Errorf("unexpected option %q with value %q", k, v)
 		}
 
 		if lex.isKeyword(")") {
 			lex.nextToken()
-			return &opts, nil
+			return nil
 		}
 		if !lex.isKeyword(",") {
-			return nil, fmt.Errorf("unexpected token inside the 'options(...)': %q; want ',' or ')'", lex.token)
+			return fmt.Errorf("unexpected token inside the 'options(...)': %q; want ',' or ')'", lex.token)
 		}
 		lex.nextToken()
 	}
@@ -2691,16 +2703,15 @@ func getWeekRangeArg(lex *lexer) (time.Weekday, string, error) {
 
 func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if lex.isKeyword("offset") {
-		ts := lex.getAdjustedTimestamp()
 		ft := &filterTime{
 			minTimestamp: math.MinInt64,
-			maxTimestamp: ts,
+			maxTimestamp: lex.currentTimestamp,
 		}
 		offset, offsetStr, err := parseTimeOffset(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse offset for _time filter []: %w", err)
 		}
-		ft.maxTimestamp -= offset
+		ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
 		ft.stringRepr = offsetStr
 		return ft, nil
 	}
@@ -2717,8 +2728,8 @@ func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse offset for _time filter [%s]: %w", ft, err)
 	}
-	ft.minTimestamp -= offset
-	ft.maxTimestamp -= offset
+	ft.minTimestamp = subNoOverflowInt64(ft.minTimestamp, offset)
+	ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
 	ft.stringRepr += " " + offsetStr
 	return ft, nil
 }
@@ -2848,10 +2859,9 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 	if prefix == ">" {
 		d++
 	}
-	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
 		minTimestamp: math.MinInt64,
-		maxTimestamp: ts - d,
+		maxTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
 
 		stringRepr: prefix + s,
 	}
@@ -2899,10 +2909,9 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 	if prefix == "<" {
 		d--
 	}
-	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
-		minTimestamp: ts - d,
-		maxTimestamp: ts,
+		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
 	}
@@ -2942,10 +2951,9 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
-	ts := lex.getAdjustedTimestamp()
 	ft := &filterTime{
-		minTimestamp: ts - d,
-		maxTimestamp: ts,
+		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
 	}
@@ -3146,7 +3154,6 @@ func parseTime(lex *lexer) (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	nsecs -= lex.getTimeOffset()
 	return nsecs, s, nil
 }
 
@@ -3348,4 +3355,22 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 	}
 
 	return qStr
+}
+
+func subNoOverflowInt64(a, b int64) int64 {
+	if a == math.MinInt64 || a == math.MaxInt64 {
+		// Assume that a is either +Inf or -Inf.
+		// Subtracting any number from Inf must result in Inf.
+		return a
+	}
+	if b >= 0 {
+		if a < math.MinInt64+b {
+			return math.MinInt64
+		}
+		return a - b
+	}
+	if a > math.MaxInt64+b {
+		return math.MaxInt64
+	}
+	return a - b
 }

@@ -250,16 +250,27 @@ func TestStorageRunQuery(t *testing.T) {
 			t.Fatalf("unexpected number of rows; got %d; want %d", n, expectedRowsCount)
 		}
 	})
-	t.Run("matching-time-range", func(t *testing.T) {
+	t.Run("matching-time-range-exact", func(t *testing.T) {
 		minTimestamp := baseTimestamp + (rowsPerBlock-2)*1e9
 		maxTimestamp := baseTimestamp + (rowsPerBlock-1)*1e9 - 1
-		q := mustParseQuery(fmt.Sprintf(`_time:[%f,%f]`, float64(minTimestamp)/1e9, float64(maxTimestamp)/1e9))
+		q := mustParseQuery(fmt.Sprintf(`_time:[%d,%d]`, minTimestamp, maxTimestamp))
 		tenantID := TenantID{
 			AccountID: 1,
 			ProjectID: 11,
 		}
 		var rowsCountTotal atomic.Uint32
 		writeBlock := func(_ uint, db *DataBlock) {
+			// Verify that the returned timestamps are in the given time range.
+			timestamps, ok := db.GetTimestamps(nil)
+			if !ok {
+				panic(fmt.Errorf("cannot obtain timestamps from the returned logs"))
+			}
+			for _, ts := range timestamps {
+				if ts < minTimestamp || ts > maxTimestamp {
+					panic(fmt.Errorf("timestamp=%d is outside the selected time range [%d; %d]", ts, minTimestamp, maxTimestamp))
+				}
+			}
+
 			rowsCountTotal.Add(uint32(db.RowsCount()))
 		}
 		tenantIDs := []TenantID{tenantID}
@@ -268,6 +279,93 @@ func TestStorageRunQuery(t *testing.T) {
 		expectedRowsCount := streamsPerTenant * blocksPerStream
 		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
 			t.Fatalf("unexpected number of rows; got %d; want %d", n, expectedRowsCount)
+		}
+	})
+	t.Run("matching-time-range-with-options-time-offset", func(t *testing.T) {
+		minTimestamp := baseTimestamp + (rowsPerBlock-2)*1e9
+		maxTimestamp := baseTimestamp + (rowsPerBlock-1)*1e9 - 1
+		q := mustParseQuery(fmt.Sprintf(`options(time_offset=1s) _time:[%d,%d]`, minTimestamp, maxTimestamp))
+		tenantID := TenantID{
+			AccountID: 1,
+			ProjectID: 11,
+		}
+		var rowsCountTotal atomic.Uint32
+		writeBlock := func(_ uint, db *DataBlock) {
+			// Verify that the returned timestamps are in the given time range.
+			timestamps, ok := db.GetTimestamps(nil)
+			if !ok {
+				panic(fmt.Errorf("cannot obtain timestamps from the returned logs"))
+			}
+			for _, ts := range timestamps {
+				if ts < minTimestamp || ts > maxTimestamp {
+					panic(fmt.Errorf("timestamp=%d is outside the selected time range [%d; %d]", ts, minTimestamp, maxTimestamp))
+				}
+			}
+
+			rowsCountTotal.Add(uint32(db.RowsCount()))
+		}
+		tenantIDs := []TenantID{tenantID}
+		mustRunQuery(t, tenantIDs, q, writeBlock)
+
+		expectedRowsCount := streamsPerTenant * blocksPerStream
+		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
+			t.Fatalf("unexpected number of rows; got %d; want %d", n, expectedRowsCount)
+		}
+	})
+	t.Run("matching-time-range-with-options-time-offset-stats-by-time", func(t *testing.T) {
+		minTimestamp := baseTimestamp + (rowsPerBlock-3)*1e9
+		maxTimestamp := baseTimestamp + (rowsPerBlock-1)*1e9 - 1
+		q := mustParseQuery(fmt.Sprintf(`
+			options(time_offset=1s) _time:[%d,%d]
+			    | stats by (_time:1s)
+			        count() hits
+			`, minTimestamp, maxTimestamp))
+		tenantID := TenantID{
+			AccountID: 1,
+			ProjectID: 11,
+		}
+
+		var mLock sync.Mutex
+		m := make(map[int64]string)
+		writeBlock := func(_ uint, db *DataBlock) {
+			rowsCount := db.RowsCount()
+			for i := 0; i < rowsCount; i++ {
+				if len(db.Columns) != 2 {
+					panic(fmt.Errorf("unexpected number of columns; got %d; want 4", len(db.Columns)))
+				}
+				timestamp := int64(0)
+				hits := ""
+				for _, c := range db.Columns {
+					v := c.Values[i]
+					switch c.Name {
+					case "_time":
+						ts, ok := TryParseTimestampRFC3339Nano(v)
+						if !ok {
+							panic(fmt.Errorf("cannot parse timestamp %q", v))
+						}
+						timestamp = ts
+					case "hits":
+						hits = v
+					}
+				}
+
+				mLock.Lock()
+				m[timestamp] = hits
+				mLock.Unlock()
+			}
+		}
+
+		tenantIDs := []TenantID{tenantID}
+		mustRunQuery(t, tenantIDs, q, writeBlock)
+
+		tBase := minTimestamp - minTimestamp%nsecsPerSecond
+
+		mExpected := map[int64]string{
+			tBase:                  "15",
+			tBase + nsecsPerSecond: "15",
+		}
+		if !reflect.DeepEqual(m, mExpected) {
+			t.Fatalf("unexpected results; got\n%v\nwant\n%v", m, mExpected)
 		}
 	})
 	t.Run("matching-stream-id-with-time-range", func(t *testing.T) {

@@ -39,6 +39,9 @@ type genericSearchOptions struct {
 
 	// fieldsFilter is the filter of fields to return in the result
 	fieldsFilter *prefixfilter.Filter
+
+	// timeOffset is the offset in nanoseconds, which must be subtracted from the selected the _time values before these values are passed to query pipes.
+	timeOffset int64
 }
 
 type searchOptions struct {
@@ -129,6 +132,7 @@ func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, 
 		maxTimestamp: maxTimestamp,
 		filter:       q.f,
 		fieldsFilter: fieldsFilter,
+		timeOffset:   -q.opts.timeOffset,
 	}
 	ss := &searchStats{}
 
@@ -1059,6 +1063,9 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchS
 
 					bs.search(&ssLocal, bsw, bm)
 					if bs.br.rowsLen > 0 {
+						if so.timeOffset != 0 {
+							bs.subTimeOffsetToTimestamps(so.timeOffset)
+						}
 						writeBlock(workerID, &bs.br)
 					}
 					bsw.reset()

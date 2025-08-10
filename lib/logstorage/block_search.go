@@ -212,7 +212,6 @@ func (bs *blockSearch) search(ss *searchStats, bsw *blockSearchWork, bm *bitmap)
 	bs.reset()
 
 	bs.ss = ss
-
 	bs.bsw = bsw
 
 	// search rows matching the given filter
@@ -488,6 +487,19 @@ func (bs *blockSearch) getValuesForColumn(ch *columnHeader) []string {
 	return values.a
 }
 
+func (bs *blockSearch) subTimeOffsetToTimestamps(timeOffset int64) {
+	bs.bsw.bh.timestampsHeader.subTimeOffset(timeOffset)
+	if bs.timestampsCache != nil {
+		subTimeOffset(bs.timestampsCache.A, timeOffset)
+	}
+}
+
+func subTimeOffset(timestamps []int64, timeOffset int64) {
+	for i := range timestamps {
+		timestamps[i] = subNoOverflowInt64(timestamps[i], timeOffset)
+	}
+}
+
 // getTimestamps returns timestamps for the given bs.
 //
 // The returned timestamps belong to bs, so they become invalid after bs reset.
@@ -518,6 +530,7 @@ func (bs *blockSearch) getTimestamps() []int64 {
 	if err != nil {
 		logger.Panicf("FATAL: %s: cannot unmarshal timestamps: %s", bs.partPath(), err)
 	}
+
 	bs.timestampsCache = timestamps
 	return timestamps.A
 }

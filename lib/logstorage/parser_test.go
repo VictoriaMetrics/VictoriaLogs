@@ -74,24 +74,35 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	}
 
 	// no time filters
+	f("*", math.MinInt64, math.MaxInt64)
 	f("options(time_offset=1h) *", math.MinInt64, math.MaxInt64)
 
 	// relative time filter
+	f("_time:1h", -nsecsPerHour*1, 0)
 	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1)
+	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1)
 	f("options(time_offset=1h) _time:offset 1h", math.MinInt64, -nsecsPerHour*2)
+	f("options(time_offset=-1h) _time:offset 1h", math.MinInt64, 0)
 
 	// range time filter
+	f("_time:[2025-07-26T00:00:00Z, 2025-07-29T00:00:00Z)", 1753488000000000000, 1753747199999999999)
 	f("options(time_offset=1d) _time:[2025-07-26T00:00:00Z, 2025-07-29T00:00:00Z)", 1753401600000000000, 1753660799999999999)
 	f("options(time_offset=1h) _time:[2h, 1h)", -nsecsPerHour*3, -nsecsPerHour*2-1)
 	f("options(time_offset=1h) _time:[2h, now)", -nsecsPerHour*3, -nsecsPerHour*1-1)
 
 	// gt time filter
-	f("options(time_offset=1h) _time:>2025-07-25T01:00:00Z", 1753401600000000001, math.MaxInt64)
+	f("_time:>2025-07-25T01:00:00Z", 1753405200000000001, math.MaxInt64)
+	f("_time:>=2025-07-25T01:00:00Z", 1753405200000000000, math.MaxInt64)
+	f("options(time_offset=1h) _time:>2025-07-25T01:00:00Z", 1753405200000000001-nsecsPerHour*1, math.MaxInt64)
+	f("options(time_offset=-1h) _time:>2025-07-25T01:00:00Z", 1753405200000000001+nsecsPerHour*1, math.MaxInt64)
 	f("options(time_offset=1h) _time:>2h", math.MinInt64, -nsecsPerHour*3-1)
-	f("options(time_offset=1h) _time:>=2h", math.MinInt64, -nsecsPerHour*3)
+	f("options(time_offset=1h5m3s) _time:>=2h", math.MinInt64, -nsecsPerHour*3-5*nsecsPerMinute-3*nsecsPerSecond)
+	f("options(time_offset=-1h5m3s) _time:>=2h", math.MinInt64, -nsecsPerHour*1+5*nsecsPerMinute+3*nsecsPerSecond)
 
 	// lt time filter
-	f("options(time_offset=1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753441199999999999)
+	f("_time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999)
+	f("options(time_offset=1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999-nsecsPerHour*1)
+	f("options(time_offset=-1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999+nsecsPerHour*1)
 	f("options(time_offset=1h) _time:<2h", -nsecsPerHour*3+1, -nsecsPerHour)
 	f("options(time_offset=1h) _time:<=2h", -nsecsPerHour*3, -nsecsPerHour)
 }
@@ -187,7 +198,7 @@ func TestQuery_AddTimeFilter(t *testing.T) {
 	}
 
 	// star filter
-	f(`*`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] *`)
+	f(`*`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z]`)
 
 	// or, plus non-query in(...)
 	f(`foo or bar:in(baz)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] (foo or bar:in(baz))`)
@@ -200,12 +211,21 @@ func TestQuery_AddTimeFilter(t *testing.T) {
 	f(`foo or bar:contains_all(baz | fields bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] (foo or bar:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] baz | fields bar))`)
 
 	// ignore global time filter
-	f(`options(ignore_global_time_filter=true) foo or bar:in(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:in(options(ignore_global_time_filter=true) baz | fields bar)`)
+	f(`options(ignore_global_time_filter=true) foo or bar:in(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:in(baz | fields bar)`)
 	f(`foo or bar:in(options(ignore_global_time_filter=true) baz | fields bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] (foo or bar:in(options(ignore_global_time_filter=true) baz | fields bar))`)
-	f(`options(ignore_global_time_filter=true) foo or bar:contains_any(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:contains_any(options(ignore_global_time_filter=true) baz | fields bar)`)
+	f(`options(ignore_global_time_filter=true) foo or bar:contains_any(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:contains_any(baz | fields bar)`)
 	f(`foo or bar:contains_any(options(ignore_global_time_filter=true) baz | fields bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] (foo or bar:contains_any(options(ignore_global_time_filter=true) baz | fields bar))`)
-	f(`options(ignore_global_time_filter=true) foo or bar:contains_all(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:contains_all(options(ignore_global_time_filter=true) baz | fields bar)`)
+	f(`options(ignore_global_time_filter=true) foo or bar:contains_all(baz | fields bar)`, `options(ignore_global_time_filter=true) foo or bar:contains_all(baz | fields bar)`)
 	f(`foo or bar:contains_all(options(ignore_global_time_filter=true) baz | fields bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] (foo or bar:contains_all(options(ignore_global_time_filter=true) baz | fields bar))`)
+
+	// time_offset option
+	f(`options(time_offset=1d3h534ms) *`, `options(time_offset=1d3h534ms) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z]`)
+	f(`options(time_offset = -1.5h) _time:1.3d`, `options(time_offset=-1.5h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:1.3d`)
+	f(`options(time_offset = -1.5h) _time:1.3d offset 3.5h`, `options(time_offset=-1.5h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:1.3d offset 3.5h`)
+	f(`options(time_offset = -1.5h) _time:1.3d offset -3.5h`, `options(time_offset=-1.5h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:1.3d offset -3.5h`)
+	f(`options(time_offset=1h) id:in(_time:5m | keep id)`, `options(time_offset=1h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] id:in(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:5m | fields id)`)
+	f(`id:in(options(time_offset=1h) _time:5m | keep id)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] id:in(options(time_offset=1h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:5m | fields id)`)
+	f(`options(time_offset=1d) id:in(options(time_offset=1h) _time:5m | keep id)`, `options(time_offset=1d) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] id:in(options(time_offset=1h) _time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] _time:5m | fields id)`)
 
 	// join pipe
 	f(`foo | join by (x) (bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] foo | join by (x) (_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] bar)`)
@@ -214,28 +234,28 @@ func TestQuery_AddTimeFilter(t *testing.T) {
 	// union pipe
 	f(`foo | union (bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] foo | union (_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] bar)`)
 	f(`foo | union (options(ignore_global_time_filter=true) bar)`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] foo | union (options(ignore_global_time_filter=true) bar)`)
-	f(`options(ignore_global_time_filter=1) foo | union (bar)`, `options(ignore_global_time_filter=true) foo | union (options(ignore_global_time_filter=true) bar)`)
+	f(`options(ignore_global_time_filter=1) foo | union (bar)`, `options(ignore_global_time_filter=true) foo | union (bar)`)
 
 	// stats pipe with if conditions
-	f(`* | count() if (x:in(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:in(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
-	f(`* | count() if (x:in(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:in(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
-	f(`* | count() if (x:contains_any(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:contains_any(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
-	f(`* | count() if (x:contains_any(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:contains_any(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
-	f(`* | count() if (x:contains_all(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
-	f(`* | count() if (x:contains_all(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats count(*) if (x:contains_all(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:in(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:in(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:in(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:in(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:contains_any(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:contains_any(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:contains_any(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:contains_any(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:contains_all(y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x) abc) as a, count(*) as b`)
+	f(`* | count() if (x:contains_all(options(ignore_global_time_filter=true) y | keep x) abc) a, count() b`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats count(*) if (x:contains_all(options(ignore_global_time_filter=true) y | fields x) abc) as a, count(*) as b`)
 
 	// other pipes with if conditions
-	f(`* | format if (x:in(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:in(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
-	f(`* | format if (x:in(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:in(options(ignore_global_time_filter=true) y | fields x)) foo`)
-	f(`* | format if (x:contains_any(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_any(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
-	f(`* | format if (x:contains_any(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_any(options(ignore_global_time_filter=true) y | fields x)) foo`)
-	f(`* | format if (x:contains_all(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
-	f(`* | format if (x:contains_all(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | format if (x:contains_all(options(ignore_global_time_filter=true) y | fields x)) foo`)
+	f(`* | format if (x:in(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:in(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
+	f(`* | format if (x:in(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:in(options(ignore_global_time_filter=true) y | fields x)) foo`)
+	f(`* | format if (x:contains_any(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:contains_any(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
+	f(`* | format if (x:contains_any(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:contains_any(options(ignore_global_time_filter=true) y | fields x)) foo`)
+	f(`* | format if (x:contains_all(y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:contains_all(_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] y | fields x)) foo`)
+	f(`* | format if (x:contains_all(options(ignore_global_time_filter=true) y | keep x)) "foo"`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | format if (x:contains_all(options(ignore_global_time_filter=true) y | fields x)) foo`)
 
 	// queries with rate and sum_rate (the time filter must propagate to them)
-	f(`* | rate() x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate() as x`)
-	f(`* | rate_sum(requests) x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate_sum(requests) as x`)
-	f(`* | join on (x) (* | rate() y) | rate() z`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | join by (x) (_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] * | stats rate() as y) | stats rate() as z`)
+	f(`* | rate() x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats rate() as x`)
+	f(`* | rate_sum(requests) x`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats rate_sum(requests) as x`)
+	f(`* | join on (x) (* | rate() y) | rate() z`, `_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | join by (x) (_time:[2024-12-25T14:56:43Z,2025-01-13T12:45:34Z] | stats rate() as y) | stats rate() as z`)
 }
 
 func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
@@ -701,7 +721,7 @@ func TestParseTimeRange(t *testing.T) {
 
 	offset = int64(30*time.Minute + 5*time.Second)
 	minTimestamp = time.Date(2023, time.February, 28, 21, 40, 0, 0, time.UTC).UnixNano() - offset + 1
-	maxTimestamp = math.MaxInt64 - offset
+	maxTimestamp = math.MaxInt64
 	f(`>2023-03-01+02:20 offset 30m5s`, minTimestamp, maxTimestamp)
 
 	minTimestamp = math.MinInt64
@@ -709,7 +729,7 @@ func TestParseTimeRange(t *testing.T) {
 	f(`<=2023-03-01+02:20`, minTimestamp, maxTimestamp)
 
 	offset = int64(30*time.Minute + 5*time.Second)
-	minTimestamp = math.MinInt64 - offset
+	minTimestamp = math.MinInt64
 	maxTimestamp = time.Date(2023, time.February, 28, 21, 40, 0, 0, time.UTC).UnixNano() - offset - 1
 	f(`<2023-03-01+02:20 offset 30m5s`, minTimestamp, maxTimestamp)
 }
@@ -1942,14 +1962,17 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`options (concurrency=10) foo | count() c`, `options(concurrency=10) foo | stats count(*) as c`)
 	f(`options (concurrency=10, concurrency =   42,) foo | count() c`, `options(concurrency=42) foo | stats count(*) as c`)
 	f(`options (concurrency=0) *`, `*`)
+	f(`options(ignore_global_time_filter=true) *`, `options(ignore_global_time_filter=true) *`)
+	f(`options(time_offset=1h) *`, `options(time_offset=1h) *`)
+	f(`options(time_offset=1h) _time:1d`, `options(time_offset=1h) _time:1d`)
 
 	// nested options
-	f(`options (concurrency=2) foo bar:in(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:in(options(concurrency=2) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
-	f(`options (concurrency=2) foo bar:in(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:in(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
-	f(`options (concurrency=2) foo bar:contains_any(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:contains_any(options(concurrency=2) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
-	f(`options (concurrency=2) foo bar:contains_any(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:contains_any(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
-	f(`options (concurrency=2) foo bar:contains_all(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:contains_all(options(concurrency=2) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
-	f(`options (concurrency=2) foo bar:contains_all(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:contains_all(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (options(concurrency=2) abc) | join by (x) (options(concurrency=2) y)`)
+	f(`options (concurrency=2) foo bar:in(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:in(a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
+	f(`options (concurrency=2) foo bar:in(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:in(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
+	f(`options (concurrency=2) foo bar:contains_any(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:contains_any(a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
+	f(`options (concurrency=2) foo bar:contains_any(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:contains_any(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
+	f(`options (concurrency=2) foo bar:contains_all(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:contains_all(a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
+	f(`options (concurrency=2) foo bar:contains_all(options (concurrency=10, ignore_global_time_filter=true) a:b | uniq(bar)) | union (abc) | join on(x) (y)`, `options(concurrency=2) foo bar:contains_all(options(concurrency=10, ignore_global_time_filter=true) a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
 
 	// verify that the query optimizations are applied to subqueries
 	f(`foo x:in(bar | filter baz | sort (a) | offset 10 | limit 20 | keep x)`, `foo x:in(bar baz | sort by (a) offset 10 limit 20 | fields x)`)
@@ -2542,6 +2565,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`options(foo=123)`)
 	f(`options(abc)`)
 	f(`options(concurrency=qwe)`)
+	f(`options(time_offset=)`)
+	f(`options(time_offset=foo)`)
+	f(`options(ignore_global_time_filter=123)`)
 
 	// valid options, but missing query filter
 	f(`options(concurrency=12)`)
