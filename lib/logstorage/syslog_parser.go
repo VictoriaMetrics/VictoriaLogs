@@ -452,11 +452,26 @@ func (p *SyslogParser) parseRFC3164(s string) {
 	// Parse hostname
 	n = strings.IndexByte(s, ' ')
 	if n < 0 {
-		p.AddField("hostname", s)
-		return
+		// If there is no space, the remainder could be either hostname or tag.
+		// Detect common tag patterns (contains ':' or '['). If detected, skip hostname assignment
+		// and let the tag parsing below handle it.
+		candidate := s
+		if strings.ContainsAny(candidate, ":[") {
+			// no hostname; continue without consuming s
+		} else {
+			p.AddField("hostname", s)
+			return
+		}
+	} else {
+		candidate := s[:n]
+		if strings.ContainsAny(candidate, ":[") {
+			// The token after timestamp looks like a tag (e.g. "app[pid]:").
+			// Treat as missing hostname and do not consume it; proceed to tag parsing with s unchanged.
+		} else {
+			p.AddField("hostname", candidate)
+			s = s[n+1:]
+		}
 	}
-	p.AddField("hostname", s[:n])
-	s = s[n+1:]
 
 	// Parse tag (aka app_name)
 	n = strings.IndexAny(s, "[: ")

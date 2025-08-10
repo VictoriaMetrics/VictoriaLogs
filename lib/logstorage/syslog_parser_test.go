@@ -32,6 +32,12 @@ func TestSyslogParser(t *testing.T) {
 	f("Jun  3 12:08:33 - - Starting Update the local ESM caches...", time.UTC,
 		`format=rfc3164 timestamp=2024-06-03T12:08:33.000Z hostname=- app_name=- message="Starting Update the local ESM caches..."`)
 
+	// RFC 3164: missing hostname, first token is tag (FreeBSD syslogd over UDP)
+	f("Jun  3 12:08:33 sshd-session[14308]: Received disconnect from 192.168.0.1 port 22:11: disconnected by user", time.UTC,
+		`format=rfc3164 timestamp=2024-06-03T12:08:33.000Z app_name=sshd-session proc_id=14308 message="Received disconnect from 192.168.0.1 port 22:11: disconnected by user"`)
+	f("Jun  3 12:08:33 sshd-session: foo", time.UTC,
+		`format=rfc3164 timestamp=2024-06-03T12:08:33.000Z app_name=sshd-session message=foo`)
+
 	// RFC 5424
 	f(`<134>1 2024-12-09T18:25:35.401631+00:00 ps999 account-server - - [sd@51059 project="secret" ] 1.2.3.4 - - [09/Dec/2024:18:25:35 +0000] "PUT someurl" 201 - "-" "-" "container-updater 1283500" 0.0010 "-" 1531 0`, time.UTC, `priority=134 facility_keyword=local0 level=info facility=16 severity=6 format=rfc5424 timestamp=2024-12-09T18:25:35.401631+00:00 hostname=ps999 app_name=account-server proc_id=- msg_id=- sd@51059.project=secret message="1.2.3.4 - - [09/Dec/2024:18:25:35 +0000] \"PUT someurl\" 201 - \"-\" \"-\" \"container-updater 1283500\" 0.0010 \"-\" 1531 0"`)
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47 - This is a test message with structured data.`, time.UTC,

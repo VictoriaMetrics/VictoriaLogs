@@ -575,6 +575,18 @@ func processLine(line []byte, currentYear int, timezone *time.Location, useLocal
 	}
 	if remoteIP != "" {
 		p.AddField("remote_ip", remoteIP)
+		// Fallback: if hostname is missing in RFC3164 messages (some senders omit it),
+		// set it from remote_ip.
+		hasHostname := false
+		for _, f := range p.Fields {
+			if f.Name == "hostname" && f.Value != "" {
+				hasHostname = true
+				break
+			}
+		}
+		if !hasHostname {
+			p.AddField("hostname", remoteIP)
+		}
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
 	lmp.AddRow(ts, p.Fields, nil)
