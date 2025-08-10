@@ -64,7 +64,7 @@ type statsCountUniqProcessor struct {
 // the maximum number of values to track in statsCountUniqProcessor.uniqValues before switching to statsCountUniqProcessor.shards
 //
 // Too big value may slow down mergeState() across big number of CPU cores.
-// Too small value may significantly increase RAM usage when coun_uniq() is applied individually to big number of groups.
+// Too small value may significantly increase RAM usage when count_uniq() is applied individually to big number of groups.
 const statsCountUniqValuesMaxLen = 4 << 10
 
 type statsCountUniqSet struct {

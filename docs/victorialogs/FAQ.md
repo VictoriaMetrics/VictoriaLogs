@@ -45,7 +45,6 @@ VictoriaLogs is optimized specifically for logs. So it provides the following fe
 - Fast full-text search over all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) out of the box.
 - Good integration with traditional command-line tools for log analysis. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
-
 ## What is the difference between VictoriaLogs and Grafana Loki?
 
 Both Grafana Loki and VictoriaLogs are designed for log management and processing.
@@ -77,7 +76,6 @@ VictoriaLogs and Grafana Loki have the following differences:
 
 See [this article](https://itnext.io/why-victorialogs-is-a-better-alternative-to-grafana-loki-7e941567c4d5) for more details.
 
-
 ## What is the difference between VictoriaLogs and ClickHouse?
 
 ClickHouse is an extremely fast and efficient analytical database. It can be used for logs storage, analysis and processing.
@@ -107,7 +105,6 @@ VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design idea
   This may increase the complexity of the system and, subsequently, increase its' maintenance costs.
 
 - VictoriaLogs provides [built-in Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) for logs' exploration.
-
 
 ## How does VictoriaLogs work?
 
@@ -322,13 +319,14 @@ _time:1h _stream_id:in(_time:1h | top 3 (_stream_id) | keep _stream_id) | count_
 The query works in the following way:
 
 - It selects top 3 log streams with the biggest number of logs during the last hour with the following subquery:
+
   ```logsql
   _time:1h | top 3 (_stream_id) | keep _stream_id
   ```
+
   This subquery uses [`top`](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe) and [`keep`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) pipes.
 
 - Then it selects all the logs across the selected log streams over the last hour with the help of [`_stream_id:...` filter](https://docs.victoriametrics.com/victorialogs/logsql/#_stream_id-filter).
-
 
 ## How to estimate the needed compute resources for the given workload?
 

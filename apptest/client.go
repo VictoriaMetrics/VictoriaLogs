@@ -109,7 +109,7 @@ func readAllAndClose(t *testing.T, responseBody io.ReadCloser) string {
 	defer responseBody.Close()
 	b, err := io.ReadAll(responseBody)
 	if err != nil {
-		t.Fatalf("could not read response body: %d", err)
+		t.Fatalf("could not read response body: %s", err)
 	}
 	return string(b)
 }

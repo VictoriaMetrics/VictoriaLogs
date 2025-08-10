@@ -76,7 +76,6 @@ for logs ingested via DataDog protocol. This can be done via the following optio
 - `-datadog.streamFields` command-line flag, which accepts comma-separated list of fields to use as log stream fields.
 - `_stream_fields` HTTP request query arg or `VL-Stream-Fields` HTTP request header. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details.
 
-
 See also:
 
 - [HTTP query args and HTTP headers, which can be set during data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters)

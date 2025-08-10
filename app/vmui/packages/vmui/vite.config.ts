@@ -10,7 +10,7 @@ const getProxy = (): Record<string, ProxyOptions> | undefined => {
   switch (playground) {
     case "LOGS": {
       return {
-        "^/select/.*": {
+        "^(/select/.*|/flags)": {
           target: "https://play-vmlogs.victoriametrics.com",
           changeOrigin: true,
           configure: (proxy) => {

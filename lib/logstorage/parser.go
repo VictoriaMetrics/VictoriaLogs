@@ -417,16 +417,8 @@ func (q *Query) AddFacetsPipe(limit, maxValuesPerField, maxValueLen int, keepCon
 	if keepConstFields {
 		s += " keep_const_fields"
 	}
-	lex := newLexer(s, q.timestamp)
 
-	pf, err := parsePipeFacets(lex)
-	if err != nil {
-		logger.Panicf("BUG: unexpected error when parsing [%s]: %w", s, err)
-	}
-	if !lex.isEnd() {
-		logger.Panicf("BUG: unexpected tail left after parsing [%s]: %q", s, lex.s)
-	}
-	q.pipes = append(q.pipes, pf)
+	q.mustAppendPipe(s)
 }
 
 // AddCountByTimePipe adds '| stats by (_time:step offset off, field1, ..., fieldN) count() hits' to the end of q.
@@ -440,17 +432,8 @@ func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 			byFieldsStr += ", " + quoteTokenIfNeeded(f)
 		}
 		s := fmt.Sprintf("stats by (%s) count() hits", byFieldsStr)
-		lex := newLexer(s, q.timestamp)
 
-		ps, err := parsePipeStats(lex, true)
-		if err != nil {
-			logger.Panicf("BUG: unexpected error when parsing [%s]: %s", s, err)
-		}
-		if !lex.isEnd() {
-			logger.Panicf("BUG: unexpected tail left after parsing [%s]: %q", s, lex.s)
-		}
-
-		q.pipes = append(q.pipes, ps)
+		q.mustAppendPipe(s)
 	}
 
 	{
@@ -460,12 +443,8 @@ func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 			sortFieldsStr += ", " + quoteTokenIfNeeded(f)
 		}
 		s := fmt.Sprintf("sort by (%s)", sortFieldsStr)
-		lex := newLexer(s, q.timestamp)
-		ps, err := parsePipeSort(lex)
-		if err != nil {
-			logger.Panicf("BUG: unexpected error when parsing %q: %s", s, err)
-		}
-		q.pipes = append(q.pipes, ps)
+
+		q.mustAppendPipe(s)
 	}
 }
 
@@ -486,12 +465,83 @@ func (q *Query) cloneShallow() *Query {
 
 // CloneWithTimeFilter clones q at the given timestamp and adds _time:[start, end] filter to the cloned q.
 func (q *Query) CloneWithTimeFilter(timestamp, start, end int64) *Query {
-	q = q.Clone(timestamp)
-	q.AddTimeFilter(start, end)
-	return q
+	qCopy := q.Clone(timestamp)
+	qCopy.AddTimeFilter(start, end)
+	return qCopy
 }
 
-// CanReturnLastNResults returns true if time range filter at q can be adjusted for returning the last N results.
+// GetLastNResultsQuery() returns a query for optimized querying of the last <limit> results with the biggest _time values with an optional <offset>.
+//
+// The returned query is nil if q cannot be used for optimized querying of the last N results.
+func (q *Query) GetLastNResultsQuery() (qOpt *Query, offset uint64, limit uint64) {
+	pipes := q.pipes
+
+	// Remember the trailing 'fields' and 'delete' pipes - they are moved in front of `sort` pipe below.
+	tailPipes := func() []pipe {
+		for i := len(pipes) - 1; i >= 0; i-- {
+			switch pipes[i].(type) {
+			case *pipeFields, *pipeDelete:
+				// Skip 'fields' and 'delete' pipes.
+			default:
+				return pipes[i+1:]
+			}
+		}
+		return pipes
+	}()
+	pipes = pipes[:len(pipes)-len(tailPipes)]
+	if len(pipes) == 0 {
+		return nil, 0, 0
+	}
+
+	// The query must end with '| sort by (_time desc) limit N' in order be be eligible for the optimization.
+	pLast := pipes[len(pipes)-1]
+	ps, ok := pLast.(*pipeSort)
+	if !ok {
+		return nil, 0, 0
+	}
+	if ps.limit <= 0 || ps.limit > 50_000 {
+		return nil, 0, 0
+	}
+	if ps.offset > 50_000 {
+		return nil, 0, 0
+	}
+	if ps.rankFieldName != "" {
+		return nil, 0, 0
+	}
+	if len(ps.partitionByFields) > 0 {
+		return nil, 0, 0
+	}
+	if len(ps.byFields) != 1 {
+		return nil, 0, 0
+	}
+	if ps.byFields[0].name != "_time" {
+		return nil, 0, 0
+	}
+	isDesc := ps.byFields[0].isDesc
+	if ps.isDesc {
+		isDesc = !isDesc
+	}
+	if !isDesc {
+		return nil, 0, 0
+	}
+
+	// Remove the `| sort ...` pipe from the query, add tailPipes and verify
+	// whether it can reliably return last N results with the biggest _time values.
+	qCopy := q.Clone(q.GetTimestamp())
+	if len(qCopy.pipes) != len(q.pipes) {
+		return nil, 0, 0
+	}
+	qCopy.pipes = qCopy.pipes[:len(pipes)-1]
+	qCopy.pipes = append(qCopy.pipes, tailPipes...)
+	if !qCopy.CanReturnLastNResults() {
+		return nil, 0, 0
+	}
+
+	// The query is eligible for last N results optimization.
+	return qCopy, ps.offset, ps.limit
+}
+
+// CanReturnLastNResults returns true if time range filter at q can be adjusted for returning the last N results with the biggest _time values.
 func (q *Query) CanReturnLastNResults() bool {
 	for _, p := range q.pipes {
 		switch t := p.(type) {
@@ -615,17 +665,35 @@ func (q *Query) addExtraFiltersNoSubqueries(filters []filter) {
 	}
 }
 
-// AddPipeLimit adds `| limit n` pipe to q.
-//
-// See https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe
-func (q *Query) AddPipeLimit(n uint64) {
-	q.pipes = append(q.pipes, &pipeLimit{
-		limit: n,
-	})
-	q.optimize()
+// AddPipeSortByTimeDesc adds `| sort (_time) desc` pipe to q.
+func (q *Query) AddPipeSortByTimeDesc() {
+	s := "sort by (_time) desc"
+	q.mustAppendPipe(s)
 }
 
-// optimize applies various optimations to q.
+// AddPipeOffsetLimit adds `| offset <offset> | limit <limit>` pipes to q.
+//
+// See https://docs.victoriametrics.com/victorialogs/logsql/#offset-pipe
+// and https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe
+func (q *Query) AddPipeOffsetLimit(offset, limit uint64) {
+	offsetStr := fmt.Sprintf("offset %d", offset)
+	q.mustAppendPipe(offsetStr)
+
+	limitStr := fmt.Sprintf("limit %d", limit)
+	q.mustAppendPipe(limitStr)
+
+	// optimize the query, so the `offset` and `limit` pipes could be joined with the preceding `sort` pipe.
+	q.pipes = optimizeSortOffsetPipes(q.pipes)
+	q.pipes = optimizeSortLimitPipes(q.pipes)
+}
+
+func (q *Query) mustAppendPipe(s string) {
+	timestamp := q.GetTimestamp()
+	p := mustParsePipe(s, timestamp)
+	q.pipes = append(q.pipes, p)
+}
+
+// optimize applies various optimizations to q.
 func (q *Query) optimize() {
 	q.visitSubqueries(func(q *Query) {
 		q.optimizeNoSubqueries()

@@ -75,7 +75,7 @@ func getCommonParams(r *http.Request) (*commonParams, error) {
 	if rv := httputil.GetRequestValue(r, "disable_message_parsing", "VL-Loki-Disable-Message-Parsing"); rv != "" {
 		bv, err := strconv.ParseBool(rv)
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse dusable_message_parsing=%q: %s", rv, err)
+			return nil, fmt.Errorf("cannot parse disable_message_parsing=%q: %s", rv, err)
 		}
 		parseMessage = !bv
 	}

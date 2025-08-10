@@ -1,16 +1,17 @@
 package tests
 
 import (
-	"os"
 	"testing"
 
-	at "github.com/VictoriaMetrics/VictoriaLogs/apptest"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestVlsingleIngestionProtocols(t *testing.T) {
-	os.RemoveAll(t.Name())
-	tc := at.NewTestCase(t)
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 	type opts struct {
@@ -21,14 +22,14 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 	f := func(opts *opts) {
 		t.Helper()
 		sut.ForceFlush(t)
-		got := sut.LogsQLQuery(t, opts.query, at.QueryOptsLogs{})
-		assertLogsQLResponseEqual(t, got, &at.LogsQLQueryResponse{LogLines: opts.wantLogLines})
+		got := sut.LogsQLQuery(t, opts.query, apptest.QueryOptsLogs{})
+		assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: opts.wantLogLines})
 	}
 	// json line ingest
 	sut.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
-	}, at.QueryOptsLogs{})
+	}, apptest.QueryOptsLogs{})
 	f(&opts{
 		query: "ingest jsonline",
 		wantLogLines: []string{
@@ -52,7 +53,7 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 				},
 			},
 		},
-	}, at.QueryOpts{})
+	}, apptest.QueryOpts{})
 	f(&opts{
 		query: "ingest native",
 		wantLogLines: []string{

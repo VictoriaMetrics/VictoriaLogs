@@ -13,6 +13,7 @@ aliases:
   - /victorialogs/data-ingestion/Logstash.html
 ---
 VictoriaLogs supports given below Logstash outputs:
+
 - [Elasticsearch](#elasticsearch)
 - [HTTP JSON](#http)
 

@@ -1,0 +1,95 @@
+@use "src/styles/variables" as *;
+@use 'sass:color';
+
+.vm-stream-context-page {
+  position: relative;
+}
+
+.vm-steam-context {
+  &_modal {
+    max-width: 90vw;
+    min-width: 90vw;
+    min-height: 220px;
+
+  }
+
+  &_modal &__target-row {
+    top: 100px;
+  }
+
+  &__target-row {
+    position: sticky;
+    top: 59px;
+    bottom: 0;
+    z-index: 1;
+
+    .vm-group-logs-row-content {
+      padding-block: $padding-small;
+      border-radius: $border-radius-small;
+      background-color: $color-tropical-blue;
+
+      &:hover {
+        background-color: $color-tropical-blue;
+      }
+
+      &_dark {
+        background-color: $color-background-body;
+        opacity: 0.8;
+
+        &:hover {
+          background-color: $color-background-body;
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  &__load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $padding-global;
+
+    button {
+      text-transform: none;
+    }
+  }
+
+  &-header {
+    position: sticky;
+    top: 0;
+    padding: $padding-global;
+    margin: (-$padding-global) (-$padding-global) 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: $padding-large;
+    border-bottom: $border-divider;
+    background-color: $color-background-block;
+    z-index: 1;
+
+    &-title {
+      flex-grow: 1;
+      display: grid;
+      gap: $padding-small;
+
+      &__info {
+        display: flex;
+        align-items: center;
+        gap: $padding-large;
+        font-size: $font-size-small;
+        color: $color-text-secondary;
+      }
+    }
+
+    &__link {
+      button {
+        text-transform: none;
+      }
+    }
+  }
+
+  &_modal &-header {
+    top: 51px
+  }
+}

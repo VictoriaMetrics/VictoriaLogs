@@ -15,7 +15,7 @@ func TestTenantIDMarshalUnmarshal(t *testing.T) {
 			t.Fatalf("unexpected error at unmarshal(%s): %s", tid, err)
 		}
 		if len(tail) != 0 {
-			t.Fatalf("unexpected non-emtpy tail after unmarshal(%s): %X", tid, tail)
+			t.Fatalf("unexpected non-empty tail after unmarshal(%s): %X", tid, tail)
 		}
 		if !reflect.DeepEqual(tid, &tid2) {
 			t.Fatalf("unexpected value after unmarshal; got %s; want %s", &tid2, tid)

@@ -264,3 +264,17 @@ export const getNanoTimestamp = (dateStr: string): bigint => {
   return BigInt(baseMs) * 1000000n + BigInt(extraNano);
 };
 
+export const toNanoPrecision = (time: string): string => {
+  const match = time.match(/^(.+T\d{2}:\d{2}:\d{2})(\.(\d+))?Z$/);
+
+  if (!match) {
+    throw new Error("Invalid time format");
+  }
+
+  const base = match[1];
+  const fraction = match[3] || "";
+  const nanoFraction = (fraction + "000000000").slice(0, 9);
+
+  return `${base}.${nanoFraction}Z`;
+};
+

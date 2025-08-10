@@ -3,9 +3,7 @@
 .vm-bar-hits-options {
   display: flex;
   align-items: center;
-  position: absolute;
-  top: $padding-small;
-  right: $padding-small;
+  justify-content: end;
   z-index: 2;
 
   &-settings {

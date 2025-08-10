@@ -1,5 +1,5 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250718125606-9d9bea03485e
-## explicit; go 1.24.5
+# github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250809190513-06f590ee63d0
+## explicit; go 1.24.6
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/blockcache
@@ -31,7 +31,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/persistentqueue
 github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth
-github.com/VictoriaMetrics/VictoriaMetrics/lib/prompbmarshal
+github.com/VictoriaMetrics/VictoriaMetrics/lib/prompb
 github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/opentelemetry/pb
 github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/pushmetrics
@@ -46,8 +46,8 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter
 # github.com/VictoriaMetrics/easyproto v0.1.4
 ## explicit; go 1.18
 github.com/VictoriaMetrics/easyproto
-# github.com/VictoriaMetrics/metrics v1.38.0
-## explicit; go 1.17
+# github.com/VictoriaMetrics/metrics v1.39.1
+## explicit; go 1.18
 github.com/VictoriaMetrics/metrics
 # github.com/VictoriaMetrics/metricsql v0.84.6
 ## explicit; go 1.24.2
@@ -120,13 +120,13 @@ github.com/valyala/quicktemplate
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.34.0
+# golang.org/x/sys v0.35.0
 ## explicit; go 1.23.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.27.0
+# golang.org/x/text v0.28.0
 ## explicit; go 1.23.0
 golang.org/x/text/transform
 golang.org/x/text/width

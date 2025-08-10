@@ -83,7 +83,6 @@ See also:
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
 - [Filtering by substring](https://docs.victoriametrics.com/victorialogs/logsql/#substring-filter)
 
-
 ## How to skip logs with the given word in log message?
 
 Use [`NOT` logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter). For example, the following query returns all the logs
@@ -124,7 +123,6 @@ See also:
 - [Filtering by prefix](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter)
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
 - [Filtering by substring](https://docs.victoriametrics.com/victorialogs/logsql/#substring-filter)
-
 
 ## How to select logs with all the given words in log message?
 
@@ -170,7 +168,6 @@ See also:
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
 - [Filtering by substring](https://docs.victoriametrics.com/victorialogs/logsql/#substring-filter)
 
-
 ## How to select logs with some of the given words in log message?
 
 Put the needed [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) into `(...)`, by delimiting them with ` or `.
@@ -215,7 +212,6 @@ See also:
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
 - [Filtering by substring](https://docs.victoriametrics.com/victorialogs/logsql/#substring-filter)
 
-
 ## How to select logs from the given application instance?
 
 Make sure the application is properly configured with [stream-level log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
@@ -255,7 +251,6 @@ See also:
 
 - [How to determine applications with the most logs?](#how-to-determine-applications-with-the-most-logs)
 - [How to skip logs with the given word in log message?](#how-to-skip-logs-with-the-given-word-in-log-message)
-
 
 ## How to count the number of matching logs?
 
@@ -298,7 +293,6 @@ See also:
 - [How to calculate the number of logs per the given interval?](#how-to-calculate-the-number-of-logs-per-the-given-interval)
 - [How to select logs from the given application instance?](#how-to-select-logs-from-the-given-application-instance)
 
-
 ## How to parse JSON inside log message?
 
 It is better from performance and resource usage PoV to avoid storing JSON inside [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
@@ -315,7 +309,6 @@ _time:5m | unpack_json
 
 If you need to parse JSON array, then take a look at [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe).
 
-
 ## How to extract some data from text log message?
 
 Use [`extract`](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe) or [`extract_regexp`](https://docs.victoriametrics.com/victorialogs/logsql/#extract_regexp-pipe) pipe.
@@ -328,7 +321,6 @@ _time:5m | extract "username=<username>, user_id=<user_id>,"
 See also:
 
 - [Replacing substrings in text fields](https://docs.victoriametrics.com/victorialogs/logsql/#replace-pipe)
-
 
 ## How to filter out data after stats calculation?
 
@@ -433,7 +425,6 @@ See also:
 - [How to select recently ingested logs?](#how-to-select-recently-ingested-logs)
 - [How to return last N logs for the given query?](#how-to-return-last-n-logs-for-the-given-query)
 
-
 ## How to calculate the share of error logs to the total number of logs?
 
 Use the following query:
@@ -449,7 +440,6 @@ This query uses the following [LogsQL](https://docs.victoriametrics.com/victoria
   for calculating the total number of logs and the number of logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) on the selected time range.
 - [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe) for calculating the share of logs with `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
   comparing to the total number of logs.
-
 
 ## How to select logs for working hours and weekdays?
 
@@ -468,7 +458,6 @@ on [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#ti
 Use [`phrase filter`](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter). For example, the following [LogsQL query](https://docs.victoriametrics.com/victorialogs/logsql/)
 returns logs with the `cannot open file` phrase over the last 5 minutes:
 
-
 ```logsql
 _time:5m "cannot open file"
 ```
@@ -482,7 +471,6 @@ plus up to 100 logs after the given log message:
 ```logsql
 _time:5m stacktrace | stream_context before 10 after 100
 ```
-
 
 ## How to get the duration since the last seen log entry matching the given filter?
 

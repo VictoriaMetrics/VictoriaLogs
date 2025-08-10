@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envflag"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
@@ -39,7 +39,7 @@ var (
 	projectID = flag.Int("projectID", 0, "Project ID to query; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
 
 	username    = flag.String("username", "", "Optional basic auth username to use for the -datasource.url")
-	password    = flagutil.NewPassword("password", "Optional basic auth password to use for the -datsource.url")
+	password    = flagutil.NewPassword("password", "Optional basic auth password to use for the -datasource.url")
 	bearerToken = flagutil.NewPassword("bearerToken", "Optional bearer auth token to use for the -datasource.url")
 
 	tlsCAFile     = flag.String("tlsCAFile", "", "Optional path to TLS CA file to use for verifying connections to the -datasource.url. By default, system CA is used")
@@ -236,9 +236,7 @@ func pushToHistory(rl *readline.Instance, historyLines []string, s string) []str
 		if len(historyLines) > 500 {
 			historyLines = historyLines[len(historyLines)-500:]
 		}
-		if err := saveToHistory(*historyFile, historyLines); err != nil {
-			fatalf("cannot save query history: %s", err)
-		}
+		mustSaveToHistory(*historyFile, historyLines)
 	}
 	if err := rl.SaveToHistory(s); err != nil {
 		fatalf("cannot update query history: %s", err)
@@ -247,11 +245,11 @@ func pushToHistory(rl *readline.Instance, historyLines []string, s string) []str
 }
 
 func loadFromHistory(filePath string) ([]string, error) {
+	if !fs.IsPathExist(filePath) {
+		return nil, nil
+	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	linesQuoted := strings.Split(string(data), "\n")
@@ -271,14 +269,14 @@ func loadFromHistory(filePath string) ([]string, error) {
 	return lines, nil
 }
 
-func saveToHistory(filePath string, lines []string) error {
+func mustSaveToHistory(filePath string, lines []string) {
 	linesQuoted := make([]string, len(lines))
 	for i, line := range lines {
 		lineQuoted := strconv.Quote(line)
 		linesQuoted[i] = lineQuoted
 	}
 	data := strings.Join(linesQuoted, "\n")
-	return os.WriteFile(filePath, []byte(data), 0600)
+	fs.MustWriteSync(filePath, []byte(data))
 }
 
 func isQuitCommand(s string) bool {
@@ -425,6 +423,7 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 			body = []byte(fmt.Sprintf("cannot read response body: %s", err))
 		}
 		fmt.Fprintf(output, "unexpected status code: %d; response body:\n%s\n", resp.StatusCode, body)
+		_ = resp.Body.Close()
 		return nil
 	}
 

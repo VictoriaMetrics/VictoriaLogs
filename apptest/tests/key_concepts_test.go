@@ -2,30 +2,30 @@ package tests
 
 import (
 	"encoding/json"
-	"os"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/google/go-cmp/cmp"
 
-	at "github.com/VictoriaMetrics/VictoriaLogs/apptest"
+	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 // TestVlsingleKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
 // for vl-single.
 func TestVlsingleKeyConcepts(t *testing.T) {
-	os.RemoveAll(t.Name())
-	tc := at.NewTestCase(t)
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 
 	type opts struct {
 		ingestRecords   []string
-		ingestQueryArgs at.QueryOptsLogs
-		wantResponse    *at.LogsQLQueryResponse
+		ingestQueryArgs apptest.QueryOptsLogs
+		wantResponse    *apptest.LogsQLQueryResponse
 		query           string
-		selectQueryArgs at.QueryOptsLogs
+		selectQueryArgs apptest.QueryOptsLogs
 	}
 
 	f := func(opts *opts) {
@@ -42,7 +42,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"_msg":"case 1","_time": "2025-06-05T14:30:19.088007Z", "host": {"name": "foobar","os": {"version": "1.2.3"}}}`,
 			`{"_msg":"case 1","_time": "2025-06-05T14:30:19.088007Z", "tags": ["foo", "bar"], "offset": 12345, "is_error": false}`,
 		},
-		wantResponse: &at.LogsQLQueryResponse{
+		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","host.name":"foobar","host.os.version":"1.2.3"}`,
 				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","is_error":"false","offset":"12345","tags":"[\"foo\",\"bar\"]"}`,
@@ -57,11 +57,11 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"my_msg":"case 2","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"my_msg_other":"case 2","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 		},
-		ingestQueryArgs: at.QueryOptsLogs{
+		ingestQueryArgs: apptest.QueryOptsLogs{
 			MessageField: "my_msg,my_msg_other",
 		},
 		query: "case 2",
-		wantResponse: &at.LogsQLQueryResponse{
+		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -76,11 +76,11 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"my_msg":"case 3","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 			`{"my_msg":"case 3","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo","foo":"bar","baz":"bar"}`,
 		},
-		ingestQueryArgs: at.QueryOptsLogs{
+		ingestQueryArgs: apptest.QueryOptsLogs{
 			MessageField: "my_msg",
 			StreamFields: "foo,bar,baz",
 		},
-		wantResponse: &at.LogsQLQueryResponse{
+		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 3","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 				`{"_msg":"case 3","_stream":"{bar=\"foo\"}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -96,10 +96,10 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"_msg":"case 4","my_time_field": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"_msg":"case 4","my_other_time_field": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 		},
-		ingestQueryArgs: at.QueryOptsLogs{
+		ingestQueryArgs: apptest.QueryOptsLogs{
 			TimeField: "my_time_field,my_other_time_field",
 		},
-		wantResponse: &at.LogsQLQueryResponse{
+		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -110,7 +110,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 
 }
 
-func assertLogsQLResponseEqual(t *testing.T, got, want *at.LogsQLQueryResponse) {
+func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
 	t.Helper()
 	sort.Strings(got.LogLines)
 	sort.Strings(want.LogLines)

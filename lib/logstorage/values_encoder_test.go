@@ -350,7 +350,7 @@ func TestTryParseDuration_Success(t *testing.T) {
 	f("1h5m", nsecsPerHour+5*nsecsPerMinute)
 	f("1.1h5m2.5s3_456ns", 1.1*nsecsPerHour+5*nsecsPerMinute+2.5*nsecsPerSecond+3456)
 
-	// nedgative duration
+	// negative duration
 	f("-1h5m3s", -(nsecsPerHour + 5*nsecsPerMinute + 3*nsecsPerSecond))
 
 	// max int duration

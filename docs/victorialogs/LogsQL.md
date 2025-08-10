@@ -30,6 +30,7 @@ LogsQL provides the following features:
 If you aren't familiar with VictoriaLogs, then start with [key concepts docs](https://docs.victoriametrics.com/victorialogs/keyconcepts/).
 
 Then follow these docs:
+
 - [How to run VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/).
 - [how to ingest data into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
@@ -284,7 +285,6 @@ The list of LogsQL filters:
 - [`Less than` filter](#lt_field-filter) - matches logs where the given field value is smaller than the other field value
 - [`Less than or equal` filter](#le_field-filter) - matches logs where the given field value doesn't exceed the other field value
 - [Logical filter](#logical-filter) - allows combining other filters
-
 
 ### Time filter
 
@@ -576,7 +576,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Phrase filter
 
 Is you need to search for log messages with the specific phrase inside them, then just wrap the phrase into quotes according to [these docs](#string-literals).
@@ -638,7 +637,6 @@ See also:
 - [Word filter](#word-filter)
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Prefix filter
 
@@ -715,7 +713,6 @@ See also:
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Substring filter
 
 If it is needed to find logs with some substring, then `~"substring"` filter can be used. The substring can be but in quotes according to [these docs](#string-literals).
@@ -743,7 +740,6 @@ See also:
 - [Word filter](#word-filter)
 - [Phrase filter](#phrase-filter)
 - [Regexp filter](#regexp-filter)
-
 
 ### Range comparison filter
 
@@ -782,7 +778,6 @@ See also:
 - [Word filter](#word-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Any value filter
 
 Sometimes it is needed to find log entries containing any non-empty value for the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -797,7 +792,6 @@ See also:
 - [Empty value filter](#empty-value-filter)
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Exact filter
 
@@ -849,7 +843,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Exact prefix filter
 
 Sometimes it is needed to find log messages starting with some prefix. This can be done with the `="prefix"*` filter.
@@ -900,7 +893,6 @@ See also:
 - [Phrase filter](#phrase-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Multi-exact filter
 
 Sometimes it is needed to locate log messages with a field containing one of the given values. This can be done with multiple [exact filters](#exact-filter)
@@ -932,7 +924,6 @@ See also:
 - [Prefix filter](#prefix-filter)
 - [Logical filter](#logical-filter)
 
-
 ### contains_all filter
 
 If it is needed to find logs, which contain all the given [words](#word) / phrases, then `v1 AND v2 ... AND vN` [logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter)
@@ -960,7 +951,6 @@ See also:
 - [`in` filter](#multi-exact-filter)
 - [`contains_any` filter](#contains_any-filter)
 
-
 ### contains_any filter
 
 Sometimes it is needed to find logs, which contain at least one [word](#word) or phrase out of many words / phrases.
@@ -981,14 +971,12 @@ foo OR "bar baz"
 It is possible to pass arbitrary [query](#query-syntax) inside `contains_any(...)` filter in order to match against the results of this query.
 See [these docs](#subquery-filter) for details.
 
-
 See also:
 
 - [word filter](#word-filter)
 - [phrase filter](#phrase-filter)
 - [`in` filter](#multi-exact-filter)
 - [`contains_all` filter](#contains_all-filter)
-
 
 ### Subquery filter
 
@@ -1030,7 +1018,6 @@ See also:
 - [`contains_any` filter](#contains_any-filter)
 - [`join` pipe](#join-pipe)
 - [`union` pipe](#union-pipe)
-
 
 ### Case-insensitive filter
 
@@ -1076,14 +1063,12 @@ Performance tips:
   when using [logical filter](#logical-filter).
 - See [other performance tips](#performance-tips).
 
-
 See also:
 
 - [Word filter](#word-filter)
 - [Phrase filter](#phrase-filter)
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Sequence filter
 
@@ -1122,7 +1107,6 @@ See also:
 - [Phrase filter](#phrase-filter)
 - [Exact-filter](#exact-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Regexp filter
 
@@ -1183,7 +1167,6 @@ See also:
 - [Case-insensitive filter](#case-insensitive-filter)
 - [Logical filter](#logical-filter)
 
-
 ### Range filter
 
 If you need to filter log message by some field containing only numeric values, then the `range()` filter can be used.
@@ -1227,7 +1210,6 @@ See also:
 - [String range filter](#string-range-filter)
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
-
 
 ### IPv4 range filter
 
@@ -1279,7 +1261,6 @@ See also:
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
 
-
 ### String range filter
 
 If you need to filter log message by some field with string values in some range, then `string_range()` filter can be used.
@@ -1299,7 +1280,6 @@ See also:
 - [IPv4 range filter](#ipv4-range-filter)
 - [Length range filter](#length-range-filter)
 - [Logical filter](#logical-filter)
-
 
 ### Length range filter
 
@@ -1347,7 +1327,6 @@ See also:
 - [Range filter](#range-filter)
 - [Logical filter](#logical-filter)
 
-
 ### value_type filter
 
 VictoriaLogs automatically detects types for the ingested [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) and stores log field values
@@ -1364,7 +1343,6 @@ See also:
 
 - [`block_stats` pipe](#block_stats-pipe)
 - [Logical filter](#logical-filter)
-
 
 ### eq_field filter
 
@@ -1385,7 +1363,6 @@ See also:
 - [`le_field` filter](#le_field-filter)
 - [`lt_field` filter](#lt_field-filter)
 
-
 ### le_field filter
 
 Sometimes it is needed to find logs where one [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value doesn't exceed the other field value.
@@ -1405,7 +1382,6 @@ See also:
 - [`lt_field` filter](#lt_field-filter)
 - [`eq_field` filter](#eq_field-filter)
 
-
 ### lt_field filter
 
 Sometimes it is needed to find logs where one [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value is smaller than the other field value.
@@ -1424,7 +1400,6 @@ See also:
 - [range comparison filter](#range-comparison-filter)
 - [`le_field` filter](#le_field-filter)
 - [`eq_field` filter](#eq_field-filter)
-
 
 ### Logical filter
 
@@ -1446,7 +1421,6 @@ Basic LogsQL [filters](#filters) can be combined into more complex filters with 
   For example, `-info` and `!info` are equivalent to `NOT info`.
   The `!` must be used instead of `-` in front of [`=`](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
   and [`~`](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter) filters like `!=` and `!~`.
-
 
 The `NOT` operation has the highest priority, `AND` has the middle priority and `OR` has the lowest priority.
 The priority order can be changed with parentheses. For example, `NOT info OR debug` is interpreted as `(NOT info) OR debug`,
@@ -1728,7 +1702,6 @@ See also:
 - [`filter` pipe](#filter-pipe)
 - [`extract` pipe](#extract-pipe)
 
-
 ### extract pipe
 
 `<q> | extract "pattern" from field_name` [pipe](#pipes) extracts text into output fields according to the [`pattern`](#format-for-extract-pipe-pattern) from the given
@@ -1791,7 +1764,7 @@ See also:
 
 #### Format for extract pipe pattern
 
-The `pattern` part from [`extract ` pipe](#extract-pipe) has the following format:
+The `pattern` part from [`extract` pipe](#extract-pipe) has the following format:
 
 ```
 text1<field1>text2<field2>...textN<fieldN>textN+1
@@ -2108,7 +2081,6 @@ See also:
 - [`last` pipe](#last-pipe)
 - [`sort` pipe](#sort-pipe)
 
-
 ### format pipe
 
 `<q> | format "pattern" as result_field` [pipe](#pipes) combines [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -2174,7 +2146,7 @@ String fields can be formatted with the following additional formatting rules:
 Numeric fields can be transformed into the following string representation at `format` pipe:
 
 - [RFC3339 time](https://www.rfc-editor.org/rfc/rfc3339) - by adding `time:` in front of the corresponding field name
-  containing [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time). 
+  containing [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time).
   The numeric timestamp can be in seconds, milliseconds, microseconds, or nanoseconds — the precision is automatically detected based on the value.
   Both integer and floating-point values are supported.
   For example, `format "time=<time:timestamp>"`.
@@ -2210,7 +2182,6 @@ See also:
 - [`replace` pipe](#replace-pipe)
 - [`replace_regexp` pipe](#replace_regexp-pipe)
 - [`extract` pipe](#extract-pipe)
-
 
 #### Conditional format
 
@@ -2459,7 +2430,6 @@ See also:
 - [`extract` pipe](#extract-pipe)
 - [`format` pipe](#format-pipe)
 
-
 ### offset pipe
 
 If some selected logs must be skipped after [`sort`](#sort-pipe), then `| offset N` [pipe](#pipes) can be used, where `N` can contain any [supported integer numeric value](#numeric-values).
@@ -2523,7 +2493,6 @@ See also:
 
 - [`pack_logfmt` pipe](#pack_logfmt-pipe)
 - [`unpack_json` pipe](#unpack_json-pipe)
-
 
 ### pack_logfmt pipe
 
@@ -2882,7 +2851,6 @@ See also:
 - [`top` pipe](#top-pipe)
 - [`join` pipe](#join-pipe)
 
-
 #### Stats by fields
 
 The following LogsQL syntax can be used for calculating independent stats per group of log fields:
@@ -2977,7 +2945,6 @@ See also:
 - [`stats` pipe](#stats-pipe)
 - [`stats` pipe functions](#stats-pipe-functions)
 - [`math` pipe](#math-pipe)
-
 
 #### Stats by field buckets
 
@@ -4250,7 +4217,7 @@ Always **be specific** when you build your queries.
 
 Use these steps to help you understand your query and improve its speed.
 
-### Check how many log your query matches
+### Check how many logs your query matches
 
 You can do this by putting the [`| count()`](#count-stats) after every filter or pipe that might change the number of rows.
 
@@ -4277,7 +4244,7 @@ executing [_time:5m level:error database host:"api-" | stats count(*) as "count(
 }
 ```
 
-So the given filters match 19.217.008 logs and the matching takes 0.474 seconds.
+So the given filters match 19,217,008 logs and the matching takes 0.474 seconds.
 
 If the execution time is high, try reordering your filters. Put the most selective and cheapest conditions first.
 Filters run one after another, so an early filter that removes a lot of logs will make later filters faster to run.
@@ -4408,37 +4375,78 @@ You can find more details here: [How to determine which log fields occupy the mo
 
 ### Profile pipes incrementally
 
-Start with a simple filter that runs very fast, like `_time:5m error`. Note how long it takes. Then, add the next stage you need and measure the query performance again.
-It is recommended adding `| count()` at the end of the query at every stage in order to exclude the time needed for formatting all output logs.
+Suppose you need to profile and optimize the following query:
+
+```logsql
+_time:5m -"cannot open file" error
+  | extract "user_id=(<uid>)"
+  | top 5 by (uid)
+```
+
+Drop all the [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) from the query and leave only
+the [time range filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) like `_time:5m`.
+This query returns all the logs on the given time range. If the query is executed
+via [the built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) or
+via [the Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/),
+then just leave `*` in the query input field, since both the web UI and Grafana plugin for VictoriaLogs automatically filter
+logs on the selected time range. Add [`| count()`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats) at the end of the query and measure the time it takes to execute.
+This is the worst-case time needed for executing the query. The query also returns the number of logs, which need to be processed
+in the worst case during query execution:
+
+```logsql
+_time:5m | count()
+```
+
+Then add filters from the original query one-by-one and measure the resulting query performance. Try different filters from the original
+query and leaving the filter per each step, which executes faster.
 
 ```logsql
 _time:5m error | count()
 ```
 
 ```logsql
-_time:5m error
-  | extract 'user_id=(<uid>)' from _msg
+_time:5m error -"cannot open file" | count()
+```
+
+If you hit some slow filter, try replacing it with faster and more specific filter.
+See [the performance tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips) for details.
+For example, the slow `-"cannot open file"` filter can be replaced with the faster [`contains_any(phrase1, ..., phraseN)`](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter)
+filter where `phrase1`, ..., `phraseN` are phrases seen in the logs you want to select:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") | count()
+```
+
+After all the needed filters are added to the query, look at the number of matching logs.
+If the number is too big (e.g. exceeds tens of millions), then, probably, more specific
+filters can be added to the query in order to reduce the number of logs to process
+by the [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+For example, adding [phrase filters](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) on constant string parts
+from the [`extract`](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe) pattern can significantly reduce the number of logs
+to process by the `extract` pipe:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=(" | count()
+```
+
+Then add pipes from the original query one-by-one and measure the query duration per each step:
+
+```logsql
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=("
+  | extract "user_id=(<uid>)"
   | count()
 ```
 
 ```logsql
-_time:5m error
-    | extract 'user_id=(<uid>)' from _msg
-    | stats by (uid) count() as errors
-    | count()
-```
-
-```logsql
-_time:5m error
-  | extract 'user_id=(<uid>)' from _msg
-  | stats by (uid) count() as errors
-  | sort by (errors) desc limit 10
+_time:5m error contains_any("access denied", "unauthorized", "403") "user_id=("
+  | extract "user_id=(<uid>)"
+  | top 5 by (uid)
   | count()
 ```
 
-Always add one stage at a time and check query performance after each change. If something uses too much time or memory, you will know exactly which part of the query to fix.
+If the query becomes slow or starts using a lot of RAM after adding the next filter or pipe, you will know exactly which part of the query to fix.
 
-If you find a slow step, try these ideas:
+If you find a slow filter or pipe, try these ideas:
 
 - Regex matching and JSON parsing are expensive. Use faster alternatives if you can. See [performance tips](#performance-tips).
 - Sorting without a limit with [`sort` pipe](#sort-pipe) stores all logs in memory. Add a `limit` or reduce the input number of logs.

@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
+	"github.com/VictoriaMetrics/metrics"
 )
 
 // The maximum size of big part.
@@ -54,14 +55,25 @@ type datadb struct {
 	// mergeIdx is used for generating unique directory names for parts
 	mergeIdx atomic.Uint64
 
-	inmemoryMergesTotal  atomic.Uint64
-	inmemoryActiveMerges atomic.Int64
+	inmemoryMergesTotal    atomic.Uint64
+	inmemoryActiveMerges   atomic.Int64
+	inmemoryMergeRowsTotal atomic.Uint64
 
-	smallPartMergesTotal  atomic.Uint64
-	smallPartActiveMerges atomic.Int64
+	smallPartMergesTotal    atomic.Uint64
+	smallPartActiveMerges   atomic.Int64
+	smallPartMergeRowsTotal atomic.Uint64
 
-	bigPartMergesTotal  atomic.Uint64
-	bigPartActiveMerges atomic.Int64
+	bigPartMergesTotal    atomic.Uint64
+	bigPartActiveMerges   atomic.Int64
+	bigPartMergeRowsTotal atomic.Uint64
+
+	// metrics that need to be updated directly
+	inmemoryPartMergeDuration *metrics.Summary
+	inmemoryPartMergeBytes    *metrics.Summary
+	smallPartMergeDuration    *metrics.Summary
+	smallPartMergeBytes       *metrics.Summary
+	bigPartMergeDuration      *metrics.Summary
+	bigPartMergeBytes         *metrics.Summary
 
 	// pt is the partition the datadb belongs to
 	pt *partition
@@ -144,7 +156,7 @@ func (pw *partWrapper) decRef() {
 	pw.p = nil
 
 	if deletePath != "" {
-		fs.MustRemoveAll(deletePath)
+		fs.MustRemoveDir(deletePath)
 	}
 }
 
@@ -184,10 +196,18 @@ func mustOpenDatadb(pt *partition, path string, flushInterval time.Duration) *da
 	ddb := &datadb{
 		pt:            pt,
 		flushInterval: flushInterval,
-		path:          path,
-		smallParts:    smallParts,
-		bigParts:      bigParts,
-		stopCh:        make(chan struct{}),
+
+		inmemoryPartMergeDuration: metrics.GetOrCreateSummary(`vl_merge_duration_seconds{type="storage/inmemory"}`),
+		inmemoryPartMergeBytes:    metrics.GetOrCreateSummary(`vl_merge_bytes{type="storage/inmemory"}`),
+		smallPartMergeDuration:    metrics.GetOrCreateSummary(`vl_merge_duration_seconds{type="storage/small"}`),
+		smallPartMergeBytes:       metrics.GetOrCreateSummary(`vl_merge_bytes{type="storage/small"}`),
+		bigPartMergeDuration:      metrics.GetOrCreateSummary(`vl_merge_duration_seconds{type="storage/big"}`),
+		bigPartMergeBytes:         metrics.GetOrCreateSummary(`vl_merge_bytes{type="storage/big"}`),
+
+		path:       path,
+		smallParts: smallParts,
+		bigParts:   bigParts,
+		stopCh:     make(chan struct{}),
 	}
 	ddb.rb.init(&ddb.wg, ddb.mustFlushLogRows)
 	ddb.mergeIdx.Store(uint64(time.Now().UnixNano()))
@@ -519,6 +539,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		mp.MustStoreToDisk(dstPartPath)
 		pwNew := ddb.openCreatedPart(&mp.ph, pws, nil, dstPartPath)
 		ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
+		ddb.updateMergeMetrics(dstPartType, mp.ph.RowsCount, startTime, mp.ph.CompressedSizeBytes)
 		return
 	}
 
@@ -569,7 +590,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	if needStop(stopCh) {
 		// Remove incomplete destination part
 		if dstPartType != partInmemory {
-			fs.MustRemoveAll(dstPartPath)
+			fs.MustRemoveDir(dstPartPath)
 		}
 		return
 	}
@@ -588,6 +609,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	}
 
 	ddb.swapSrcWithDstParts(pws, pwNew, dstPartType)
+	ddb.updateMergeMetrics(dstPartType, srcRowsCount, startTime, dstSize)
 
 	d := time.Since(startTime)
 	if d <= time.Minute {
@@ -599,6 +621,23 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 	rowsPerSec := int(float64(srcRowsCount) / durationSecs)
 	logger.Infof("merged (%d parts, %d rows, %d blocks, %d bytes) into (1 part, %d rows, %d blocks, %d bytes) in %.3f seconds at %d rows/sec to %q",
 		len(pws), srcRowsCount, srcBlocksCount, srcSize, dstRowsCount, dstBlocksCount, dstSize, durationSecs, rowsPerSec, dstPartPath)
+}
+
+func (ddb *datadb) updateMergeMetrics(partType partType, srcRowCount uint64, startTime time.Time, dstSize uint64) {
+	switch partType {
+	case partInmemory:
+		ddb.inmemoryMergeRowsTotal.Add(srcRowCount)
+		ddb.inmemoryPartMergeDuration.UpdateDuration(startTime)
+		ddb.inmemoryPartMergeBytes.Update(float64(dstSize))
+	case partSmall:
+		ddb.smallPartMergeRowsTotal.Add(srcRowCount)
+		ddb.smallPartMergeDuration.UpdateDuration(startTime)
+		ddb.smallPartMergeBytes.Update(float64(dstSize))
+	case partBig:
+		ddb.bigPartMergeRowsTotal.Add(srcRowCount)
+		ddb.bigPartMergeDuration.UpdateDuration(startTime)
+		ddb.bigPartMergeBytes.Update(float64(dstSize))
+	}
 }
 
 func (ddb *datadb) nextMergeIdx() uint64 {
@@ -643,7 +682,7 @@ func (ddb *datadb) openCreatedPart(ph *partHeader, pws []*partWrapper, mpNew *in
 	if ph.RowsCount == 0 {
 		// The created part is empty. Remove it
 		if mpNew == nil {
-			fs.MustRemoveAll(dstPartPath)
+			fs.MustRemoveDir(dstPartPath)
 		}
 		return nil
 	}
@@ -669,6 +708,21 @@ type rowsBuffer struct {
 	nextIdx atomic.Uint64
 }
 
+func (rb *rowsBuffer) Len() uint64 {
+	shards := rb.shards
+	n := uint64(0)
+	for i := range shards {
+		shard := &shards[i]
+		shard.mu.Lock()
+		if shard.lr != nil {
+			n += uint64(shard.lr.Len())
+		}
+		shard.mu.Unlock()
+	}
+
+	return n
+}
+
 func (rb *rowsBuffer) init(wg *sync.WaitGroup, flushFunc func(lr *logRows)) {
 	shards := make([]rowsBufferShard, cgroup.AvailableCPUs())
 	for i := range shards {
@@ -680,7 +734,7 @@ func (rb *rowsBuffer) init(wg *sync.WaitGroup, flushFunc func(lr *logRows)) {
 }
 
 type rowsBufferShard struct {
-	wg        *sync.WaitGroup
+	wg        *sync.WaitGroup // wg is shared with datadb.
 	flushFunc func(lr *logRows)
 
 	mu         sync.Mutex
@@ -764,23 +818,35 @@ func (ddb *datadb) mustFlushLogRows(lr *logRows) {
 
 // DatadbStats contains various stats for datadb.
 type DatadbStats struct {
-	// InmemoryMergesTotal is the number of inmemory merges performed in the given datadb.
-	InmemoryMergesTotal uint64
+	// InmemoryMergesCount is the number of inmemory merges performed in the given datadb.
+	InmemoryMergesCount uint64
 
-	// InmemoryActiveMerges is the number of currently active inmemory merges performed by the given datadb.
-	InmemoryActiveMerges uint64
+	// ActiveInmemoryMerges is the number of currently active inmemory merges performed by the given datadb.
+	ActiveInmemoryMerges uint64
 
-	// SmallPartMergesTotal is the number of small file merges performed in the given datadb.
-	SmallPartMergesTotal uint64
+	// InmemoryRowsMerged is the number of rows merged to inmemory parts.
+	InmemoryRowsMerged uint64
 
-	// SmallPartActiveMerges is the number of currently active small file merges performed by the given datadb.
-	SmallPartActiveMerges uint64
+	// SmallMergesCount is the number of small file merges performed in the given datadb.
+	SmallMergesCount uint64
 
-	// BigPartMergesTotal is the number of big file merges performed in the given datadb.
-	BigPartMergesTotal uint64
+	// ActiveSmallMerges is the number of currently active small file merges performed by the given datadb.
+	ActiveSmallMerges uint64
 
-	// BigPartActiveMerges is the number of currently active big file merges performed by the given datadb.
-	BigPartActiveMerges uint64
+	// SmallRowsMerged is the number of rows merged to small parts.
+	SmallRowsMerged uint64
+
+	// BigMergesCount is the number of big file merges performed in the given datadb.
+	BigMergesCount uint64
+
+	// ActiveBigMerges is the number of currently active big file merges performed by the given datadb.
+	ActiveBigMerges uint64
+
+	// BigRowsMerged is the number of rows merged to big parts.
+	BigRowsMerged uint64
+
+	// PendingRows is the number of rows, which weren't flushed to searchable part yet.
+	PendingRows uint64
 
 	// InmemoryRowsCount is the number of rows, which weren't flushed to disk yet.
 	InmemoryRowsCount uint64
@@ -839,12 +905,17 @@ func (s *DatadbStats) RowsCount() uint64 {
 
 // updateStats updates s with ddb stats.
 func (ddb *datadb) updateStats(s *DatadbStats) {
-	s.InmemoryMergesTotal += ddb.inmemoryMergesTotal.Load()
-	s.InmemoryActiveMerges += uint64(ddb.inmemoryActiveMerges.Load())
-	s.SmallPartMergesTotal += ddb.smallPartMergesTotal.Load()
-	s.SmallPartActiveMerges += uint64(ddb.smallPartActiveMerges.Load())
-	s.BigPartMergesTotal += ddb.bigPartMergesTotal.Load()
-	s.BigPartActiveMerges += uint64(ddb.bigPartActiveMerges.Load())
+	s.InmemoryMergesCount += ddb.inmemoryMergesTotal.Load()
+	s.ActiveInmemoryMerges += uint64(ddb.inmemoryActiveMerges.Load())
+	s.InmemoryRowsMerged += ddb.inmemoryMergeRowsTotal.Load()
+	s.SmallMergesCount += ddb.smallPartMergesTotal.Load()
+	s.ActiveSmallMerges += uint64(ddb.smallPartActiveMerges.Load())
+	s.SmallRowsMerged += ddb.smallPartMergeRowsTotal.Load()
+	s.BigMergesCount += ddb.bigPartMergesTotal.Load()
+	s.ActiveBigMerges += uint64(ddb.bigPartActiveMerges.Load())
+	s.BigRowsMerged += ddb.bigPartMergeRowsTotal.Load()
+
+	s.PendingRows = ddb.rb.Len()
 
 	ddb.partsLock.Lock()
 
@@ -1216,7 +1287,8 @@ func mustRemoveUnusedDirs(path string, partNames []string) {
 		fn := de.Name()
 		if _, ok := m[fn]; !ok {
 			deletePath := filepath.Join(path, fn)
-			fs.MustRemoveAll(deletePath)
+			logger.Infof("removed unused directory %s (e.g. not listed in parts.json), which may have been left after an unclean shutdown", deletePath)
+			fs.MustRemoveDir(deletePath)
 			removedDirs++
 		}
 	}

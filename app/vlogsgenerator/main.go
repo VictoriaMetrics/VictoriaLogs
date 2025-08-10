@@ -209,7 +209,7 @@ func generateAndPushLogs(cfg *workerConfig, workerID int) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode/100 != 2 {
-		logger.Fatalf("unexpected status code got from %q: %d; want 2xx", cfg.url, err)
+		logger.Fatalf("unexpected status code got from %q: %d; want 2xx", cfg.url, resp.StatusCode)
 	}
 
 	// Wait until all the generateLogs goroutine is finished.

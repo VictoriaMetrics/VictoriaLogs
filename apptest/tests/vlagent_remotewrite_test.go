@@ -7,14 +7,16 @@ import (
 	"testing"
 	"time"
 
-	at "github.com/VictoriaMetrics/VictoriaLogs/apptest"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 // TestVlagentRemoteWrite performs tests for remote write data ingestion
 // by vlagent application
 func TestVlagentRemoteWrite(t *testing.T) {
-	os.RemoveAll(t.Name())
-	tc := at.NewTestCase(t)
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
 	// test data ingestion into
@@ -33,15 +35,15 @@ func TestVlagentRemoteWrite(t *testing.T) {
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
-	}, at.QueryOptsLogs{})
+	}, apptest.QueryOptsLogs{})
 
 	sut.ForceFlush(t)
-	got := sut.LogsQLQuery(t, "ingest jsonline", at.QueryOptsLogs{})
+	got := sut.LogsQLQuery(t, "ingest jsonline", apptest.QueryOptsLogs{})
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}
-	assertLogsQLResponseEqual(t, got, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
 	// stop log storage and check data buffering works correctly
 	tc.StopApp(instance)
@@ -50,7 +52,7 @@ func TestVlagentRemoteWrite(t *testing.T) {
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline2","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline2","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
-	}, at.QueryOptsLogs{})
+	}, apptest.QueryOptsLogs{})
 
 	vlagent.WaitQueueEmptyAfter(t, func() {
 		// start storage and check if buffered data correctly ingested
@@ -58,17 +60,17 @@ func TestVlagentRemoteWrite(t *testing.T) {
 	})
 
 	sut.ForceFlush(t)
-	got = sut.LogsQLQuery(t, "ingest jsonline2", at.QueryOptsLogs{})
+	got = sut.LogsQLQuery(t, "ingest jsonline2", apptest.QueryOptsLogs{})
 	wantLogLines = []string{
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}
-	assertLogsQLResponseEqual(t, got, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 }
 
 func TestVlagentRemoteWriteReplication(t *testing.T) {
-	os.RemoveAll(t.Name())
-	tc := at.NewTestCase(t)
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
 	const (
@@ -105,7 +107,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
-	}, at.QueryOptsLogs{})
+	}, apptest.QueryOptsLogs{})
 
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -113,12 +115,12 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	}
 
 	sutR0.ForceFlush(t)
-	gotR0 := sutR0.LogsQLQuery(t, "ingest jsonline", at.QueryOptsLogs{})
-	assertLogsQLResponseEqual(t, gotR0, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	gotR0 := sutR0.LogsQLQuery(t, "ingest jsonline", apptest.QueryOptsLogs{})
+	assertLogsQLResponseEqual(t, gotR0, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
 	sutR1.ForceFlush(t)
-	gotR1 := sutR1.LogsQLQuery(t, "ingest jsonline", at.QueryOptsLogs{})
-	assertLogsQLResponseEqual(t, gotR1, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	gotR1 := sutR1.LogsQLQuery(t, "ingest jsonline", apptest.QueryOptsLogs{})
+	assertLogsQLResponseEqual(t, gotR1, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
 	// stop log storage and check data buffering works correctly at vlagent
 	tc.StopApp(instanceReplica0)
@@ -127,7 +129,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-	}, at.QueryOptsLogs{})
+	}, apptest.QueryOptsLogs{})
 
 	// check alive storage received data
 	wantLogLines = []string{
@@ -136,8 +138,8 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	}
 
 	sutR1.ForceFlush(t)
-	gotR1 = sutR1.LogsQLQuery(t, "ingest jsonline2", at.QueryOptsLogs{})
-	assertLogsQLResponseEqual(t, gotR1, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	gotR1 = sutR1.LogsQLQuery(t, "ingest jsonline2", apptest.QueryOptsLogs{})
+	assertLogsQLResponseEqual(t, gotR1, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
 	// stop vmagent, it must buffer data on-disk
 	tc.StopApp(vlagentInstance)
@@ -149,6 +151,6 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	})
 
 	sutR0.ForceFlush(t)
-	gotR0 = sutR0.LogsQLQuery(t, "ingest jsonline2", at.QueryOptsLogs{})
-	assertLogsQLResponseEqual(t, gotR0, &at.LogsQLQueryResponse{LogLines: wantLogLines})
+	gotR0 = sutR0.LogsQLQuery(t, "ingest jsonline2", apptest.QueryOptsLogs{})
+	assertLogsQLResponseEqual(t, gotR0, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 }

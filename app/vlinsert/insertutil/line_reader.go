@@ -151,7 +151,7 @@ func (lr *LineReader) skipUntilNextLine() (bool, int) {
 			// Include skipped bytes before \n, including the newline itself.
 			skipSizeBytes += n + 1 - len(lr.buf)
 			// Include \n in the buf, so too long line is replaced with an empty line.
-			// This is needed for maintaining synchorinzation consistency between lines
+			// This is needed for maintaining synchronization consistency between lines
 			// in protocols such as Elasticsearch bulk import.
 			lr.buf = append(lr.buf[:0], lr.buf[n:]...)
 			return true, skipSizeBytes

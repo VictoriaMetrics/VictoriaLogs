@@ -81,6 +81,7 @@ See also:
 - [Dropping fields](#dropping-fields)
 - [Decolorizing fields](#decolorizing-fields)
 - [Adding extra fields](#adding-extra-fields)
+- [Capturing remote ip address](#capturing-remote-ip-address)
 - [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
@@ -192,6 +193,19 @@ For example, the following command starts VictoriaLogs, which adds `source=foo` 
 ./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.extraFields.tcp='{"source":"foo","abc":"def"}'
 ```
 
+## Capturing remote IP address
+
+VictoriaLogs can capture the remote IP address for the incoming syslog messages and can automatically store it
+into `remote_ip` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+Pass `-syslog.useRemoteIP.tcp=true` for capturing remote IP for the corresponding `-syslog.listenAddr.tcp`.
+Pass `-syslog.useRemoteIP.udp=true` for capturing remote IP for the corresponding `-syslog.listenAddr.udp`.
+
+For example, the following command starts VictoriaLogs, which captures remote IP into `remote_ip` field for logs received at TCP port 514:
+
+```sh
+./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.useRemoteIP.tcp=true
+```
+
 ## Multiple configs
 
 VictoriaLogs can accept syslog messages via multiple TCP and UDP ports with individual configurations for [log timestamps](#log-timestamps), [compression](#compression), [security](#security)
@@ -209,9 +223,11 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 
 1. Run VictoriaLogs with `-syslog.listenAddr.tcp=:29514` command-line flag.
 1. Put the following line to [rsyslog](https://www.rsyslog.com/) config (this config is usually located at `/etc/rsyslog.conf`):
+
    ```
    *.* @@victoria-logs-server:29514
    ```
+
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs. See [these docs](https://www.rsyslog.com/sending-messages-to-a-remote-syslog-server/)
    for more details.
 
@@ -219,10 +235,12 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 
 1. Run VictoriaLogs with `-syslog.listenAddr.tcp=:29514` command-line flag.
 1. Put the following line to [syslog-ng](https://www.syslog-ng.com/) config:
+
    ```
    destination d_remote {
     tcp("victoria-logs-server" port(29514));
    };
    ```
+
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs.
    See [these docs](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.19/administration-guide/29#TOPIC-1094570) for details.

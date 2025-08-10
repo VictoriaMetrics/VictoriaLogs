@@ -17,7 +17,7 @@ func TestStorageLifecycle(t *testing.T) {
 		s := MustOpenStorage(path, cfg)
 		s.MustClose()
 	}
-	fs.MustRemoveAll(path)
+	fs.MustRemoveDir(path)
 }
 
 func TestStorageMustAddRows(t *testing.T) {
@@ -104,5 +104,5 @@ func TestStorageMustAddRows(t *testing.T) {
 	}
 	s.MustClose()
 
-	fs.MustRemoveAll(path)
+	fs.MustRemoveDir(path)
 }

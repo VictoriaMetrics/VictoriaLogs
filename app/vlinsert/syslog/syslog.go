@@ -89,6 +89,11 @@ var (
 		"at the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
 	useLocalTimestampUDP = flagutil.NewArrayBool("syslog.useLocalTimestamp.udp", "Whether to use local timestamp instead of the original timestamp for the ingested syslog messages "+
 		"at the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
+
+	useRemoteIPTCP = flagutil.NewArrayBool("syslog.useRemoteIP.tcp", "Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested "+
+		"via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address")
+	useRemoteIPUDP = flagutil.NewArrayBool("syslog.useRemoteIP.udp", "Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested "+
+		"via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address")
 )
 
 // MustInit initializes syslog parser at the given -syslog.listenAddr.tcp and -syslog.listenAddr.udp ports
@@ -180,6 +185,7 @@ func runUDPListener(addr string, argIdx int) {
 	checkCompressMethod(compressMethod, addr, "udp")
 
 	useLocalTimestamp := useLocalTimestampUDP.GetOptionalArg(argIdx)
+	useRemoteIP := useRemoteIPUDP.GetOptionalArg(argIdx)
 
 	streamFieldsStr := streamFieldsUDP.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
@@ -207,7 +213,7 @@ func runUDPListener(addr string, argIdx int) {
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveUDP(ln, tenantID, compressMethod, useLocalTimestamp, streamFields, ignoreFields, decolorizeFields, extraFields)
+		serveUDP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
 		close(doneCh)
 	}()
 
@@ -247,6 +253,7 @@ func runTCPListener(addr string, argIdx int) {
 	checkCompressMethod(compressMethod, addr, "tcp")
 
 	useLocalTimestamp := useLocalTimestampTCP.GetOptionalArg(argIdx)
+	useRemoteIP := useRemoteIPTCP.GetOptionalArg(argIdx)
 
 	streamFieldsStr := streamFieldsTCP.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
@@ -274,7 +281,7 @@ func runTCPListener(addr string, argIdx int) {
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveTCP(ln, tenantID, compressMethod, useLocalTimestamp, streamFields, ignoreFields, decolorizeFields, extraFields)
+		serveTCP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
 		close(doneCh)
 	}()
 
@@ -296,7 +303,7 @@ func checkCompressMethod(compressMethod, addr, protocol string) {
 	}
 }
 
-func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
 	gomaxprocs := cgroup.AvailableCPUs()
 	var wg sync.WaitGroup
 	localAddr := ln.LocalAddr()
@@ -329,7 +336,10 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 				}
 				bb.B = bb.B[:n]
 				udpRequestsTotal.Inc()
-				if err := processStream("udp", bb.NewReader(), encoding, useLocalTimestamp, cp); err != nil {
+
+				remoteIP := getRemoteIP(remoteAddr, useRemoteIP)
+
+				if err := processStream("udp", bb.NewReader(), encoding, useLocalTimestamp, remoteIP, cp); err != nil {
 					logger.Errorf("syslog: cannot process UDP data from %s at %s: %s", remoteAddr, localAddr, err)
 				}
 			}
@@ -338,7 +348,7 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 	wg.Wait()
 }
 
-func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
 	var cm ingestserver.ConnsMap
 	cm.Init("syslog")
 
@@ -369,7 +379,10 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 		wg.Add(1)
 		go func() {
 			cp := insertutil.GetCommonParamsForSyslog(tenantID, streamFields, ignoreFields, decolorizeFields, extraFields)
-			if err := processStream("tcp", c, encoding, useLocalTimestamp, cp); err != nil {
+
+			remoteAddr := c.RemoteAddr()
+			remoteIP := getRemoteIP(remoteAddr, useRemoteIP)
+			if err := processStream("tcp", c, encoding, useLocalTimestamp, remoteIP, cp); err != nil {
 				logger.Errorf("syslog: cannot process TCP data at %q: %s", addr, err)
 			}
 
@@ -384,29 +397,29 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 }
 
 // processStream parses a stream of syslog messages from r and ingests them into vlstorage.
-func processStream(protocol string, r io.Reader, encoding string, useLocalTimestamp bool, cp *insertutil.CommonParams) error {
+func processStream(protocol string, r io.Reader, encoding string, useLocalTimestamp bool, remoteIP string, cp *insertutil.CommonParams) error {
 	if err := insertutil.CanWriteData(); err != nil {
 		return err
 	}
 
 	lmp := cp.NewLogMessageProcessor("syslog_"+protocol, true)
-	err := processStreamInternal(r, encoding, useLocalTimestamp, lmp)
+	err := processStreamInternal(r, encoding, useLocalTimestamp, remoteIP, lmp)
 	lmp.MustClose()
 
 	return err
 }
 
-func processStreamInternal(r io.Reader, encoding string, useLocalTimestamp bool, lmp insertutil.LogMessageProcessor) error {
+func processStreamInternal(r io.Reader, encoding string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
 	reader, err := protoparserutil.GetUncompressedReader(r, encoding)
 	if err != nil {
 		return fmt.Errorf("cannot decode syslog data: %w", err)
 	}
 	defer protoparserutil.PutUncompressedReader(reader)
 
-	return processUncompressedStream(reader, useLocalTimestamp, lmp)
+	return processUncompressedStream(reader, useLocalTimestamp, remoteIP, lmp)
 }
 
-func processUncompressedStream(r io.Reader, useLocalTimestamp bool, lmp insertutil.LogMessageProcessor) error {
+func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
 	wcr := writeconcurrencylimiter.GetReader(r)
 	defer writeconcurrencylimiter.PutReader(wcr)
 
@@ -422,7 +435,7 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, lmp insertut
 		}
 
 		currentYear := int(globalCurrentYear.Load())
-		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, lmp)
+		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
 		if err != nil {
 			errorsTotal.Inc()
 			return fmt.Errorf("cannot read line #%d: %s", n, err)
@@ -543,8 +556,10 @@ func putSyslogLineReader(slr *syslogLineReader) {
 
 var syslogLineReaderPool sync.Pool
 
-func processLine(line []byte, currentYear int, timezone *time.Location, useLocalTimestamp bool, lmp insertutil.LogMessageProcessor) error {
+func processLine(line []byte, currentYear int, timezone *time.Location, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
 	p := logstorage.GetSyslogParser(currentYear, timezone)
+	defer logstorage.PutSyslogParser(p)
+
 	lineStr := bytesutil.ToUnsafeString(line)
 	p.Parse(lineStr)
 
@@ -558,9 +573,11 @@ func processLine(line []byte, currentYear int, timezone *time.Location, useLocal
 		}
 		ts = nsecs
 	}
+	if remoteIP != "" {
+		p.AddField("remote_ip", remoteIP)
+	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
 	lmp.AddRow(ts, p.Fields, nil)
-	logstorage.PutSyslogParser(p)
 
 	return nil
 }
@@ -583,6 +600,18 @@ func parseFieldsList(s string) ([]string, error) {
 	var a []string
 	err := json.Unmarshal([]byte(s), &a)
 	return a, err
+}
+
+func getRemoteIP(remoteAddr net.Addr, useRemoteIP bool) string {
+	if !useRemoteIP {
+		return ""
+	}
+	addrStr := remoteAddr.String()
+	n := strings.LastIndexByte(addrStr, ':')
+	if n < 0 {
+		return ""
+	}
+	return addrStr[:n]
 }
 
 func parseExtraFields(s string) ([]logstorage.Field, error) {

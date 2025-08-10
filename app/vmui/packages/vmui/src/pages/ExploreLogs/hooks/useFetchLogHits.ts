@@ -7,8 +7,15 @@ import { LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../constants/logs";
 import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
+import { useAppState } from "../../../state/common/StateContext";
 
-export const useFetchLogHits = (server: string, query: string) => {
+interface FetchHitsParams {
+  query?: string;
+  period: TimeParams;
+}
+
+export const useFetchLogHits = (defaultQuery: string) => {
+  const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [searchParams] = useSearchParams();
 
@@ -19,7 +26,7 @@ export const useFetchLogHits = (server: string, query: string) => {
 
   const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
-  const url = useMemo(() => getLogHitsUrl(server), [server]);
+  const url = useMemo(() => getLogHitsUrl(serverUrl), [serverUrl]);
 
   const getOptions = (query: string, period: TimeParams, signal: AbortSignal) => {
     const { start, end, step } = getHitsTimeParams(period);
@@ -41,7 +48,7 @@ export const useFetchLogHits = (server: string, query: string) => {
     };
   };
 
-  const fetchLogHits = useCallback(async (period: TimeParams) => {
+  const fetchLogHits = useCallback(async ({ query = defaultQuery, period }: FetchHitsParams) => {
     abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
@@ -78,7 +85,7 @@ export const useFetchLogHits = (server: string, query: string) => {
       }
     }
     setIsLoading(prev => ({ ...prev, [id]: false }));
-  }, [url, query, tenant]);
+  }, [url, defaultQuery, tenant]);
 
   useEffect(() => {
     return () => {

@@ -1,8 +1,10 @@
 package logstorage
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
@@ -53,7 +55,7 @@ func mustCreatePartition(path string) {
 //
 // The partition must be closed with MustClose before deleting it.
 func mustDeletePartition(path string) {
-	fs.MustRemoveAll(path)
+	fs.MustRemoveDir(path)
 }
 
 // mustOpenPartition opens partition at the given path for the given Storage.
@@ -212,3 +214,19 @@ func (pt *partition) updateStats(ps *PartitionStats) {
 func (pt *partition) mustForceMerge() {
 	pt.ddb.mustForceMergeAllParts()
 }
+
+func getPartitionDayFromName(name string) (int64, error) {
+	t, err := time.Parse(partitionNameFormat, name)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse partition name %q; it must have the format YYYYMMDD: %w", name, err)
+	}
+	day := t.UTC().UnixNano() / nsecsPerDay
+	return day, nil
+}
+
+func getPartitionNameFromDay(day int64) string {
+	name := time.Unix(0, day*nsecsPerDay).UTC().Format(partitionNameFormat)
+	return name
+}
+
+const partitionNameFormat = "20060102"
