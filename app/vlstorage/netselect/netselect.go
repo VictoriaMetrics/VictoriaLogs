@@ -115,12 +115,12 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 
 func (sn *storageNode) runQuery(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query, processBlock func(db *logstorage.DataBlock)) error {
 	args := sn.getCommonArgs(QueryProtocolVersion, tenantIDs, q)
-
-	reqURL := sn.getRequestURL("/internal/select/query", args)
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	reqURL := sn.getRequestURL("/internal/select/query")
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, strings.NewReader(args.Encode()))
 	if err != nil {
 		logger.Panicf("BUG: unexpected error when creating a request: %s", err)
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err := sn.ac.SetHeaders(req, true); err != nil {
 		return fmt.Errorf("cannot set auth headers for %q: %w", reqURL, err)
 	}
@@ -250,11 +250,12 @@ func (sn *storageNode) getValuesWithHits(ctx context.Context, path string, args 
 }
 
 func (sn *storageNode) executeRequestAt(ctx context.Context, path string, args url.Values) ([]byte, error) {
-	reqURL := sn.getRequestURL(path, args)
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	reqURL := sn.getRequestURL(path)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, strings.NewReader(args.Encode()))
 	if err != nil {
 		logger.Panicf("BUG: unexpected error when creating a request: %s", err)
 	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err := sn.ac.SetHeaders(req, true); err != nil {
 		return nil, fmt.Errorf("cannot set auth headers for %q: %w", reqURL, err)
 	}
@@ -292,8 +293,8 @@ func (sn *storageNode) executeRequestAt(ctx context.Context, path string, args u
 	return bb.B[bbLen:], nil
 }
 
-func (sn *storageNode) getRequestURL(path string, args url.Values) string {
-	return fmt.Sprintf("%s://%s%s?%s", sn.scheme, sn.addr, path, args.Encode())
+func (sn *storageNode) getRequestURL(path string) string {
+	return fmt.Sprintf("%s://%s%s", sn.scheme, sn.addr, path)
 }
 
 // NewStorage returns new Storage for the given addrs and the given authCfgs.
