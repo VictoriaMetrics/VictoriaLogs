@@ -71,4 +71,26 @@ func TestSyslogParser(t *testing.T) {
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com`)
 	f(`<165>1 2023-06-03T17:42:32.123456789Z`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z`)
 	f(`<165>1 `, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424`)
+
+	// RFC 3164 with RFC3339/ISO8601 timestamp (rsyslog RSYSLOG_ForwardFormat)
+	f(`2025-01-23T12:15:23.965512+01:00 example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2025-01-23T11:15:23.965Z hostname=example app_name=rsyslogd message=start`)
+	f(`<46>2025-01-23T12:15:23.965512+01:00 example rsyslogd: start`, time.UTC,
+		`priority=46 facility_keyword=syslog level=info facility=5 severity=6 format=rfc3164 timestamp=2025-01-23T11:15:23.965Z hostname=example app_name=rsyslogd message=start`)
+	f(`2025-01-23T11:15:23Z example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2025-01-23T11:15:23.000Z hostname=example app_name=rsyslogd message=start`)
+	f(`<46>2025-01-23T11:15:23+00:00 example rsyslogd: start`, time.UTC,
+		`priority=46 facility_keyword=syslog level=info facility=5 severity=6 format=rfc3164 timestamp=2025-01-23T11:15:23.000Z hostname=example app_name=rsyslogd message=start`)
+	f(`2025-06-15T10:15:23-07:00 example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2025-06-15T17:15:23.000Z hostname=example app_name=rsyslogd message=start`)
+	f(`<46>2025-03-01T00:05:00+05:30 example rsyslogd: start`, time.UTC,
+		`priority=46 facility_keyword=syslog level=info facility=5 severity=6 format=rfc3164 timestamp=2025-02-28T18:35:00.000Z hostname=example app_name=rsyslogd message=start`)
+	f(`2025-08-12T09:00:00+07:00 example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2025-08-12T02:00:00.000Z hostname=example app_name=rsyslogd message=start`)
+	f(`2025-01-01T00:00:00.123+01:00 example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2024-12-31T23:00:00.123Z hostname=example app_name=rsyslogd message=start`)
+	f(`<46>2025-04-05T22:10:59.500000-04:00 example rsyslogd: start`, time.UTC,
+		`priority=46 facility_keyword=syslog level=info facility=5 severity=6 format=rfc3164 timestamp=2025-04-06T02:10:59.500Z hostname=example app_name=rsyslogd message=start`)
+	f(`2025-10-10T10:10:10.999000Z example rsyslogd: start`, time.UTC,
+		`format=rfc3164 timestamp=2025-10-10T10:10:10.999Z hostname=example app_name=rsyslogd message=start`)
 }

@@ -414,7 +414,7 @@ func (p *SyslogParser) parseRFC3164(s string) {
 
 	p.AddField("format", "rfc3164")
 
-	// Parse timestamp
+	// Parse timestamp: prefer classic RFC3164
 	n := len(time.Stamp)
 	if len(s) < n {
 		p.AddField("message", s)
@@ -423,22 +423,35 @@ func (p *SyslogParser) parseRFC3164(s string) {
 
 	t, err := time.Parse(time.Stamp, s[:n])
 	if err != nil {
-		// TODO: fall back to parsing ISO8601 timestamp?
-		p.AddField("message", s)
-		return
-	}
-	s = s[n:]
+		// Fallback to RFC3339 timestamp
+		spaceIdx := strings.IndexByte(s, ' ')
+		if spaceIdx <= 0 {
+			p.AddField("message", s)
+			return
+		}
+		nsecs, ok := TryParseTimestampRFC3339Nano(s[:spaceIdx])
+		if !ok {
+			p.AddField("message", s)
+			return
+		}
 
-	t = t.UTC()
-	t = time.Date(p.currentYear, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
-	if uint64(t.Unix())-24*3600 > fasttime.UnixTimestamp() {
-		// Adjust time to the previous year
-		t = time.Date(t.Year()-1, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+		bufLen := len(p.buf)
+		p.buf = marshalTimestampISO8601String(p.buf, nsecs)
+		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
+		// keep leading space for common parsing below
+		s = s[spaceIdx:]
+	} else {
+		s = s[n:]
+		t = t.UTC()
+		t = time.Date(p.currentYear, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+		if uint64(t.Unix())-24*3600 > fasttime.UnixTimestamp() {
+			// Adjust time to the previous year
+			t = time.Date(t.Year()-1, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+		}
+		bufLen := len(p.buf)
+		p.buf = marshalTimestampISO8601String(p.buf, t.UnixNano())
+		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
 	}
-
-	bufLen := len(p.buf)
-	p.buf = marshalTimestampISO8601String(p.buf, t.UnixNano())
-	p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
 
 	if len(s) == 0 || s[0] != ' ' {
 		// Missing space after the time field
