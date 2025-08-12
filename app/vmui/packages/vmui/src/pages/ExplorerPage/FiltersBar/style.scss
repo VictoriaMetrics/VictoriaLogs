@@ -1,0 +1,68 @@
+@use "src/styles/variables" as *;
+
+.vm-filters-bar {
+  display: grid;
+  gap: $padding-global;
+
+  &-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $padding-global;
+
+    &-title {
+      display: grid;
+      grid-template-columns: 16px auto;
+      align-items: center;
+      justify-content: start;
+      gap: 2px;
+      color: $color-text-secondary;
+    }
+
+    &__controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: $padding-small;
+    }
+  }
+
+  &-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-content: start;
+    gap: $padding-small $padding-large;
+
+    &_readonly {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $padding-small;
+    }
+
+    &-item {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr 24px;
+      align-items: center;
+      gap: 4px;
+
+      &_readonly {
+        overflow: hidden;
+        display: inline;
+        padding: calc($padding-small/2) $padding-small;
+        background-color: $color-hover-black;
+        border-radius: $border-radius-small;
+        font-size: $font-size-small;
+        border: 1px solid transparent;
+        word-wrap: anywhere;
+        word-break: auto-phrase;
+        cursor: pointer;
+        transition: border 150ms;
+
+        &:hover {
+          border: $border-divider;
+        }
+      }
+    }
+  }
+}

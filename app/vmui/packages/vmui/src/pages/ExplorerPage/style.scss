@@ -1,0 +1,6 @@
+@use "src/styles/variables" as *;
+
+.vm-explorer-page {
+  display: grid;
+  gap: $padding-global;
+}

@@ -594,3 +594,34 @@ export const OpenNewIcon = () => (
   </svg>
 );
 
+export const PlusIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+  </svg>
+);
+
+export const EditIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"
+    ></path>
+  </svg>
+);
+
+export const EditOffIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="m12.126 8.125 1.937-1.937 3.747 3.747-1.937 1.938zM20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L20.71 7a1 1 0 0 0 0-1.37M2 5l6.63 6.63L3 17.25V21h3.75l5.63-5.62L18 21l2-2L4 3z"
+    ></path>
+  </svg>
+);
+

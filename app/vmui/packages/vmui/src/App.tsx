@@ -4,6 +4,7 @@ import AppContextProvider from "./contexts/AppContextProvider";
 import ThemeProvider from "./components/Main/ThemeProvider/ThemeProvider";
 import QueryPage from "./pages/QueryPage/QueryPage";
 import LogsLayout from "./layouts/LogsLayout/LogsLayout";
+import ExplorerPage from "./pages/ExplorerPage/ExplorerPage";
 import StreamContext from "./pages/StreamContext/StreamContext";
 import router from "./router";
 import "./constants/markedPlugins";
@@ -25,6 +26,10 @@ const App: FC = () => {
                 <Route
                   path={"/"}
                   element={<QueryPage/>}
+                />
+                <Route
+                  path={router.explorer}
+                  element={<ExplorerPage/>}
                 />
                 <Route
                   path={router.streamContext}

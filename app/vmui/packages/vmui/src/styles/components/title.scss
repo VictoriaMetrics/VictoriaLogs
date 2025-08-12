@@ -1,0 +1,11 @@
+@use "src/styles/variables" as *;
+
+.vm-title {
+  color: $color-text-secondary;
+  font-size: $font-size-small;
+  font-weight: 600;
+  letter-spacing: .06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

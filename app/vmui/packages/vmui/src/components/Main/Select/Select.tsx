@@ -20,6 +20,7 @@ interface SelectProps {
   autofocus?: boolean
   disabled?: boolean
   onChange: (value: string) => void
+  onOpen? (open: boolean): void
 }
 
 const Select: FC<SelectProps> = ({
@@ -32,7 +33,8 @@ const Select: FC<SelectProps> = ({
   searchable = false,
   autofocus,
   disabled,
-  onChange
+  onChange,
+  onOpen
 }) => {
   const { isDarkTheme } = useAppState();
   const { isMobile } = useDeviceDetect();
@@ -114,6 +116,10 @@ const Select: FC<SelectProps> = ({
     if (!autofocus || !inputRef.current || isMobile) return;
     inputRef.current.focus();
   }, [autofocus, inputRef]);
+
+  useEffect(() => {
+    onOpen && onOpen(openList);
+  }, [openList]);
 
   useEventListener("keyup", handleKeyUp);
   useClickOutside(autocompleteAnchorEl, handleCloseList, wrapperRef);
