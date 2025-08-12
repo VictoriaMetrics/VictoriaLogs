@@ -438,9 +438,10 @@ func (p *SyslogParser) parseRFC3164(s string) {
 		bufLen := len(p.buf)
 		p.buf = marshalTimestampISO8601String(p.buf, nsecs)
 		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
-		// keep leading space for common parsing below
+		// Preserve leading space so that subsequent parsing of hostname and tag fields works correctly.
 		s = s[spaceIdx:]
 	} else {
+		// Handle standard RFC3164 timestamp format
 		s = s[n:]
 		t = t.UTC()
 		t = time.Date(p.currentYear, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
