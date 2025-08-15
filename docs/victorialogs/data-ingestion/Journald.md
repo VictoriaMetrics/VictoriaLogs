@@ -20,6 +20,8 @@ URL=http://localhost:9428/insert/journald
 
 Substitute the `localhost:9428` address inside `endpoints` section with the real TCP address of VictoriaLogs.
 
+Port 9428 is not the default port associated with with `systemd-journal-upload` so on a system with SELinux in enforcing mode, it may be necessary to adjust the policy or assign the port, for example: `semanage port -a -t journal_remote_port_t -p tcp 9428`
+
 ## Time field
 
 VictoriaLogs uses the `__REALTIME_TIMESTAMP` field as [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
