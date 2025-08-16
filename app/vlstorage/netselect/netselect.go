@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
@@ -272,7 +273,10 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 	// send the request to the storage node
 	resp, err := sn.c.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("cannot execute request at %q: %w", reqURL, err)
+		return nil, "", &httpserver.ErrorWithStatusCode{
+			Err:        fmt.Errorf("cannot connect to storage node at %q: %w", reqURL, err),
+			StatusCode: 502,
+		}
 	}
 
 	if resp.StatusCode != http.StatusOK {
