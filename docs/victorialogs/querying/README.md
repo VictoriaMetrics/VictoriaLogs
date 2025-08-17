@@ -115,8 +115,8 @@ for log messages at `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/query -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
-The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/#monitoring)
-with `vl_http_requests_total{path="/select/logsql/query"}` metric.
+The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
+with [`vl_http_requests_total{path="/select/logsql/query"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_requests_total) metric.
 
 See also:
 
@@ -195,8 +195,8 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl -N http://localhost:9428/select/logsql/tail -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
-The number of currently executed live tailing requests to `/select/logsql/tail` can be [monitored](https://docs.victoriametrics.com/victorialogs/#monitoring)
-with `vl_live_tailing_requests` metric.
+The number of currently executed live tailing requests to `/select/logsql/tail` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
+with [`vl_live_tailing_requests`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_live_tailing_requests) metric.
 
 See also:
 

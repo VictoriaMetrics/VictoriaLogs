@@ -79,7 +79,7 @@ The command should return the following response:
 The response by default contains all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 See [how to query specific fields](https://docs.victoriametrics.com/victorialogs/logsql/#querying-specific-fields).
 
-The duration of requests to `/insert/elasticsearch/_bulk` can be monitored with `vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}` metric.
+The duration of requests to `/insert/elasticsearch/_bulk` can be monitored with [`vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_request_duration_seconds) metric.
 
 See also:
 
@@ -104,7 +104,7 @@ echo '{ "log": { "level": "info", "message": "hello world" }, "date": "0", "stre
 It is possible to push unlimited number of log lines in a single request to this API.
 
 VictoriaLogs skips invalid JSON lines and continues parsing the remaining lines. It logs the warning
-with the reason why it skipped invalid JSON lines. It also increments the `vl_http_errors_total{path="/insert/jsonline"}` counter
+with the reason why it skipped invalid JSON lines. It also increments the [`vl_http_errors_total{path="/insert/jsonline"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_errors_total) counter
 at the [`/metrics` page](https://docs.victoriametrics.com/victorialogs/#monitoring) per every invalid JSON line.
 
 If the [timestamp field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) is set to `"0"`,
@@ -141,7 +141,7 @@ The command should return the following response:
 The response by default contains all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 See [how to query specific fields](https://docs.victoriametrics.com/victorialogs/logsql/#querying-specific-fields).
 
-The duration of requests to `/insert/jsonline` can be monitored with `vl_http_request_duration_seconds{path="/insert/jsonline"}` metric.
+The duration of requests to `/insert/jsonline` can be monitored with [`vl_http_request_duration_seconds{path="/insert/jsonline"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_request_duration_seconds) metric.
 
 See also:
 
@@ -190,7 +190,7 @@ curl -H "Content-Type: application/json" -XPOST "http://localhost:9428/insert/lo
   '{"streams": [{ "stream": { "instance": "host123", "ip": "foo", "trace_id": "bar" }, "values": [ [ "0", "foo fizzbuzz bar" ] ] }]}'
 ```
 
-The duration of requests to `/insert/loki/api/v1/push` can be monitored with `vl_http_request_duration_seconds{path="/insert/loki/api/v1/push"}` metric.
+The duration of requests to `/insert/loki/api/v1/push` can be monitored with [`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_request_duration_seconds) metric.
 
 See also:
 
@@ -337,16 +337,16 @@ VictoriaLogs provides the following command-line flags, which can help debugging
   [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
   See also `debug` [parameter](#http-parameters).
 
-VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victorialogs/#monitoring), which may help debugging data ingestion issues:
+VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victorialogs/metrics/), which may help debugging data ingestion issues:
 
-- `vl_rows_ingested_total` - the number of ingested [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+- [`vl_rows_ingested_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_rows_ingested_total) - the number of ingested [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
   since the last VictoriaLogs restart. If this number increases over time, then logs are successfully ingested into VictoriaLogs.
   The ingested logs can be inspected in the following ways:
   - By passing `debug=1` parameter to every request to [data ingestion APIs](#http-apis). The ingested rows aren't stored in VictoriaLogs
     in this case. Instead, they are logged, so they can be investigated later.
-    The `vl_rows_dropped_total` [metric](https://docs.victoriametrics.com/victorialogs/#monitoring) is incremented for each logged row.
+    The [`vl_rows_dropped_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_rows_dropped_total) metric is incremented for each logged row.
   - By passing `-logIngestedRows` command-line flag to VictoriaLogs. In this case it logs all the ingested data, so it can be investigated later.
-- `vl_streams_created_total` - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
+- [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
   since the last VictoriaLogs restart. If this metric grows rapidly during extended periods of time, then this may lead
   to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
   The newly created log streams can be inspected in logs by passing `-logNewStreams` command-line flag to VictoriaLogs.
