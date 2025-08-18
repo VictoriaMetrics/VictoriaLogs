@@ -20,6 +20,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * FEATURE: expose `vl_total_disk_space_bytes` metric at [`/metrics` page](https://docs.victoriametrics.com/victorialogs/#monitoring), which shows the disk space size for the [`-storageDataPath` directory](https://docs.victoriametrics.com/victorialogs/#storage). This metric can be used for calculating the percentage of the free disk space via the following [MetricsQL](https://docs.victoriametrics.com/victoriametrics/metricsql/) query: `vl_free_disk_space_bytes / vl_total_disk_space_bytes`.
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix incorrect logs sorting on the Group tab. See [#579](https://github.com/VictoriaMetrics/VictoriaLogs/issues/579) for details.
+
 ## [v1.28.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.28.0)
 
 Released at 2025-08-13
