@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/pushmetrics"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/kubernetescollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
@@ -38,16 +39,19 @@ func main() {
 	remotewrite.InitSecretFlags()
 	logger.Init()
 
-	remotewrite.Init()
-	vlinsert.Init()
-
-	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
 	listenAddrs := *httpListenAddrs
 	if len(listenAddrs) == 0 {
 		listenAddrs = []string{":9429"}
 	}
 	logger.Infof("starting vlagent at %q...", listenAddrs)
 	startTime := time.Now()
+
+	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
+	remotewrite.Init()
+
+	kubernetescollector.Init()
+	vlinsert.Init()
+
 	go httpserver.Serve(listenAddrs, requestHandler, httpserver.ServeOptions{
 		UseProxyProtocol: useProxyProtocol,
 	})
@@ -64,6 +68,7 @@ func main() {
 		logger.Fatalf("cannot stop the webservice: %s", err)
 	}
 	vlinsert.Stop()
+	kubernetescollector.Stop()
 	remotewrite.Stop()
 	logger.Infof("successfully shut down the webservice in %.3f seconds", time.Since(startTime).Seconds())
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())

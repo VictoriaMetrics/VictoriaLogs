@@ -60,6 +60,73 @@ collected logs.
 `vlagent` maintains independent buffers for each `-remoteWrite.url`, so the collected logs are delivered to the remaining available VictoriaLogs instances
 in a timely manner when some of the VictoriaLogs instances are unavailable.
 
+### Collect Kubernetes Pod logs
+
+To collect Kubernetes Pod logs with `vlagent` use [`victoria-logs-collector`](https://docs.victoriametrics.com/helm/victoria-logs-collector/#quick-start) Helm chart.
+This Helm chart deploys `vlagent` as a DaemonSet, which collects logs from Pods on all nodes and sends them to VictoriaLogs instances.
+In case of network issues, `vlagent` automatically buffers the collected logs and sends them to VictoriaLogs instances as soon as they become available,
+as described in [Replication and high availability](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability).
+
+To quickly deploy `vlagent` and VictoriaLogs with Helm, see [VictoriaLogs Quick Start](https://docs.victoriametrics.com/helm/victoria-logs-single/#quick-start).
+
+## Kubernetes Collector Configuration
+
+This section describes the existing configuration options for `vlagent`.
+In most cases, you don't need to configure `vlagent` manually, use
+[`victoria-logs-collector`](https://docs.victoriametrics.com/helm/victoria-logs-collector/#quick-start) Helm chart instead.
+
+To enable `vlagent` to collect Kubernetes Pod logs, pass `-kubernetesCollector` command-line flag to `vlagent` and specify the list 
+of `-remoteWrite.url` values to send the collected logs to.
+Minimal configuration for `vlagent` to collect Kubernetes Pod logs:
+```sh
+./vlagent -kubernetesCollector -remoteWrite.url=http://victoria-logs:9428/internal/insert
+```
+
+`vlagent` needs to be able to access the Kubernetes API server to watch and get pods (the `watch` and `get` verbs on the `pods` resource).
+`vlagent` also needs to be able to access the `/var/log/containers` and `/var/log/pods` directories on the Kubernetes nodes.
+For Kubernetes in Docker (in case you run `vlagent` using tools like minikube or kind), you may need to mount `/var/lib` directory.
+
+`vlagent` uses checkpoints to persist its state across restarts.
+Default location for checkpoints is `./vlagent-kubernetes-checkpoints.json`.
+You can specify a different location for checkpoints with `-kubernetesCollector.checkpointsPath` command-line flag.
+Make sure that this file is available for `vlagent` across restarts.
+Use [`hostPath`](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) volume 
+so the checkpoint file stays on the node disk and is reused across Pod restarts.
+
+`vlagent` automatically parses JSON logs from Kubernetes Pod logs and treats the following fields 
+as [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) fields:
+- `message`
+- `msg`
+- `log`
+
+You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgFields` command-line flag with a list of field names.  
+
+`vlagent` extracts timestamp in RFC3339 format from the log line and uses it as
+[`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field,
+using the following fields:
+- `time`
+- `timestamp`
+- `ts`
+
+You can change the default list of `_time` fields by passing `-kubernetesCollector.timeField` command-line flag with a list of field names.
+If none of the specified fields are present in the log line, then `vlagent` uses timestamp when the log line was written by Container Runtime.
+Usually, this timestamp is close to the actual time when the log line was written, but it may differ slightly, normally less than a millisecond.
+
+To ignore fields from Kubernetes Pod logs, pass `-kubernetesCollector.ignoreFields` command-line flag with a list of field names to ignore.
+You can also configure `vlagent` to add additional fields to all collected logs,
+using `-kubernetesCollector.extraFields` command-line flag, which accepts a JSON object with additional fields.
+
+To set the default [tenant](http://localhost:1313/victorialogs/#multitenancy) ID for logs collected from Kubernetes Pods, 
+pass `-kubernetesCollector.tenantID` command-line flag with a tenant ID in format `accountID:projectID`.
+
+`vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields for Kubernetes Pod logs:
+- `kubernetes.container_name`
+- `kubernetes.pod_name`
+- `kubernetes.pod_namespace`
+
+Use these fields for fast filtering and grouping of logs in VictoriaLogs. 
+See [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) for more details.
+
 ## Monitoring
 
 `vlagent` exports various metrics in Prometheus exposition format at `http://vlagent-host:9429/metrics` page.
@@ -270,6 +337,32 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
         TenantID for logs ingested via the Journald endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy (default "0:0")
   -journald.timeField string
         Field to use as a log timestamp for logs ingested via journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#time-field (default "__REALTIME_TIMESTAMP")
+  -kubernetesCollector
+        Whether to enable collecting logs from Kubernetes
+  -kubernetesCollector.checkpointsPath string
+        Path to file with checkpoints for Kubernetes logs. Checkpoints are used to persist the read offsets for Kubernetes container logs. When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication (default "./vlagent-kubernetes-checkpoints.json")
+  -kubernetesCollector.decolorizeFields array
+        Fields to remove ANSI color codes across logs ingested from Kubernetes
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -kubernetesCollector.extraFields string
+        Extra fields to add to each log line collected from Kubernetes pods in JSON format. For example: -kubernetes.extraFields='{"cluster":"cluster-1","env":"production"}'
+  -kubernetesCollector.ignoreFields array
+        Fields to ignore across logs ingested from Kubernetes
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -kubernetesCollector.logsPath string
+        Path to the directory with Kubernetes container logs (usually /var/log/containers). This should point to the kubelet-managed directory containing symlinks to pod logs. vlagent must have read access to this directory and to the target log files, typically located under /var/log/pods and /var/lib on the host (default "/var/log/containers")
+  -kubernetesCollector.msgField array
+        Fields that may contain the _msg field. Default: message,msg,log. See https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -kubernetesCollector.tenantID string
+        Default tenant ID to use for logs collected from Kubernetes pods in format: <accountID>:<projectID> (default "0:0")
+  -kubernetesCollector.timeField array
+        Fields that may contain the _time field. Default: time,timestamp,ts. If none of the specified fields is found in the log line, then the write time will be used. See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -license string
         License key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
   -license.forceOffline
