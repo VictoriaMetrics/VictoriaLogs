@@ -12,6 +12,9 @@ import { HighlightedText } from "./HighlightedText";
 import useCopyToClipboard from "../../../../../hooks/useCopyToClipboard";
 import { currentSearchFocusedElement } from "./constants";
 import { useTextSelection } from "./hooks/useTextSelection";
+import Popper from "../../../../../components/Main/Popper/Popper";
+import Button from "../../../../../components/Main/Button/Button";
+import { useContextMenu } from "./hooks/useContextMenu";
 
 const getSelectionText = (
   text: string,
@@ -81,16 +84,16 @@ interface Props {
   elementHeight?: number;
 }
 
-
 /**
  * This component optimizes rendering performance by only rendering visible items within the viewport
  * and dynamically calculating the visible range based on the current document scroll position.
- * Provides features such as text selection, search, and copy-to-clipboard for JSON data.
+ * Provides features such as text selection, search, and copy-to-clipboard.
  */
 export const DocumentVirtualizedList: FC<Props> = ({
   data,
   elementHeight = 16,
 }) => {
+  // buffer of elements that should be rendered outside the visible area
   const elementOverhead = useMemo(() => Math.ceil(window.innerHeight / elementHeight), [elementHeight]);
 
   const listRef = useRef<HTMLDivElement>(null);
@@ -109,7 +112,8 @@ export const DocumentVirtualizedList: FC<Props> = ({
   const blurSearch = () => {
     searchInputRef.current?.blur();
   };
-  const { startSelectionPosition, endSelectionPosition, selectionRef } = useTextSelection(listRef, blurSearch);
+  const { startSelectionPosition, endSelectionPosition, selectionRef, setSelection } = useTextSelection(listRef, blurSearch);
+  const { contextMenu, handleCloseContextMenu } = useContextMenu({ startSelectionPosition, endSelectionPosition, listRef, setSelection });
 
   const copyToClipboard = useCopyToClipboard();
   const itemsCount = data.length;
@@ -142,6 +146,13 @@ export const DocumentVirtualizedList: FC<Props> = ({
     setCurrentSearchFocusPosition(currentFocusPosition);
     setSearchValue(value);
   }, [data]);
+
+  const handleContextMenuCopy = useCallback(() => {
+    if (startSelectionPosition && endSelectionPosition) {
+      const selectedData = getSelectionData(data, startSelectionPosition, endSelectionPosition);
+      copyToClipboard(selectedData, "Copied to clipboard");
+    }
+  }, [data, startSelectionPosition, endSelectionPosition, copyToClipboard]);
 
   /** Scrolling to the current search position */
   useEffect(() => {
@@ -196,8 +207,10 @@ export const DocumentVirtualizedList: FC<Props> = ({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        console.log("Escape");
         setIsSearchOpen(false);
         setSearchValue("");
+        handleCloseContextMenu();
       }
     };
 
@@ -205,8 +218,11 @@ export const DocumentVirtualizedList: FC<Props> = ({
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
         e.preventDefault();
         let newSearchValue = "";
-        if(selectionRef.current.start && selectionRef.current.end) {
+        if (selectionRef.current.start && selectionRef.current.end) {
           newSearchValue = getSelectionData(data, selectionRef.current.start, selectionRef.current.end);
+        } else if (isSearchOpen && searchInputRef.current) {
+          searchInputRef.current.focus?.();
+          return;
         }
         setSearchValue(newSearchValue);
         setIsSearchOpen(true);
@@ -222,7 +238,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
       window.removeEventListener("keydown", handleEscape, true);
       searchRef.current?.removeEventListener("keydown", handleEscape, true);
     };
-  }, [data]);
+  }, [data, handleCloseContextMenu, isSearchOpen]);
 
   /** Add listener for copy to clipboard hotkeys */
   useEffect(() => {
@@ -234,7 +250,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && startSelectionPosition && endSelectionPosition) {
         e.preventDefault();
         const selectedData = getSelectionData(data, startSelectionPosition, endSelectionPosition);
-        copyToClipboard(selectedData, "Selected JSON data copied to clipboard");
+        copyToClipboard(selectedData, "Copied to clipboard");
       }
     };
     window.addEventListener("keydown", handleCopy);
@@ -247,10 +263,9 @@ export const DocumentVirtualizedList: FC<Props> = ({
   const marginTop = visibleItems.startIndex * elementHeight;
 
   return (
-    <div
-      className="vm-json-virtualized-list"
-    >
+    <>
       <div
+        className="vm-json-virtualized-list"
         ref={listRef}
         style={{ paddingBottom: marginBottom, paddingTop: marginTop }}
       >
@@ -276,6 +291,21 @@ export const DocumentVirtualizedList: FC<Props> = ({
           />
         </div>
       }
-    </div>
+      <Popper
+        open={contextMenu.isVisible}
+        placementPosition={{ top: contextMenu.y, left: contextMenu.x }}
+        placement={"fixed"}
+        onClose={handleCloseContextMenu}
+        buttonRef={listRef}
+      >
+        <Button
+          onClick={handleContextMenuCopy}
+          variant="text"
+          className="vm-json-virtualized-list__context-menu-button"
+        >
+          Copy
+        </Button>
+      </Popper>
+    </>
   );
 };

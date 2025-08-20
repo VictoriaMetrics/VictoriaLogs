@@ -1,3 +1,5 @@
+@use "src/styles/variables" as *;
+
 .vm-json-virtualized-list {
   user-select: none;
   overflow-y: hidden;
@@ -9,6 +11,10 @@
     top: 50px;
     height: 40px;
     z-index: 3;
+
+    input {
+      background-color: $color-background-block;
+    }
   }
 }
 

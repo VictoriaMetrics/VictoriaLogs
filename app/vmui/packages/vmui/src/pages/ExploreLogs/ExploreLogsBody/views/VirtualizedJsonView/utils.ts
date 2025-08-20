@@ -24,7 +24,10 @@ export const getSelectionPosition = (startPosition: TextSelection, endPosition: 
   };
 };
 
-export const getSelectionForShiftKey = ({ start, end }: {start: TextSelection | null, end: TextSelection | null }, position: TextSelection) => {
+export const getSelectionForShiftKey = ({ start, end }: {
+  start: TextSelection | null,
+  end: TextSelection | null
+}, position: TextSelection) => {
   if (!start) {
     return {
       start: position,
@@ -75,119 +78,6 @@ export const getSelectionForShiftKey = ({ start, end }: {start: TextSelection | 
     };
   }
 };
-
-const getDataIdEl = (el: HTMLElement, deps = 3) => {
-  const dataId = el.getAttribute("data-id");
-  if (dataId) {
-    return {
-      el,
-      dataId: Number(dataId),
-    };
-  }
-  if (deps > 0) {
-    const parent = el.parentElement;
-    if (parent && parent instanceof HTMLElement) {
-      return getDataIdEl(parent, deps - 1);
-    }
-  }
-  return null;
-};
-
-export const getMousePosition = (e: MouseEvent): TextSelection | null => {
-  const target = e.target;
-  const position = document.caretPositionFromPoint(e.clientX, e.clientY);
-  if (!(target instanceof HTMLElement) || !position) {
-    return null;
-  }
-
-  const elementData = getDataIdEl(target);
-  if (!elementData) {
-    return null;
-  }
-
-  const { el, dataId: elementIndex } = elementData;
-  const range = document.createRange();
-  range.setStart(position.offsetNode, position.offset);
-
-  const tempRange = document.createRange();
-  tempRange.selectNodeContents(el);
-  tempRange.setEnd(range.startContainer, range.startOffset);
-
-  const clickedIndexStr = tempRange.toString();
-
-  return {
-    elementIndex,
-    positionIndex: clickedIndexStr.length,
-  };
-};
-
-export const getWordSelectionAtMouse = (e: MouseEvent): { start: TextSelection; end: TextSelection } | null => {
-  const target = e.target;
-  const position = document.caretPositionFromPoint(e.clientX, e.clientY);
-  if (!(target instanceof HTMLElement) || !position) {
-    return null;
-  }
-
-  const elementData = getDataIdEl(target);
-  if (!elementData) {
-    return null;
-  }
-
-  const { el, dataId: elementIndex } = elementData;
-
-  const fullText = el.textContent || "";
-
-  const range = document.createRange();
-  range.setStart(position.offsetNode, position.offset);
-
-  const tempRange = document.createRange();
-  tempRange.selectNodeContents(el);
-  tempRange.setEnd(range.startContainer, range.startOffset);
-
-  const clickPosition = tempRange.toString().length;
-
-  const wordBoundaries = findWordBoundaries(fullText, clickPosition);
-
-  if (!wordBoundaries) {
-    return null;
-  }
-
-  return {
-    start: {
-      elementIndex,
-      positionIndex: wordBoundaries.start,
-    },
-    end: {
-      elementIndex,
-      positionIndex: wordBoundaries.end,
-    },
-  };
-};
-
-const findWordBoundaries = (text: string, position: number): { start: number; end: number } | null => {
-  if (position < 0 || position >= text.length) {
-    return null;
-  }
-
-  if (!/\w/.test(text[position])) {
-    return null;
-  }
-
-  const wordRegex = /\w/;
-
-  let start = position;
-  while (start > 0 && wordRegex.test(text[start - 1])) {
-    start--;
-  }
-
-  let end = position;
-  while (end < text.length && wordRegex.test(text[end])) {
-    end++;
-  }
-
-  return { start, end };
-};
-
 
 export const getSelectionData = (data: string[], startSelection: TextSelection, endSelection: TextSelection): string => {
   const { start, end } = getSelectionPosition(startSelection, endSelection);
