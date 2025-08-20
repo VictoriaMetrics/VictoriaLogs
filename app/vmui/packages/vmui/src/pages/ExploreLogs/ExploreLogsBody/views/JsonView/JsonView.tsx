@@ -8,11 +8,11 @@ import orderby from "lodash.orderby";
 import "./style.scss";
 import { Logs } from "../../../../../api/types";
 import { SortDirection } from "./types";
-import { VirtualizedJsonView } from "../VirtualizedJsonView/VirtualizedJsonView";
 import ScrollToTopButton from "../../../../../components/ScrollToTopButton/ScrollToTopButton";
 import { CopyButton } from "../../../../../components/CopyButton/CopyButton";
+import { JsonView as JsonViewComponent } from "../../../../../components/Views/JsonView/JsonView";
 
-const MemoizedJsonView = memo(VirtualizedJsonView);
+const MemoizedJsonView = memo(JsonViewComponent);
 
 const jsonQuerySortParam = "json_sort";
 const fieldSortQueryParamName = "json_field_sort";
@@ -78,13 +78,13 @@ const JsonView: FC<ViewProps> = ({ data, settingsRef }) => {
   if (!data.length) return <EmptyLogs />;
 
   return (
-    <>
+    <div className={"vm-json-view"}>
       {renderSettings()}
       <MemoizedJsonView
         data={sortedData}
       />
       <ScrollToTopButton />
-    </>
+    </div>
   );
 };
 

@@ -157,6 +157,17 @@ export const getOverlappedFragments = (text: string, searchRanges: TextSelection
   return fragments;
 };
 
+/**
+ * Determines the current or next focus entry in a searchable dataset based on the user's search query and navigation direction.
+ * This function is commonly used for navigating search results within a list or document.
+ *
+ * @param {string[]} data - The array of strings to be searched.
+ * @param {string} searchValue - The search query to locate within the data array.
+ * @param {TextSelection | null} prevFocusPosition - The previous focus position or `null` if starting a new search.
+ * @param {boolean} [forward=true] - A boolean flag indicating the navigation direction.
+ *                                    If `true`, search proceeds forward; if `false`, it proceeds backward.
+ * @returns {TextSelection | null} - Returns the new focus position if found, or `null` if no match is identified.
+ */
 export const getCurrentFocusEntry = (
   data: string[],
   searchValue: string,

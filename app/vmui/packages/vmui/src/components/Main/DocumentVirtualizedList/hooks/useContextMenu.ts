@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { RefObject } from "preact/compat";
+import { useCallback, useEffect, useState, RefObject } from "preact/compat";
 import { TextSelection } from "../types";
 import { getMousePosition, getWordSelectionAtMouse } from "./utils";
 import { isClickInSelection } from "./useContextMenuUtils";

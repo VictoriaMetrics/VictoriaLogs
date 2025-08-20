@@ -1,7 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo, FC } from "preact/compat";
 import "./style.scss";
-import TextField, { TextFieldKeyboardEvent } from "../../../../../components/Main/TextField/TextField";
-import useBoolean from "../../../../../hooks/useBoolean";
 import { TextSelection } from "./types";
 import {
   getCurrentFocusEntry,
@@ -9,12 +7,14 @@ import {
   getSelectionPosition
 } from "./utils";
 import { HighlightedText } from "./HighlightedText";
-import useCopyToClipboard from "../../../../../hooks/useCopyToClipboard";
 import { currentSearchFocusedElement } from "./constants";
 import { useTextSelection } from "./hooks/useTextSelection";
-import Popper from "../../../../../components/Main/Popper/Popper";
-import Button from "../../../../../components/Main/Button/Button";
 import { useContextMenu } from "./hooks/useContextMenu";
+import useBoolean from "../../../hooks/useBoolean";
+import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
+import TextField, { TextFieldKeyboardEvent } from "../TextField/TextField";
+import Popper from "../Popper/Popper";
+import Button from "../Button/Button";
 
 const getSelectionText = (
   text: string,
@@ -265,7 +265,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
   return (
     <>
       <div
-        className="vm-json-virtualized-list"
+        className="vm-document-virtualized-list"
         ref={listRef}
         style={{ paddingBottom: marginBottom, paddingTop: marginTop }}
       >
@@ -279,7 +279,7 @@ export const DocumentVirtualizedList: FC<Props> = ({
         <div
           style={{ position: isFixedSearch ? "fixed" : "absolute" }}
           ref={searchRef}
-          className="vm-json-virtualized-list__search"
+          className="vm-document-virtualized-list__search"
         >
           <TextField
             ref={searchInputRef}
@@ -301,7 +301,6 @@ export const DocumentVirtualizedList: FC<Props> = ({
         <Button
           onClick={handleContextMenuCopy}
           variant="text"
-          className="vm-json-virtualized-list__context-menu-button"
         >
           Copy
         </Button>
