@@ -19,7 +19,6 @@ import { usePaginateGroups } from "../hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import DownloadLogsButton from "../DownloadLogsButton/DownloadLogsButton";
-import { hasSortPipe } from "../../../components/Configurators/QueryEditor/LogsQL/utils/sort";
 
 interface Props {
   logs: Logs[];
@@ -29,9 +28,6 @@ interface Props {
 const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const { isMobile } = useDeviceDetect();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const query = searchParams.get("query") || "";
-  const queryHasSort = hasSortPipe(query);
 
   const [page, setPage] = useState(1);
   const [expandGroups, setExpandGroups] = useState<boolean[]>([]);
@@ -59,7 +55,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
         total: values.length,
       };
     }).sort((a, b) => b.total - a.total); // groups sorting
-  }, [logs, groupBy, queryHasSort]);
+  }, [logs, groupBy]);
 
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
