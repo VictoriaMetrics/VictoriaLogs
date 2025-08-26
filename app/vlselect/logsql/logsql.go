@@ -1287,5 +1287,6 @@ func getPositiveInt(r *http.Request, argName string) (int, error) {
 }
 
 func writeRequestDuration(h http.Header, startTime time.Time) {
+	h.Set("Access-Control-Expose-Headers", "VL-Request-Duration-Seconds")
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
 }
