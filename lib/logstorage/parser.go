@@ -606,12 +606,17 @@ func (q *Query) GetFilterTimeRange() (int64, int64) {
 
 // AddTimeFilter adds global filter _time:[start ... end] to q.
 func (q *Query) AddTimeFilter(start, end int64) {
+	q.AddTimeFilterWithEndStr(start, end, "")
+}
+
+// AddTimeFilterWithEndStr adds global filter _time:[start ... end] to q using the original end string for precision.
+func (q *Query) AddTimeFilterWithEndStr(start, end int64, endStr string) {
 	q.visitSubqueries(func(q *Query) {
-		q.addTimeFilterNoSubqueries(start, end)
+		q.addTimeFilterNoSubqueries(start, end, endStr)
 	})
 }
 
-func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
+func (q *Query) addTimeFilterNoSubqueries(start, end int64, endStr string) {
 	if q.opts.ignoreGlobalTimeFilter != nil && *q.opts.ignoreGlobalTimeFilter {
 		return
 	}
@@ -619,11 +624,16 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 	timeOffset := q.opts.timeOffset
 
 	startStr := marshalTimestampRFC3339NanoString(nil, start)
-	endStr := marshalTimestampRFC3339NanoString(nil, end)
+	var endStrForDisplay string
+	if endStr != "" {
+		endStrForDisplay = endStr
+	} else {
+		endStrForDisplay = string(marshalTimestampRFC3339NanoString(nil, end))
+	}
 	ft := &filterTime{
 		minTimestamp: subNoOverflowInt64(start, timeOffset),
-		maxTimestamp: getMatchingEndTime(subNoOverflowInt64(end, timeOffset), string(endStr)),
-		stringRepr:   fmt.Sprintf("[%s,%s]", startStr, endStr),
+		maxTimestamp: getMatchingEndTime(subNoOverflowInt64(end, timeOffset), endStrForDisplay),
+		stringRepr:   fmt.Sprintf("[%s,%s]", startStr, endStrForDisplay),
 	}
 
 	fa, ok := q.f.(*filterAnd)
@@ -2982,6 +2992,30 @@ func getMatchingEndTime(startTime int64, stringRepr string) int64 {
 	tStart := time.Unix(0, startTime).UTC()
 	tEnd := tStart
 	timeStr := stripTimezoneSuffix(stringRepr)
+
+	// Check if this is a Unix timestamp (all digits, possibly with + prefix)
+	isUnixTimestamp := isAllDigits(timeStr) || (len(timeStr) > 0 && timeStr[0] == '+' && isAllDigits(timeStr[1:]))
+	if isUnixTimestamp {
+		actualDigits := timeStr
+		if len(timeStr) > 0 && timeStr[0] == '+' {
+			actualDigits = timeStr[1:]
+		}
+		switch len(actualDigits) {
+		case 10: // seconds
+			tEnd = tStart.Add(time.Second)
+		case 13: // milliseconds
+			tEnd = tStart.Add(time.Millisecond)
+		case 16: // microseconds
+			tEnd = tStart.Add(time.Microsecond)
+		case 19: // nanoseconds
+			tEnd = tStart.Add(time.Nanosecond)
+		default:
+			tEnd = tStart.Add(time.Nanosecond)
+		}
+		return tEnd.UnixNano() - 1
+	}
+
+	// RFC3339 timestamp handling
 	switch {
 	case len(timeStr) == len("YYYY"):
 		y, m, d := tStart.Date()
@@ -3005,10 +3039,24 @@ func getMatchingEndTime(startTime int64, stringRepr string) int64 {
 		tEnd = tStart.Add(time.Second)
 	case len(timeStr) == len("YYYY-MM-DDThh:mm:ss.SSS") && timeStr[len("YYYY")] == '-':
 		tEnd = tStart.Add(time.Millisecond)
+	case len(timeStr) == len("YYYY-MM-DDThh:mm:ss.SSSSSS") && timeStr[len("YYYY")] == '-':
+		tEnd = tStart.Add(time.Microsecond)
 	default:
 		tEnd = tStart.Add(time.Nanosecond)
 	}
 	return tEnd.UnixNano() - 1
+}
+
+func isAllDigits(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func stripTimezoneSuffix(s string) string {

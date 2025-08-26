@@ -1065,17 +1065,17 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	tenantIDs := []logstorage.TenantID{tenantID}
 
 	// Parse optional start and end args
-	start, okStart, err := getTimeNsec(r, "start")
+	start, _, okStart, err := getTimeNsec(r, "start")
 	if err != nil {
 		return nil, err
 	}
-	end, okEnd, err := getTimeNsec(r, "end")
+	end, endStr, okEnd, err := getTimeNsec(r, "end")
 	if err != nil {
 		return nil, err
 	}
 
 	// Parse optional time arg
-	timestamp, okTime, err := getTimeNsec(r, "time")
+	timestamp, _, okTime, err := getTimeNsec(r, "time")
 	if err != nil {
 		return nil, err
 	}
@@ -1109,8 +1109,9 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		}
 		if !okEnd {
 			end = math.MaxInt64
+			endStr = ""
 		}
-		q.AddTimeFilter(start, end)
+		q.AddTimeFilterWithEndStr(start, end, endStr)
 	}
 
 	// Parse optional extra_filters
@@ -1150,17 +1151,17 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	return ca, nil
 }
 
-func getTimeNsec(r *http.Request, argName string) (int64, bool, error) {
+func getTimeNsec(r *http.Request, argName string) (int64, string, bool, error) {
 	s := r.FormValue(argName)
 	if s == "" {
-		return 0, false, nil
+		return 0, "", false, nil
 	}
 	currentTimestamp := time.Now().UnixNano()
 	nsecs, err := timeutil.ParseTimeAt(s, currentTimestamp)
 	if err != nil {
-		return 0, false, fmt.Errorf("cannot parse %s=%s: %w", argName, s, err)
+		return 0, "", false, fmt.Errorf("cannot parse %s=%s: %w", argName, s, err)
 	}
-	return nsecs, true, nil
+	return nsecs, s, true, nil
 }
 
 func parseExtraFilters(s string) (*logstorage.Filter, error) {
