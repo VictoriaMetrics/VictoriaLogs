@@ -55,7 +55,7 @@ const ExploreLogs: FC = () => {
   const [period, setPeriod] = useState<TimeParams>(periodState);
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs(query, limit);
+  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration } = useFetchLogs(query, limit);
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
 
   const fetchData = async (period: TimeParams, flags: FetchFlags) => {
@@ -144,6 +144,7 @@ const ExploreLogs: FC = () => {
     <div className="vm-explore-logs">
       <ExploreLogsHeader
         query={query}
+        queryDurationMs={hideLogs ? undefined : queryDuration}
         error={queryError}
         limit={limit}
         onChange={setQuery}

@@ -22,6 +22,7 @@ export const useFetchLogHits = (defaultQuery: string) => {
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{[key: number]: boolean;}>([]);
   const [error, setError] = useState<ErrorTypes | string>();
+  const [durationMs, setDurationMs] = useState<number | undefined>();
   const abortControllerRef = useRef(new AbortController());
 
   const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
@@ -60,6 +61,9 @@ export const useFetchLogHits = (defaultQuery: string) => {
     try {
       const options = getOptions(query, period, signal);
       const response = await fetch(url, options);
+
+      const duration = response.headers.get("vl-request-duration-seconds");
+      setDurationMs(duration ? Number(duration) * 1000 : undefined);
 
       if (!response.ok || !response.body) {
         const text = await response.text();
@@ -105,6 +109,7 @@ export const useFetchLogHits = (defaultQuery: string) => {
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchLogHits,
+    durationMs,
     abortController: abortControllerRef.current
   };
 };

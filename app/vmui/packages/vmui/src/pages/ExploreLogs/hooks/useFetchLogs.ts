@@ -24,6 +24,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   const [searchParams] = useSearchParams();
 
   const [logs, setLogs] = useState<Logs[]>([]);
+  const [durationMs, setDurationMs] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
   const [error, setError] = useState<ErrorTypes | string>();
   const abortControllerRef = useRef(new AbortController());
@@ -78,8 +79,11 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     try {
       const options = getOptions({ query, limit, period, signal });
       const response = await fetch(url, options);
-      const text = await response.text();
 
+      const duration = response.headers.get("vl-request-duration-seconds");
+      setDurationMs(duration ? Number(duration) * 1000 : undefined);
+
+      const text = await response.text();
       if (!response.ok || !response.body) {
         setError(text);
         setLogs([]);
@@ -123,6 +127,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchLogs,
+    durationMs,
     abortController: abortControllerRef.current
   };
 };
