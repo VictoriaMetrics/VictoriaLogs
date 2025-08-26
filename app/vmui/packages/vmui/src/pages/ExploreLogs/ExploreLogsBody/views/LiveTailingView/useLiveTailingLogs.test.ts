@@ -10,6 +10,12 @@ vi.mock("../../../../../hooks/useTenant", () => ({
   useTenant: () => ({}),
 }));
 
+vi.mock("../../../../../hooks/useStateSearchParams",
+  () => ({
+    default: vi.fn(()=> [5, vi.fn()]),
+  })
+);
+
 // Mock dependencies
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
