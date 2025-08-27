@@ -32,7 +32,9 @@ else ifeq ($(GOOS_GOARCH),darwin_arm64)
 else ifeq ($(GOOS_GOARCH),darwin_amd64)
 	TARGET=x86_64-macos GOARCH=amd64 GOOS=darwin $(MAKE) package-arch
 else ifeq ($(GOOS_GOARCH),windows_amd64)
-	TARGET=x86_64-windows GOARCH=amd64 GOOS=windows GOARCH=amd64 $(MAKE) package-arch
+	TARGET=x86_64-windows GOARCH=amd64 GOOS=windows $(MAKE) package-arch
+else ifeq ($(GOOS_GOARCH),freebsd_amd64)
+	TARGET=x86_64-freebsd GOARCH=amd64 GOOS=freebsd $(MAKE) package-arch
 endif
 
 package-builder:
@@ -59,7 +61,7 @@ package-arch: package-builder
 			make clean libzstd.a'
 	mv -f zstd/lib/libzstd.a $(LIBZSTD_NAME)
 
-# freebsd and illumos aren't supported by zig compiler atm.
+# illumos isn't supported by zig compiler atm.
 release:
 	GOOS=linux GOARCH=amd64 $(MAKE) libzstd.a
 	GOOS=linux GOARCH=arm64 $(MAKE) libzstd.a
@@ -70,6 +72,7 @@ release:
 	GOOS=darwin GOARCH=arm64 $(MAKE) libzstd.a
 	GOOS=darwin GOARCH=amd64 $(MAKE) libzstd.a
 	GOOS=windows GOARCH=amd64 $(MAKE) libzstd.a
+	GOOS=freebsd GOARCH=amd64 $(MAKE) libzstd.a
 
 clean:
 	rm -f $(LIBZSTD_NAME)

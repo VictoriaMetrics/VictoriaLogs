@@ -1,0 +1,23 @@
+@use "src/styles/variables" as *;
+
+.vm-document-virtualized-list {
+  user-select: none;
+  overflow-y: hidden;
+  cursor: text;
+
+  &__search {
+    position: absolute;
+    right: 10px;
+    top: 50px;
+    height: 40px;
+    z-index: 3;
+
+    input {
+      background-color: $color-background-block;
+    }
+  }
+}
+
+#vm_current_search_focus {
+  background-color: #df7700;
+}

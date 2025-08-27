@@ -21,7 +21,7 @@ require (
 	github.com/VictoriaMetrics/metricsql v0.84.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/valyala/gozstd v1.23.0 // indirect
+	github.com/valyala/gozstd v1.23.2 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
