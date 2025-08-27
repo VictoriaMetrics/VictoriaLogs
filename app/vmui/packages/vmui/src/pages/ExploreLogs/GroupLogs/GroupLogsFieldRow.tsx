@@ -28,7 +28,7 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
   const handleCopy = useCallback(async () => {
     if (copied) return;
     try {
-      await copyToClipboard(`${field}: "${value}"`);
+      await copyToClipboard(`${field}: "${JSON.stringify(value).slice(1, -1)}"`);
       setCopied(true);
     } catch (e) {
       console.error(e);
