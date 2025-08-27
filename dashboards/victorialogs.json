@@ -395,10 +395,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -2760,78 +2756,6 @@
             "type": "prometheus",
             "uid": "$ds"
           },
-          "description": "The higher the better.\n\nThis computes the fraction of read bytes that came from the page cache (i.e., not from disk). It answers: \"Of all the bytes my process read via read(), how many were cache hits?\"\n\nThat's why you can see many read syscalls (read() calls), but the actual disk reads stay low; because the data was already in RAM.\n\n\n\n\n\n\n\n\n\n",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 4,
-            "x": 0,
-            "y": 78
-          },
-          "id": 80,
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "text": {},
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.1.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "$ds"
-              },
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "1 - (sum(rate(process_io_storage_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) / sum(rate(process_io_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
-              "format": "time_series",
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}}",
-              "refId": "A"
-            }
-          ],
-          "title": "Page-cache hit ratio",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "$ds"
-          },
           "description": "Number of read/write calls application makes:\n\n- read call: Number of read*()-family system calls your process has issued since start. Each call can move 1 byte or megabytes, cached or uncached.\n- write call: Number of write*()-family system calls (including write, pwrite, writev, etc.) made by the process.",
           "fieldConfig": {
             "defaults": {
@@ -2905,8 +2829,8 @@
           },
           "gridPos": {
             "h": 8,
-            "w": 8,
-            "x": 4,
+            "w": 12,
+            "x": 0,
             "y": 78
           },
           "id": 56,
@@ -4042,10 +3966,6 @@
                   {
                     "color": "green",
                     "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -6290,7 +6210,7 @@
                   }
                 ]
               },
-              "unit": "none"
+              "unit": "bytes"
             },
             "overrides": []
           },
