@@ -25,7 +25,7 @@ export const convertToFieldFilter = (value: string, field = LOGS_GROUP_BY) => {
   }
 
   // Escape double quotes in the field value
-  return `${field}: "${JSON.stringify(value).slice(1, -1)}"`;
+  return `${field}: ${JSON.stringify(value)}`;
 };
 
 export const calculateTotalHits = (hits: LogHits[]): number => {
