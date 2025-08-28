@@ -21,8 +21,12 @@ const operatorToToken: Record<ExtraFilterOperator, Token> = {
   [ExtraFilterOperator.NotRegex]: "nregex",
 };
 
+const escapeQuotes = (str: string) => str.replace(/"/g, "\\\"");
+
 export const filterToExpr = (filter: ExtraFilter) => {
-  const { field, operator, value } = filter;
+  const { field, operator, value: rawValue } = filter;
+  const shouldWrap = field !== "_stream" && rawValue !== "*" && rawValue !== "\"\"";
+  const value = shouldWrap ? `"${escapeQuotes(rawValue)}"` : rawValue;
 
   switch (operator) {
     case ExtraFilterOperator.Equals:

@@ -54,10 +54,11 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
       />
       <SelectLimit
         label={"Offset"}
-        limit={`${offset}s`}
+        limit={offset}
         options={[5, 10, 15, 30, 45, 60]}
         onChange={handleSetOffset}
         onOpenSelect={pauseLiveTailing}
+        renderOptionLabel={(offset: number) => `${offset}s`}
       />
       <div className="vm-live-tailing-view__settings-buttons">
         {logs.length > 0 && <DownloadLogsButton getLogs={getLogs}/>}
