@@ -1,6 +1,6 @@
 const router = {
   home: "/",
-  explorer: "/explorer",
+  overview: "/overview",
   streamContext: "/stream-context/:_stream_id/:_time",
   icons: "/icons",
 };
@@ -25,8 +25,8 @@ export const routerOptions: { [key: string]: RouterOptions } = {
       executionControls: true,
     }
   },
-  [router.explorer]: {
-    title: "Explorer",
+  [router.overview]: {
+    title: "Overview",
     header: {
       tenant: true,
       timeSelector: true,

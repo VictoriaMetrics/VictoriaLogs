@@ -8,6 +8,7 @@ import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import LegendHitsMenuFields from "./LegendHitsMenuFields";
 import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
+import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 
 const otherDescription = `aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
 
@@ -15,7 +16,7 @@ interface Props {
   legend: LegendLogHits;
   fields: string[];
   series: Series[];
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
   onRedrawGraph: () => void;
   onClose: () => void;
 }

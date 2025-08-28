@@ -58,4 +58,11 @@ export interface LegendLogHitsMenu {
 export interface LogsFiledValues {
   value: string;
   hits: number;
+  percent?: number;
 }
+
+export type CardinalityMetricsRow = {
+  distinct: number;
+  coverage: number;
+  ratio: number;
+};

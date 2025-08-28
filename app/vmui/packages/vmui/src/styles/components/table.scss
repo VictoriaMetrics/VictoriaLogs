@@ -23,6 +23,23 @@
     &_selected {
       background-color: rgba($color-dodger-blue, 0.05);
     }
+
+    &_clickable {
+      cursor: pointer;
+
+      &:hover {
+        background-color: $color-hover-black;
+      }
+    }
+
+    &_active {
+      background-color: rgba($color-dodger-blue, 0.2);
+      transition: background-color 200ms ease;
+
+      &:hover {
+        background-color: rgba($color-dodger-blue, 0.3)!important;
+      }
+    }
   }
 
   &-cell {
@@ -62,8 +79,16 @@
       text-align: right;
     }
 
+    &_number &__content,
     &_right &__content {
       justify-content: flex-end;
+    }
+
+    &_number {
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1, "ss01" 1;
     }
 
     &_no-wrap {

@@ -18,6 +18,9 @@ import { useQueryDispatch, useQueryState } from "../../state/query/QueryStateCon
 import { getUpdatedHistory } from "../../components/QueryHistory/utils";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import usePrevious from "../../hooks/usePrevious";
+import { filterToExpr } from "../OverviewPage/hooks/useExtraFilters";
+import { ExtraFilter } from "../OverviewPage/FiltersBar/types";
+import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
 import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
 
@@ -31,12 +34,12 @@ const QueryPage: FC = () => {
   const queryDispatch = useQueryDispatch();
   const { duration, relativeTime, period: periodState } = useTimeState();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
+  const { topHits, groupFieldHits } = useHitsChartConfig();
   const [searchParams] = useSearchParams();
 
-  const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
-  const prevHideChart = usePrevious(hideChart);
+  const hideChart = useMemo(() => Boolean(searchParams.get("hide_chart")), [searchParams]);
 
-  const hideLogs = useMemo(() => searchParams.get("hide_logs"), [searchParams]);
+  const hideLogs = useMemo(() => Boolean(searchParams.get("hide_logs")), [searchParams]);
   const prevHideLogs = usePrevious(hideLogs);
 
   const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
@@ -75,7 +78,7 @@ const QueryPage: FC = () => {
     }
 
     if (flags.hits) {
-      await fetchLogHits({ period });
+      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
     }
   };
 
@@ -97,6 +100,8 @@ const QueryPage: FC = () => {
 
     const newPeriod = getPeriod();
     setPeriod(newPeriod);
+    dataLogHits.abortController.abort();
+    abortController.abort();
     debouncedFetchLogs(newPeriod, { logs: !hideLogs, hits: !hideChart });
     setSearchParamsFromKeys({
       query,
@@ -107,8 +112,14 @@ const QueryPage: FC = () => {
     updateHistory();
   };
 
-  const handleApplyFilter = (val: string) => {
-    setQuery(prev => `${val} AND ${prev}`);
+  const handleChangeLimit = (limit: number) => {
+    setLimit(limit);
+    setSearchParamsFromKeys({ limit });
+    saveToStorage("LOGS_LIMIT", `${limit}`);
+  };
+
+  const handleApplyFilter = (val: ExtraFilter) => {
+    setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
     setIsUpdatingQuery(true);
   };
 
@@ -133,10 +144,9 @@ const QueryPage: FC = () => {
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
-    if (!hideChart && prevHideChart) {
-      fetchLogHits({ period });
-    }
-  }, [hideChart, prevHideChart, period]);
+    if (hideChart) return;
+    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
+  }, [hideChart, period, groupFieldHits, topHits]);
 
   useEffect(() => {
     if (!hideLogs && prevHideLogs) {

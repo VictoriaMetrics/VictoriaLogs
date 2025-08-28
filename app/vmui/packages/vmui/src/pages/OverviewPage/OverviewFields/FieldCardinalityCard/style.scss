@@ -1,0 +1,52 @@
+@use "src/styles/variables" as *;
+
+.vm-cardinality-card {
+  position: relative;
+  padding-top: $padding-global;
+  padding-bottom: $padding-global;
+  border-bottom: $border-divider;
+  font-size: $font-size-small;
+
+  &-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: $padding-small;
+    padding-top: $padding-small;
+
+    &-item {
+      display: flex;
+      align-items: center;
+      gap: calc($padding-small / 2);
+      padding: calc($padding-global/2) $padding-global;
+      background-color: $color-hover-black;
+      border-radius: $border-radius-small;
+
+      &__title {
+
+        &:after {
+          content: ':';
+        }
+      }
+
+      &__value {
+      }
+
+      &__info-icon {
+        aspect-ratio: 1;
+        width: 16px;
+        color: $color-text-secondary;
+        opacity: 0.5;
+      }
+
+      &__description {
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        width: 230px;
+        text-wrap: balance;
+        padding-block: 4px;
+      }
+    }
+  }
+}

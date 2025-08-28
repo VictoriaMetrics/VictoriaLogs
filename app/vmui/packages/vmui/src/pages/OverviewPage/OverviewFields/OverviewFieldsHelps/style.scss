@@ -1,0 +1,10 @@
+@use "src/styles/variables" as *;
+
+.vm-overview-fields-tour {
+
+  &-content {
+    padding-inline: $padding-global;
+    max-width: 760px;
+    text-wrap: pretty;
+  }
+}

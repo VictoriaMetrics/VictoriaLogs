@@ -282,6 +282,20 @@ export const toNanoPrecision = (time: string): string => {
   return `${base}.${nanoFraction}Z`;
 };
 
+export const getPreviousRange = (period: TimeParams): TimeParams => {
+  const { start, end, step } = period;
+  const duration = end - start;
+  const prevStart = start - duration;
+  const prevEnd = end - duration;
+
+  return {
+    start: prevStart,
+    end: prevEnd,
+    step,
+    date: formatDateToUTC(dateFromSeconds(prevEnd))
+  };
+};
+
 // Formats a date-time string while respecting the current timezone.
 // If the provided `format` includes millisecond tokens (e.g., .SSS), those will be replaced
 // with a 9-digit fractional part from the input timestamp (padded to nanoseconds).

@@ -1,0 +1,47 @@
+@use "src/styles/variables" as *;
+
+.vm-filters-bar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $padding-small;
+  background-color: $color-background-block;
+  z-index: 9;
+
+  &-title {
+    display: grid;
+    grid-template-columns: 16px auto;
+    align-items: center;
+    justify-content: start;
+    gap: 2px;
+    color: $color-text-secondary;
+  }
+
+  &-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    overflow: hidden;
+    padding-left: $padding-small;
+    background-color: $color-hover-black;
+    border-radius: $border-radius-small;
+    font-size: $font-size-small;
+    border: 1px solid transparent;
+    word-wrap: anywhere;
+    word-break: auto-phrase;
+
+    &_focusable {
+      background-color: rgba($color-dodger-blue, 0.2);
+    }
+  }
+
+  &__clear {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-grow: 1;
+  }
+}

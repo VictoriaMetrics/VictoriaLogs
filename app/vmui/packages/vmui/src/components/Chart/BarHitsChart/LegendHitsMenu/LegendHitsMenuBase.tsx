@@ -3,24 +3,25 @@ import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon } from "../../../Main/Icons";
 import { LegendLogHits, LegendLogHitsMenu } from "../../../../api/types";
-import { LOGS_GROUP_BY } from "../../../../constants/logs";
+import { ExtraFilter, ExtraFilterOperator } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 interface Props {
   legend: LegendLogHits;
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
   onClose: () => void;
 }
 
 const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
   const copyToClipboard = useCopyToClipboard();
+  const { groupFieldHits } = useHitsChartConfig();
 
-  const handleAddStreamToFilter = () => {
-    onApplyFilter(`${LOGS_GROUP_BY}: ${legend.label}`);
-    onClose();
-  };
-
-  const handleExcludeStreamToFilter = () => {
-    onApplyFilter(`(NOT ${LOGS_GROUP_BY}: ${legend.label})`);
+  const handleAddStreamToFilter = (operator: ExtraFilterOperator) => () => {
+    onApplyFilter({
+      field: groupFieldHits,
+      value: legend.label,
+      operator,
+    });
     onClose();
   };
 
@@ -31,19 +32,19 @@ const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
 
   const options: LegendLogHitsMenu[] = [
     {
-      title: `Copy ${LOGS_GROUP_BY} name`,
+      title: `Copy ${groupFieldHits} name`,
       icon: <CopyIcon/>,
       handler: handlerCopyLabel,
     },
     {
-      title: `Add ${LOGS_GROUP_BY} to filter`,
+      title: `Add ${groupFieldHits} to filter`,
       icon: <FilterIcon/>,
-      handler: handleAddStreamToFilter,
+      handler:  handleAddStreamToFilter(ExtraFilterOperator.Equals),
     },
     {
-      title: `Exclude ${LOGS_GROUP_BY} to filter`,
+      title: `Exclude ${groupFieldHits} to filter`,
       icon: <FilterOffIcon/>,
-      handler: handleExcludeStreamToFilter,
+      handler: handleAddStreamToFilter(ExtraFilterOperator.NotEquals),
     }
   ];
 

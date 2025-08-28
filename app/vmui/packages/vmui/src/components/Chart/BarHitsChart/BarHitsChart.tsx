@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from "preact/compat";
+import { FC, useCallback, useMemo, useState } from "preact/compat";
 import "./style.scss";
 import "uplot/dist/uPlot.min.css";
 import { AlignedData } from "uplot";
@@ -9,19 +9,25 @@ import { GraphOptions, GRAPH_STYLES } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
-import { LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../constants/logs";
+import { ExtraFilter } from "../../../pages/OverviewPage/FiltersBar/types";
+import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
+import { useHitsChartConfig } from "../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { useFetchFieldNames } from "../../../pages/OverviewPage/hooks/useFetchFieldNames";
+import { useTimeState } from "../../../state/time/TimeStateContext";
+import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilters";
 import { getDurationFromMilliseconds } from "../../../utils/time";
 
 interface Props {
   logHits: LogHits[];
   data: AlignedData;
+  query?: string;
   period: TimeParams;
   durationMs?: number;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const BarHitsChart: FC<Props> = ({ logHits, data: _data, period, setPeriod, onApplyFilter, durationMs }) => {
+const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs }) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
     stacked: false,
@@ -30,6 +36,19 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, period, setPeriod, onAp
   });
 
   const totalHits = useMemo(() => calculateTotalHits(logHits), [logHits]);
+
+  const { extraParams } = useExtraFilters();
+  const { period: { start, end } } = useTimeState();
+  const { topHits, setTopHits, groupFieldHits, setGroupFieldHits } = useHitsChartConfig();
+  const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
+
+  const fieldNamesOptions = useMemo(() => {
+    return fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
+  }, [fieldNames]);
+
+  const handleOpenFields = useCallback(() => {
+    fetchFieldNames({ start, end, extraParams, showAllFields: true, query });
+  }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   return (
     <div
@@ -40,8 +59,23 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, period, setPeriod, onAp
     >
       <div className="vm-bar-hits-chart-header">
         <div className="vm-bar-hits-chart-header-info">
-          <p>Top <b>{LOGS_LIMIT_HITS}</b> hits grouped by <b>{LOGS_GROUP_BY}</b></p>
-          |
+          <SelectLimit
+            label="Top hits"
+            options={[5, 10, 25, 50]}
+            limit={topHits}
+            onChange={setTopHits}
+          /> |
+          <SelectLimit
+            searchable
+            label="Group by"
+            limit={groupFieldHits}
+            options={fieldNamesOptions}
+            textNoOptions={"No fields found"}
+            isLoading={loading}
+            error={error ? String(error) : ""}
+            onOpenSelect={handleOpenFields}
+            onChange={setGroupFieldHits}
+          /> |
           <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
           {durationMs !== undefined && (
             <>

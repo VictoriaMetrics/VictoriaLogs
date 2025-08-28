@@ -7,12 +7,13 @@ import { formatNumberShort } from "../../../../utils/math";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
 import LegendHitsMenu from "../LegendHitsMenu/LegendHitsMenu";
+import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 
 interface Props {
   legend: LegendLogHits;
   series: Series[];
   onRedrawGraph: () => void;
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
 }
 
 const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFilter }) => {

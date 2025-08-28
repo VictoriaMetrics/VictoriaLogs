@@ -3,11 +3,12 @@ import uPlot, { Series } from "uplot";
 import "./style.scss";
 import BarHitsLegendItem from "./BarHitsLegendItem";
 import { LegendLogHits } from "../../../../api/types";
+import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 
 interface Props {
   uPlotInst: uPlot;
   legendDetails: LegendLogHits[];
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
 }
 
 const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails, onApplyFilter }) => {

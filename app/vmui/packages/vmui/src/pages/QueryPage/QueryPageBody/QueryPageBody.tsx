@@ -27,6 +27,7 @@ import Alert from "../../../components/Main/Alert/Alert";
 interface Props {
   data: Logs[];
   isLoading: boolean;
+  isPreview?: boolean;
 }
 
 enum DisplayType {
@@ -43,7 +44,7 @@ const tabs = [
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 
-const QueryPageBody: FC<Props> = ({ data, isLoading }) => {
+const QueryPageBody: FC<Props> = ({ data, isLoading, isPreview }) => {
   const { isMobile } = useDeviceDetect();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
@@ -72,8 +73,8 @@ const QueryPageBody: FC<Props> = ({ data, isLoading }) => {
     <div
       className={classNames({
         "vm-query-page-body": true,
-        "vm-block": true,
-        "vm-block_mobile": isMobile,
+        "vm-block": !isPreview,
+        "vm-block_mobile": !isPreview && isMobile,
       })}
     >
       {isLoading && <LineLoader/>}

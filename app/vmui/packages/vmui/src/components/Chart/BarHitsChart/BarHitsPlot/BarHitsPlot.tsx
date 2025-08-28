@@ -16,6 +16,7 @@ import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 
 interface Props {
   logHits: LogHits[];
@@ -23,7 +24,7 @@ interface Props {
   data: AlignedData;
   period: TimeParams;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
   graphOptions: GraphOptions;
 }
 

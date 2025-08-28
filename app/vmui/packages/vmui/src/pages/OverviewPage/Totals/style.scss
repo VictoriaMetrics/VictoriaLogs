@@ -1,0 +1,66 @@
+@use "src/styles/variables" as *;
+
+.vm-total-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $padding-global;
+}
+
+
+.vm-total-card {
+  flex-grow: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $padding-small;
+  min-width: 200px;
+  overflow: hidden;
+
+  &-header {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 16px;
+    align-items: center;
+    gap: $padding-global;
+    color: $color-text-secondary;
+  }
+
+  &__title {}
+
+  &-info {
+    &__icon {
+      color: $color-text-secondary;
+      opacity:  0.5;
+    }
+
+    &__text {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      width: 300px;
+      text-wrap: balance;
+      padding-block: 4px;
+    }
+  }
+
+  &-body {
+    display: flex;
+    justify-content: space-between;
+    gap: $padding-global;
+  }
+
+  &__delta,
+  &__value {
+    display: flex;
+    align-items: flex-end;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "ss01" 1;
+    font-weight: 700;
+    line-height: 1;
+    font-size: $font-size-large
+  }
+
+  &__delta {
+    font-size: $font-size;
+  }
+}

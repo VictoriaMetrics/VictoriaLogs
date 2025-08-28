@@ -8,6 +8,7 @@ import { LogHits } from "../../../../api/types";
 import getSeriesPaths from "../../../../utils/uplot/paths";
 import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getMaxFromArray } from "../../../../utils/math";
+import { getColorFromString } from "../../../../utils/color";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -78,13 +79,14 @@ const useBarHitsOptions = ({
 
       const logHit = logHits?.[i - 1];
       const label = getLabelFromLogHit(logHit);
-
       const isOther = logHit?._isOther;
       const colorVar = isOther
         ? "color-log-hits-bar-0"
-        : seriesColors[visibleColorIndex++];
+        : seriesColors[visibleColorIndex];
 
-      const color = getCssVariable(colorVar);
+      const color = visibleColorIndex >= 5 ? getColorFromString(label) : getCssVariable(colorVar);
+
+      if (!isOther) visibleColorIndex += 1;
 
       return {
         label,

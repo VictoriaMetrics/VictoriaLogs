@@ -1,4 +1,4 @@
-import { useState, useMemo } from "preact/compat";
+import { useState, useMemo, JSX, ReactNode } from "preact/compat";
 import classNames from "classnames";
 import { ArrowDropDownIcon, CopyIcon, DoneIcon } from "../Main/Icons";
 import { getComparator, stableSort } from "./helpers";
@@ -9,20 +9,41 @@ import useCopyToClipboard from "../../hooks/useCopyToClipboard";
 
 type OrderDir = "asc" | "desc"
 
+export type Column<T> = {
+  title?: string;
+  key: keyof Partial<T>;
+  className?: string;
+  disableSort?: boolean;
+  isNum?: boolean;
+  render?: (value: T) => string | number | JSX.Element;
+}
+
 interface TableProps<T> {
   rows: T[];
-  columns: { title?: string, key: keyof Partial<T>, className?: string }[];
+  columns: Column<T>[];
   defaultOrderBy: keyof T;
-  copyToClipboard?: keyof T;
   defaultOrderDir?: OrderDir;
-  // TODO: Remove when pagination is implemented on the backend.
+  copyToClipboard?: keyof T;
+  isActiveRow?: (row: T) => boolean;
+  onClickRow?: (row: T, e: MouseEvent) => void;
+  actionsRender?: (row: T) => ReactNode
   paginationOffset: {
     startIndex: number;
     endIndex: number;
   }
 }
 
-const Table = <T extends object>({ rows, columns, defaultOrderBy, defaultOrderDir, copyToClipboard, paginationOffset }: TableProps<T>) => {
+const Table = <T extends object>({
+  rows,
+  columns,
+  defaultOrderBy,
+  defaultOrderDir,
+  copyToClipboard,
+  isActiveRow,
+  onClickRow,
+  actionsRender,
+  paginationOffset
+}: TableProps<T>) => {
   const handleCopyToClipboard = useCopyToClipboard();
 
   const [orderBy, setOrderBy] = useState<keyof T>(defaultOrderBy);
@@ -31,18 +52,19 @@ const Table = <T extends object>({ rows, columns, defaultOrderBy, defaultOrderDi
 
   // const sortedList = useMemo(() => stableSort(rows as [], getComparator(orderDir, orderBy)),
   //   [rows, orderBy, orderDir]);
-  // TODO: Remove when pagination is implemented on the backend.
   const sortedList = useMemo(() => {
     const { startIndex, endIndex } = paginationOffset;
     return stableSort(rows as [], getComparator(orderDir, orderBy)).slice(startIndex, endIndex);
   }, [rows, orderBy, orderDir, paginationOffset]);
 
-  const createSortHandler = (key: keyof T) => () => {
+  const createSortHandler = (col: Column<T>) => () => {
+    const { disableSort, key } = col;
+    if (disableSort) return;
     setOrderDir((prev) => prev === "asc" && orderBy === key ? "desc" : "asc");
     setOrderBy(key);
   };
 
-  const createCopyHandler = (copyValue:  string | number, rowIndex: number) => async () => {
+  const createCopyHandler = (copyValue: string | number, rowIndex: number) => async () => {
     if (copied === rowIndex) return;
     try {
       await handleCopyToClipboard(String(copyValue));
@@ -64,8 +86,11 @@ const Table = <T extends object>({ rows, columns, defaultOrderBy, defaultOrderDi
         <tr className="vm-table__row vm-table__row_header">
           {columns.map((col) => (
             <th
-              className="vm-table-cell vm-table-cell_header vm-table-cell_sort"
-              onClick={createSortHandler(col.key)}
+              className={classNames("vm-table-cell vm-table-cell_header", {
+                "vm-table-cell_sort": !col.disableSort,
+                "vm-table-cell_number": col.isNum
+              })}
+              onClick={createSortHandler(col)}
               key={String(col.key)}
             >
               <div className="vm-table-cell__content">
@@ -79,31 +104,39 @@ const Table = <T extends object>({ rows, columns, defaultOrderBy, defaultOrderDi
                     "vm-table__sort-icon_desc": orderDir === "desc" && orderBy === col.key
                   })}
                 >
-                  <ArrowDropDownIcon/>
+                  {!col.disableSort && <ArrowDropDownIcon/>}
                 </div>
               </div>
             </th>
           ))}
+          {actionsRender && <th className="vm-table-cell vm-table-cell_header"/>}
           {copyToClipboard && <th className="vm-table-cell vm-table-cell_header"/>}
         </tr>
       </thead>
       <tbody className="vm-table-body">
         {sortedList.map((row, rowIndex) => (
           <tr
-            className="vm-table__row"
+            className={classNames({
+              "vm-table__row": true,
+              "vm-table__row_active": isActiveRow && isActiveRow(row as T),
+              "vm-table__row_clickable": !!onClickRow,
+            })}
             key={rowIndex}
+            onClick={(e) => onClickRow && onClickRow(row as T, e)}
           >
             {columns.map((col) => (
               <td
                 className={classNames({
                   "vm-table-cell": true,
+                  "vm-table-cell_number": col.isNum,
                   [`${col.className}`]: col.className
                 })}
                 key={String(col.key)}
               >
-                {row[col.key] || "-"}
+                {col.render ? col.render(row as T) : row[col.key] || "-"}
               </td>
             ))}
+            {actionsRender && <td className="vm-table-cell vm-table-cell_no-padding">{actionsRender(row as T)}</td>}
             {copyToClipboard && (
               <td className="vm-table-cell vm-table-cell_right">
                 {row[copyToClipboard] && (

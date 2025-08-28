@@ -1,0 +1,21 @@
+@use "src/styles/variables" as *;
+
+.vm-explorer-page {
+  display: grid;
+  gap: $padding-global;
+  padding-bottom: $padding-large;
+
+  &-panel {
+    &-header {
+      margin: (-$padding-global) (-$padding-global) 0;
+    }
+
+    &-content {
+      display: none;
+
+      &_active {
+        display: block;
+      }
+    }
+  }
+}

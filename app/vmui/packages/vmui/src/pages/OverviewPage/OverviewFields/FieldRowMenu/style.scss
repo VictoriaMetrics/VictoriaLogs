@@ -1,0 +1,64 @@
+@use "src/styles/variables" as *;
+
+.vm-top-row-menu-button {
+}
+
+.vm-top-row-menu {
+  width: 260px;
+  padding-inline: $padding-small;
+  font-size: $font-size-small;
+  z-index: 1;
+
+  &-section {
+    border-bottom: $border-divider;
+    padding-block: $padding-small;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &-item {
+    position: relative;
+    display: flex;
+    gap: 0 $padding-small;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 $padding-small;
+    transition: background-color 0.3s;
+    color: $color-text;
+    border-radius: $border-radius-small;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+
+    &__icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 14px;
+      min-height: 14px;
+      max-width: 14px;
+      max-height: 14px;
+      color: $color-text-secondary;
+    }
+
+    &__label {
+      flex-grow: 1;
+      padding: $padding-small 0;
+      position: relative;
+      max-width: 400px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &__shortcut {
+      font-size: $font-size-small;
+      color: $color-text-secondary;
+      white-space:  nowrap;
+    }
+  }
+}

@@ -12,9 +12,16 @@ import { useAppState } from "../../../state/common/StateContext";
 interface FetchHitsParams {
   query?: string;
   period: TimeParams;
+  extraParams?: URLSearchParams;
+  field?: string;
+  fieldsLimit?: number;
 }
 
-export const useFetchLogHits = (defaultQuery: string) => {
+interface OptionsParams extends FetchHitsParams {
+  signal: AbortSignal;
+}
+
+export const useFetchLogHits = (defaultQuery = "*") => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [searchParams] = useSearchParams();
@@ -29,27 +36,34 @@ export const useFetchLogHits = (defaultQuery: string) => {
 
   const url = useMemo(() => getLogHitsUrl(serverUrl), [serverUrl]);
 
-  const getOptions = (query: string, period: TimeParams, signal: AbortSignal) => {
+  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field }: OptionsParams) => {
     const { start, end, step } = getHitsTimeParams(period);
 
+    const params = new URLSearchParams({
+      query: query.trim(),
+      step: `${step}ms`,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
+      field: field || LOGS_GROUP_BY,
+    });
+
+    const body = new URLSearchParams([
+      ...params,
+      ...(extraParams ?? [])
+    ]);
+
     return {
+      body,
       signal,
       method: "POST",
       headers: {
         ...tenant,
       },
-      body: new URLSearchParams({
-        query: query.trim(),
-        step: `${step}ms`,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        fields_limit: `${LOGS_LIMIT_HITS}`,
-        field: LOGS_GROUP_BY,
-      })
     };
   };
 
-  const fetchLogHits = useCallback(async ({ query = defaultQuery, period }: FetchHitsParams) => {
+  const fetchLogHits = useCallback(async (params: FetchHitsParams) => {
     abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
@@ -59,7 +73,7 @@ export const useFetchLogHits = (defaultQuery: string) => {
     setError(undefined);
 
     try {
-      const options = getOptions(query, period, signal);
+      const options = getOptions({ ...params, signal });
       const response = await fetch(url, options);
 
       const duration = response.headers.get("vl-request-duration-seconds");

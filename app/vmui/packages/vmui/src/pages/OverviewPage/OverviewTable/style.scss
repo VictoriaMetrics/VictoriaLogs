@@ -1,0 +1,97 @@
+@use "src/styles/variables" as *;
+
+.vm-top-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  justify-content: center;
+
+  & > *:first-child {
+    border-right: $border-divider;
+    margin-right: $padding-global;
+    padding-right: $padding-global;
+    height: 100%;
+
+    @media (max-width: 1000px) {
+      border-right: none;
+      margin-right: 0;
+      padding-right: 0;
+    }
+  }
+
+  @media (max-width: 1000px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vm-top-fields {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-top: $padding-global;
+  gap: $padding-large;
+  flex-grow: 1;
+  min-width: 48%;
+  overflow: auto;
+  font-size: $font-size-small;
+
+  &-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-content: space-between;
+
+    &__title {
+      grid-column: 1;
+    }
+
+    &__configs {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: $padding-small;
+    }
+  }
+
+  &__search {
+    padding-bottom: $padding-global;
+  }
+
+  &-body {
+
+    &__empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+
+    &__table {
+      flex-grow: 1;
+    }
+  }
+
+  &__cell-name {
+    width: 100%;
+  }
+
+  &__cell-percent,
+  &__cell-value {
+    padding-right: 32px;
+  }
+
+  &-option {
+    display: flex;
+    flex-direction: column;
+    gap: $padding-small;
+
+    &__label {
+      text-transform: capitalize;
+    }
+
+    &__info {
+      font-size: $font-size-small;
+      color: $color-text-secondary;
+    }
+  }
+}

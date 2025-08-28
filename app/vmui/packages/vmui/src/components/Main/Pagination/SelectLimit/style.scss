@@ -17,4 +17,39 @@
 .vm-select-limits {
   display: grid;
   padding: $padding-small 0;
+
+  &-list {
+    max-height: 300px;
+    overflow: auto;
+  }
+
+  &__item {
+    max-width: 300px;
+    overflow-wrap: break-word;
+    word-break: normal;
+    text-wrap: balance;
+  }
+
+  &__error {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    align-items: center;
+    justify-content: center;
+    gap: $padding-small;
+    font-size: $font-size-small;
+    color: $color-error;
+    padding: $padding-small;
+  }
+
+  &__empty {
+    font-size: $font-size-small;
+    color: $color-text-secondary;
+    padding: $padding-small $padding-global;
+  }
+
+  &__search {
+    position: sticky;
+    top: 0;
+    padding-inline: $padding-global;
+  }
 }

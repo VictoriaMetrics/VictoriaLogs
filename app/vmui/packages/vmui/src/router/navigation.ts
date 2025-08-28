@@ -22,7 +22,7 @@ export const getLogsNavigation = (): NavigationItem[] => [
     value: router.home,
   },
   {
-    label: routerOptions[router.explorer].title,
-    value: router.explorer,
+    label: routerOptions[router.overview].title,
+    value: router.overview,
   },
 ];

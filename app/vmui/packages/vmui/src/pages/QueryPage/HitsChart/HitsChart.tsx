@@ -12,6 +12,7 @@ import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { getHitsTimeParams } from "../../../utils/logs";
+import { ExtraFilter } from "../../OverviewPage/FiltersBar/types";
 import { toEpochSeconds } from "../../../utils/time";
 
 interface Props {
@@ -21,10 +22,10 @@ interface Props {
   period: TimeParams;
   error?: string;
   isLoading: boolean;
-  onApplyFilter: (value: string) => void;
+  onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const HitsChart: FC<Props> = ({ logHits, period, error, isLoading, onApplyFilter, durationMs }) => {
+const HitsChart: FC<Props> = ({ query, logHits, period, error, isLoading, onApplyFilter, durationMs }) => {
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
@@ -116,6 +117,7 @@ const HitsChart: FC<Props> = ({ logHits, period, error, isLoading, onApplyFilter
         <BarHitsChart
           logHits={logHits}
           durationMs={durationMs}
+          query={query}
           data={data}
           period={period}
           setPeriod={setPeriod}

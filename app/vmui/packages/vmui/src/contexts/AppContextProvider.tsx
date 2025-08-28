@@ -5,13 +5,15 @@ import { LogsStateProvider } from "../state/logsPanel/LogsStateContext";
 import { SnackbarProvider } from "./Snackbar";
 
 import { combineComponents } from "../utils/combine-components";
+import { OverviewStateProvider } from "../state/overview/OverviewStateContext";
 
 const providers = [
   AppStateProvider,
   TimeStateProvider,
   QueryStateProvider,
   SnackbarProvider,
-  LogsStateProvider
+  LogsStateProvider,
+  OverviewStateProvider,
 ];
 
 export default combineComponents(...providers);
