@@ -1,8 +1,6 @@
 # Requirements
 
-Each dashboard revision may have different VictoriaLogs version requirements:
-- The single-node and cluster dashboards require VictoriaLogs v1.29.0 or higher
-- The vlagent dashboard requires v1.117.0 or higher
+Dashboards require VictoriaLogs and vlagent at version 1.29.0 or later.
 
 You can find the latest version of these dashboards on the [Grafana website](https://grafana.com/orgs/victoriametrics).
 
