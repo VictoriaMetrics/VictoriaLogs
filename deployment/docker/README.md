@@ -97,7 +97,7 @@ In addition to VictoriaLogs cluster, the docker compose contains the following c
 <picture>
   <source srcset="assets/vl-cluster-dark.png" media="(prefers-color-scheme: dark)">
   <source srcset="assets/vl-cluster-light.png" media="(prefers-color-scheme: light)">
-  <img src="assets/vl-cluster-light.png" alt="VictoriaLogs single-server deployment" width="500" src="assets/vl-cluster-light.png" >
+  <img src="assets/vl-cluster-light.png" alt="VictoriaLogs cluster deployment" width="500">
 </picture>
 
 To access Grafana use link [http://localhost:3000](http://localhost:3000).
