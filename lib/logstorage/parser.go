@@ -1016,7 +1016,7 @@ func (q *Query) GetRecommendation(hasLimitArg bool) string {
 		hasStream = sf != nil && !sf.isEmpty()
 	}
 	if !hasStream {
-		return "Add a top-level stream filter (e.g. {_stream:{app=\"...\"}} or _stream_id) to speed up the query."
+		return "Add a top-level stream filter (e.g. {_stream:{app=\"...\"}} or _stream_id) to skip non-matching streams."
 	}
 
 	// Time recommendation
@@ -1049,7 +1049,7 @@ func (q *Query) GetRecommendation(hasLimitArg bool) string {
 		}
 	}
 	if !hasLimit {
-		return "Add a result limit (e.g. '| limit 1000' or 'last 1000 by (_time)') to bound response size."
+		return "Add a result limit (e.g. '| limit 1000' or 'last 1000 by (_time)') to improve latency by stopping early."
 	}
 
 	return "If the query is slower than expected, see https://docs.victoriametrics.com/victorialogs/logsql/#troubleshooting"
