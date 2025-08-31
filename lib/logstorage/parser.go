@@ -1005,6 +1005,56 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 	return byFields, nil
 }
 
+// GetRecommendation returns a string literal with a query recommendation
+func (q *Query) GetRecommendation(hasLimitArg bool) string {
+	// Stream recommendation
+	hasStream := false
+	if len(q.getStreamIDs()) > 0 {
+		hasStream = true
+	} else {
+		sf, _ := getCommonStreamFilter(q.f)
+		hasStream = sf != nil && !sf.isEmpty()
+	}
+	if !hasStream {
+		return "Add a top-level stream filter (e.g. {_stream:{app=\"...\"}} or _stream_id) to speed up the query."
+	}
+
+	// Time recommendation
+	minTS, maxTS := q.GetFilterTimeRange()
+	if minTS == math.MinInt64 && maxTS == math.MaxInt64 {
+		return "Add a bounded time range (start/end or _time:[...]) to reduce scanned data."
+	}
+
+	// Limit recommendation
+	hasLimit := hasLimitArg
+	for i := 0; i < len(q.pipes) && !hasLimit; i++ {
+		p := q.pipes[i]
+		switch t := p.(type) {
+		case *pipeLimit:
+			if t.limit > 0 {
+				hasLimit = true
+			}
+		case *pipeSort:
+			if t.limit > 0 {
+				hasLimit = true
+			}
+		case *pipeFirst:
+			if t.ps != nil && t.ps.limit > 0 {
+				hasLimit = true
+			}
+		case *pipeLast:
+			if t.ps != nil && t.ps.limit > 0 {
+				hasLimit = true
+			}
+		}
+	}
+	if !hasLimit {
+		return "Add a result limit (e.g. '| limit 1000' or 'last 1000 by (_time)') to bound response size."
+	}
+
+	return "If the query is slower than expected, see https://docs.victoriametrics.com/victorialogs/logsql/#troubleshooting"
+}
+
 func getLastPipeStatsIdx(pipes []pipe) int {
 	for i := len(pipes) - 1; i >= 0; i-- {
 		if _, ok := pipes[i].(*pipeStats); ok {
