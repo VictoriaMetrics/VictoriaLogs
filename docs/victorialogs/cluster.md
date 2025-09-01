@@ -216,7 +216,7 @@ It is also recommended authorizing HTTPS requests to `vlstorage` via Basic Auth:
   ./victoria-logs-prod -httpListenAddr=... -storageDataPath=... -tls -tlsCertFile=... -tlsKeyFile=... -httpAuth.username=... -httpAuth.password=...
   ```
 
-- Specify `-storageNode.username` and `-storageNode.password` command-line flags at `vlinsert` and `vlselect`, which communicate with the `vlostorage` over untrusted networks:
+- Specify `-storageNode.username` and `-storageNode.password` command-line flags at `vlinsert` and `vlselect`, which communicate with the `vlstorage` over untrusted networks:
 
   ```sh
   ./victoria-logs-prod -storageNode=... -storageNode.tls -storageNode.username=... -storageNode.password=...
@@ -252,7 +252,7 @@ In this case it verifies TLS client certificates for connections from `vlinsert`
 
 The client TLS certificate must be specified at `vlinsert` and `vlselect` nodes via `-storageNode.tlsCertFile` and `-storageNode.tlsKeyFile` command-line flags.
 
-By default the system-wide [root CA certificates](https://en.wikipedia.org/wiki/Root_certificate) are used for verifying client TLS certificates.
+By default, the system-wide [root CA certificates](https://en.wikipedia.org/wiki/Root_certificate) are used for verifying client TLS certificates.
 The `-mtlsCAFile` command-line flag can be used at `vlstorage` for pointing to custom root CA certificates.
 
 See also [generic mTLS docs for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/#mtls).
@@ -273,7 +273,7 @@ The following guide covers the following topics for Linux host:
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.31.0-victorialogs/victoria-logs-linux-amd64-v1.31.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.31.0/victoria-logs-linux-amd64-v1.31.0.tar.gz
 tar xzf victoria-logs-linux-amd64-v1.31.0.tar.gz
 ```
 
@@ -330,8 +330,8 @@ Logs also can be explored and queried via [built-in Web UI](https://docs.victori
 Open `http://localhost:9471/select/vmui/` in the web browser, select `last 7 days` time range in the top right corner and explore the ingested logs.
 See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/) to familiarize yourself with the query language.
 
-Every `vmstorage` node can be queried individually because [it is equivalent to a single-node VictoriaLogs](#single-node-and-cluster-mode-duality).
-For example, the following command returns the number of stored logs at the first `vmstorage` node started above:
+Every `vlstorage` node can be queried individually because [it is equivalent to a single-node VictoriaLogs](#single-node-and-cluster-mode-duality).
+For example, the following command returns the number of stored logs at the first `vlstorage` node started above:
 
 ```sh
 curl http://localhost:9491/select/logsql/query -d 'query=* | count()'
