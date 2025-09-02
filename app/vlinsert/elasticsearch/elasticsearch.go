@@ -187,7 +187,10 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 		// Continue parsing next lines.
 		return true, nil
 	}
+
 	p := logstorage.GetJSONParser()
+	defer logstorage.PutJSONParser(p)
+
 	if err := p.ParseLogMessage(line); err != nil {
 		return false, fmt.Errorf("cannot parse json-encoded log entry: %w", err)
 	}
@@ -201,7 +204,6 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
 	lmp.AddRow(ts, p.Fields, nil)
-	logstorage.PutJSONParser(p)
 
 	return true, nil
 }
