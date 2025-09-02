@@ -97,7 +97,7 @@ To ensure security, it is strongly recommended to restrict network access to Vic
 It is recommended to pass the `-insert.disable` command-line flag at `vlselect` for disabling the write API.
 This helps protecting against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
-For configuration examples using Bearer token, Basic auth, and mTLS see [these docs](http://localhost:1313/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer token, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Cluster routing
 
