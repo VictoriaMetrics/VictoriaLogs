@@ -113,8 +113,9 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write response
 	WriteFacetsResponse(w, m)
@@ -230,8 +231,10 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// The VL-Selected-Time-Range contains the time range specified in the query, not counting (start, end) and extra_filters
 	// It is used by the built-in web UI in order to adjust the selected time range.
@@ -334,8 +337,9 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, fieldNames)
@@ -380,8 +384,9 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -412,8 +417,9 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, names)
@@ -458,8 +464,9 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -496,8 +503,9 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streamIDs)
@@ -534,8 +542,9 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streams)
@@ -869,8 +878,9 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// The VL-Selected-Time-Range contains the time range specified in the query, not counting (start, end) and extra_filters
 	// It is used by the built-in web UI in order to adjust the selected time range.
@@ -965,8 +975,9 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-	setQueryRecommendationHeader(h, r, ca.q)
+	dur := time.Since(startTime)
+	writeRequestDuration(h, dur)
+	setQueryRecommendationHeader(h, r, ca.q, dur)
 
 	// Write response
 	WriteStatsQueryResponse(w, rows)
@@ -1033,8 +1044,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		h := w.Header()
 
 		h.Set("Content-Type", "application/stream+json")
-		writeRequestDuration(h, startTime)
-		setQueryRecommendationHeader(h, r, ca.q)
+		dur := time.Since(startTime)
+		writeRequestDuration(h, dur)
+		setQueryRecommendationHeader(h, r, ca.q, dur)
 	})
 
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
@@ -1374,17 +1386,20 @@ func getPositiveInt(r *http.Request, argName string) (int, error) {
 	return n, nil
 }
 
-func writeRequestDuration(h http.Header, startTime time.Time) {
+func writeRequestDuration(h http.Header, dur time.Duration) {
 	h.Set("Access-Control-Expose-Headers", "VL-Request-Duration-Seconds")
-	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
+	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", dur.Seconds()))
 }
 
-func setQueryRecommendationHeader(h http.Header, r *http.Request, q *logstorage.Query) {
-	rec := ""
-	if q != nil {
-		limitArg := requestHasLimit(r)
-		rec = q.GetRecommendation(limitArg)
+func setQueryRecommendationHeader(h http.Header, r *http.Request, q *logstorage.Query, dur time.Duration) {
+	if dur < time.Second {
+		return
 	}
+
+	rec := ""
+	limitArg := requestHasLimit(r)
+	rec = q.GetPerformanceRecommendation(limitArg)
+
 	h.Set("VL-Query-Recommendation", rec)
 	h.Add("Access-Control-Expose-Headers", "VL-Query-Recommendation")
 }

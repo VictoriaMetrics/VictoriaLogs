@@ -1005,8 +1005,8 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 	return byFields, nil
 }
 
-// GetRecommendation returns a string literal with a query recommendation
-func (q *Query) GetRecommendation(hasLimitArg bool) string {
+// GetPerformanceRecommendation returns a string literal with a query recommendation
+func (q *Query) GetPerformanceRecommendation(hasLimitArg bool) string {
 	// Stream recommendation
 	hasStream := false
 	if len(q.getStreamIDs()) > 0 {
@@ -1016,7 +1016,7 @@ func (q *Query) GetRecommendation(hasLimitArg bool) string {
 		hasStream = sf != nil && !sf.isEmpty()
 	}
 	if !hasStream {
-		return "Add a top-level stream filter (e.g. {_stream:{app=\"...\"}} or _stream_id) to skip non-matching streams."
+		return "Add a top-level stream filter (e.g. {_stream:{app=\"...\"}} or _stream_id:...) in order to improve query performance; see https://docs.victoriametrics.com/victorialogs/logsql/#troubleshooting"
 	}
 
 	// Time recommendation
@@ -1039,11 +1039,11 @@ func (q *Query) GetRecommendation(hasLimitArg bool) string {
 				hasLimit = true
 			}
 		case *pipeFirst:
-			if t.ps != nil && t.ps.limit > 0 {
+			if t.ps.limit > 0 {
 				hasLimit = true
 			}
 		case *pipeLast:
-			if t.ps != nil && t.ps.limit > 0 {
+			if t.ps.limit > 0 {
 				hasLimit = true
 			}
 		}
