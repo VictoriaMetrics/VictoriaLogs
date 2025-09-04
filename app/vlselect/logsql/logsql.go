@@ -2,7 +2,6 @@ package logsql
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"math"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	maxQueryTimeRange = flag.Duration("search.maxQueryTimeRange", 0, "The maximum time range, which can be set in the query sent to querying APIs. "+
+	maxQueryTimeRange = flagutil.NewExtendedDuration("search.maxQueryTimeRange", "0", "The maximum time range, which can be set in the query sent to querying APIs. "+
 		"Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits")
 )
 
@@ -1200,14 +1200,14 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		}
 	}
 
-	if *maxQueryTimeRange > 0 {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start
-			if queryTimeRange < 0 || queryTimeRange > maxQueryTimeRange.Nanoseconds() {
+			if queryTimeRange < 0 || queryTimeRange > maxRange.Nanoseconds() {
 				return nil, fmt.Errorf("too big time range selected: [%s, %s]; it cannot exceed -search.maxQueryTimeRange=%s; "+
 					"see https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits",
-					timestampToString(start), timestampToString(end), *maxQueryTimeRange)
+					timestampToString(start), timestampToString(end), maxRange)
 			}
 		}
 	}
