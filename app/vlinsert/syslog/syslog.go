@@ -35,34 +35,12 @@ var (
 	syslogTimezone = flag.String("syslog.timezone", "Local", "Timezone to use when parsing timestamps in RFC3164 syslog messages. Timezone must be a valid IANA Time Zone. "+
 		"For example: America/New_York, Europe/Berlin, Etc/GMT+3 . See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
 
-	streamFieldsTCP = flagutil.NewArrayString("syslog.streamFields.tcp", "Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.tcp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields`)
-	streamFieldsUDP = flagutil.NewArrayString("syslog.streamFields.udp", "Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.udp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields`)
-
-	ignoreFieldsTCP = flagutil.NewArrayString("syslog.ignoreFields.tcp", "Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.tcp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields`)
-	ignoreFieldsUDP = flagutil.NewArrayString("syslog.ignoreFields.udp", "Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.udp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields`)
-
-	decolorizeFieldsTCP = flagutil.NewArrayString("syslog.decolorizeFields.tcp", "Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.tcp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields`)
-	decolorizeFieldsUDP = flagutil.NewArrayString("syslog.decolorizeFields.udp", "Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.udp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields`)
-
-	extraFieldsTCP = flagutil.NewArrayString("syslog.extraFields.tcp", "Fields to add to logs ingested via the corresponding -syslog.listenAddr.tcp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields`)
-	extraFieldsUDP = flagutil.NewArrayString("syslog.extraFields.udp", "Fields to add to logs ingested via the corresponding -syslog.listenAddr.udp. "+
-		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields`)
-
-	tenantIDTCP = flagutil.NewArrayString("syslog.tenantID.tcp", "TenantID for logs ingested via the corresponding -syslog.listenAddr.tcp. "+
-		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy")
-	tenantIDUDP = flagutil.NewArrayString("syslog.tenantID.udp", "TenantID for logs ingested via the corresponding -syslog.listenAddr.udp. "+
-		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy")
-
 	listenAddrTCP = flagutil.NewArrayString("syslog.listenAddr.tcp", "Comma-separated list of TCP addresses to listen to for Syslog messages. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
-	listenAddrUDP = flagutil.NewArrayString("syslog.listenAddr.udp", "Comma-separated list of UDP address to listen to for Syslog messages. "+
+	listenAddrUDP = flagutil.NewArrayString("syslog.listenAddr.udp", "Comma-separated list of UDP addresses to listen to for Syslog messages. "+
+		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
+	listenAddrUnix = flagutil.NewArrayString("syslog.listenAddr.unix", "Comma-separated list of Unix socket filepaths to listen to for Syslog messages. "+
+		"Filepaths may be prepended with 'unixpacket:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
 
 	tlsEnable = flagutil.NewArrayBool("syslog.tls", "Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. "+
@@ -80,20 +58,61 @@ var (
 		"Supported values: TLS10, TLS11, TLS12, TLS13. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security")
 
+	streamFieldsTCP = flagutil.NewArrayString("syslog.streamFields.tcp", "Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.tcp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields`)
+	streamFieldsUDP = flagutil.NewArrayString("syslog.streamFields.udp", "Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.udp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields`)
+	streamFieldsUnix = flagutil.NewArrayString("syslog.streamFields.unix", "Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.unix. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields`)
+
+	ignoreFieldsTCP = flagutil.NewArrayString("syslog.ignoreFields.tcp", "Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.tcp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields`)
+	ignoreFieldsUDP = flagutil.NewArrayString("syslog.ignoreFields.udp", "Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.udp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields`)
+	ignoreFieldsUnix = flagutil.NewArrayString("syslog.ignoreFields.unix", "Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.unix. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields`)
+
+	decolorizeFieldsTCP = flagutil.NewArrayString("syslog.decolorizeFields.tcp", "Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.tcp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields`)
+	decolorizeFieldsUDP = flagutil.NewArrayString("syslog.decolorizeFields.udp", "Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.udp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields`)
+	decolorizeFieldsUnix = flagutil.NewArrayString("syslog.decolorizeFields.unix", "Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.unix. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields`)
+
+	extraFieldsTCP = flagutil.NewArrayString("syslog.extraFields.tcp", "Fields to add to logs ingested via the corresponding -syslog.listenAddr.tcp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields`)
+	extraFieldsUDP = flagutil.NewArrayString("syslog.extraFields.udp", "Fields to add to logs ingested via the corresponding -syslog.listenAddr.udp. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields`)
+	extraFieldsUnix = flagutil.NewArrayString("syslog.extraFields.unix", "Fields to add to logs ingested via the corresponding -syslog.listenAddr.unix. "+
+		`See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields`)
+
+	tenantIDTCP = flagutil.NewArrayString("syslog.tenantID.tcp", "TenantID for logs ingested via the corresponding -syslog.listenAddr.tcp. "+
+		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy")
+	tenantIDUDP = flagutil.NewArrayString("syslog.tenantID.udp", "TenantID for logs ingested via the corresponding -syslog.listenAddr.udp. "+
+		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy")
+	tenantIDUnix = flagutil.NewArrayString("syslog.tenantID.unix", "TenantID for logs ingested via the corresponding -syslog.listenAddr.unix. "+
+		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy")
+
 	compressMethodTCP = flagutil.NewArrayString("syslog.compressMethod.tcp", "Compression method for syslog messages received at the corresponding -syslog.listenAddr.tcp. "+
 		"Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression")
 	compressMethodUDP = flagutil.NewArrayString("syslog.compressMethod.udp", "Compression method for syslog messages received at the corresponding -syslog.listenAddr.udp. "+
+		"Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression")
+	compressMethodUnix = flagutil.NewArrayString("syslog.compressMethod.unix", "Compression method for syslog messages received at the corresponding -syslog.listenAddr.unix. "+
 		"Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression")
 
 	useLocalTimestampTCP = flagutil.NewArrayBool("syslog.useLocalTimestamp.tcp", "Whether to use local timestamp instead of the original timestamp for the ingested syslog messages "+
 		"at the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
 	useLocalTimestampUDP = flagutil.NewArrayBool("syslog.useLocalTimestamp.udp", "Whether to use local timestamp instead of the original timestamp for the ingested syslog messages "+
 		"at the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
+	useLocalTimestampUnix = flagutil.NewArrayBool("syslog.useLocalTimestamp.unix", "Whether to use local timestamp instead of the original timestamp for the ingested syslog messages "+
+		"at the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps")
 
 	useRemoteIPTCP = flagutil.NewArrayBool("syslog.useRemoteIP.tcp", "Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested "+
 		"via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address")
 	useRemoteIPUDP = flagutil.NewArrayBool("syslog.useRemoteIP.udp", "Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested "+
 		"via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address")
+	useRemoteIPUnix = flagutil.NewArrayBool("syslog.useRemoteIP.unix", "Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested "+
+		"via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address")
 )
 
 // MustInit initializes syslog parser at the given -syslog.listenAddr.tcp and -syslog.listenAddr.udp ports
@@ -119,6 +138,14 @@ func MustInit() {
 		workersWG.Add(1)
 		go func(addr string, argIdx int) {
 			runUDPListener(addr, argIdx)
+			workersWG.Done()
+		}(addr, argIdx)
+	}
+
+	for argIdx, addr := range *listenAddrUnix {
+		workersWG.Add(1)
+		go func(addr string, argIdx int) {
+			runUnixListener(addr, argIdx)
 			workersWG.Done()
 		}(addr, argIdx)
 	}
@@ -169,51 +196,56 @@ func MustStop() {
 	workersStopCh = nil
 }
 
+func runUnixListener(addr string, argIdx int) {
+	network, path := getUnixSocketNetworkAndPath(addr)
+	ln, err := net.Listen(network, path)
+	if err != nil {
+		logger.Fatalf("cannot start Unix socket syslog server at %q: %s", addr, err)
+	}
+
+	cfg, err := getConfigs("unix", argIdx, streamFieldsUnix, ignoreFieldsUnix, decolorizeFieldsUnix, extraFieldsUnix, tenantIDUnix, compressMethodUnix, useLocalTimestampUnix, useRemoteIPUnix)
+	if err != nil {
+		logger.Fatalf("cannot parse configs for -syslog.listenAddr.unix=%q: %s", addr, err)
+	}
+
+	doneCh := make(chan struct{})
+	go func() {
+		serveUnixListener(ln, cfg)
+		close(doneCh)
+	}()
+
+	logger.Infof("started accepting syslog messages at -syslog.listenAddr.unix=%q", addr)
+	<-workersStopCh
+	if err := ln.Close(); err != nil {
+		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", addr, err)
+	}
+	<-doneCh
+	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.unix=%q", addr)
+}
+
+func getUnixSocketNetworkAndPath(addr string) (string, string) {
+	// An optional network such as unix, unixpacket or unixgram can be specified in front of addr and followed by ':'
+	n := strings.IndexByte(addr, ':')
+	if n < 0 {
+		return "unix", addr
+	}
+	return addr[:n], addr[n+1:]
+}
+
 func runUDPListener(addr string, argIdx int) {
 	ln, err := net.ListenPacket(netutil.GetUDPNetwork(), addr)
 	if err != nil {
 		logger.Fatalf("cannot start UDP syslog server at %q: %s", addr, err)
 	}
 
-	tenantIDStr := tenantIDUDP.GetOptionalArg(argIdx)
-	tenantID, err := logstorage.ParseTenantID(tenantIDStr)
+	cfg, err := getConfigs("udp", argIdx, streamFieldsUDP, ignoreFieldsUDP, decolorizeFieldsUDP, extraFieldsUDP, tenantIDUDP, compressMethodUDP, useLocalTimestampUDP, useRemoteIPUDP)
 	if err != nil {
-		logger.Fatalf("cannot parse -syslog.tenantID.udp=%q for -syslog.listenAddr.udp=%q: %s", tenantIDStr, addr, err)
-	}
-
-	compressMethod := compressMethodUDP.GetOptionalArg(argIdx)
-	checkCompressMethod(compressMethod, addr, "udp")
-
-	useLocalTimestamp := useLocalTimestampUDP.GetOptionalArg(argIdx)
-	useRemoteIP := useRemoteIPUDP.GetOptionalArg(argIdx)
-
-	streamFieldsStr := streamFieldsUDP.GetOptionalArg(argIdx)
-	streamFields, err := parseFieldsList(streamFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.streamFields.udp=%q for -syslog.listenAddr.udp=%q: %s", streamFieldsStr, addr, err)
-	}
-
-	ignoreFieldsStr := ignoreFieldsUDP.GetOptionalArg(argIdx)
-	ignoreFields, err := parseFieldsList(ignoreFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.ignoreFields.udp=%q for -syslog.listenAddr.udp=%q: %s", ignoreFieldsStr, addr, err)
-	}
-
-	decolorizeFieldsStr := decolorizeFieldsUDP.GetOptionalArg(argIdx)
-	decolorizeFields, err := parseFieldsList(decolorizeFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.decolorizeFields.udp=%q for -syslog.listenAddr.udp=%q: %s", decolorizeFieldsStr, addr, err)
-	}
-
-	extraFieldsStr := extraFieldsUDP.GetOptionalArg(argIdx)
-	extraFields, err := parseExtraFields(extraFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.extraFields.udp=%q for -syslog.listenAddr.udp=%q: %s", extraFieldsStr, addr, err)
+		logger.Fatalf("cannot parse configs for -syslog.listenAddr.udp=%q: %s", addr, err)
 	}
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveUDP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
+		servePacketListener(ln, cfg)
 		close(doneCh)
 	}()
 
@@ -243,45 +275,14 @@ func runTCPListener(addr string, argIdx int) {
 		logger.Fatalf("syslog: cannot start TCP listener at %s: %s", addr, err)
 	}
 
-	tenantIDStr := tenantIDTCP.GetOptionalArg(argIdx)
-	tenantID, err := logstorage.ParseTenantID(tenantIDStr)
+	cfg, err := getConfigs("tcp", argIdx, streamFieldsTCP, ignoreFieldsTCP, decolorizeFieldsTCP, extraFieldsTCP, tenantIDTCP, compressMethodTCP, useLocalTimestampTCP, useRemoteIPTCP)
 	if err != nil {
-		logger.Fatalf("cannot parse -syslog.tenantID.tcp=%q for -syslog.listenAddr.tcp=%q: %s", tenantIDStr, addr, err)
-	}
-
-	compressMethod := compressMethodTCP.GetOptionalArg(argIdx)
-	checkCompressMethod(compressMethod, addr, "tcp")
-
-	useLocalTimestamp := useLocalTimestampTCP.GetOptionalArg(argIdx)
-	useRemoteIP := useRemoteIPTCP.GetOptionalArg(argIdx)
-
-	streamFieldsStr := streamFieldsTCP.GetOptionalArg(argIdx)
-	streamFields, err := parseFieldsList(streamFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.streamFields.tcp=%q for -syslog.listenAddr.tcp=%q: %s", streamFieldsStr, addr, err)
-	}
-
-	ignoreFieldsStr := ignoreFieldsTCP.GetOptionalArg(argIdx)
-	ignoreFields, err := parseFieldsList(ignoreFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.ignoreFields.tcp=%q for -syslog.listenAddr.tcp=%q: %s", ignoreFieldsStr, addr, err)
-	}
-
-	decolorizeFieldsStr := decolorizeFieldsTCP.GetOptionalArg(argIdx)
-	decolorizeFields, err := parseFieldsList(decolorizeFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.decolorizeFields.tcp=%q for -syslog.listenAddr.tcp=%q: %s", decolorizeFieldsStr, addr, err)
-	}
-
-	extraFieldsStr := extraFieldsTCP.GetOptionalArg(argIdx)
-	extraFields, err := parseExtraFields(extraFieldsStr)
-	if err != nil {
-		logger.Fatalf("cannot parse -syslog.extraFields.tcp=%q for -syslog.listenAddr.tcp=%q: %s", extraFieldsStr, addr, err)
+		logger.Fatalf("cannot parse configs for -syslog.listenAddr.tcp=%q: %s", addr, err)
 	}
 
 	doneCh := make(chan struct{})
 	go func() {
-		serveTCP(ln, tenantID, compressMethod, useLocalTimestamp, useRemoteIP, streamFields, ignoreFields, decolorizeFields, extraFields)
+		serveStreamListener(ln, cfg)
 		close(doneCh)
 	}()
 
@@ -294,16 +295,15 @@ func runTCPListener(addr string, argIdx int) {
 	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.tcp=%q", addr)
 }
 
-func checkCompressMethod(compressMethod, addr, protocol string) {
-	switch compressMethod {
-	case "", "none", "zstd", "gzip", "deflate":
-		return
-	default:
-		logger.Fatalf("unsupported -syslog.compressMethod.%s=%q for -syslog.listenAddr.%s=%q; supported values: 'none', 'zstd', 'gzip', 'deflate'", protocol, compressMethod, protocol, addr)
+func serveUnixListener(ln net.Listener, cfg *configs) {
+	if pc, ok := ln.(net.PacketConn); ok {
+		servePacketListener(pc, cfg)
+	} else {
+		serveStreamListener(ln, cfg)
 	}
 }
 
-func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func servePacketListener(ln net.PacketConn, cfg *configs) {
 	gomaxprocs := cgroup.AvailableCPUs()
 	var wg sync.WaitGroup
 	localAddr := ln.LocalAddr()
@@ -311,7 +311,7 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			cp := insertutil.GetCommonParamsForSyslog(tenantID, streamFields, ignoreFields, decolorizeFields, extraFields)
+			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 			var bb bytesutil.ByteBuffer
 			bb.B = bytesutil.ResizeNoCopyNoOverallocate(bb.B, 64*1024)
 			for {
@@ -323,7 +323,7 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 					var ne net.Error
 					if errors.As(err, &ne) {
 						if ne.Temporary() {
-							logger.Errorf("syslog: temporary error when listening for UDP at %q: %s", localAddr, err)
+							logger.Errorf("syslog: temporary error when listening for %s at %q: %s", cfg.typ, localAddr, err)
 							time.Sleep(time.Second)
 							continue
 						}
@@ -331,16 +331,16 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 							break
 						}
 					}
-					logger.Errorf("syslog: cannot read UDP data from %s at %s: %s", remoteAddr, localAddr, err)
+					logger.Errorf("syslog: cannot read %s data from %s at %s: %s", cfg.typ, remoteAddr, localAddr, err)
 					continue
 				}
 				bb.B = bb.B[:n]
 				udpRequestsTotal.Inc()
 
-				remoteIP := getRemoteIP(remoteAddr, useRemoteIP)
+				remoteIP := getRemoteIP(remoteAddr, cfg.useRemoteIP)
 
-				if err := processStream("udp", bb.NewReader(), encoding, useLocalTimestamp, remoteIP, cp); err != nil {
-					logger.Errorf("syslog: cannot process UDP data from %s at %s: %s", remoteAddr, localAddr, err)
+				if err := processStream(cfg.typ, bb.NewReader(), cfg.compressMethod, cfg.useLocalTimestamp, remoteIP, cp); err != nil {
+					logger.Errorf("syslog: cannot process %s data from %s at %s: %s", cfg.typ, remoteAddr, localAddr, err)
 				}
 			}
 		}()
@@ -348,7 +348,7 @@ func serveUDP(ln net.PacketConn, tenantID logstorage.TenantID, encoding string, 
 	wg.Wait()
 }
 
-func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, useLocalTimestamp bool, useRemoteIP bool, streamFields, ignoreFields, decolorizeFields []string, extraFields []logstorage.Field) {
+func serveStreamListener(ln net.Listener, cfg *configs) {
 	var cm ingestserver.ConnsMap
 	cm.Init("syslog")
 
@@ -360,16 +360,16 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 			var ne net.Error
 			if errors.As(err, &ne) {
 				if ne.Temporary() {
-					logger.Errorf("syslog: temporary error when listening for TCP addr %q: %s", addr, err)
+					logger.Errorf("syslog: temporary error when listening for %s addr %q: %s", cfg.typ, addr, err)
 					time.Sleep(time.Second)
 					continue
 				}
 				if strings.Contains(err.Error(), "use of closed network connection") {
 					break
 				}
-				logger.Fatalf("syslog: unrecoverable error when accepting TCP connections at %q: %s", addr, err)
+				logger.Fatalf("syslog: unrecoverable error when accepting %s connections at %q: %s", cfg.typ, addr, err)
 			}
-			logger.Fatalf("syslog: unexpected error when accepting TCP connections at %q: %s", addr, err)
+			logger.Fatalf("syslog: unexpected error when accepting %s connections at %q: %s", cfg.typ, addr, err)
 		}
 		if !cm.Add(c) {
 			_ = c.Close()
@@ -378,12 +378,12 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 
 		wg.Add(1)
 		go func() {
-			cp := insertutil.GetCommonParamsForSyslog(tenantID, streamFields, ignoreFields, decolorizeFields, extraFields)
+			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 
 			remoteAddr := c.RemoteAddr()
-			remoteIP := getRemoteIP(remoteAddr, useRemoteIP)
-			if err := processStream("tcp", c, encoding, useLocalTimestamp, remoteIP, cp); err != nil {
-				logger.Errorf("syslog: cannot process TCP data at %q: %s", addr, err)
+			remoteIP := getRemoteIP(remoteAddr, cfg.useRemoteIP)
+			if err := processStream(cfg.typ, c, cfg.compressMethod, cfg.useLocalTimestamp, remoteIP, cp); err != nil {
+				logger.Errorf("syslog: cannot process %s data at %q: %s", cfg.typ, addr, err)
 			}
 
 			cm.Delete(c)
@@ -397,20 +397,20 @@ func serveTCP(ln net.Listener, tenantID logstorage.TenantID, encoding string, us
 }
 
 // processStream parses a stream of syslog messages from r and ingests them into vlstorage.
-func processStream(protocol string, r io.Reader, encoding string, useLocalTimestamp bool, remoteIP string, cp *insertutil.CommonParams) error {
+func processStream(protocol string, r io.Reader, compressMethod string, useLocalTimestamp bool, remoteIP string, cp *insertutil.CommonParams) error {
 	if err := insertutil.CanWriteData(); err != nil {
 		return err
 	}
 
 	lmp := cp.NewLogMessageProcessor("syslog_"+protocol, true)
-	err := processStreamInternal(r, encoding, useLocalTimestamp, remoteIP, lmp)
+	err := processStreamInternal(r, compressMethod, useLocalTimestamp, remoteIP, lmp)
 	lmp.MustClose()
 
 	return err
 }
 
-func processStreamInternal(r io.Reader, encoding string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
-	reader, err := protoparserutil.GetUncompressedReader(r, encoding)
+func processStreamInternal(r io.Reader, compressMethod string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
+	reader, err := protoparserutil.GetUncompressedReader(r, compressMethod)
 	if err != nil {
 		return fmt.Errorf("cannot decode syslog data: %w", err)
 	}
@@ -646,4 +646,74 @@ func parseExtraFields(s string) ([]logstorage.Field, error) {
 		return fields[i].Name < fields[j].Name
 	})
 	return fields, nil
+}
+
+type configs struct {
+	typ string
+
+	streamFields      []string
+	ignoreFields      []string
+	decolorizeFields  []string
+	extraFields       []logstorage.Field
+	tenantID          logstorage.TenantID
+	compressMethod    string
+	useLocalTimestamp bool
+	useRemoteIP       bool
+}
+
+func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolorizeFieldsArg, extraFieldsArg, tenantIDArg, compressMethodArg *flagutil.ArrayString,
+	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool) (*configs, error) {
+
+	streamFieldsStr := streamFieldsArg.GetOptionalArg(argIdx)
+	streamFields, err := parseFieldsList(streamFieldsStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse -syslog.streamFields.%s=%q: %w", typ, streamFieldsStr, err)
+	}
+
+	ignoreFieldsStr := ignoreFieldsArg.GetOptionalArg(argIdx)
+	ignoreFields, err := parseFieldsList(ignoreFieldsStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse -syslog.ignoreFields.%s=%q: %w", typ, ignoreFieldsStr, err)
+	}
+
+	decolorizeFieldsStr := decolorizeFieldsArg.GetOptionalArg(argIdx)
+	decolorizeFields, err := parseFieldsList(decolorizeFieldsStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse -syslog.decolorizeFields.%s=%q: %w", typ, decolorizeFieldsStr, err)
+	}
+
+	extraFieldsStr := extraFieldsArg.GetOptionalArg(argIdx)
+	extraFields, err := parseExtraFields(extraFieldsStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse -syslog.extraFields.%s=%q: %w", typ, extraFieldsStr, err)
+	}
+
+	tenantIDStr := tenantIDArg.GetOptionalArg(argIdx)
+	tenantID, err := logstorage.ParseTenantID(tenantIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse -syslog.tenantID.%s=%q: %w", typ, tenantIDStr, err)
+	}
+
+	compressMethod := compressMethodArg.GetOptionalArg(argIdx)
+	switch compressMethod {
+	case "", "none", "zstd", "gzip", "deflate":
+		// These methods are supported
+	default:
+		return nil, fmt.Errorf("unsupported -syslog.compressMethod.%s=%q; supported values: 'none', 'zstd', 'gzip', 'deflate'", typ, compressMethod)
+	}
+
+	useLocalTimestamp := useLocalTimestampArg.GetOptionalArg(argIdx)
+	useRemoteIP := useRemoteIPArg.GetOptionalArg(argIdx)
+
+	return &configs{
+		typ:               typ,
+		streamFields:      streamFields,
+		ignoreFields:      ignoreFields,
+		decolorizeFields:  decolorizeFields,
+		extraFields:       extraFields,
+		tenantID:          tenantID,
+		compressMethod:    compressMethod,
+		useLocalTimestamp: useLocalTimestamp,
+		useRemoteIP:       useRemoteIP,
+	}, nil
 }

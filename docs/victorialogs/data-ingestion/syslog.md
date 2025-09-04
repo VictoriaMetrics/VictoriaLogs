@@ -11,8 +11,12 @@ tags:
 aliases:
    - /victorialogs/data-ingestion/syslog.html
 ---
-[VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can accept logs in [Syslog formats](https://en.wikipedia.org/wiki/Syslog) at the specified TCP and UDP addresses
-via `-syslog.listenAddr.tcp` and `-syslog.listenAddr.udp` command-line flags. The following syslog formats are supported:
+
+[VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can accept logs in [Syslog formats](https://en.wikipedia.org/wiki/Syslog) at the specified TCP, UDP or Unix socket addresses
+via `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` command-line flags. VictoriaLogs listens for `SOCK_STREAM` unix sockets by default.
+Prepend the unix socket path passed to `-syslog.listenAddr.unix` with `unixpacket:` for `SOCK_DGRAM` sockets.
+
+The following syslog formats are supported:
 
 - [RFC3164](https://datatracker.ietf.org/doc/html/rfc3164) aka `<PRI>MMM DD hh:mm:ss HOSTNAME APP-NAME[PROCID]: MESSAGE`
 - [RFC5424](https://datatracker.ietf.org/doc/html/rfc5424) aka `<PRI>1 TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE`
@@ -105,6 +109,13 @@ via the corresponding `-syslog.listenAddr.udp` address:
 ./victoria-logs -syslog.listenAddr.udp=:514 -syslog.useLocalTimestamp.udp
 ```
 
+The `-syslog.useLocalTimestamp.unix` command-line flag can be used for instructing VictoriaLogs to use local timestamps for the ingested logs
+via the corresponding `-syslog.listenAddr.unix` address:
+
+```sh
+./victoria-logs -syslog.listenAddr.unix=/dev/log -syslog.useLocalTimestamp.unix
+```
+
 ## Security
 
 By default VictoriaLogs accepts plaintext data at `-syslog.listenAddr.tcp` address. Run VictoriaLogs with `-syslog.tls` command-line flag
@@ -133,8 +144,8 @@ from [the releases page](https://github.com/VictoriaMetrics/VictoriaLogs/release
 
 ## Compression
 
-By default VictoriaLogs accepts uncompressed log messages in Syslog format at `-syslog.listenAddr.tcp` and `-syslog.listenAddr.udp` addresses.
-It is possible configuring VictoriaLogs to accept compressed log messages via `-syslog.compressMethod.tcp` and `-syslog.compressMethod.udp` command-line flags.
+By default VictoriaLogs accepts uncompressed log messages in Syslog format at `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
+It is possible configuring VictoriaLogs to accept compressed log messages via `-syslog.compressMethod.tcp`, `-syslog.compressMethod.udp` and `-syslog.compressMethod.unix` command-line flags.
 The following compression methods are supported:
 
 - `none` - no compression
@@ -151,8 +162,8 @@ For example, the following command starts VictoriaLogs, which accepts gzip-compr
 ## Multitenancy
 
 By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
-If you need storing logs in other tenant, then specify the needed tenant via `-syslog.tenantID.tcp` or `-syslog.tenantID.udp` command-line flags
-depending on whether TCP or UDP ports are listened for syslog messages.
+If you need storing logs in other tenant, then specify the needed tenant via `-syslog.tenantID.tcp`, `-syslog.tenantID.udp` or `-syslog.tenantID.unix` command-line flags
+depending on whether TCP, UDP or Unix sockets listened for syslog messages.
 For example, the following command starts VictoriaLogs, which writes syslog messages received at TCP port 514, to `(AccountID=12, ProjectID=34)` tenant:
 
 ```sh
@@ -162,8 +173,8 @@ For example, the following command starts VictoriaLogs, which writes syslog mess
 ## Stream fields
 
 VictoriaLogs uses `(hostname, app_name, proc_id)` fields as labels for [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.
-It is possible setting other set of labels via `-syslog.streamFields.tcp` and `-syslog.streamFields.udp` command-line flags
-for logs instead via the corresponding `-syslog.listenAddr.tcp` and `-syslog.listenAddr.dup` addresses.
+It is possible setting other set of labels via `-syslog.streamFields.tcp`, `-syslog.streamFields.udp` and `-syslog.streamFields.unix` command-line flags
+for logs instead via the corresponding `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
 For example, the following command starts VictoriaLogs, which uses `(hostname, app_name)` fields as log stream labels
 for logs received at TCP port 514:
 
@@ -173,9 +184,9 @@ for logs received at TCP port 514:
 
 ## Dropping fields
 
-VictoriaLogs supports `-syslog.ignoreFields.tcp` and `-syslog.ignoreFields.udp` command-line flags for skipping
+VictoriaLogs supports `-syslog.ignoreFields.tcp`, `-syslog.ignoreFields.udp` and `-syslog.ignoreFields.unix` command-line flags for skipping
 the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) during ingestion
-of Syslog logs into `-syslog.listenAddr.tcp` and `-syslog.listenAddr.udp` addresses.
+of Syslog logs into `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
 For example, the following command starts VictoriaLogs, which drops `proc_id` and `msg_id` fields from logs received at TCP port 514:
 
 ```sh
@@ -187,9 +198,9 @@ are ignored during data ingestion.
 
 ## Decolorizing fields
 
-VictoriaLogs supports `-syslog.decolorizeFields.tcp` and `-syslog.decolorizeFields.udp` command-line flags,
+VictoriaLogs supports `-syslog.decolorizeFields.tcp`, `-syslog.decolorizeFields.udp` and `-syslog.decolorizeFields.unix` command-line flags,
 which can be used for removing ANSI color codes from the provided list fields during ingestion of Syslog logs
-into `-syslog.listenAddr.tcp` and `-syslog.listenAddr.upd` addresses.
+into `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
 For example, the following command starts VictoriaLogs, which removes ANSI color codes from [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 at logs received via TCP port 514:
 
@@ -199,9 +210,9 @@ at logs received via TCP port 514:
 
 ## Adding extra fields
 
-VictoriaLogs supports -`syslog.extraFields.tcp` and `-syslog.extraFields.udp` command-line flags for adding
+VictoriaLogs supports -`syslog.extraFields.tcp`, `-syslog.extraFields.udp` and `-syslog.extraFields.unix` command-line flags for adding
 the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) during data ingestion
-of Syslog logs into `-syslog.listenAddr.tcp` and `-syslog.listenAddr.udp` addresses.
+of Syslog logs into `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
 For example, the following command starts VictoriaLogs, which adds `source=foo` and `abc=def` fields to logs received at TCP port 514:
 
 ```sh
