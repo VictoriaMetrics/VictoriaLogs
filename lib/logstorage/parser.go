@@ -783,8 +783,10 @@ func (q *Query) AddPipeSortByTimeDesc() {
 // See https://docs.victoriametrics.com/victorialogs/logsql/#offset-pipe
 // and https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe
 func (q *Query) AddPipeOffsetLimit(offset, limit uint64) {
-	offsetStr := fmt.Sprintf("offset %d", offset)
-	q.mustAppendPipe(offsetStr)
+	if offset > 0 {
+		offsetStr := fmt.Sprintf("offset %d", offset)
+		q.mustAppendPipe(offsetStr)
+	}
 
 	limitStr := fmt.Sprintf("limit %d", limit)
 	q.mustAppendPipe(limitStr)
