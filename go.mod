@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250829235354-7967ad661e76
 	github.com/VictoriaMetrics/easyproto v0.1.4
-	github.com/VictoriaMetrics/metrics v1.39.1
+	github.com/VictoriaMetrics/metrics v1.39.2-0.20250904092412-1913632726be
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
