@@ -19,6 +19,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [pattern match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter) for searching logs by the given patterns such as `<DATETIME>: user_id=<N>, ip=<IP4>, trace_id=<UUID>`. These filters are needed for [#518](https://github.com/VictoriaMetrics/VictoriaLogs/issues/518).
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying) `-search.maxQueryTimeRange` flag now supports day (`d`), week (`w`), and year (`y`) suffixes.
 
 ## [v1.32.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.32.0)
 
