@@ -22,6 +22,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 * FEATURE: [Syslog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/): support for receiving Syslog messages from Unix sockets of `SOCK_STREAM` and `SOCK_DGRAM` types via `-syslog.listenAddr.unix=/path/to/socket` and `-syslog.listenAddr.unix=unixpacket:/path/to/socket` command-line flags. See [#570](https://github.com/VictoriaMetrics/VictoriaLogs/issues/570).
 
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying): `-search.maxQueryTimeRange` command-line flag now supports day (`d`), week (`w`) and year (`y`) suffixes additionally to the supported hour (`h`), minute (`m`) and second (`s`) suffixes. See [#50](https://github.com/VictoriaMetrics/VictoriaLogs/issues/50#issuecomment-3244097676)
+* BUGFIX: [ingesting](https://docs.victoriametrics.com/victorialogs/data-ingestion/): Keep nanosecond precision when parsing RFC3339 timestamp. See [#303](https://github.com/VictoriaMetrics/VictoriaLogs/issues/303).
 
 ## [v1.32.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.32.0)
 
