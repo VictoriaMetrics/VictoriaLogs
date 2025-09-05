@@ -1,6 +1,6 @@
 ---
 weight: 3
-title: VictoriaLogs cluster
+title: VictoriaLogs Cluster
 menu:
   docs:
     parent: victorialogs

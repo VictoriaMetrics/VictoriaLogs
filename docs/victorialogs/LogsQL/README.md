@@ -1,21 +1,16 @@
 ---
-weight: 7
-title: LogsQL
-menu:
-  docs:
-    parent: "victorialogs"
-    weight: 7
-tags:
-  - logs
-aliases:
-- /VictoriaLogs/LogsQL.html
-- /victorialogs/LogsQL.html
-- /victorialogs/LogsQL/
+build:
+list: never
+publishResources: false
+render: never
+sitemap:
+disable: true
 ---
+
 LogsQL is a simple yet powerful query language for [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
-See [examples](https://docs.victoriametrics.com/victorialogs/logsql-examples/), [LogsQL tutorial](#logsql-tutorial),
-[how to convert Loki queries to VictoriaLogs queries](https://docs.victoriametrics.com/victorialogs/logql-to-logsql/)
-and [SQL to LogsQL conversion guide](https://docs.victoriametrics.com/victorialogs/sql-to-logsql/).
+See [examples](https://docs.victoriametrics.com/victorialogs/logsql/logsql-examples/), [LogsQL tutorial](#logsql-tutorial),
+[how to convert Loki queries to VictoriaLogs queries](https://docs.victoriametrics.com/victorialogs/logsql/logql-to-logsql/)
+and [SQL to LogsQL conversion guide](https://docs.victoriametrics.com/victorialogs/logsql/sql-to-logsql/).
 
 LogsQL provides the following features:
 
@@ -199,7 +194,7 @@ _time:5m error | stats count() logs_with_error
 
 Finally, it is recommended reading [performance tips](#performance-tips).
 
-Now you are familiar with LogsQL basics. See [LogsQL examples](https://docs.victoriametrics.com/victorialogs/logsql-examples/) and [query syntax](#query-syntax)
+Now you are familiar with LogsQL basics. See [LogsQL examples](https://docs.victoriametrics.com/victorialogs/logsql/logsql-examples/) and [query syntax](#query-syntax)
 if you want to continue learning LogsQL.
 
 ### Key concepts

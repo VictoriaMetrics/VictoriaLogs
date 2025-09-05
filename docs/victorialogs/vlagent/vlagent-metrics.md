@@ -1,20 +1,20 @@
 ---
-weight: 11
-title: vlagent metrics
+weight: 41
+title: Metrics of vlagent
 menu:
   docs:
-    parent: victorialogs
+    parent: vlagent
     identifier: vlagent-metrics
-    weight: 11
-    title: vlagent metrics
+    weight: 41
+    title: Metrics of vlagent
 tags:
   - logs
   - metrics
   - monitoring
   - vlagent
 aliases:
-- /victorialogs/vlagent-metrics.html
-- /victorialogs/vlagent-metrics/
+- /victorialogs/vlagent/vlagent-metrics.html
+- /victorialogs/vlagent/vlagent-metrics/
 ---
 
 This document provides a comprehensive reference for all metrics exposed by vlagent at the `http://localhost:9429/metrics` endpoint.

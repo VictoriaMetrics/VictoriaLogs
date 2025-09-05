@@ -1,6 +1,6 @@
 ---
 weight: 41
-title: Release process guidance for VictoriaLogs
+title: Release Process Guidance for VictoriaLogs
 menu:
   docs:
     parent: victorialogs

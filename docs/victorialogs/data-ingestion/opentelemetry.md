@@ -1,6 +1,6 @@
 ---
 weight: 4
-title: OpenTelemetry setup
+title: OpenTelemetry Setup
 disableToc: true
 menu:
   docs:

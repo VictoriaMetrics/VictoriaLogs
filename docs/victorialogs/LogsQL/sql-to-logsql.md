@@ -1,10 +1,10 @@
 ---
-weight: 43
-title: SQL to LogsQL tutorial
+weight: 22
+title: SQL to LogsQL Tutorial
 menu:
   docs:
-    parent: "victorialogs"
-    weight: 43
+    parent: "logsql"
+    weight: 22
 tags:
   - logs
   - guide

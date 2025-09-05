@@ -1,6 +1,6 @@
 ---
 weight: 10
-title: Syslog setup
+title: Syslog Setup
 disableToc: true
 menu:
   docs:

@@ -1,6 +1,6 @@
 ---
 weight: 20
-title: Vector setup
+title: Vector Setup
 disableToc: true
 menu:
   docs:

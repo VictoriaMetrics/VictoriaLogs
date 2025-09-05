@@ -1,5 +1,5 @@
 ---
-title: Data ingestion
+title: Data Ingestion
 weight: 5
 menu:
   docs:

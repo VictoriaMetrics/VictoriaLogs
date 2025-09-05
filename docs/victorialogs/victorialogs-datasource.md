@@ -1,6 +1,6 @@
 ---
 weight: 11
-title: Grafana datasource
+title: Grafana Datasource
 editLink: https://github.com/VictoriaMetrics/victorialogs-datasource/blob/main/README.md
 menu:
   docs:

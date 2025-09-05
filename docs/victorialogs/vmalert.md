@@ -1,6 +1,6 @@
 ---
 weight: 9
-title: vmalert
+title: Alerting with Logs
 menu:
   docs:
     parent: "victorialogs"

@@ -1,10 +1,10 @@
 ---
-weight: 130
-title: How to convert Loki queries to VictoriaLogs queries
+weight: 21
+title: How To Convert Loki Queries to VictoriaLogs Queries
 menu:
   docs:
-    parent: "victorialogs"
-    weight: 120
+    parent: "logsql"
+    weight: 21
 tags:
   - logs
   - guide
