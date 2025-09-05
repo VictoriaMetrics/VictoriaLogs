@@ -5,6 +5,7 @@ menu:
   docs:
     weight: 7
     identifier: logsql
+    parent: "victorialogs"
 tags:
   - logs
 aliases:
