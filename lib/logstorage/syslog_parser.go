@@ -436,7 +436,7 @@ func (p *SyslogParser) parseRFC3164(s string) {
 		}
 
 		bufLen := len(p.buf)
-		p.buf = marshalTimestampISO8601String(p.buf, nsecs)
+		p.buf = marshalTimestampRFC3339NanoString(p.buf, nsecs)
 		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
 		// Preserve leading space so that subsequent parsing of hostname and tag fields works correctly.
 		s = s[spaceIdx:]
