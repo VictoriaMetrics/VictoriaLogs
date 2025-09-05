@@ -1,11 +1,11 @@
 ---
-weight: 20
+weight: 3
 title: VictoriaLogs cluster
 menu:
   docs:
     parent: victorialogs
     identifier: vl-cluster
-    weight: 20
+    weight: 3
     title: VictoriaLogs cluster
 tags:
   - logs

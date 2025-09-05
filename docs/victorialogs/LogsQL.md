@@ -1,10 +1,10 @@
 ---
-weight: 5
+weight: 7
 title: LogsQL
 menu:
   docs:
     parent: "victorialogs"
-    weight: 5
+    weight: 7
 tags:
   - logs
 aliases:

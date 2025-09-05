@@ -1,12 +1,12 @@
 ---
-weight: 9
+weight: 11
 title: Grafana datasource
 editLink: https://github.com/VictoriaMetrics/victorialogs-datasource/blob/main/README.md
 menu:
   docs:
     identifier: victorialogs-grafana-datasource
     parent: victorialogs
-    weight: 9
+    weight: 11
 tags:
   - logs
 aliases:

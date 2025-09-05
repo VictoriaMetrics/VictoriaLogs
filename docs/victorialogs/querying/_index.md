@@ -1,11 +1,11 @@
 ---
 title: Querying
-weight: 4
+weight: 6
 menu:
   docs:
     identifier: victorialogs-querying
     parent: "victorialogs"
-    weight: 4
+    weight: 6
 tags:
   - logs
 aliases:

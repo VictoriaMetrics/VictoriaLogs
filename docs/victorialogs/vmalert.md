@@ -1,10 +1,10 @@
 ---
-weight: 10
+weight: 9
 title: vmalert
 menu:
   docs:
     parent: "victorialogs"
-    weight: 10
+    weight: 9
     identifier: "victorialogs-vmalert"
 tags:
    - logs
