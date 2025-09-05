@@ -51,13 +51,18 @@ func (s *Set) WritePrometheus(w io.Writer) {
 	s.mu.Unlock()
 
 	prevMetricFamily := ""
+
+	// metricsBuf is used to hold marshalTo temporary, and decide whether metadata is needed.
+	// it will be written to `bb` at the end and then reset for next *namedMetric in for-loop.
+	var metricBuf bytes.Buffer
 	for _, nm := range sa {
-		if !nm.metric.display() {
-			// For histogram and summary, the metric will not be printed if no sample recorded,
-			// and we can skip the rest operation such as metadata print.
-			// For other metrics type, they'll always be printed.
+		// Call marshalTo without the global lock, since certain metric types such as Gauge
+		// can call a callback, which, in turn, can try calling s.mu.Lock again.
+		nm.metric.marshalTo(nm.name, &metricBuf)
+		if metricBuf.Len() == 0 {
 			continue
 		}
+
 		metricFamily := getMetricFamily(nm.name)
 		if metricFamily != prevMetricFamily {
 			// write meta info only once per metric family
@@ -65,9 +70,9 @@ func (s *Set) WritePrometheus(w io.Writer) {
 			WriteMetadataIfNeeded(&bb, nm.name, metricType)
 			prevMetricFamily = metricFamily
 		}
-		// Call marshalTo without the global lock, since certain metric types such as Gauge
-		// can call a callback, which, in turn, can try calling s.mu.Lock again.
-		nm.metric.marshalTo(nm.name, &bb)
+
+		bb.Write(metricBuf.Bytes())
+		metricBuf.Reset()
 	}
 	w.Write(bb.Bytes())
 

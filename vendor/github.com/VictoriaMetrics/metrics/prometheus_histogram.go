@@ -271,8 +271,3 @@ func (h *PrometheusHistogram) marshalTo(prefix string, w io.Writer) {
 func (h *PrometheusHistogram) metricType() string {
 	return "histogram"
 }
-
-func (h *PrometheusHistogram) display() bool {
-	// always display, align with `marshalTo`
-	return true
-}

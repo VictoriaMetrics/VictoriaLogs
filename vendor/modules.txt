@@ -47,7 +47,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter
 # github.com/VictoriaMetrics/easyproto v0.1.4
 ## explicit; go 1.18
 github.com/VictoriaMetrics/easyproto
-# github.com/VictoriaMetrics/metrics v1.39.2-0.20250904092412-1913632726be
+# github.com/VictoriaMetrics/metrics v1.39.2-0.20250905023544-4f510cf29239
 ## explicit; go 1.18
 github.com/VictoriaMetrics/metrics
 # github.com/VictoriaMetrics/metricsql v0.84.7
