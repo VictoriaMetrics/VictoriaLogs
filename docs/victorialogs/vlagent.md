@@ -1,10 +1,17 @@
 ---
-build:
-list: never
-publishResources: false
-render: never
-sitemap:
-disable: true
+title: vlagent
+weight: 4
+menu:
+  docs:
+    weight: 4
+    parent: "victorialogs"
+    identifier: vlagent
+tags:
+  - logs
+aliases:
+  - /vlagent.html
+  - /vlagent/index.html
+  - /vlagent/
 ---
 
 `vlagent` is an agent for collecting logs from various sources and storing them them in multiple [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instances.
@@ -59,7 +66,7 @@ in a timely manner when some of the VictoriaLogs instances are unavailable.
 We recommend setting up regular scraping of this page either through [`vmagent`](https://docs.victoriametrics.com/victoriametrics/vmagent/) or by Prometheus-compatible scraper,
 so that the exported metrics may be analyzed later.
 
-See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent/vlagent-metrics/).
+See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/).
 
 Use [the official Grafana dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/vlagent.json) for `vlagent` state overview.
 Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read it.

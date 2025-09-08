@@ -97,7 +97,7 @@ VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design idea
 
   VictoriaLogs provides easy to use query language with full-text search specifically optimized
   for log analysis - [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
-  LogsQL is usually easier to use than SQL for typical log analysis tasks - see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/sql-to-logsql/).
+  LogsQL is usually easier to use than SQL for typical log analysis tasks - see [these docs](https://docs.victoriametrics.com/victorialogs/sql-to-logsql/).
 
 - VictoriaLogs accepts logs from popular log shippers out of the box - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 
