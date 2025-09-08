@@ -1,11 +1,11 @@
 ---
-weight: 61
+weight: 21
 title: Metrics of vlagent
 menu:
   docs:
     parent: victorialogs
     identifier: vlagent-metrics
-    weight: 61
+    weight: 21
     title: Metrics of vlagent
 tags:
   - logs

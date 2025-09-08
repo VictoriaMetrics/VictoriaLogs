@@ -1,11 +1,11 @@
 ---
-weight: 20
+weight: 70
 title: Articles
 menu:
   docs:
     parent: 'victorialogs'
     identifier: "victorialogs-articles"
-    weight: 20
+    weight: 70
 tags: []
 ---
 
