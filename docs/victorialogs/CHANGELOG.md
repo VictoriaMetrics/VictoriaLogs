@@ -24,6 +24,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying): `-search.maxQueryTimeRange` command-line flag now supports day (`d`), week (`w`) and year (`y`) suffixes additionally to the supported hour (`h`), minute (`m`) and second (`s`) suffixes. See [#50](https://github.com/VictoriaMetrics/VictoriaLogs/issues/50#issuecomment-3244097676).
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying): properly handle the `offset` HTTP parameter when it is not set. This improves querying performance in VictoriaLogs cluster. See [#620](https://github.com/VictoriaMetrics/VictoriaLogs/issues/620).
+* BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying): Fixed `select/logsql/facets` endpoint accidentally swapping the `hits` field and `field_values`, which caused `hits` to become a string/text. See [#648](https://github.com/VictoriaMetrics/VictoriaLogs/issues/648).
 
 ## [v1.32.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.32.0)
 
