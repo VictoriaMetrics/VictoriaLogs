@@ -206,7 +206,7 @@ func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
 	}
 
 	if !lex.isPrevRawToken(tokens...) {
-		return fmt.Errorf("missing whitespace or ':' between %q and %q; propbably, the whole string must be put into quotes", lex.prevRawToken, lex.token)
+		return fmt.Errorf("missing whitespace or ':' between %q and %q; probably, the whole string must be put into quotes", lex.prevRawToken, lex.token)
 	}
 
 	return nil
