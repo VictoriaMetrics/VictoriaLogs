@@ -89,4 +89,7 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
 	f(`foo | offset 0`, `foo`, ``)
 	f(`foo | offset 0 | limit 10`, `foo | limit 10`, `limit 10`)
+
+	f(`foo | offset 5 | limit 10`, `foo | limit 15`, `limit 15 | offset 5`)
+	f(`foo | limit 15 | offset 10 | offset 20 | limit 7`, `foo | limit 15`, `limit 15 | offset 10 | limit 27 | offset 20`)
 }

@@ -1344,6 +1344,27 @@ func optimizeOffsetLimitPipes(pipes []pipe) []pipe {
 		pipes = append(pipes[:i], pipes[i+1:]...)
 	}
 
+	// Transform query '| offset X | limit Y' into '| limit X+Y | offset X'.
+	// This reduces the number of rows processed by remote storage.
+	// See: https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
+	for i := 0; i < len(pipes)-1; i++ {
+		po, ok := pipes[i].(*pipeOffset)
+		if !ok {
+			continue
+		}
+		pl, ok := pipes[i+1].(*pipeLimit)
+		if !ok {
+			continue
+		}
+
+		plNew := &pipeLimit{
+			limit: po.offset + pl.limit,
+		}
+
+		pipes[i] = plNew
+		pipes[i+1] = po
+	}
+
 	return pipes
 }
 

@@ -2043,7 +2043,7 @@ func TestParseQuery_Success(t *testing.T) {
 
 	// multiple different pipes
 	f(`* | fields foo, bar | limit 100 | stats by(foo,bar) count(baz) as qwert`, `* | fields foo, bar | limit 100 | stats by (foo, bar) count(baz) as qwert`)
-	f(`* | skip 100 | head 20 | skip 10`, `* | offset 100 | limit 20 | offset 10`)
+	f(`* | skip 100 | head 20 | skip 10`, `* | limit 120 | offset 100 | offset 10`)
 
 	// comments
 	f(`* # some comment | foo bar`, `*`)
