@@ -79,9 +79,18 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 			logger.Panicf("BUG: expecting 3 columns; got %d columns", len(columns))
 		}
 
-		fieldNames := columns[0].Values
-		fieldValues := columns[1].Values
-		hits := columns[2].Values
+		// Fetch columns by name to avoid relying on column reordering, which may change after sort/partition pipes
+		cFieldName := db.GetColumnByName("field_name")
+		cFieldValue := db.GetColumnByName("field_value")
+		cHits := db.GetColumnByName("hits")
+		if cFieldName == nil || cFieldValue == nil || cHits == nil {
+			logger.Panicf("BUG: missing expected columns for facets response: field_name=%v, field_value=%v, hits=%v",
+				cFieldName != nil, cFieldValue != nil, cHits != nil)
+		}
+
+		fieldNames := cFieldName.Values
+		fieldValues := cFieldValue.Values
+		hits := cHits.Values
 
 		bb := blockResultPool.Get()
 		for i := range fieldNames {
