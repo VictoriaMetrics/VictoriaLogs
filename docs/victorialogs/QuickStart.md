@@ -73,7 +73,7 @@ See also:
 
 You can run VictoriaLogs in Kubernetes environment
 with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts.
+or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts.
 
 ### Building from source code
 
@@ -166,5 +166,5 @@ Docker-compose demos that integrate VictoriaLogs and various log collectors:
 - [Promtail demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/promtail)
 
 You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts as a demo for running Vector
+or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts as a demo for running Vector
 in Kubernetes with VictoriaLogs.
