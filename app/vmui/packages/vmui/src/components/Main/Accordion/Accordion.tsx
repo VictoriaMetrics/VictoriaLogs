@@ -1,8 +1,10 @@
 import { FC, useState, useEffect, ReactNode } from "preact/compat";
+import { JSX } from "preact";
 import { ArrowDownIcon } from "../Icons";
 import "./style.scss";
 
 interface AccordionProps {
+  id?: string
   title: ReactNode
   children: ReactNode
   defaultExpanded?: boolean
@@ -13,21 +15,24 @@ const Accordion: FC<AccordionProps> = ({
   defaultExpanded = false,
   onChange,
   title,
-  children
+  children,
+  id,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultExpanded);
 
-  const toggleOpen = () => {
+  const toggleOpen = (event: JSX.TargetedMouseEvent<HTMLDetailsElement>) => {
     const selection = window.getSelection();
-    if (selection && selection.toString()) {
+    if ((event.target as HTMLElement).closest("button")) {
+      event.preventDefault();
       return; // If the text is selected, cancel the execution of toggle.
     }
-
-    setIsOpen((prev) => {
-      const newState = !prev;
-      onChange && onChange(newState);
-      return newState;
-    });
+    if (selection && selection.toString()) {
+      event.preventDefault();
+      return; // If the text is selected, cancel the execution of toggle.
+    }
+    const details = event.currentTarget.parentElement as HTMLDetailsElement;
+    onChange && onChange(details.open);
+    setIsOpen(details.open);
   };
 
   useEffect(() => {
@@ -36,23 +41,23 @@ const Accordion: FC<AccordionProps> = ({
 
   return (
     <>
-      <header
-        className={`vm-accordion-header ${isOpen && "vm-accordion-header_open"}`}
-        onClick={toggleOpen}
+      <details
+        className="vm-accordion-section"
+        key="content"
+        open={isOpen}
+        id={id}
       >
-        {title}
-        <div className={`vm-accordion-header__arrow ${isOpen && "vm-accordion-header__arrow_open"}`}>
-          <ArrowDownIcon />
-        </div>
-      </header>
-      {isOpen && (
-        <section
-          className="vm-accordion-section"
-          key="content"
+        <summary
+          className="vm-accordion-header"
+          onClick={toggleOpen}
         >
-          {children}
-        </section>
-      )}
+          {title}
+          <div className="vm-accordion-header__arrow">
+            <ArrowDownIcon />
+          </div>
+        </summary>
+        {children}
+      </details>
     </>
   );
 };

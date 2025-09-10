@@ -4,10 +4,11 @@ import { CloseIcon } from "../../Icons";
 
 interface MultipleSelectedValueProps {
   values: string[]
+  itemClassName?: string
   onRemoveItem: (val: string) => void
 }
 
-const MultipleSelectedValue: FC<MultipleSelectedValueProps> = ({ values, onRemoveItem }) => {
+const MultipleSelectedValue: FC<MultipleSelectedValueProps> = ({ values, itemClassName, onRemoveItem }) => {
   const { isMobile } = useDeviceDetect();
 
   const createHandleClick = (value: string) => (e: MouseEvent<HTMLDivElement>) => {
@@ -26,10 +27,10 @@ const MultipleSelectedValue: FC<MultipleSelectedValueProps> = ({ values, onRemov
   return <>
     {values.map(item => (
       <div
-        className="vm-select-input-content__selected"
+        className={`vm-select-input-content__selected ${itemClassName} ${item.toLowerCase().replace(" ", "-")}`}
         key={item}
       >
-        <span>{item}</span>
+        <span className={`badge ${item.toLowerCase().replace(" ", "-")}`}>{item}</span>
         <div onClick={createHandleClick(item)}>
           <CloseIcon/>
         </div>

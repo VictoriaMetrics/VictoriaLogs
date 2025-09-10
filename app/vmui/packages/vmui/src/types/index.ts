@@ -189,3 +189,88 @@ export interface GroupLogsType {
 }
 
 export type Order = "asc" | "desc";
+
+export interface RuleType {
+  id: string,
+  title: string,
+  isDefault?: boolean,
+}
+
+export interface Group {
+  name: string;
+  file: string;
+  rules: Rule[];
+  interval: number;
+  limit: number;
+  lastEvaluation: number;
+  evaluationTime: number;
+  type: string;
+  id: string;
+  concurrency: number;
+  params: string[];
+  headers: string[];
+  notifier_headers: string[];
+  labels: Record<string, string>;
+  eval_offset: number;
+  eval_delay: number;
+  states: Record<string, number>;
+}
+
+export interface Rule {
+  state: string;
+  name: string;
+  query: string;
+  duration: number;
+  keepFiringFor: number;
+  labels: Record<string, string>;
+  annotations: Record<string, string>;
+  alerts: Alert[];
+  health: string;
+  lastEvaluation: number;
+  lastError: string;
+  evaluationTime: number;
+  type: string;
+  datasourceType: string;
+  lastSamples: bigint;
+  lastSeriesFetched: bigint;
+  id: string;
+  group_id: string;
+  debug: boolean;
+  updates: RuleUpdate[];
+  max_updates_entries: number;
+}
+
+interface RuleUpdate {
+  time: string;
+  at: string;
+  duration: number;
+  error: string;
+  samples: number;
+  series_fetched: number;
+}
+
+export interface Alert {
+  name: string;
+  state: string;
+  value: string;
+  group_id: string;
+  expression: string;
+  labels: Record<string, string>;
+  annotations: Record<string, string>;
+  activeAt: number;
+  id: string;
+  source: string;
+  restored: boolean;
+  stabilizing: boolean;
+}
+
+export interface Notifier {
+  kind: string;
+  targets: Target[];
+}
+
+export interface Target {
+  address: string;
+  labels: Record<string, string>;
+  lastError: string;
+}
