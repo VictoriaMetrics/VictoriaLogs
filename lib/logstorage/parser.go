@@ -510,8 +510,8 @@ func (q *Query) AddFacetsPipe(limit, maxValuesPerField, maxValueLen int, keepCon
 
 // AddCountByTimePipe adds '| stats by (_time:step offset off, field1, ..., fieldN) count() hits' to the end of q.
 func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
-	// Drop pipes from q, which modify or delete _time field, since they make impossible to calculate stats grouped by _time.
-	q.dropTimeModificationPipes()
+	// Drop pipes, which are unsafe for calculating hits grouped by _time.
+	q.dropPipesUnsafeForHits()
 
 	{
 		// add 'stats by (_time:step offset off, fields) count() hits'
@@ -541,16 +541,37 @@ func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 	}
 }
 
-// dropTimeModificationPipes drops pipes from q, which modify
-func (q *Query) dropTimeModificationPipes() {
-	for i, p := range q.pipes {
-		if !p.canReturnLastNResults() {
-			// Drop the rest of the pipes, including the current pipe,
-			// since it modified or deletes the _time field.
-			q.pipes = q.pipes[:i]
-			return
-		}
+// dropPipesUnsafeForHits drops trailing pipes from q, which are unsafe
+// for calculating hits grouped by _time.
+//
+// It preserves union() pipes, since they do not modify _time and are expected
+// to contribute rows to hits. All other pipes that report !canReturnLastNResults()
+// are considered unsafe and are trimmed away together with the remainder.
+func (q *Query) dropPipesUnsafeForHits() {
+	if len(q.pipes) == 0 {
+		return
 	}
+	kept := make([]pipe, 0, len(q.pipes))
+	seenUnsafe := false
+	for _, p := range q.pipes {
+		switch p.(type) {
+		case *pipeUnion:
+			// union appends rows from an independent subquery; always keep for hits
+			kept = append(kept, p)
+			continue
+		}
+
+		if seenUnsafe {
+			continue
+		}
+
+		if p.canReturnLastNResults() {
+			kept = append(kept, p)
+			continue
+		}
+		seenUnsafe = true
+	}
+	q.pipes = kept
 }
 
 // Clone returns a copy of q at the given timestamp.
