@@ -40,7 +40,7 @@ var (
 	listenAddrUDP = flagutil.NewArrayString("syslog.listenAddr.udp", "Comma-separated list of UDP addresses to listen to for Syslog messages. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
 	listenAddrUnix = flagutil.NewArrayString("syslog.listenAddr.unix", "Comma-separated list of Unix socket filepaths to listen to for Syslog messages. "+
-		"Filepaths may be prepended with 'unixpacket:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. "+
+		"Filepaths may be prepended with 'unixgram:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
 
 	tlsEnable = flagutil.NewArrayBool("syslog.tls", "Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. "+
@@ -197,39 +197,74 @@ func MustStop() {
 }
 
 func runUnixListener(addr string, argIdx int) {
-	network, path := getUnixSocketNetworkAndPath(addr)
-	ln, err := net.Listen(network, path)
-	if err != nil {
-		logger.Fatalf("cannot start Unix socket syslog server at %q: %s", addr, err)
-	}
-
 	cfg, err := getConfigs("unix", argIdx, streamFieldsUnix, ignoreFieldsUnix, decolorizeFieldsUnix, extraFieldsUnix, tenantIDUnix, compressMethodUnix, useLocalTimestampUnix, useRemoteIPUnix)
 	if err != nil {
 		logger.Fatalf("cannot parse configs for -syslog.listenAddr.unix=%q: %s", addr, err)
 	}
 
+	laddr := getUnixSocketNetworkAndPath(addr)
+	if laddr.Net == "unix" {
+		runUnixStreamListener(laddr, cfg)
+	} else {
+		runUnixPacketListener(laddr, cfg)
+	}
+}
+
+func runUnixStreamListener(laddr *net.UnixAddr, cfg *configs) {
+	ln, err := net.ListenUnix(laddr.Net, laddr)
+	if err != nil {
+		logger.Fatalf("cannot start Unix socket syslog server at %q: %s", laddr, err)
+	}
+
 	doneCh := make(chan struct{})
 	go func() {
-		serveUnixListener(ln, cfg)
+		serveStreamListener(ln, cfg)
 		close(doneCh)
 	}()
 
-	logger.Infof("started accepting syslog messages at -syslog.listenAddr.unix=%q", addr)
+	logger.Infof("started accepting syslog messages at %q", laddr)
 	<-workersStopCh
 	if err := ln.Close(); err != nil {
-		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", addr, err)
+		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", laddr, err)
 	}
 	<-doneCh
-	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.unix=%q", addr)
+	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.unix=%q", laddr)
 }
 
-func getUnixSocketNetworkAndPath(addr string) (string, string) {
-	// An optional network such as unix, unixpacket or unixgram can be specified in front of addr and followed by ':'
+func runUnixPacketListener(laddr *net.UnixAddr, cfg *configs) {
+	ln, err := net.ListenUnixgram(laddr.Net, laddr)
+	if err != nil {
+		logger.Fatalf("cannot start Unix socket syslog server at %q: %s", laddr, err)
+	}
+
+	doneCh := make(chan struct{})
+	go func() {
+		servePacketListener(ln, cfg)
+		close(doneCh)
+	}()
+
+	logger.Infof("started accepting syslog messages at %q", laddr)
+	<-workersStopCh
+	if err := ln.Close(); err != nil {
+		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", laddr, err)
+	}
+	<-doneCh
+	logger.Infof("finished accepting syslog messages at %q", laddr)
+}
+
+func getUnixSocketNetworkAndPath(addr string) *net.UnixAddr {
+	// An optional network such as unix or unixgram can be specified in front of addr and followed by ':'
 	n := strings.IndexByte(addr, ':')
 	if n < 0 {
-		return "unix", addr
+		return &net.UnixAddr{
+			Net:  "unix",
+			Name: addr,
+		}
 	}
-	return addr[:n], addr[n+1:]
+	return &net.UnixAddr{
+		Net:  addr[:n],
+		Name: addr[n+1:],
+	}
 }
 
 func runUDPListener(addr string, argIdx int) {
@@ -293,14 +328,6 @@ func runTCPListener(addr string, argIdx int) {
 	}
 	<-doneCh
 	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.tcp=%q", addr)
-}
-
-func serveUnixListener(ln net.Listener, cfg *configs) {
-	if pc, ok := ln.(net.PacketConn); ok {
-		servePacketListener(pc, cfg)
-	} else {
-		serveStreamListener(ln, cfg)
-	}
 }
 
 func servePacketListener(ln net.PacketConn, cfg *configs) {

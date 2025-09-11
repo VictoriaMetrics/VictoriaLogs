@@ -1,6 +1,6 @@
 ---
 weight: 5
-title: Telegraf setup
+title: Telegraf Setup
 disableToc: true
 menu:
   docs:

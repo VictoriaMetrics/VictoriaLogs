@@ -1,6 +1,6 @@
 ---
 weight: 2
-title: Fluentd setup
+title: Fluentd Setup
 disableToc: true
 menu:
   docs:

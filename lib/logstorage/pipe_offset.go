@@ -19,6 +19,10 @@ func (po *pipeOffset) String() string {
 }
 
 func (po *pipeOffset) splitToRemoteAndLocal(_ int64) (pipe, []pipe) {
+	if po.offset == 0 {
+		// Special case - `offset 0` is safe to push to the remote side.
+		return po, nil
+	}
 	return nil, []pipe{po}
 }
 

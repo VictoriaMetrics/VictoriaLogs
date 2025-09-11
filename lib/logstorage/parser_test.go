@@ -355,6 +355,63 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 	})
 }
 
+func TestParseQuery_OptimizeOffsetLimitPipes(t *testing.T) {
+	f := func(s, resultExpected string) {
+		t.Helper()
+
+		q, err := ParseQuery(s)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		result := q.String()
+		if result != resultExpected {
+			t.Fatalf("unexpected result; got\n%s\nwant\n%s", result, resultExpected)
+		}
+	}
+
+	f(`* | sort by (x) | limit 30`, `* | sort by (x) limit 30`)
+	f(`* | sort by (x) | offset 10`, `* | sort by (x) offset 10`)
+	f(`* | sort by (x) | offset 10 | limit 30`, `* | sort by (x) offset 10 limit 30`)
+	f(`* | sort by (x) | offset 0`, `* | sort by (x)`)
+	f(`* | sort by (x) | offset 0 | fields a, b`, `* | sort by (x) | fields a, b`)
+	f(`* | sort by (x) | limit 0`, `* | limit 0`)
+	f(`* | sort by (x) | limit 0 | keep a, b`, `* | limit 0 | fields a, b`)
+
+	f(`* | sort by (x) | limit 30 | limit 20`, `* | sort by (x) limit 20`)
+	f(`* | sort by (x) offset 5 | offset 10 | limit 30`, `* | sort by (x) offset 15 limit 30`)
+	f(`* | sort by (x) limit 12 | offset 10 | limit 30`, `* | sort by (x) offset 10 limit 2`)
+	f(`* | sort by (x) offset 3 limit 12 | offset 10 | limit 30 | fields x`, `* | sort by (x) offset 13 limit 2 | fields x`)
+	f(`* | sort by (x) offset 3 limit 10 | offset 10 | limit 30 | fields x`, `* | limit 0 | fields x`)
+	f(`* | sort by (x) | limit 30 | limit 20 | offset 4`, `* | sort by (x) offset 4 limit 16`)
+	f(`* | sort by (x) | limit 30 | limit 20 | offset 4 | offset 5`, `* | sort by (x) offset 9 limit 11`)
+	f(`* | sort by (x) | limit 30 | limit 20 | offset 4 | offset 5 | fields x`, `* | sort by (x) offset 9 limit 11 | fields x`)
+
+	// Verify the case without 'sort' pipe and with 'offset 0' pipes.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
+	f(`* | offset 0`, `*`)
+	f(`* | offset 0 | limit 10`, `* | limit 10`)
+
+	// 'ofset N | limit M' without preceding 'sort' pipe
+	f(`* | offset 10 | limit 30`, `* | limit 40 | offset 10`)
+	f(`* | offset 10 | limit 30 | fields x`, `* | limit 40 | offset 10 | fields x`)
+
+	// 'limit N | offset M' where M >= N
+	f(`* | limit 10 | offset 20`, `* | limit 0`)
+
+	// Multiple offset pipes
+	f(`* | offset 10 | offset 30 | offset 50`, `* | offset 90`)
+
+	// Multiple limit pipes
+	f(`* | limit 50 | limit 5 | limit 20`, `* | limit 5`)
+
+	// Mix of limit and offset pipes
+	f(`* | offset 3 | limit 10 | offset 5 | limit 30 | limit 5`, `* | limit 13 | offset 8`)
+	f(`* | offset 3 | limit 10 | offset 5 | limit 30 | limit 15`, `* | limit 13 | offset 8`)
+	f(`* | offset 3 | limit 10 | offset 5 | limit 30 | limit 4`, `* | limit 12 | offset 8`)
+	f(`* | offset 3 | limit 10 | offset 5 | limit 30 | limit 1`, `* | limit 9 | offset 8`)
+	f(`* | offset 3 | limit 10 | offset 5 | limit 30 | limit 0`, `* | limit 0`)
+}
+
 func TestParseQuery_OptimizeStarFilters(t *testing.T) {
 	f := func(s, resultExpected string) {
 		t.Helper()
@@ -1734,7 +1791,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`foo | head 10K`, `foo | limit 10000`)
 
 	// multiple limit pipes
-	f(`foo | limit 100 | limit 10 | limit 234`, `foo | limit 100 | limit 10 | limit 234`)
+	f(`foo | limit 100 | limit 10 | limit 234`, `foo | limit 10`)
 
 	// offset and skip pipe
 	f(`foo | skip 10`, `foo | offset 10`)
@@ -1742,7 +1799,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`foo | skip 12_345M`, `foo | offset 12345000000`)
 
 	// multiple offset pipes
-	f(`foo | offset 10 | offset 100`, `foo | offset 10 | offset 100`)
+	f(`foo | offset 10 | offset 100`, `foo | offset 110`)
 
 	// query_stats pipe
 	f(`* | query_stats`, `* | query_stats`)
@@ -2006,7 +2063,7 @@ func TestParseQuery_Success(t *testing.T) {
 
 	// multiple different pipes
 	f(`* | fields foo, bar | limit 100 | stats by(foo,bar) count(baz) as qwert`, `* | fields foo, bar | limit 100 | stats by (foo, bar) count(baz) as qwert`)
-	f(`* | skip 100 | head 20 | skip 10`, `* | offset 100 | limit 20 | offset 10`)
+	f(`* | skip 100 | head 20 | skip 10`, `* | limit 120 | offset 110`)
 
 	// comments
 	f(`* # some comment | foo bar`, `*`)
@@ -3899,6 +3956,14 @@ func TestQuery_AddCountByTimePipe(t *testing.T) {
 
 	// pipes, which do not change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer'", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+
+	// union pipe is allowed. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/641
+	f(`foo | union (bar)`, nsecsPerMinute, 0, nil, `foo | union (bar) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | union (bar) | stats count()`, nsecsPerMinute, 0, nil, `foo | union (bar) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | union (bar | stats count())`, nsecsPerMinute, 0, nil, `foo | union (bar) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+
+	// join pipe is allowed
+	f(`foo | join by (x) (y)`, nsecsPerMinute, 0, nil, `foo | join by (x) (y) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
 
 	// pipes, which change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer' | stats count()", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)

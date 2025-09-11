@@ -29,13 +29,14 @@ func TestNewPatternMatcher(t *testing.T) {
 	f("<N>", []string{"", ""}, []patternMatcherPlaceholder{patternMatcherPlaceholderNum})
 	f("foo<N>", []string{"foo", ""}, []patternMatcherPlaceholder{patternMatcherPlaceholderNum})
 	f("<N>foo", []string{"", "foo"}, []patternMatcherPlaceholder{patternMatcherPlaceholderNum})
-	f("<N><UUID>foo<IP4><TIME>bar<DATETIME><DATE>", []string{"", "", "foo", "", "bar", "", ""}, []patternMatcherPlaceholder{
+	f("<N><UUID>foo<IP4><TIME>bar<DATETIME><DATE><W>", []string{"", "", "foo", "", "bar", "", "", ""}, []patternMatcherPlaceholder{
 		patternMatcherPlaceholderNum,
 		patternMatcherPlaceholderUUID,
 		patternMatcherPlaceholderIP4,
 		patternMatcherPlaceholderTime,
 		patternMatcherPlaceholderDateTime,
 		patternMatcherPlaceholderDate,
+		patternMatcherPlaceholderWord,
 	})
 
 	// unknown placeholders
@@ -91,12 +92,12 @@ func TestPatternMatcherMatch(t *testing.T) {
 	f("<N> <DATE> foo", "123 456 foo", false, false)
 
 	// verify all the placeholders
-	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, end",
-		"n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, end", false, true)
-	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, end",
-		"n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, end", true, true)
-	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, end",
-		"some 123 prefix 10:20:30, n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, end", false, true)
+	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, user: <W>, end",
+		"n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, user: '`\"\\', end', end", false, true)
+	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, user: <W>, end",
+		"n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, user: `f\"'oo`, end", true, true)
+	f("n: <N>.<N>, uuid: <UUID>, ip4: <IP4>, time: <TIME>, date: <DATE>, datetime: <DATETIME>, user: <W>, end",
+		"some 123 prefix 10:20:30, n: 123.324, uuid: 2edfed59-3e98-4073-bbb2-28d321ca71a7, ip4: 123.45.67.89, time: 10:20:30, date: 2025-10-20, datetime: 2025-10-20T10:20:30Z, user: \"f\\\"o'\", end", false, true)
 
 	// verify different cases for DATE
 	f("<DATE>, <DATE>", "foo 2025/10/20, 2025-10-20 bar", false, true)
@@ -107,4 +108,16 @@ func TestPatternMatcherMatch(t *testing.T) {
 
 	// verify different cases for DATETIME
 	f("<DATETIME>, <DATETIME>, <DATETIME>, <DATETIME>", "foo 2025-09-20T10:20:30Z, 2025/10/20 10:20:30.2343, 2025-10-20T30:40:50-05:10, 2025-10-20T30:40:50.1324+05:00 bar", false, true)
+
+	// verify different cases for W
+	f("email: <W>@<W>", "email: foo@bar.com", false, true)
+	f("email: <W>@<W>", "email: foo@bar.com", true, false)
+	f("email: <W>@<W>.<W>", "email: foo@bar.com", true, true)
+	f("email: <W>@<W>", "a email: foo@bar.com", true, false)
+	f("<W> foo", " foo", false, false)
+	f("<W> foo", ",,, foo", false, false)
+	f("<W> foo", ",,,abc foo", false, true)
+
+	f(`"foo":<W>`, `{"foo":"bar", "baz": 123}`, false, true)
+	f(`"foo":<W>`, `{"foo":"bar", "baz": 123}`, true, false)
 }

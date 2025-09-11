@@ -36,8 +36,8 @@ Just download archive for the needed Operating system and architecture, unpack i
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.32.0/victoria-logs-linux-amd64-v1.32.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.32.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.33.0/victoria-logs-linux-amd64-v1.33.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.33.0.tar.gz
 ./victoria-logs-prod -storageDataPath=victoria-logs-data
 ```
 
@@ -60,7 +60,7 @@ Here is the command to run VictoriaLogs in a Docker container:
 
 ```sh
 docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
-  docker.io/victoriametrics/victoria-logs:v1.32.0 -storageDataPath=victoria-logs-data
+  docker.io/victoriametrics/victoria-logs:v1.33.0 -storageDataPath=victoria-logs-data
 ```
 
 See also:
@@ -73,7 +73,7 @@ See also:
 
 You can run VictoriaLogs in Kubernetes environment
 with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts.
+or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts.
 
 ### Building from source code
 
@@ -166,5 +166,5 @@ Docker-compose demos that integrate VictoriaLogs and various log collectors:
 - [Promtail demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/promtail)
 
 You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster) helm charts as a demo for running Vector
+or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts as a demo for running Vector
 in Kubernetes with VictoriaLogs.

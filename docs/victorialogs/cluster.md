@@ -1,11 +1,11 @@
 ---
-weight: 20
-title: VictoriaLogs cluster
+weight: 3
+title: VictoriaLogs Cluster
 menu:
   docs:
     parent: victorialogs
     identifier: vl-cluster
-    weight: 20
+    weight: 3
     title: VictoriaLogs cluster
 tags:
   - logs
@@ -273,8 +273,8 @@ The following guide covers the following topics for Linux host:
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.32.0/victoria-logs-linux-amd64-v1.32.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.32.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.33.0/victoria-logs-linux-amd64-v1.33.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.33.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs at `victoria-logs-data-1` directory:

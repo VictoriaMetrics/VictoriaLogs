@@ -1,11 +1,11 @@
 ---
-title: Data ingestion
-weight: 3
+title: Data Ingestion
+weight: 5
 menu:
   docs:
     identifier: victorialogs-data-ingestion
     parent: "victorialogs"
-    weight: 3
+    weight: 5
 tags:
   - logs
 aliases:
