@@ -339,6 +339,13 @@ The following steps must be performed for restoring the partition data from back
 
 It is also possible to use **the disk snapshot** feature provided by the operating system or cloud provider in order to perform a backup.
 
+## vmalert
+
+VictoriaLogs is capable of proxying requests to [VMAlert](https://docs.victoriametrics.com/victorialogs/vmalert/)
+when `-vmalert.proxyURL` flag is set. Use this feature for accessing VMAlert API through VictoriaLogs Web interface.
+
+For accessing VMAlert API through VictoriaLogs configure `-vmalert.proxyURL` flag. All VMAlert endpoints become available at `http://<victorialogs-addr>:9428/select/vmalert`.
+
 ## Multitenancy
 
 VictoriaLogs supports multitenancy. A tenant is identified by `(AccountID, ProjectID)` pair, where `AccountID` and `ProjectID` are arbitrary 32-bit unsigned integers.
