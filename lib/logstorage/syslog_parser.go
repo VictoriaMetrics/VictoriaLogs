@@ -421,38 +421,26 @@ func (p *SyslogParser) parseRFC3164(s string) {
 		return
 	}
 
-	t, err := time.Parse(time.Stamp, s[:n])
-	if err != nil {
-		// Fallback to RFC3339 timestamp
-		spaceIdx := strings.IndexByte(s, ' ')
-		if spaceIdx <= 0 {
+	if s[len("2006-01-02")] != 'T' {
+		// Parse RFC3164 timestamp.
+		if !p.tryParseTimestampRFC3164(s[:n]) {
 			p.AddField("message", s)
 			return
 		}
-		nsecs, ok := TryParseTimestampRFC3339Nano(s[:spaceIdx])
-		if !ok {
-			p.AddField("message", s)
-			return
-		}
-
-		bufLen := len(p.buf)
-		p.buf = marshalTimestampISO8601String(p.buf, nsecs)
-		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
-		// Preserve leading space so that subsequent parsing of hostname and tag fields works correctly.
-		s = s[spaceIdx:]
 	} else {
-		// Handle standard RFC3164 timestamp format
-		s = s[n:]
-		t = t.UTC()
-		t = time.Date(p.currentYear, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
-		if uint64(t.Unix())-24*3600 > fasttime.UnixTimestamp() {
-			// Adjust time to the previous year
-			t = time.Date(t.Year()-1, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+		// Parse RFC3339 timestamp.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/303
+		n = strings.IndexByte(s, ' ')
+		if n < 0 {
+			p.AddField("message", s)
+			return
 		}
-		bufLen := len(p.buf)
-		p.buf = marshalTimestampISO8601String(p.buf, t.UnixNano())
-		p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
+		if !p.tryParseTimestampRFC3339Nano(s[:n]) {
+			p.AddField("message", s)
+			return
+		}
 	}
+	s = s[n:]
 
 	if len(s) == 0 || s[0] != ' ' {
 		// Missing space after the time field
@@ -517,4 +505,34 @@ func (p *SyslogParser) parseRFC3164(s string) {
 	if len(s) > 0 {
 		p.AddField("message", s)
 	}
+}
+
+func (p *SyslogParser) tryParseTimestampRFC3164(s string) bool {
+	t, err := time.Parse(time.Stamp, s)
+	if err != nil {
+		return false
+	}
+
+	t = t.UTC()
+	t = time.Date(p.currentYear, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+	if uint64(t.Unix())-24*3600 > fasttime.UnixTimestamp() {
+		// Adjust time to the previous year
+		t = time.Date(t.Year()-1, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), p.timezone)
+	}
+	bufLen := len(p.buf)
+	p.buf = marshalTimestampRFC3339NanoString(p.buf, t.UnixNano())
+	p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
+	return true
+}
+
+func (p *SyslogParser) tryParseTimestampRFC3339Nano(s string) bool {
+	nsecs, ok := TryParseTimestampRFC3339Nano(s)
+	if !ok {
+		return false
+	}
+
+	bufLen := len(p.buf)
+	p.buf = marshalTimestampRFC3339NanoString(p.buf, nsecs)
+	p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
+	return true
 }

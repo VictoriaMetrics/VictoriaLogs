@@ -147,7 +147,7 @@ func appendCollapseNums(dst []byte, s string) []byte {
 
 func indexNumStart(s string, offset int) int {
 	// It is safe iterating by chars instead of Unicode runes, since decimal and hex chars are ASCII
-	// and they cannot clash with utf-8 encoded Unicde runes.
+	// and they cannot clash with utf-8 encoded Unicode runes.
 	n := offset
 	for n < len(s) {
 		if !isDecimalOrHexChar(s[n]) {
@@ -167,7 +167,7 @@ func indexNumStart(s string, offset int) int {
 
 func indexNumEnd(s string, offset int) int {
 	// It is safe iterating by chars instead of Unicode runes, since decimal and hex chars are ASCII
-	// and they cannot clash with utf-8 encoded Unicde runes.
+	// and they cannot clash with utf-8 encoded Unicode runes.
 	n := offset
 	for n < len(s) && isDecimalOrHexChar(s[n]) {
 		n++

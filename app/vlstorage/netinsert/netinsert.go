@@ -243,7 +243,7 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	reqURL := sn.getRequestURL("/internal/insert")
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, body)
 	if err != nil {
-		logger.Panicf("BUG: unexpected error when creating an http request: %s", err)
+		return fmt.Errorf("cannot create an http request for %q: %w", reqURL, err)
 	}
 	req.Header.Set("Content-Type", "application/octet-stream")
 	if !sn.s.disableCompression {

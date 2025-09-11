@@ -105,8 +105,8 @@ func getRemoteAndLocalPipes(q *Query) ([]pipe, []pipe) {
 
 		pipesLocal = append(pipesLocal, psLocal...)
 		pipesLocal = append(pipesLocal, q.pipes[i+1:]...)
-		return pipesRemote, pipesLocal
+		break
 	}
 
-	return nil, nil
+	return pipesRemote, pipesLocal
 }

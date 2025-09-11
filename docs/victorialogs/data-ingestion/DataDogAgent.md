@@ -1,6 +1,6 @@
 ---
 weight: 5
-title: DataDog Agent setup
+title: DataDog Agent Setup
 disableToc: true
 menu:
   docs:

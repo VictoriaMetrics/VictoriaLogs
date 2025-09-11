@@ -1,10 +1,10 @@
 ---
-weight: 100
-title: LogsQL examples
+weight: 50
+title: LogsQL Examples
 menu:
   docs:
     parent: "victorialogs"
-    weight: 100
+    weight: 50
 tags:
   - logs
   - guide

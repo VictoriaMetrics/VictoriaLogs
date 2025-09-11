@@ -1,6 +1,6 @@
 ---
 weight: 3
-title: Logstash setup
+title: Logstash Setup
 disableToc: true
 menu:
   docs:

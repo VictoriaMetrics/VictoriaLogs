@@ -1,6 +1,6 @@
 ---
 weight: 2
-title: Fluentbit setup
+title: Fluentbit Setup
 disableToc: true
 menu:
   docs:

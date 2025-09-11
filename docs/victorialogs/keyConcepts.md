@@ -1,12 +1,12 @@
 ---
 weight: 2
-title: Key concepts
+title: Key Concepts
 menu:
   docs:
     identifier: vl-key-concepts
     parent: victorialogs
     weight: 2
-    title: Key concepts
+    title: Key Concepts
 tags:
   - logs
 aliases:

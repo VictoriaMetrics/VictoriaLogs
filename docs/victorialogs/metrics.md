@@ -1,12 +1,12 @@
 ---
-weight: 10
-title: VictoriaLogs metrics
+weight: 20
+title: Metrics of VictoriaLogs
 menu:
   docs:
     parent: victorialogs
     identifier: victorialogs-metrics
-    weight: 10
-    title: VictoriaLogs metrics
+    weight: 20
+    title: Metrics of VictoriaLogs
 tags:
   - logs
   - metrics

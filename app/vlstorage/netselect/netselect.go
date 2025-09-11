@@ -18,7 +18,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -278,7 +277,7 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 	reqBody := strings.NewReader(args.Encode())
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
-		logger.Panicf("BUG: unexpected error when creating a request for %q: %s", reqURL, err)
+		return nil, "", fmt.Errorf("cannot create a request for %q: %w", reqURL, err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err := sn.ac.SetHeaders(req, true); err != nil {

@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -34,6 +35,7 @@ const (
 	patternMatcherPlaceholderTime     = 4
 	patternMatcherPlaceholderDate     = 5
 	patternMatcherPlaceholderDateTime = 6
+	patternMatcherPlaceholderWord     = 7
 )
 
 func getPatternMatcherPlaceholder(s string) patternMatcherPlaceholder {
@@ -50,6 +52,8 @@ func getPatternMatcherPlaceholder(s string) patternMatcherPlaceholder {
 		return patternMatcherPlaceholderDate
 	case "<DATETIME>":
 		return patternMatcherPlaceholderDateTime
+	case "<W>":
+		return patternMatcherPlaceholderWord
 	default:
 		return patternMatcherPlaceholderUnknown
 	}
@@ -71,6 +75,8 @@ func (ph patternMatcherPlaceholder) String() string {
 		return "<DATE>"
 	case patternMatcherPlaceholderDateTime:
 		return "<DATETIME>"
+	case patternMatcherPlaceholderWord:
+		return "<W>"
 	default:
 		logger.Panicf("BUG: unexpected placeholder=%d", ph)
 		return ""
@@ -150,8 +156,14 @@ func (pm *patternMatcher) indexPatternStart(s string, offset int) int {
 	if firstSep := pm.separators[0]; firstSep != "" {
 		return strings.Index(s[offset:], firstSep)
 	}
-	if len(pm.placeholders) == 0 {
+
+	placeholders := pm.placeholders
+	if len(placeholders) == 0 {
 		return 0
+	}
+
+	if placeholders[0] == patternMatcherPlaceholderWord {
+		return indexWordStart(s, offset)
 	}
 	return indexNumStart(s, offset)
 }
@@ -194,6 +206,8 @@ func (ph patternMatcherPlaceholder) indexEnd(s string, start int) int {
 		return indexPlaceholderDateEnd(s, start)
 	case patternMatcherPlaceholderDateTime:
 		return indexPlaceholderDateTimeEnd(s, start)
+	case patternMatcherPlaceholderWord:
+		return indexPlaceholderWordEnd(s, start)
 	default:
 		logger.Panicf("BUG: unexpected patternMatcherPlaceholder=%d", ph)
 		return -1
@@ -276,6 +290,59 @@ func indexPlaceholderDateTimeEnd(s string, start int) int {
 	}
 
 	return end
+}
+
+func indexPlaceholderWordEnd(s string, start int) int {
+	// <W> is a word or a quoted string
+	if start >= len(s) {
+		return -1
+	}
+	if s[start] == '"' || s[start] == '\'' || s[start] == '`' {
+		return indexQuotedStringEnd(s, start)
+	}
+	return indexWordEnd(s, start)
+}
+
+func indexWordEnd(s string, start int) int {
+	for off, r := range s[start:] {
+		if !isTokenRune(r) {
+			return start + off
+		}
+	}
+	return len(s)
+}
+
+func indexWordStart(s string, offset int) int {
+	for off, r := range s[offset:] {
+		if isTokenRune(r) {
+			return offset + off
+		}
+	}
+	return -1
+}
+
+func indexQuotedStringEnd(s string, start int) int {
+	switch s[start] {
+	case '"', '`':
+		qp, err := strconv.QuotedPrefix(s[start:])
+		if err != nil {
+			return -1
+		}
+		return start + len(qp)
+	case '\'':
+		end := start + 1
+		for !strings.HasPrefix(s[end:], "'") {
+			_, _, tail, err := strconv.UnquoteChar(s[end:], '\'')
+			if err != nil {
+				return -1
+			}
+			end = len(s) - len(tail)
+		}
+		return end + 1
+	default:
+		logger.Panicf("BUG: unexpected starting char for quoted string: %c", s[start])
+		return -1
+	}
 }
 
 func indexTimezoneEnd(s string, start int) int {

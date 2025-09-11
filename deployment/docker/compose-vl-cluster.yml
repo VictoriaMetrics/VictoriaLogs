@@ -34,30 +34,30 @@ services:
     user: root
 
   vlinsert:
-    image: victoriametrics/victoria-logs:v1.32.0
+    image: victoriametrics/victoria-logs:v1.33.0
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
 
   vlselect-1:
-    image: victoriametrics/victoria-logs:v1.32.0
+    image: victoriametrics/victoria-logs:v1.33.0
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
   vlselect-2:
-    image: victoriametrics/victoria-logs:v1.32.0
+    image: victoriametrics/victoria-logs:v1.33.0
     command:
       - "--storageNode=vlstorage-1:9428"
       - "--storageNode=vlstorage-2:9428"
 
   vlstorage-1:
-    image: victoriametrics/victoria-logs:v1.32.0
+    image: victoriametrics/victoria-logs:v1.33.0
     command:
       - "--storageDataPath=/vlogs"
     volumes:
       - vldata-1:/vlogs
   vlstorage-2:
-    image: victoriametrics/victoria-logs:v1.32.0
+    image: victoriametrics/victoria-logs:v1.33.0
     command:
       - "--storageDataPath=/vlogs"
     volumes:

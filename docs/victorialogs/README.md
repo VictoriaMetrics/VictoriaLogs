@@ -9,19 +9,22 @@ sitemap:
 VictoriaLogs is [open source](https://github.com/VictoriaMetrics/VictoriaLogs/) user-friendly database for logs
 from [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/).
 
+## Features
+
 VictoriaLogs provides the following features:
 
 - It is resource-efficient and fast. It uses up to 30x less RAM and up to 15x less disk space than other solutions such as Elasticsearch and Grafana Loki.
   See [these benchmarks](#benchmarks) and [this article](https://itnext.io/how-do-open-source-solutions-for-logs-work-elasticsearch-loki-and-victorialogs-9f7097ecbc2f) for details.
-  See also [the post from a happy user, who replaced 27-node Elasticsearch with a single-node VictoriaLogs](https://aus.social/@phs/114583927679254536).
+  See also [the post from a happy user, who replaced 27-node Elasticsearch with a single-node VictoriaLogs](https://aus.social/@phs/114583927679254536),
+  [this post from happy users, who replaced Loki with VictoriaLogs](https://www.truefoundry.com/blog/victorialogs-vs-loki)
+  and [this post from a happy user who replaced grep with VictoriaLogs](https://chronicles.mad-scientist.club/tales/grepping-logs-remains-terrible/).
 - VictoriaLogs' capacity and performance scales linearly with the available resources (CPU, RAM, disk IO, disk space).
   It runs smoothly on Raspberry PI and on servers with hundreds of CPU cores and terabytes of RAM.
-  It can scale horizontally to many nodes in [cluster mode](https://docs.victoriametrics.com/victorialogs/cluster/).
+  It can scale horizontally to hundreds of nodes in [cluster mode](https://docs.victoriametrics.com/victorialogs/cluster/).
 - It can accept logs from popular log collectors. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
-- It is much easier to set up and operate compared to Elasticsearch and Grafana Loki, since it is basically zero-config.
+- It is much easier to set up and operate compared to Elasticsearch and Grafana Loki, since it is a single zero-config executable.
   See [these docs](https://docs.victoriametrics.com/victorialogs/quickstart/).
-- It provides easy yet powerful query language with full-text search capabilities across
-  all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- It provides easy yet powerful query language, which supports fast full-text search, fast advanced analytics and fast data extraction and transformation at query time.
   See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/).
 - It provides [built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) for logs' exploration.
 - It provides [Grafana plugin](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) for building arbitrary dashboards in Grafana.
@@ -35,6 +38,7 @@ VictoriaLogs provides the following features:
 - It supports live tailing for newly ingested logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing).
 - It supports selecting surrounding logs in front and after the selected logs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#stream_context-pipe).
 - It supports alerting - see [these docs](https://docs.victoriametrics.com/victorialogs/vmalert/).
+- It fits well [RUM](https://en.wikipedia.org/wiki/Real_user_monitoring) and [SIEM](https://en.wikipedia.org/wiki/Security_information_and_event_management) use cases.
 
 See also [articles about VictoriaLogs](https://docs.victoriametrics.com/victorialogs/articles/).
 
@@ -45,7 +49,8 @@ you can join it via [Slack Inviter](https://slack.victoriametrics.com/).
 See [quick start docs](https://docs.victoriametrics.com/victorialogs/quickstart/) for start working with VictoriaLogs.
 
 If you want playing with VictoriaLogs web UI and [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query language,
-then go to [VictoriaLogs demo playground](https://play-vmlogs.victoriametrics.com/) and to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
+then go to [VictoriaLogs demo playground](https://play-vmlogs.victoriametrics.com/) and
+to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
 
 ## Tuning
 
@@ -691,7 +696,7 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
   -search.maxQueryDuration duration
         The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryTimeRange duration
-        The maximum time range, which can be set in the query sent to querying APIs. Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#http-api
+        The maximum time range, which can be set in the query sent to querying APIs. Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits
   -search.maxQueueDuration duration
         The maximum time the search request waits for execution when -search.maxConcurrentRequests limit is reached; see also -search.maxQueryDuration (default 10s)
   -select.disable
@@ -759,12 +764,20 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Compression method for syslog messages received at the corresponding -syslog.listenAddr.udp. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.compressMethod.unix array
+        Compression method for syslog messages received at the corresponding -syslog.listenAddr.unix. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.decolorizeFields.tcp array
         Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.decolorizeFields.udp array
         Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.decolorizeFields.unix array
+        Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.extraFields.tcp array
@@ -775,6 +788,10 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Fields to add to logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.extraFields.unix array
+        Fields to add to logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.ignoreFields.tcp array
         Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
         Supports an array of values separated by comma or specified via multiple flags.
@@ -783,12 +800,20 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.ignoreFields.unix array
+        Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.listenAddr.tcp array
         Comma-separated list of TCP addresses to listen to for Syslog messages. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.listenAddr.udp array
-        Comma-separated list of UDP address to listen to for Syslog messages. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
+        Comma-separated list of UDP addresses to listen to for Syslog messages. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.listenAddr.unix array
+        Comma-separated list of Unix socket filepaths to listen to for Syslog messages. Filepaths may be prepended with 'unixgram:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.mtls array
@@ -807,12 +832,20 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.streamFields.unix array
+        Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.tenantID.tcp array
         TenantID for logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.tenantID.udp array
         TenantID for logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -syslog.tenantID.unix array
+        TenantID for logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -syslog.timezone string
@@ -843,12 +876,20 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Whether to use local timestamp instead of the original timestamp for the ingested syslog messages at the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps
         Supports array of values separated by comma or specified via multiple flags.
         Empty values are set to false.
+  -syslog.useLocalTimestamp.unix array
+        Whether to use local timestamp instead of the original timestamp for the ingested syslog messages at the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps
+        Supports array of values separated by comma or specified via multiple flags.
+        Empty values are set to false.
   -syslog.useRemoteIP.tcp array
         Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
         Supports array of values separated by comma or specified via multiple flags.
         Empty values are set to false.
   -syslog.useRemoteIP.udp array
         Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
+        Supports array of values separated by comma or specified via multiple flags.
+        Empty values are set to false.
+  -syslog.useRemoteIP.unix array
+        Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
         Supports array of values separated by comma or specified via multiple flags.
         Empty values are set to false.
   -tls array

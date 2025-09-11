@@ -1,6 +1,6 @@
 ---
 weight: 10
-title: Journald setup
+title: Journald Setup
 disableToc: true
 menu:
   docs:

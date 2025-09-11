@@ -206,7 +206,7 @@ func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
 	}
 
 	if !lex.isPrevRawToken(tokens...) {
-		return fmt.Errorf("missing whitespace or ':' between %q and %q; propbably, the whole string must be put into quotes", lex.prevRawToken, lex.token)
+		return fmt.Errorf("missing whitespace or ':' between %q and %q; probably, the whole string must be put into quotes", lex.prevRawToken, lex.token)
 	}
 
 	return nil
@@ -317,7 +317,7 @@ again:
 				return
 			}
 			b = utf8.AppendRune(b, ch)
-			size += len(s[size:]) - len(newTail)
+			size = len(s) - len(newTail)
 		}
 		size++
 		lex.token = string(b)
@@ -511,7 +511,7 @@ func (q *Query) AddFacetsPipe(limit, maxValuesPerField, maxValueLen int, keepCon
 // AddCountByTimePipe adds '| stats by (_time:step offset off, field1, ..., fieldN) count() hits' to the end of q.
 func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 	// Drop pipes from q, which modify or delete _time field, since they make impossible to calculate stats grouped by _time.
-	q.dropTimeModificationPipes()
+	q.dropPipesUnsafeForHits()
 
 	{
 		// add 'stats by (_time:step offset off, fields) count() hits'
@@ -541,15 +541,35 @@ func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 	}
 }
 
-// dropTimeModificationPipes drops pipes from q, which modify
-func (q *Query) dropTimeModificationPipes() {
+// dropPipesUnsafeForHits drops trailing pipes from q, which are unsafe
+// for calculating hits grouped by _time.
+func (q *Query) dropPipesUnsafeForHits() {
 	for i, p := range q.pipes {
-		if !p.canReturnLastNResults() {
+		if !isPipeSafeForHits(p) {
 			// Drop the rest of the pipes, including the current pipe,
 			// since it modified or deletes the _time field.
 			q.pipes = q.pipes[:i]
 			return
 		}
+	}
+}
+
+func isPipeSafeForHits(p pipe) bool {
+	if p.canReturnLastNResults() {
+		return true
+	}
+
+	switch t := p.(type) {
+	case *pipeUnion:
+		// Allow union pipes, but drop pipes unsafe for hits inside them.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/641
+		t.q.dropPipesUnsafeForHits()
+		return true
+	case *pipeJoin:
+		// Allow join pipes, since they do not drop _time field.
+		return true
+	default:
+		return false
 	}
 }
 
@@ -790,8 +810,7 @@ func (q *Query) AddPipeOffsetLimit(offset, limit uint64) {
 	q.mustAppendPipe(limitStr)
 
 	// optimize the query, so the `offset` and `limit` pipes could be joined with the preceding `sort` pipe.
-	q.pipes = optimizeSortOffsetPipes(q.pipes)
-	q.pipes = optimizeSortLimitPipes(q.pipes)
+	q.pipes = optimizeOffsetLimitPipes(q.pipes)
 }
 
 func (q *Query) mustAppendPipe(s string) {
@@ -808,8 +827,7 @@ func (q *Query) optimize() {
 }
 
 func (q *Query) optimizeNoSubqueries() {
-	q.pipes = optimizeSortOffsetPipes(q.pipes)
-	q.pipes = optimizeSortLimitPipes(q.pipes)
+	q.pipes = optimizeOffsetLimitPipes(q.pipes)
 	q.pipes = optimizeUniqLimitPipes(q.pipes)
 	q.pipes = optimizeFilterPipes(q.pipes)
 
@@ -1325,22 +1343,115 @@ func removeStarFilters(f filter) filter {
 	return f
 }
 
+func optimizeOffsetLimitPipes(pipes []pipe) []pipe {
+	for {
+		pipesLen := len(pipes)
+		pipes = optimizeOffsetLimitPipesInternal(pipes)
+		if len(pipes) == pipesLen {
+			return pipes
+		}
+	}
+}
+
+func optimizeOffsetLimitPipesInternal(pipes []pipe) []pipe {
+	// Replace '| offset X | limit Y' with '| limit X+Y | offset X'.
+	// This reduces the number of rows processed by remote storage.
+	// See: https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
+	for i := 0; i < len(pipes)-1; i++ {
+		po, ok := pipes[i].(*pipeOffset)
+		if !ok {
+			continue
+		}
+		pl, ok := pipes[i+1].(*pipeLimit)
+		if !ok {
+			continue
+		}
+
+		pl.limit += po.offset
+		pipes[i] = pl
+		pipes[i+1] = po
+	}
+
+	// Merge 'offset X | offset Y' into 'offset X+Y'.
+	i := 1
+	for i < len(pipes) {
+		po1, ok1 := pipes[i-1].(*pipeOffset)
+		po2, ok2 := pipes[i].(*pipeOffset)
+		if !ok1 || !ok2 {
+			i++
+			continue
+		}
+
+		po1.offset += po2.offset
+		pipes = append(pipes[:i], pipes[i+1:]...)
+	}
+
+	// Merge 'limit N | limit M' into 'limit min(N, M)'.
+	i = 1
+	for i < len(pipes) {
+		pl1, ok1 := pipes[i-1].(*pipeLimit)
+		pl2, ok2 := pipes[i].(*pipeLimit)
+		if !ok1 || !ok2 {
+			i++
+			continue
+		}
+
+		pl1.limit = min(pl1.limit, pl2.limit)
+		pipes = append(pipes[:i], pipes[i+1:]...)
+	}
+
+	// Replace '| limit X | offset Y' with 'limit 0' if Y >= X.
+	i = 1
+	for i < len(pipes) {
+		pl, ok1 := pipes[i-1].(*pipeLimit)
+		po, ok2 := pipes[i].(*pipeOffset)
+		if !ok1 || !ok2 || po.offset < pl.limit {
+			i++
+			continue
+		}
+
+		pl.limit = 0
+		pipes = append(pipes[:i], pipes[i+1:]...)
+	}
+
+	// Remove `offset 0`.
+	i = 0
+	for i < len(pipes) {
+		po, ok := pipes[i].(*pipeOffset)
+		if !ok || po.offset != 0 {
+			i++
+			continue
+		}
+		pipes = append(pipes[:i], pipes[i+1:]...)
+	}
+
+	// Merge '| sort ... | offset ... | limit ...' into '| sort ... offset ... limit ...'.
+	pipes = optimizeSortOffsetPipes(pipes)
+	pipes = optimizeSortLimitPipes(pipes)
+
+	return pipes
+}
+
 func optimizeSortOffsetPipes(pipes []pipe) []pipe {
 	// Merge 'sort ... | offset ...' into 'sort ... offset ...'
 	i := 1
 	for i < len(pipes) {
-		po, ok := pipes[i].(*pipeOffset)
-		if !ok {
+		ps, ok1 := pipes[i-1].(*pipeSort)
+		po, ok2 := pipes[i].(*pipeOffset)
+		if !ok1 || !ok2 {
 			i++
 			continue
 		}
-		ps, ok := pipes[i-1].(*pipeSort)
-		if !ok {
-			i++
+
+		if ps.limit > 0 && po.offset >= ps.limit {
+			pipes[i-1] = &pipeLimit{}
+			pipes = append(pipes[:i], pipes[i+1:]...)
 			continue
 		}
-		if ps.offset == 0 && ps.limit == 0 {
-			ps.offset = po.offset
+
+		ps.offset += po.offset
+		if ps.limit > 0 {
+			ps.limit -= po.offset
 		}
 		pipes = append(pipes[:i], pipes[i+1:]...)
 	}
@@ -1351,14 +1462,15 @@ func optimizeSortLimitPipes(pipes []pipe) []pipe {
 	// Merge 'sort ... | limit ...' into 'sort ... limit ...'
 	i := 1
 	for i < len(pipes) {
-		pl, ok := pipes[i].(*pipeLimit)
-		if !ok {
+		ps, ok1 := pipes[i-1].(*pipeSort)
+		pl, ok2 := pipes[i].(*pipeLimit)
+		if !ok1 || !ok2 {
 			i++
 			continue
 		}
-		ps, ok := pipes[i-1].(*pipeSort)
-		if !ok {
-			i++
+
+		if pl.limit == 0 {
+			pipes = append(pipes[:i-1], pipes[i:]...)
 			continue
 		}
 		if ps.limit == 0 || pl.limit < ps.limit {

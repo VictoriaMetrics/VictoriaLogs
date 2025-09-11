@@ -1,11 +1,11 @@
 ---
-weight: 6
+weight: 13
 title: FAQ
 menu:
   docs:
     identifier: "victorialogs-faq"
     parent: "victorialogs"
-    weight: 6
+    weight: 13
     title: FAQ
 tags:
   - logs
