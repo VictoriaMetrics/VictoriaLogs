@@ -9,11 +9,14 @@ import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
+import useFetchAppConfig from "../../hooks/useFetchAppConfig";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
   const { isMobile } = useDeviceDetect();
   const { pathname } = useLocation();
+
+  useFetchAppConfig();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {
