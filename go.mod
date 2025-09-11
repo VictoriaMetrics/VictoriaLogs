@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250903201027-a0a33f0ce1c2
 	github.com/VictoriaMetrics/easyproto v0.1.4
-	github.com/VictoriaMetrics/metrics v1.39.2-0.20250905023544-4f510cf29239
+	github.com/VictoriaMetrics/metrics v1.40.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
@@ -24,6 +24,6 @@ require (
 	github.com/valyala/gozstd v1.23.2 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 )
