@@ -24,7 +24,7 @@ For Grafana Loki suite it uses:
 
 - VictoriaLogs instance
 - vmsingle - port forwarded to `localhost:8428` to see UI
-- exporters for system metris
+- exporters for system metrics
 
 ELK suite uses [docker-compose-elk.yml](./docker-compose-elk.yml) with the following services:
 
@@ -54,7 +54,7 @@ Each filebeat than writes logs to elastic and VictoriaLogs via elasticsearch-com
 1. Download and unarchive logs by running:
 
 ```shell
-cd source_logs 
+cd source_logs
 bash download.sh
 ```
 
@@ -98,14 +98,13 @@ output.elasticsearch:
 4. Choose a suite to run.
 
    In order to run ELK suite use the following command:
-   ```
+   ```sh
    make docker-up-elk
    ```
    In order to run Loki suite use the following command:
-   ```
+   ```sh
    make docker-up-loki
    ```
-
 
 5. Navigate to `http://localhost:3000/` to see Grafana dashboards with resource usage
    comparison.
