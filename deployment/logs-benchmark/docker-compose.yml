@@ -3,7 +3,7 @@ version: "3"
 services:
   # Run `make package-victoria-logs` to build victoria-logs image
   vlogs:
-    image: docker.io/victoriametrics/victoria-logs:v1.27.0
+    image: docker.io/victoriametrics/victoria-logs:v1.33.1
     volumes:
       - vlogs:/vlogs
     ports:
@@ -46,7 +46,7 @@ services:
       - "--config=/config.yml"
 
   vmsingle:
-    image: victoriametrics/victoria-metrics:v1.109.0
+    image: victoriametrics/victoria-metrics:v1.125.1
     ports:
       - "8428:8428"
     command:
@@ -58,7 +58,7 @@ services:
       - ./vmsingle/promscrape.yml:/promscrape.yml
 
   grafana:
-    image: grafana/grafana:12.0.2
+    image: grafana/grafana:12.1.1
     depends_on: [vmsingle]
     ports:
       - 3000:3000
