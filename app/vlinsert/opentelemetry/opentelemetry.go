@@ -3,6 +3,7 @@ package opentelemetry
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
@@ -74,20 +75,38 @@ var (
 	requestProtobufDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/opentelemetry/v1/logs",format="protobuf"}`)
 )
 
+var (
+	exportLogsReqPool = sync.Pool{
+		New: func() any {
+			return &pb.ExportLogsServiceRequest{}
+		},
+	}
+	fieldsPool = sync.Pool{
+		New: func() any {
+			s := make([]logstorage.Field, 0)
+			return &s
+		},
+	}
+)
+
 func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields bool) error {
-	var req pb.ExportLogsServiceRequest
+	req := getExportLogsReq()
+	defer putExportLogsReq(req)
+
 	if err := req.UnmarshalProtobuf(data); err != nil {
 		errorsTotal.Inc()
 		return fmt.Errorf("cannot unmarshal request from %d bytes: %w", len(data), err)
 	}
 
-	var commonFields []logstorage.Field
+	commonFields := getFields()
+	defer putFields(commonFields)
+
 	for _, rl := range req.ResourceLogs {
-		commonFields = commonFields[:0]
-		commonFields = appendKeyValues(commonFields, rl.Resource.Attributes, "")
-		commonFieldsLen := len(commonFields)
+		*commonFields = (*commonFields)[:0]
+		*commonFields = appendKeyValues(*commonFields, rl.Resource.Attributes, "")
+		commonFieldsLen := len(*commonFields)
 		for _, sc := range rl.ScopeLogs {
-			commonFields = pushFieldsFromScopeLogs(&sc, commonFields[:commonFieldsLen], lmp, msgFields, useDefaultStreamFields)
+			*commonFields = pushFieldsFromScopeLogs(&sc, (*commonFields)[:commonFieldsLen], lmp, msgFields, useDefaultStreamFields)
 		}
 	}
 
@@ -151,4 +170,30 @@ func appendKeyValues(fields []logstorage.Field, kvs []*pb.KeyValue, parentField 
 		}
 	}
 	return fields
+}
+
+func getExportLogsReq() *pb.ExportLogsServiceRequest {
+	req := exportLogsReqPool.Get().(*pb.ExportLogsServiceRequest)
+	if req == nil {
+		return &pb.ExportLogsServiceRequest{}
+	}
+	return req
+}
+
+func putExportLogsReq(req *pb.ExportLogsServiceRequest) {
+	req.ResourceLogs = req.ResourceLogs[:0]
+	exportLogsReqPool.Put(req)
+}
+
+func getFields() *[]logstorage.Field {
+	value := fieldsPool.Get()
+	if value == nil {
+		return &[]logstorage.Field{}
+	}
+	return value.(*[]logstorage.Field)
+}
+
+func putFields(fields *[]logstorage.Field) {
+	*fields = (*fields)[:0]
+	fieldsPool.Put(fields)
 }
