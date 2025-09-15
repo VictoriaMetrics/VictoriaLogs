@@ -13,8 +13,8 @@ aliases:
 ---
 VictoriaLogs supports given below Telegraf outputs:
 
-- [Elasticsearch](#elasticsearch)
-- [HTTP JSON](#http)
+- [Elasticsearch](https://docs.victoriametrics.com/victorialogs/data-ingestion/telegraf/#elasticsearch)
+- [HTTP JSON](https://docs.victoriametrics.com/victorialogs/data-ingestion/telegraf/#http)
 
 ## Elasticsearch
 

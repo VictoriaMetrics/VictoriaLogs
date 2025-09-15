@@ -36,8 +36,8 @@ _time:5m | first 10 by (_time desc)
 
 See also:
 
-- [How to count the number of matching logs?](#how-to-count-the-number-of-matching-logs)
-- [How to return last N logs for the given query?](#how-to-return-last-n-logs-for-the-given-query)
+- [How to count the number of matching logs?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-count-the-number-of-matching-logs)
+- [How to return last N logs for the given query?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-return-last-n-logs-for-the-given-query)
 
 ## How to select logs with the given word in log message?
 
@@ -75,9 +75,9 @@ error _time:1h | sort by (_time)
 
 See also:
 
-- [How to select logs with all the given words in log message?](#how-to-select-logs-with-all-the-given-words-in-log-message)
-- [How to select logs with some of the given words in log message?](#how-to-select-logs-with-some-of-the-given-words-in-log-message)
-- [How to skip logs with the given word in log message?](#how-to-skip-logs-with-the-given-word-in-log-message)
+- [How to select logs with all the given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-all-the-given-words-in-log-message)
+- [How to select logs with some of the given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-some-of-the-given-words-in-log-message)
+- [How to skip logs with the given word in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-skip-logs-with-the-given-word-in-log-message)
 - [Filtering by phrase](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [Filtering by prefix](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter)
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
@@ -117,8 +117,8 @@ sorts the selected logs by [`_time` field](https://docs.victoriametrics.com/vict
 
 See also:
 
-- [How to select logs with all the given words in log message?](#how-to-select-logs-with-all-the-given-words-in-log-message)
-- [How to select logs with some of given words in log message?](#how-to-select-logs-with-some-of-the-given-words-in-log-message)
+- [How to select logs with all the given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-all-the-given-words-in-log-message)
+- [How to select logs with some of given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-some-of-the-given-words-in-log-message)
 - [Filtering by phrase](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [Filtering by prefix](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter)
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
@@ -161,8 +161,8 @@ error kubernetes _time:1h | sort by (_time)
 
 See also:
 
-- [How to select logs with some of given words in log message?](#how-to-select-logs-with-some-of-the-given-words-in-log-message)
-- [How to skip logs with the given word in log message?](#how-to-skip-logs-with-the-given-word-in-log-message)
+- [How to select logs with some of given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-some-of-the-given-words-in-log-message)
+- [How to skip logs with the given word in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-skip-logs-with-the-given-word-in-log-message)
 - [Filtering by phrase](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [Filtering by prefix](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter)
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
@@ -205,8 +205,8 @@ sorts the selected logs by [`_time` field](https://docs.victoriametrics.com/vict
 
 See also:
 
-- [How to select logs with all the given words in log message?](#how-to-select-logs-with-all-the-given-words-in-log-message)
-- [How to skip logs with the given word in log message?](#how-to-skip-logs-with-the-given-word-in-log-message)
+- [How to select logs with all the given words in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-with-all-the-given-words-in-log-message)
+- [How to skip logs with the given word in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-skip-logs-with-the-given-word-in-log-message)
 - [Filtering by phrase](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [Filtering by prefix](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter)
 - [Filtering by regular expression](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter)
@@ -249,8 +249,8 @@ by [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-fie
 
 See also:
 
-- [How to determine applications with the most logs?](#how-to-determine-applications-with-the-most-logs)
-- [How to skip logs with the given word in log message?](#how-to-skip-logs-with-the-given-word-in-log-message)
+- [How to determine applications with the most logs?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-determine-applications-with-the-most-logs)
+- [How to skip logs with the given word in log message?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-skip-logs-with-the-given-word-in-log-message)
 
 ## How to count the number of matching logs?
 
@@ -289,9 +289,9 @@ _time:5m | top 10 by (_stream)
 
 See also:
 
-- [How to filter out data after stats calculation?](#how-to-filter-out-data-after-stats-calculation)
-- [How to calculate the number of logs per the given interval?](#how-to-calculate-the-number-of-logs-per-the-given-interval)
-- [How to select logs from the given application instance?](#how-to-select-logs-from-the-given-application-instance)
+- [How to filter out data after stats calculation?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-filter-out-data-after-stats-calculation)
+- [How to calculate the number of logs per the given interval?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-calculate-the-number-of-logs-per-the-given-interval)
+- [How to select logs from the given application instance?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-logs-from-the-given-application-instance)
 
 ## How to parse JSON inside log message?
 
@@ -422,8 +422,8 @@ curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10'
 
 See also:
 
-- [How to select recently ingested logs?](#how-to-select-recently-ingested-logs)
-- [How to return last N logs for the given query?](#how-to-return-last-n-logs-for-the-given-query)
+- [How to select recently ingested logs?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-select-recently-ingested-logs)
+- [How to return last N logs for the given query?](https://docs.victoriametrics.com/victorialogs/logsql-examples/#how-to-return-last-n-logs-for-the-given-query)
 
 ## How to calculate the share of error logs to the total number of logs?
 

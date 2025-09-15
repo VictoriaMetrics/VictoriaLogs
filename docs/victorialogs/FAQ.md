@@ -79,7 +79,7 @@ See [this article](https://itnext.io/why-victorialogs-is-a-better-alternative-to
 ## What is the difference between VictoriaLogs and ClickHouse?
 
 ClickHouse is an extremely fast and efficient analytical database. It can be used for logs storage, analysis and processing.
-VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design ideas as ClickHouse](#how-does-victorialogs-work) for achieving high performance.
+VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design ideas as ClickHouse](https://docs.victoriametrics.com/victorialogs/faq/#how-does-victorialogs-work) for achieving high performance.
 
 - ClickHouse is good for logs if you know the set of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
   and the expected query types beforehand. Then you can create a table with a column per each log field, and use the most optimal settings for the table -
@@ -243,11 +243,11 @@ or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialo
 then make sure the selected time range covers the last day. Otherwise, the query above returns
 results on the intersection of the last day and the selected time range.
 
-See [why the log field occupies a lot of disk space](#why-the-log-field-occupies-a-lot-of-disk-space).
+See [why the log field occupies a lot of disk space](https://docs.victoriametrics.com/victorialogs/faq/#why-the-log-field-occupies-a-lot-of-disk-space).
 
 ## Why the log field occupies a lot of disk space?
 
-See [how to determine which log fields occupy the most of disk space](#how-to-determine-which-log-fields-occupy-the-most-of-disk-space).
+See [how to determine which log fields occupy the most of disk space](https://docs.victoriametrics.com/victorialogs/faq/#how-to-determine-which-log-fields-occupy-the-most-of-disk-space).
 Log field may occupy a lot of disk space if it contains values with many unique parts (aka "random" values).
 Such values do not compress well, so they occupy a lot of disk space. If you want reducing the amounts of occupied disk space,
 then either remove the given log field from the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs

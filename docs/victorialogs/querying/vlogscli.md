@@ -13,11 +13,11 @@ tags:
 `vlogsqcli` is an interactive command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
 It has the following features:
 
-- It supports scrolling and searching over query results in the same way as `less` command does - see [these docs](#scrolling-query-results).
+- It supports scrolling and searching over query results in the same way as `less` command does - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#scrolling-query-results).
 - It supports canceling long-running queries at any time via `Ctrl+C`.
-- It supports query history - see [these docs](#query-history).
-- It supports different formats for query results (JSON, logfmt, compact, etc.) - see [these docs](#output-modes).
-- It supports live tailing - see [these docs](#live-tailing).
+- It supports query history - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#query-history).
+- It supports different formats for query results (JSON, logfmt, compact, etc.) - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#output-modes).
+- It supports live tailing - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#live-tailing).
 
 This tool can be obtained from the linked release pages at the [changelog](https://docs.victoriametrics.com/victorialogs/changelog/)
 or from docker images at [Docker Hub](https://hub.docker.com/r/victoriametrics/vlogscli/tags) and [Quay](https://quay.io/repository/victoriametrics/vlogscli?tab=tags).
@@ -85,10 +85,10 @@ then just wrap it into quotes: `"q"` or `'q'`).
 
 See also:
 
-- [output modes](#output-modes)
-- [query history](#query-history)
-- [scrolling query results](#scrolling-query-results)
-- [live tailing](#live-tailing)
+- [output modes](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#output-modes)
+- [query history](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#query-history)
+- [scrolling query results](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#scrolling-query-results)
+- [live tailing](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#live-tailing)
 
 ## Scrolling query results
 
@@ -121,7 +121,7 @@ in real time:
 By default `vlogscli` derives [the URL for live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) from the `-datasource.url` command-line flag
 by replacing `/query` with `/tail` at the end of `-datasource.url`. The URL for live tailing can be specified explicitly via `-tail.url` command-line flag.
 
-Live tailing can show query results in different formats - see [these docs](#output-modes).
+Live tailing can show query results in different formats - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#output-modes).
 
 ## Query history
 
@@ -149,7 +149,7 @@ Fields in every JSON object are sorted in alphabetical order. This simplifies lo
   This mode shows field values as is if the response contains a single field
   (for example if [`fields _msg` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) is used)
   plus optional [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
-  See also [docs about ANSI colors](#ansi-colors).
+  See also [docs about ANSI colors](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#ansi-colors).
 - [Logfmt output](https://brandur.org/logfmt). Type `\logfmt` and press `enter` for this mode.
 
 ## Wrapping long lines
@@ -162,7 +162,7 @@ Type `\wrap_long_lines` in the prompt and press enter in order to toggle automat
 
 ## ANSI colors
 
-By default `vlogscli` doesn't display colored text in the compact [output mode](#output-modes) if the returned logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
+By default `vlogscli` doesn't display colored text in the compact [output mode](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#output-modes) if the returned logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
 It shows the ANSI color codes instead. Type `\enable_colors` for enabling colored text. Type `\disable_color` for disabling colored text.
 
 ANSI colors make harder analyzing the logs, so it is recommended stripping ANSI colors at data ingestion stage
@@ -178,7 +178,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ing
 - `-tlsKeyFile` - optional path to client-side TLS certificate key to use when connecting to the `-datasource.url`.
 - `-tlsServerName` -  optional TLS server name to use for connections to the `-datasource.url`. By default, the server name from `-datasource.url` is used.
 
-See also [auth options](#auth-options).
+See also [auth options](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#auth-options).
 
 ## Auth options
 
@@ -191,7 +191,7 @@ See also [auth options](#auth-options).
 The `-bearerToken` and `-password` command-line flags may refer local files or remote files via http(s). In this case the corresponding value of the flag is read from the file.
 For example, `-bearerToken=file:///abs/path/to/file`, `-bearerToken=file://./relative/path/to/file`, `-bearerToken=http://host/path` or `-bearerToken=https://host/path`.
 
-See also [TLS options](#tls-options).
+See also [TLS options](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#tls-options).
 
 ## Command-line flags
 

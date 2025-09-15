@@ -61,7 +61,7 @@ and then pushes the resulting rows to the next stage. This simplifies reading an
 to the end in order to understand what does it do at every stage.
 
 LogsQL pipes cover all the functionality from SQL: aggregations, calculations, transformations, subqueries, joins, post-filters, sorting, etc.
-See the [conversion rules](#conversion-rules) on how to convert SQL to LogsQL.
+See the [conversion rules](https://docs.victoriametrics.com/victorialogs/sql-to-logsql/#conversion-rules) on how to convert SQL to LogsQL.
 
 ## conversion rules
 

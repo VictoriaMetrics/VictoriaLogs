@@ -21,17 +21,17 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 ## Table of Contents
 
-- [HTTP Request Metrics](#http-request-metrics)
-- [Data Ingestion Metrics](#data-ingestion-metrics)
-- [Storage System Metrics](#storage-system-metrics)
-- [Merge Operation Metrics](#merge-operation-metrics)
-- [Query Performance Metrics](#query-performance-metrics)
-- [Concurrency and Resource Metrics](#concurrency-and-resource-metrics)
-- [Stream and Index Metrics](#stream-and-index-metrics)
-- [System Resource Metrics](#system-resource-metrics)
-- [Cluster Remote Operation Metrics](#cluster-remote-operation-metrics)
-- [Specialized Metrics](#specialized-metrics)
-- [Error and Network Metrics](#error-and-network-metrics)
+- [HTTP Request Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#http-request-metrics)
+- [Data Ingestion Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#data-ingestion-metrics)
+- [Storage System Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#storage-system-metrics)
+- [Merge Operation Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#merge-operation-metrics)
+- [Query Performance Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#query-performance-metrics)
+- [Concurrency and Resource Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#concurrency-and-resource-metrics)
+- [Stream and Index Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#stream-and-index-metrics)
+- [System Resource Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#system-resource-metrics)
+- [Cluster Remote Operation Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#cluster-remote-operation-metrics)
+- [Specialized Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#specialized-metrics)
+- [Error and Network Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#error-and-network-metrics)
 
 ## HTTP Request Metrics
 
@@ -183,11 +183,11 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 ### vl_storage_per_query_values_read_bytes
 **Type:** Histogram
-**Description:** Bytes read from disk for log field values during query execution. The query engine reads compressed log values from disk to match search filters. Higher values suggest queries are accessing log fields, which occupy a lot of disk space. See also [`vl_storage_per_query_uncompressed_values_processed_bytes`](#vl_storage_per_query_uncompressed_values_processed_bytes) and [`vl_storage_per_query_read_values`](#vl_storage_per_query_read_values).
+**Description:** Bytes read from disk for log field values during query execution. The query engine reads compressed log values from disk to match search filters. Higher values suggest queries are accessing log fields, which occupy a lot of disk space. See also [`vl_storage_per_query_uncompressed_values_processed_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_uncompressed_values_processed_bytes) and [`vl_storage_per_query_read_values`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_values).
 
 ### vl_storage_per_query_timestamps_read_bytes
 **Type:** Histogram
-**Description:** Bytes read from disk for `_time` field during query execution. See also [`vl_storage_per_query_read_timestamps`](#vl_storage_per_query_read_timestamps).
+**Description:** Bytes read from disk for `_time` field during query execution. See also [`vl_storage_per_query_read_timestamps`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_timestamps).
 
 ### vl_storage_per_query_bloom_filters_read_bytes
 **Type:** Histogram
@@ -207,23 +207,23 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 ### vl_storage_per_query_processed_blocks
 **Type:** Histogram
-**Description:** The number of data blocks processed during query execution. This counts all the blocks that pass initial filtering for further query processing. High values suggest queries are scanning many blocks and may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter). See also [`vl_storage_per_query_processed_rows`](#vl_storage_per_query_processed_rows).
+**Description:** The number of data blocks processed during query execution. This counts all the blocks that pass initial filtering for further query processing. High values suggest queries are scanning many blocks and may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter). See also [`vl_storage_per_query_processed_rows`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_processed_rows).
 
 ### vl_storage_per_query_processed_rows
 **Type:** Histogram
-**Description:** The number of log entries processed during query execution. This counts all the rows that pass initial filtering for further query processing. High values suggest queries are scanning many rows and may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter). See also [`vl_storage_per_query_processed_blocks`](#vl_storage_per_query_processed_blocks).
+**Description:** The number of log entries processed during query execution. This counts all the rows that pass initial filtering for further query processing. High values suggest queries are scanning many rows and may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter). See also [`vl_storage_per_query_processed_blocks`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_processed_blocks).
 
 ### vl_storage_per_query_read_values
 **Type:** Histogram
-**Description:** The number of field values read during query execution. Select only the needed fields with the [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) in order to reduce the number of values read during query. See also [`vl_storage_per_query_values_read_bytes`](#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_uncompressed_values_processed_bytes`](#vl_storage_per_query_uncompressed_values_processed_bytes).
+**Description:** The number of field values read during query execution. Select only the needed fields with the [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) in order to reduce the number of values read during query. See also [`vl_storage_per_query_values_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_uncompressed_values_processed_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_uncompressed_values_processed_bytes).
 
 ### vl_storage_per_query_read_timestamps
 **Type:** Histogram
-**Description:** The number of timestamps read during query execution. See also [`vl_storage_per_query_timestamps_read_bytes`](#vl_storage_per_query_timestamps_read_bytes)
+**Description:** The number of timestamps read during query execution. See also [`vl_storage_per_query_timestamps_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_timestamps_read_bytes)
 
 ### vl_storage_per_query_uncompressed_values_processed_bytes
 **Type:** Histogram
-**Description:** Uncompressed bytes processed when reading field values during query exection. See also [`vl_storage_per_query_values_read_bytes`](#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_read_values`](#vl_storage_per_query_read_values).
+**Description:** Uncompressed bytes processed when reading field values during query exection. See also [`vl_storage_per_query_values_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_read_values`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_values).
 
 
 ## Concurrency and Resource Metrics

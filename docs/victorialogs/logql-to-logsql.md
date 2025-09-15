@@ -16,7 +16,7 @@ query language. Both languages are optimized for querying logs. The docs below s
 ## Data model
 
 Both Loki and VictoriaLogs support log streams - these are timestamp-ordered streams of logs, where every stream may have its own set of labels. These labels can be used
-in [log stream selectors](#log-stream-selector) for quickly narrowing down the amounts of logs for further processing by the query.
+in [log stream selectors](https://docs.victoriametrics.com/victorialogs/logql-to-logsql/#log-stream-selector) for quickly narrowing down the amounts of logs for further processing by the query.
 
 The main difference is that VictoriaLogs is optimized for structured logs with big number of labels (aka [wide events](https://jeremymorrell.dev/blog/a-practitioners-guide-to-wide-events/)).
 Hundreds of labels per every log entry is OK for VictoriaLogs.
@@ -160,7 +160,7 @@ Such a query can be replaced with `{...} | unpack_logmt` at VictoriaLogs. See [t
 
 It is recommended parsing logfmt-formatted structured logs before ingesting them into VictoriaLogs, so log labels are stored separately. VictoriaLogs is optimized for storing logs
 with big number of labels (fields), and every such field may contain arbitrary big number of unique values (e.g. VictoriaLogs works great with high-cardinality labels).
-See [JSON parser](#json-parser) docs for more details.
+See [JSON parser](https://docs.victoriametrics.com/victorialogs/logql-to-logsql/#json-parser) docs for more details.
 
 ## Pattern parser
 
@@ -177,14 +177,14 @@ Such a query can be replaced with `{...} | extract_regexp "..."` at VictoriaLogs
 Loki provides the ability to format log lines with the `{...} | line_format "..."` syntax according to [these docs](https://grafana.com/docs/loki/latest/query/log_queries/#line-format-expression).
 Such a query can be replaced with `{...} | format "..."` at VictoriaLogs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe).
 
-Note that VictoriaLogs uses `<label>` format syntax identical to [pattern parser](#pattern-parser) syntax instead of `{{.label}}` format syntax from Loki.
+Note that VictoriaLogs uses `<label>` format syntax identical to [pattern parser](https://docs.victoriametrics.com/victorialogs/logql-to-logsql/#pattern-parser) syntax instead of `{{.label}}` format syntax from Loki.
 
 ## Label formatting
 
 Loki provides the ability to format log labels with the `{...} | label_format label_name="..."` syntax according to [these docs](https://grafana.com/docs/loki/latest/query/log_queries/#labels-format-expression).
 Such a query can be replaced with `{...} | format  "..." as label_name` at VictoriaLogs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe).
 
-Note that VictoriaLogs uses `<label>` format syntax identical to [pattern parser](#pattern-parser) syntax instead of `{{.label}}` format syntax from Loki.
+Note that VictoriaLogs uses `<label>` format syntax identical to [pattern parser](https://docs.victoriametrics.com/victorialogs/logql-to-logsql/#pattern-parser) syntax instead of `{{.label}}` format syntax from Loki.
 
 ## Dropping labels
 

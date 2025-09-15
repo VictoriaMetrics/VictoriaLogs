@@ -38,8 +38,8 @@ The following command starts VictoriaLogs, which accepts logs in Syslog format a
 
 VictoriaLogs can accept logs from the following syslog collectors:
 
-- [Rsyslog](https://www.rsyslog.com/). See [these docs](#rsyslog).
-- [Syslog-ng](https://www.syslog-ng.com/). See [these docs](#syslog-ng).
+- [Rsyslog](https://www.rsyslog.com/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#rsyslog).
+- [Syslog-ng](https://www.syslog-ng.com/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#syslog-ng).
 
 Multiple logs in Syslog format can be ingested via a single TCP connection or via a single UDP packet - just put every log on a separate line
 and delimit them with `\n` char.
@@ -47,10 +47,10 @@ and delimit them with `\n` char.
 VictoriaLogs automatically extracts the following [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 from the received Syslog lines:
 
-- [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) - log timestamp. See also [log timestamps](#log-timestamps)
+- [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) - log timestamp. See also [log timestamps](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps)
 - [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) - the `MESSAGE` field from the supported syslog formats above
 - `hostname`, `app_name` and `proc_id` - for unique identification of [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-  It is possible to change the list of fields for log streams - see [these docs](#stream-fields).
+  It is possible to change the list of fields for log streams - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields).
 - `level` - string representation of the log level according to the `<PRI>` field value
 - `priority`, `facility` and `severity` - these fields are extracted from `<PRI>` field
 - `facility_keyword` - string representation of the `facility` field according to [these docs](https://en.wikipedia.org/wiki/Syslog#Facility)
@@ -77,15 +77,15 @@ curl http://localhost:9428/select/logsql/query -d 'query=_time:5m'
 
 See also:
 
-- [Log timestamps](#log-timestamps)
-- [Security](#security)
-- [Compression](#compression)
-- [Multitenancy](#multitenancy)
-- [Stream fields](#stream-fields)
-- [Dropping fields](#dropping-fields)
-- [Decolorizing fields](#decolorizing-fields)
-- [Adding extra fields](#adding-extra-fields)
-- [Capturing remote ip address](#capturing-remote-ip-address)
+- [Log timestamps](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps)
+- [Security](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security)
+- [Compression](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression)
+- [Multitenancy](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy)
+- [Stream fields](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields)
+- [Dropping fields](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields)
+- [Decolorizing fields](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields)
+- [Adding extra fields](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields)
+- [Capturing remote ip address](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address)
 - [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
@@ -127,7 +127,7 @@ starts VictoriaLogs, which accepts TLS-encrypted syslog messages at TCP port 651
 ./victoria-logs -syslog.listenAddr.tcp=:6514 -syslog.tls -syslog.tlsCertFile=/path/to/tls/cert -syslog.tlsKeyFile=/path/to/tls/key
 ```
 
-See also [mTLS docs](#mtls).
+See also [mTLS docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#mtls).
 
 ### mTLS
 
@@ -234,8 +234,8 @@ For example, the following command starts VictoriaLogs, which captures remote IP
 
 ## Multiple configs
 
-VictoriaLogs can accept syslog messages via multiple TCP and UDP ports with individual configurations for [log timestamps](#log-timestamps), [compression](#compression), [security](#security)
-and [multitenancy](#multitenancy). Specify multiple command-line flags for this. For example, the following command starts VictoriaLogs,
+VictoriaLogs can accept syslog messages via multiple TCP and UDP ports with individual configurations for [log timestamps](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps), [compression](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression), [security](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security)
+and [multitenancy](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy). Specify multiple command-line flags for this. For example, the following command starts VictoriaLogs,
 which accepts gzip-compressed syslog messages via TCP port 514 at localhost interface and stores them to [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) `123:0`,
 plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them to [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) `567:0`:
 

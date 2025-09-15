@@ -46,8 +46,8 @@ The ingested log entries can be queried according to [these docs](https://docs.v
 
 VictoriaLogs supports receiving logs from the following OpenTelemetry collectors:
 
-* [Elasticsearch](#elasticsearch)
-* [OpenTelemetry](#opentelemetry)
+* [Elasticsearch](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#elasticsearch)
+* [OpenTelemetry](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#opentelemetry)
 
 ### Elasticsearch
 

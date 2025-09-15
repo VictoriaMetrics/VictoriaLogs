@@ -16,7 +16,7 @@ aliases:
 ## Data model
 
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) works with both structured and unstructured logs.
-Every log entry must contain at least [log message field](#message-field). Arbitrary number of additional `key=value` fields can be added to the log entry.
+Every log entry must contain at least [log message field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). Arbitrary number of additional `key=value` fields can be added to the log entry.
 A single log entry can be expressed as a single-level [JSON](https://www.json.org/json-en.html) object with string keys and string values.
 For example:
 
@@ -32,7 +32,7 @@ For example:
 ```
 
 Empty values are treated the same as non-existing values. For example, the following log entries are equivalent,
-since they have only one identical non-empty field - [`_msg`](#message-field):
+since they have only one identical non-empty field - [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
 ```json
 {
@@ -113,15 +113,15 @@ Unicode chars must be encoded with [UTF-8](https://en.wikipedia.org/wiki/UTF-8) 
 VictoriaLogs automatically indexes all the fields in all the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs.
 This enables [full-text search](https://docs.victoriametrics.com/victorialogs/logsql/) across all the fields.
 
-VictoriaLogs supports the following special fields additionally to arbitrary [other fields](#other-fields):
+VictoriaLogs supports the following special fields additionally to arbitrary [other fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#other-fields):
 
-- [`_msg` field](#message-field)
-- [`_time` field](#time-field)
-- [`_stream` and `_stream_id` fields](#stream-fields)
+- [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+- [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+- [`_stream` and `_stream_id` fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
 
 ### Message field
 
-Every ingested [log entry](#data-model) must contain at least a `_msg` field with the actual log message. For example, this is the minimal
+Every ingested [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) must contain at least a `_msg` field with the actual log message. For example, this is the minimal
 log entry for VictoriaLogs:
 
 ```json
@@ -140,7 +140,7 @@ via `-defaultMsgValue` command-line flag.
 
 ### Time field
 
-The ingested [log entries](#data-model) may contain `_time` field with the timestamp of the ingested log entry.
+The ingested [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) may contain `_time` field with the timestamp of the ingested log entry.
 This field must be in one of the following formats:
 
 - [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) or [RFC3339](https://www.rfc-editor.org/rfc/rfc3339).
@@ -151,7 +151,7 @@ This field must be in one of the following formats:
 - Unix timestamp in seconds, milliseconds, microseconds or nanoseconds. For example, `1686026893` (seconds), `1686026893735` (milliseconds),
   `1686026893735321` (microseconds) or `1686026893735321098` (nanoseconds).
 
-For example, the following [log entry](#data-model) contains valid timestamp with millisecond precision in the `_time` field:
+For example, the following [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) contains valid timestamp with millisecond precision in the `_time` field:
 
 ```json
 {
@@ -172,7 +172,7 @@ the search to the selected time range.
 
 ### Stream fields
 
-Some [structured logging](#data-model) fields may uniquely identify the application instance, which generates logs.
+Some [structured logging](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) fields may uniquely identify the application instance, which generates logs.
 This may be either a single field such as `instance="host123:456"` or a set of fields such as
 `{datacenter="...", env="...", job="...", instance="..."}` or
 `{kubernetes.namespace="...", kubernetes.node.name="...", kubernetes.pod.name="...", kubernetes.container.name="..."}`.
@@ -224,7 +224,7 @@ per-container logs into distinct streams.
 
 #### How to determine which fields must be associated with log streams?
 
-[Log streams](#stream-fields) must contain [fields](#data-model), which uniquely identify the application instance, which generates logs.
+[Log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) must contain [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model), which uniquely identify the application instance, which generates logs.
 For example, `container`, `instance` and `host` are good candidates for stream fields.
 
 Additional fields may be added to log streams if they **remain constant during application instance lifetime**.
@@ -234,15 +234,15 @@ makes sense if you are going to use these fields during search and want speeding
 There is **no need to add all the constant fields to log streams**, since this may increase resource usage during data ingestion and querying.
 
 **Never add non-constant fields to streams if these fields may change with every log entry of the same stream**.
-For example, `ip`, `user_id` and `trace_id` **must never be associated with log streams**, since this may lead to [high cardinality issues](#high-cardinality).
+For example, `ip`, `user_id` and `trace_id` **must never be associated with log streams**, since this may lead to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
 
 #### High cardinality
 
-Some fields in the [ingested logs](#data-model) may contain big number of unique values across log entries.
+Some fields in the [ingested logs](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) may contain big number of unique values across log entries.
 For example, fields with names such as `ip`, `user_id` or `trace_id` tend to contain big number of unique values.
-VictoriaLogs works perfectly with such fields unless they are associated with [log streams](#stream-fields).
+VictoriaLogs works perfectly with such fields unless they are associated with [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
-**Never** associate high-cardinality fields with [log streams](#stream-fields), since this may lead to the following issues:
+**Never** associate high-cardinality fields with [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields), since this may lead to the following issues:
 
 - Performance degradation during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
   and [querying](https://docs.victoriametrics.com/victorialogs/querying/)
@@ -255,13 +255,13 @@ VictoriaLogs exposes `vl_streams_created_total` [metric](https://docs.victoriame
 which shows the number of created streams since the last VictoriaLogs restart. If this metric grows at a rapid rate
 during long period of time, then there are high chances of high cardinality issues mentioned above.
 VictoriaLogs can log all the newly registered streams when `-logNewStreams` command-line flag is passed to it.
-This can help narrowing down and eliminating high-cardinality fields from [log streams](#stream-fields).
+This can help narrowing down and eliminating high-cardinality fields from [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
 ### Other fields
 
-Every ingested log entry may contain arbitrary number of [fields](#data-model) additionally to [`_msg`](#message-field) and [`_time`](#time-field).
+Every ingested log entry may contain arbitrary number of [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) additionally to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 For example, `level`, `ip`, `user_id`, `trace_id`, etc. Such fields can be used for simplifying and optimizing [search queries](https://docs.victoriametrics.com/victorialogs/logsql/).
-It is usually faster to search over a dedicated `trace_id` field instead of searching for the `trace_id` inside long [log message](#message-field).
+It is usually faster to search over a dedicated `trace_id` field instead of searching for the `trace_id` inside long [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 E.g. the `trace_id:="XXXX-YYYY-ZZZZ"` query usually works faster than the `_msg:"trace_id=XXXX-YYYY-ZZZZ"` query.
 
 See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/) for more details.
