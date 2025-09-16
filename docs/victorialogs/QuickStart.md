@@ -23,10 +23,10 @@ before you start working with VictoriaLogs.
 
 There are the following options exist:
 
-- [To run pre-built binaries](#pre-built-binaries)
-- [To run Docker image](#docker-image)
-- [To run in Kubernetes with Helm charts](#helm-charts)
-- [To build VictoriaLogs from source code](#building-from-source-code)
+- [To run pre-built binaries](https://docs.victoriametrics.com/victorialogs/quick-start/#pre-built-binaries)
+- [To run Docker image](https://docs.victoriametrics.com/victorialogs/quick-start/#docker-image)
+- [To run in Kubernetes with Helm charts](https://docs.victoriametrics.com/victorialogs/quick-start/#helm-charts)
+- [To build VictoriaLogs from source code](https://docs.victoriametrics.com/victorialogs/quick-start/#building-from-source-code)
 
 ### Pre-built binaries
 
@@ -49,7 +49,7 @@ the needed indexes during [data ingestion](https://docs.victoriametrics.com/vict
 
 See also:
 
-- [How to configure VictoriaLogs](#how-to-configure-victorialogs)
+- [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quick-start/#how-to-configure-victorialogs)
 - [How to ingest logs into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/)
 
@@ -65,15 +65,15 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
 
 See also:
 
-- [How to configure VictoriaLogs](#how-to-configure-victorialogs)
+- [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quick-start/#how-to-configure-victorialogs)
 - [How to ingest logs into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/)
 
 ### Helm charts
 
 You can run VictoriaLogs in Kubernetes environment
-with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts.
+with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/)
+or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) helm charts.
 
 ### Building from source code
 
@@ -121,7 +121,7 @@ This will build `victoria-logs-prod` executable inside the `bin` folder.
 
 See also:
 
-- [How to configure VictoriaLogs](#how-to-configure-victorialogs)
+- [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quick-start/#how-to-configure-victorialogs)
 - [How to ingest logs into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/)
 
@@ -165,6 +165,6 @@ Docker-compose demos that integrate VictoriaLogs and various log collectors:
 - [Vector demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/vector)
 - [Promtail demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/promtail)
 
-You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victorialogs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victorialogs-cluster/) helm charts as a demo for running Vector
+You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/)
+or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) helm charts as a demo for running Vector
 in Kubernetes with VictoriaLogs.

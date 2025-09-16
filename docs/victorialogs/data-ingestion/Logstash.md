@@ -14,8 +14,8 @@ aliases:
 ---
 VictoriaLogs supports given below Logstash outputs:
 
-- [Elasticsearch](#elasticsearch)
-- [HTTP JSON](#http)
+- [Elasticsearch](https://docs.victoriametrics.com/victorialogs/data-ingestion/logstash/#elasticsearch)
+- [HTTP JSON](https://docs.victoriametrics.com/victorialogs/data-ingestion/logstash/#http)
 
 ## Elasticsearch
 

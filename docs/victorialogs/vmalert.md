@@ -33,11 +33,11 @@ Run vmalert with the following settings:
 ```
 
 > Note: By default, vmalert assumes all configured rules have `prometheus` type and will validate them accordingly.
-> For rules in [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) specify `type: vlogs` on [Group level](#groups).
+> For rules in [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) specify `type: vlogs` on [Group level](https://docs.victoriametrics.com/victorialogs/vmalert/#groups).
 > Or set `-rule.defaultRuleType=vlogs` cmd-line flag to change the default rule type.
 
 Each `-rule` file may contain arbitrary number of [groups](https://docs.victoriametrics.com/victoriametrics/vmalert/#groups).
-See examples in [Groups](#groups) section. See the full list of configuration flags and their descriptions in [configuration](#configuration) section.
+See examples in [Groups](https://docs.victoriametrics.com/victorialogs/vmalert/#groups) section. See the full list of configuration flags and their descriptions in [configuration](https://docs.victoriametrics.com/victorialogs/vmalert/#configuration) section.
 
 With configuration example above, vmalert will perform the following interactions:
 ![vmalert](vmalert_victorialogs.webp)
@@ -170,7 +170,7 @@ groups:
            description: "Connection from address {{$labels.ip}} has {{$value}}% failed requests in last 10 minutes"
 ```
 
-_Please note, vmalert doesn't support [backfilling](#rules-backfilling) for rules with a customized time filter now. (Might be added in future)._
+_Please note, vmalert doesn't support [backfilling](https://docs.victoriametrics.com/victorialogs/vmalert/#rules-backfilling) for rules with a customized time filter now. (Might be added in future)._
 
 ## Rules backfilling
 

@@ -15,8 +15,8 @@ aliases:
 
 VictoriaLogs can accept logs from [Vector](https://vector.dev/) via the following protocols:
 
-- Elasticsearch - see [these docs](#elasticsearch)
-- HTTP JSON - see [these docs](#http)
+- Elasticsearch - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/vector/#elasticsearch)
+- HTTP JSON - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/vector/#http)
 
 ## Elasticsearch
 

@@ -14,7 +14,7 @@ from [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/).
 VictoriaLogs provides the following features:
 
 - It is resource-efficient and fast. It uses up to 30x less RAM and up to 15x less disk space than other solutions such as Elasticsearch and Grafana Loki.
-  See [these benchmarks](#benchmarks) and [this article](https://itnext.io/how-do-open-source-solutions-for-logs-work-elasticsearch-loki-and-victorialogs-9f7097ecbc2f) for details.
+  See [these benchmarks](https://docs.victoriametrics.com/victorialogs/#benchmarks) and [this article](https://itnext.io/how-do-open-source-solutions-for-logs-work-elasticsearch-loki-and-victorialogs-9f7097ecbc2f) for details.
   See also [the post from a happy user, who replaced 27-node Elasticsearch with a single-node VictoriaLogs](https://aus.social/@phs/114583927679254536),
   [this post from happy users, who replaced Loki with VictoriaLogs](https://www.truefoundry.com/blog/victorialogs-vs-loki)
   and [this post from a happy user who replaced grep with VictoriaLogs](https://chronicles.mad-scientist.club/tales/grepping-logs-remains-terrible/).
@@ -33,7 +33,7 @@ VictoriaLogs provides the following features:
   See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details.
 - It support [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with high cardinality (e.g. high number of unique values) such as `trace_id`, `user_id` and `ip`.
 - It is optimized for logs with hundreds of fields (aka [`wide events`](https://jeremymorrell.dev/blog/a-practitioners-guide-to-wide-events/)).
-- It supports multitenancy - see [these docs](#multitenancy).
+- It supports multitenancy - see [these docs](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 - It supports out-of-order logs' ingestion aka backfilling.
 - It supports live tailing for newly ingested logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing).
 - It supports selecting surrounding logs in front and after the selected logs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#stream_context-pipe).
@@ -110,7 +110,7 @@ For example, the following command starts VictoriaLogs with the retention of 8 w
 /path/to/victoria-logs -retentionPeriod=8w
 ```
 
-See also [retention by disk space usage](#retention-by-disk-space-usage).
+See also [retention by disk space usage](https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage).
 
 VictoriaLogs stores the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs in per-day partition directories.
 It automatically drops partition directories outside the configured retention.
@@ -143,8 +143,8 @@ VictoriaLogs can be configured to automatically drop older per-day partitions ba
 ### Absolute disk space limit
 
 Use the `-retention.maxDiskSpaceUsageBytes` command-line flag to set a fixed threshold. VictoriaLogs will drop old per-day partitions
-if the total size of data at [`-storageDataPath` directory](#storage) becomes bigger than the specified limit.
-For example, the following command starts VictoriaLogs, which drops old per-day partitions if the total [storage](#storage) size becomes bigger than `100GiB`:
+if the total size of data at [`-storageDataPath` directory](https://docs.victoriametrics.com/victorialogs/#storage) becomes bigger than the specified limit.
+For example, the following command starts VictoriaLogs, which drops old per-day partitions if the total [storage](https://docs.victoriametrics.com/victorialogs/#storage) size becomes bigger than `100GiB`:
 
 ```sh
 /path/to/victoria-logs -retention.maxDiskSpaceUsageBytes=100GiB
@@ -153,7 +153,7 @@ For example, the following command starts VictoriaLogs, which drops old per-day 
 ### Percentage-based disk space limit
 
 Use the `-retention.maxDiskUsagePercent` command-line flag to set a dynamic threshold based on the filesystem's total capacity.
-VictoriaLogs will drop old per-day partitions if the filesystem containing the [`-storageDataPath` directory](#storage) exceeds the specified percentage usage.
+VictoriaLogs will drop old per-day partitions if the filesystem containing the [`-storageDataPath` directory](https://docs.victoriametrics.com/victorialogs/#storage) exceeds the specified percentage usage.
 For example, the following command starts VictoriaLogs, which drops old per-day partitions if the filesystem usage exceeds 80%:
 
 ```sh
@@ -173,7 +173,7 @@ VictoriaLogs keeps at least two last days of data in order to guarantee that the
 This means that the total disk space usage may exceed the configured threshold if the size of the last two days of data
 exceeds the limit.
 
-The [`-retentionPeriod`](#retention) is applied independently to the disk space usage limits. This means that
+The [`-retentionPeriod`](https://docs.victoriametrics.com/victorialogs/#retention) is applied independently to the disk space usage limits. This means that
 VictoriaLogs automatically drops logs older than 7 days by default if only a disk space usage flag is set.
 Set the `-retentionPeriod` to some big value (e.g. `100y` - 100 years) if logs shouldn't be dropped because of time-based retention.
 For example:
@@ -198,7 +198,7 @@ For example, the following command starts VictoriaLogs, which stores the data at
 ```
 
 VictoriaLogs automatically creates the `-storageDataPath` directory on the first run if it is missing. VictoriaLogs stores logs
-per every day into a spearate subdirectory (aka per-day partition). See [partitions lifecycle](#partitions-lifecycle) for details.
+per every day into a spearate subdirectory (aka per-day partition). See [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) for details.
 
 VictoriaLogs switches to cluster mode if `-storageNode` command-line flag is specified:
 
@@ -213,7 +213,7 @@ The ingested logs are stored in per-day subdirectories (partitions) at the `<-st
 For example, the directory with the name `20250418` contains logs with [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
 at April 18, 2025 UTC. This allows flexible data management.
 
-For example, old per-day data is automatically and quickly deleted according to the provided [retention policy](#retention) by removing the corresponding per-day subdirectory (partition).
+For example, old per-day data is automatically and quickly deleted according to the provided [retention policy](https://docs.victoriametrics.com/victorialogs/#retention) by removing the corresponding per-day subdirectory (partition).
 
 VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions:
 
@@ -228,11 +228,11 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
 - `/internal/partition/list` - returns JSON-encoded list of currently active partitions, which can be passed to `/internal/partition/detach` endpoint via `name` query arg.
 - `/internal/partition/snapshot/create?name=YYYYMMDD` - creates a [snapshot](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
   for the partition for the given day `YYYYMMDD`. The endpoint returns a JSON string with the absolute filesystem path to the created snapshot. It is safe to make backups from
-  the created snapshots according to [these instructions](#backup-and-restore). It is safe removing the created snapshots with `rm -rf` command.
+  the created snapshots according to [these instructions](https://docs.victoriametrics.com/victorialogs/#backup-and-restore). It is safe removing the created snapshots with `rm -rf` command.
   It is recommended removing unneeded snapshots on a regular basis in order to free up storage space occupied by these snapshots.
 - `/internal/partition/snapshot/list` - returns JSON-encoded list of absolute paths to per-day partition snapshots created via `/internal/partition/snapshot/create`.
 
-These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](#list-of-command-line-flags).
+These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
 with fast NVMe (SSD) disks, while historical logs are gradully migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
@@ -260,7 +260,7 @@ merge for September 21, 2024 partition. The call to `/internal/force_merge` retu
 Forced merges may require additional CPU, disk IO and storage space resources. It is unnecessary to run forced merge under normal conditions,
 since VictoriaLogs automatically performs optimal merges in background when new data is ingested into it.
 
-The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey` [command-line flag](#list-of-command-line-flags).
+The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 ## Forced flush
 
@@ -273,7 +273,7 @@ It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a r
 and slows down data ingestion. It is expected that the `/internal/force_flush` is requested in automated tests, which need querying
 the recently ingested data.
 
-The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](#list-of-command-line-flags).
+The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 ## High Availability
 
@@ -307,7 +307,7 @@ VictoriaLogs stores data into independent per-day partitions. Every partition is
 
 The following steps must be performed to make a backup of the given `YYYYMMDD` partition:
 
-1. To create a snapshot for the given per-day partition via `/internal/partition/snapshot/create?name=YYYYMMDD` HTTP endpoint (see [partitions lifecycle](#partitions-lifecycle) docs).
+1. To create a snapshot for the given per-day partition via `/internal/partition/snapshot/create?name=YYYYMMDD` HTTP endpoint (see [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) docs).
    This endpoint returns an absolute filesystem path to the created snapshot - `<path-to-snapshot>`.
 
 1. To backup the created snapshot with [`rsync`](https://en.wikipedia.org/wiki/Rsync):
@@ -324,7 +324,7 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 The following steps must be performed for restoring the partition data from backup:
 
 1. To stop VictoriaLogs instance or to detach the `YYYYMMDD` partition, which is going to be restored from backup,
-   from the running VictoriaLogs via `/internal/partition/detach?name=YYYYMMDD` HTTP endpoint according to [these docs](#partitions-lifecycle).
+   from the running VictoriaLogs via `/internal/partition/detach?name=YYYYMMDD` HTTP endpoint according to [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle).
 
 1. To copy the partition from backup with `rsync`:
 
@@ -335,7 +335,7 @@ The following steps must be performed for restoring the partition data from back
    The `--delete` option is required in the command above in order to ensure that the partition contains the full copy of the backup without superfluous files.
 
 1. To start VictoriaLogs instance or to attach the restored partition to the running VictoriaLogs instance via `/internal/partition/attach?name=YYYYMMDD` HTTP endpoint
-   according to [these docs](#partitions-lifecycle).
+   according to [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle).
 
 It is also possible to use **the disk snapshot** feature provided by the operating system or cloud provider in order to perform a backup.
 
@@ -394,9 +394,9 @@ or similar authorization proxies. See [Security and Load balancing docs](https:/
 
 It is recommended protecting internal HTTP endpoints from unauthorized access:
 
-- [`/internal/force_flush`](#forced-flush) - via `-forceFlushAuthKey` [command-line flag](#list-of-command-line-flags).
-- [`/internal/force_merge`](#forced-merge) - via `-forceMergeAuthKey` [command-line flag](#list-of-command-line-flags).
-- [`/internal/partition/*`](#partitions-lifecycle) - via `-partitionManageAuthKey` [command-line flag](#list-of-command-line-flags).
+- [`/internal/force_flush`](https://docs.victoriametrics.com/victorialogs/#forced-flush) - via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/internal/force_merge`](https://docs.victoriametrics.com/victorialogs/#forced-merge) - via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 ### mTLS
 
@@ -427,7 +427,7 @@ The following command-line flags must be set in order to enable automatic issuin
 
 This functionality can be evaluated for free according to [these docs](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 
-See also [security recommendations](#security).
+See also [security recommendations](https://docs.victoriametrics.com/victorialogs/#security).
 
 ## Benchmarks
 

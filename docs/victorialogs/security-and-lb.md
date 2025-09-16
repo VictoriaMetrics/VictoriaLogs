@@ -157,7 +157,7 @@ unauthorized_user:
     - "AccountID: 0"
 ```
 
-See also [tenant-based data ingestion request proxying](#tenant-based-proxying-of-data-ingestion-requests).
+See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).
 
 This allows building VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
