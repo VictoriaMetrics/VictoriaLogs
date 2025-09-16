@@ -20,7 +20,7 @@ aliases:
 
 - `vlagent` can accept logs from popular log collectors in the same way as VictoriaLogs does. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It accepts logs over HTTP-based protocols at the TCP port `9429` by default. The port can be changed via `-httpListenAddr` command-line flag.
-- `vlagent` can replicate collected logs among multiple VictoriaLogs instances - see [these docs](https://docs.victoriametrics.com/vlagent/#replication-and-high-availability).
+- `vlagent` can replicate collected logs among multiple VictoriaLogs instances - see [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability).
 - `vlagent` works smoothly in environments with unstable connections to VictoriaLogs instances. If the remote storage is unavailable, the collected logs
   are buffered at the directory specified via `-remoteWrite.tmpDataPath` command-line flag. The buffered logs are sent to remote storage as soon as the connection
   to the remote storage is repaired. The maximum disk usage for the buffer can be limited with `-remoteWrite.maxDiskUsagePerURL` command-line flag.
@@ -32,7 +32,7 @@ Please download and unpack `vlutils` archive from [releases page](https://github
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/internal/insert`.
-  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/vlagent/#srv-urls) for details.
+  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
 
 Example command, which starts `vlagent` for accepting logs over HTTP-based [supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 at the port `9429` and sends the collected logs to VictoriaLogs instance at `victoria-logs-host:9428`:
@@ -41,7 +41,7 @@ at the port `9429` and sends the collected logs to VictoriaLogs instance at `vic
 /path/to/vlagent-prod -remoteWrite.url=http://victoria-logs-host:9428/internal/insert
 ```
 
-Pass `-help` to `vlagent` in order to see [the full list of supported command-line flags with their descriptions](https://docs.victoriametrics.com/vlagent/#advanced-usage).
+Pass `-help` to `vlagent` in order to see [the full list of supported command-line flags with their descriptions](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage).
 
 ### Replication and high availability
 
@@ -74,9 +74,9 @@ If you have suggestions for improvements or have found a bug - please open an is
 
 ## Troubleshooting
 
-- It is recommended [setting up the official Grafana dashboard](https://docs.victoriametrics.com/vlagent/#monitoring) in order to monitor the state of `vlagent`.
+- It is recommended [setting up the official Grafana dashboard](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring) in order to monitor the state of `vlagent`.
 
-- It is recommended increasing `-remoteWrite.queues` if `vlagent_remotewrite_pending_data_bytes` [metric](https://docs.victoriametrics.com/vlagent/#monitoring)
+- It is recommended increasing `-remoteWrite.queues` if `vlagent_remotewrite_pending_data_bytes` [metric](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring)
   grows constantly. This can improve data ingestion performance to the configured remote storage systems at the cost of higher memory usage.
 
 - If you see gaps in the data pushed by `vlagent` to remote storage when `-remoteWrite.maxDiskUsagePerURL` is set,
@@ -84,7 +84,7 @@ If you have suggestions for improvements or have found a bug - please open an is
   Therefore, it starts dropping the buffered data if the on-disk buffer size exceeds `-remoteWrite.maxDiskUsagePerURL`.
 
 - `vlagent` drops data blocks if remote storage replies with `400 Bad Request` and `404 Not Found` HTTP responses.
-  The number of dropped blocks can be monitored via `vlagent_remotewrite_packets_dropped_total` metric exported at [/metrics page](https://docs.victoriametrics.com/vlagent/#monitoring).
+  The number of dropped blocks can be monitored via `vlagent_remotewrite_packets_dropped_total` metric exported at [/metrics page](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring).
 
 - `vlagent` buffers the collected logs at the `-remoteWrite.tmpDataPath` directory until they are sent to the `-remoteWrite.url`.
   The directory can grow large when the remote storage is unavailable for extended periods of time and if the maximum directory size isn't limited
