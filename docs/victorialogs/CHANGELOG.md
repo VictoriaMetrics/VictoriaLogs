@@ -21,6 +21,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 * BUGFIX: properly detele unneeded directories at [Ossfs2 filesystem](https://www.alibabacloud.com/help/en/oss/developer-reference/ossfs-2-0/). See [#649](https://github.com/VictoriaMetrics/VictoriaLogs/issues/649). Thanks to @xiaozongyang for [the initial pull request](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/9709).
 * BUGFIX: all [Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/): fix support for automatic issuing of TLS certificates for HTTPS server via Let's Encrypt service using TLS-ALPN-01 challenge. See [Automatic issuing of TLS certificates](https://docs.victoriametrics.com/victorialogs/#automatic-issuing-of-tls-certificates) for more info.
 * BUGFIX: all components: lower severity of the log message for unavailable [Pressure Stall Information (PSI) metrics](https://docs.kernel.org/accounting/psi.html) from ERROR to INFO level. See [this issue](https://github.com/VictoriaMetrics/metrics/pull/101) for details.
+* BUGFIX: all components: properly expose metadata for summaries and histograms in VictoriaMetrics components with enabled `-metrics.exposeMetadata` cmd-line flag. See [metrics#98](https://github.com/VictoriaMetrics/metrics/issues/98) for details.
 
 ## [v1.33.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.33.1)
 
