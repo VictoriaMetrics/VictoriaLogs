@@ -1,4 +1,4 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20250911145743-5a80d4c55200
+# github.com/VictoriaMetrics/VictoriaMetrics v1.126.0
 ## explicit; go 1.25.0
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
@@ -47,7 +47,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter
 # github.com/VictoriaMetrics/easyproto v0.1.4
 ## explicit; go 1.18
 github.com/VictoriaMetrics/easyproto
-# github.com/VictoriaMetrics/metrics v1.39.1
+# github.com/VictoriaMetrics/metrics v1.40.1
 ## explicit; go 1.18
 github.com/VictoriaMetrics/metrics
 # github.com/VictoriaMetrics/metricsql v0.84.8
