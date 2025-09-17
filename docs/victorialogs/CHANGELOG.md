@@ -27,6 +27,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 * BUGFIX: all [Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/): fix support for automatic issuing of TLS certificates for HTTPS server via Let's Encrypt service using TLS-ALPN-01 challenge. See [Automatic issuing of TLS certificates](https://docs.victoriametrics.com/victorialogs/#automatic-issuing-of-tls-certificates) for more info.
 * BUGFIX: all components: lower severity of the log message for unavailable [Pressure Stall Information (PSI) metrics](https://docs.kernel.org/accounting/psi.html) from ERROR to INFO level. See [this issue](https://github.com/VictoriaMetrics/metrics/pull/101) for details.
 * BUGFIX: all components: properly expose metadata for summaries and histograms in VictoriaMetrics components with enabled `-metrics.exposeMetadata` cmd-line flag. See [metrics#98](https://github.com/VictoriaMetrics/metrics/issues/98) for details.
+* BUGFIX: OpenTelemetry: fix log processor name from "opentelelemtry_protobuf" to "opentelelemtry_protobuf". This changes the `type` label value for ingestion metrics such as `vl_rows_ingested_total`, `vl_bytes_ingested_total`, and `vl_insert_flush_duration_seconds` for OpenTelemetry data ingestion.
 
 ## [v1.33.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.33.1)
 
