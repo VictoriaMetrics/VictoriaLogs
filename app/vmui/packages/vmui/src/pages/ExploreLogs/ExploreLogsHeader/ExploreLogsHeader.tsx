@@ -17,6 +17,7 @@ import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 
 export interface ExploreLogHeaderProps {
   query: string;
+  queryDurationMs?: number;
   limit: number;
   error?: string;
   isLoading: boolean;
@@ -27,6 +28,7 @@ export interface ExploreLogHeaderProps {
 
 const ExploreLogsHeader: FC<ExploreLogHeaderProps> = ({
   query,
+  queryDurationMs,
   limit,
   error,
   isLoading,
@@ -115,6 +117,9 @@ const ExploreLogsHeader: FC<ExploreLogHeaderProps> = ({
           onChange={onChangeHandle}
           label={"Log query"}
           error={error}
+          stats={{
+            executionTimeMsec: queryDurationMs,
+          }}
         />
         <TextField
           label="Limit entries"

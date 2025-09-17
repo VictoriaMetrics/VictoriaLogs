@@ -1,10 +1,10 @@
 ---
-weight: 120
-title: SQL to LogsQL tutorial
+weight: 52
+title: SQL to LogsQL Tutorial
 menu:
   docs:
     parent: "victorialogs"
-    weight: 120
+    weight: 52
 tags:
   - logs
   - guide
@@ -61,7 +61,7 @@ and then pushes the resulting rows to the next stage. This simplifies reading an
 to the end in order to understand what does it do at every stage.
 
 LogsQL pipes cover all the functionality from SQL: aggregations, calculations, transformations, subqueries, joins, post-filters, sorting, etc.
-See the [conversion rules](#conversion-rules) on how to convert SQL to LogsQL.
+See the [conversion rules](https://docs.victoriametrics.com/victorialogs/sql-to-logsql/#conversion-rules) on how to convert SQL to LogsQL.
 
 ## conversion rules
 
@@ -77,7 +77,7 @@ The following rules must be used for converting SQL query into LogsQL query:
   the selected columns at [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe).
   For example, `SELECT field1, field2 FROM table` is converted into `* | fields field1, field2`.
 - If the SQL query contains `JOIN`, then convert it into [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe).
--- If the SQL query contains `GROUP BY` / aggregate functions, then convert them to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
+- If the SQL query contains `GROUP BY` / aggregate functions, then convert them to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
   For example, `SELECT count(*) FROM table` is converted into `* | count()`, while `SELECT user_id, count(*) FROM table GROUP BY user_id`
   is converted to `* | stats by (user_id) count()`. Note how the LogsQL query mentions the `GROUP BY` fields only once,
   while SQL forces mentioning these fields twice - at the `SELECT` and at the `GROUP BY`. How many times did you hit the discrepancy

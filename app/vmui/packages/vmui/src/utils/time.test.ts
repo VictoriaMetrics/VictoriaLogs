@@ -1,8 +1,37 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { getDurationFromMilliseconds, getNanoTimestamp, toNanoPrecision } from "./time";
 import dayjs from "dayjs";
-import { getNanoTimestamp, toNanoPrecision } from "./time";
 
 describe("Time utils", () => {
+  describe("getDurationFromMilliseconds", () => {
+    it("should return '0ms' for input 0", () => {
+      expect(getDurationFromMilliseconds(0)).toBe("0ms");
+    });
+
+    it("should correctly format milliseconds only", () => {
+      expect(getDurationFromMilliseconds(450)).toBe("450ms");
+    });
+
+    it("should correctly format seconds and milliseconds", () => {
+      expect(getDurationFromMilliseconds(1250)).toBe("1s250ms");
+    });
+
+    it("should correctly format minutes, seconds, and milliseconds", () => {
+      expect(getDurationFromMilliseconds(61500)).toBe("1m1s500ms");
+    });
+
+    it("should correctly format hours, minutes, seconds, and milliseconds", () => {
+      expect(getDurationFromMilliseconds(3661500)).toBe("1h1m1s500ms");
+    });
+
+    it("should correctly format days, hours, minutes, seconds, and milliseconds", () => {
+      expect(getDurationFromMilliseconds(90061000)).toBe("1d1h1m1s");
+    });
+
+    it("should skip zero units in the output", () => {
+      expect(getDurationFromMilliseconds(3600000)).toBe("1h");
+    });
+  });
   describe("getNanoTimestamp", () => {
     it("should return 0n for an empty string", () => {
       expect(getNanoTimestamp("")).toBe(0n);

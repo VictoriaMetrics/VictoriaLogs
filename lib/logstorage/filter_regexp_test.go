@@ -109,6 +109,8 @@ func TestFilterRegexp(t *testing.T) {
 					"a 127.0.0.1 dfff",
 					"a ТЕСТЙЦУК НГКШ ",
 					"a !!,23.(!1)",
+					"abcSTART\nqwer\nxENDaaa",
+					"zoo\nbarbaz",
 				},
 			},
 		}
@@ -116,14 +118,14 @@ func TestFilterRegexp(t *testing.T) {
 		// match
 		fr := &filterRegexp{
 			fieldName: "foo",
-			re:        mustCompileRegex("(?i)foo|йцу"),
+			re:        mustCompileRegex("(?i)foo|йцу|START.+END|(?-s)zoo.*baz"),
 		}
-		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 6, 8})
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 6, 8, 10})
 
 		// mismatch
 		fr = &filterRegexp{
 			fieldName: "foo",
-			re:        mustCompileRegex("qwe.+rty|^$"),
+			re:        mustCompileRegex("qwe.+rty|^$|(?-s)START.+END"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})

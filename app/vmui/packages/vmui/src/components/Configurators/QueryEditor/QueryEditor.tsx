@@ -60,7 +60,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const debouncedSetShowAutocomplete = useRef(debounce(setShowAutocomplete, 500)).current;
 
-  if (stats) {
+  if (stats?.executionTimeMsec !== undefined) {
     label = `${label} (${stats.executionTimeMsec || 0}ms)`;
   }
 

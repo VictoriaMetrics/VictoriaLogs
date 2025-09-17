@@ -47,7 +47,11 @@ In addition to VictoriaLogs server, the docker compose contains the following co
   and recording rules results to `VictoriaMetrics single-node`;
 * [alertmanager](#alertmanager) is configured to receive notifications from `vmalert`.
 
-<img alt="VictoriaLogs single-server deployment" width="500" src="assets/vl-single-server.png">
+<picture>
+  <source srcset="assets/vl-single-server-dark.png" media="(prefers-color-scheme: dark)">
+  <source srcset="assets/vl-single-server-light.png" media="(prefers-color-scheme: light)">
+  <img src="assets/vl-single-server-light.png" alt="VictoriaLogs single-server deployment" width="500" >
+</picture>
 
 To access Grafana use link [http://localhost:3000](http://localhost:3000).
 
@@ -90,7 +94,11 @@ In addition to VictoriaLogs cluster, the docker compose contains the following c
   and recording rules results to `VictoriaMetrics single-node`;
 * [alertmanager](#alertmanager) is configured to receive notifications from `vmalert`.
 
-<img alt="VictoriaLogs cluster deployment" width="500" src="assets/vl-cluster.png">
+<picture>
+  <source srcset="assets/vl-cluster-dark.png" media="(prefers-color-scheme: dark)">
+  <source srcset="assets/vl-cluster-light.png" media="(prefers-color-scheme: light)">
+  <img src="assets/vl-cluster-light.png" alt="VictoriaLogs cluster deployment" width="500">
+</picture>
 
 To access Grafana use link [http://localhost:3000](http://localhost:3000).
 

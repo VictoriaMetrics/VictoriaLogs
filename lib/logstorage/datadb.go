@@ -162,7 +162,8 @@ func (pw *partWrapper) decRef() {
 
 func mustCreateDatadb(path string) {
 	fs.MustMkdirFailIfExist(path)
-	mustWritePartNames(path, nil, nil)
+	mustWritePartNames(path, nil)
+	fs.MustSyncPathAndParentDir(path)
 }
 
 // mustOpenDatadb opens datadb at the given path with the given flushInterval for in-memory data.
@@ -947,6 +948,43 @@ func (ddb *datadb) debugFlush() {
 	ddb.rb.flush()
 }
 
+func (ddb *datadb) mustCreateSnapshotAt(dstDir string) {
+	fs.MustMkdirFailIfExist(dstDir)
+
+	// flush in-memory parts before making a snapshot
+	ddb.mustFlushInmemoryPartsToFiles(true)
+
+	// Get all the file-based parts
+	ddb.partsLock.Lock()
+	pws := make([]*partWrapper, 0, len(ddb.smallParts)+len(ddb.bigParts))
+	pws = append(pws, ddb.smallParts...)
+	pws = append(pws, ddb.bigParts...)
+	for _, pw := range pws {
+		pw.incRef()
+	}
+	ddb.partsLock.Unlock()
+
+	// Write parts.json file
+	partNames := getPartNames(pws)
+	mustWritePartNames(dstDir, partNames)
+
+	// Make hardlinks for pws at dstDir
+	for _, pw := range pws {
+		srcPartPath := pw.p.path
+		dstPartPath := filepath.Join(dstDir, filepath.Base(srcPartPath))
+		fs.MustHardLinkFiles(srcPartPath, dstPartPath)
+	}
+
+	// Release all the file-based parts
+	for _, pw := range pws {
+		pw.decRef()
+	}
+
+	// Sync dstDir contents.
+	// The parent dir for the dstDir must be synced by the caller.
+	fs.MustSyncPath(dstDir)
+}
+
 func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, dstPartType partType) {
 	// Atomically unregister old parts and add new part to pt.
 	partsToRemove := partsToMap(pws)
@@ -983,7 +1021,8 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	if removedSmallParts > 0 || removedBigParts > 0 || pwNew != nil && dstPartType != partInmemory {
 		smallPartNames := getPartNames(ddb.smallParts)
 		bigPartNames := getPartNames(ddb.bigParts)
-		mustWritePartNames(ddb.path, smallPartNames, bigPartNames)
+		partNames := append(smallPartNames, bigPartNames...)
+		mustWritePartNames(ddb.path, partNames)
 	}
 
 	ddb.partsLock.Unlock()
@@ -1220,9 +1259,7 @@ func getPartNames(pws []*partWrapper) []string {
 	return partNames
 }
 
-func mustWritePartNames(path string, smallPartNames, bigPartNames []string) {
-	partNames := append([]string{}, smallPartNames...)
-	partNames = append(partNames, bigPartNames...)
+func mustWritePartNames(path string, partNames []string) {
 	data, err := json.Marshal(partNames)
 	if err != nil {
 		logger.Panicf("BUG: cannot marshal partNames to JSON: %s", err)
@@ -1251,7 +1288,7 @@ func mustReadPartNames(path string) []string {
 
 			if len(partDirs) == 0 {
 				logger.Warnf("creating missing %s with empty parts list, since no part directories found in %s", partNamesPath, path)
-				mustWritePartNames(path, nil, nil)
+				mustWritePartNames(path, nil)
 				return []string{}
 			}
 

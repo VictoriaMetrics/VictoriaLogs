@@ -120,7 +120,7 @@ func parsePipeFilterExt(lex *lexer, needFilterKeyword bool) (pipe, error) {
 		lex.nextToken()
 	}
 
-	f, err := parseFilter(lex)
+	f, err := parseFilter(lex, needFilterKeyword)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse 'filter': %w", err)
 	}

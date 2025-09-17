@@ -1,4 +1,5 @@
 import { FC, useCallback, useEffect, createPortal, ReactNode, MouseEvent } from "preact/compat";
+import { JSX } from "preact/jsx-runtime";
 import { CloseIcon } from "../Icons";
 import Button from "../Button/Button";
 import "./style.scss";
@@ -8,7 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import useEventListener from "../../../hooks/useEventListener";
 
 interface ModalProps {
-  title?: string
+  title: JSX.Element | string
   children: ReactNode
   onClose: () => void
   className?: string

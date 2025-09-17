@@ -14,7 +14,7 @@ endif
 GO_BUILDINFO = -X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GOLANGCI_LINT_VERSION := 2.2.1
+GOLANGCI_LINT_VERSION := 2.4.0
 
 .PHONY: $(MAKECMDGOALS)
 
@@ -118,19 +118,14 @@ vlutils-crossbuild: \
 	vlutils-openbsd-amd64 \
 	vlutils-windows-amd64
 
-publish-final-images:
-	PKG_TAG=$(TAG) APP_NAME=victoria-logs $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vlagent $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) APP_NAME=vlogscli $(MAKE) publish-via-docker-from-rc && \
-	PKG_TAG=$(TAG) $(MAKE) publish-latest
-
 publish-latest:
 	PKG_TAG=$(TAG) APP_NAME=victoria-logs $(MAKE) publish-via-docker-latest
 	PKG_TAG=$(TAG) APP_NAME=vlogscli $(MAKE) publish-via-docker-latest
 
 publish-release:
 	rm -rf bin/*
-	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish
+	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish && \
+		git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
 
 release: \
 	release-victoria-logs \
@@ -311,7 +306,7 @@ benchmark-pure:
 vendor-update:
 	go get -u ./lib/...
 	go get -u ./app/...
-	go mod tidy -compat=1.24
+	go mod tidy -compat=1.25
 	go mod vendor
 
 app-local:

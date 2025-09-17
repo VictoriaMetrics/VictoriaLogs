@@ -116,15 +116,15 @@ func (fp *filterAnyCasePrefix) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	case valueTypeDict:
 		matchValuesDictByAnyCasePrefix(bs, ch, bm, prefixLowercase)
 	case valueTypeUint8:
-		matchUint8ByPrefix(bs, ch, bm, prefixLowercase)
+		matchUint8ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeUint16:
-		matchUint16ByPrefix(bs, ch, bm, prefixLowercase)
+		matchUint16ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeUint32:
-		matchUint32ByPrefix(bs, ch, bm, prefixLowercase)
+		matchUint32ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeUint64:
-		matchUint64ByPrefix(bs, ch, bm, prefixLowercase)
+		matchUint64ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeInt64:
-		matchInt64ByPrefix(bs, ch, bm, prefixLowercase)
+		matchInt64ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeFloat64:
 		matchFloat64ByPrefix(bs, ch, bm, prefixLowercase, tokens)
 	case valueTypeIPv4:

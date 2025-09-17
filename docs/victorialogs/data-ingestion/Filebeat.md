@@ -1,6 +1,6 @@
 ---
 weight: 1
-title: Filebeat setup
+title: Filebeat Setup
 disableToc: true
 menu:
   docs:

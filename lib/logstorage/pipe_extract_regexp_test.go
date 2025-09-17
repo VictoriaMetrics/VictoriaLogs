@@ -261,6 +261,32 @@ func TestPipeExtractRegexp(t *testing.T) {
 			{"a", "klo2i"},
 		},
 	})
+
+	// Verify that '.' matches newline chars by default.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/88
+	f(`extract_regexp "Query text: (?P<query>.+)"`, [][]Field{
+		{
+			{"_msg", "Query text: SELECT * FROM public.feed_posts\nORDER BY x"},
+		},
+	}, [][]Field{
+		{
+			{"_msg", "Query text: SELECT * FROM public.feed_posts\nORDER BY x"},
+			{"query", "SELECT * FROM public.feed_posts\nORDER BY x"},
+		},
+	})
+
+	// Explicitly disable '.' matching for newline chars.
+	// See https://github.com/google/re2/wiki/Syntax
+	f(`extract_regexp "(?-s)Query text: (?P<query>.+)"`, [][]Field{
+		{
+			{"_msg", "Query text: SELECT * FROM public.feed_posts\nORDER BY x"},
+		},
+	}, [][]Field{
+		{
+			{"_msg", "Query text: SELECT * FROM public.feed_posts\nORDER BY x"},
+			{"query", "SELECT * FROM public.feed_posts"},
+		},
+	})
 }
 
 func TestPipeExtractRegexpUpdateNeededFields(t *testing.T) {

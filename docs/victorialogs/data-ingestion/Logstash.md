@@ -1,6 +1,6 @@
 ---
 weight: 3
-title: Logstash setup
+title: Logstash Setup
 disableToc: true
 menu:
   docs:
@@ -14,8 +14,8 @@ aliases:
 ---
 VictoriaLogs supports given below Logstash outputs:
 
-- [Elasticsearch](#elasticsearch)
-- [HTTP JSON](#http)
+- [Elasticsearch](https://docs.victoriametrics.com/victorialogs/data-ingestion/logstash/#elasticsearch)
+- [HTTP JSON](https://docs.victoriametrics.com/victorialogs/data-ingestion/logstash/#http)
 
 ## Elasticsearch
 

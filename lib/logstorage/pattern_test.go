@@ -61,6 +61,7 @@ func TestPatternApply(t *testing.T) {
 	f(`"msg":<msg>,`, `{"foo":"bar","msg":"foo,b\"ar\n\t","baz":"x"}`, []string{`foo,b"ar` + "\n\t"})
 	f(`foo=<bar>`, "foo=`bar baz,abc` def", []string{"bar baz,abc"})
 	f(`foo=<bar> `, "foo=`bar baz,abc` def", []string{"bar baz,abc"})
+	f(`foo=<bar> `, "foo='bar baz,abc' def", []string{"bar baz,abc"})
 	f(`<foo>`, `"foo,\"bar"`, []string{`foo,"bar`})
 	f(`<foo>,"bar`, `"foo,\"bar"`, []string{`foo,"bar`})
 

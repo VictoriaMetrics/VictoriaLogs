@@ -200,7 +200,7 @@ func parsePipeJoin(lex *lexer) (pipe, error) {
 
 	if lex.isKeyword("prefix") {
 		lex.nextToken()
-		prefix, err := getCompoundToken(lex)
+		prefix, err := lex.nextCompoundToken()
 		if err != nil {
 			return nil, fmt.Errorf("cannot read prefix for [%s]: %w", pj, err)
 		}

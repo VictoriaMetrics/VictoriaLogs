@@ -46,7 +46,7 @@
       }
     ]
   },
-  "description": "Overview for VictoriaMetrics vlagent v1.117.0 or higher",
+  "description": "Overview for VictoriaMetrics vlagent v1.29.0 or higher",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -3252,7 +3252,7 @@
             "type": "prometheus",
             "uid": "$ds"
           },
-          "description": "Shows the rate of dropped data blocks in cases when remote storage replies with `400 Bad Request` and `409 Conflict` HTTP responses.\n\nSee https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1149",
+          "description": "Shows the rate of dropped data blocks in cases when remote storage replies with `400 Bad Request` and `409 Conflict` HTTP responses.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4961,7 +4961,8 @@
   "schemaVersion": 37,
   "style": "dark",
   "tags": [
-    "victoriametrics"
+    "victoriametrics",
+    "victorialogs"
   ],
   "templating": {
     "list": [

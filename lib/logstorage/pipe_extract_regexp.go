@@ -16,7 +16,13 @@ import (
 type pipeExtractRegexp struct {
 	fromField string
 
-	re       *regexp.Regexp
+	// re is compiled regular expression for the matching pattern
+	re *regexp.Regexp
+
+	// reStr is string representation for re.
+	reStr string
+
+	// reFields contains named capturing fields from the re.
 	reFields []string
 
 	keepOriginalFields bool
@@ -31,8 +37,7 @@ func (pe *pipeExtractRegexp) String() string {
 	if pe.iff != nil {
 		s += " " + pe.iff.String()
 	}
-	reStr := pe.re.String()
-	s += " " + quoteTokenIfNeeded(reStr)
+	s += " " + quoteTokenIfNeeded(pe.reStr)
 	if !isMsgFieldName(pe.fromField) {
 		s += " from " + quoteTokenIfNeeded(pe.fromField)
 	}
@@ -269,11 +274,12 @@ func parsePipeExtractRegexp(lex *lexer) (pipe, error) {
 	}
 
 	// parse pattern
-	patternStr, err := getCompoundToken(lex)
+	patternStr, err := lex.nextCompoundToken()
 	if err != nil {
 		return nil, fmt.Errorf("cannot read 'pattern': %w", err)
 	}
-	re, err := regexp.Compile(patternStr)
+
+	re, err := regexpCompile(patternStr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse 'pattern' %q: %w", patternStr, err)
 	}
@@ -315,6 +321,7 @@ func parsePipeExtractRegexp(lex *lexer) (pipe, error) {
 	pe := &pipeExtractRegexp{
 		fromField:          fromField,
 		re:                 re,
+		reStr:              patternStr,
 		reFields:           reFields,
 		keepOriginalFields: keepOriginalFields,
 		skipEmptyResults:   skipEmptyResults,
@@ -322,4 +329,12 @@ func parsePipeExtractRegexp(lex *lexer) (pipe, error) {
 	}
 
 	return pe, nil
+}
+
+func regexpCompile(s string) (*regexp.Regexp, error) {
+	// Make sure that '.' inside the patternStr matches newline chars.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/88
+	s = "(?s)(?:" + s + ")"
+
+	return regexp.Compile(s)
 }

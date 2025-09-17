@@ -271,7 +271,7 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 	}
 
 	// parse format
-	formatStr, err := getCompoundToken(lex)
+	formatStr, err := lex.nextCompoundToken()
 	if err != nil {
 		return nil, fmt.Errorf("cannot read 'format': %w", err)
 	}

@@ -95,6 +95,7 @@ type indexdb struct {
 
 func mustCreateIndexdb(path string) {
 	fs.MustMkdirFailIfExist(path)
+	fs.MustSyncPathAndParentDir(path)
 }
 
 func mustOpenIndexdb(path, partitionName string, s *Storage) *indexdb {
@@ -118,6 +119,10 @@ func mustCloseIndexdb(idb *indexdb) {
 
 func (idb *indexdb) debugFlush() {
 	idb.tb.DebugFlush()
+}
+
+func (idb *indexdb) mustCreateSnapshotAt(dstDir string) {
+	idb.tb.MustCreateSnapshotAt(dstDir)
 }
 
 func (idb *indexdb) updateStats(d *IndexdbStats) {

@@ -124,6 +124,10 @@ export const getDateNowUTC = (): string => {
 };
 
 export const getDurationFromMilliseconds = (ms: number): string => {
+  if(ms === 0){
+    return "0ms";
+  }
+
   const milliseconds = Math.floor(ms  % 1000);
   const seconds = Math.floor((ms / 1000) % 60);
   const minutes = Math.floor((ms / 1000 / 60) % 60);

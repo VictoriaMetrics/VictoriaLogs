@@ -1,11 +1,11 @@
 ---
-weight: 501
-title: Release process guidance for VictoriaLogs
+weight: 100
+title: Release Process Guidance for VictoriaLogs
 menu:
   docs:
     parent: victorialogs
     identifier: victorialogs-release-process-guidance
-    weight: 501
+    weight: 100
 tags: []
 aliases:
 - /victorialogs/release-guide/index.html
@@ -45,7 +45,8 @@ Bumping the limits may significantly improve build speed.
 1. Cut new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/docs/victorialogs/CHANGELOG.md)
    and commit it. See example in this [commit](https://github.com/VictoriaMetrics/VictoriaMetrics/commit/b771152039d23b5ccd637a23ea748bc44a9511a7).
 1. Make sure you get all changes fetched `git fetch --all`.
-1. Create release tag with in the `master` branch with the following command: `git tag -s v1.xx.y`
+1. Create release tag in the `master` branch of [public VictoriaLogs repository](https://github.com/VictoriaMetrics/VictoriaLogs/) with the following command: `git tag -s v1.xx.y`.
+1. Create release tag in the `master` branch of [Enterprise VictoriaLogs repository](https://github.com/VictoriaMetrics/VictoriaLogs-enterprise/) with the following command: `git tag -s v1.xx.y-enterprise`.
 1. Run `TAG=v1.xx.y make publish-release`. This command performs the following tasks:
    - a) Builds and packages binaries in `*.tar.gz` release archives with the corresponding `_checksums.txt` files inside `bin` directory.
       This step can be run manually with the command `make release` from the needed git tag.
@@ -76,10 +77,16 @@ Bumping the limits may significantly improve build speed.
       - To run the command `TAG=v1.xx.y make github-create-release github-upload-assets`, so new release is created
         and all the needed assets are re-uploaded to it.
 
-1. Push the tag `v1.xx.y` created at the previous steps to public GitHub repository at [https://github.com/VictoriaMetrics/VictoriaLogs](https://github.com/VictoriaMetrics/VictoriaLogs) :
+1. Push the tag `v1.xx.y` created at the previous steps to [public GitHub repository](https://github.com/VictoriaMetrics/VictoriaLogs):
 
    ```shell
-   git push origin v1.xx.y
+   git push public-repo v1.xx.y
+   ```
+
+1. Push the tag `v1.xx.y-enterprise` created at the previous steps to [Enterprise GitHub repository](https://github.com/VictoriaMetrics/VictoriaLogs-enterprise):
+
+   ```shell
+   git push enterprise-repo v1.xx.y-enterprise
    ```
 
 1. Go to <https://github.com/VictoriaMetrics/VictoriaLogs/releases> and verify that draft release with the name `TAG` has been created

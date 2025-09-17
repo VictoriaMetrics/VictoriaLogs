@@ -3,12 +3,16 @@ package vlselect
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
+	nethttputil "net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
@@ -29,6 +33,9 @@ var (
 
 	disableSelect   = flag.Bool("select.disable", false, "Whether to disable /select/* HTTP endpoints")
 	disableInternal = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints")
+
+	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert."+
+		"See https://docs.victoriametrics.com/victorialogs#vmalert.")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -48,6 +55,8 @@ func getDefaultMaxConcurrentRequests() int {
 // Init initializes vlselect
 func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
+	initVMUIConfig()
+	initVMAlertProxy()
 }
 
 // Stop stops vlselect
@@ -111,6 +120,22 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		return true
 	}
 	if strings.HasPrefix(path, "/select/vmui/") {
+		if path == "/select/vmui/config.json" {
+			w.Header().Set("Content-Type", "application/json")
+			r.URL.Path = strings.TrimPrefix(path, "/select")
+			if disableTenantControls := r.Header.Get("VL-Disable-Tenant-Controls"); disableTenantControls == "true" {
+				w.Header().Set("VL-Disable-Tenant-Controls", "true")
+			} else {
+				if accountID := r.Header.Get("AccountID"); len(accountID) > 0 {
+					w.Header().Set("AccountID", accountID)
+				}
+				if projectID := r.Header.Get("ProjectID"); len(projectID) > 0 {
+					w.Header().Set("ProjectID", projectID)
+				}
+			}
+			fmt.Fprint(w, vmuiConfig)
+			return true
+		}
 		if strings.HasPrefix(path, "/select/vmui/static/") {
 			// Allow clients caching static contents for long period of time, since it shouldn't change over time.
 			// Path to static contents (such as js and css) must be changed whenever its contents is changed.
@@ -212,6 +237,17 @@ func decRequestConcurrency() {
 func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) bool {
 	httpserver.EnableCORS(w, r)
 	startTime := time.Now()
+	if strings.HasPrefix(path, "/select/vmalert/") {
+		vmalertRequests.Inc()
+		if len(*vmalertProxyURL) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "%s", `{"status":"error","msg":"for accessing vmalert flag '-vmalert.proxyURL' must be configured"}`)
+			return true
+		}
+		proxyVMAlertRequests(w, r)
+		return true
+	}
 	switch path {
 	case "/select/logsql/facets":
 		logsqlFacetsRequests.Inc()
@@ -286,6 +322,72 @@ func getMaxQueryDuration(r *http.Request) time.Duration {
 	return d
 }
 
+func proxyVMAlertRequests(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		err := recover()
+		if err == nil || err == http.ErrAbortHandler {
+			// Suppress http.ErrAbortHandler panic.
+			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1353
+			return
+		}
+		// Forward other panics to the caller.
+		panic(err)
+	}()
+	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/select")
+	r.Host = vmalertProxyHost
+	vmalertProxy.ServeHTTP(w, r)
+}
+
+func initVMUIConfig() {
+	var cfg struct {
+		Version string `json:"version"`
+		License struct {
+			Type string `json:"type"`
+		} `json:"license"`
+		VMAlert struct {
+			Enabled bool `json:"enabled"`
+		} `json:"vmalert"`
+	}
+	cfg.Version = buildinfo.ShortVersion()
+	if cfg.Version == "" {
+		// buildinfo.ShortVersion() may return empty result for builds without tags
+		cfg.Version = buildinfo.Version
+	}
+	data, err := vmuiFiles.ReadFile("vmui/config.json")
+	if err != nil {
+		logger.Fatalf("cannot read vmui default config: %s", err)
+	}
+	err = json.Unmarshal(data, &cfg)
+	if err != nil {
+		logger.Fatalf("cannot parse vmui default config: %s", err)
+	}
+	cfg.VMAlert.Enabled = len(*vmalertProxyURL) != 0
+	data, err = json.Marshal(&cfg)
+	if err != nil {
+		logger.Fatalf("cannot create vmui config: %s", err)
+	}
+	vmuiConfig = string(data)
+}
+
+// initVMAlertProxy must be called after flag.Parse(), since it uses command-line flags.
+func initVMAlertProxy() {
+	if len(*vmalertProxyURL) == 0 {
+		return
+	}
+	proxyURL, err := url.Parse(*vmalertProxyURL)
+	if err != nil {
+		logger.Fatalf("cannot parse -vmalert.proxyURL=%q: %s", *vmalertProxyURL, err)
+	}
+	vmalertProxyHost = proxyURL.Host
+	vmalertProxy = nethttputil.NewSingleHostReverseProxy(proxyURL)
+}
+
+var (
+	vmalertProxyHost string
+	vmalertProxy     *nethttputil.ReverseProxy
+	vmuiConfig       string
+)
+
 var (
 	logsqlFacetsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/facets"}`)
 	logsqlFacetsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/facets"}`)
@@ -322,4 +424,6 @@ var (
 
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
+
+	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 )

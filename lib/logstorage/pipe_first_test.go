@@ -19,6 +19,7 @@ func TestParsePipeFirstSuccess(t *testing.T) {
 	f(`first 10 by (x) rank as bar`)
 	f(`first partition by (x)`)
 	f(`first 3 by (a, b) partition by (x, y)`)
+	f(`first by ("a*")`)
 }
 
 func TestParsePipeFirstFailure(t *testing.T) {
@@ -29,7 +30,6 @@ func TestParsePipeFirstFailure(t *testing.T) {
 
 	f(`first by (*)`)
 	f(`first by (a*)`)
-	f(`first by ("a*")`)
 	f(`first a`)
 	f(`first by`)
 	f(`first by(x) foo`)

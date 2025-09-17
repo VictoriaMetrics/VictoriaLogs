@@ -1,28 +1,41 @@
+---
+build:
+  list: never
+  publishResources: false
+  render: never
+sitemap:
+  disable: true
+---
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can be queried with [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/)
 via the following ways:
 
 - [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/)
-- [Command-line interface](#command-line)
-- [HTTP API](#http-api)
-- [Web UI](#web-ui) - a web-based UI for querying logs
-- [Grafana plugin](#visualization-in-grafana)
+- [Command-line interface](https://docs.victoriametrics.com/victorialogs/querying/#command-line)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
+- [Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) - a web-based UI for querying logs
+- [Grafana plugin](https://docs.victoriametrics.com/victorialogs/querying/#visualization-in-grafana)
 
 ## HTTP API
 
 VictoriaLogs provides the following HTTP endpoints:
 
-- [`/select/logsql/query`](#querying-logs) for querying logs.
-- [`/select/logsql/tail`](#live-tailing) for live tailing of query results.
-- [`/select/logsql/hits`](#querying-hits-stats) for querying log hits stats over the given time range.
-- [`/select/logsql/facets`](#querying-facets) for querying the most frequent values per each field seen in the selected logs.
-- [`/select/logsql/stats_query`](#querying-log-stats) for querying log stats at the given time.
-- [`/select/logsql/stats_query_range`](#querying-log-range-stats) for querying log stats over the given time range.
-- [`/select/logsql/stream_ids`](#querying-stream_ids) for querying `_stream_id` values of [log streams](#https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-- [`/select/logsql/streams`](#querying-streams) for querying [log streams](#https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-- [`/select/logsql/stream_field_names`](#querying-stream-field-names) for querying [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field names.
-- [`/select/logsql/stream_field_values`](#querying-stream-field-values) for querying [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field values.
-- [`/select/logsql/field_names`](#querying-field-names) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names.
-- [`/select/logsql/field_values`](#querying-field-values) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
+- [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) for querying logs.
+- [`/select/logsql/tail`](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) for live tailing of query results.
+- [`/select/logsql/hits`](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats) for querying log hits stats over the given time range.
+- [`/select/logsql/facets`](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets) for querying the most frequent values per each field seen in the selected logs.
+- [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) for querying log stats at the given time.
+- [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) for querying log stats over the given time range.
+- [`/select/logsql/stream_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream_ids) for querying `_stream_id` values of [log streams](https://docs.victoriametrics.com/victorialogs/querying/#https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+- [`/select/logsql/streams`](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams) for querying [log streams](https://docs.victoriametrics.com/victorialogs/querying/#https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+- [`/select/logsql/stream_field_names`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names) for querying [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field names.
+- [`/select/logsql/stream_field_values`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values) for querying [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field values.
+- [`/select/logsql/field_names`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names.
+- [`/select/logsql/field_values`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
+
+See also:
+
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Resource usage limits](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits)
 
 ### Querying logs
 
@@ -36,7 +49,7 @@ curl http://localhost:9428/select/logsql/query -d 'query=error'
 
 This command returns all the logs with the `error` word, which are stored in the VictoriaLogs running at `localhost:9428`.
 There are no limits on the number of returned logs - the command above may return billions of logs without any issues.
-See [these docs](#command-line) for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details.
 
 The response by default contains all the [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) for the selected logs.
 Use [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) for selecting only the needed fields.
@@ -90,14 +103,14 @@ Logs lines are sent to the response stream as soon as they are found in Victoria
 This means that the returned response may contain billions of lines for queries matching too many log entries.
 The response can be interrupted at any time by closing the connection to VictoriaLogs server.
 This allows post-processing the returned lines at the client side with the usual Unix commands such as `grep`, `jq`, `less`, `head`, etc.,
-without worrying about resource usage at VictoriaLogs side. See [these docs](#command-line) for more details.
+without worrying about resource usage at VictoriaLogs side. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for more details.
 
 The returned lines aren't sorted by default, since sorting disables the ability to send matching log entries to response stream as soon as they are found.
 Query results can be sorted in the following ways:
 
 - By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned in the response.
 - By adding [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) to the query.
-- By using Unix `sort` command at client side according to [these docs](#command-line).
+- By using Unix `sort` command at client side according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
 The maximum query execution time is limited by `-search.maxQueryDuration` command-line flag value. This limit can be overridden to smaller values
 on a per-query basis by passing the needed timeout via `timeout` query arg. For example, the following command limits query execution time
@@ -115,22 +128,24 @@ for log messages at `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/query -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
-The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/#monitoring)
-with `vl_http_requests_total{path="/select/logsql/query"}` metric.
+The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
+with [`vl_http_requests_total{path="/select/logsql/query"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_requests_total) metric.
+
+The `/select/logsql/query` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
 
 See also:
 
 - [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/)
-- [Extra filters](#extra-filters)
-- [Live tailing](#live-tailing)
-- [Querying hits stats](#querying-hits-stats)
-- [Querying log stats](#querying-log-stats)
-- [Querying log range stats](#querying-log-range-stats)
-- [Querying streams](#querying-streams)
-- [Querying stream field names](#querying-stream-field-names)
-- [Querying stream field values](#querying-stream-field-values)
-- [Querying field names](#querying-field-names)
-- [Querying field values](#querying-field-values)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [Querying log stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats)
+- [Querying log range stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [Querying stream field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names)
+- [Querying stream field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values)
+- [Querying field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names)
+- [Querying field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values)
 
 ### Live tailing
 
@@ -195,15 +210,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl -N http://localhost:9428/select/logsql/tail -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
-The number of currently executed live tailing requests to `/select/logsql/tail` can be [monitored](https://docs.victoriametrics.com/victorialogs/#monitoring)
-with `vl_live_tailing_requests` metric.
+The number of currently executed live tailing requests to `/select/logsql/tail` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
+with [`vl_live_tailing_requests`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_live_tailing_requests) metric.
 
 See also:
 
 - [Live tailing in vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#live-tailing)
-- [Extra filters](#extra-filters)
-- [Querying logs](#querying-logs)
-- [Querying streams](#querying-streams)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
 
 ### Querying hits stats
 
@@ -317,15 +332,17 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/hits -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
+The `/select/logsql/hits` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying facets](#querying-facets)
-- [Querying logs](#querying-logs)
-- [Querying log stats](#querying-log-stats)
-- [Querying log range stats](#querying-log-range-stats)
-- [Querying streams](#querying-streams)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying facets](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying log stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats)
+- [Querying log range stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying facets
 
@@ -411,11 +428,13 @@ Add `keep_const_fields=1` query arg if you need such log fields:
 curl http://localhost:9428/select/logsql/facets -d 'query=_time:1h' -d 'keep_const_fields=1'
 ```
 
+The `/select/logsql/facets` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying hits stats](#querying-hits-stats)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying log stats
 
@@ -481,13 +500,15 @@ Below is an example JSON output returned from this endpoint:
 
 The `/select/logsql/stats_query` API is useful for generating Prometheus-compatible alerts and calculating recording rules results.
 
+The `/select/logsql/stats_query` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying log range stats](#querying-log-range-stats)
-- [Querying logs](#querying-logs)
-- [Querying hits stats](#querying-hits-stats)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying log range stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying log range stats
 
@@ -575,13 +596,15 @@ Below is an example JSON output returned from this endpoint:
 
 The `/select/logsql/stats_query_range` API is useful for generating Prometheus-compatible graphs in Grafana.
 
+The `/select/logsql/stats_query_range` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying log stats](#querying-log-stats)
-- [Querying logs](#querying-logs)
-- [Querying hits stats](#querying-hits-stats)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying log stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying stream_ids
 
@@ -634,13 +657,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_ids -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/stream_ids` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying streams](#querying-streams)
-- [Querying logs](#querying-logs)
-- [Querying hits stats](#querying-hits-stats)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying streams
 
@@ -692,13 +717,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/streams -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/streams` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying stream_ids](#querying-stream_ids)
-- [Querying logs](#querying-logs)
-- [Querying hits stats](#querying-hits-stats)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying stream_ids](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream_ids)
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
+- [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying stream field names
 
@@ -747,13 +774,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_field_names -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/stream_field_names` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying stream field names](#querying-stream-field-names)
-- [Querying field values](#querying-field-values)
-- [Querying streams](#querying-streams)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying stream field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names)
+- [Querying field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying stream field values
 
@@ -801,13 +830,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_field_values -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/stream_field_values` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying stream field values](#querying-stream-field-values)
-- [Querying field names](#querying-field-names)
-- [Querying streams](#querying-streams)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying stream field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values)
+- [Querying field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying field names
 
@@ -855,13 +886,15 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/field_names -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/field_names` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying stream field names](#querying-stream-field-names)
-- [Querying field values](#querying-field-values)
-- [Querying streams](#querying-streams)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying stream field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names)
+- [Querying field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying field values
 
@@ -914,17 +947,19 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/field_values -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
+The `/select/logsql/field_values` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+
 See also:
 
-- [Extra filters](#extra-filters)
-- [Querying stream field values](#querying-stream-field-values)
-- [Querying field names](#querying-field-names)
-- [Querying streams](#querying-streams)
-- [HTTP API](#http-api)
+- [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [Querying stream field values](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values)
+- [Querying field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names)
+- [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ## Extra filters
 
-All the [HTTP querying APIs](#http-api) provided by VictoriaLogs support the following optional query args:
+All the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) provided by VictoriaLogs support the following optional query args:
 
 - `extra_filters` - this arg may contain extra [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters), which must be applied
   to the `query` before returning the results. Multiple `extra_filters` args may be passed in a single request.
@@ -936,7 +971,7 @@ All the [HTTP querying APIs](#http-api) provided by VictoriaLogs support the fol
 The `extra_filters` and `extra_stream_filters` values can have the following format:
 
 - JSON object with `"field":"value"` entries. For example, the following JSON applies `namespace:=my-app and env:=prod` filter to the `query`
-  passed to [HTTP querying APIs](#http-api): `extra_filters={"namespace":"my-app","env":"prod"}` .
+  passed to [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): `extra_filters={"namespace":"my-app","env":"prod"}` .
 
   The following JSON applies `{namespace="my-app",env="prod"}` [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter)
   to the `query`: `extra_stream_filters={"namespace":"my-app","env":"prod"}` .
@@ -949,6 +984,21 @@ The `extra_filters` may contain also arbitrary [LogsQL filter](https://docs.vict
 
 The arg passed to `extra_filters` and `extra_stream_filters` must be properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
+## Resource usage limits
+
+VictoriaLogs provides the following options to limit resource usage by the executed queries:
+
+- `-search.maxQueryTimeRange` command-line flag disallows queries without [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) and queries
+  with too broad time filters, which select time ranges bigger than the value passed to `-search.maxQueryTimeRange`. For example, `-search.maxQueryTimeRange=1d` disallows queries,
+  which select logs on time ranges bigger than one day.
+
+- `-search.maxQueryDuration` command-line flag limits the maximum execution time for a single query. For example, `-search.maxQueryDuration=10s` limits the maximum
+  query execution time to 10 seconds. The maximum query duration can be set to lower values via `timeout` query arg, which can be passed to all the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
+
+- `-search.maxConcurrentRequests` command-line flag limits the number of concurrently executed queries. It isn't recommended setting it to too big values,
+  since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`
+  before returning errors to queries, which cannot be executed because `-search.maxConcurrentRequests` limit is reached.
+
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
@@ -958,10 +1008,10 @@ There are three modes of displaying query results:
 
 - `Group` - results are displayed as a table with rows grouped by [stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 - `Table` - displays query results as a table.
-- `JSON` - displays raw JSON response from [`/select/logsql/query` HTTP API](#querying-logs).
-- `Live` - displays [live tailing](#live-tailing) results for the given query.
+- `JSON` - displays raw JSON response from [`/select/logsql/query` HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs).
+- `Live` - displays [live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) results for the given query.
 
-See also [command line interface](#command-line).
+See also [command line interface](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
 ## Visualization in Grafana
 

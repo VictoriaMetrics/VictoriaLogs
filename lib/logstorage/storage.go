@@ -14,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/snapshot/snapshotutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 )
 
@@ -182,7 +183,7 @@ func (s *Storage) PartitionAttach(name string) error {
 
 	// Verify whether the given partition already exists in the attached partitions list.
 	for _, ptw := range s.partitions {
-		if ptw.day == day {
+		if ptw.pt.name == name {
 			return fmt.Errorf("cannot attach the partition %q, because it is arleady attached", name)
 		}
 	}
@@ -211,17 +212,12 @@ func (s *Storage) PartitionAttach(name string) error {
 //
 // The detached partition can be attached again via PartitionAttach() call.
 func (s *Storage) PartitionDetach(name string) error {
-	day, err := getPartitionDayFromName(name)
-	if err != nil {
-		return err
-	}
-
 	ptw := func() *partitionWrapper {
 		s.partitionsLock.Lock()
 		defer s.partitionsLock.Unlock()
 
 		for i, ptw := range s.partitions {
-			if ptw.day != day {
+			if ptw.pt.name != name {
 				continue
 			}
 
@@ -242,7 +238,7 @@ func (s *Storage) PartitionDetach(name string) error {
 	partitionPath := ptw.pt.path
 	ptw.decRef()
 
-	logger.Infof("waiting until all the concurrent readers stop reading from the partition %q", name)
+	logger.Infof("waiting until the partition %q isn't accessed", name)
 	<-ptw.doneCh
 
 	logger.Infof("successfully detached partition %q from %q", name, partitionPath)
@@ -250,12 +246,96 @@ func (s *Storage) PartitionDetach(name string) error {
 	return nil
 }
 
+// PartitionList returns the list of the names for the currently attached partitions.
+//
+// Every partition name has YYYYMMDD format.
+func (s *Storage) PartitionList() []string {
+	s.partitionsLock.Lock()
+	ptNames := make([]string, len(s.partitions))
+	for i, ptw := range s.partitions {
+		ptNames[i] = ptw.pt.name
+	}
+	s.partitionsLock.Unlock()
+
+	return ptNames
+}
+
+// PartitionSnapshotCreate creates a snapshot for the partition with the given name
+//
+// The snaphsot name must have YYYYMMDD format.
+//
+// The function returns an absolute path to the created snapshot on success.
+func (s *Storage) PartitionSnapshotCreate(name string) (string, error) {
+	ptw := func() *partitionWrapper {
+		s.partitionsLock.Lock()
+		defer s.partitionsLock.Unlock()
+
+		for _, ptw := range s.partitions {
+			if ptw.pt.name == name {
+				ptw.incRef()
+				return ptw
+			}
+		}
+		return nil
+	}()
+
+	if ptw == nil {
+		return "", fmt.Errorf("cannot create snapshot from partition %q, because it is missing", name)
+	}
+
+	snapshotPath := ptw.pt.mustCreateSnapshot()
+	ptw.decRef()
+
+	return snapshotPath, nil
+}
+
+// PartitionSnapshotList returns a list of absolute paths to all the snapshots across active partitions.
+func (s *Storage) PartitionSnapshotList() []string {
+	s.partitionsLock.Lock()
+	ptws := append([]*partitionWrapper{}, s.partitions...)
+	for _, ptw := range ptws {
+		ptw.incRef()
+	}
+	s.partitionsLock.Unlock()
+
+	var snapshotPaths []string
+	for _, ptw := range ptws {
+		ptPath := ptw.pt.path
+		snapshotsPath := filepath.Join(ptPath, snapshotsDirname)
+		if !fs.IsPathExist(snapshotsPath) {
+			continue
+		}
+
+		des := fs.MustReadDir(snapshotsPath)
+		for _, de := range des {
+			name := de.Name()
+			if err := snapshotutil.Validate(name); err != nil {
+				logger.Warnf("unsupported snapshot name %q at %q: %s", name, snapshotsPath)
+				continue
+			}
+
+			path := filepath.Join(snapshotsPath, name)
+			snapshotPath, err := filepath.Abs(path)
+			if err != nil {
+				logger.Panicf("FATAL: cannot obtain absolute path for %q: %s", path, err)
+			}
+			snapshotPaths = append(snapshotPaths, snapshotPath)
+		}
+	}
+
+	for _, ptw := range ptws {
+		ptw.decRef()
+	}
+
+	return snapshotPaths
+}
+
 type partitionWrapper struct {
-	// refCount is the number of active references to p.
-	// When it reaches zero, then the p is closed.
+	// refCount is the number of active references to partition.
+	// When it reaches zero, then the partition is closed.
 	refCount atomic.Int32
 
-	// The flag, which is set when the partition must be deleted after refCount reaches zero.
+	// mustDrop is set when the partition must be deleted after refCount reaches zero.
 	mustDrop atomic.Bool
 
 	// day is the day for the partition in the unix timestamp divided by the number of seconds in the day.
@@ -323,6 +403,8 @@ func mustCreateStorage(path string) {
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirFailIfExist(partitionsPath)
+
+	fs.MustSyncPathAndParentDir(path)
 }
 
 // MustOpenStorage opens Storage at the given path.
@@ -378,6 +460,8 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
+	fs.MustSyncPath(path)
+
 	des := fs.MustReadDir(partitionsPath)
 	ptws := make([]*partitionWrapper, len(des))
 
@@ -767,10 +851,9 @@ func (tf *TimeFormatter) String() string {
 //
 // The partition is automatically created if it didn't exist.
 //
-// nil is returned if the partition directory already exists, but it isn't registered in the list of active partitions.
-// This can happen in the following cases:
+// nil is returned in the following cases:
 //
-//   - When the partition goes outside the configured retention.
+//   - When the partition is outside the configured retention.
 //   - When the partition has been detached via Storage.PartitionDetach().
 //   - When the partition directory has been manually added, but wasn't attached yet via Storage.PartitionAttach().
 //
@@ -792,7 +875,7 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 		}
 	}
 	if ptw == nil {
-		// Missing partition for the given day. Create it.
+		// Missing partition for the given day.
 		if slices.Contains(s.deletedPartitions, day) {
 			// The partition has been already deleted.
 			return nil
@@ -806,8 +889,9 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 			// - When the partition has been detached via Storage.PartitionDetach().
 			return nil
 		}
-		mustCreatePartition(partitionPath)
 
+		// Create missing partition.
+		mustCreatePartition(partitionPath)
 		pt := mustOpenPartition(s, partitionPath)
 		ptw = newPartitionWrapper(pt, day)
 		if n == len(ptws) {

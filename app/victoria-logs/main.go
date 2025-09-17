@@ -80,6 +80,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		}
 		w.Header().Add("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, "<h2>Single-node VictoriaLogs</h2></br>")
+		fmt.Fprintf(w, "Version %s<br>", buildinfo.Version)
 		fmt.Fprintf(w, "See docs at <a href='https://docs.victoriametrics.com/victorialogs/'>https://docs.victoriametrics.com/victorialogs/</a></br>")
 		fmt.Fprintf(w, "Useful endpoints:</br>")
 		httpserver.WriteAPIHelp(w, [][2]string{

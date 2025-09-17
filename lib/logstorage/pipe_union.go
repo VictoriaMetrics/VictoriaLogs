@@ -96,7 +96,7 @@ func parsePipeUnion(lex *lexer) (pipe, error) {
 
 	q, err := parseQueryInParens(lex)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse union(...): %w", err)
+		return nil, err
 	}
 
 	pu := &pipeUnion{

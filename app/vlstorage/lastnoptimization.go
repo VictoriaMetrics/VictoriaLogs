@@ -1,7 +1,6 @@
 package vlstorage
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,8 +11,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-func runOptimizedLastNResultsQuery(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
-	rows, err := getLastNQueryResults(ctx, tenantIDs, q, offset+limit)
+func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
+	rows, err := getLastNQueryResults(qctx, offset+limit)
 	if err != nil {
 		return err
 	}
@@ -38,13 +37,14 @@ func runOptimizedLastNResultsQuery(ctx context.Context, tenantIDs []logstorage.T
 	return nil
 }
 
-func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query, limit uint64) ([]logRow, error) {
-	qOrig := q
+func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow, error) {
+	qOrig := qctx.Query
 	timestamp := qOrig.GetTimestamp()
 
-	q = qOrig.Clone(timestamp)
+	q := qOrig.Clone(timestamp)
 	q.AddPipeOffsetLimit(0, 2*limit)
-	rows, err := getQueryResults(ctx, tenantIDs, q)
+	qctxLocal := qctx.WithQuery(q)
+	rows, err := getQueryResults(qctxLocal)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,8 @@ func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, 
 	for {
 		q = qOrig.CloneWithTimeFilter(timestamp, start, end)
 		q.AddPipeOffsetLimit(0, 2*n)
-		rows, err := getQueryResults(ctx, tenantIDs, q)
+		qctxLocal := qctx.WithQuery(q)
+		rows, err := getQueryResults(qctxLocal)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +111,7 @@ func getLastNQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, 
 	}
 }
 
-func getQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query) ([]logRow, error) {
+func getQueryResults(qctx *logstorage.QueryContext) ([]logRow, error) {
 	var rowsLock sync.Mutex
 	var rows []logRow
 
@@ -130,7 +131,7 @@ func getQueryResults(ctx context.Context, tenantIDs []logstorage.TenantID, q *lo
 		rowsLock.Unlock()
 	}
 
-	err := RunQuery(ctx, tenantIDs, q, writeBlock)
+	err := RunQuery(qctx, writeBlock)
 	if errLocal != nil {
 		return nil, errLocal
 	}

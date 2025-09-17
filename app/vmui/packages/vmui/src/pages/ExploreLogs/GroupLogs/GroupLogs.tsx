@@ -19,7 +19,6 @@ import { usePaginateGroups } from "../hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import DownloadLogsButton from "../DownloadLogsButton/DownloadLogsButton";
-import { hasSortPipe } from "../../../components/Configurators/QueryEditor/LogsQL/utils/sort";
 
 interface Props {
   logs: Logs[];
@@ -29,9 +28,6 @@ interface Props {
 const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const { isMobile } = useDeviceDetect();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const query = searchParams.get("query") || "";
-  const queryHasSort = hasSortPipe(query);
 
   const [page, setPage] = useState(1);
   const [expandGroups, setExpandGroups] = useState<boolean[]>([]);
@@ -49,11 +45,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     return groupByMultipleKeys(logs, [groupBy]).map((item) => {
       const streamValue = item.values[0]?.[groupBy] || "";
       const pairs = getStreamPairs(streamValue);
-
-      // VictoriaLogs sends rows oldest → newest when the query has no `| sort` pipe,
-      // so we reverse the array to put the newest entries first.
-      // If a sort is already specified, keep the original order.
-      const values = queryHasSort ? item.values : item.values.toReversed();
+      const values = item.values;
 
       return {
         keys: item.keys,
@@ -63,7 +55,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
         total: values.length,
       };
     }).sort((a, b) => b.total - a.total); // groups sorting
-  }, [logs, groupBy, queryHasSort]);
+  }, [logs, groupBy]);
 
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 

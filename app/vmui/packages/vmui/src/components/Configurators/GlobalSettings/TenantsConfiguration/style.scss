@@ -3,6 +3,31 @@
 .vm-tenant-input {
   position: relative;
 
+  &_disabled:not(&_mobile) {
+    .vm-mobile-option {
+      &__icon {
+        color: #fff;
+      }
+      &-text {
+        color: #fff;
+        &__value {
+          color: #fff;
+        }
+      }
+    }
+  }
+
+  &_disabled:is(&_mobile) {
+    .vm-mobile-option {
+      &__icon {
+        color: $color-text-disabled;
+      }
+      &-text {
+        color: $color-text-disabled;
+      }
+    }
+  }
+
   &-list {
     max-height: 300px;
     overflow: auto;

@@ -405,8 +405,15 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 	// Execute HTTP request at qURL
 	startTime := time.Now()
 	resp, err := httpClient.Do(req)
-	queryDuration := time.Since(startTime)
-	fmt.Fprintf(output, "; duration: %.3fs\n", queryDuration.Seconds())
+
+	queryDuration := fmt.Sprintf("client %.3f", time.Since(startTime).Seconds())
+	if err == nil {
+		qd := resp.Header.Get("VL-Request-Duration-Seconds")
+		if qd != "" {
+			queryDuration = "server " + qd
+		}
+	}
+	fmt.Fprintf(output, "; duration: %ss\n", queryDuration)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			fmt.Fprintf(output, "\n")

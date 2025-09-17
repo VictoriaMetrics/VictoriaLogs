@@ -13,6 +13,7 @@ import Alert from "../../../../../components/Main/Alert/Alert";
 import { isDecreasing } from "../../../../../utils/array";
 import { useLocalStorageBoolean } from "../../../../../hooks/useLocalStorageBoolean";
 import ScrollToTopButton from "../../../../../components/ScrollToTopButton/ScrollToTopButton";
+import { LIVE_TAILING_OFFSET_PARAM } from "./constants";
 
 const SCROLL_THRESHOLD = 100;
 const scrollToBottom = () => window.scrollTo({
@@ -27,7 +28,8 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [searchParams] = useSearchParams();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
-  const [rowsPerPage, setRowsPerPage] = useStateSearchParams(100, "rows_per_page");
+  const [rowsPerPage] = useStateSearchParams(100, "rows_per_page");
+  const [offset] = useStateSearchParams(5, LIVE_TAILING_OFFSET_PARAM);
   const [query, _setQuery] = useStateSearchParams("*", "query");
   const [isRawJsonView, setIsRawJsonView] = useLocalStorageBoolean("RAW_JSON_LIVE_VIEW");
   const {
@@ -52,12 +54,16 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
 
   const handleSetRowsPerPage = useCallback((limit: number) => {
     setSearchParamsFromKeys({ rows_per_page: limit });
-  }, [setRowsPerPage, setSearchParamsFromKeys]);
+  }, [setSearchParamsFromKeys]);
+
+  const handleSetOffset = useCallback((limit: number) => {
+    setSearchParamsFromKeys({ [LIVE_TAILING_OFFSET_PARAM]: limit });
+  }, [setSearchParamsFromKeys]);
 
   useEffect(() => {
     startLiveTailing();
     return () => stopLiveTailing();
-  }, [startLiveTailing, stopLiveTailing]);
+  }, [startLiveTailing, stopLiveTailing, offset]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -90,7 +96,7 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
 
   useEffect(() => {
     handleResumeLiveTailing();
-  }, [rowsPerPage]);
+  }, [rowsPerPage, offset]);
 
   if (error) {
     return <div className="vm-live-tailing-view__error">{error}</div>;
@@ -109,6 +115,8 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
         clearLogs={clearLogs}
         isRawJsonView={isRawJsonView}
         onRawJsonViewChange={setIsRawJsonView}
+        offset={offset}
+        handleSetOffset={handleSetOffset}
       />
       <ScrollToTopButton />
       <div

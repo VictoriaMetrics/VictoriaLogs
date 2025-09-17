@@ -155,6 +155,30 @@ func TestPipeReplaceRegexp(t *testing.T) {
 			{"bar", "abc"},
 		},
 	})
+
+	// verify that '.' matches newlines.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/88
+	f(`replace_regexp ("foo(.+?)bar", "q-$1-x")`, [][]Field{
+		{
+			{"_msg", "foo a\n aaa barabc"},
+		},
+	}, [][]Field{
+		{
+			{"_msg", "q- a\n aaa -xabc"},
+		},
+	})
+
+	// explicit disable for '.' matching against newlines.
+	// See https://github.com/google/re2/wiki/Syntax
+	f(`replace_regexp ("(?-s)foo(.+?)bar", "q-$1-x")`, [][]Field{
+		{
+			{"_msg", "foo a\n aaa barabc"},
+		},
+	}, [][]Field{
+		{
+			{"_msg", "foo a\n aaa barabc"},
+		},
+	})
 }
 
 func TestPipeReplaceRegexpUpdateNeededFields(t *testing.T) {

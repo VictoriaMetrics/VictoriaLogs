@@ -62,6 +62,12 @@ func expectPipeResults(t *testing.T, pipeStr string, rows, rowsExpected [][]Fiel
 		brw.writeRow(row)
 	}
 	brw.flush()
+
+	if ps, ok := pp.(*pipeQueryStatsProcessor); ok {
+		qs := &QueryStats{}
+		ps.setQueryStats(qs, 0)
+	}
+
 	pp.flush()
 
 	ppTest.expectRows(t, rowsExpected)

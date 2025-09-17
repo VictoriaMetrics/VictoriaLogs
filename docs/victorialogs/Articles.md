@@ -1,11 +1,11 @@
 ---
-weight: 29
+weight: 70
 title: Articles
 menu:
   docs:
     parent: 'victorialogs'
     identifier: "victorialogs-articles"
-    weight: 29
+    weight: 70
 tags: []
 ---
 
@@ -26,6 +26,7 @@ tags: []
 * [Production Kubernetes Logging-VictoriaLogs](https://kiraniyer88.medium.com/production-kubernetes-logging-victorialogs-73ae858aa3e4)
 * [Kubernetes Monitoring — A Complete Solution](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-1-architecture-eb5b998658d5)
 * [Kubernetes Monitoring — A Complete Solution, Part 8: Logging with VictoriaLogs](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-8-logging-with-victorialogs-f17c44461034)
+* [VictoriaLogs: What if logs management became simple and performant?](https://blog.ogenki.io/post/series/observability/logs/)
 
 ## Our articles
 

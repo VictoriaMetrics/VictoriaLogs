@@ -15,6 +15,8 @@ interface LiveTailingSettingsProps {
   handleSetRowsPerPage: (limit: number) => void;
   logs: Logs[];
   isPaused: boolean;
+  offset: number;
+  handleSetOffset: (offset: number) => void;
   handleResumeLiveTailing: () => void;
   pauseLiveTailing: () => void;
   clearLogs: () => void;
@@ -32,7 +34,9 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
   pauseLiveTailing,
   clearLogs,
   isRawJsonView,
-  onRawJsonViewChange
+  onRawJsonViewChange,
+  offset,
+  handleSetOffset
 }) => {
   const settingButtonRef = useRef<HTMLDivElement>(null);
   const { value: isSettingsOpen, setFalse: closeSettings, setTrue: openSettings } = useBoolean(false);
@@ -46,6 +50,13 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
       <SelectLimit
         limit={rowsPerPage}
         onChange={handleSetRowsPerPage}
+        onOpenSelect={pauseLiveTailing}
+      />
+      <SelectLimit
+        label={"Offset"}
+        limit={`${offset}s`}
+        options={[5, 10, 15, 30, 45, 60]}
+        onChange={handleSetOffset}
         onOpenSelect={pauseLiveTailing}
       />
       <div className="vm-live-tailing-view__settings-buttons">

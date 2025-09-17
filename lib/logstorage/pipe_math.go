@@ -802,7 +802,7 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 	if !isNumberPrefix(lex.token) {
 		return nil, fmt.Errorf("cannot parse number from %q", lex.token)
 	}
-	numStr, err := getCompoundMathToken(lex)
+	numStr, err := lex.nextCompoundMathToken()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse number: %w", err)
 	}
@@ -819,7 +819,7 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 }
 
 func parseMathExprFieldName(lex *lexer) (*mathExpr, error) {
-	fieldName, err := getCompoundMathToken(lex)
+	fieldName, err := lex.nextCompoundMathToken()
 	if err != nil {
 		return nil, err
 	}
@@ -828,30 +828,6 @@ func parseMathExprFieldName(lex *lexer) (*mathExpr, error) {
 		fieldName: fieldName,
 	}
 	return me, nil
-}
-
-func getCompoundMathToken(lex *lexer) (string, error) {
-	if err := lex.isInvalidQuotedString(); err != nil {
-		return "", err
-	}
-
-	stopTokens := []string{"=", "+", "-", "*", "/", "%", "^", ",", ")", "|", "!", ""}
-	if lex.isKeyword(stopTokens...) {
-		return "", fmt.Errorf("compound token cannot start with '%s'", lex.token)
-	}
-
-	s := lex.token
-	rawS := lex.rawToken
-	lex.nextToken()
-	suffix := ""
-	for !lex.isSkippedSpace && !lex.isKeyword(stopTokens...) && !lex.isEnd() {
-		suffix += lex.rawToken
-		lex.nextToken()
-	}
-	if suffix == "" {
-		return s, nil
-	}
-	return rawS + suffix, nil
 }
 
 func mathFuncAnd(result []float64, args [][]float64) {

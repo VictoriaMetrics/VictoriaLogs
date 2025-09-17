@@ -575,12 +575,10 @@ func parsePipeUniq(lex *lexer) (pipe, error) {
 	}
 
 	if lex.isKeyword("limit") {
-		lex.nextToken()
-		n, ok := tryParseUint64(lex.token)
-		if !ok {
-			return nil, fmt.Errorf("cannot parse 'limit %s'", lex.token)
+		n, err := parseLimit(lex)
+		if err != nil {
+			return nil, err
 		}
-		lex.nextToken()
 		pu.limit = n
 	}
 

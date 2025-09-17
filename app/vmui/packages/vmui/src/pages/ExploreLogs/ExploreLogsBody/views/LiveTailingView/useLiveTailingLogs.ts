@@ -5,6 +5,8 @@ import { useAppState } from "../../../../../state/common/StateContext";
 import useBoolean from "../../../../../hooks/useBoolean";
 import { useTenant } from "../../../../../hooks/useTenant";
 import { LogFlowAnalyzer } from "./utils";
+import useStateSearchParams from "../../../../../hooks/useStateSearchParams";
+import { LIVE_TAILING_OFFSET_PARAM } from "./constants";
 
 /**
  * Defines the log's threshold, after which will be shown a warning notification
@@ -101,6 +103,7 @@ const processBufferedLogs = ({
 
 export const useLiveTailingLogs = (query: string, limit: number) => {
   const { serverUrl } = useAppState();
+  const [offset] = useStateSearchParams(5, LIVE_TAILING_OFFSET_PARAM);
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const { value: isPaused, setTrue: pauseLiveTailing, setFalse: resumeLiveTailing } = useBoolean(false);
@@ -147,6 +150,7 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
         },
         body: new URLSearchParams({
           query: query.trim(),
+          offset: `${offset}s`,
         })
       });
 
@@ -177,7 +181,7 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
       }
       return false;
     }
-  }, [query, stopLiveTailing]);
+  }, [query, stopLiveTailing, offset]);
 
   useEffect(() => {
     if (isPaused) {

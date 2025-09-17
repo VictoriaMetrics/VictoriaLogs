@@ -1,6 +1,6 @@
 ---
 weight: 4
-title: Promtail setup
+title: Promtail Setup
 disableToc: true
 menu:
   docs:

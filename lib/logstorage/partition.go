@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/snapshot/snapshotutil"
 )
 
 // PartitionStats contains stats for the partition.
@@ -34,6 +36,12 @@ type partition struct {
 
 	// ddb is the datadb used for the given partition
 	ddb *datadb
+
+	// The snapshotLock prevents from concurrent creation of snapshots,
+	// since this may result in snapshots without recently added data,
+	// which may be in the process of flushing to disk by concurrently running
+	// snapshot process.
+	snapshotLock sync.Mutex
 }
 
 // mustCreatePartition creates a partition at the given path.
@@ -49,6 +57,8 @@ func mustCreatePartition(path string) {
 
 	datadbPath := filepath.Join(path, datadbDirname)
 	mustCreateDatadb(datadbPath)
+
+	fs.MustSyncPathAndParentDir(path)
 }
 
 // mustDeletePartition deletes partition at the given path.
@@ -77,9 +87,11 @@ func mustOpenPartition(s *Storage, path string) *partition {
 				indexdbPath, datadbPath, path)
 		}
 
-		logger.Warnf("creating missing indexdb directory %s, this could happen if VictoriaLogs shuts down uncleanly (via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", indexdbPath)
+		logger.Warnf("creating missing indexdb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
+			"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", indexdbPath)
 		mustCreateIndexdb(indexdbPath)
 	}
+
 	idb := mustOpenIndexdb(indexdbPath, name, s)
 
 	// Start initializing the partition
@@ -91,7 +103,8 @@ func mustOpenPartition(s *Storage, path string) *partition {
 	}
 
 	if !isDatadbExist {
-		logger.Warnf("creating missing datadb directory %s, this could happen if VictoriaLogs shuts down uncleanly (via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", datadbPath)
+		logger.Warnf("creating missing datadb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
+			"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", datadbPath)
 		mustCreateDatadb(datadbPath)
 	}
 
@@ -203,6 +216,36 @@ func (pt *partition) marshalStreamIDCacheKey(dst []byte, sid *streamID) []byte {
 func (pt *partition) debugFlush() {
 	pt.ddb.debugFlush()
 	pt.idb.debugFlush()
+}
+
+// mustCreateSnapshot creates snapshot for the the given pt and returns full path to the created snapshot.
+func (pt *partition) mustCreateSnapshot() string {
+	logger.Infof("creating a snapshot for partition %q", pt.name)
+	startTime := time.Now()
+
+	pt.snapshotLock.Lock()
+	defer pt.snapshotLock.Unlock()
+
+	snapshotName := snapshotutil.NewName()
+	dstDir := filepath.Join(pt.path, snapshotsDirname, snapshotName)
+	fs.MustMkdirFailIfExist(dstDir)
+
+	dstIndexdbDir := filepath.Join(dstDir, indexdbDirname)
+	pt.idb.mustCreateSnapshotAt(dstIndexdbDir)
+
+	dstDatadbDir := filepath.Join(dstDir, datadbDirname)
+	pt.ddb.mustCreateSnapshotAt(dstDatadbDir)
+
+	fs.MustSyncPathAndParentDir(dstDir)
+
+	snapshotPath, err := filepath.Abs(dstDir)
+	if err != nil {
+		logger.Panicf("FATAL: cannot obtain absolute path to snapshot: %s", err)
+	}
+
+	logger.Infof("created a snapshot for partition %q at %q in %.3f seconds", pt.name, dstDir, time.Since(startTime).Seconds())
+
+	return snapshotPath
 }
 
 func (pt *partition) updateStats(ps *PartitionStats) {

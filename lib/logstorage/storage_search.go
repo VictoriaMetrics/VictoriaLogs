@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -18,6 +19,62 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
+
+// QueryContext is used for execting the query passed to NewQueryContext()
+type QueryContext struct {
+	// Context is the context for executing the Query.
+	Context context.Context
+
+	// QueryStats is query stats, which is updated after Query execution.
+	QueryStats *QueryStats
+
+	// TenantIDs is the list of tenant ids to Query.
+	TenantIDs []TenantID
+
+	// Query is the query to execute.
+	Query *Query
+
+	// startTime is creation time for the QueryContext.
+	//
+	// It is used for calculating query druation.
+	startTime time.Time
+}
+
+// NewQueryContext returns new context for the given query.
+func NewQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query) *QueryContext {
+	startTime := time.Now()
+	return newQueryContext(ctx, qs, tenantIDs, q, startTime)
+}
+
+// WithQuery returns new QueryContext with the given q, while preserving other fields from qctx.
+func (qctx *QueryContext) WithQuery(q *Query) *QueryContext {
+	return newQueryContext(qctx.Context, qctx.QueryStats, qctx.TenantIDs, q, qctx.startTime)
+}
+
+// WithContext returns new QueryContext with the given ctx, while preserving other fields from qctx.
+func (qctx *QueryContext) WithContext(ctx context.Context) *QueryContext {
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.Query, qctx.startTime)
+}
+
+// WithContextAndQuery returns new QueryContext with the given ctx and q, while preserving other fields from qctx.
+func (qctx *QueryContext) WithContextAndQuery(ctx context.Context, q *Query) *QueryContext {
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, q, qctx.startTime)
+}
+
+// QueryDurationNsecs returns the duration in nanoseconds since the NewQueryContext call.
+func (qctx *QueryContext) QueryDurationNsecs() int64 {
+	return time.Since(qctx.startTime).Nanoseconds()
+}
+
+func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, startTime time.Time) *QueryContext {
+	return &QueryContext{
+		Context:    ctx,
+		QueryStats: qs,
+		TenantIDs:  tenantIDs,
+		Query:      q,
+		startTime:  startTime,
+	}
+}
 
 // genericSearchOptions contain options used for search.
 type genericSearchOptions struct {
@@ -101,21 +158,21 @@ func (f writeBlockResultFunc) newDataBlockWriter() WriteDataBlockFunc {
 	}
 }
 
-// RunQuery runs the given q and calls writeBlock for results.
-func (s *Storage) RunQuery(ctx context.Context, tenantIDs []TenantID, q *Query, writeBlock WriteDataBlockFunc) error {
+// RunQuery runs the given qctx and calls writeBlock for results.
+func (s *Storage) RunQuery(qctx *QueryContext, writeBlock WriteDataBlockFunc) error {
 	writeBlockResult := writeBlock.newBlockResultWriter()
-	return s.runQuery(ctx, tenantIDs, q, writeBlockResult)
+	return s.runQuery(qctx, writeBlockResult)
 }
 
-// runQueryFunc must run the given q and pass query results to writeBlock
-type runQueryFunc func(ctx context.Context, tenantIDs []TenantID, q *Query, writeBlock writeBlockResultFunc) error
+// runQueryFunc must run the given qctx and pass query results to writeBlock
+type runQueryFunc func(qctx *QueryContext, writeBlock writeBlockResultFunc) error
 
-func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, writeBlock writeBlockResultFunc) error {
-	qNew, err := initSubqueries(ctx, tenantIDs, q, s.runQuery, true)
+func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
+	qNew, err := initSubqueries(qctx, s.runQuery, true)
 	if err != nil {
 		return err
 	}
-	q = qNew
+	q := qNew
 
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
@@ -126,7 +183,7 @@ func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, 
 	fieldsFilter := getNeededColumns(q.pipes)
 
 	so := &genericSearchOptions{
-		tenantIDs:    tenantIDs,
+		tenantIDs:    qctx.TenantIDs,
 		streamIDs:    streamIDs,
 		minTimestamp: minTimestamp,
 		maxTimestamp: maxTimestamp,
@@ -134,26 +191,23 @@ func (s *Storage) runQuery(ctx context.Context, tenantIDs []TenantID, q *Query, 
 		fieldsFilter: fieldsFilter,
 		timeOffset:   -q.opts.timeOffset,
 	}
-	ss := &searchStats{}
 
 	workersCount := q.GetConcurrency()
 
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
-		s.search(workersCount, so, ss, stopCh, writeBlockToPipes)
+		s.search(workersCount, so, qctx.QueryStats, stopCh, writeBlockToPipes)
 		return nil
 	}
 
-	err = runPipes(ctx, q.pipes, search, writeBlock, workersCount)
-
-	updateSearchMetrics(ss)
-
-	return err
+	return runPipes(qctx, q.pipes, search, writeBlock, workersCount)
 }
 
 // searchFunc must perform search and pass its results to writeBlock.
 type searchFunc func(stopCh <-chan struct{}, writeBlock writeBlockResultFunc) error
 
-func runPipes(ctx context.Context, pipes []pipe, search searchFunc, writeBlock writeBlockResultFunc, concurrency int) error {
+func runPipes(qctx *QueryContext, pipes []pipe, search searchFunc, writeBlock writeBlockResultFunc, concurrency int) error {
+	ctx := qctx.Context
+
 	stopCh := ctx.Done()
 	if len(pipes) == 0 {
 		// Fast path when there are no pipes
@@ -168,6 +222,7 @@ func runPipes(ctx context.Context, pipes []pipe, search searchFunc, writeBlock w
 		p := pipes[i]
 		ctxChild, cancel := context.WithCancel(ctx)
 		pp = p.newPipeProcessor(concurrency, stopCh, cancel, pp)
+
 		cancels[i] = cancel
 		pps[i] = pp
 
@@ -179,6 +234,13 @@ func runPipes(ctx context.Context, pipes []pipe, search searchFunc, writeBlock w
 
 	var errFlush error
 	for i, pp := range pps {
+		switch t := pp.(type) {
+		case *pipeQueryStatsProcessor:
+			t.setQueryStats(qctx.QueryStats, qctx.QueryDurationNsecs())
+		case *pipeQueryStatsLocalProcessor:
+			t.setQueryStats(qctx.QueryStats, qctx.QueryDurationNsecs())
+		}
+
 		if err := pp.flush(); err != nil && errFlush == nil {
 			errFlush = err
 		}
@@ -193,8 +255,10 @@ func runPipes(ctx context.Context, pipes []pipe, search searchFunc, writeBlock w
 	return errFlush
 }
 
-// GetFieldNames returns field names from q results for the given tenantIDs.
-func (s *Storage) GetFieldNames(ctx context.Context, tenantIDs []TenantID, q *Query) ([]ValueWithHits, error) {
+// GetFieldNames returns field names for the given qctx.
+func (s *Storage) GetFieldNames(qctx *QueryContext) ([]ValueWithHits, error) {
+	q := qctx.Query
+
 	pipes := append([]pipe{}, q.pipes...)
 	pipeStr := "field_names"
 	lex := newLexer(pipeStr, q.timestamp)
@@ -215,10 +279,11 @@ func (s *Storage) GetFieldNames(ctx context.Context, tenantIDs []TenantID, q *Qu
 	qNew := q.cloneShallow()
 	qNew.pipes = pipes
 
-	return s.runValuesWithHitsQuery(ctx, tenantIDs, qNew)
+	qctxNew := qctx.WithQuery(qNew)
+	return s.runValuesWithHitsQuery(qctxNew)
 }
 
-func getJoinMapGeneric(ctx context.Context, tenantIDs []TenantID, q *Query, runQuery runQueryFunc, byFields []string, prefix string) (map[string][][]Field, error) {
+func getJoinMapGeneric(qctx *QueryContext, runQuery runQueryFunc, byFields []string, prefix string) (map[string][][]Field, error) {
 	// TODO: track memory usage
 
 	m := make(map[string][][]Field)
@@ -273,7 +338,7 @@ func getJoinMapGeneric(ctx context.Context, tenantIDs []TenantID, q *Query, runQ
 		}
 	}
 
-	if err := runQuery(ctx, tenantIDs, q, writeBlockResult); err != nil {
+	if err := runQuery(qctx, writeBlockResult); err != nil {
 		return nil, err
 	}
 
@@ -287,8 +352,9 @@ func marshalStrings(dst []byte, a []string) []byte {
 	return dst
 }
 
-func getFieldValuesGeneric(ctx context.Context, tenantIDs []TenantID, q *Query, runQuery runQueryFunc, fieldName string) ([]string, error) {
+func getFieldValuesGeneric(qctx *QueryContext, runQuery runQueryFunc, fieldName string) ([]string, error) {
 	// TODO: track memory usage
+	q := qctx.Query
 
 	if !isLastPipeUniq(q.pipes) {
 		pipes := append([]pipe{}, q.pipes...)
@@ -307,7 +373,8 @@ func getFieldValuesGeneric(ctx context.Context, tenantIDs []TenantID, q *Query, 
 
 		qNew := q.cloneShallow()
 		qNew.pipes = pipes
-		q = qNew
+
+		qctx = qctx.WithQuery(qNew)
 	}
 
 	cpusCount := cgroup.AvailableCPUs()
@@ -334,7 +401,7 @@ func getFieldValuesGeneric(ctx context.Context, tenantIDs []TenantID, q *Query, 
 		valuesPerCPU[workerID] = valuesDst
 	}
 
-	if err := runQuery(ctx, tenantIDs, q, writeBlockResult); err != nil {
+	if err := runQuery(qctx, writeBlockResult); err != nil {
 		return nil, err
 	}
 
@@ -358,10 +425,12 @@ func isLastPipeUniq(pipes []pipe) bool {
 	return ok
 }
 
-// GetFieldValues returns unique values with the number of hits for the given fieldName returned by q for the given tenantIDs.
+// GetFieldValues returns unique values with the number of hits for the given fieldName returned by qctx.
 //
 // If limit > 0, then up to limit unique values are returned.
-func (s *Storage) GetFieldValues(ctx context.Context, tenantIDs []TenantID, q *Query, fieldName string, limit uint64) ([]ValueWithHits, error) {
+func (s *Storage) GetFieldValues(qctx *QueryContext, fieldName string, limit uint64) ([]ValueWithHits, error) {
+	q := qctx.Query
+
 	pipes := append([]pipe{}, q.pipes...)
 	quotedFieldName := quoteTokenIfNeeded(fieldName)
 	pipeStr := fmt.Sprintf("field_values %s limit %d", quotedFieldName, limit)
@@ -381,7 +450,8 @@ func (s *Storage) GetFieldValues(ctx context.Context, tenantIDs []TenantID, q *Q
 	qNew := q.cloneShallow()
 	qNew.pipes = pipes
 
-	return s.runValuesWithHitsQuery(ctx, tenantIDs, qNew)
+	qctxNew := qctx.WithQuery(qNew)
+	return s.runValuesWithHitsQuery(qctxNew)
 }
 
 // ValueWithHits contains value and hits.
@@ -431,9 +501,9 @@ func toValuesWithHits(m map[string]*uint64) []ValueWithHits {
 	return results
 }
 
-// GetStreamFieldNames returns stream field names from q results for the given tenantIDs.
-func (s *Storage) GetStreamFieldNames(ctx context.Context, tenantIDs []TenantID, q *Query) ([]ValueWithHits, error) {
-	streams, err := s.GetStreams(ctx, tenantIDs, q, math.MaxUint64)
+// GetStreamFieldNames returns stream field names for the given qctx.
+func (s *Storage) GetStreamFieldNames(qctx *QueryContext) ([]ValueWithHits, error) {
+	streams, err := s.GetStreams(qctx, math.MaxUint64)
 	if err != nil {
 		return nil, err
 	}
@@ -453,11 +523,11 @@ func (s *Storage) GetStreamFieldNames(ctx context.Context, tenantIDs []TenantID,
 	return names, nil
 }
 
-// GetStreamFieldValues returns stream field values for the given fieldName from q results for the given tenantIDs.
+// GetStreamFieldValues returns stream field values for the given fieldName and the given qctx.
 //
 // If limit > 0, then up to limit unique values are returned.
-func (s *Storage) GetStreamFieldValues(ctx context.Context, tenantIDs []TenantID, q *Query, fieldName string, limit uint64) ([]ValueWithHits, error) {
-	streams, err := s.GetStreams(ctx, tenantIDs, q, math.MaxUint64)
+func (s *Storage) GetStreamFieldValues(qctx *QueryContext, fieldName string, limit uint64) ([]ValueWithHits, error) {
+	streams, err := s.GetStreams(qctx, math.MaxUint64)
 	if err != nil {
 		return nil, err
 	}
@@ -484,21 +554,21 @@ func (s *Storage) GetStreamFieldValues(ctx context.Context, tenantIDs []TenantID
 	return values, nil
 }
 
-// GetStreams returns streams from q results for the given tenantIDs.
+// GetStreams returns streams from qctx results.
 //
 // If limit > 0, then up to limit unique streams are returned.
-func (s *Storage) GetStreams(ctx context.Context, tenantIDs []TenantID, q *Query, limit uint64) ([]ValueWithHits, error) {
-	return s.GetFieldValues(ctx, tenantIDs, q, "_stream", limit)
+func (s *Storage) GetStreams(qctx *QueryContext, limit uint64) ([]ValueWithHits, error) {
+	return s.GetFieldValues(qctx, "_stream", limit)
 }
 
-// GetStreamIDs returns stream_id field values from q results for the given tenantIDs.
+// GetStreamIDs returns stream_id field values from qctx results.
 //
 // If limit > 0, then up to limit unique streams are returned.
-func (s *Storage) GetStreamIDs(ctx context.Context, tenantIDs []TenantID, q *Query, limit uint64) ([]ValueWithHits, error) {
-	return s.GetFieldValues(ctx, tenantIDs, q, "_stream_id", limit)
+func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHits, error) {
+	return s.GetFieldValues(qctx, "_stream_id", limit)
 }
 
-func (s *Storage) runValuesWithHitsQuery(ctx context.Context, tenantIDs []TenantID, q *Query) ([]ValueWithHits, error) {
+func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, error) {
 	var results []ValueWithHits
 	var resultsLock sync.Mutex
 	writeBlockResult := func(_ uint, br *blockResult) {
@@ -527,7 +597,7 @@ func (s *Storage) runValuesWithHitsQuery(ctx context.Context, tenantIDs []Tenant
 		resultsLock.Unlock()
 	}
 
-	err := s.runQuery(ctx, tenantIDs, q, writeBlockResult)
+	err := s.runQuery(qctx, writeBlockResult)
 	if err != nil {
 		return nil, err
 	}
@@ -536,17 +606,19 @@ func (s *Storage) runValuesWithHitsQuery(ctx context.Context, tenantIDs []Tenant
 	return results, nil
 }
 
-func initSubqueries(ctx context.Context, tenantIDs []TenantID, q *Query, runQuery runQueryFunc, keepInSubquery bool) (*Query, error) {
+func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, keepInSubquery bool) (*Query, error) {
 	getFieldValues := func(q *Query, fieldName string) ([]string, error) {
-		return getFieldValuesGeneric(ctx, tenantIDs, q, runQuery, fieldName)
+		qctxLocal := qctx.WithQuery(q)
+		return getFieldValuesGeneric(qctxLocal, runQuery, fieldName)
 	}
-	qNew, err := initFilterInValues(q, getFieldValues, keepInSubquery)
+	qNew, err := initFilterInValues(qctx.Query, getFieldValues, keepInSubquery)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize `in` subqueries: %w", err)
 	}
 
 	getJoinMap := func(q *Query, byFields []string, prefix string) (map[string][][]Field, error) {
-		return getJoinMapGeneric(ctx, tenantIDs, q, runQuery, byFields, prefix)
+		qctxLocal := qctx.WithQuery(q)
+		return getJoinMapGeneric(qctxLocal, runQuery, byFields, prefix)
 	}
 	qNew, err = initJoinMaps(qNew, getJoinMap)
 	if err != nil {
@@ -554,14 +626,15 @@ func initSubqueries(ctx context.Context, tenantIDs []TenantID, q *Query, runQuer
 	}
 
 	runUnionQuery := func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error {
-		return runQuery(ctx, tenantIDs, q, writeBlock)
+		qctxLocal := qctx.WithContextAndQuery(ctx, q)
+		return runQuery(qctxLocal, writeBlock)
 	}
 	qNew = initUnionQueries(qNew, runUnionQuery)
 
-	return initStreamContextPipes(qNew, runQuery)
+	return initStreamContextPipes(qctx.QueryStats, qNew, runQuery)
 }
 
-func initStreamContextPipes(q *Query, runQuery runQueryFunc) (*Query, error) {
+func initStreamContextPipes(qs *QueryStats, q *Query, runQuery runQueryFunc) (*Query, error) {
 	pipes := q.pipes
 
 	if len(pipes) == 0 {
@@ -579,7 +652,7 @@ func initStreamContextPipes(q *Query, runQuery runQueryFunc) (*Query, error) {
 		fieldsFilter := getNeededColumns(pipes)
 
 		pipesNew := append([]pipe{}, pipes...)
-		pipesNew[0] = pc.withRunQuery(runQuery, fieldsFilter)
+		pipesNew[0] = pc.withRunQuery(qs, runQuery, fieldsFilter)
 		qNew := q.cloneShallow()
 		qNew.pipes = pipesNew
 		return qNew, nil
@@ -894,15 +967,25 @@ func (db *DataBlock) RowsCount() int {
 //
 // It returns false if db doesn't have _time column or this column has invalid timestamps.
 func (db *DataBlock) GetTimestamps(dst []int64) ([]int64, bool) {
+	c := db.GetColumnByName("_time")
+	if c == nil {
+		return dst, false
+	}
+	return tryParseTimestamps(dst, c.Values)
+}
+
+// GetColumnByName returns column with the given name from db.
+//
+// nil is returned if there is no such column.
+func (db *DataBlock) GetColumnByName(name string) *BlockColumn {
 	columns := db.Columns
 	for i := range columns {
 		c := &columns[i]
-		if c.Name != "_time" {
-			continue
+		if c.Name == name {
+			return c
 		}
-		return tryParseTimestamps(dst, c.Values)
 	}
-	return dst, false
+	return nil
 }
 
 // Marshal appends marshaled db to dst and returns the result.
@@ -1041,14 +1124,14 @@ func (db *DataBlock) initFromBlockResult(br *blockResult) {
 // search searches for the matching rows according to so.
 //
 // It calls writeBlock for each matching block.
-func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
+func (s *Storage) search(workersCount int, so *genericSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
 	// Spin up workers
 	var wgWorkers sync.WaitGroup
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
 	wgWorkers.Add(workersCount)
 	for i := 0; i < workersCount; i++ {
 		go func(workerID uint) {
-			var ssLocal searchStats
+			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
 			for bswb := range workCh {
@@ -1061,7 +1144,9 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchS
 						continue
 					}
 
-					bs.search(&ssLocal, bsw, bm)
+					rowsProcessed := bsw.bh.rowsCount
+
+					bs.search(qsLocal, bsw, bm)
 					if bs.br.rowsLen > 0 {
 						if so.timeOffset != 0 {
 							bs.subTimeOffsetToTimestamps(so.timeOffset)
@@ -1069,14 +1154,17 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchS
 						writeBlock(workerID, &bs.br)
 					}
 					bsw.reset()
-					ssLocal.blocksProcessed++
+
+					qsLocal.BlocksProcessed++
+					qsLocal.RowsProcessed += rowsProcessed
+					qsLocal.RowsFound += uint64(bs.br.rowsLen)
 				}
 				bswb.bsws = bswb.bsws[:0]
 				putBlockSearchWorkBatch(bswb)
 			}
 			putBlockSearch(bs)
 			putBitmap(bm)
-			ss.updateAtomic(&ssLocal)
+			qs.UpdateAtomic(qsLocal)
 			wgWorkers.Done()
 		}(uint(i))
 	}
@@ -1113,11 +1201,11 @@ func (s *Storage) search(workersCount int, so *genericSearchOptions, ss *searchS
 		partitionSearchConcurrencyLimitCh <- struct{}{}
 		wgSearchers.Add(1)
 		go func(idx int, pt *partition) {
-			var ssLocal searchStats
+			qsLocal := &QueryStats{}
 
-			psfs[idx] = pt.search(sf, f, so, &ssLocal, workCh, stopCh)
+			psfs[idx] = pt.search(sf, f, so, qsLocal, workCh, stopCh)
 
-			ss.updateAtomic(&ssLocal)
+			qs.UpdateAtomic(qsLocal)
 
 			wgSearchers.Done()
 			<-partitionSearchConcurrencyLimitCh
@@ -1147,7 +1235,7 @@ var partitionSearchConcurrencyLimitCh = make(chan struct{}, cgroup.AvailableCPUs
 
 type partitionSearchFinalizer func()
 
-func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
+func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions, qs *QueryStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
 	if needStop(stopCh) {
 		// Do not spend CPU time on search, since it is already stopped.
 		return func() {}
@@ -1176,7 +1264,7 @@ func (pt *partition) search(sf *StreamFilter, f filter, so *genericSearchOptions
 		filter:       f,
 		fieldsFilter: so.fieldsFilter,
 	}
-	return pt.ddb.search(soInternal, ss, workCh, stopCh)
+	return pt.ddb.search(soInternal, qs, workCh, stopCh)
 }
 
 func intersectStreamIDs(a, b []streamID) []streamID {
@@ -1238,7 +1326,7 @@ func initStreamFilters(tenantIDs []TenantID, idb *indexdb, f filter) filter {
 	return f
 }
 
-func (ddb *datadb) search(so *searchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
+func (ddb *datadb) search(so *searchOptions, qs *QueryStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) partitionSearchFinalizer {
 	// Select parts with data for the given time range
 	ddb.partsLock.Lock()
 	pws := appendPartsInTimeRange(nil, ddb.bigParts, so.minTimestamp, so.maxTimestamp)
@@ -1254,7 +1342,7 @@ func (ddb *datadb) search(so *searchOptions, ss *searchStats, workCh chan<- *blo
 
 	// Apply search to matching parts
 	for _, pw := range pws {
-		pw.p.search(so, ss, workCh, stopCh)
+		pw.p.search(so, qs, workCh, stopCh)
 	}
 
 	return func() {
@@ -1264,12 +1352,12 @@ func (ddb *datadb) search(so *searchOptions, ss *searchStats, workCh chan<- *blo
 	}
 }
 
-func (p *part) search(so *searchOptions, ss *searchStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) search(so *searchOptions, qs *QueryStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	bhss := getBlockHeaders()
 	if len(so.tenantIDs) > 0 {
-		p.searchByTenantIDs(so, ss, bhss, workCh, stopCh)
+		p.searchByTenantIDs(so, qs, bhss, workCh, stopCh)
 	} else {
-		p.searchByStreamIDs(so, ss, bhss, workCh, stopCh)
+		p.searchByStreamIDs(so, qs, bhss, workCh, stopCh)
 	}
 	putBlockHeaders(bhss)
 }
@@ -1301,7 +1389,7 @@ func (bhss *blockHeaders) reset() {
 	bhss.bhs = bhs[:0]
 }
 
-func (p *part) searchByTenantIDs(so *searchOptions, ss *searchStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) searchByTenantIDs(so *searchOptions, qs *QueryStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	// it is assumed that tenantIDs are sorted
 	tenantIDs := so.tenantIDs
 
@@ -1358,7 +1446,7 @@ func (p *part) searchByTenantIDs(so *searchOptions, ss *searchStats, bhss *block
 			continue
 		}
 
-		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, ss)
+		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, qs)
 
 		bhs := bhss.bhs
 		for len(bhs) > 0 {
@@ -1403,7 +1491,7 @@ func (p *part) searchByTenantIDs(so *searchOptions, ss *searchStats, bhss *block
 	}
 }
 
-func (p *part) searchByStreamIDs(so *searchOptions, ss *searchStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
+func (p *part) searchByStreamIDs(so *searchOptions, qs *QueryStats, bhss *blockHeaders, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	// it is assumed that streamIDs are sorted
 	streamIDs := so.streamIDs
 
@@ -1461,7 +1549,7 @@ func (p *part) searchByStreamIDs(so *searchOptions, ss *searchStats, bhss *block
 			continue
 		}
 
-		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, ss)
+		bhss.bhs = ibh.mustReadBlockHeaders(bhss.bhs[:0], p, qs)
 
 		bhs := bhss.bhs
 		for len(bhs) > 0 {

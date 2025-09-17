@@ -640,7 +640,7 @@ func parsePipeTop(lex *lexer) (pipe, error) {
 			if lex.isKeyword("as") {
 				lex.nextToken()
 			}
-			s, err := getCompoundToken(lex)
+			s, err := lex.nextCompoundToken()
 			if err != nil {
 				return nil, fmt.Errorf("cannot parse 'hits' name: %w", err)
 			}
