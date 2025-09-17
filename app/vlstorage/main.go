@@ -59,6 +59,8 @@ var (
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
 	storageNodeUsername     = flagutil.NewArrayString("storageNode.username", "Optional basic auth username to use for the corresponding -storageNode")
+	storageNodeUsernameFile = flagutil.NewArrayString("storageNode.usernameFile", "Optional path to basic auth username to use for the corresponding -storageNode. "+
+		"The file is re-read every second")
 	storageNodePassword     = flagutil.NewArrayString("storageNode.password", "Optional basic auth password to use for the corresponding -storageNode")
 	storageNodePasswordFile = flagutil.NewArrayString("storageNode.passwordFile", "Optional path to basic auth password to use for the corresponding -storageNode. "+
 		"The file is re-read every second")
@@ -163,12 +165,14 @@ func initNetworkStorage() {
 
 func newAuthConfigForStorageNode(argIdx int) *promauth.Config {
 	username := storageNodeUsername.GetOptionalArg(argIdx)
+	usernameFile := storageNodeUsernameFile.GetOptionalArg(argIdx)
 	password := storageNodePassword.GetOptionalArg(argIdx)
 	passwordFile := storageNodePasswordFile.GetOptionalArg(argIdx)
 	var basicAuthCfg *promauth.BasicAuthConfig
-	if username != "" || password != "" || passwordFile != "" {
+	if username != "" || usernameFile != "" || password != "" || passwordFile != "" {
 		basicAuthCfg = &promauth.BasicAuthConfig{
 			Username:     username,
+			UsernameFile: usernameFile,
 			Password:     promauth.NewSecret(password),
 			PasswordFile: passwordFile,
 		}

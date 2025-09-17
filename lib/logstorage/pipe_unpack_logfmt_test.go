@@ -324,4 +324,10 @@ func TestPipeUnpackLogfmtUpdateNeededFields(t *testing.T) {
 	f("unpack_logfmt from x", "f*,x*", "", "f*,x*", "")
 	f("unpack_logfmt if (y:z) from x", "f2,x", "", "f2,x,y", "")
 	f("unpack_logfmt if (f2:z y:qwe) from x", "f2,x", "", "f2,x,y", "")
+
+	// query contains 'result_prefix'
+	f("unpack_logfmt from x result_prefix foo_", "foo*", "", "foo*,x", "")
+	f("unpack_logfmt from x fields (f1,f2) result_prefix foo_", "*", "", "*", "foo_f1,foo_f2")
+	f("unpack_logfmt from x fields (f1) result_prefix foo_ keep_original_fields", "*", "", "*", "")
+	f("unpack_logfmt from x fields (f1) result_prefix foo_ skip_empty_results", "*", "", "*", "")
 }

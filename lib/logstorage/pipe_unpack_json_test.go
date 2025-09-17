@@ -387,4 +387,12 @@ func TestPipeUnpackJSONUpdateNeededFields(t *testing.T) {
 	f("unpack_json if (y:z) from x fields (x)", "f2,x", "", "f2,x,y", "")
 	f("unpack_json if (y:z) from x fields (x) skip_empty_results", "f2,x", "", "f2,x,y", "")
 	f("unpack_json if (y:z) from x fields (x) keep_original_fields", "f2,x", "", "f2,x,y", "")
+
+	// query contains 'result_prefix'
+	f("unpack_json from x result_prefix foo_", "y", "", "y", "")
+	f("unpack_json from x result_prefix foo_", "foo*", "", "foo*,x", "")
+	f("unpack_json from x fields (f1,f2) result_prefix foo_", "*", "", "*", "foo_f1,foo_f2")
+	f("unpack_json from x fields (f1) result_prefix foo_ keep_original_fields", "*", "", "*", "")
+	f("unpack_json from x fields (f1) result_prefix foo_ skip_empty_results", "*", "", "*", "")
+	f("unpack_json if (y:z) from x fields (f1) result_prefix foo_", "*", "", "*", "foo_f1")
 }

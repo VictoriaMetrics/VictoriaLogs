@@ -67,7 +67,7 @@ func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
 }
 
 func (pu *pipeUnpackJSON) updateNeededFields(pf *prefixfilter.Filter) {
-	updateNeededFieldsForUnpackPipe(pu.fromField, pu.fieldFilters, pu.keepOriginalFields, pu.skipEmptyResults, pu.iff, pf)
+	updateNeededFieldsForUnpackPipe(pu.fromField, pu.resultPrefix, pu.fieldFilters, pu.keepOriginalFields, pu.skipEmptyResults, pu.iff, pf)
 }
 
 func (pu *pipeUnpackJSON) hasFilterInWithQuery() bool {
