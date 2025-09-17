@@ -288,4 +288,9 @@ func TestPipeUnpackSyslogUpdateNeededFields(t *testing.T) {
 	f("unpack_syslog from x", "f2,x", "", "f2,x", "")
 	f("unpack_syslog if (y:z) from x", "f2,x", "", "f2,x,y", "")
 	f("unpack_syslog if (f2:z y:qwe) from x", "f2,x", "", "f2,x,y", "")
+
+	// query contains 'result_prefix'
+	f("unpack_syslog from x result_prefix foo_", "*", "", "*", "")
+	f("unpack_syslog from x result_prefix foo_ keep_original_fields", "*", "", "*", "")
+	f("unpack_syslog if (y:z) from x result_prefix foo_", "*", "", "*", "")
 }

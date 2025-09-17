@@ -61,7 +61,7 @@ func (pu *pipeUnpackSyslog) canReturnLastNResults() bool {
 }
 
 func (pu *pipeUnpackSyslog) updateNeededFields(pf *prefixfilter.Filter) {
-	updateNeededFieldsForUnpackPipe(pu.fromField, nil, pu.keepOriginalFields, false, pu.iff, pf)
+	updateNeededFieldsForUnpackPipe(pu.fromField, pu.resultPrefix, nil, pu.keepOriginalFields, false, pu.iff, pf)
 }
 
 func (pu *pipeUnpackSyslog) hasFilterInWithQuery() bool {
