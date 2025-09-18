@@ -117,6 +117,8 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 type storageNodeQueryState struct {
 	queryStatsGlobal *logstorage.QueryStats
 
+	context context.Context
+
 	responseBody io.ReadCloser
 	reqURL       string
 	sn           *storageNode
@@ -128,11 +130,18 @@ func (sn *storageNode) startQuery(qctx *logstorage.QueryContext) (*storageNodeQu
 	path := "/internal/select/query"
 	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(qctx.Context, path, args)
 	if err != nil {
+		if ctxErr := qctx.Context.Err(); ctxErr != nil {
+			// Do not return the original error if the request was canceled,
+			// because in such cases any network error is expected and should be ignored.
+			return nil, ctxErr
+		}
 		return nil, err
 	}
 
 	return &storageNodeQueryState{
 		queryStatsGlobal: qctx.QueryStats,
+
+		context: qctx.Context,
 
 		responseBody: responseBody,
 		reqURL:       reqURL,
@@ -158,6 +167,11 @@ func (qstate *storageNodeQueryState) runQuery(processBlock func(db *logstorage.D
 			if errors.Is(err, io.EOF) {
 				// The end of response stream
 				return nil
+			}
+			if ctxErr := qstate.context.Err(); ctxErr != nil {
+				// Do not return the original error if the request was canceled,
+				// because in such cases any network error is expected and should be ignored.
+				return ctxErr
 			}
 			return fmt.Errorf("cannot read block size from %q: %w", qstate.reqURL, err)
 		}
@@ -416,6 +430,11 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 
 	if err := getFirstNonCancelError(errs, qctx.AllowPartialResponse); err != nil {
 		return err
+	}
+	if qctxLocal.Context.Err() != nil {
+		// All entries in errs may contain context.Canceled errors,
+		// so do not continue request processing in that case.
+		return nil
 	}
 	clear(errs)
 
