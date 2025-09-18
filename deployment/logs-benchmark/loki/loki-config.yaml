@@ -9,12 +9,26 @@ common:
   path_prefix: /tmp/loki
   storage:
     filesystem:
+      # Still used for local cache and rules, even when object store is S3
       chunks_directory: /tmp/loki/chunks
       rules_directory: /tmp/loki/rules
   replication_factor: 1
   ring:
     kvstore:
       store: inmemory
+
+storage_config:
+  aws:
+    # Works with AWS S3 or S3-compatible stores (e.g., MinIO).
+    bucketnames: ${LOKI_S3_BUCKET}
+    endpoint: ${LOKI_S3_ENDPOINT}
+    region: ${AWS_REGION}
+    access_key_id: ${AWS_ACCESS_KEY_ID}
+    secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+    s3forcepathstyle: true
+  boltdb_shipper:
+    active_index_directory: /tmp/loki/index
+    cache_location: /tmp/loki/boltdb-cache
 
 query_range:
   results_cache:
@@ -27,7 +41,7 @@ schema_config:
   configs:
     - from: 2020-10-24
       store: boltdb-shipper
-      object_store: filesystem
+      object_store: s3
       schema: v11
       index:
         prefix: index_
@@ -61,3 +75,8 @@ limits_config:
   per_stream_rate_limit: 10240M
   per_stream_rate_limit_burst: 10240M
   cardinality_limit: 20000000
+  allow_structured_metadata: false
+
+  # Allow ingesting logs up to 30 days old for backdating
+  reject_old_samples: false
+  reject_old_samples_max_age: 720h  # 30 days

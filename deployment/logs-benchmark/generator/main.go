@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"log/syslog"
 	"math/rand"
@@ -23,6 +24,9 @@ var (
 
 	outputRateLimitItems  = flag.Int("outputRateLimitItems", 100, "Number of items to send per second")
 	outputRateLimitPeriod = flag.Duration("outputRateLimitPeriod", time.Second, "Period of time to send items")
+
+	backdateEnable = flag.Bool("logs.backdate.enable", false, "Enable backdating timestamps over a recent time window")
+	backdateDays   = flag.Int("logs.backdate.days", 7, "Number of days in the past to spread logs over")
 )
 
 func main() {
@@ -56,6 +60,43 @@ func main() {
 		}
 	}()
 
+	// Calculate timestamp distribution for backdating if enabled
+	var bucketStart time.Time
+	var totalBuckets int
+	var lineCounter int64
+	var totalLines int64
+	if *backdateEnable {
+		// Pre-count total lines for even distribution
+		for _, sourceFile := range sourceFiles {
+			fc, err := countLines(*logsPath + "/" + sourceFile)
+			if err != nil {
+				panic(err)
+			}
+			totalLines += fc
+		}
+		totalBuckets = *backdateDays * 24
+		bucketStart = time.Now().Add(-time.Duration(*backdateDays) * 24 * time.Hour).Truncate(time.Hour)
+		log.Printf("backdating enabled: %d lines across %d hour buckets starting %s", totalLines, totalBuckets, bucketStart.Format(time.RFC3339))
+	}
+
+	// Setup connections for backdating or regular syslog writers
+	var conn1, conn2 net.Conn
+	var hostname string
+	if *backdateEnable {
+		hostname, _ = os.Hostname()
+		var err error
+		conn1, err = net.Dial("tcp", *syslogAddr)
+		if err != nil {
+			panic(fmt.Errorf("error dialing syslog tcp to %s: %w", *syslogAddr, err))
+		}
+		defer conn1.Close()
+		conn2, err = net.Dial("tcp", *syslogAddr2)
+		if err != nil {
+			panic(fmt.Errorf("error dialing syslog tcp to %s: %w", *syslogAddr2, err))
+		}
+		defer conn2.Close()
+	}
+
 	for _, sourceFile := range sourceFiles {
 		log.Printf("sourceFile: %s", sourceFile)
 		f, err := os.Open(*logsPath + "/" + sourceFile)
@@ -71,13 +112,17 @@ func main() {
 			truncate := tagLen - 48
 			syslogTag = syslogTag[truncate:]
 		}
-		logger, err := syslog.Dial("tcp", *syslogAddr, syslog.LOG_INFO, syslogTag)
-		if err != nil {
-			panic(fmt.Errorf("error dialing syslog: %w", err))
-		}
-		logger2, err := syslog.Dial("tcp", *syslogAddr2, syslog.LOG_INFO, syslogTag)
-		if err != nil {
-			panic(fmt.Errorf("error dialing syslog: %w", err))
+
+		var logger, logger2 *syslog.Writer
+		if !*backdateEnable {
+			logger, err = syslog.Dial("tcp", *syslogAddr, syslog.LOG_INFO, syslogTag)
+			if err != nil {
+				panic(fmt.Errorf("error dialing syslog: %w", err))
+			}
+			logger2, err = syslog.Dial("tcp", *syslogAddr2, syslog.LOG_INFO, syslogTag)
+			if err != nil {
+				panic(fmt.Errorf("error dialing syslog: %w", err))
+			}
 		}
 
 		scanner := bufio.NewScanner(f)
@@ -87,12 +132,33 @@ func main() {
 			if *randomSuffix {
 				line = line + " " + randomString()
 			}
-			_ = logger.Info(line)
-			_ = logger2.Info(line)
+
+			if *backdateEnable {
+				// Calculate which hour bucket this line belongs to
+				bucketIndex := int((lineCounter * int64(totalBuckets)) / totalLines)
+				if bucketIndex >= totalBuckets {
+					bucketIndex = totalBuckets - 1
+				}
+				ts := bucketStart.Add(time.Duration(bucketIndex) * time.Hour)
+				msg := buildRFC5424(ts, hostname, syslogTag, line)
+				// Debug log every 10000th message to verify timestamp
+				if lineCounter%10000 == 0 {
+					log.Printf("DEBUG: sending message with timestamp %s (bucket %d)", ts.Format(time.RFC3339), bucketIndex)
+				}
+				_, _ = io.WriteString(conn1, msg)
+				_, _ = io.WriteString(conn2, msg)
+				lineCounter++
+			} else {
+				_ = logger.Info(line)
+				_ = logger2.Info(line)
+			}
 		}
 
-		logger.Close()
-		logger2.Close()
+		if !*backdateEnable {
+			logger.Close()
+			logger2.Close()
+		}
+		f.Close()
 	}
 
 }
@@ -103,4 +169,29 @@ func randomString() string {
 
 	binary.LittleEndian.PutUint32(buf, ip)
 	return net.IP(buf).String()
+}
+
+// buildRFC5424 builds a minimal RFC5424 syslog message string.
+// Example: <14>1 2024-01-02T15:04:05Z host app - - - message\n
+func buildRFC5424(ts time.Time, host, app, msg string) string {
+	pri := 14 // user-level info
+	// Use RFC3339 timestamp; RFC5424 allows high precision
+	tsStr := ts.UTC().Format(time.RFC3339)
+	// PROCID, MSGID, and STRUCTURED-DATA all set to '-' (nilvalue)
+	return fmt.Sprintf("<%d>1 %s %s %s - - - %s\n", pri, tsStr, host, app, msg)
+}
+
+// countLines returns the number of lines in a file by scanning.
+func countLines(path string) (int64, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	var n int64
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		n++
+	}
+	return n, scanner.Err()
 }
