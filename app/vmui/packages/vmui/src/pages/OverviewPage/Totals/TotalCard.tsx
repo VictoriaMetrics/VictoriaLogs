@@ -19,7 +19,7 @@ interface Props extends TotalsConfig {
   }
 }
 
-const TotalCard: FC<Props> = ({ title, value, valuePrev, description, formatter, isLoading, approx, periods }) => {
+const TotalCard: FC<Props> = ({ title, value, valuePrev, description, formatter, isLoading, periods }) => {
   const { curr, delta, deltaPct } = useMemo(() => {
     const currNum = Number(value ?? 0);
     const prevNum = valuePrev === undefined ? NaN : Number(valuePrev);
@@ -59,7 +59,6 @@ const TotalCard: FC<Props> = ({ title, value, valuePrev, description, formatter,
 
       <div className="vm-total-card-body">
         <div className="vm-total-card__value">
-          {approx && "≈"}
           {formatter ? formatter(curr) : curr}
         </div>
 
