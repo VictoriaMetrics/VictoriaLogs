@@ -4876,7 +4876,7 @@ options(parallel_readers=100) _time:1d error | count()
 If the `parallel_readers` option isn't set, while [`concurrency` option](https://docs.victoriametrics.com/victorialogs/logsql/#concurrency-query-option) is set
 then the number of parallel readers equals to the `concurrency`.
 
-The default number parallel readers can be configured via `-defaultParallelReaders` command-line flag.
+The default number of parallel readers can be configured via `-defaultParallelReaders` command-line flag.
 
 The `parallel_readers` option is applied individually to every `vlstorage` node in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
 

@@ -5,7 +5,6 @@ import useBoolean from "../../../hooks/useBoolean";
 import { ArrowDownIcon, CopyIcon } from "../../../components/Main/Icons";
 import classNames from "classnames";
 import { useLogsState } from "../../../state/logsPanel/LogsStateContext";
-import dayjs from "dayjs";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { marked } from "marked";
 import { useSearchParams } from "react-router-dom";
@@ -18,6 +17,7 @@ import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import StreamContextButton from "../../StreamContext/StreamContextButton";
 import { useAppState } from "../../../state/common/StateContext";
+import { formatDateWithNanoseconds } from "../../../utils/time";
 
 interface Props {
   log: Logs;
@@ -47,7 +47,8 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
 
   const formattedTime = useMemo(() => {
     if (!log._time) return "";
-    return dayjs(log._time).tz().format(dateFormat);
+    // Preserve nanosecond precision when rendering timestamps
+    return formatDateWithNanoseconds(log._time, dateFormat);
   }, [log._time, timezone, dateFormat]);
 
   const formattedMarkdown = useMemo(() => {

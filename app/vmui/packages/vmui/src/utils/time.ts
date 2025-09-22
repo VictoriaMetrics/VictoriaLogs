@@ -282,3 +282,42 @@ export const toNanoPrecision = (time: string): string => {
   return `${base}.${nanoFraction}Z`;
 };
 
+// Formats a date-time string while respecting the current timezone.
+// If the provided `format` includes millisecond tokens (e.g., .SSS), those will be replaced
+// with a 9-digit fractional part from the input timestamp (padded to nanoseconds).
+// If the format does not include .SSS, nanoseconds will NOT be appended.
+// Example:
+//  - input time: 2025-09-15T10:00:00.123456Z
+//  - format: "YYYY-MM-DD HH:mm:ss.SSS"
+//  - output (local tz): "2025-09-15 13:00:00.123456000" (depending on tz offset)
+export const formatDateWithNanoseconds = (dateStr: string, format: string): string => {
+  if (!dateStr) return "";
+
+  const hasMillisToken = /\.SSS/.test(format);
+
+  // If no millisecond token in format, just format normally without fractional seconds
+  if (!hasMillisToken) {
+    return dayjs(dateStr).tz().format(format);
+  }
+
+  // Derive a 9-digit fractional seconds string by reusing toNanoPrecision
+  // Fall back to local extraction for non-Z inputs to avoid throwing
+  let fraction: string;
+  try {
+    const normalized = toNanoPrecision(dateStr); // ...SSS.. to 9 digits, always ends with Z
+    fraction = (normalized.match(/\.(\d{9})Z$/)?.[1]) || "000000000";
+  } catch {
+    const fracMatch = dateStr.match(/\.(\d+)(?:Z|[+-]\d{2}:?\d{2})?$/);
+    fraction = (fracMatch?.[1] || "").padEnd(9, "0").slice(0, 9);
+  }
+
+  // Remove millisecond token from the format, since we'll append 9-digit fraction manually
+  const baseFormat = format.replace(/\.SSS/g, "");
+
+  // Format the base part (up to whole seconds) in the current/default timezone
+  const base = dayjs(dateStr).tz().format(baseFormat);
+
+  // Append nanoseconds only when .SSS is requested by the format
+  return `${base}.${fraction}`;
+};
+

@@ -38,6 +38,8 @@ Released at 2025-09-22
 * BUGFIX: all components: lower severity of the log message for unavailable [Pressure Stall Information (PSI) metrics](https://docs.kernel.org/accounting/psi.html) from ERROR to INFO level. See [this issue](https://github.com/VictoriaMetrics/metrics/pull/101) for details.
 * BUGFIX: all components: properly expose metadata for summaries and histograms in VictoriaMetrics components with enabled `-metrics.exposeMetadata` cmd-line flag. See [metrics#98](https://github.com/VictoriaMetrics/metrics/issues/98) for details.
 * BUGFIX: [OpenTelemetry ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): fix log processor name from "opentelelemtry_protobuf" to "opentelelemtry_protobuf". This changes the `type` label value for ingestion metrics such as `vl_rows_ingested_total`, `vl_bytes_ingested_total`, and `vl_insert_flush_duration_seconds` for OpenTelemetry data ingestion.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix frontend lint and typecheck failures by removing unused imports and updating ESLint configuration to avoid a recursion crash in ESLint 9's core `indent` rule. This restores successful linting in CI.
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `formatDateWithNanoseconds` utility to format timestamps with 9-digit fractional seconds while respecting timezone; use it for the time column in Group view. Keeps existing date format tokens for the base part and replaces `.SSS` with full nanoseconds in the output.
 
 ## [v1.33.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.33.1)
 
