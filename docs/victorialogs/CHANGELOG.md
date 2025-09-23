@@ -19,6 +19,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * BUGFIX: [`facets` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#facets-pipe): properly skip field names with more than `max_values_per_field` unique values. Previously these fields could be returned with incomplete number of hits.
+* BUGFIX: [`rename` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#rename-pipe): the `rename` pipe (`rename src dst`) now correctly handles prefix matching in both the source (`src`) and destination (`dst`). Previously, it dropped all fields matching the destination pattern. See [#691](https://github.com/VictoriaMetrics/VictoriaLogs/issues/691) for more details.
 
 ## [v1.34.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.34.0)
 
