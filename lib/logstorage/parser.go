@@ -1042,15 +1042,19 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 	}
 	ps := pipes[idx].(*pipeStats)
 
-	// verify that pipes in front of the last `pipe` do not modify or delete `_time` field
-	for i := 0; i < idx; i++ {
-		p := pipes[i]
-		if _, ok := p.(*pipeStats); ok {
-			// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
-			continue
-		}
-		if !p.canReturnLastNResults() {
-			return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it modifies or deletes `_time` field", p, ps)
+	// For range stats (step > 0), verify that pipes in front of the last `stats` pipe
+	// do not modify or delete the `_time` field, since it is required for bucketing by step.
+	// For instant stats (step == 0), allow such pipes for broader query flexibility.
+	if step > 0 {
+		for i := 0; i < idx; i++ {
+			p := pipes[i]
+			if _, ok := p.(*pipeStats); ok {
+				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
+				continue
+			}
+			if !p.canReturnLastNResults() {
+				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it modifies or deletes `_time` field", p, ps)
+			}
 		}
 	}
 
