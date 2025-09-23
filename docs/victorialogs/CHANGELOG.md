@@ -18,6 +18,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* BUGFIX: [`rename` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#rename-pipe): the `rename` pipe (`rename src dst`) now properly handles the `_time` field. If the `_time` field is changed by the `rename` pipe, VictoriaLogs previously threw errors. It is now handled correctly. Note that using `rename` with `src` or `dst` matching the `_time` field may be slower. See [#702](https://github.com/VictoriaMetrics/VictoriaLogs/issues/702) for more details.
 * BUGFIX: [`facets` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#facets-pipe): properly skip field names with more than `max_values_per_field` unique values. Previously these fields could be returned with incomplete number of hits.
 
 ## [v1.34.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.34.0)

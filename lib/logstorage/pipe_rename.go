@@ -42,7 +42,13 @@ func (pr *pipeRename) canLiveTail() bool {
 }
 
 func (pr *pipeRename) canReturnLastNResults() bool {
-	// TODO: properly verify that the _time field isn't overwritten by non-timestamp.
+	for i := 0; i < len(pr.srcFieldFilters); i++ {
+		src := pr.srcFieldFilters[i]
+		dst := pr.dstFieldFilters[i]
+		if prefixfilter.MatchFilter(src, "_time") || prefixfilter.MatchFilter(dst, "_time") {
+			return false
+		}
+	}
 
 	return true
 }
