@@ -2,8 +2,6 @@ import { FC, useMemo, useCallback, createPortal, memo } from "preact/compat";
 import DownloadLogsButton from "../../../DownloadLogsButton/DownloadLogsButton";
 import { ViewProps } from "../../types";
 import EmptyLogs from "../components/EmptyLogs/EmptyLogs";
-import { useSearchParams } from "react-router-dom";
-import orderby from "lodash.orderby";
 import "./style.scss";
 import { Logs } from "../../../../../api/types";
 import ScrollToTopButton from "../../../../../components/ScrollToTopButton/ScrollToTopButton";
@@ -14,8 +12,6 @@ const MemoizedJsonView = memo(JsonViewComponent);
 
 const JsonView: FC<ViewProps> = ({ data, settingsRef }) => {
   const getLogs = useCallback(() => data, [data]);
-
-  const [searchParams] = useSearchParams();
 
   const fields = useMemo(() => {
     const keys = new Set(data.flatMap(Object.keys));
