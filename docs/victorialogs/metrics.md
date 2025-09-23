@@ -139,6 +139,14 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Gauge
 **Description:** Number of daily partitions currently active in storage. Each partition typically represents one day of log data. Count decreases when old partitions are deleted due to retention policies.
 
+### vl_storage_log_min_timestamp_seconds
+**Type:** Gauge
+**Description:** Earliest log timestamp across the entire storage.
+
+### vl_storage_log_max_timestamp_seconds
+**Type:** Gauge
+**Description:** Latest log timestamp across the entire storage.
+
 ## Merge Operation Metrics
 
 ### vl_merge_duration_seconds

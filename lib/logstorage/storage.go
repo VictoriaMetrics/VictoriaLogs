@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -37,6 +38,14 @@ type StorageStats struct {
 
 	// PartitionStats contains partition stats.
 	PartitionStats
+
+	// MinTimestamp is the minimum event timestamp across the entire storage (in nanoseconds).
+	// It is set to math.MinInt64 if there is no data.
+	MinTimestamp int64
+
+	// MaxTimestamp is the maximum event timestamp across the entire storage (in nanoseconds).
+	// It is set to math.MaxInt64 if there is no data.
+	MaxTimestamp int64
 }
 
 // Reset resets s.
@@ -929,11 +938,21 @@ func (s *Storage) UpdateStats(ss *StorageStats) {
 	} else {
 		ss.MaxDiskSpaceUsageBytes = int64(fs.MustGetTotalSpace(s.path) * uint64(s.maxDiskUsagePercent) / 100)
 	}
+	// Use sentinel values to indicate unbounded / no data for consistency
+	ss.MinTimestamp, ss.MaxTimestamp = math.MinInt64, math.MaxInt64
 
 	s.partitionsLock.Lock()
 	ss.PartitionsCount += uint64(len(s.partitions))
 	for _, ptw := range s.partitions {
 		ptw.pt.updateStats(&ss.PartitionStats)
+	}
+
+	if len(s.partitions) > 0 {
+		p0 := s.partitions[0]
+		pLast := s.partitions[len(s.partitions)-1]
+
+		ss.MinTimestamp, _ = p0.pt.ddb.getMinMaxTimestamps()
+		_, ss.MaxTimestamp = pLast.pt.ddb.getMinMaxTimestamps()
 	}
 	s.partitionsLock.Unlock()
 
