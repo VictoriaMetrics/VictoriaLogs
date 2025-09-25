@@ -9,9 +9,7 @@ import (
 
 func updateNeededFieldsForUnpackPipe(fromField, outFieldPrefix string, outFieldFilters []string, keepOriginalFields, skipEmptyResults bool, iff *ifFilter, pf *prefixfilter.Filter) {
 	if pf.MatchNothing() {
-		if iff != nil {
-			pf.AddAllowFilters(iff.allowFilters)
-		}
+		// There is no need in fetching any fields, since the caller ignores all the fields.
 		return
 	}
 

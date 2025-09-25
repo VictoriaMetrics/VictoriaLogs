@@ -42,7 +42,7 @@ func (pu *pipeUnroll) canLiveTail() bool {
 }
 
 func (pu *pipeUnroll) canReturnLastNResults() bool {
-	return false
+	return true
 }
 
 func (pu *pipeUnroll) hasFilterInWithQuery() bool {

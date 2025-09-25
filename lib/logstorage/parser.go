@@ -1042,15 +1042,19 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 	}
 	ps := pipes[idx].(*pipeStats)
 
-	// verify that pipes in front of the last `pipe` do not modify or delete `_time` field
-	for i := 0; i < idx; i++ {
-		p := pipes[i]
-		if _, ok := p.(*pipeStats); ok {
-			// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
-			continue
-		}
-		if !p.canReturnLastNResults() {
-			return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it modifies or deletes `_time` field", p, ps)
+	// For range stats (step > 0), verify that pipes in front of the last `stats` pipe
+	// do not modify or delete the `_time` field, since it is required for bucketing by step.
+	// For instant stats (step == 0), allow such pipes for broader query flexibility.
+	if step > 0 {
+		for i := 0; i < idx; i++ {
+			p := pipes[i]
+			if _, ok := p.(*pipeStats); ok {
+				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
+				continue
+			}
+			if !p.canReturnLastNResults() {
+				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it modifies or deletes `_time` field", p, ps)
+			}
 		}
 	}
 
@@ -1995,8 +1999,12 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterContainsAll(lex, fieldName)
 	case lex.isKeyword("contains_any"):
 		return parseFilterContainsAny(lex, fieldName)
+	case lex.isKeyword("contains_common_case"):
+		return parseFilterContainsCommonCase(lex, fieldName)
 	case lex.isKeyword("eq_field"):
 		return parseFilterEqField(lex, fieldName)
+	case lex.isKeyword("equals_common_case"):
+		return parseFilterEqualsCommonCase(lex, fieldName)
 	case lex.isKeyword("exact"):
 		return parseFilterExact(lex, fieldName)
 	case lex.isKeyword("i"):
@@ -2300,6 +2308,36 @@ func parseFilterIn(lex *lexer, fieldName string) (filter, error) {
 		fieldName: getCanonicalColumnName(fieldName),
 	}
 	return parseInValues(lex, fieldName, fi, &fi.values)
+}
+
+func parseFilterContainsCommonCase(lex *lexer, fieldName string) (filter, error) {
+	lex.nextToken()
+
+	phrases, err := parseArgsInParens(lex)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse 'contains_common_case(...)' args: %w", err)
+	}
+
+	fi, err := newFilterContainsCommonCase(fieldName, phrases)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse 'contains_common_case(...)': %w", err)
+	}
+	return fi, nil
+}
+
+func parseFilterEqualsCommonCase(lex *lexer, fieldName string) (filter, error) {
+	lex.nextToken()
+
+	phrases, err := parseArgsInParens(lex)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse 'equals_common_case(...)' args: %w", err)
+	}
+
+	fi, err := newFilterEqualsCommonCase(fieldName, phrases)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse 'equals_common_case(...)': %w", err)
+	}
+	return fi, nil
 }
 
 func parseInValues(lex *lexer, fieldName string, f filter, iv *inValues) (filter, error) {
@@ -3702,7 +3740,7 @@ func needQuoteToken(s string) bool {
 	if _, ok := reservedKeywords[sLower]; ok {
 		return true
 	}
-	if sLower == "by" || isPipeName(sLower) || isStatsFuncName(sLower) {
+	if isPipeName(sLower) || isStatsFuncName(sLower) {
 		return true
 	}
 	for _, r := range s {
@@ -3757,7 +3795,9 @@ var reservedKeywords = func() map[string]struct{} {
 		// functions
 		"contains_all",
 		"contains_any",
+		"contains_common_case",
 		"eq_field",
+		"equals_common_case",
 		"exact",
 		"i",
 		"in",
@@ -3775,6 +3815,15 @@ var reservedKeywords = func() map[string]struct{} {
 
 		// queryOptions start with this keyword
 		"options",
+
+		// 'if' is used in conditional pipes such as `format if (...) ...`
+		"if",
+
+		// 'by' is used in various pipes such as `stats by (...) ...`
+		"by",
+
+		// 'as' is used in various pipes such as `format ... as ...`
+		"as",
 	}
 	m := make(map[string]struct{}, len(kws))
 	for _, kw := range kws {
