@@ -3113,8 +3113,8 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | format "foo<f1>" as s1`, `*`, `s1`)
 	f(`* | format "foo<s1>" as s1`, `*`, ``)
 
-	f(`* | format if (x1:y) "foo" as s1`, `*`, `s1`)
-	f(`* | format if (x1:y) "foo<f1>" as s1`, `*`, `s1`)
+	f(`* | format if (x1:y) "foo" as s1`, `*`, ``)
+	f(`* | format if (x1:y) "foo<f1>" as s1`, `*`, ``)
 	f(`* | format if (s1:y) "foo<f1>" as s1`, `*`, ``)
 	f(`* | format if (x1:y) "foo<s1>" as s1`, `*`, ``)
 
@@ -3126,7 +3126,7 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | format "foo<s1>" as s1 | fields f1`, `f1`, ``)
 	f(`* | format "foo<s1>" as s1 | fields s1`, `s1`, ``)
 
-	f(`* | format if (f1:x) "foo" as s1 | fields s1`, `f1`, ``)
+	f(`* | format if (f1:x) "foo" as s1 | fields s1`, `f1,s1`, ``)
 	f(`* | format if (f1:x) "foo" as s1 | fields s2`, `s2`, ``)
 
 	f(`* | format "foo" as s1 | rm f1`, `*`, `f1,s1`)
@@ -3138,8 +3138,8 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | format "foo<s1>" as s1 | rm s1`, `*`, `s1`)
 
 	f(`* | format if (f1:x) "foo" as s1 | rm s1`, `*`, `s1`)
-	f(`* | format if (f1:x) "foo" as s1 | rm f1`, `*`, `s1`)
-	f(`* | format if (f1:x) "foo" as s1 | rm f2`, `*`, `f2,s1`)
+	f(`* | format if (f1:x) "foo" as s1 | rm f1`, `*`, ``)
+	f(`* | format if (f1:x) "foo" as s1 | rm f2`, `*`, `f2`)
 
 	f(`* | extract "<f1>x<f2>" from s1`, `*`, `f1,f2`)
 	f(`* | extract if (f3:foo) "<f1>x<f2>" from s1`, `*`, `f1,f2`)
@@ -3220,9 +3220,9 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | delete a, b | count() r1`, ``, ``)
 	f(`* | drop_empty_fields | count() r1`, ``, ``)
 	f(`* | extract "<f1>bar" from x | count() r1`, ``, ``)
-	f(`* | extract if (q:w p:a) "<f1>bar" from x | count() r1`, `p,q`, ``)
+	f(`* | extract if (q:w p:a) "<f1>bar" from x | count() r1`, ``, ``)
 	f(`* | extract_regexp "(?P<f1>.*)bar" from x | count() r1`, ``, ``)
-	f(`* | extract_regexp if (q:w p:a) "(?P<f1>.*)bar" from x | count() r1`, `p,q`, ``)
+	f(`* | extract_regexp if (q:w p:a) "(?P<f1>.*)bar" from x | count() r1`, ``, ``)
 	f(`* | facets | count() r1`, `*`, ``)
 	f(`* | field_names | count() r1`, ``, ``)
 	f(`* | limit 10 | field_names as abc | count() r1`, `*`, ``)
@@ -3236,7 +3236,7 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | limit 10 | filter a:b c:d | count() r1`, `a,c`, ``)
 	f(`* | limit 10 | count() r1`, ``, ``)
 	f(`* | format "<a><b>" as c | count() r1`, ``, ``)
-	f(`* | format if (q:w p:a) "<a><b>" as c | count() r1`, `p,q`, ``)
+	f(`* | format if (q:w p:a) "<a><b>" as c | count() r1`, ``, ``)
 	f(`* | math (a + b) as c, d * 2 as x | count() r1`, ``, ``)
 	f(`* | offset 10 | count() r1`, ``, ``)
 	f(`* | pack_json | count() r1`, ``, ``)
@@ -3244,9 +3244,9 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | query_stats | count() r1`, `*`, ``)
 	f(`* | rename a b, c d | count() r1`, ``, ``)
 	f(`* | replace ("a", "b") at x | count() r1`, ``, ``)
-	f(`* | replace if (q:w p:a) ("a", "b") at x | count() r1`, `p,q`, ``)
+	f(`* | replace if (q:w p:a) ("a", "b") at x | count() r1`, ``, ``)
 	f(`* | replace_regexp ("a", "b") at x | count() r1`, ``, ``)
-	f(`* | replace_regexp if (q:w p:a) ("a", "b") at x | count() r1`, `p,q`, ``)
+	f(`* | replace_regexp if (q:w p:a) ("a", "b") at x | count() r1`, ``, ``)
 	f(`* | running_stats count() | count() r1`, ``, ``)
 	f(`* | sort by (a,b) | count() r1`, ``, ``)
 	f(`* | split ' ' | count() r1`, ``, ``)
@@ -3259,12 +3259,12 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | uniq by (a, b) | count() r1`, `a,b`, ``)
 	f(`* | unpack_json from x | count() r1`, ``, ``)
 	f(`* | unpack_json from x fields (a,b) | count() r1`, ``, ``)
-	f(`* | unpack_json if (q:w p:a) from x | count() r1`, `p,q`, ``)
-	f(`* | unpack_json if (q:w p:a) from x fields(a,b) | count() r1`, `p,q`, ``)
+	f(`* | unpack_json if (q:w p:a) from x | count() r1`, ``, ``)
+	f(`* | unpack_json if (q:w p:a) from x fields(a,b) | count() r1`, ``, ``)
 	f(`* | unpack_logfmt from x | count() r1`, ``, ``)
 	f(`* | unpack_logfmt from x fields (a,b) | count() r1`, ``, ``)
-	f(`* | unpack_logfmt if (q:w p:a) from x | count() r1`, `p,q`, ``)
-	f(`* | unpack_logfmt if (q:w p:a) from x fields(a,b) | count() r1`, `p,q`, ``)
+	f(`* | unpack_logfmt if (q:w p:a) from x | count() r1`, ``, ``)
+	f(`* | unpack_logfmt if (q:w p:a) from x fields(a,b) | count() r1`, ``, ``)
 	f(`* | unpack_words a | count() r1`, ``, ``)
 	f(`* | unpack_words a b | count() r1`, ``, ``)
 	f(`* | unroll (a, b) | count() r1`, `a,b`, ``)
@@ -3508,7 +3508,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | unpack_logfmt x", true)
 	f("* | unpack_syslog x", true)
 	f("* | unpack_words x", true)
-	f("* | unroll by (x)", false)
+	f("* | unroll by (x)", true)
 
 	// There is no _time field
 	f("* | fields foo, bar", false)
@@ -3678,6 +3678,7 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Success(t *testing.T) {
 	f("* | unpack_logfmt x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_logfmt from x | stats by (_time:86400000000000) count(*) as x`)
 	f("* | unpack_syslog x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_syslog from x | stats by (_time:86400000000000) count(*) as x`)
 	f("* | unpack_words x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_words from x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unroll by (x) | count() x", nsecsPerDay, []string{"_time"}, `* | unroll by (x) | stats by (_time:86400000000000) count(*) as x`)
 }
 
 func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
@@ -3754,7 +3755,6 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
 	f("* | top 5 by (x) | count()")
 	f("* | union (x) | count()")
 	f("* | uniq (x) | count()")
-	f("* | unroll by (x) | count()")
 }
 
 func TestQueryGetStatsByFields_Success(t *testing.T) {

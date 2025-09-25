@@ -96,11 +96,13 @@ func TestProcessStreamInternal_Success(t *testing.T) {
 
 	data := `Jun  3 12:08:33 abcd systemd: Starting Update the local ESM caches...
 
+Sep 19 08:26:10 host CEF:0|Security|threatmanager|1.0|100|worm successfully stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
 48 <165>Jun  4 12:08:33 abcd systemd[345]: abc defg<123>1 2023-06-03T17:42:12.345Z mymachine.example.com appname 12345 ID47 [exampleSDID@32473 iut="3" eventSource="Application 123 = ] 56" eventID="11211"] This is a test message with structured data.
 `
 	currentYear := 2023
-	timestampsExpected := []int64{1685794113000000000, 1685880513000000000, 1685814132345000000}
+	timestampsExpected := []int64{1685794113000000000, 1695111970000000000, 1685880513000000000, 1685814132345000000}
 	resultExpected := `{"format":"rfc3164","hostname":"abcd","app_name":"systemd","_msg":"Starting Update the local ESM caches...","remote_ip":"1.2.3.4"}
+{"format":"rfc3164","hostname":"host","app_name":"CEF","cef.version":"0","cef.device_vendor":"Security","cef.device_product":"threatmanager","cef.device_version":"1.0","cef.device_event_class_id":"100","cef.name":"worm successfully stopped","cef.severity":"10","cef.extension.src":"10.0.0.1","cef.extension.dst":"2.1.2.2","cef.extension.spt":"1232","remote_ip":"1.2.3.4"}
 {"priority":"165","facility_keyword":"local4","level":"notice","facility":"20","severity":"5","format":"rfc3164","hostname":"abcd","app_name":"systemd","proc_id":"345","_msg":"abc defg","remote_ip":"1.2.3.4"}
 {"priority":"123","facility_keyword":"solaris-cron","level":"error","facility":"15","severity":"3","format":"rfc5424","hostname":"mymachine.example.com","app_name":"appname","proc_id":"12345","msg_id":"ID47","exampleSDID@32473.iut":"3","exampleSDID@32473.eventSource":"Application 123 = ] 56","exampleSDID@32473.eventID":"11211","_msg":"This is a test message with structured data.","remote_ip":"1.2.3.4"}`
 	f(data, currentYear, timestampsExpected, resultExpected)

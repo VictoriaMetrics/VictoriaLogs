@@ -218,6 +218,7 @@ func initPipeParsers() {
 		"rm":                parsePipeDelete,
 		"running_stats":     parsePipeRunningStats,
 		"sample":            parsePipeSample,
+		"set_stream_fields": parsePipeSetStreamFields,
 		"skip":              parsePipeOffset,
 		"sort":              parsePipeSort,
 		"split":             parsePipeSplit,
