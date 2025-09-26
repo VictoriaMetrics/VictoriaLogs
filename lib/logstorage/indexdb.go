@@ -489,7 +489,6 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 			// Reached the end of entries with the needed prefix.
 			break
 		}
-		tenant := fmt.Sprintf("%d:%d", tID.AccountID, tID.ProjectID)
 		tenants[tenant] = struct{}{}
 		// Seek for the next (accountID, projectID)
 		tID.ProjectID++
