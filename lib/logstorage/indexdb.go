@@ -489,7 +489,7 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 			// Reached the end of entries with the needed prefix.
 			break
 		}
-		tenants[tenant] = struct{}{}
+		tenants[tID] = struct{}{}
 		// Seek for the next (accountID, projectID)
 		tID.ProjectID++
 		if tID.ProjectID == 0 {
