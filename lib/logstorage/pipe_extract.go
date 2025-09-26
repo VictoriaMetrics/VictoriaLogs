@@ -76,13 +76,6 @@ func (pe *pipeExtract) visitSubqueries(visitFunc func(q *Query)) {
 }
 
 func (pe *pipeExtract) updateNeededFields(pf *prefixfilter.Filter) {
-	if pf.MatchNothing() {
-		if pe.iff != nil {
-			pf.AddAllowFilters(pe.iff.allowFilters)
-		}
-		return
-	}
-
 	pfOrig := pf.Clone()
 	needFromField := false
 	for _, step := range pe.ptn.steps {

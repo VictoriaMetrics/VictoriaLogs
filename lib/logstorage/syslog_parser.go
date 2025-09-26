@@ -84,6 +84,21 @@ func (p *SyslogParser) resetFields() {
 	p.sdParser.reset()
 }
 
+func (p *SyslogParser) AddMessageField(s string) {
+	if !strings.HasPrefix(s, "CEF:") {
+		p.AddField("message", s)
+		return
+	}
+
+	s = strings.TrimPrefix(s, "CEF:")
+	fields := p.Fields
+	if p.parseCEFMessage(s) {
+		return
+	}
+	p.Fields = fields
+	p.AddField("message", s)
+}
+
 // AddField adds name=value log field to p.Fields.
 func (p *SyslogParser) AddField(name, value string) {
 	p.Fields = append(p.Fields, Field{
@@ -298,7 +313,7 @@ func (p *SyslogParser) parseRFC5424(s string) {
 	s = tail
 
 	// Parse message
-	p.AddField("message", s)
+	p.AddMessageField(s)
 }
 
 func (p *SyslogParser) parseRFC5424SD(s string) (string, bool) {
@@ -417,14 +432,14 @@ func (p *SyslogParser) parseRFC3164(s string) {
 	// Parse timestamp: prefer classic RFC3164
 	n := len(time.Stamp)
 	if len(s) < n {
-		p.AddField("message", s)
+		p.AddMessageField(s)
 		return
 	}
 
 	if s[len("2006-01-02")] != 'T' {
 		// Parse RFC3164 timestamp.
 		if !p.tryParseTimestampRFC3164(s[:n]) {
-			p.AddField("message", s)
+			p.AddMessageField(s)
 			return
 		}
 	} else {
@@ -432,11 +447,11 @@ func (p *SyslogParser) parseRFC3164(s string) {
 		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/303
 		n = strings.IndexByte(s, ' ')
 		if n < 0 {
-			p.AddField("message", s)
+			p.AddMessageField(s)
 			return
 		}
 		if !p.tryParseTimestampRFC3339Nano(s[:n]) {
-			p.AddField("message", s)
+			p.AddMessageField(s)
 			return
 		}
 	}
@@ -445,7 +460,7 @@ func (p *SyslogParser) parseRFC3164(s string) {
 	if len(s) == 0 || s[0] != ' ' {
 		// Missing space after the time field
 		if len(s) > 0 {
-			p.AddField("message", s)
+			p.AddMessageField(s)
 		}
 		return
 	}
@@ -481,7 +496,8 @@ func (p *SyslogParser) parseRFC3164(s string) {
 		p.AddField("app_name", s)
 		return
 	}
-	p.AddField("app_name", s[:n])
+	appName := s[:n]
+	p.AddField("app_name", appName)
 	s = s[n:]
 
 	// Parse proc_id
@@ -503,8 +519,107 @@ func (p *SyslogParser) parseRFC3164(s string) {
 	s = strings.TrimPrefix(s, " ")
 
 	if len(s) > 0 {
-		p.AddField("message", s)
+		if appName == "CEF" {
+			fields := p.Fields
+			if p.parseCEFMessage(s) {
+				return
+			}
+			p.Fields = fields
+		}
+		p.AddMessageField(s)
 	}
+}
+
+// parseCEFMessage parses CEF message. See https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.3/cef-implementation-standard/Content/CEF/Chapter%201%20What%20is%20CEF.htm
+func (p *SyslogParser) parseCEFMessage(s string) bool {
+	// Parse CEF version
+	n := nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.version", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse device_vendor
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.device_vendor", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse device_product
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.device_product", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse device_version
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.device_version", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse device_event_class_id
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.device_event_class_id", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse name
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.name", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse severity
+	n = nextUnescapedChar(s, '|')
+	if n < 0 {
+		return false
+	}
+	p.AddField("cef.severity", unescapeCEFValue(s[:n]))
+	s = s[n+1:]
+
+	// Parse extension
+	return p.parseCEFExtension(s)
+}
+
+func (p *SyslogParser) parseCEFExtension(s string) bool {
+	if s == "" {
+		return true
+	}
+	for {
+		// Parse key name
+		n := nextUnescapedChar(s, '=')
+		if n < 0 {
+			return false
+		}
+		keyName := "cef.extension." + unescapeCEFValue(s[:n])
+		s = s[n+1:]
+
+		// Parse key value
+		n = nextUnescapedChar(s, '=')
+		if n < 0 {
+			p.AddField(keyName, s)
+			return true
+		}
+
+		n = strings.LastIndexByte(s[:n], ' ')
+		if n < 0 {
+			return false
+		}
+		p.AddField(keyName, unescapeCEFValue(s[:n]))
+		s = s[n+1:]
+	}
+
 }
 
 func (p *SyslogParser) tryParseTimestampRFC3164(s string) bool {
@@ -535,4 +650,60 @@ func (p *SyslogParser) tryParseTimestampRFC3339Nano(s string) bool {
 	p.buf = marshalTimestampRFC3339NanoString(p.buf, nsecs)
 	p.AddField("timestamp", bytesutil.ToUnsafeString(p.buf[bufLen:]))
 	return true
+}
+
+func nextUnescapedChar(s string, c byte) int {
+	offset := 0
+	for {
+		n := strings.IndexByte(s[offset:], c)
+		if n < 0 {
+			return -1
+		}
+		offset += n
+
+		if prevBackslashesCount(s, offset)%2 == 0 {
+			return offset
+		}
+		offset++
+	}
+}
+
+func unescapeCEFValue(s string) string {
+	n := strings.IndexByte(s, '\\')
+	if n < 0 {
+		return s
+	}
+
+	b := make([]byte, 0, len(s))
+	for {
+		b = append(b, s[:n]...)
+		n++
+		if n >= len(s) {
+			b = append(b, '\\')
+			return string(b)
+		}
+		switch s[n] {
+		case 'n':
+			b = append(b, '\n')
+		case 'r':
+			b = append(b, '\r')
+		default:
+			b = append(b, s[n])
+		}
+		s = s[n+1:]
+
+		n = strings.IndexByte(s, '\\')
+		if n < 0 {
+			b = append(b, s...)
+			return string(b)
+		}
+	}
+}
+
+func prevBackslashesCount(s string, offset int) int {
+	offsetOrig := offset
+	for offset > 0 && s[offset-1] == '\\' {
+		offset--
+	}
+	return offsetOrig - offset
 }

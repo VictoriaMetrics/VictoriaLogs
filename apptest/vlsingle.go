@@ -123,6 +123,34 @@ func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOptsLogs)
 	return NewLogsQLQueryResponse(t, res)
 }
 
+// StatsQueryRaw is a test helper function that performs
+// a POST to /select/logsql/stats_query and returns raw body and status code.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
+func (app *Vlsingle) StatsQueryRaw(t *testing.T, query string, opts QueryOpts) (string, int) {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/stats_query", app.httpListenAddr)
+	return app.cli.PostForm(t, url, values)
+}
+
+// StatsQueryRangeRaw is a test helper function that performs
+// a POST to /select/logsql/stats_query_range and returns raw body and status code.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
+func (app *Vlsingle) StatsQueryRangeRaw(t *testing.T, query string, opts QueryOpts) (string, int) {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/stats_query_range", app.httpListenAddr)
+	return app.cli.PostForm(t, url, values)
+}
+
 // HTTPAddr returns the address at which the vmstorage process is listening
 // for http connections.
 func (app *Vlsingle) HTTPAddr() string {

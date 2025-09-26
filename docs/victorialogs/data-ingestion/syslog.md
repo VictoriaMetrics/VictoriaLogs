@@ -172,15 +172,30 @@ For example, the following command starts VictoriaLogs, which writes syslog mess
 
 ## Stream fields
 
-VictoriaLogs uses `(hostname, app_name, proc_id)` fields as labels for [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.
-It is possible setting other set of labels via `-syslog.streamFields.tcp`, `-syslog.streamFields.udp` and `-syslog.streamFields.unix` command-line flags
-for logs instead via the corresponding `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
-For example, the following command starts VictoriaLogs, which uses `(hostname, app_name)` fields as log stream labels
-for logs received at TCP port 514:
+VictoriaLogs uses `(hostname, app_name, proc_id)` fields as [log stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.
+If the syslog contains [CEF message for SIEM](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#cef),
+then the `(cef.device_vendor, cef.device_product, cef.device_event_class_id)` fields are used additionally to the previously mentioned fields as log stream fields.
+It is possible setting arbitrary set of log stream fields via `-syslog.streamFields.tcp`, `-syslog.streamFields.udp` and `-syslog.streamFields.unix` command-line flags
+for the corresponding `-syslog.listenAddr.tcp`, `-syslog.listenAddr.udp` and `-syslog.listenAddr.unix` addresses.
+For example, the following command starts VictoriaLogs, which uses `(hostname, app_name)` fields as log stream fields for logs received at TCP port 514:
 
 ```sh
 ./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.streamFields.tcp='["hostname","app_name"]'
 ```
+
+## CEF
+
+VictoriaLogs automatically parses [CEF Syslog messages for SIEM](https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.3/cef-implementation-standard/Content/CEF/Chapter%201%20What%20is%20CEF.htm) into the following fields:
+
+- `cef.version` - the CEF version
+- `cef.device_vendor` - the device vendor field
+- `cef.device_product` - the device product field
+- `cef.device_version` - the device version field
+- `cef.device_event_class_id` - the device event class id
+- `cef.name` - the CEF name
+- `cef.severity` - the severity field
+
+An optional `extension` fields are parsed into `cef.extension.<key>=<value>` fields.
 
 ## Dropping fields
 

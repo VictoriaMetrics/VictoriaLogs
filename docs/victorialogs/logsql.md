@@ -279,6 +279,8 @@ The list of LogsQL filters:
 - [`contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter) - matches logs with [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) containing
   at least one of the provided [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) / phrases
 - [Case-insensitive filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter) - matches logs with the given case-insensitive word, phrase or prefix
+- [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) - matches logs with log fields containing the given words and phrases with cases according to the given pattern
+- [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter) - matches logs with log fields equal to the given words and phrases with cases according to the given pattern
 - [Sequence filter](https://docs.victoriametrics.com/victorialogs/logsql/#sequence-filter) - matches logs with the given sequence of words or phrases
 - [Regexp filter](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter) - matches logs for the given regexp
 - [Range filter](https://docs.victoriametrics.com/victorialogs/logsql/#range-filter) - matches logs with numeric [field values](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) in the given range
@@ -1104,17 +1106,72 @@ For example, the following query matches `log:level` field containing `error` [w
 
 Performance tips:
 
-- Prefer using case-sensitive filter over case-insensitive filter.
+- Prefer using [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) over case-insensitive filter.
+- Prefer using case-sensitive filters such as [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter)
+  and [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) over case-insensitive filter.
 - Prefer moving [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter) in front of case-sensitive filter
   when using [logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter).
 - See [other performance tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
 
 See also:
 
+- [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter)
 - [Word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter)
 - [Phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [Exact-filter](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
 - [Logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter)
+
+### equals_common_case filter
+
+The `field_name:equals_common_case(phrase1, ..., phraseN)` filter searches for logs where the `field_name` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+equals the following [phrases](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
+
+- the given phrases - `phrase1`, ..., `phraseN`
+- uppercase and lowercase phrases
+- individual phrases where every uppercase letter is independently replaced with the corresponding lowercase letter
+
+For example, `_msg:equals_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+equals to one of the following words [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
+
+- VictoriaMetrics
+- VICTORIAMETRICS
+- victoriametrics
+- Victoriametrics
+- victoriaMetrics
+
+If you need to find logs with log fields containing to the common case words or phrases,
+then use [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter).
+
+See also:
+
+- [case-insensitive filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter)
+- [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter)
+
+### contains_common_case filter
+
+The `field_name:contains_common_case(phrase1, ..., phraseN)` filter searches for logs where the `field_name` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+contains the following [phrases](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
+
+- the given phrases - `phrase1`, ..., `phraseN`
+- uppercase and lowercase phrases
+- individual phrases where every uppercase letter is independently replaced with the corresponding lowercase letter
+
+For example, `_msg:contains_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+contains at least one of the following words [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
+
+- VictoriaMetrics
+- VICTORIAMETRICS
+- victoriametrics
+- Victoriametrics
+- victoriaMetrics
+
+If you need to find logs with log fields equal to the common case words or phrases,
+then use [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter).
+
+See also:
+
+- [case-insensitive filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter)
+- [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter)
 
 ### Sequence filter
 
@@ -1559,6 +1616,7 @@ LogsQL supports the following pipes:
 - [`replace_regexp`](https://docs.victoriametrics.com/victorialogs/logsql/#replace_regexp-pipe) updates [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with regular expressions.
 - [`running_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe) performs running stats calculations over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`sample`](https://docs.victoriametrics.com/victorialogs/logsql/#sample-pipe) returns a sample of the matching logs according to the provided `sample` value.
+- [`set_stream_fields`](https://docs.victoriametrics.com/victorialogs/logsql/#set_stream_fields-pipe) sets the given log fields as [`_stream` fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 - [`sort`](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) sorts logs by the given [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`split`](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe) splits the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into tokens by the given separator.
 - [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) calculates various stats over the selected logs.
@@ -2256,7 +2314,7 @@ See also:
 If the [`format` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe) must be applied only to some [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model),
 then add `if (<filters>)` just after the `format` word.
 The `<filters>` can contain arbitrary [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters). For example, the following query stores the formatted result to `message` field
-only if `ip` and `host` [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) aren't empty:
+only if `ip` and `host` [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) aren't empty, otherwise the original `message` field isn't modified:
 
 ```logsql
 _time:5m | format if (ip:* and host:*) "request from <ip>:<host>" as message
@@ -2918,6 +2976,35 @@ _time:1h error | sample 100
 See also:
 
 - [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe)
+
+### set_stream_fields pipe
+
+The `| set_stream_fields field1, ..., fieldN` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes)
+sets the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+as [`_stream` fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+
+For example, if the logs returned by `_time:5m` [filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters) have `host="foo"` and `path="/bar"` fields,
+then the following query sets `_stream` field to `{host="foo", path="/bar"}`:
+
+```logsql
+_time:5m | set_stream_fields host, path
+```
+
+See also:
+
+- [conditional `set_stream_fields`](https://docs.victoriametrics.com/victorialogs/logsql/#conditional-set_stream_fields)
+- [`format` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe)
+
+#### Conditional set_stream_fields
+
+The [`set_stream_fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#set_stream_fields-pipe) can be applied to a subset of input logs
+which match the given [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters), by using `if (...)` after the `set_stream_fields`.
+For example, the following query updates [`_stream` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
+only for logs with the `host="foobar"` field, while leaving the original `_stream` value for the rest of the logs:
+
+```logsql
+_time:5m | set_stream_fields if (host:="foobar") host, app
+```
 
 ### sort pipe
 
@@ -3763,6 +3850,20 @@ The `<PRI>` part is optional. If it is missing, then `priority`, `facility` and 
 
 The `[STRUCTURED-DATA]` is parsed into fields with the `SD-ID.param1`, `SD-ID.param2`, ..., `SD-ID.paramN` names and the corresponding values
 according to [the specification](https://datatracker.ietf.org/doc/html/rfc5424#section-6.3).
+
+If the `app_name` equals to `CEF` and the `message` contains Common Event Format data for SIEM
+aka [CEF for Syslog](https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.3/cef-implementation-standard/Content/CEF/Chapter%201%20What%20is%20CEF.htm),
+then it is automatically parsed into the following fields:
+
+- `cef.version` - the CEF version
+- `cef.device_vendor` - the device vendor field
+- `cef.device_product` - the device product field
+- `cef.device_version` - the device version field
+- `cef.device_event_class_id` - the device event class id
+- `cef.name` - the CEF name
+- `cef.severity` - the severity field
+
+An optional `extension` fields are parsed into `cef.extension.<key>=<value>` fields.
 
 For example, the following query unpacks [syslog](https://en.wikipedia.org/wiki/Syslog) message from the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 across logs for the last 5 minutes:

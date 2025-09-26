@@ -127,6 +127,9 @@ func GetCommonParamsForSyslog(tenantID logstorage.TenantID, streamFields, ignore
 			"hostname",
 			"app_name",
 			"proc_id",
+			"cef.device_vendor",
+			"cef.device_product",
+			"cef.device_event_class_id",
 		}
 	}
 	cp := &CommonParams{
