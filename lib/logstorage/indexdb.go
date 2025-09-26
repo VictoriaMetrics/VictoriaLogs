@@ -505,7 +505,7 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 	}
 
 	if err := ts.Error(); err != nil {
-		logger.Panicf("FATAL: error when performing search: %s", err)
+		logger.Panicf("FATAL: error when searching for tenant ids: %s", err)
 	}
 
 	tenantIDs := make([]TenantID, 0)
