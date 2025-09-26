@@ -486,7 +486,7 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 			logger.Panicf("FATAL: cannot unmarshal tenantID: %s", err)
 		}
 		if prefix != nsPrefixStreamID {
-			// Reached the end of enteris with the needed prefix.
+			// Reached the end of entries with the needed prefix.
 			break
 		}
 		tenant := fmt.Sprintf("%d:%d", tID.AccountID, tID.ProjectID)
