@@ -3,7 +3,6 @@ package logstorage
 import (
 	"fmt"
 	"reflect"
-	"sort"
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
@@ -259,9 +258,15 @@ func TestGetTenantsIDs(t *testing.T) {
 
 	path := t.Name()
 	const partitionName = "foobar"
+
 	s := newTestStorage()
+	defer closeTestStorage(s)
+
 	mustCreateIndexdb(path)
+	defer fs.MustRemoveDir(path)
+
 	idb := mustOpenIndexdb(path, partitionName, s)
+	defer mustCloseIndexdb(idb)
 
 	tenantIDs := []TenantID{
 		{AccountID: 0, ProjectID: 0},
@@ -310,25 +315,13 @@ func TestGetTenantsIDs(t *testing.T) {
 
 	f := func(expectedTenantIDs []TenantID) {
 		t.Helper()
-		tenantIDs := idb.searchTenants()
-		sort.Slice(tenantIDs, func(i, j int) bool {
-			return tenantIDs[i].less(&tenantIDs[j])
-		})
-		sort.Slice(expectedTenantIDs, func(i, j int) bool {
-			return expectedTenantIDs[i].less(&expectedTenantIDs[j])
-		})
-		if !reflect.DeepEqual(tenantIDs, expectedTenantIDs) {
-			fs.MustRemoveDir(path)
-			t.Fatalf("unexpected tensntIds; got %v; want %v", tenantIDs, expectedTenantIDs)
+		result := idb.searchTenants()
+		if !reflect.DeepEqual(result, expectedTenantIDs) {
+			t.Fatalf("unexpected tensntIds; got %v; want %v", result, expectedTenantIDs)
 		}
 	}
 
 	expectedTenantIDs := tenantIDs
 
 	f(expectedTenantIDs)
-
-	mustCloseIndexdb(idb)
-	fs.MustRemoveDir(path)
-
-	closeTestStorage(s)
 }

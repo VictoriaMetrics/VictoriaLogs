@@ -471,17 +471,17 @@ func (is *indexSearch) getStreamIDsForTagRegexp(tenantID TenantID, tagName strin
 }
 
 func (is *indexSearch) getTenantIDs() []TenantID {
-	tenants := make(map[TenantID]struct{})
+	var tenantIDs []TenantID // return as result
+	var tenantID TenantID    // variable for unmarshal
+
 	ts := &is.ts
 	kb := &is.kb
 
-	var tID TenantID
-
-	kb.B = marshalCommonPrefix(kb.B[:0], nsPrefixStreamID, tID)
+	kb.B = marshalCommonPrefix(kb.B[:0], nsPrefixStreamID, tenantID)
 	ts.Seek(kb.B)
 
 	for ts.NextItem() {
-		_, prefix, err := unmarshalCommonPrefix(&tID, ts.Item)
+		_, prefix, err := unmarshalCommonPrefix(&tenantID, ts.Item)
 		if err != nil {
 			logger.Panicf("FATAL: cannot unmarshal tenantID: %s", err)
 		}
@@ -489,28 +489,23 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 			// Reached the end of entries with the needed prefix.
 			break
 		}
-		tenants[tID] = struct{}{}
+		tenantIDs = append(tenantIDs, tenantID)
 		// Seek for the next (accountID, projectID)
-		tID.ProjectID++
-		if tID.ProjectID == 0 {
-			tID.AccountID++
-			if tID.AccountID == 0 {
+		tenantID.ProjectID++
+		if tenantID.ProjectID == 0 {
+			tenantID.AccountID++
+			if tenantID.AccountID == 0 {
 				// Reached the end (accountID, projectID) space
 				break
 			}
 		}
 
-		kb.B = marshalCommonPrefix(kb.B[:0], nsPrefixStreamID, tID)
+		kb.B = marshalCommonPrefix(kb.B[:0], nsPrefixStreamID, tenantID)
 		ts.Seek(kb.B)
 	}
 
 	if err := ts.Error(); err != nil {
 		logger.Panicf("FATAL: error when searching for tenant ids: %s", err)
-	}
-
-	tenantIDs := make([]TenantID, 0)
-	for tenantID := range tenants {
-		tenantIDs = append(tenantIDs, tid)
 	}
 
 	return tenantIDs

@@ -10,13 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 // QueryContext is used for execting the query passed to NewQueryContext()
@@ -595,11 +596,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	workersCount := cgroup.AvailableCPUs()
 	stopCh := ctx.Done()
 
-	tenantIDs := make([][]TenantID, workersCount)
-	processPartitions := func(pt *partition, workerID uint) {
-		tenants := pt.idb.searchTenants()
-		tenantIDs[workerID] = append(tenantIDs[workerID], tenants...)
-	}
+	tenantIDByWorker := make([][]TenantID, workersCount)
+	maxTenantCount := 0
 
 	// Spin up workers
 	var wgWorkers sync.WaitGroup
@@ -612,7 +610,9 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
 					continue
 				}
-				processPartitions(pt, workerID)
+				tenantIDs := pt.idb.searchTenants()
+				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
+				maxTenantCount = max(maxTenantCount, len(tenantIDByWorker[workerID]))
 			}
 			wgWorkers.Done()
 		}(uint(i))
@@ -654,15 +654,15 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 		ptw.decRef()
 	}
 
-	unique := make(map[TenantID]struct{}, len(tenantIDs))
-	for _, tids := range tenantIDs {
-		for _, tid := range tids {
-			unique[tid] = struct{}{}
+	uniqTenantIDs := make(map[TenantID]struct{}, maxTenantCount)
+	for _, tenantIDs := range tenantIDByWorker {
+		for _, tenantID := range tenantIDs {
+			uniqTenantIDs[tenantID] = struct{}{}
 		}
 	}
 
-	tenants := make([]TenantID, 0, len(unique))
-	for k := range unique {
+	tenants := make([]TenantID, 0, len(uniqTenantIDs))
+	for k := range uniqTenantIDs {
 		tenants = append(tenants, k)
 	}
 
