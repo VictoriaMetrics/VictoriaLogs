@@ -42,9 +42,7 @@ func (pc *pipeCopy) canLiveTail() bool {
 }
 
 func (pc *pipeCopy) canReturnLastNResults() bool {
-	// TODO: properly verify that the _time field isn't overwritten by non-timestamp.
-
-	return true
+	return !prefixfilter.MatchFilters(pc.dstFieldFilters, "_time")
 }
 
 func (pc *pipeCopy) updateNeededFields(f *prefixfilter.Filter) {
@@ -53,7 +51,9 @@ func (pc *pipeCopy) updateNeededFields(f *prefixfilter.Filter) {
 		dstFieldFilter := pc.dstFieldFilters[i]
 
 		needSrcField := f.MatchStringOrWildcard(dstFieldFilter)
-		f.AddDenyFilter(dstFieldFilter)
+		if !prefixfilter.IsWildcardFilter(dstFieldFilter) {
+			f.AddDenyFilter(dstFieldFilter)
+		}
 		if needSrcField {
 			f.AddAllowFilter(srcFieldFilter)
 		}

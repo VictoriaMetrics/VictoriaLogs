@@ -943,6 +943,32 @@ func (ddb *datadb) updateStats(s *DatadbStats) {
 	ddb.partsLock.Unlock()
 }
 
+// getMinMaxTimestampsFast returns min and max timestamps across parts in ddb.
+func (ddb *datadb) getMinMaxTimestamps() (int64, int64) {
+	minTs := int64(math.MaxInt64)
+	maxTs := int64(math.MinInt64)
+
+	updateMinMaxTimestamps := func(pws []*partWrapper) {
+		for _, pw := range pws {
+			ph := &pw.p.ph
+			if ph.MinTimestamp < minTs {
+				minTs = ph.MinTimestamp
+			}
+			if ph.MaxTimestamp > maxTs {
+				maxTs = ph.MaxTimestamp
+			}
+		}
+	}
+
+	ddb.partsLock.Lock()
+	updateMinMaxTimestamps(ddb.inmemoryParts)
+	updateMinMaxTimestamps(ddb.smallParts)
+	updateMinMaxTimestamps(ddb.bigParts)
+	ddb.partsLock.Unlock()
+
+	return minTs, maxTs
+}
+
 // debugFlush() makes sure that the recently ingested data is available for search.
 func (ddb *datadb) debugFlush() {
 	ddb.rb.flush()

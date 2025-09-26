@@ -13,7 +13,6 @@ const MemoizedJsonView = memo(JsonViewComponent);
 const JsonView: FC<ViewProps> = ({ data, settingsRef }) => {
   const getLogs = useCallback(() => data, [data]);
 
-
   const fields = useMemo(() => {
     const keys = new Set(data.flatMap(Object.keys));
     return Array.from(keys);

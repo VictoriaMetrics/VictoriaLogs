@@ -83,13 +83,6 @@ func (pe *pipeExtractRegexp) visitSubqueries(visitFunc func(q *Query)) {
 }
 
 func (pe *pipeExtractRegexp) updateNeededFields(pf *prefixfilter.Filter) {
-	if pf.MatchNothing() {
-		if pe.iff != nil {
-			pf.AddAllowFilters(pe.iff.allowFilters)
-		}
-		return
-	}
-
 	pfOrig := pf.Clone()
 	needFromField := false
 	for _, f := range pe.reFields {

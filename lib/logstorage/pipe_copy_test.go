@@ -284,8 +284,8 @@ func TestPipeCopyUpdateNeededFields(t *testing.T) {
 	// all the needed fields
 	f("copy s1 d1, s2 d2", "*", "", "*", "d1,d2")
 	f("copy a a", "*", "", "*", "")
-	f("copy foo* bar*", "*", "", "*", "bar*")
-	f("copy foo bar*", "*", "", "*", "bar*")
+	f("copy foo* bar*", "*", "", "*", "")
+	f("copy foo bar*", "*", "", "*", "")
 	f("copy foo* bar", "*", "", "*", "bar")
 	f("copy * bar*", "*", "", "*", "")
 	f("copy b* bar*", "*", "", "*", "")
@@ -294,26 +294,26 @@ func TestPipeCopyUpdateNeededFields(t *testing.T) {
 	// all the needed fields, unneeded fields do not intersect with src and dst
 	f("copy s1 d1, s2 d2", "*", "f1,f2", "*", "d1,d2,f1,f2")
 	f("copy s1 d1, s2 d2", "*", "f*", "*", "d1,d2,f*")
-	f("copy s1* d1*, s2 d2", "*", "f1,f2", "*", "d1*,d2,f1,f2")
-	f("copy s1* d1*, s2 d2", "*", "f*", "*", "d1*,d2,f*")
+	f("copy s1* d1*, s2 d2", "*", "f1,f2", "*", "d2,f1,f2")
+	f("copy s1* d1*, s2 d2", "*", "f*", "*", "d2,f*")
 
 	// all the needed fields, unneeded fields intersect with src
 	f("copy s1 d1, s2 d2", "*", "s1,f1,f2", "*", "d1,d2,f1,f2")
 	f("copy s1 d1, s2 d2", "*", "s*,f*", "*", "d1,d2,f*")
-	f("copy s1* d1*, s2 d2", "*", "s1,f1,f2", "*", "d1*,d2,f1,f2")
+	f("copy s1* d1*, s2 d2", "*", "s1,f1,f2", "*", "d2,f1,f2")
 
 	// all the needed fields, unneeded fields intersect with dst
 	f("copy s1 d1, s2 d2", "*", "d2,f1,f2", "*", "d1,d2,f1,f2")
 	f("copy s1 d1, s2 d2", "*", "d*,f*", "*", "d*,f*")
-	f("copy s1* d1*, s2 d2", "*", "d2,f1,f2", "*", "d1*,d2,f1,f2")
+	f("copy s1* d1*, s2 d2", "*", "d2,f1,f2", "*", "d2,f1,f2")
 
 	// all the needed fields, unneeded fields intersect with src and dst
 	f("copy s1 d1, s2 d2", "*", "s1,d1,f1,f2", "*", "d1,d2,f1,f2,s1")
 	f("copy s1 d1, s2 d2", "*", "s*,d*,f1,f2", "*", "d*,f1,f2,s*")
-	f("copy s1* d1*, s2 d2", "*", "s1,d1,f1,f2", "*", "d1*,d2,f1,f2")
+	f("copy s1* d1*, s2 d2", "*", "s1,d1,f1,f2", "*", "d1,d2,f1,f2")
 	f("copy s1 d1, s2 d2", "*", "s1,d2,f1,f2", "*", "d1,d2,f1,f2")
 	f("copy s1 d1, s2 d2", "*", "s*,d*,f1,f2", "*", "d*,f1,f2,s*")
-	f("copy s1* d1*, s2 d2", "*", "s1,d2,f1,f2", "*", "d1*,d2,f1,f2")
+	f("copy s1* d1*, s2 d2", "*", "s1,d2,f1,f2", "*", "d2,f1,f2")
 
 	// needed fields do not intersect with src and dst
 	f("copy s1 d1, s2 d2", "f1,f2", "", "f1,f2", "")
@@ -328,15 +328,15 @@ func TestPipeCopyUpdateNeededFields(t *testing.T) {
 	// needed fields intersect with dst
 	f("copy s1 d1, s2 d2", "d1,f1,f2", "", "f1,f2,s1", "")
 	f("copy s1 d1, s2 d2", "d*,f*", "", "d*,f*,s1,s2", "d1,d2")
-	f("copy s1* d1*, s2 d2", "d1,f1,f2", "", "f1,f2,s1*", "")
-	f("copy s1* d1*, s2 d2", "d1*,f1,f2", "", "f1,f2,s1*", "")
+	f("copy s1* d1*, s2 d2", "d1,f1,f2", "", "d1,f1,f2,s1*", "")
+	f("copy s1* d1*, s2 d2", "d1*,f1,f2", "", "d1*,f1,f2,s1*", "")
 
 	// needed fields intersect with src and dst
 	f("copy s1 d1, s2 d2", "s1,d1,f1,f2", "", "s1,f1,f2", "")
 	f("copy s1 d1, s2 d2", "s1,d2,f1,f2", "", "s1,s2,f1,f2", "")
 	f("copy s1 d1, s2 d2", "s2,d1,f1,f2", "", "s1,s2,f1,f2", "")
 	f("copy s1 d1, s2 d2", "s*,d*,f1,f2", "", "d*,f1,f2,s*", "d1,d2")
-	f("copy s1* d1*, s2 d2", "s2,d1,f1,f2", "", "f1,f2,s1*,s2", "")
+	f("copy s1* d1*, s2 d2", "s2,d1,f1,f2", "", "d1,f1,f2,s1*,s2", "")
 }
 
 func expectPipeNeededFields(t *testing.T, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected string) {

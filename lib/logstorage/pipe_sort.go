@@ -95,6 +95,7 @@ func (ps *pipeSort) canReturnLastNResults() bool {
 
 func (ps *pipeSort) updateNeededFields(pf *prefixfilter.Filter) {
 	if pf.MatchNothing() {
+		// There is no need in fetching any fields, since all of them are ignored by the caller.
 		return
 	}
 

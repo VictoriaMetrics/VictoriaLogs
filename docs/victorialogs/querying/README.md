@@ -526,6 +526,10 @@ If `<end>` is missing, then it equals to the maximum timestamp across logs store
 The `<step>` arg can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
 If `<step>` is missing, then it equals to `1d` (one day).
 
+Note: The `/select/logsql/stats_query_range` endpoint
+relies on `_time` field for time bucketing and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.
+In contrast, queries passed to [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) can include any pipes before the `| stats ...` pipe, including pipes that modify or remove the `_time` field.
+
 For example, the following command returns the number of logs per each `level` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 across logs over `2024-01-01` day by UTC with 6-hour granularity:
 

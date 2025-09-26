@@ -12,7 +12,7 @@ export const JsonView: FC<Props> = ({ data }) => {
         return s;
       }
       return JSON.stringify(a);
-    }).join("\n")
+    }).join("\n");
   }, [data]);
   return (
     <pre style="line-height: 1.2em">{jsonStr}</pre>

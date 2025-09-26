@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 
@@ -565,6 +566,13 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	metrics.WriteGaugeUint64(w, `vl_uncompressed_data_size_bytes{type="storage/inmemory"}`, ss.UncompressedInmemorySize)
 	metrics.WriteGaugeUint64(w, `vl_uncompressed_data_size_bytes{type="storage/small"}`, ss.UncompressedSmallPartSize)
 	metrics.WriteGaugeUint64(w, `vl_uncompressed_data_size_bytes{type="storage/big"}`, ss.UncompressedBigPartSize)
+
+	if ss.MinTimestamp != math.MinInt64 {
+		metrics.WriteGaugeFloat64(w, `vl_storage_log_min_timestamp_seconds`, float64(ss.MinTimestamp/1e9))
+	}
+	if ss.MaxTimestamp != math.MaxInt64 {
+		metrics.WriteGaugeFloat64(w, `vl_storage_log_max_timestamp_seconds`, float64(ss.MaxTimestamp/1e9))
+	}
 
 	metrics.WriteCounterUint64(w, `vl_rows_dropped_total{reason="too_big_timestamp"}`, ss.RowsDroppedTooBigTimestamp)
 	metrics.WriteCounterUint64(w, `vl_rows_dropped_total{reason="too_small_timestamp"}`, ss.RowsDroppedTooSmallTimestamp)
