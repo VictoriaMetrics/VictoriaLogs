@@ -510,7 +510,6 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 
 	tenantIDs := make([]TenantID, 0)
 	for tenantID := range tenants {
-		}
 		tenantIDs = append(tenantIDs, tid)
 	}
 
