@@ -51,7 +51,9 @@ func (pc *pipeCopy) updateNeededFields(f *prefixfilter.Filter) {
 		dstFieldFilter := pc.dstFieldFilters[i]
 
 		needSrcField := f.MatchStringOrWildcard(dstFieldFilter)
-		f.AddDenyFilter(dstFieldFilter)
+		if !prefixfilter.IsWildcardFilter(dstFieldFilter) {
+			f.AddDenyFilter(dstFieldFilter)
+		}
 		if needSrcField {
 			f.AddAllowFilter(srcFieldFilter)
 		}

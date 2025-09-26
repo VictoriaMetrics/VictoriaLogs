@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDurationFromMilliseconds, getNanoTimestamp, toNanoPrecision } from "./time";
+import { getDurationFromMilliseconds, getNanoTimestamp, toNanoPrecision, formatDateWithNanoseconds } from "./time";
 import dayjs from "dayjs";
 
 describe("Time utils", () => {
@@ -123,4 +123,59 @@ describe("Time utils", () => {
     });
   });
 
+});
+
+describe("formatDateWithNanoseconds", () => {
+  beforeAll(() => {
+    // Make timezone deterministic for tests
+    // UTC ensures input Z timestamps stay the same wall time
+    dayjs.tz.setDefault("UTC");
+  });
+
+  afterAll(() => {
+    dayjs.tz.setDefault();
+  });
+
+  it("appends 9-digit fraction when format includes .SSS and input has 6 digits", () => {
+    const input = "2025-09-15T10:00:00.123456Z";
+    const fmt = "YYYY-MM-DD HH:mm:ss.SSS";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("2025-09-15 10:00:00.123456000");
+  });
+
+  it("does not append fraction when format does not include .SSS", () => {
+    const input = "2025-09-15T10:00:00.123456Z";
+    const fmt = "YYYY-MM-DD HH:mm:ss";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("2025-09-15 10:00:00");
+  });
+
+  it("pads to 9 digits when input has no fractional seconds", () => {
+    const input = "2025-09-15T10:00:00Z";
+    const fmt = "YYYY-MM-DD HH:mm:ss.SSS";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("2025-09-15 10:00:00.000000000");
+  });
+
+  it("pads to 9 digits when input has fewer than 3 digits", () => {
+    const input = "2025-09-15T10:00:00.12Z"; // 2 digits
+    const fmt = "YYYY-MM-DD HH:mm:ss.SSS";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("2025-09-15 10:00:00.120000000");
+  });
+
+  it("works with formats containing literal text and .SSS", () => {
+    const input = "2025-09-15T10:00:00.9Z";
+    const fmt = "[Logged at] YYYY/MM/DD HH:mm:ss.SSS";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("Logged at 2025/09/15 10:00:00.900000000");
+  });
+
+  it("handles offset timestamps by preserving the original fraction and converting time to default TZ", () => {
+    // +02:00 means local time 10:00 corresponds to 08:00 UTC
+    const input = "2025-09-15T10:00:00.123456+02:00";
+    const fmt = "YYYY-MM-DD HH:mm:ss.SSS";
+    const res = formatDateWithNanoseconds(input, fmt);
+    expect(res).toBe("2025-09-15 08:00:00.123456000");
+  });
 });

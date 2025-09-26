@@ -57,7 +57,10 @@ func (pr *pipeRename) updateNeededFields(pf *prefixfilter.Filter) {
 		dstFieldFilter := pr.dstFieldFilters[i]
 
 		needSrcField := pf.MatchStringOrWildcard(dstFieldFilter)
-		pf.AddDenyFilter(dstFieldFilter)
+		if !prefixfilter.IsWildcardFilter(dstFieldFilter) {
+			pf.AddDenyFilter(dstFieldFilter)
+		}
+
 		if needSrcField {
 			pf.AddAllowFilter(srcFieldFilter)
 		} else {

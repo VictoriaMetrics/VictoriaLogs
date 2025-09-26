@@ -258,7 +258,7 @@ func TestPipeRenameUpdateNeededFields(t *testing.T) {
 	// all the needed fields
 	f("rename s1 d1, s2 d2", "*", "", "*", "d1,d2")
 	f("rename a a", "*", "", "*", "")
-	f("rename a* b*", "*", "", "*", "b*")
+	f("rename a* b*", "*", "", "*", "")
 	f("rename a* a*", "*", "", "*", "")
 	f("rename abc* a*", "*", "", "*", "")
 	f("rename a* abc*", "*", "", "*", "")
@@ -266,26 +266,26 @@ func TestPipeRenameUpdateNeededFields(t *testing.T) {
 	// all the needed fields, unneeded fields do not intersect with src and dst
 	f("rename s1 d1, s2 d2", "*", "f1,f2", "*", "d1,d2,f1,f2")
 	f("rename s1 d1, s2 d2", "*", "f*", "*", "d1,d2,f*")
-	f("rename s1* d1*, s2 d2", "*", "f1,f2", "*", "d1*,d2,f1,f2")
+	f("rename s1* d1*, s2 d2", "*", "f1,f2", "*", "d2,f1,f2")
 
 	// all the needed fields, unneeded fields intersect with src
 	// mv s1 d1, s2 d2 | rm s1, f1, f2   (d1, d2, f1, f2)
 	f("rename s1 d1, s2 d2", "*", "s1,f1,f2", "*", "d1,d2,f1,f2")
 	f("rename s1 d1, s2 d2", "*", "s*,f*", "*", "d1,d2,f*")
-	f("rename s1* d1*, s2 d2", "*", "s1,f1,f2", "*", "d1*,d2,f1,f2")
+	f("rename s1* d1*, s2 d2", "*", "s1,f1,f2", "*", "d2,f1,f2")
 
 	// all the needed fields, unneeded fields intersect with dst
 	f("rename s1 d1, s2 d2", "*", "d2,f1,f2", "*", "d1,d2,f1,f2,s2")
 	f("rename s1 d1, s2 d2", "*", "d*,f*", "*", "d*,f*,s1,s2")
-	f("rename s1* d1*, s2 d2", "*", "d2,f1,f2", "*", "d1*,d2,f1,f2,s2")
+	f("rename s1* d1*, s2 d2", "*", "d2,f1,f2", "*", "d2,f1,f2,s2")
 
 	// all the needed fields, unneeded fields intersect with src and dst
 	f("rename s1 d1, s2 d2", "*", "s1,d1,f1,f2", "*", "d1,d2,f1,f2,s1")
 	f("rename s1 d1, s2 d2", "*", "s*,d*,f*", "*", "d*,f*,s*")
-	f("rename s1* d1*, s2 d2", "*", "s1,d1,f1,f2", "*", "d1*,d2,f1,f2")
+	f("rename s1* d1*, s2 d2", "*", "s1,d1,f1,f2", "*", "d1,d2,f1,f2")
 	f("rename s1 d1, s2 d2", "*", "s1,d2,f1,f2", "*", "d1,d2,f1,f2,s2")
 	f("rename s1 d1, s2 d2", "*", "s*,d*,f*", "*", "d*,f*,s*")
-	f("rename s1* d1*, s2 d2", "*", "s1,d2,f1,f2", "*", "d1*,d2,f1,f2,s2")
+	f("rename s1* d1*, s2 d2", "*", "s1,d2,f1,f2", "*", "d2,f1,f2,s2")
 
 	// needed fields do not intersect with src and dst
 	f("rename s1 d1, s2 d2", "f1,f2", "", "f1,f2", "")
@@ -300,12 +300,12 @@ func TestPipeRenameUpdateNeededFields(t *testing.T) {
 	// needed fields intersect with dst
 	f("rename s1 d1, s2 d2", "d1,f1,f2", "", "f1,f2,s1", "")
 	f("rename s1 d1, s2 d2", "d*,f*", "", "d*,f*,s1,s2", "d1,d2")
-	f("rename s1* d1*, s2 d2", "d1,f1,f2", "", "f1,f2,s1*", "")
+	f("rename s1* d1*, s2 d2", "d1,f1,f2", "", "d1,f1,f2,s1*", "")
 
 	// needed fields intersect with src and dst
-	f("rename s1 d1, s2 d2", "s1,d1,f1,f2", "", "s1,f1,f2", "")
-	f("rename s1 d1, s2 d2", "s1,d2,f1,f2", "", "s2,f1,f2", "")
-	f("rename s1 d1, s2 d2", "s2,d1,f1,f2", "", "s1,f1,f2", "")
+	f("rename s1 d1, s2 d2", "s1,d1,f1,f2", "", "f1,f2,s1", "")
+	f("rename s1 d1, s2 d2", "s1,d2,f1,f2", "", "f1,f2,s2", "")
+	f("rename s1 d1, s2 d2", "s2,d1,f1,f2", "", "f1,f2,s1", "")
 	f("rename s1 d1, s2 d2", "s*,d*,f*", "", "d*,f*,s*", "d1,d2")
-	f("rename s1* d1*, s2 d2", "s2,d1,f1,f2", "", "s1*,f1,f2", "")
+	f("rename s1* d1*, s2 d2", "s2,d1,f1,f2", "", "d1,f1,f2,s1*", "")
 }
