@@ -471,7 +471,7 @@ func (is *indexSearch) getStreamIDsForTagRegexp(tenantID TenantID, tagName strin
 }
 
 func (is *indexSearch) getTenantIDs() []TenantID {
-	tenants := make(map[string]struct{})
+	tenants := make(map[TenantID]struct{})
 	ts := &is.ts
 	kb := &is.kb
 
