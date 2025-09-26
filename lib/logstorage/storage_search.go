@@ -10,14 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 // QueryContext is used for execting the query passed to NewQueryContext()
@@ -585,6 +584,89 @@ func (s *Storage) GetStreams(qctx *QueryContext, limit uint64) ([]ValueWithHits,
 // If limit > 0, then up to limit unique streams are returned.
 func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHits, error) {
 	return s.GetFieldValues(qctx, "_stream_id", limit)
+}
+
+// GetTenantIDs returns tenantIDs for the given start and end.
+func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
+	return s.getTenantIDs(ctx, start, end)
+}
+
+func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
+	workersCount := cgroup.AvailableCPUs()
+	stopCh := ctx.Done()
+
+	tenantIDs := make([][]TenantID, workersCount)
+	processPartitions := func(pt *partition, workerID uint) {
+		tenants := pt.idb.searchTenants()
+		tenantIDs[workerID] = append(tenantIDs[workerID], tenants...)
+	}
+
+	// Spin up workers
+	var wgWorkers sync.WaitGroup
+	workCh := make(chan *partition, workersCount)
+	wgWorkers.Add(workersCount)
+	for i := 0; i < workersCount; i++ {
+		go func(workerID uint) {
+			for pt := range workCh {
+				if needStop(stopCh) {
+					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
+					continue
+				}
+				processPartitions(pt, workerID)
+			}
+			wgWorkers.Done()
+		}(uint(i))
+	}
+
+	// Select partitions according to the selected time range
+	s.partitionsLock.Lock()
+	ptws := s.partitions
+	minDay := start / nsecsPerDay
+	n := sort.Search(len(ptws), func(i int) bool {
+		return ptws[i].day >= minDay
+	})
+	ptws = ptws[n:]
+	maxDay := end / nsecsPerDay
+	n = sort.Search(len(ptws), func(i int) bool {
+		return ptws[i].day > maxDay
+	})
+	ptws = ptws[:n]
+
+	// Copy the selected partitions, so they don't interfere with s.partitions.
+	ptws = append([]*partitionWrapper{}, ptws...)
+
+	for _, ptw := range ptws {
+		ptw.incRef()
+	}
+	s.partitionsLock.Unlock()
+
+	// Schedule concurrent search across matching partitions.
+	for _, ptw := range ptws {
+		workCh <- ptw.pt
+	}
+
+	// Wait until workers finish their work
+	close(workCh)
+	wgWorkers.Wait()
+
+	// Decrement references to partitions
+	for _, ptw := range ptws {
+		ptw.decRef()
+	}
+
+	unique := make(map[TenantID]struct{}, len(tenantIDs))
+	for _, tids := range tenantIDs {
+		for _, tid := range tids {
+			unique[tid] = struct{}{}
+		}
+	}
+
+	tenants := make([]TenantID, 0, len(unique))
+	for k := range unique {
+		tenants = append(tenants, k)
+	}
+
+	return tenants, nil
 }
 
 func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, error) {
