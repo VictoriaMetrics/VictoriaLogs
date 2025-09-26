@@ -510,7 +510,6 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 
 	tenantIDs := make([]TenantID, 0)
 	for tenantID := range tenants {
-			logger.Panicf("FATAL: cannot parse tenantID %q: %s", tenantID, err)
 		}
 		tenantIDs = append(tenantIDs, tid)
 	}
