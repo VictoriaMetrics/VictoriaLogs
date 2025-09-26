@@ -475,7 +475,7 @@ func (is *indexSearch) getTenantIDs() []TenantID {
 	ts := &is.ts
 	kb := &is.kb
 
-	tID := TenantID{0, 0}
+	var tID TenantID
 
 	kb.B = marshalCommonPrefix(kb.B[:0], nsPrefixStreamID, tID)
 	ts.Seek(kb.B)
