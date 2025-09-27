@@ -18,6 +18,10 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+## [v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0)
+
+Released at 2025-09-27
+
 * SECURITY: upgrade Go builder from Go1.25.0 to Go1.25.1. See [the list of issues addressed in Go1.25.1](https://github.com/golang/go/issues?q=milestone%3AGo1.25.1%20label%3ACherryPickApproved).
 
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter) and [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter). These filters can be used as faster alternatives to [`i(...)` filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter). For example, `_msg:contains_common_case("VictoriaMetrics")` matches logs with the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) containing at least one of the following [words](https://docs.victoriametrics.com/victorialogs/logsql/#word): `VictoriaMetrics`, `victoriametrics`, `VICTORIAMETRICS`, `Victoriametrics` or `victoriaMetrics`.
