@@ -313,15 +313,9 @@ func TestGetTenantsIDs(t *testing.T) {
 	}
 	idb.debugFlush()
 
-	f := func(expectedTenantIDs []TenantID) {
-		t.Helper()
-		result := idb.searchTenants()
-		if !reflect.DeepEqual(result, expectedTenantIDs) {
-			t.Fatalf("unexpected tensntIds; got %v; want %v", result, expectedTenantIDs)
-		}
+	// run the test
+	result := idb.searchTenants()
+	if !reflect.DeepEqual(result, tenantIDs) {
+		t.Fatalf("unexpected tensntIds; got %v; want %v", result, tenantIDs)
 	}
-
-	expectedTenantIDs := tenantIDs
-
-	f(expectedTenantIDs)
 }

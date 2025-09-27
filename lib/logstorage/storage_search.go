@@ -597,14 +597,14 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	stopCh := ctx.Done()
 
 	tenantIDByWorker := make([][]TenantID, workersCount)
-	maxTenantCount := 0
 
-	// Spin up workers
-	var wgWorkers sync.WaitGroup
+	// spin up workers
+	var wg sync.WaitGroup
 	workCh := make(chan *partition, workersCount)
-	wgWorkers.Add(workersCount)
 	for i := 0; i < workersCount; i++ {
+		wg.Add(1)
 		go func(workerID uint) {
+			defer wg.Done()
 			for pt := range workCh {
 				if needStop(stopCh) {
 					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
@@ -612,9 +612,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 				}
 				tenantIDs := pt.idb.searchTenants()
 				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
-				maxTenantCount = max(maxTenantCount, len(tenantIDByWorker[workerID]))
 			}
-			wgWorkers.Done()
 		}(uint(i))
 	}
 
@@ -647,14 +645,14 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 
 	// Wait until workers finish their work
 	close(workCh)
-	wgWorkers.Wait()
+	wg.Wait()
 
 	// Decrement references to partitions
 	for _, ptw := range ptws {
 		ptw.decRef()
 	}
 
-	uniqTenantIDs := make(map[TenantID]struct{}, maxTenantCount)
+	uniqTenantIDs := make(map[TenantID]struct{})
 	for _, tenantIDs := range tenantIDByWorker {
 		for _, tenantID := range tenantIDs {
 			uniqTenantIDs[tenantID] = struct{}{}
