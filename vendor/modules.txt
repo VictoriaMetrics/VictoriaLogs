@@ -33,7 +33,6 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/persistentqueue
 github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth
 github.com/VictoriaMetrics/VictoriaMetrics/lib/prompb
-github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/opentelemetry/pb
 github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/pushmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/ratelimiter

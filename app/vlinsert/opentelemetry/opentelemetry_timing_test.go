@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/opentelemetry/pb"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 )
 
@@ -38,36 +36,36 @@ func benchmarkParseProtobufRequest(b *testing.B, streams, rows, labels int) {
 func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	msg := "12345678910"
 
-	attrValues := []*pb.AnyValue{
+	attrValues := []*anyValue{
 		{StringValue: ptrTo("string-attribute")},
 		{IntValue: ptrTo[int64](12345)},
 		{DoubleValue: ptrTo(3.14)},
 	}
-	attrs := make([]*pb.KeyValue, attributesCount)
+	attrs := make([]*keyValue, attributesCount)
 	for j := 0; j < attributesCount; j++ {
-		attrs[j] = &pb.KeyValue{
+		attrs[j] = &keyValue{
 			Key:   fmt.Sprintf("key-%d", j),
 			Value: attrValues[j%3],
 		}
 	}
-	entries := make([]pb.LogRecord, rowsCount)
+	entries := make([]logRecord, rowsCount)
 	for j := 0; j < rowsCount; j++ {
-		entries[j] = pb.LogRecord{
-			TimeUnixNano: 12345678910, ObservedTimeUnixNano: 12345678910, Body: pb.AnyValue{StringValue: &msg},
+		entries[j] = logRecord{
+			TimeUnixNano: 12345678910, ObservedTimeUnixNano: 12345678910, Body: anyValue{StringValue: &msg},
 		}
 	}
-	scopes := make([]pb.ScopeLogs, scopesCount)
+	scopes := make([]scopeLogs, scopesCount)
 
 	for j := 0; j < scopesCount; j++ {
-		scopes[j] = pb.ScopeLogs{
+		scopes[j] = scopeLogs{
 			LogRecords: entries,
 		}
 	}
 
-	pr := pb.ExportLogsServiceRequest{
-		ResourceLogs: []pb.ResourceLogs{
+	pr := exportLogsServiceRequest{
+		ResourceLogs: []resourceLogs{
 			{
-				Resource: pb.Resource{
+				Resource: resource{
 					Attributes: attrs,
 				},
 				ScopeLogs: scopes,
@@ -75,5 +73,9 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 		},
 	}
 
-	return pr.MarshalProtobuf(nil)
+	return pr.marshalProtobuf(nil)
+}
+
+func ptrTo[T any](s T) *T {
+	return &s
 }
