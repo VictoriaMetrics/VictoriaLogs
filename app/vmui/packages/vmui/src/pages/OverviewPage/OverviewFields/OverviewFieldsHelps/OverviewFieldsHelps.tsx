@@ -1,6 +1,5 @@
 import Button from "../../../../components/Main/Button/Button";
 import { QuestionIcon } from "../../../../components/Main/Icons";
-import Tooltip from "../../../../components/Main/Tooltip/Tooltip";
 import "./style.scss";
 import useBoolean from "../../../../hooks/useBoolean";
 import Modal from "../../../../components/Main/Modal/Modal";
@@ -15,13 +14,13 @@ const OverviewFieldsHelps = () => {
 
   return (
     <>
-      <Tooltip title={"How it works"}>
-        <Button
-          startIcon={<QuestionIcon/>}
-          variant="text"
-          onClick={handleOpenModal}
-        />
-      </Tooltip>
+      <Button
+        startIcon={<QuestionIcon/>}
+        variant="text"
+        onClick={handleOpenModal}
+      >
+          How it works
+      </Button>
       {openModal && (
         <Modal
           title={"Fields & Streams Overview"}

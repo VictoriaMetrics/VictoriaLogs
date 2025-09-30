@@ -14,17 +14,23 @@ import Button from "../../../components/Main/Button/Button";
 import { CopyIcon, DoneIcon, OpenNewIcon } from "../../../components/Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
+import { escapeDoubleQuotes } from "../../../utils/regexp";
 
 const operator = ExtraFilterOperator.Equals;
+
+const getQueryFromArray = (field: string, values: string[]) => {
+  const escapeValues = values.map(v => `"${escapeDoubleQuotes(v)}"`);
+  return `${field}:in(\n${escapeValues.join(",\n")}\n)`;
+};
 
 const OverviewLogs:FC = () => {
   const [searchParams] = useSearchParams();
 
   const { period, relativeTime, duration } = useTimeState();
   const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs();
-  const { extraFilters } = useExtraFilters();
-  const { fieldFilter, fieldValueFilter } = useFieldFilter();
-  const { streamFieldFilter, streamFieldValueFilter } = useStreamFieldFilter();
+  const { extraParams } = useExtraFilters();
+  const { fieldFilter, fieldValueFilters } = useFieldFilter();
+  const { streamFieldFilter, streamFieldValueFilters } = useStreamFieldFilter();
   const copyToClipboard = useCopyToClipboard();
 
   const [copied, setCopied] = useState<boolean>(false);
@@ -34,22 +40,31 @@ const OverviewLogs:FC = () => {
   const query = useMemo(() => {
     const queryParts: string[] = [];
 
-    if (streamFieldFilter) {
-      const filterByStream = filterToExpr({ field: streamFieldFilter, value: streamFieldValueFilter || "*", operator });
+    if (streamFieldFilter && streamFieldValueFilters.length) {
+      const filterByStream = getQueryFromArray(streamFieldFilter, streamFieldValueFilters);
+      queryParts.push(filterByStream);
+    } else if (streamFieldFilter) {
+      const filterByStream = filterToExpr({ field: streamFieldFilter, value: "*", operator });
       queryParts.push(filterByStream);
     }
 
-    if (fieldFilter) {
-      const filterByField = filterToExpr({ field: fieldFilter, value: fieldValueFilter || "*", operator });
+    if (fieldFilter && fieldValueFilters.length) {
+      const filterByField = getQueryFromArray(fieldFilter, fieldValueFilters);
+      queryParts.push(filterByField);
+    } else if (fieldFilter) {
+      const filterByField = filterToExpr({ field: fieldFilter, value: "*", operator });
       queryParts.push(filterByField);
     }
 
+    const extraFieldsFilters = extraParams.getAll("extra_filters");
+    const extraStreamFilters = extraParams.getAll("extra_stream_filters");
+    const extraFilters = extraFieldsFilters.concat(extraStreamFilters);
     if (extraFilters.length) {
-      extraFilters.forEach(f => queryParts.push(filterToExpr(f)));
+      queryParts.push(...extraFilters);
     }
 
     return queryParts.length ? queryParts.join("\n") : "*";
-  }, [period, fieldFilter, fieldValueFilter, streamFieldFilter, streamFieldValueFilter, extraFilters]);
+  }, [period, fieldFilter, fieldValueFilters, streamFieldFilter, streamFieldValueFilters, extraParams]);
 
   const linkToLogs = useMemo(() => {
     const params = new URLSearchParams({
@@ -82,18 +97,17 @@ const OverviewLogs:FC = () => {
   return (
     <div className="vm-overview-logs vm-block">
       <div className="vm-overview-logs-header">
-        <span className="vm-title">Preview logs:</span>
+        <span className="vm-title">Query:</span>
         <div className="vm-overview-logs-query">
           <p className="vm-overview-logs-query__expr">{query}</p>
-          <div className="vm-overview-logs-query__limit">
-            <SelectLimit
-              label="&nbsp;|&nbsp;limit"
-              limit={limit}
-              onChange={setLimit}
-            />
-          </div>
+
         </div>
         <div className="vm-overview-logs-header__actions">
+          <SelectLimit
+            label="Limit"
+            limit={limit}
+            onChange={setLimit}
+          />
           <Button
             size="small"
             variant="text"

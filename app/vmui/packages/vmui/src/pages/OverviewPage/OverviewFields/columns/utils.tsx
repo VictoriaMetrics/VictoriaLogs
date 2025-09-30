@@ -1,8 +1,5 @@
 import { Column } from "../../../../components/Table/Table";
 import { LogsFiledValues } from "../../../../api/types";
-import Tooltip from "../../../../components/Main/Tooltip/Tooltip";
-import Button from "../../../../components/Main/Button/Button";
-import { InfoIcon } from "../../../../components/Main/Icons";
 
 export const getFieldCol = (title: string): Column<LogsFiledValues> => ({
   title,
@@ -28,21 +25,4 @@ export const getPercentCol = (title: string) => ({
     const text = p.toFixed(2);
     return `${text}%`;
   },
-});
-
-export const getActionCol = (tooltip: string): Column<LogsFiledValues> => ({
-  title: " ",
-  disableSort: true,
-  className: "vm-top-fields__cell-action",
-  key: "action" as keyof LogsFiledValues,
-  render: () => (
-    <Tooltip title={tooltip}>
-      <Button
-        size="small"
-        color="gray"
-        variant="text"
-        startIcon={<InfoIcon/>}
-      />
-    </Tooltip>
-  )
 });

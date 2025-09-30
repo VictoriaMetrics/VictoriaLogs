@@ -8,7 +8,6 @@
 
 
 .vm-total-card {
-  flex-grow: 1;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -37,7 +36,7 @@
     &__text {
       overflow-wrap: anywhere;
       white-space: pre-wrap;
-      width: 300px;
+      width: 340px;
       text-wrap: balance;
       padding-block: 4px;
     }
@@ -46,7 +45,7 @@
   &-body {
     display: flex;
     justify-content: space-between;
-    gap: $padding-global;
+    gap: $padding-small;
   }
 
   &__delta,
@@ -61,6 +60,8 @@
   }
 
   &__delta {
+    display: flex;
+    align-items: center;
     font-size: $font-size;
   }
 }

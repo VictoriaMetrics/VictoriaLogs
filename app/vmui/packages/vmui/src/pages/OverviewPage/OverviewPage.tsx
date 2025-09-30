@@ -1,5 +1,6 @@
 import { FC, useEffect } from "preact/compat";
 import FiltersBar from "./FiltersBar/FiltersBar";
+import FiltersBarPreview from "./FiltersBar/FiltersBarPreview";
 import { useTimeState } from "../../state/time/TimeStateContext";
 import useSearchParamsFromObject from "../../hooks/useSearchParamsFromObject";
 import TotalsSection from "./Totals/TotalsSection";
@@ -26,6 +27,7 @@ const OverviewPage: FC = () => {
       <TotalsSection/>
       <OverviewHits/>
       <OverviewFields/>
+      <FiltersBarPreview/>
       <OverviewLogs/>
     </div>
   );

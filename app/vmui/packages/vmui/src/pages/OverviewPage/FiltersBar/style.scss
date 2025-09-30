@@ -10,9 +10,12 @@
   background-color: $color-background-block;
   z-index: 9;
 
+  &_preview {
+    padding: $padding-global;
+  }
+
   &-title {
     display: grid;
-    grid-template-columns: 16px auto;
     align-items: center;
     justify-content: start;
     gap: 2px;
@@ -38,10 +41,16 @@
     }
   }
 
-  &__clear {
+  &__actions {
     display: flex;
     align-items: flex-start;
     justify-content: flex-end;
     flex-grow: 1;
+  }
+
+  &__info {
+    width: 100%;
+    color: $color-text-secondary;
+    font-size: $font-size-small;
   }
 }

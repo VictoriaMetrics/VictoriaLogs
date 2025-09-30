@@ -49,11 +49,13 @@ const TopFieldNames: FC = () => {
   };
 
   const handleClickRow = (row: LogsFiledValues, e: MouseEvent) => {
-    const { ctrlKey, metaKey } = e;
+    const { ctrlKey, metaKey, altKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
 
     if (ctrlMetaKey) {
       handleAddExcludeFilter(row);
+    } else if (altKey) {
+      handleAddIncludeFilter(row);
     } else {
       selectField(row);
     }
@@ -79,6 +81,7 @@ const TopFieldNames: FC = () => {
         {
           label: "Include",
           icon: <FilterIcon/>,
+          shortcut: (isMacOs() ? "Option" : "Alt") + " + Click",
           onClick: () => handleAddIncludeFilter(row)
         },
         {

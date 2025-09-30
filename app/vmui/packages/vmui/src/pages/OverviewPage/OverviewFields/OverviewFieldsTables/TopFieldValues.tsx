@@ -39,14 +39,14 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const { period } = useTimeState();
   const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs();
   const { extraParams, addNewFilter } = useExtraFilters();
-  const { fieldFilter, fieldValueFilter, setFieldValueFilter } = useFieldFilter();
-  const { streamFieldFilter, streamFieldValueFilter, setStreamFieldValueFilter } = useStreamFieldFilter();
+  const { fieldFilter, fieldValueFilters, toggleFieldValueFilter } = useFieldFilter();
+  const { streamFieldFilter, streamFieldValueFilters, toggleStreamFieldValueFilter } = useStreamFieldFilter();
   const { totalLogs } = useOverviewState();
   const copyToClipboard = useCopyToClipboard();
 
   const selectedKey = scope === "field" ? fieldFilter : streamFieldFilter;
-  const selectedValue = scope === "field" ? fieldValueFilter : streamFieldValueFilter;
-  const setterFilter = scope === "field" ? setFieldValueFilter : setStreamFieldValueFilter;
+  const selectedValue = scope === "field" ? fieldValueFilters : streamFieldValueFilters;
+  const setterFilter = scope === "field" ? toggleFieldValueFilter : toggleStreamFieldValueFilter;
 
   const [mode, setMode] = useState(MODE_KEYS[0]);
   const [limit, setLimit] = useState(10);
@@ -79,18 +79,20 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   };
 
   const handleClickRow = (row: LogsFiledValues, e: MouseEvent) => {
-    const { ctrlKey, metaKey } = e;
+    const { ctrlKey, metaKey, altKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
 
     if (ctrlMetaKey) {
       handleAddFilter(row, ExtraFilterOperator.NotEquals);
+    } else if (altKey) {
+      handleAddFilter(row, ExtraFilterOperator.Equals);
     } else {
       selectFieldValue(row);
     }
   };
 
   const detectActiveRow = (row: LogsFiledValues) => {
-    return row.value === selectedValue;
+    return selectedValue.includes(row.value);
   };
 
   useEffect(() => {
@@ -104,8 +106,8 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const TableAction = (row: LogsFiledValues) => {
     const menu = [
       [{
-        label: selectedValue === row.value ? "Unfocus" : "Focus",
-        icon: selectedValue === row.value ? <UnfocusIcon/> : <FocusIcon/>,
+        label: selectedValue.includes(row.value) ? "Unfocus" : "Focus",
+        icon: selectedValue.includes(row.value) ? <UnfocusIcon/> : <FocusIcon/>,
         shortcut: "Click",
         onClick: () => selectFieldValue(row)
       }],
@@ -113,6 +115,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
         {
           label: "Include",
           icon: <FilterIcon/>,
+          shortcut: (isMacOs() ? "Option" : "Alt") + " + Click",
           onClick: () => handleAddFilter(row, ExtraFilterOperator.Equals)
         },
         {

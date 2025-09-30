@@ -2,15 +2,15 @@ import { act, renderHook } from "@testing-library/preact";
 import { useLiveTailingLogs } from "./useLiveTailingLogs";
 import { vi } from "vitest";
 
-vi.mock("../../../../../state/common/StateContext", () => ({
+vi.mock("../../../state/common/StateContext", () => ({
   useAppState: () => ({ serverUrl: "http://localhost:8080" }),
 }));
 
-vi.mock("../../../../../hooks/useTenant", () => ({
+vi.mock("../../../hooks/useTenant", () => ({
   useTenant: () => ({}),
 }));
 
-vi.mock("../../../../../hooks/useStateSearchParams",
+vi.mock("../../../hooks/useStateSearchParams",
   () => ({
     default: vi.fn(()=> [5, vi.fn()]),
   })
