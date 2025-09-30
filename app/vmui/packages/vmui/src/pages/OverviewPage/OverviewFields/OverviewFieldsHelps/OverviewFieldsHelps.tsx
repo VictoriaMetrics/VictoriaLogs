@@ -19,7 +19,7 @@ const OverviewFieldsHelps = () => {
         variant="text"
         onClick={handleOpenModal}
       >
-          How it works
+        How it works
       </Button>
       {openModal && (
         <Modal

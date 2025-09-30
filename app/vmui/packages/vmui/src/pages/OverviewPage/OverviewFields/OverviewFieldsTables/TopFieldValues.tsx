@@ -142,11 +142,14 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
         options={MODE_KEYS}
         onChange={(val) => setMode(val as ValuesMode)}
         renderOptionLabel={(v, isLabel) => (
-          isLabel ? <span className="vm-top-fields-option__label">{v}</span> :
-            <div className="vm-top-fields-option">
-              <span className="vm-top-fields-option__label">{v}</span>
-              <span className="vm-top-fields-option__info">{MODE_CONFIG[v].description}</span>
-            </div>
+          isLabel
+            ? <span className="vm-top-fields-option__label">{v}</span>
+            : (
+              <div className="vm-top-fields-option">
+                <span className="vm-top-fields-option__label">{v}</span>
+                <span className="vm-top-fields-option__info">{MODE_CONFIG[v].description}</span>
+              </div>
+            )
         )}
       />
       <SelectLimit
