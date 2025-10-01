@@ -14,7 +14,7 @@ aliases:
   - /vlagent/
 ---
 
-`vlagent` is an agent for collecting logs from various sources and storing them them in multiple [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instances.
+`vlagent` is an agent for collecting logs from various sources and storing them in multiple [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instances.
 
 ## Features
 
