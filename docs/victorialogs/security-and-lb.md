@@ -24,7 +24,7 @@ vmauth is not specifically aware of VictoriaLogs and does not offer any hidden f
 for tighter integration with other VictoriaMetrics components.
 Therefore, you can use any other HTTP proxy such as Nginx, Traefik, Envoy or HAProxy.
 
-However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/).
+However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/)
 from the VictoriaMetrics team if any issues arise.
 
 For more detailed information and advanced vmauth configuration see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/).
@@ -32,7 +32,7 @@ For more detailed information and advanced vmauth configuration see [these docs]
 All configuration examples in this documentation apply to
 [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/),
 [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/),
-[vinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
+[vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
 [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
 since they have the same search/write API.
 
@@ -227,9 +227,9 @@ users:
 This configuration allows user `foo` to access 3 different tenants, and user `admin` to access all tenants.
 However, user `admin` needs to set the required `AccountID` or `ProjectID` headers by themselves, because vmauth will not set them.
 
-In Grafana, you need to create a separate data source for each tenant and user, an example of such address is: `http://vmauth:8427/mobile-logs`.
+In Grafana, you need to create a separate data source for each tenant and user, an example of such address is: `http://vmauth:8427/my-account/mobile-logs`.
 Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set them.
-Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/mobile-logs/select/vmui`.
+Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui`.
 
 If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
 it is enough to not specify the corresponding field in the `headers` section.
@@ -429,7 +429,7 @@ flowchart BT
         vlinsert-az1 --> vlstorage2-2["vlstorage 2"]
     end
 
-    vector -->|Basic auth<br> /my-account/k8s-logs| vmauth
+    vector -->|Basic auth<br> /my-account/kubernetes-logs| vmauth
     vlagent -->|Bearer auth<br>/my-account/mobile-logs| vmauth
     filebeat -->|mTLS<br>/my-account/frontend-logs| vmauth
 
@@ -479,7 +479,7 @@ It also includes the `_stream_fields` parameter as an example of how to configur
 
 ```yaml
 users:
-  bearer_token: foobar
+- bearer_token: foobar
   url_map:
   - src_paths: ["/frontend-logs/insert/.*"]
     url_prefix:

@@ -48,12 +48,12 @@ Pass `-help` to `vlagent` in order to see [the full list of supported command-li
 `vlagent` can accept multiple `-remoteWrite.url` command-line flags. In this case it replicates the collected logs among
 all the VictoriaLogs instances mentioned in `-remoteWrite.url` command-line flags.
 
-If some of VictoriaLogs instances is temporarily unavailable, then the collected logs are buffered at the directory, which can be specified
+If some of VictoriaLogs instances are temporarily unavailable, then the collected logs are buffered at the directory, which can be specified
 via `-remoteWrite.tmpDataPath` command-line flag. The buffered logs are sent to the VictoriaLogs instance as soon as it becomes available.
 This guarantees the delivery of all the logs across all the VictoriaLogs instances specified via `-remoteWrite.url` command-line flags.
 
 The on-disk buffer is limited by the available disk space at the `-remoteWrite.tmpDataPath` by default. It is possible to limit it
-to the given size via `-remoteWrite.maxDiskUsagePerURL` command-liine flag (this flag can be specified individually per each `-remoteWrite.url`).
+to the given size via `-remoteWrite.maxDiskUsagePerURL` command-line flag (this flag can be specified individually per each `-remoteWrite.url`).
 When the buffer size reaches this limit for the given `-remoteWrite.url`, then the oldest logs are dropped from the buffer and are replaced by the newly
 collected logs.
 
