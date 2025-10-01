@@ -94,10 +94,10 @@ to match the selected authentication method and the vmauth endpoint.
 Important: Requests sent directly to VictoriaLogs bypass vmauth and are not authorized.
 To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
 
-It is recommended to pass the `-insert.disable` command-line flag at `vlselect` for disabling the write API.
-This helps protecting against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
+It is recommended to pass the `-insert.disable` command-line flag to `vlselect` to disable the write API.
+This helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
-For configuration examples using Bearer token, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Cluster routing
 
@@ -334,7 +334,7 @@ which [start with `/insert/` prefix](https://docs.victoriametrics.com/victorialo
 so when configuring write requests, it is important to set this path for request authorization.
 
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between `vlinsert` nodes in the cluster:
+with Basic auth and distributes load between `vlinsert` nodes in the cluster:
 
 ```yaml
 users:
@@ -364,16 +364,16 @@ it is very important to secure the write API:
 - Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.
 - Write logs from untrusted applications to dedicated VictoriaLogs instances or clusters so that the unpredictable write load does not affect other instances.
 
-It is recommended setting the `-select.disable` command-line flag at `vlinsert` in order to disable search API.
+It is recommended to pass the `-select.disable` command-line flag to `vlinsert` in order to disable the search API.
 This will secure access to the stored logs in case an attacker has direct network access to `vlinsert`.
 
-For configuration examples using Bearer token, Basic auth, and mTLS see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Tenant assignment
 
 vmauth allows redirecting requests to different tenants based on the request path.
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
+with Basic auth and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
 
 ```yaml
 users:
