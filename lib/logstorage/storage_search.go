@@ -1224,12 +1224,13 @@ func (db *DataBlock) initFromBlockResult(br *blockResult) {
 //
 // It uses workersCount parallel workers for the search and calls writeBlock for each matching block.
 func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
-	// Spin up workers
-	var wgWorkers sync.WaitGroup
+	// spin up workers
+	var wg sync.WaitGroup
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
-	wgWorkers.Add(workersCount)
-	for i := 0; i < workersCount; i++ {
+	for workerID := 0; workerID < workersCount; workerID++ {
+		wg.Add(1)
 		go func(workerID uint) {
+			defer wg.Done()
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
@@ -1264,8 +1265,7 @@ func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs 
 			putBlockSearch(bs)
 			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
-			wgWorkers.Done()
-		}(uint(i))
+		}(uint(workerID))
 	}
 
 	// Select partitions according to the selected time range
@@ -1314,7 +1314,7 @@ func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs 
 
 	// Wait until workers finish their work
 	close(workCh)
-	wgWorkers.Wait()
+	wg.Wait()
 
 	// Finalize partition search
 	for _, psf := range psfs {
