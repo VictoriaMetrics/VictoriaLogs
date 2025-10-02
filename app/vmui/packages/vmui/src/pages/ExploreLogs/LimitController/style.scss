@@ -1,0 +1,26 @@
+@use "src/styles/variables" as *;
+
+.vm-logs-limit-modal {
+  display: grid;
+  padding: $padding-small;
+  gap: $padding-large;
+
+  &-text {
+    line-height: 1.3;
+  }
+
+  &-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: calc($padding-large*4);
+
+    &__actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: $padding-small;
+      width: 100%;
+    }
+  }
+}

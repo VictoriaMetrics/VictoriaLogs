@@ -6,17 +6,22 @@ import dayjs from "dayjs";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
+import { mergeSearchParams } from "../../../utils/query-string";
 
 interface FetchLogsParams {
   query?: string;
   period?: TimeParams;
   limit?: number;
-  preventAbortPrevious?: boolean;
+  extraParams?: URLSearchParams;
+  beforeFetch?: BeforeFetch;
 }
 
-interface FetchLogsOptions extends FetchLogsParams {
-  signal: AbortSignal;
-}
+export type BeforeFetchResult =
+  | { action: "abort"; }
+  | { action: "proceed" }
+  | { action: "modify"; body: URLSearchParams }
+
+export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFetchResult>;
 
 export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   const { serverUrl } = useAppState();
@@ -33,7 +38,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
 
   const url = useMemo(() => getLogsUrl(serverUrl), [serverUrl]);
 
-  const getOptions = ({ query, period, limit, signal }: FetchLogsOptions) => {
+  const buildBody = ({ period, query, limit }: FetchLogsParams) => {
     if (!query) {
       throw new Error("query is required to /select/logsql/query.");
     }
@@ -43,16 +48,19 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     });
 
     if (limit) {
-      body.append("limit", String(limit));
+      body.set("limit", String(limit));
     }
 
     if (period) {
-      body.append("start", dayjs(period.start * 1000).tz().toISOString());
-      body.append("end", dayjs(period.end * 1000).tz().toISOString());
+      body.set("start", dayjs(period.start * 1000).tz().toISOString());
+      body.set("end", dayjs(period.end * 1000).tz().toISOString());
     }
 
+    return body;
+  };
+
+  const buildOptions = ({ signal }: { signal: AbortSignal }): RequestInit => {
     return {
-      body,
       signal,
       method: "POST",
       headers: {
@@ -66,9 +74,22 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     query = defaultQuery,
     limit = defaultLimit,
     period,
-    preventAbortPrevious
+    extraParams,
+    beforeFetch,
   }: FetchLogsParams) => {
-    !preventAbortPrevious && abortControllerRef.current.abort();
+    let baseBody = buildBody({ query, limit, period, extraParams });
+
+    if (beforeFetch) {
+      // new instance to avoid mutation of original body
+      const decision = await beforeFetch(new URLSearchParams(baseBody));
+      // Return early if instructed to abort
+      if (decision.action === "abort") return false;
+      // Modify the body if instructed to modify
+      if (decision.action === "modify") baseBody = mergeSearchParams(baseBody, decision.body, "overwrite");
+    }
+
+    const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
+
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
 
@@ -77,8 +98,8 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     setError(undefined);
 
     try {
-      const options = getOptions({ query, limit, period, signal });
-      const response = await fetch(url, options);
+      const options = buildOptions({ signal });
+      const response = await fetch(url,  { body, ...options });
 
       const duration = response.headers.get("vl-request-duration-seconds");
       setDurationMs(duration ? Number(duration) * 1000 : undefined);
@@ -90,7 +111,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
         return false;
       }
 
-      const data = text.split("\n", defaultLimit).map(parseLineToJSON).filter(line => line) as Logs[];
+      const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
       return data;
     } catch (e) {
@@ -110,9 +131,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   }, [url, defaultQuery, defaultLimit, tenant]);
 
   useEffect(() => {
-    return () => {
-      abortControllerRef.current.abort();
-    };
+    return () => abortControllerRef.current.abort();
   }, []);
 
   useEffect(() => {

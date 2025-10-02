@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add warning modal for `limit > 500` with session suppression; validate limit to `[1, 10000]`. See [#500](https://github.com/VictoriaMetrics/VictoriaLogs/issues/695).
+
 * BUGFIX: all components: restore sorting order of summary and quantile metrics exposed by VictoriaLogs components on `/metrics` page. See [metrics#105](https://github.com/VictoriaMetrics/metrics/pull/105) for details.
 
 ## [v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0)

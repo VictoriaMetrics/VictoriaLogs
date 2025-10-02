@@ -11,16 +11,18 @@ import { useTimeState } from "../../state/time/TimeStateContext";
 import { getFromStorage, saveToStorage } from "../../utils/storage";
 import ExploreLogsBarChart from "./ExploreLogsBarChart/ExploreLogsBarChart";
 import { useFetchLogHits } from "./hooks/useFetchLogHits";
-import { LOGS_ENTRIES_LIMIT } from "../../constants/logs";
+import { LOGS_DEFAULT_LIMIT, LOGS_URL_PARAMS } from "../../constants/logs";
 import { getTimeperiodForDuration, relativeTimeOptions } from "../../utils/time";
 import { useSearchParams } from "react-router-dom";
 import { useQueryDispatch, useQueryState } from "../../state/query/QueryStateContext";
 import { getUpdatedHistory } from "../../components/QueryHistory/utils";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import usePrevious from "../../hooks/usePrevious";
+import { useLimitGuard } from "./LimitController/useLimitGuard";
+import LimitConfirmModal from "./LimitController/LimitConfirmModal";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
-const defaultLimit = isNaN(storageLimit) ? LOGS_ENTRIES_LIMIT : storageLimit;
+const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
 
 type FetchFlags = { logs: boolean; hits: boolean };
 
@@ -37,8 +39,16 @@ const ExploreLogs: FC = () => {
   const hideLogs = useMemo(() => searchParams.get("hide_logs"), [searchParams]);
   const prevHideLogs = usePrevious(hideLogs);
 
-  const [limit, setLimit] = useStateSearchParams(defaultLimit, "limit");
+  const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
   const [query, setQuery] = useStateSearchParams("*", "query");
+
+  const handleChangeLimit = (limit: number) => {
+    setLimit(limit);
+    setSearchParamsFromKeys({ limit });
+    saveToStorage("LOGS_LIMIT", `${limit}`);
+  };
+
+  const { beforeFetch, modalProps } = useLimitGuard({ setLimit: handleChangeLimit });
 
   const updateHistory = () => {
     const history = getUpdatedHistory(query, queryHistory[0]);
@@ -60,7 +70,7 @@ const ExploreLogs: FC = () => {
 
   const fetchData = async (period: TimeParams, flags: FetchFlags) => {
     if (flags.logs) {
-      const isSuccess = await fetchLogs({ period });
+      const isSuccess = await fetchLogs({ period, beforeFetch });
       if (!isSuccess) return;
     }
 
@@ -97,12 +107,6 @@ const ExploreLogs: FC = () => {
     updateHistory();
   };
 
-  const handleChangeLimit = (limit: number) => {
-    setLimit(limit);
-    setSearchParamsFromKeys({ limit });
-    saveToStorage("LOGS_LIMIT", `${limit}`);
-  };
-
   const handleApplyFilter = (val: string) => {
     setQuery(prev => `${val} AND ${prev}`);
     setIsUpdatingQuery(true);
@@ -136,12 +140,14 @@ const ExploreLogs: FC = () => {
 
   useEffect(() => {
     if (!hideLogs && prevHideLogs) {
-      fetchLogs({ period });
+      fetchLogs({ period, beforeFetch });
     }
   }, [hideLogs, prevHideLogs, period]);
 
   return (
     <div className="vm-explore-logs">
+      <LimitConfirmModal {...modalProps}/>
+
       <ExploreLogsHeader
         query={query}
         queryDurationMs={hideLogs ? undefined : queryDuration}

@@ -36,8 +36,9 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
   const displayFields = useMemo(() => displayFieldsString.split(","), [displayFieldsString]);
 
-  const rowsPerPageRaw = Number(searchParams.get(LOGS_URL_PARAMS.ROWS_PER_PAGE));
-  const rowsPerPage = isNaN(rowsPerPageRaw) ? 0 : rowsPerPageRaw;
+  const rowsPerPageRaw = searchParams.get(LOGS_URL_PARAMS.ROWS_PER_PAGE);
+  const rowsPerPageNum = rowsPerPageRaw ? Number(rowsPerPageRaw) : 100;
+  const rowsPerPage = isNaN(rowsPerPageNum) ? 0 : rowsPerPageNum;
 
   const expandAll = useMemo(() => expandGroups.every(Boolean), [expandGroups]);
 
@@ -75,7 +76,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     if (limit) {
       searchParams.set(LOGS_URL_PARAMS.ROWS_PER_PAGE, String(limit));
     } else {
-      searchParams.delete(LOGS_URL_PARAMS.ROWS_PER_PAGE);
+      searchParams.set(LOGS_URL_PARAMS.ROWS_PER_PAGE, "all");
     }
 
     setSearchParams(searchParams);

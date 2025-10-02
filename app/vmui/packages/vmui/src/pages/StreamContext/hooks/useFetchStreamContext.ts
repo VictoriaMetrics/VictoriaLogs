@@ -57,7 +57,6 @@ export const useFetchStreamContext = () => {
     try {
       const data = await fetchLogs({
         query: buildContextQuery(log, dir, lines),
-        preventAbortPrevious: true,
       });
 
       if (Array.isArray(data) && data.length) {

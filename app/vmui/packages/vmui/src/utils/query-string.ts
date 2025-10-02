@@ -17,3 +17,15 @@ export const getQueryArray = (): string[] => {
     .fill(1)
     .map((q, i) => getQueryStringValue(`g${i}.expr`, "") as string);
 };
+
+type MergeMode = "append" | "overwrite";
+
+export const mergeSearchParams = (a: URLSearchParams, b: URLSearchParams, mode: MergeMode) => {
+  const out = new URLSearchParams(a);
+  if (mode === "append") {
+    b.forEach((v, k) => out.append(k, v));
+  } else { // 'overwrite'
+    for (const [k, v] of b) out.set(k, v);
+  }
+  return out;
+};

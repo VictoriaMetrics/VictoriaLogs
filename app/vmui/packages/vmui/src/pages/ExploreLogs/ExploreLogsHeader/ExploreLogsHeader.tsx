@@ -1,11 +1,11 @@
-import { FC, useEffect, useState } from "preact/compat";
+import { FC, useEffect } from "preact/compat";
 import { InfoIcon, PlayIcon, SpinnerIcon, WikiIcon } from "../../../components/Main/Icons";
 import "./style.scss";
 import classNames from "classnames";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
-import TextField from "../../../components/Main/TextField/TextField";
+import LogsLimitInput from "../LimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
 import Switch from "../../../components/Main/Switch/Switch";
@@ -41,28 +41,11 @@ const ExploreLogsHeader: FC<ExploreLogHeaderProps> = ({
   const queryDispatch = useQueryDispatch();
   const setQuickAutocomplete = useQuickAutocomplete();
 
-  const [errorLimit, setErrorLimit] = useState("");
-  const [limitInput, setLimitInput] = useState(limit);
   const { value: awaitQuery, setValue: setAwaitQuery } = useBoolean(false);
-
-  const handleChangeLimit = (val: string) => {
-    const number = +val;
-    setLimitInput(number);
-    if (isNaN(number) || number < 0) {
-      setErrorLimit("Number must be bigger than zero");
-    } else {
-      setErrorLimit("");
-      onChangeLimit(number);
-    }
-  };
 
   const onChangeAutocomplete = () => {
     queryDispatch({ type: "TOGGLE_AUTOCOMPLETE" });
   };
-
-  useEffect(() => {
-    setLimitInput(limit);
-  }, [limit]);
 
   const handleHistoryChange = (step: number) => {
     const { values, index } = queryHistory[0];
@@ -121,13 +104,10 @@ const ExploreLogsHeader: FC<ExploreLogHeaderProps> = ({
             executionTimeMsec: queryDurationMs,
           }}
         />
-        <TextField
-          label="Limit entries"
-          type="number"
-          value={limitInput}
-          error={errorLimit}
-          onChange={handleChangeLimit}
-          onEnter={onRun}
+        <LogsLimitInput
+          limit={limit}
+          onChangeLimit={onChangeLimit}
+          onPressEnter={onRun}
         />
       </div>
       <div className="vm-explore-logs-header-bottom">

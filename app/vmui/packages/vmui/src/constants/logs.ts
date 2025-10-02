@@ -1,6 +1,11 @@
 import { DATE_TIME_FORMAT } from "./date";
 
-export const LOGS_ENTRIES_LIMIT = 50;
+export const LOGS_DEFAULT_LIMIT = 50;
+export const LOGS_CONFIRM_THRESHOLD = 500;
+export const LOGS_MAX_LIMIT = 10000;
+
+export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
+
 export const LOGS_BARS_VIEW = 100;
 export const LOGS_LIMIT_HITS = 5;
 
@@ -14,6 +19,7 @@ export const LOGS_DATE_FORMAT = `${DATE_TIME_FORMAT}.SSS`;
 
 // URL parameters for the logs page.
 export const LOGS_URL_PARAMS = {
+  LIMIT: "limit",
   GROUP_BY: "groupBy",
   DISPLAY_FIELDS: "displayFields",
   NO_WRAP_LINES: "noWrapLines",
@@ -25,3 +31,4 @@ export const LOGS_URL_PARAMS = {
 // Maximum values for the logs autocomplete.
 export const MAX_QUERY_FIELDS = 1;
 export const MAX_QUERIES_HISTORY = 25;
+
