@@ -116,6 +116,17 @@ func TestPipeCollapseNums(t *testing.T) {
 			{"_msg", `<N>`},
 		},
 	})
+
+	// underscore-delimited numbers collapse
+	f(`collapse_nums`, [][]Field{
+		{
+			{"_msg", `temp_23_175863242537_93_98_ abc 123 test`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `temp_<N>_<N>_<N>_<N>_ abc <N> test`},
+		},
+	})
 }
 
 func TestPipeCollapseNumsUpdateNeededFields(t *testing.T) {
