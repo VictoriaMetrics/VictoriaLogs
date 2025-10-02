@@ -83,7 +83,7 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   ```
 
 - By adding [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter). The time range for the query can be specified via optional
-  `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
+  `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats). The `end` arg is exclusive; HTTP time ranges use `[start, end)`.
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting
@@ -223,7 +223,7 @@ See also:
 ### Querying hits stats
 
 VictoriaLogs provides `/select/logsql/hits?query=<query>&start=<start>&end=<end>&step=<step>` HTTP endpoint, which returns the number
-of matching log entries for the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]`
+of matching log entries for the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)`
 time range grouped by `<step>` buckets. The returned results are sorted by time.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -348,7 +348,7 @@ See also:
 
 VictoriaLogs provides `/select/logsql/facets?query=<query>&start=<start>&end=<end>` HTTP endpoint, which returns the most frequent values
 per each [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) seen in the logs returned
-by the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+by the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
@@ -513,7 +513,7 @@ See also:
 ### Querying log range stats
 
 VictoriaLogs provides `/select/logsql/stats_query_range?query=<query>&start=<start>&end=<end>&step=<step>` HTTP endpoint, which returns log stats
-for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[start ... end]` time range with the given `step` interval.
+for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[start ... end)` time range with the given `step` interval.
 The stats is returned in the format compatible with [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries).
 
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
@@ -614,7 +614,7 @@ See also:
 
 VictoriaLogs provides `/select/logsql/stream_ids?query=<query>&start=<start>&end=<end>` HTTP endpoint, which returns `_stream_id` values
 for the [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) from results
-of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every `_stream_id`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -674,7 +674,7 @@ See also:
 ### Querying streams
 
 VictoriaLogs provides `/select/logsql/streams?query=<query>&start=<start>&end=<end>` HTTP endpoint, which returns [streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
-from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every `_stream`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -735,7 +735,7 @@ See also:
 
 VictoriaLogs provides `/select/logsql/stream_field_names?query=<query>&start=<start>&end=<end>` HTTP endpoint, which returns
 [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field names from results
-of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every field name.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -792,7 +792,7 @@ See also:
 
 VictoriaLogs provides `/select/logsql/stream_field_values?query=<query>&start=<start>&<end>&field=<fieldName>` HTTP endpoint,
 which returns [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field values for the field with the given `<fieldName>` name
-from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every field value.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -847,7 +847,7 @@ See also:
 ### Querying field names
 
 VictoriaLogs provides `/select/logsql/field_names?query=<query>&start=<start>&end=<end>` HTTP endpoint, which returns field names
-from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every field name.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
@@ -904,7 +904,7 @@ See also:
 
 VictoriaLogs provides `/select/logsql/field_values?query=<query>&field=<fieldName>&start=<start>&end=<end>` HTTP endpoint, which returns
 unique values for the given `<fieldName>` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
-from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>]` time range.
+from results of the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range.
 The response also contains the number of log results per every field value.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).

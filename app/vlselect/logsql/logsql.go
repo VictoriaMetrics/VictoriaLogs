@@ -1150,8 +1150,13 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Adjust end time according to its string representation
-	end = logstorage.AdjustEndTimestamp(end, endStr)
+	// Treat HTTP 'end' query arg as exclusive: [start, end)
+	// Convert to inclusive bound for internal filter by subtracting 1ns.
+	if endStr != "" {
+		if end != math.MinInt64 {
+			end--
+		}
+	}
 
 	// Parse optional time arg
 	timestamp, timeStr, err := getTimeNsec(r, "time")

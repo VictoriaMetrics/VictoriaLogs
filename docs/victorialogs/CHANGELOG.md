@@ -19,8 +19,10 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): expand [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter) and [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter), so they match phrases with whitespace in front of captial letters. For example, `_msg:contains_common_case("VictoriaMetrics")` now matches `Victoria Metrics`, `victoria metrics`, `VICTORIA METRICS`, `Victoria metrics` and `victoria Metrics` additionally to `VictoriaMetrics`, `victoriametrics`, `VICTORIAMETRICS`, `Victoriametrics` and `victoriaMetrics`.
+* FEATURE: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): treat `end` query arg as exclusive bound for time ranges, i.e. use `[start, end)` instead of `[start, end]`. This affects endpoints accepting `start`/`end` (e.g. `/select/logsql/query`, `/select/logsql/hits`, `/select/logsql/stats_query_range`, `/select/logsql/streams`, etc.). See [VictoriaMetrics#9753](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/9753) and [#587](https://github.com/VictoriaMetrics/VictoriaLogs/issues/587) for more details.
 
 * BUGFIX: all components: restore sorting order of summary and quantile metrics exposed by VictoriaLogs components on `/metrics` page. See [metrics#105](https://github.com/VictoriaMetrics/metrics/pull/105) for details.
+
 
 ## [v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0)
 
