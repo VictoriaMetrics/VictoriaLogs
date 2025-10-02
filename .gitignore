@@ -10,7 +10,7 @@
 /vmdocs
 /gocache-for-docker
 /victoria-logs-data
-/vlagent-remotewritewrite
+/vlagent-remotewrite-data
 .DS_store
 Gemfile.lock
 /_site

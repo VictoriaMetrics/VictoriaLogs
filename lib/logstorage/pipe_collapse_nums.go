@@ -272,9 +272,9 @@ func hasHexChars(s string) bool {
 }
 
 func isSpecialNumStart(ch byte) bool {
-	return ch == 'T' || ch == 'X' || ch == 'x' || ch == 'v' || ch == 's' || ch == 'h' || ch == 'm'
+	return ch == '_' || ch == 'T' || ch == 'X' || ch == 'x' || ch == 'v' || ch == 's' || ch == 'h' || ch == 'm'
 }
 
 func isSpecialNumEnd(ch byte) bool {
-	return ch == 'T' || ch == 'Z' || ch == 's' || ch == 'm' || ch == 'h' || ch == 'u' || ch == 'n'
+	return ch == '_' || ch == 'T' || ch == 'Z' || ch == 's' || ch == 'm' || ch == 'h' || ch == 'u' || ch == 'n'
 }

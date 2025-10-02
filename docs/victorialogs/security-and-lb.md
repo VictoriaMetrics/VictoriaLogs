@@ -4,7 +4,7 @@ menu:
   docs:
     parent: victorialogs
     weight: 12
-title: Security and LoadBalancing
+title: Security and Load Balancing
 tags:
   - logs
 ---
@@ -24,7 +24,7 @@ vmauth is not specifically aware of VictoriaLogs and does not offer any hidden f
 for tighter integration with other VictoriaMetrics components.
 Therefore, you can use any other HTTP proxy such as Nginx, Traefik, Envoy or HAProxy.
 
-However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/).
+However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/)
 from the VictoriaMetrics team if any issues arise.
 
 For more detailed information and advanced vmauth configuration see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/).
@@ -32,7 +32,7 @@ For more detailed information and advanced vmauth configuration see [these docs]
 All configuration examples in this documentation apply to
 [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/),
 [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/),
-[vinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
+[vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
 [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
 since they have the same search/write API.
 
@@ -94,10 +94,10 @@ to match the selected authentication method and the vmauth endpoint.
 Important: Requests sent directly to VictoriaLogs bypass vmauth and are not authorized.
 To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
 
-It is recommended to pass the `-insert.disable` command-line flag at `vlselect` for disabling the write API.
-This helps protecting against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
+It is recommended to pass the `-insert.disable` command-line flag to `vlselect` to disable the write API.
+This helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
-For configuration examples using Bearer token, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Cluster routing
 
@@ -227,9 +227,9 @@ users:
 This configuration allows user `foo` to access 3 different tenants, and user `admin` to access all tenants.
 However, user `admin` needs to set the required `AccountID` or `ProjectID` headers by themselves, because vmauth will not set them.
 
-In Grafana, you need to create a separate data source for each tenant and user, an example of such address is: `http://vmauth:8427/mobile-logs`.
+In Grafana, you need to create a separate data source for each tenant and user, an example of such address is: `http://vmauth:8427/my-account/mobile-logs`.
 Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set them.
-Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/mobile-logs/select/vmui`.
+Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui`.
 
 If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
 it is enough to not specify the corresponding field in the `headers` section.
@@ -334,7 +334,7 @@ which [start with `/insert/` prefix](https://docs.victoriametrics.com/victorialo
 so when configuring write requests, it is important to set this path for request authorization.
 
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between `vlinsert` nodes in the cluster:
+with Basic auth and distributes load between `vlinsert` nodes in the cluster:
 
 ```yaml
 users:
@@ -364,16 +364,16 @@ it is very important to secure the write API:
 - Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.
 - Write logs from untrusted applications to dedicated VictoriaLogs instances or clusters so that the unpredictable write load does not affect other instances.
 
-It is recommended setting the `-select.disable` command-line flag at `vlinsert` in order to disable search API.
+It is recommended to pass the `-select.disable` command-line flag to `vlinsert` in order to disable the search API.
 This will secure access to the stored logs in case an attacker has direct network access to `vlinsert`.
 
-For configuration examples using Bearer token, Basic auth, and mTLS see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Tenant assignment
 
 vmauth allows redirecting requests to different tenants based on the request path.
 Example vmauth configuration that allows insert requests
-with Basic auth authentication and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
+with Basic auth and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
 
 ```yaml
 users:
@@ -429,7 +429,7 @@ flowchart BT
         vlinsert-az1 --> vlstorage2-2["vlstorage 2"]
     end
 
-    vector -->|Basic auth<br> /my-account/k8s-logs| vmauth
+    vector -->|Basic auth<br> /my-account/kubernetes-logs| vmauth
     vlagent -->|Bearer auth<br>/my-account/mobile-logs| vmauth
     filebeat -->|mTLS<br>/my-account/frontend-logs| vmauth
 
@@ -479,7 +479,7 @@ It also includes the `_stream_fields` parameter as an example of how to configur
 
 ```yaml
 users:
-  bearer_token: foobar
+- bearer_token: foobar
   url_map:
   - src_paths: ["/frontend-logs/insert/.*"]
     url_prefix:

@@ -1131,8 +1131,6 @@ equals the following [phrases](https://docs.victoriametrics.com/victorialogs/log
 - the given phrases - `phrase1`, ..., `phraseN`
 - uppercase and lowercase phrases
 - individual phrases where every uppercase letter is independently replaced with the corresponding lowercase letter
-- individual phrases where every uppercase letter is independently prepended with a whitespace
-- individual phrases where every uppercase letter is independently replaced with a whitespace followed by the corresponding lowercase letter
 
 For example, `_msg:equals_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 equals to one of the following words [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
@@ -1142,11 +1140,6 @@ equals to one of the following words [words](https://docs.victoriametrics.com/vi
 - victoriametrics
 - Victoriametrics
 - victoriaMetrics
-- Victoria Metrics
-- VICTORIA METRICS
-- victoria metrics
-- Victoria metrics
-- victoria Metrics
 
 The `equals_common_case(...)` usually works much faster than the [`i(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter).
 
@@ -1166,8 +1159,6 @@ contains the following [phrases](https://docs.victoriametrics.com/victorialogs/l
 - the given phrases - `phrase1`, ..., `phraseN`
 - uppercase and lowercase phrases
 - individual phrases where every uppercase letter is independently replaced with the corresponding lowercase letter
-- individual phrases where every uppercase letter is independently prepended with a whitespace
-- individual phrases where every uppercase letter is independently replaced with a whitespace followed by the corresponding lowercase letter
 
 For example, `_msg:contains_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 contains at least one of the following words [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
@@ -1177,11 +1168,6 @@ contains at least one of the following words [words](https://docs.victoriametric
 - victoriametrics
 - Victoriametrics
 - victoriaMetrics
-- Victoria Metrics
-- VICTORIA METRICS
-- victoria metrics
-- Victoria metrics
-- victoria Metrics
 
 The `contains_common_case(...)` usually works much faster than the [`i(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter).
 

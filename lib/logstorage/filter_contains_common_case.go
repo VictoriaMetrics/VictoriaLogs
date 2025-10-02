@@ -62,7 +62,7 @@ func getCommonCasePhrases(phrases []string) ([]string, error) {
 	var dst []string
 	for _, phrase := range phrases {
 		upper := countUpperRunes(phrase)
-		if upper > 6 {
+		if upper > 10 {
 			return nil, fmt.Errorf("too many common_case combinations for the %q; reduce the number of uppercase letters here", phrase)
 		}
 		dst = appendCommonCasePhrases(dst, "", phrase)
@@ -113,10 +113,6 @@ func appendCommonCasePhrases(dst []string, prefix, phrase string) []string {
 
 		dst = appendCommonCasePhrases(dst, prefixLocal+string(cLower), phraseTail)
 		dst = appendCommonCasePhrases(dst, prefixLocal+string(c), phraseTail)
-		if prefixLocal != "" {
-			dst = appendCommonCasePhrases(dst, prefixLocal+" "+string(cLower), phraseTail)
-			dst = appendCommonCasePhrases(dst, prefixLocal+" "+string(c), phraseTail)
-		}
 	}
 
 	return dst

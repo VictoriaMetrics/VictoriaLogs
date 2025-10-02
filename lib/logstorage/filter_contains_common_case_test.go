@@ -23,10 +23,10 @@ func TestGetCommonCasePhrases_Success(t *testing.T) {
 	f([]string{"foo"}, []string{"FOO", "foo"})
 	f([]string{"Foo"}, []string{"FOO", "Foo", "foo"})
 	f([]string{"foo", "Foo"}, []string{"FOO", "Foo", "foo"})
-	f([]string{"FOO"}, []string{"F O O", "F O o", "F OO", "F Oo", "F o O", "F o o", "F oO", "F oo", "FO O", "FO o", "FOO", "FOo", "Fo O", "Fo o", "FoO", "Foo", "f O O", "f O o", "f OO", "f Oo", "f o O", "f o o", "f oO", "f oo", "fO O", "fO o", "fOO", "fOo", "fo O", "fo o", "foO", "foo"})
+	f([]string{"FOO"}, []string{"FOO", "FOo", "FoO", "Foo", "fOO", "fOo", "foO", "foo"})
 
-	f([]string{"FooBar"}, []string{"FOO BAR", "FOOBAR", "Foo Bar", "Foo bar", "FooBar", "Foobar", "foo Bar", "foo bar", "fooBar", "foobar"})
-	f([]string{"fooBar"}, []string{"FOO BAR", "FOOBAR", "foo Bar", "foo bar", "fooBar", "foobar"})
+	f([]string{"FooBar"}, []string{"FOOBAR", "FooBar", "Foobar", "fooBar", "foobar"})
+	f([]string{"fooBar"}, []string{"FOOBAR", "fooBar", "foobar"})
 }
 
 func TestGetCommonCasePhrases_Failure(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGetCommonCasePhrases_Failure(t *testing.T) {
 		}
 	}
 
-	// More than 6 uppercase chars
-	f([]string{"FOOBARB"})
-	f([]string{"FoOOBbARrBzsdf"})
+	// More than 10 uppercase chars
+	f([]string{"FOOBARBAZAB"})
+	f([]string{"FoOOBbARrBAZzABsdf"})
 }

@@ -121,4 +121,4 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ## Grafana Dashboards
 
 VictoriaLogs provides official Grafana dashboards that utilize these metrics:
-- [vlagent dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/main/dashboards/vlagent.json)
+- [vlagent dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/vlagent.json)
