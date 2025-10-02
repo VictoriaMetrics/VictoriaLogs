@@ -4,7 +4,7 @@ menu:
   docs:
     parent: victorialogs
     weight: 12
-title: Security and LoadBalancing
+title: Security and Load Balancing
 tags:
   - logs
 ---
