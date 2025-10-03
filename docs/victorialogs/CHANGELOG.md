@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* SECURITY: upgrade libcrypto3 and libssl3 to `3.5.4-r0` to address CVE-2025-9230, CVE-2025-9231, CVE-2025-9232.
+
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): improve [`collapse_nums` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe) by treating `_` (underscore) as a separator for numeric tokens. This enables collapsing underscore‑delimited numbers (e.g. `temp_23_175863242537_93_98_` → `temp_<N>_<N>_<N>_<N>_`) for better normalization and grouping. See [#703](https://github.com/VictoriaMetrics/VictoriaLogs/issues/703).
 
 * BUGFIX: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): treat `end` query arg as exclusive bound for time ranges, i.e. use `[start, end)` instead of `[start, end]`, e.g. the first nanosecond at the `end` isn't included in the selected time range. This affects endpoints accepting `start`/`end` (e.g. `/select/logsql/query`, `/select/logsql/hits`, `/select/logsql/stats_query_range`, `/select/logsql/streams`, etc.). See [VictoriaMetrics#9753](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/9753) and [#587](https://github.com/VictoriaMetrics/VictoriaLogs/issues/587) for more details.
