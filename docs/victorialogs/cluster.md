@@ -166,13 +166,6 @@ flowchart TB
       LB --> QC
     end
   end
-
-style VLAGENT fill:#e8f5e8
-style VLA fill:#d5e8d4
-style VLB fill:#d5e8d4
-style LB fill:#e1f5fe
-style QC fill:#fff2cc
-style LS fill:#fff2cc
 ```
 
 - [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) receives and replicates logs to two VictoriaLogs clusters.
