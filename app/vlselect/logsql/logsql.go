@@ -499,6 +499,7 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	streamIDs, err := vlstorage.GetStreamIDs(qctx, uint64(limit))
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain stream_ids: %s", err)
+		return
 	}
 
 	// Write response headers
@@ -536,6 +537,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	streams, err := vlstorage.GetStreams(qctx, uint64(limit))
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain streams: %s", err)
+		return
 	}
 
 	// Write response headers
