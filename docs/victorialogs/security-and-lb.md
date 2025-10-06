@@ -12,7 +12,7 @@ tags:
 This document describes how to configure and use vmauth and VictoriaLogs components
 in the context of load balancing, access protection and log visibility management.
 
-To configure secure communication between components in VictoriaLogs cluster mode, follow [this documentation](https://docs.victoriametrics.com/victorialogs/cluster/#security).
+To configure secure communication between components in VictoriaLogs cluster mode, follow [this documentation](https://docs.victoriametrics.com/victorialogs/security/).
 
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) is an HTTP proxy that provides the following features:
 - Load balancing across configured HTTP backends.
@@ -303,7 +303,7 @@ users:
     drop_src_path_prefix_parts: 1
 ```
 
-`extra_filters` and `extra_stream_filters` should be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding) when they include characters that are not URL-safe. 
+`extra_filters` and `extra_stream_filters` should be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding) when they include characters that are not URL-safe.
 For example, the query `_stream:{service=frontend-logs}` should be written as `_stream%3A%7Bservice%3Dfrontend-logs%7D`.
 
 Prefer using `extra_stream_filters` over `extra_filters` whenever possible.
@@ -342,7 +342,7 @@ In such cases, it's usually sufficient to restrict network access so only truste
 
 On the other hand, if you do not trust the writing side, for example, if the logs come from frontend or mobile apps,
 it is very important to secure the write API:
-- Set up a secure HTTPS connection for vmauth (see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy)) and VictoriaLogs (see [these docs](https://docs.victoriametrics.com/victorialogs/cluster/#security)).
+- Set up a secure HTTPS connection for vmauth (see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy)) and VictoriaLogs (see [these docs](https://docs.victoriametrics.com/victorialogs/security/)).
 - Protect vmauth with anti-DDoS services if needed.
 - Consider the [max_concurrent_requests](https://docs.victoriametrics.com/victoriametrics/vmauth/#concurrency-limiting) parameter to control the number of concurrent write requests.
 - Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.

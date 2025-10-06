@@ -505,48 +505,17 @@ See also [Security and Load balancing docs](https://docs.victoriametrics.com/vic
 
 ## Security
 
-It is expected that VictoriaLogs runs in a protected environment, which is unreachable from the Internet without proper authorization.
-It is recommended providing access to VictoriaLogs [data ingestion APIs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
-and [querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) via [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
-or similar authorization proxies. See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
-
-It is recommended protecting internal HTTP endpoints from unauthorized access:
-
-- [`/internal/log_new_streams`](https://docs.victoriametrics.com/victorialogs/#logging-new-streams) - via `-logNewStreamsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
-- [`/internal/force_flush`](https://docs.victoriametrics.com/victorialogs/#forced-flush) - via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
-- [`/internal/force_merge`](https://docs.victoriametrics.com/victorialogs/#forced-merge) - via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
-- [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [Security docs](https://docs.victoriametrics.com/victorialogs/security/)
+for detailed information about VictoriaLogs security features and recommendations.
 
 ### mTLS
 
-[Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/) supports verification of client TLS certificates
-for TCP connections at the address specified via `-httpListenAddr` command-line flag (by default, this is `9428` TCP port).
-This is known as [mTLS authentication](https://en.wikipedia.org/wiki/Mutual_authentication#mTLS).
-
-Pass `-mtls` command-line flag to VictoriaLogs in order to enable mTLS authentication for incoming requests.
-
-By default the system-wide [root CA certificates](https://en.wikipedia.org/wiki/Root_certificate) are used for verifying client TLS certificates.
-The `-mtlsCAFile` command-line flag can be used for pointing to custom root CA certificates.
-
-[Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/) can be downloaded and evaluated for free
-from [the releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest). See [how to request a free trial license](https://victoriametrics.com/products/enterprise/trial/).
+See [mTLS docs](https://docs.victoriametrics.com/victorialogs/security/#mtls) for details.
 
 ### Automatic issuing of TLS certificates
 
-All the [VictoriaLogs Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) components support automatic issuing of TLS certificates
-for public HTTPS server running at `-httpListenAddr` via [Let's Encrypt service](https://letsencrypt.org/).
-The following command-line flags must be set in order to enable automatic issuing of TLS certificates:
-
-- `-httpListenAddr` must be set for listening TCP port `443`. For example, `-httpListenAddr=:443`. This port must be accessible by the [Let's Encrypt service](https://letsencrypt.org/).
-- `-tls` must be set in order to accept HTTPS requests at `-httpListenAddr`. Note that `-tlcCertFile` and `-tlsKeyFile` aren't needed when automatic TLS certificate issuing is enabled.
-- `-tlsAutocertHosts` must be set to comma-separated list of hosts, which can be reached via `-httpListenAddr`. TLS certificates are automatically issued for these hosts.
-- `-tlsAutocertEmail` must be set to contact email for the issued TLS certificates.
-- `-tlsAutocertCacheDir` may be set to the directory path for persisting the issued TLS certificates between VictoriaMetrics restarts. If this flag isn't set,
-  then TLS certificates are re-issued on every restart.
-
-This functionality can be evaluated for free according to [these docs](https://docs.victoriametrics.com/victoriametrics/enterprise/).
-
-See also [security recommendations](https://docs.victoriametrics.com/victorialogs/#security).
+See [Automatic TLS certificates docs](https://docs.victoriametrics.com/victorialogs/security/#automatic-issuing-of-tls-certificates)
+for details.
 
 ## Benchmarks
 
