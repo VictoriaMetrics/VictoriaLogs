@@ -321,3 +321,5 @@ export const formatDateWithNanoseconds = (dateStr: string, format: string): stri
   return `${base}.${fraction}`;
 };
 
+export const toEpochSeconds = (ts: number | dayjs.Dayjs | string) => dayjs(ts).valueOf()/1000;
+

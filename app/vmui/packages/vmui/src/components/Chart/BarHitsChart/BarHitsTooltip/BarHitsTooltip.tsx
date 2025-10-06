@@ -147,7 +147,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
             />
             <p className="vm-bar-hits-tooltip-item">
               <span className="vm-bar-hits-tooltip-item__label">{item.label}</span>
-              <span>{item.value.toLocaleString("en-US")}</span>
+              <span>{item.value && item.value.toLocaleString("en-US")}</span>
             </p>
           </div>
         ))}

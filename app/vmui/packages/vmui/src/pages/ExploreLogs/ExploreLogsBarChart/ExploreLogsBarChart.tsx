@@ -12,6 +12,7 @@ import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { getHitsTimeParams } from "../../../utils/logs";
+import { toEpochSeconds } from "../../../utils/time";
 
 interface Props {
   query: string;
@@ -33,8 +34,7 @@ const ExploreLogsBarChart: FC<Props> = ({ logHits, period, error, isLoading, onA
     return logHits.map(hits => {
       const timestampValueMap = new Map();
       hits.timestamps.forEach((ts, idx) => {
-        const unixTime = dayjs(ts).unix();
-        timestampValueMap.set(unixTime, hits.values[idx] || null);
+        timestampValueMap.set(toEpochSeconds(ts), hits.values[idx] || null);
       });
 
       return timestamps.map(t => timestampValueMap.get(t) || null);
@@ -56,7 +56,8 @@ const ExploreLogsBarChart: FC<Props> = ({ logHits, period, error, isLoading, onA
     const totalSteps = Math.floor(end.diff(firstTimestamp, "milliseconds") / step);
 
     for (let i = 0; i <= totalSteps; i++) {
-      result.push(firstTimestamp.add(i * step, "milliseconds").unix());
+      const t = firstTimestamp.add(i * step, "milliseconds");
+      result.push(toEpochSeconds(t));
     }
 
     return result;

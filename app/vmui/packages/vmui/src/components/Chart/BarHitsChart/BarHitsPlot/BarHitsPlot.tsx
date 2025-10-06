@@ -15,6 +15,7 @@ import { TimeParams } from "../../../../types";
 import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
+import { useTimeState } from "../../../../state/time/TimeStateContext";
 
 interface Props {
   logHits: LogHits[];
@@ -28,6 +29,7 @@ interface Props {
 
 const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
   const { isDarkTheme } = useAppState();
+  const { timezone } = useTimeState();
   const [containerRef, containerSize] = useElementSize();
   const uPlotRef = useRef<HTMLDivElement>(null);
   const [uPlotInst, setUPlotInst] = useState<uPlot>();
@@ -48,7 +50,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     containerSize,
     onReadyChart,
     setPlotScale,
-    graphOptions
+    graphOptions,
+    timezone
   });
 
   const legendDetails: LegendLogHits[] = useMemo(() => {
@@ -98,7 +101,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     const uplot = new uPlot(options, data, uPlotRef.current);
     setUPlotInst(uplot);
     return () => uplot.destroy();
-  }, [uPlotRef.current, isDarkTheme]);
+  }, [uPlotRef.current, isDarkTheme, timezone]);
 
   useEffect(() => {
     if (!uPlotInst) return;
