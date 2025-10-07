@@ -587,6 +587,86 @@ func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHit
 	return s.GetFieldValues(qctx, "_stream_id", limit)
 }
 
+// GetTenantIDs returns tenantIDs for the given start and end.
+func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
+	return s.getTenantIDs(ctx, start, end)
+}
+
+func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
+	workersCount := cgroup.AvailableCPUs()
+	stopCh := ctx.Done()
+
+	tenantIDByWorker := make([][]TenantID, workersCount)
+
+	// spin up workers
+	var wg sync.WaitGroup
+	workCh := make(chan *partition, workersCount)
+	for i := 0; i < workersCount; i++ {
+		wg.Add(1)
+		go func(workerID uint) {
+			defer wg.Done()
+			for pt := range workCh {
+				if needStop(stopCh) {
+					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
+					continue
+				}
+				tenantIDs := pt.idb.searchTenants()
+				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
+			}
+		}(uint(i))
+	}
+
+	// Select partitions according to the selected time range
+	s.partitionsLock.Lock()
+	ptws := s.partitions
+	minDay := start / nsecsPerDay
+	n := sort.Search(len(ptws), func(i int) bool {
+		return ptws[i].day >= minDay
+	})
+	ptws = ptws[n:]
+	maxDay := end / nsecsPerDay
+	n = sort.Search(len(ptws), func(i int) bool {
+		return ptws[i].day > maxDay
+	})
+	ptws = ptws[:n]
+
+	// Copy the selected partitions, so they don't interfere with s.partitions.
+	ptws = append([]*partitionWrapper{}, ptws...)
+
+	for _, ptw := range ptws {
+		ptw.incRef()
+	}
+	s.partitionsLock.Unlock()
+
+	// Schedule concurrent search across matching partitions.
+	for _, ptw := range ptws {
+		workCh <- ptw.pt
+	}
+
+	// Wait until workers finish their work
+	close(workCh)
+	wg.Wait()
+
+	// Decrement references to partitions
+	for _, ptw := range ptws {
+		ptw.decRef()
+	}
+
+	uniqTenantIDs := make(map[TenantID]struct{})
+	for _, tenantIDs := range tenantIDByWorker {
+		for _, tenantID := range tenantIDs {
+			uniqTenantIDs[tenantID] = struct{}{}
+		}
+	}
+
+	tenants := make([]TenantID, 0, len(uniqTenantIDs))
+	for k := range uniqTenantIDs {
+		tenants = append(tenants, k)
+	}
+
+	return tenants, nil
+}
+
 func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, error) {
 	var results []ValueWithHits
 	var resultsLock sync.Mutex
@@ -1144,12 +1224,13 @@ func (db *DataBlock) initFromBlockResult(br *blockResult) {
 //
 // It uses workersCount parallel workers for the search and calls writeBlock for each matching block.
 func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
-	// Spin up workers
-	var wgWorkers sync.WaitGroup
+	// spin up workers
+	var wg sync.WaitGroup
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
-	wgWorkers.Add(workersCount)
-	for i := 0; i < workersCount; i++ {
+	for workerID := 0; workerID < workersCount; workerID++ {
+		wg.Add(1)
 		go func(workerID uint) {
+			defer wg.Done()
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
@@ -1184,8 +1265,7 @@ func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs 
 			putBlockSearch(bs)
 			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
-			wgWorkers.Done()
-		}(uint(i))
+		}(uint(workerID))
 	}
 
 	// Select partitions according to the selected time range
@@ -1234,7 +1314,7 @@ func (s *Storage) searchParallel(workersCount int, so *genericSearchOptions, qs 
 
 	// Wait until workers finish their work
 	close(workCh)
-	wgWorkers.Wait()
+	wg.Wait()
 
 	// Finalize partition search
 	for _, psf := range psfs {

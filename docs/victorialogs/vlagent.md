@@ -14,7 +14,7 @@ aliases:
   - /vlagent/
 ---
 
-`vlagent` is an agent for collecting logs from various sources and storing them them in multiple [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instances.
+`vlagent` is an agent for collecting logs from various sources and storing them in multiple [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) instances.
 
 ## Features
 
@@ -27,8 +27,8 @@ aliases:
 
 ## Quick Start
 
-Please download and unpack `vlutils` archive from [releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest) (
-`vlagent` is also available in docker images [Docker Hub](https://hub.docker.com/r/victoriametrics/vlagent/tags)
+Please download and unpack the `vlutils` archive from [releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest) (
+`vlagent` is also available as Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/vlagent/tags)
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/internal/insert`.
@@ -48,35 +48,35 @@ Pass `-help` to `vlagent` in order to see [the full list of supported command-li
 `vlagent` can accept multiple `-remoteWrite.url` command-line flags. In this case it replicates the collected logs among
 all the VictoriaLogs instances mentioned in `-remoteWrite.url` command-line flags.
 
-If some of VictoriaLogs instances is temporarily unavailable, then the collected logs are buffered at the directory, which can be specified
+If some of VictoriaLogs instances are temporarily unavailable, then the collected logs are buffered at the directory, which can be specified
 via `-remoteWrite.tmpDataPath` command-line flag. The buffered logs are sent to the VictoriaLogs instance as soon as it becomes available.
 This guarantees the delivery of all the logs across all the VictoriaLogs instances specified via `-remoteWrite.url` command-line flags.
 
 The on-disk buffer is limited by the available disk space at the `-remoteWrite.tmpDataPath` by default. It is possible to limit it
-to the given size via `-remoteWrite.maxDiskUsagePerURL` command-liine flag (this flag can be specified individually per each `-remoteWrite.url`).
+to the given size via `-remoteWrite.maxDiskUsagePerURL` command-line flag (this flag can be specified individually per each `-remoteWrite.url`).
 When the buffer size reaches this limit for the given `-remoteWrite.url`, then the oldest logs are dropped from the buffer and are replaced by the newly
 collected logs.
 
-`vlagent` maintains independent buffers per each `-remoteWrite.url`, so the collected logs are delivered to the remaining available VictoriaLogs instances
+`vlagent` maintains independent buffers for each `-remoteWrite.url`, so the collected logs are delivered to the remaining available VictoriaLogs instances
 in a timely manner when some of the VictoriaLogs instances are unavailable.
 
 ## Monitoring
 
-`vlagent` exports various metrics in Prometheus exposition format at `http://vmalent-host:9429/metrics` page.
-We recommend setting up regular scraping of this page either through [`vmagent`](https://docs.victoriametrics.com/victoriametrics/vmagent/) or by Prometheus-compatible scraper,
+`vlagent` exports various metrics in Prometheus exposition format at `http://vlagent-host:9429/metrics` page.
+We recommend setting up regular scraping of this page either through [`vmagent`](https://docs.victoriametrics.com/victoriametrics/vmagent/) or by a Prometheus-compatible scraper,
 so that the exported metrics may be analyzed later.
 
 See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/).
 
 Use [the official Grafana dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/vlagent.json) for `vlagent` state overview.
-Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read it.
-If you have suggestions for improvements or have found a bug - please open an issue on github or add a review to the dashboard.
+Graphs on this dashboard contain useful hints — hover the `i` icon at the top left corner of each graph in order to read them.
+If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
 
 ## Troubleshooting
 
 - It is recommended [setting up the official Grafana dashboard](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring) in order to monitor the state of `vlagent`.
 
-- It is recommended increasing `-remoteWrite.queues` if `vlagent_remotewrite_pending_data_bytes` [metric](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring)
+- It is recommended to increase `-remoteWrite.queues` if `vlagent_remotewrite_pending_data_bytes` [metric](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring)
   grows constantly. This can improve data ingestion performance to the configured remote storage systems at the cost of higher memory usage.
 
 - If you see gaps in the data pushed by `vlagent` to remote storage when `-remoteWrite.maxDiskUsagePerURL` is set,
@@ -84,29 +84,29 @@ If you have suggestions for improvements or have found a bug - please open an is
   Therefore, it starts dropping the buffered data if the on-disk buffer size exceeds `-remoteWrite.maxDiskUsagePerURL`.
 
 - `vlagent` drops data blocks if remote storage replies with `400 Bad Request` and `404 Not Found` HTTP responses.
-  The number of dropped blocks can be monitored via `vlagent_remotewrite_packets_dropped_total` metric exported at [/metrics page](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring).
+  The number of dropped blocks can be monitored via `vlagent_remotewrite_packets_dropped_total` metric exported on the [/metrics page](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring).
 
 - `vlagent` buffers the collected logs at the `-remoteWrite.tmpDataPath` directory until they are sent to the `-remoteWrite.url`.
   The directory can grow large when the remote storage is unavailable for extended periods of time and if the maximum directory size isn't limited
   with `-remoteWrite.maxDiskUsagePerURL` command-line flag.
-  If you don't want to send all the buffered data from the directory to remote storage then simply stop `vlagent` and
-  delete the contents of the directory pointed by `-remoteWrite.tmpDataPath`.
+  If you don't want to send all the buffered data from the directory to remote storage, then simply stop `vlagent` and
+  delete the contents of the directory pointed to by `-remoteWrite.tmpDataPath`.
 
-- By default `vlagent` masks `-remoteWrite.url` with `secret-url` values in logs and at `/metrics` page because
-  the url may contain sensitive information such as auth tokens or passwords.
-  Pass `-remoteWrite.showURL` command-line flag when starting `vlagent` in order to see all the valid urls.
+- By default `vlagent` masks `-remoteWrite.url` with `secret-url` values in logs and on the `/metrics` page because
+  the URL may contain sensitive information such as auth tokens or passwords.
+  Pass `-remoteWrite.showURL` command-line flag when starting `vlagent` in order to see all the valid URLs.
 
 ## Profiling
 
 `vlagent` provides handlers for collecting the following [Go profiles](https://blog.golang.org/profiling-go-programs):
 
-- Memory profile can be collected with the following command (replace `0.0.0.0` with hostname if needed):
+- Memory profile can be collected with the following command (replace `0.0.0.0` with the hostname if needed):
 
 ```sh
 curl http://0.0.0.0:9429/debug/pprof/heap > mem.pprof
 ```
 
-- CPU profile can be collected with the following command (replace `0.0.0.0` with hostname if needed):
+- CPU profile can be collected with the following command (replace `0.0.0.0` with the hostname if needed):
 
 ```sh
 curl http://0.0.0.0:9429/debug/pprof/profile > cpu.pprof
@@ -116,7 +116,7 @@ The command for collecting CPU profile waits for 30 seconds before returning.
 
 The collected profiles may be analyzed with [go tool pprof](https://github.com/google/pprof).
 
-It is safe sharing the collected profiles from security point of view, since they do not contain sensitive information.
+It is safe to share the collected profiles from a security point of view, since they do not contain sensitive information.
 
 ## Advanced usage
 

@@ -1106,10 +1106,12 @@ For example, the following query matches `log:level` field containing `error` [w
 
 Performance tips:
 
-- Prefer using [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) over case-insensitive filter.
+- Prefer using [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) over `i(...)`,
+  since `contains_common_case(...)` usually works much faster.
 - Prefer using case-sensitive filters such as [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter)
   and [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) over case-insensitive filter.
-- Prefer moving [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter) in front of case-sensitive filter
+- Prefer moving [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
+  and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter) in front of case-sensitive filter
   when using [logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter).
 - See [other performance tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
 
@@ -1139,6 +1141,8 @@ equals to one of the following words [words](https://docs.victoriametrics.com/vi
 - Victoriametrics
 - victoriaMetrics
 
+The `equals_common_case(...)` usually works much faster than the [`i(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter).
+
 If you need to find logs with log fields containing to the common case words or phrases,
 then use [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter).
 
@@ -1164,6 +1168,8 @@ contains at least one of the following words [words](https://docs.victoriametric
 - victoriametrics
 - Victoriametrics
 - victoriaMetrics
+
+The `contains_common_case(...)` usually works much faster than the [`i(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter).
 
 If you need to find logs with log fields equal to the common case words or phrases,
 then use [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter).
@@ -4999,16 +5005,16 @@ options(time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
 ### `ignore_global_time_filter` query option
 
 `ignore_global_time_filter` query option allows ignoring time filter from `start` and `end` args of [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
-for the given (sub)query. For example, the following query returns the number of logs with `user_id` values seen in logs during December 2024, on the `[start...end]`
-time range passed to [`/api/v1/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
+for the given (sub)query. For example, the following query returns the number of logs with `user_id` values seen in logs during December 2024, on the `[start...end)`
+time range passed to [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
 
 ```logsql
 user_id:in(options(ignore_global_time_filter=true) _time:2024-12Z | keep user_id) | count()
 ```
 
 The `in(...)` [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subquery-filter) without `options(ignore_global_time_filter=true)`
-takes into account only `user_id` values on the intersection of December 2024 and `[start...end]` time range passed
-to [`/api/v1/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
+takes into account only `user_id` values on the intersection of December 2024 and `[start...end)` time range passed
+to [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
 
 ```logsql
 user_id:in(_time:2024-12Z | keep user_id) | count()

@@ -252,3 +252,70 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 
 	closeTestStorage(s)
 }
+
+func TestGetTenantsIDs(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	const partitionName = "foobar"
+
+	s := newTestStorage()
+	defer closeTestStorage(s)
+
+	mustCreateIndexdb(path)
+	defer fs.MustRemoveDir(path)
+
+	idb := mustOpenIndexdb(path, partitionName, s)
+	defer mustCloseIndexdb(idb)
+
+	tenantIDs := []TenantID{
+		{AccountID: 0, ProjectID: 0},
+		{AccountID: 0, ProjectID: 1},
+		{AccountID: 1, ProjectID: 0},
+		{AccountID: 1, ProjectID: 1},
+		{AccountID: 123, ProjectID: 567},
+	}
+	getStreamIDForTags := func(tags map[string]string) ([]streamID, string) {
+		st := GetStreamTags()
+		for k, v := range tags {
+			st.Add(k, v)
+		}
+		streamTagsCanonical := st.MarshalCanonical(nil)
+		PutStreamTags(st)
+		id := hash128(streamTagsCanonical)
+		sids := make([]streamID, 0, len(tenantIDs))
+		for _, tenantID := range tenantIDs {
+			sid := streamID{
+				tenantID: tenantID,
+				id:       id,
+			}
+
+			sids = append(sids, sid)
+		}
+
+		return sids, string(streamTagsCanonical)
+	}
+
+	// Create indexdb entries
+	const jobsCount = 7
+	const instancesCount = 5
+	for i := 0; i < jobsCount; i++ {
+		for j := 0; j < instancesCount; j++ {
+			sids, streamTagsCanonical := getStreamIDForTags(map[string]string{
+				"job":      fmt.Sprintf("job-%d", i),
+				"instance": fmt.Sprintf("instance-%d", j),
+			})
+			for _, sid := range sids {
+				idb.mustRegisterStream(&sid, streamTagsCanonical)
+			}
+
+		}
+	}
+	idb.debugFlush()
+
+	// run the test
+	result := idb.searchTenants()
+	if !reflect.DeepEqual(result, tenantIDs) {
+		t.Fatalf("unexpected tensntIds; got %v; want %v", result, tenantIDs)
+	}
+}

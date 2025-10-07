@@ -23,7 +23,7 @@ interface Props {
 
 const BarHitsChart: FC<Props> = ({ logHits, data: _data, period, setPeriod, onApplyFilter, durationMs }) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
-    graphStyle: GRAPH_STYLES.LINE_STEPPED,
+    graphStyle: GRAPH_STYLES.BAR,
     stacked: false,
     fill: false,
     hideChart: false,

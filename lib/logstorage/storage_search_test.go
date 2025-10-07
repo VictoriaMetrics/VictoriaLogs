@@ -605,6 +605,22 @@ func TestStorageRunQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("tenant_ids", func(t *testing.T) {
+		tenantIDs, err := s.GetTenantIDs(context.TODO(), 0, time.Now().UnixNano())
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		sort.Slice(tenantIDs, func(i, j int) bool {
+			return tenantIDs[i].less(&tenantIDs[j])
+		})
+		sort.Slice(allTenantIDs, func(i, j int) bool {
+			return allTenantIDs[i].less(&allTenantIDs[j])
+		})
+		if !reflect.DeepEqual(tenantIDs, allTenantIDs) {
+			t.Fatalf("unexpected GetTenantIDs result; got: %v, want: %v", tenantIDs, allTenantIDs)
+		}
+	})
+
 	// Run more complex tests
 	f := func(t *testing.T, query string, rowsExpected [][]Field) {
 		t.Helper()

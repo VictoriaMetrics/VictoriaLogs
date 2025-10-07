@@ -15,7 +15,7 @@ aliases:
 ---
 
 Cluster mode in VictoriaLogs provides horizontal scaling to many nodes when [single-node VictoriaLogs](https://docs.victoriametrics.com/victorialogs/)
-reaches vertical scalability limits of a single host. If you have an ability to run a single-node VictoriaLogs on a host with more CPU / RAM / storage space / storage IO,
+reaches vertical scalability limits of a single host. If you have the ability to run a single-node VictoriaLogs on a host with more CPU / RAM / storage space / storage IO,
 then it is preferred to do this instead of switching to cluster mode, since a single-node VictoriaLogs instance has the following advantages over cluster mode:
 
 - It is easier to configure, manage and troubleshoot, since it consists of a single self-contained component.
@@ -31,7 +31,9 @@ See [quick start guide](https://docs.victoriametrics.com/victorialogs/cluster/#q
 
 ## Architecture
 
-VictoriaLogs in cluster mode is composed of three main components: `vlinsert`, `vlselect`, and `vlstorage`.
+VictoriaLogs in cluster mode is composed of three main components: `vlinsert`, `vlselect`, and `vlstorage`. 
+
+Ingestion flow:
 
 ```mermaid
 sequenceDiagram
@@ -39,16 +41,24 @@ sequenceDiagram
     participant VI as vlinsert
     participant VS1 as vlstorage-1
     participant VS2 as vlstorage-2
-    participant VL as vlselect
-    participant QC as Query Client
-    
-    Note over LS,VS2: Log Ingestion Flow
+
+    Note over LS,VI: Log Ingestion Flow
     LS->>VI: Send logs via supported protocols
     VI->>VS1: POST /internal/insert (HTTP)
     VI->>VS2: POST /internal/insert (HTTP)
     Note right of VI: Distributes logs evenly<br/>across vlstorage nodes
-    
-    Note over VS1,QC: Query Flow
+```
+
+Querying flow:
+
+```mermaid
+sequenceDiagram
+    participant QC as Query Client
+    participant VL as vlselect
+    participant VS1 as vlstorage-1
+    participant VS2 as vlstorage-2
+
+    Note over QC,VL: Query Flow
     QC->>VL: Query via HTTP endpoints
     VL->>VS1: GET /internal/select/* (HTTP)
     VL->>VS2: GET /internal/select/* (HTTP)
@@ -90,13 +100,13 @@ For advanced setups, refer to the [multi-level cluster setup](https://docs.victo
 ## High availability
 
 VictoriaLogs cluster provides high availability for [data ingestion path](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
-It continues accepting incoming logs if some of `vlstorage` nodes are temporarily unavailable.
+It continues to accept incoming logs if some of the `vlstorage` nodes are temporarily unavailable.
 `vlinsert` evenly spreads new logs among the remaining available `vlstorage` nodes in this case, so newly ingested logs are properly stored and are available for querying
-without any delays. This allows performing maintenance tasks for `vlstorage` nodes (such as upgrades, configuration updates, etc.) without worrying of the data loss.
+without any delays. This allows performing maintenance tasks for `vlstorage` nodes (such as upgrades, configuration updates, etc.) without worrying about data loss.
 Make sure that the remaining `vlstorage` nodes have enough capacity for the increased data ingestion workload, in order to avoid availability problems.
 
 VictoriaLogs cluster returns `502 Bad Gateway` errors for [incoming queries](https://docs.victoriametrics.com/victorialogs/querying/)
-if some of `vlstorage` nodes are unavailable. This guarantees consistent query responses
+if some of the `vlstorage` nodes are unavailable. This guarantees consistent query responses
 (e.g. all the stored logs are taken into account during the query) during maintenance tasks at `vlstorage` nodes. Note that all the newly incoming logs are properly stored
 to the remaining `vlstorage` nodes - see the paragraph above, so they become available for querying immediately after all the `vlstorage` nodes return back to the cluster.
 
@@ -104,56 +114,65 @@ There are practical cases when it is preferred to return partial responses inste
 See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#partial-responses) on how to achieve this.
 
 > [!NOTE] Insight
-> In most real-world cases, `vlstorage` nodes become unavailable during planned maintenance such as upgrades, config changes, or rolling restarts.
+> In most real-world cases, `vlstorage` nodes become unavailable during planned maintenance such as upgrades, config changes, or rolling restarts. 
 > These are typically infrequent (weekly or monthly) and brief (a few minutes) events.
+> <br>
+> <br>
 > A short period of query downtime during maintenance tasks is acceptable and fits well within most SLAs. For example, 43 minutes of downtime per month during maintenance tasks
-> provides ~99.9% cluster availability. This is better in practice comparing to "magic" HA schemes with opaque auto-recovery - if these schemes fail,
+> provides ~99.9% cluster availability. This is better in practice compared to "magic" HA schemes with opaque auto-recovery — if these schemes fail,
 > then it is impossible to debug and fix them in a timely manner, so this will likely result in a long outage, which violates SLAs.
 
 The real HA scheme for both data ingestion and querying can be built only when copies of logs are sent into independent VictoriaLogs instances (or clusters)
-located in fully independent availability zones (datacenters). If an AZ becomes unavailable, then new logs continue to be written to the remaining AZ,
+located in fully independent availability zones (datacenters). 
+
+If an AZ becomes unavailable, then new logs continue to be written to the remaining AZ,
 while queries return full responses from the remaining AZ. When the AZ becomes available, then the pending buffered logs can be written to it, so the AZ
-can be used for querying full responses. This HA sheme can be built with the help of [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
+can be used for querying full responses. This HA scheme can be built with the help of [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
 for data replication and buffering, and [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for data querying:
 
 ```mermaid
-graph TD
-    subgraph "HA Solution"
-        subgraph "Ingestion Layer"
-            LS["Log Sources<br/>(Applications)"]
-            VLAGENT["Log Collector<br/>• Buffering<br/>• Replication<br/>• Delivery Guarantees"]
-        end
-        
-        subgraph "Storage Layer"
-            subgraph "Zone A"
-                VLA["VictoriaLogs Cluster A"]
-            end
-            
-            subgraph "Zone B"
-                VLB["VictoriaLogs Cluster B"]
-            end
-        end
-        
-        subgraph "Query Layer"
-            LB["Load Balancer<br/>(vmauth)<br/>• Health Checks<br/>• Failover<br/>• Query Distribution"]
-            QC["Query Clients<br/>(Grafana, API)"]
-        end
-        
-        LS --> VLAGENT
-        VLAGENT -->|"Replicate logs to<br/>Zone A cluster"| VLA
-        VLAGENT -->|"Replicate logs to<br/>Zone B cluster"| VLB
-        
-        VLA -->|"Serve queries from<br/>Zone A cluster"| LB
-        VLB -->|"Serve queries from<br/>Zone B cluster"| LB
-        LB --> QC
-        
-        style VLAGENT fill:#e8f5e8
-        style VLA fill:#d5e8d4
-        style VLB fill:#d5e8d4
-        style LB fill:#e1f5fe
-        style QC fill:#fff2cc
-        style LS fill:#fff2cc
+flowchart TB
+  subgraph haSolution["HA Solution"]
+    direction TB
+
+    subgraph ingestion["Ingestion Layer"]
+      direction TB
+      LS["Log Sources<br/>(Applications)"]
+      VLAGENT["Log Collector<br/>• Buffering<br/>• Replication<br/>• Delivery Guarantees"]
+      LS --> VLAGENT
     end
+
+    subgraph storage["Storage Layer"]
+      direction TB
+
+      subgraph zoneA["Zone A"]
+        VLA["VictoriaLogs Cluster A"]
+      end
+
+      subgraph zoneB["Zone B"]
+        VLB["VictoriaLogs Cluster B"]
+      end
+
+      VLAGENT -->|"Replicate logs to<br/>Zone A cluster"| VLA
+      VLAGENT -->|"Replicate logs to<br/>Zone B cluster"| VLB
+    end
+
+    subgraph query["Query Layer"]
+      direction TB
+      LB["Load Balancer<br/>(vmauth)<br/>• Health Checks<br/>• Failover<br/>• Query Distribution"]
+      QC["Query Clients<br/>(Grafana, API)"]
+      VLA -->|"Serve queries from<br/>Zone A cluster"| LB
+      VLB -->|"Serve queries from<br/>Zone B cluster"| LB
+      LB --> QC
+    end
+  end
+
+style VLAGENT fill:#9bc7e4
+style VLA fill:#ae9be4
+style VLB fill:#ae9be4
+style LB fill:#9bc7e4
+style QC fill:#9fe49b
+style LS fill:#9fe49b
 ```
 
 - [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) receives and replicates logs to two VictoriaLogs clusters.
@@ -177,7 +196,7 @@ Every `vlstorage` node can be used as a single-node VictoriaLogs instance:
 A single-node VictoriaLogs instance can be used as `vlstorage` node in VictoriaLogs cluster:
 
 - It accepts data ingestion requests from `vlinsert` via `/internal/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
-- It accepts queries from `vlselect` via `/internal/select/*` HTTP endpoints at the TCP port specified via `-httpListenAddr` command-line flags.
+- It accepts queries from `vlselect` via `/internal/select/*` HTTP endpoints at the TCP port specified via `-httpListenAddr` command-line flag.
 
 See also [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security).
 
@@ -193,20 +212,20 @@ See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#secur
 
 ## Security
 
-All the VictoriaLogs cluster components must run in protected internal network without direct access from the Internet.
+All the VictoriaLogs cluster components must run in a protected internal network without direct access from the Internet.
 `vlstorage` must have no access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
-It is possible to disallow access to `/internal/insert` and `/internal/select/*` endpoints at single-node VictoriaLogs instance
+It is possible to disallow access to `/internal/insert` and `/internal/select/*` endpoints at a single-node VictoriaLogs instance
 by running it with `-internalinsert.disable` and `-internalselect.disable` command-line flags. Note that [`vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent/)
 sends the collected logs to the `/internal/insert` endpoint, so it should be available for data ingestion if you use `vlagent`.
 
 ### TLS
 
-By default `vlinsert` and `vlselect` communicate with `vlstorage` via unencrypted HTTP. This is OK if all these components are located
-in the same protected internal network. This isn't OK if these components communicate over the Internet, since a third party can intercept / modify
-the transferred data. It is recommended switching to HTTPS in this case:
+By default, `vlinsert` and `vlselect` communicate with `vlstorage` via unencrypted HTTP. This is OK if all these components are located
+in the same protected internal network. This isn't OK if these components communicate over the Internet, since a third party can intercept or modify
+the transferred data. It is recommended to switch to HTTPS in this case:
 
 - Specify `-tls`, `-tlsCertFile` and `-tlsKeyFile` command-line flags at `vlstorage`, so it accepts incoming requests over HTTPS instead of HTTP at the corresponding `-httpListenAddr`:
 
@@ -214,13 +233,13 @@ the transferred data. It is recommended switching to HTTPS in this case:
   ./victoria-logs-prod -httpListenAddr=... -storageDataPath=... -tls -tlsCertFile=/path/to/certfile -tlsKeyFile=/path/to/keyfile
   ```
 
-- Specify `-storageNode.tls` command-line flag at `vlinsert` and `vlselect`, which communicate with the `vlstorage` over untrusted networks such as Internet:
+- Specify `-storageNode.tls` command-line flag at `vlinsert` and `vlselect`, which communicate with the `vlstorage` over untrusted networks such as the Internet:
 
   ```sh
   ./victoria-logs-prod -storageNode=... -storageNode.tls
   ```
 
-It is also recommended authorizing HTTPS requests to `vlstorage` via Basic Auth:
+It is also recommended to authorize HTTPS requests to `vlstorage` via Basic Auth:
 
 - Specify `-httpAuth.username` and `-httpAuth.password` command-line flags at `vlstorage`, so it verifies the Basic Auth username + password in HTTPS requests received via `-httpListenAddr`:
 
@@ -234,7 +253,7 @@ It is also recommended authorizing HTTPS requests to `vlstorage` via Basic Auth:
   ./victoria-logs-prod -storageNode=... -storageNode.tls -storageNode.username=... -storageNode.password=...
   ```
 
-Another option is to use third-party HTTP proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/), `nginx`, etc. for authorizing and encrypting communications
+Another option is to use third-party HTTP proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/), `nginx`, etc. to authorize and encrypt communications
 between VictoriaLogs cluster components over untrusted networks.
 
 By default, all the components (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`.
@@ -248,7 +267,7 @@ It is recommended to disable select endpoints on `vlinsert` and insert endpoints
 ./victoria-logs-prod -storageNode=... -insert.disable
 ```
 
-This helps prevent sending select requests to `vlinsert` nodes or insert requests to `vlselect` nodes in case of misconfiguration in the authorization proxy
+This helps prevent sending select requests to `vlinsert` nodes or insert requests to `vlselect` nodes in case of a misconfiguration in the authorization proxy
 in front of the `vlinsert` and `vlselect` nodes.
 
 See also [mTLS](https://docs.victoriametrics.com/victorialogs/cluster/#mtls).
@@ -259,7 +278,7 @@ See also [mTLS](https://docs.victoriametrics.com/victorialogs/cluster/#mtls).
 at the `vlstorage` side for TLS connections established from `vlinsert` and `vlselect` nodes (aka [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication#mTLS)).
 See [TLS docs](https://docs.victoriametrics.com/victorialogs/cluster/#tls) for details on how to set up TLS communications between VictoriaLogs cluster nodes.
 
-mTLS authentication can be enabled by passing the `-mtls` command-line flag to `vlstorage` node additionally to the `-tls` command-line flag.
+mTLS authentication can be enabled by passing the `-mtls` command-line flag to the `vlstorage` node in addition to the `-tls` command-line flag.
 In this case it verifies TLS client certificates for connections from `vlinsert` and `vlselect` at the address specified via `-httpListenAddr` command-line flag.
 
 The client TLS certificate must be specified at `vlinsert` and `vlselect` nodes via `-storageNode.tlsCertFile` and `-storageNode.tlsKeyFile` command-line flags.
@@ -274,11 +293,11 @@ from [the releases page](https://github.com/VictoriaMetrics/VictoriaLogs/release
 
 ## Quick start
 
-The following guide covers the following topics for Linux host:
+The following guide covers the following topics for a Linux host:
 
-- How to download VictoriaLogs executable.
-- How to start VictoriaLogs cluster, which consists of two `vlstorage` nodes, a single `vlinsert` node and a single `vlselect` node
-  running on a localhost according to [cluster architecture](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+- How to download the VictoriaLogs executable.
+- How to start a VictoriaLogs cluster, which consists of two `vlstorage` nodes, a single `vlinsert` node and a single `vlselect` node
+  running on localhost according to [cluster architecture](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
 - How to ingest logs into the cluster.
 - How to query the ingested logs.
 
@@ -289,29 +308,29 @@ curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.
 tar xzf victoria-logs-linux-amd64-v1.35.0.tar.gz
 ```
 
-Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs at `victoria-logs-data-1` directory:
+Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs in the `victoria-logs-data-1` directory:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9491 -storageDataPath=victoria-logs-data-1 &
 ```
 
 This command and all the following commands start cluster components as background processes.
-Use `jobs`, `fg`, `bg` commands for manipulating the running background processes. Use `kill` command and/or `Ctrl+C` for stopping the running processes when they no longer needed.
+Use `jobs`, `fg`, `bg` commands for manipulating the running background processes. Use the `kill` command and/or `Ctrl+C` to stop running processes when they are no longer needed.
 See [these docs](https://tldp.org/LDP/abs/html/x9644.html) for details.
 
-Start the second `vlstorage` node, which accepts incoming requests at the port `9492` and stores the ingested logs at `victoria-logs-data-2` directory:
+Start the second `vlstorage` node, which accepts incoming requests at the port `9492` and stores the ingested logs in the `victoria-logs-data-2` directory:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9492 -storageDataPath=victoria-logs-data-2 &
 ```
 
-Start `vlinsert` node, which [accepts logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/) at the port `9481` and spreads them evenly among the two `vlstorage` nodes started above:
+Start the `vlinsert` node, which [accepts logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/) at the port `9481` and spreads them evenly across the two `vlstorage` nodes started above:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9481 -storageNode=localhost:9491,localhost:9492 &
 ```
 
-Start `vlselect` node, which [accepts incoming queries](https://docs.victoriametrics.com/victorialogs/querying/) at the port `9471` and requests the needed data from `vlstorage` nodes started above:
+Start the `vlselect` node, which [accepts incoming queries](https://docs.victoriametrics.com/victorialogs/querying/) at the port `9471` and requests the needed data from `vlstorage` nodes started above:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9471 -storageNode=localhost:9491,localhost:9492 &
@@ -336,9 +355,9 @@ For example, the following command returns the number of stored logs in the clus
 curl http://localhost:9471/select/logsql/query -d 'query=* | count()'
 ```
 
-See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details on how to query logs from command line.
+See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details on how to query logs from the command line.
 
-Logs also can be explored and queried via [built-in Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui).
+Logs can also be explored and queried via the [built-in Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui).
 Open `http://localhost:9471/select/vmui/` in the web browser, select `last 7 days` time range in the top right corner and explore the ingested logs.
 See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/) to familiarize yourself with the query language.
 
@@ -349,14 +368,14 @@ For example, the following command returns the number of stored logs at the firs
 curl http://localhost:9491/select/logsql/query -d 'query=* | count()'
 ```
 
-It is recommended reading [key concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/) before you start working with VictoriaLogs.
+We recommend reading [key concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/) before you start working with VictoriaLogs.
 
 See also [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security).
 
 ## Performance tuning
 
 Cluster components of VictoriaLogs automatically adjust their settings for the best performance and the lowest resource usage on the given hardware.
-So there is no need in any tuning of these components in general. The following options can be used for achieving higher performance / lower resource
+So there is no need for any tuning of these components in general. The following options can be used for achieving higher performance / lower resource
 usage on systems with constrained resources:
 
 - `vlinsert` limits the number of concurrent requests to every `vlstorage` node. The default concurrency works great in most cases.
@@ -364,7 +383,7 @@ usage on systems with constrained resources:
   at the cost of higher RAM usage at `vlinsert` and `vlstorage` nodes.
 
 - `vlinsert` compresses the data sent to `vlstorage` nodes in order to reduce network bandwidth usage at the cost of slightly higher CPU usage
-  at `vlinsert` ant `vlstorage` nodes. The compression can be disabled by passing `-insert.disableCompression` command-line flag to `vlinsert`.
+  at `vlinsert` and `vlstorage` nodes. The compression can be disabled by passing `-insert.disableCompression` command-line flag to `vlinsert`.
   This reduces CPU usage at `vlinsert` and `vlstorage` nodes at the cost of significantly higher network bandwidth usage.
 
 - `vlselect` requests compressed data from `vlstorage` nodes in order to reduce network bandwidth usage at the cost of slightly higher CPU usage

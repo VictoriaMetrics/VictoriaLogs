@@ -39,6 +39,7 @@ VictoriaLogs provides the following features:
 - It supports selecting surrounding logs in front and after the selected logs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#stream_context-pipe).
 - It supports alerting - see [these docs](https://docs.victoriametrics.com/victorialogs/vmalert/).
 - It fits well [RUM](https://en.wikipedia.org/wiki/Real_user_monitoring) and [SIEM](https://en.wikipedia.org/wiki/Security_information_and_event_management) use cases.
+  It automatically parses [CEF messages sent over Syslog protocol](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#cef).
 
 See also [articles about VictoriaLogs](https://docs.victoriametrics.com/victorialogs/articles/).
 

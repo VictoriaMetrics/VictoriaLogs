@@ -12,8 +12,8 @@ export const getStreamPairs = (value: string): string[] => {
 export const getHitsTimeParams = (period: TimeParams) => {
   const start = dayjs(period.start * 1000);
   const end = dayjs(period.end * 1000);
-  const totalSeconds = end.diff(start, "milliseconds");
-  const step = Math.ceil(totalSeconds / LOGS_BARS_VIEW) || 1;
+  const totalMs = end.diff(start, "milliseconds");
+  const step = Math.ceil(totalMs / LOGS_BARS_VIEW) || 1;
   return { start, end, step };
 };
 

@@ -26,6 +26,7 @@ func TestGetCommonCasePhrases_Success(t *testing.T) {
 	f([]string{"FOO"}, []string{"FOO", "FOo", "FoO", "Foo", "fOO", "fOo", "foO", "foo"})
 
 	f([]string{"FooBar"}, []string{"FOOBAR", "FooBar", "Foobar", "fooBar", "foobar"})
+	f([]string{"fooBar"}, []string{"FOOBAR", "fooBar", "foobar"})
 }
 
 func TestGetCommonCasePhrases_Failure(t *testing.T) {

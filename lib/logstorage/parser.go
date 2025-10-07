@@ -3237,7 +3237,7 @@ func parseFilterTime(lex *lexer) (*filterTime, error) {
 	stringRepr += startTimeString + "," + endTimeString
 	if endTimeInclude {
 		stringRepr += "]"
-		endTime = AdjustEndTimestamp(endTime, endTimeString)
+		endTime = adjustEndTimestamp(endTime, endTimeString)
 	} else {
 		stringRepr += ")"
 		endTime--
@@ -3321,7 +3321,7 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 		if prefix == "<" {
 			endTime--
 		} else {
-			endTime = AdjustEndTimestamp(endTime, endTimeString)
+			endTime = adjustEndTimestamp(endTime, endTimeString)
 		}
 		ft := &filterTime{
 			minTimestamp: math.MinInt64,
@@ -3366,7 +3366,7 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 		}
 		// Round to milliseconds
 		startTime := nsecs
-		endTime := AdjustEndTimestamp(startTime, s)
+		endTime := adjustEndTimestamp(startTime, s)
 		ft := &filterTime{
 			minTimestamp: startTime,
 			maxTimestamp: endTime,
@@ -3397,13 +3397,13 @@ func isLikelyTimestamp(lex *lexer) bool {
 	return lex.isKeyword("now") || startsWithYear(lex.token)
 }
 
-// AdjustEndTimestamp returns an adjusted timestamp for t according to its' string representation tStr.
+// adjustEndTimestamp returns an adjusted timestamp for t according to its' string representation tStr.
 //
 // The t is adjusted for the interval [start, tStr] depending on the tStr value. Examples:
 //
 // - If tStr='2025', then the full year is added to t, so it points to the last nanosecond of the 2025 year.
 // - If tStr='2025-05-20', then the full day is added to t, so it points to the last nanosecond of the 2025-05-20.
-func AdjustEndTimestamp(t int64, tStr string) int64 {
+func adjustEndTimestamp(t int64, tStr string) int64 {
 	tStart := time.Unix(0, t).UTC()
 	tEnd := tStart
 

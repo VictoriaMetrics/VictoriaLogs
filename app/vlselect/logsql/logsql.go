@@ -499,6 +499,7 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	streamIDs, err := vlstorage.GetStreamIDs(qctx, uint64(limit))
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain stream_ids: %s", err)
+		return
 	}
 
 	// Write response headers
@@ -536,6 +537,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	streams, err := vlstorage.GetStreams(qctx, uint64(limit))
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain streams: %s", err)
+		return
 	}
 
 	// Write response headers
@@ -1142,19 +1144,24 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	tenantIDs := []logstorage.TenantID{tenantID}
 
 	// Parse optional start and end args
-	start, startStr, err := getTimeNsec(r, "start")
+	start, startOK, err := getTimeNsec(r, "start")
 	if err != nil {
 		return nil, err
 	}
-	end, endStr, err := getTimeNsec(r, "end")
+	end, endOK, err := getTimeNsec(r, "end")
 	if err != nil {
 		return nil, err
 	}
-	// Adjust end time according to its string representation
-	end = logstorage.AdjustEndTimestamp(end, endStr)
+	// Treat HTTP 'end' query arg as exclusive: [start, end)
+	// Convert to inclusive bound for internal filter by subtracting 1ns.
+	if endOK {
+		if end != math.MinInt64 {
+			end--
+		}
+	}
 
 	// Parse optional time arg
-	timestamp, timeStr, err := getTimeNsec(r, "time")
+	timestamp, timeOK, err := getTimeNsec(r, "time")
 	if err != nil {
 		return nil, err
 	}
@@ -1162,10 +1169,10 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	// to the first nanosecond at the next period of time (month, week, day, hour, etc.)
 	timestamp--
 
-	if timeStr == "" {
+	if !timeOK {
 		// If time arg is missing, then evaluate query either at the end timestamp (if it is set)
 		// or at the current timestamp (if end query arg isn't set)
-		if endStr != "" {
+		if endOK {
 			timestamp = end
 		} else {
 			timestamp = time.Now().UnixNano()
@@ -1181,12 +1188,12 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 
 	minTimestamp, maxTimestamp := q.GetFilterTimeRange()
 
-	if startStr != "" || endStr != "" {
+	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
-		if startStr == "" {
+		if !startOK {
 			start = math.MinInt64
 		}
-		if endStr == "" {
+		if !endOK {
 			end = math.MaxInt64
 		}
 		q.AddTimeFilter(start, end)
@@ -1253,17 +1260,17 @@ func timestampToString(nsecs int64) string {
 	return t.Format(time.RFC3339Nano)
 }
 
-func getTimeNsec(r *http.Request, argName string) (int64, string, error) {
+func getTimeNsec(r *http.Request, argName string) (int64, bool, error) {
 	s := r.FormValue(argName)
 	if s == "" {
-		return 0, "", nil
+		return 0, false, nil
 	}
 	currentTimestamp := time.Now().UnixNano()
 	nsecs, err := timeutil.ParseTimeAt(s, currentTimestamp)
 	if err != nil {
-		return 0, "", fmt.Errorf("cannot parse %s=%s: %w", argName, s, err)
+		return 0, false, fmt.Errorf("cannot parse %s=%s: %w", argName, s, err)
 	}
-	return nsecs, s, nil
+	return nsecs, true, nil
 }
 
 func parseExtraFilters(s string) (*logstorage.Filter, error) {

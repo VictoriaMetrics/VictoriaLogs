@@ -1,7 +1,5 @@
 import { useMemo, useState } from "preact/compat";
 import { getAxes, getMinMaxBuffer, handleDestroy, setSelect } from "../../../../utils/uplot";
-import dayjs from "dayjs";
-import { dateFromSeconds, formatDateForNativeInput } from "../../../../utils/time";
 import uPlot, { AlignedData, Band, Options, Series } from "uplot";
 import { getCssVariable } from "../../../../utils/theme";
 import { useAppState } from "../../../../state/common/StateContext";
@@ -35,6 +33,7 @@ interface UseGetBarHitsOptionsArgs {
   setPlotScale: SetMinMax;
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
+  timezone: string;
 }
 
 export const OTHER_HITS_LABEL = "other";
@@ -59,7 +58,8 @@ const useBarHitsOptions = ({
   containerSize,
   onReadyChart,
   setPlotScale,
-  graphOptions
+  graphOptions,
+  timezone,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
 
@@ -129,7 +129,7 @@ const useBarHitsOptions = ({
     },
     legend: { show: false },
     axes: getAxes([{}, { scale: "y" }]),
-    tzDate: ts => dayjs(formatDateForNativeInput(dateFromSeconds(ts))).local().toDate(),
+    tzDate: ts => uPlot.tzDate(new Date(Math.round(ts * 1000)), timezone),
   };
 
   return {

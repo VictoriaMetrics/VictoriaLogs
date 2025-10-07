@@ -116,6 +116,17 @@ func TestPipeCollapseNums(t *testing.T) {
 			{"_msg", `<N>`},
 		},
 	})
+
+	// underscore-delimited numbers collapse
+	f(`collapse_nums`, [][]Field{
+		{
+			{"_msg", `temp_23_175863242537_93_98_ abc 123 test`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `temp_<N>_<N>_<N>_<N>_ abc <N> test`},
+		},
+	})
 }
 
 func TestPipeCollapseNumsUpdateNeededFields(t *testing.T) {
@@ -181,6 +192,13 @@ func TestAppendCollapseNums(t *testing.T) {
 	f("123.43s", "<N>.<N>s")
 	f("123ms 2us 3h5m6s43ms43μs324ns", "<N>ms <N>us <N>h<N>m<N>s<N>ms<N>μs<N>ns")
 	f("0x1234 0XFEAD12", "0x<N> 0X<N>")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/703
+	f("foo123_456_789", "foo123_<N>_<N>")
+	f("temp_23_175863242537_93_98_ abc 123 test", "temp_<N>_<N>_<N>_<N>_ abc <N> test")
+
+	// non-ascii chars must be treated as number delimiters
+	f("ЙЦ123ук", "ЙЦ<N>ук")
 }
 
 func TestAppendCollapseNums_Prettified(t *testing.T) {

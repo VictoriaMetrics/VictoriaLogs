@@ -187,7 +187,7 @@ func TestQuery_AddTimeFilter(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse end time: %s", err)
 		}
-		timestampEnd := AdjustEndTimestamp(tEnd.UnixNano(), tEndStr)
+		timestampEnd := adjustEndTimestamp(tEnd.UnixNano(), tEndStr)
 		q.AddTimeFilter(tStart.UnixNano(), timestampEnd)
 
 		result := q.String()
@@ -278,7 +278,7 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 		if err != nil {
 			panic(fmt.Errorf("cannot parse tEndStr=%q: %s", tEndStr, err))
 		}
-		timestampEnd := AdjustEndTimestamp(tEnd.UnixNano(), tEndStr)
+		timestampEnd := adjustEndTimestamp(tEnd.UnixNano(), tEndStr)
 		q.AddTimeFilter(tStart.UnixNano(), timestampEnd)
 
 		return q
@@ -4088,7 +4088,7 @@ func TestAdjustEndTimestamp(t *testing.T) {
 			t.Fatalf("cannot parse tStr=%q: %s", tStr, err)
 		}
 
-		timestamp := AdjustEndTimestamp(nsecs, tStr)
+		timestamp := adjustEndTimestamp(nsecs, tStr)
 		if timestamp != timestampExpected {
 			t.Fatalf("unexpected adjusted end timestamp for tStr=%q\ngot\n%d\nwant\n%d", tStr, timestamp, timestampExpected)
 		}
