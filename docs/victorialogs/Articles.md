@@ -40,7 +40,6 @@ Grafana and Visualization:
 
 Architecture and Technical Deep Dives:
 
-* [VictoriaLogs Source Reading](https://medium.com/@waynest/victorialogs-source-reading-833db3e8511b)
 * [VictoriaLogs Source Reading by Greptime](https://greptime.com/blogs/2025-02-27-victorialogs-source-reading-greptimedb)
 * [VictoriaLogs: What if logs management became simple and performant?](https://blog.ogenki.io/post/series/observability/logs/)
 
