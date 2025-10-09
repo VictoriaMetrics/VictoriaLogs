@@ -20,7 +20,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
-Released at 2025-09-27
+Released at 2025-10-08
 
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add support for zooming the Hits chart to millisecond precision. See [#112](https://github.com/VictoriaMetrics/VictoriaLogs/issues/112).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add warning modal for `limit > 500` with session suppression; validate limit to `[1, 10000]`. See [#500](https://github.com/VictoriaMetrics/VictoriaLogs/issues/500).
@@ -29,7 +29,7 @@ Released at 2025-09-27
 
 ## [v1.36.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.0)
 
-Released at 2025-09-27
+Released at 2025-10-08
 
 * SECURITY: upgrade Go builder from Go1.25.1 to Go1.25.2. See [the list of issues addressed in Go1.25.2](https://github.com/golang/go/issues?q=milestone%3AGo1.25.2%20label%3ACherryPickApproved).
 
