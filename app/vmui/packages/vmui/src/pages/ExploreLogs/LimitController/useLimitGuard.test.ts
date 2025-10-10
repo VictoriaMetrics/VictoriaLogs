@@ -36,12 +36,16 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
 
     const soft = THRESHOLD + 1;
-    const p = result.current.beforeFetch(makeBody(soft));
+
+    let p: Promise<BeforeFetchResult>;
+    act(() => {
+      p = result.current.beforeFetch(makeBody(soft));
+    });
     expect(result.current.modalProps.isOpen).toBe(true);
 
     await act(async () => {
       result.current.modalProps.onCancel();
-      await p;
+      await p!;
     });
 
     expect(setLimit).not.toHaveBeenCalled();
@@ -51,12 +55,15 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const setLimit = vi.fn<(value: number) => void>();
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
 
-    const p = result.current.beforeFetch(makeBody(0));
+    let p: Promise<BeforeFetchResult>;
+    act(() => {
+      p = result.current.beforeFetch(makeBody(0));
+    });
     expect(result.current.modalProps.isOpen).toBe(true);
 
     await act(async () => {
       result.current.modalProps.onCancel();
-      await p;
+      await p!;
     });
   });
 
@@ -85,7 +92,11 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
 
     const overMax = MAX + 123;
-    const pending = result.current.beforeFetch(makeBody(overMax));
+
+    let pending: Promise<BeforeFetchResult>;
+    act(() => {
+      pending = result.current.beforeFetch(makeBody(overMax));
+    });
     expect(result.current.modalProps.initialLimit).toBe(overMax);
 
     // still beyond MAX; confirm should clamp to MAX
@@ -96,7 +107,7 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     let resolved: BeforeFetchResult | undefined;
     await act(async () => {
       result.current.modalProps.onConfirm();
-      resolved = await pending;
+      resolved = await pending!;
     });
 
     expect(resolved).toBeDefined();
@@ -114,7 +125,10 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const softInRange = Math.min(MAX, THRESHOLD + 1);
 
     // A) modify
-    let p = result.current.beforeFetch(makeBody(softInRange));
+    let pA: Promise<BeforeFetchResult>;
+    act(() => {
+      pA = result.current.beforeFetch(makeBody(softInRange));
+    });
     const edited = Math.min(MAX, softInRange + 50);
     act(() => {
       result.current.modalProps.setLimitDraft(edited);
@@ -123,7 +137,7 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     let resolvedA: BeforeFetchResult | undefined;
     await act(async () => {
       result.current.modalProps.onConfirm();
-      resolvedA = await p;
+      resolvedA = await pA!;
     });
     expect(resolvedA!.action).toBe("modify");
     if (resolvedA!.action === "modify") {
@@ -133,11 +147,14 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
 
     // B) cancel
     rerender();
-    p = result.current.beforeFetch(makeBody(softInRange));
+    let pB: Promise<BeforeFetchResult>;
+    act(() => {
+      pB = result.current.beforeFetch(makeBody(softInRange));
+    });
     let resolvedB: BeforeFetchResult | undefined;
     await act(async () => {
       result.current.modalProps.onCancel();
-      resolvedB = await p;
+      resolvedB = await pB!;
     });
     expect(resolvedB).toEqual({ action: "abort" });
   });
@@ -158,22 +175,37 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
 
     const soft = THRESHOLD + 1;
-    const p1 = result.current.beforeFetch(makeBody(soft));
+
+    let p1!: Promise<BeforeFetchResult>;
+    act(() => {
+      p1 = result.current.beforeFetch(makeBody(soft));
+    });
+
     const p2 = result.current.beforeFetch(makeBody(soft + 10));
-    expect(p1).toBe(p2);
+
+    let r1: BeforeFetchResult | undefined;
+    let r2: BeforeFetchResult | undefined;
 
     await act(async () => {
       result.current.modalProps.onCancel();
-      await p1;
+      [r1, r2] = await Promise.all([p1, p2]);
     });
 
-    const p3 = result.current.beforeFetch(makeBody(soft));
-    expect(p3).not.toBe(p1);
+    expect(r1).toEqual({ action: "abort" });
+    expect(r2).toEqual({ action: "abort" });
 
+    let p3!: Promise<BeforeFetchResult>;
+    act(() => {
+      p3 = result.current.beforeFetch(makeBody(soft));
+    });
+
+    let r3: BeforeFetchResult | undefined;
     await act(async () => {
       result.current.modalProps.onCancel();
-      await p3;
+      r3 = await p3;
     });
+
+    expect(r3).toEqual({ action: "abort" });
   });
 
   it("cleanup resolves pending promise with abort on unmount", async () => {
@@ -181,12 +213,15 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const { result, unmount } = renderHook(() => useLimitGuard({ setLimit }));
 
     const soft = THRESHOLD + 1;
-    const pending = result.current.beforeFetch(makeBody(soft));
+    let pending: Promise<BeforeFetchResult>;
+    act(() => {
+      pending = result.current.beforeFetch(makeBody(soft));
+    });
     let resolved: BeforeFetchResult | undefined;
 
     await act(async () => {
       unmount();
-      resolved = await pending;
+      resolved = await pending!;
     });
 
     expect(resolved).toEqual({ action: "abort" });

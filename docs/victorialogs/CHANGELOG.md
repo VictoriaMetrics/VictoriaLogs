@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix page not resetting after changing the query in the Group View tab. See [#753](https://github.com/VictoriaMetrics/VictoriaLogs/issues/753).
+
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
 Released at 2025-09-27

@@ -98,7 +98,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [rowsPerPage]);
+  }, [rowsPerPage, groupData]);
 
   return (
     <>
