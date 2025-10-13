@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* SECURITY: upgrade base docker image (Alpine) from 3.22.1 to 3.22.2. See [Alpine 3.22.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.9-3.20.8-3.21.5-3.22.2-released.html).
+
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
 Released at 2025-09-27
