@@ -4,7 +4,7 @@ import {
   type SetStateAction,
 } from "preact/compat";
 import { Logs } from "../../../api/types";
-import { useFetchLogs } from "../../ExploreLogs/hooks/useFetchLogs";
+import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
 import { removeExactLog } from "../../../utils/logs";
 import { toNanoPrecision } from "../../../utils/time";
 

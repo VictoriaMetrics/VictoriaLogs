@@ -17,7 +17,7 @@ export interface RouterOptions {
 
 export const routerOptions: { [key: string]: RouterOptions } = {
   [router.home]: {
-    title: "Logs Explorer",
+    title: "Query",
     header: {
       tenant: true,
       timeSelector: true,

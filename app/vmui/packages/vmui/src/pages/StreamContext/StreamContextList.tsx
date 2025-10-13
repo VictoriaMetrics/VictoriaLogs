@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Logs } from "../../api/types";
 import { useEffect, useState } from "preact/compat";
 import { useFetchStreamContext } from "./hooks/useFetchStreamContext";
-import GroupLogsItem from "../ExploreLogs/GroupLogs/GroupLogsItem";
+import GroupLogsItem from "../../components/Views/GroupView/GroupLogsItem";
 import LineLoader from "../../components/Main/LineLoader/LineLoader";
 import Alert from "../../components/Main/Alert/Alert";
 import Button from "../../components/Main/Button/Button";

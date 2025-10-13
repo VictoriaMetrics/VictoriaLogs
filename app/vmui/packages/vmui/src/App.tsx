@@ -2,7 +2,7 @@ import { FC, useState } from "preact/compat";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import AppContextProvider from "./contexts/AppContextProvider";
 import ThemeProvider from "./components/Main/ThemeProvider/ThemeProvider";
-import ExploreLogs from "./pages/ExploreLogs/ExploreLogs";
+import QueryPage from "./pages/QueryPage/QueryPage";
 import LogsLayout from "./layouts/LogsLayout/LogsLayout";
 import StreamContext from "./pages/StreamContext/StreamContext";
 import router from "./router";
@@ -24,7 +24,7 @@ const App: FC = () => {
               >
                 <Route
                   path={"/"}
-                  element={<ExploreLogs/>}
+                  element={<QueryPage/>}
                 />
                 <Route
                   path={router.streamContext}
