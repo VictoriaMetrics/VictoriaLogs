@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* BUGFIX: [pattern_match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter): fix non-progress loop in `pattern_match(...)` filter when the pattern starts with a literal separator that occurs multiple times in the target string and the rest of the pattern doesn't match. Previously this could make queries spin indefinitely. Now the matcher advances correctly and returns no match as expected. See [#759](https://github.com/VictoriaMetrics/VictoriaLogs/pull/759).
+
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
 Released at 2025-09-27
