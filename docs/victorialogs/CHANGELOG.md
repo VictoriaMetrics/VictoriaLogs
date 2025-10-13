@@ -18,11 +18,14 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* SECURITY: upgrade base docker image (Alpine) from 3.22.1 to 3.22.2. See [Alpine 3.22.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.9-3.20.8-3.21.5-3.22.2-released.html).
+
+* BUGFIX: [pattern_match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter): fix non-progress loop in `pattern_match(...)` filter when the pattern starts with a literal separator that occurs multiple times in the target string and the rest of the pattern doesn't match. Previously this could make queries spin indefinitely. Now the matcher advances correctly and returns no match as expected. See [#759](https://github.com/VictoriaMetrics/VictoriaLogs/pull/759).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix page not resetting after changing the query in the Group View tab. See [#753](https://github.com/VictoriaMetrics/VictoriaLogs/issues/753).
 
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
-Released at 2025-09-27
+Released at 2025-10-08
 
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add support for zooming the Hits chart to millisecond precision. See [#112](https://github.com/VictoriaMetrics/VictoriaLogs/issues/112).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add warning modal for `limit > 500` with session suppression; validate limit to `[1, 10000]`. See [#500](https://github.com/VictoriaMetrics/VictoriaLogs/issues/500).
@@ -31,7 +34,7 @@ Released at 2025-09-27
 
 ## [v1.36.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.0)
 
-Released at 2025-09-27
+Released at 2025-10-08
 
 * SECURITY: upgrade Go builder from Go1.25.1 to Go1.25.2. See [the list of issues addressed in Go1.25.2](https://github.com/golang/go/issues?q=milestone%3AGo1.25.2%20label%3ACherryPickApproved).
 

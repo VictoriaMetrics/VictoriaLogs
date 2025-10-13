@@ -34,7 +34,7 @@ var (
 		"Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits")
 
 	allowPartialResponseFlag = flag.Bool("search.allowPartialResponse", false, "Whether to allow returning partial responses when some of vlstorage nodes "+
-		"from the -storageNode list are unavaialbe for querying. This flag works only for cluster setup of VictoriaLogs. "+
+		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
 )
 
