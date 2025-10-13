@@ -2,6 +2,7 @@ package internalselect
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math"
@@ -503,8 +504,10 @@ func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, v
 
 func writeTenantIDs(w http.ResponseWriter, tenantIDs []logstorage.TenantID, disableCompression bool) error {
 	// Marshal tenantIDs at first
-	var b []byte
-	logstorage.MarshalTenantIDs(b, tenantIDs)
+	b, err := json.Marshal(tenantIDs)
+	if err != nil {
+		return fmt.Errorf("cannot marshal tenantIDs: %w", err)
+	}
 	if !disableCompression {
 		b = zstd.CompressLevel(nil, b, 1)
 	}
