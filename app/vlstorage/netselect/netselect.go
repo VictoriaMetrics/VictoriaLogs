@@ -251,7 +251,7 @@ func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]by
 	args.Set("start", fmt.Sprintf("%d", start))
 	args.Set("end", fmt.Sprintf("%d", end))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
-	return sn.executeRequestAt(ctx, "/internal/select/tenant_ids", args)
+	return sn.getResponseForPathAndArgs(ctx, "/internal/select/tenant_ids", args)
 }
 
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
@@ -601,7 +601,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		}(i)
 	}
 	wg.Wait()
-	if err := getFirstNonCancelError(errs); err != nil {
+	if err := getFirstError(errs, false); err != nil {
 		return nil, err
 	}
 

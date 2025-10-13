@@ -501,12 +501,15 @@ func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, v
 	return nil
 }
 
-func writeTenantIDs(w http.ResponseWriter, tenantIDs []byte, disableCompression bool) error {
+func writeTenantIDs(w http.ResponseWriter, tenantIDs []logstorage.TenantID, disableCompression bool) error {
+	// Marshal tenantIDs at first
+	var b []byte
+	logstorage.MarshalTenantIDs(b, tenantIDs)
 	if !disableCompression {
-		tenantIDs = zstd.CompressLevel(nil, tenantIDs, 1)
+		b = zstd.CompressLevel(nil, b, 1)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(tenantIDs); err != nil {
+	if _, err := w.Write(b); err != nil {
 		return fmt.Errorf("cannot send response to the client: %w", err)
 	}
 	return nil

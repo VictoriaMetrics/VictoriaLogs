@@ -2,7 +2,6 @@ package logsql
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
