@@ -111,13 +111,6 @@ const QueryPage: FC = () => {
     });
     updateHistory();
   };
-
-  const handleChangeLimit = (limit: number) => {
-    setLimit(limit);
-    setSearchParamsFromKeys({ limit });
-    saveToStorage("LOGS_LIMIT", `${limit}`);
-  };
-
   const handleApplyFilter = (val: ExtraFilter) => {
     setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
     setIsUpdatingQuery(true);

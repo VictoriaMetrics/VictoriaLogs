@@ -89,27 +89,24 @@ const FiltersBarPreview: FC = () => {
 
       <div className="vm-filters-bar__actions">
         <Button
-          variant="text"
+          variant="outlined"
           color="primary"
-          size={"small"}
           onClick={handleApplyFilters(true)}
           startIcon={<FilterIcon/>}
         >
           Include all
         </Button>
         <Button
-          variant="text"
+          variant="outlined"
           color="primary"
-          size={"small"}
           onClick={handleApplyFilters(false)}
           startIcon={<FilterOffIcon/>}
         >
           Exclude all
         </Button>
         <Button
-          variant="text"
+          variant="outlined"
           color="error"
-          size={"small"}
           onClick={handleClear}
           startIcon={<DeleteIcon/>}
         >

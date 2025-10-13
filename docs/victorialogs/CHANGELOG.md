@@ -19,7 +19,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add Overview page for quick log characteristic inspection. See [#516](https://github.com/VictoriaMetrics/VictoriaLogs/issues/516).
-* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allow grouping hits graph by any field with configurable top-N. See [#110](https://github.com/VictoriaMetrics/VictoriaLogs/issues/110).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allows grouping hits graph by any field with configurable top-N. See [#110](https://github.com/VictoriaMetrics/VictoriaLogs/issues/110).
 
 * SECURITY: upgrade base docker image (Alpine) from 3.22.1 to 3.22.2. See [Alpine 3.22.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.9-3.20.8-3.21.5-3.22.2-released.html).
 
