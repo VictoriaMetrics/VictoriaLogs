@@ -18,7 +18,11 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+
 * SECURITY: upgrade base docker image (Alpine) from 3.22.1 to 3.22.2. See [Alpine 3.22.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.9-3.20.8-3.21.5-3.22.2-released.html).
+
+* BUGFIX: [pattern_match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter): fix non-progress loop in `pattern_match(...)` filter when the pattern starts with a literal separator that occurs multiple times in the target string and the rest of the pattern doesn't match. Previously this could make queries spin indefinitely. Now the matcher advances correctly and returns no match as expected. See [#759](https://github.com/VictoriaMetrics/VictoriaLogs/pull/759).
+
 
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 

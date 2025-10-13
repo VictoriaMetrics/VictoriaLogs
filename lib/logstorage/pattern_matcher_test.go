@@ -120,4 +120,8 @@ func TestPatternMatcherMatch(t *testing.T) {
 
 	f(`"foo":<W>`, `{"foo":"bar", "baz": 123}`, false, true)
 	f(`"foo":<W>`, `{"foo":"bar", "baz": 123}`, true, false)
+
+	// regression: leading separator present many times but placeholder doesn't match after it
+	f("xx<N>", "xxxxxxxxxxxxxxxx", false, false)
+	f("xx<N>", "xxxxxx123", false, true)
 }

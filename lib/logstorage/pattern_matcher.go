@@ -154,7 +154,11 @@ func (pm *patternMatcher) matchSubstring(s string) bool {
 
 func (pm *patternMatcher) indexPatternStart(s string, offset int) int {
 	if firstSep := pm.separators[0]; firstSep != "" {
-		return strings.Index(s[offset:], firstSep)
+		n := strings.Index(s[offset:], firstSep)
+		if n < 0 {
+			return n
+		}
+		return offset + n
 	}
 
 	placeholders := pm.placeholders
