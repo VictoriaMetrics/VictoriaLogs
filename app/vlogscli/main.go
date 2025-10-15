@@ -69,7 +69,7 @@ func main() {
 	}
 	headers = hes
 
-	httpClient = newHTTPClient()
+	authConfig, httpClient = newHTTPClient()
 
 	incompleteLine := ""
 	cfg := &readline.Config{
@@ -402,6 +402,11 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 	req.Header.Set("AccountID", strconv.Itoa(*accountID))
 	req.Header.Set("ProjectID", strconv.Itoa(*projectID))
 
+	if err := authConfig.SetHeaders(req, true); err != nil {
+		fmt.Fprintf(output, "prepare auth info fail: %s\n", err)
+		return nil
+	}
+
 	// Execute HTTP request at qURL
 	startTime := time.Now()
 	resp, err := httpClient.Do(req)
@@ -440,13 +445,14 @@ func getQueryResponse(ctx context.Context, output io.Writer, qStr string, output
 	return jp
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient() (*promauth.Config, *http.Client) {
 	ac := newAuthConfig()
 	tr := httputil.NewTransport(true, "vlogscli")
 	c := &http.Client{
 		Transport: ac.NewRoundTripper(tr),
 	}
-	return c
+
+	return ac, c
 }
 
 func newAuthConfig() *promauth.Config {
@@ -482,6 +488,7 @@ func newAuthConfig() *promauth.Config {
 }
 
 var httpClient *http.Client
+var authConfig *promauth.Config
 
 var headers []headerEntry
 

@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* BUGFIX: [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/): fix basic auth **not being applied** when using `-username` and `-password`. See [#761](https://github.com/VictoriaMetrics/VictoriaLogs/issues/761)
+
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add Overview page for quick log characteristic inspection. See [#516](https://github.com/VictoriaMetrics/VictoriaLogs/issues/516).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allows grouping hits graph by any field with configurable top-N. See [#110](https://github.com/VictoriaMetrics/VictoriaLogs/issues/110).
 
