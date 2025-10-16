@@ -16,6 +16,10 @@ On a client site which should already have journald please install additionally 
 ```
 [Upload]
 URL=http://localhost:9428/insert/journald
+# Starting v258 systemd-journal-upload custom HTTP headers and compression are supported
+# Header=AccountID: 5
+# Header=ProjectID: 10
+# Compression=zstd:4 lz4:2
 ```
 
 Substitute the `localhost:9428` address inside `endpoints` section with the real TCP address of VictoriaLogs.
@@ -26,6 +30,9 @@ Port 9428 is not the default port associated with with `systemd-journal-upload` 
 
 VictoriaLogs uses the `__REALTIME_TIMESTAMP` field as [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
 for the logs ingested via journald protocol. Other field can be used instead of `__REALTIME_TIMESTAMP` by specifying it via `-journald.timeField` command-line flag.
+> [!NOTE]
+> Starting systemd-journal-upload v258 time field can be set using `VL-Time-Field` HTTP header.
+
 See [the list of supported Journald fields](https://www.freedesktop.org/software/systemd/man/latest/systemd.journal-fields.html).
 
 ## Level field
@@ -37,6 +44,8 @@ VictoriaLogs automatically sets the `level` log field according to the [`PRIORIT
 VictoriaLogs uses `(_MACHINE_ID, _HOSTNAME, _SYSTEMD_UNIT)` as [stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
 for logs ingested via journald protocol. The list of log stream fields can be changed via `-journald.streamFields` command-line flag if needed,
 by providing comma-separated list of journald fields from [this list](https://www.freedesktop.org/software/systemd/man/latest/systemd.journal-fields.html).
+> [!NOTE]
+> Starting systemd-journal-upload v258 stream fields can be set using `VL-Stream-Fields` HTTP header.
 
 Please make sure that the log stream fields passed to `-journald.streamFields` do not contain fields with high number or unbound number of unique values,
 since this may lead to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
@@ -53,6 +62,8 @@ The following Journald fields are also good candidates for stream fields:
 VictoriaLogs can be configured for skipping the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 for logs ingested via journald protocol, via `-journald.ignoreFields` command-line flag, which accepts comma-separated list of log fields to ignore.
 This list can contain log field prefixes ending with `*` such as `some-prefix*`. In this case all the fields starting from `some-prefix` are ignored.
+> [!NOTE]
+> Starting systemd-journal-upload v258 ignored fields can be set using `VL-Ignore-Fields` HTTP header.
 
 See [the list of supported Journald fields](https://www.freedesktop.org/software/systemd/man/latest/systemd.journal-fields.html).
 
@@ -61,6 +72,8 @@ See [the list of supported Journald fields](https://www.freedesktop.org/software
 By default VictoriaLogs stores logs ingested via journald protocol into `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 This can be changed by passing the needed tenant in the format `AccountID:ProjectID` at the `-journald.tenantID` command-line flag.
 For example, `-journald.tenantID=123:456` would store logs ingested via journald protocol into `(AccountID=123, ProjectID=456)` tenant.
+> [!NOTE]
+> Starting systemd-journal-upload v258 tenant information can be set using `AccountID` and `ProjectID` HTTP headers.
 
 See also:
 
