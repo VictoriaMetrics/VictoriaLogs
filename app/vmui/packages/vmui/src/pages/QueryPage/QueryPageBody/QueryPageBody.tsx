@@ -5,7 +5,8 @@ import {
   TableIcon,
   PlayIcon,
   VisibilityOffIcon,
-  VisibilityIcon
+  VisibilityIcon,
+  DownloadIcon
 } from "../../../components/Main/Icons";
 import Tabs from "../../../components/Main/Tabs/Tabs";
 import "./style.scss";
@@ -23,9 +24,11 @@ import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
 import Alert from "../../../components/Main/Alert/Alert";
+import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
 
 interface Props {
   data: Logs[];
+  queryParams?: Record<string, string>;
   isLoading: boolean;
   isPreview?: boolean;
 }
@@ -44,7 +47,7 @@ const tabs = [
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 
-const QueryPageBody: FC<Props> = ({ data, isLoading, isPreview }) => {
+const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) => {
   const { isMobile } = useDeviceDetect();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
@@ -106,6 +109,18 @@ const QueryPageBody: FC<Props> = ({ data, isLoading, isPreview }) => {
           className="vm-query-page-body-header__settings"
           ref={settingsRef}
         />
+        <DownloadLogsModal
+          data={data}
+          queryParams={queryParams}
+        >
+          <Tooltip title="Download Logs">
+            <Button
+              variant="text"
+              startIcon={<DownloadIcon/>}
+              ariaLabel="Download Logs"
+            />
+          </Tooltip>
+        </DownloadLogsModal>
         <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
           <Button
             variant="text"

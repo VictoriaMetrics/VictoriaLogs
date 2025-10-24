@@ -1,0 +1,73 @@
+@use "src/styles/variables" as *;
+
+.vm-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &-option {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    gap: calc($padding-small/2) $padding-small;
+    align-items: center;
+    justify-content: flex-start;
+    padding: $padding-small;
+    transition: background-color 0.3s;
+    border-radius:  $border-radius-small;
+    cursor: pointer;
+
+    &[aria-disabled="true"] {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+
+    &__input {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border: 2px solid $color-text;
+      margin: 0;
+      border-radius: 50%;
+      transition:  border-color 0.3s ease;
+
+      &:after {
+        content: "";
+        position: absolute;
+        top: auto;
+        left: auto;
+        width: 50%;
+        height: 50%;
+        background-color: $color-primary;
+        border-radius: 50%;
+        transform: scale(0);
+        transition:  transform 0.3s ease;
+      }
+
+      &:checked {
+        border-color: $color-primary;
+
+        &:after {
+          transform: scale(1);
+        }
+      }
+    }
+
+    &__label {
+      //font-size: $font-size-small;
+    }
+
+    &__description {
+      grid-column: 2;
+      font-size: $font-size-small;
+      color: $color-text-secondary;
+      line-height: 130%;
+    }
+  }
+}

@@ -4,6 +4,7 @@ import Button from "../../../components/Main/Button/Button";
 import LogsLimitInput from "./LogsLimitInput";
 import "./style.scss";
 import Checkbox from "../../../components/Main/Checkbox/Checkbox";
+import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
 
 type Props = {
   isOpen: boolean;
@@ -11,6 +12,7 @@ type Props = {
   limitDraft: number;
   setLimitDraft: (limit: number) => void;
   suppressWarning: boolean;
+  queryParams?: Record<string, string>;
   onChangeSuppressWarning: (value: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -22,6 +24,7 @@ const LimitConfirmModal: FC<Props> = ({
   setLimitDraft,
   isOpen,
   suppressWarning,
+  queryParams,
   onChangeSuppressWarning,
   onConfirm,
   onCancel
@@ -54,6 +57,12 @@ const LimitConfirmModal: FC<Props> = ({
             onError={setError}
           />
         </div>
+
+        <DownloadLogsModal queryParams={queryParams}>
+          <p className="vm-logs-limit-modal-download vm-link vm-link_colored vm-link_underlined">
+            Click to download all matching logs without a limit.
+          </p>
+        </DownloadLogsModal>
 
         <div className="vm-logs-limit-modal-footer">
           <div>

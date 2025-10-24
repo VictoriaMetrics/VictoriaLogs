@@ -68,7 +68,7 @@ const QueryPage: FC = () => {
   const [period, setPeriod] = useState<TimeParams>(periodState);
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration } = useFetchLogs(query, limit);
+  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration, queryParams } = useFetchLogs(query, limit);
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
 
   const fetchData = async (period: TimeParams, flags: FetchFlags) => {
@@ -149,7 +149,10 @@ const QueryPage: FC = () => {
 
   return (
     <div className="vm-query-page">
-      <LimitConfirmModal {...modalProps}/>
+      <LimitConfirmModal
+        {...modalProps}
+        queryParams={queryParams}
+      />
 
       <QueryPageHeader
         query={query}
@@ -172,6 +175,7 @@ const QueryPage: FC = () => {
       )}
       <QueryPageBody
         data={logs}
+        queryParams={queryParams}
         isLoading={isLoading}
       />
     </div>
