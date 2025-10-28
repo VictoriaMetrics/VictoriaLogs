@@ -216,6 +216,7 @@ func (t *hashTokenizer) tokenizeString(dst []uint64, s string) []uint64 {
 		// Register the token.
 		token := unsafe.String((*byte)(unsafe.Add(ptr, start)), end-start)
 		if curUnicodeFlag == 1 {
+			// Only perform tokenizeStringUnicode on very short substrings if the string contains Unicode characters
 			dst = t.tokenizeStringUnicode(dst, token)
 			continue
 		}
