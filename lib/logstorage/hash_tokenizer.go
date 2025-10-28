@@ -187,7 +187,7 @@ func (t *hashTokenizer) tokenizeString(dst []uint64, s string) []uint64 {
 			c := *(*byte)(unsafe.Add(ptr, uintptr(i)))
 			unicodeFlag := (c & 0x80) >> 7
 			curUnicodeFlag |= unicodeFlag
-			found := lookupTables[unicodeFlag][c]
+			found := lookupTables[unicodeFlag][c] // search both ASCII and Unicode tables
 			if found == 0 {
 				i++
 				continue
