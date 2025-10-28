@@ -38,6 +38,7 @@ const QueryPage: FC = () => {
   const [searchParams] = useSearchParams();
 
   const hideChart = useMemo(() => Boolean(searchParams.get("hide_chart")), [searchParams]);
+  const prevHideChart = usePrevious(hideChart);
 
   const hideLogs = useMemo(() => Boolean(searchParams.get("hide_logs")), [searchParams]);
   const prevHideLogs = usePrevious(hideLogs);
@@ -100,8 +101,8 @@ const QueryPage: FC = () => {
 
     const newPeriod = getPeriod();
     setPeriod(newPeriod);
-    dataLogHits.abortController.abort();
-    abortController.abort();
+    dataLogHits.abortController.abort?.();
+    abortController.abort?.();
     debouncedFetchLogs(newPeriod, { logs: !hideLogs, hits: !hideChart });
     setSearchParamsFromKeys({
       query,
@@ -137,15 +138,14 @@ const QueryPage: FC = () => {
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
-    if (hideChart) return;
+    if (hideChart || !prevHideChart) return;
     fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
-  }, [hideChart, period, groupFieldHits, topHits]);
+  }, [hideChart, prevHideChart, period, groupFieldHits, topHits, fetchLogHits]);
 
   useEffect(() => {
-    if (!hideLogs && prevHideLogs) {
-      fetchLogs({ period, beforeFetch });
-    }
-  }, [hideLogs, prevHideLogs, period]);
+    if (hideLogs || !prevHideLogs) return;
+    fetchLogs({ period, beforeFetch });
+  }, [hideLogs, prevHideLogs, period, fetchLogs, beforeFetch]);
 
   return (
     <div className="vm-query-page">
