@@ -1,12 +1,14 @@
 package vlstorage
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -57,6 +59,9 @@ var (
 	partitionManageAuthKey = flagutil.NewPassword("partitionManageAuthKey", "authKey, which must be passed in query string to /internal/partition/* . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle")
 
+	deleteAuthKey = flagutil.NewPassword("deleteAuthKey", "authKey, which must be passed in query string to /delete and /internal/delete . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#delete-log-rows")
+
 	storageNodeAddrs = flagutil.NewArrayString("storageNode", "Comma-separated list of TCP addresses for storage nodes to route the ingested logs to and to send select queries to. "+
 		"If the list is empty, then the ingested logs are stored and queried locally from -storageDataPath")
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
@@ -93,6 +98,11 @@ var localStorageMetrics *metrics.Set
 var netstorageInsert *netinsert.Storage
 
 var netstorageSelect *netselect.Storage
+
+// CheckDeleteAuth validates auth for delete endpoints.
+func CheckDeleteAuth(w http.ResponseWriter, r *http.Request) bool {
+	return httpserver.CheckAuthFlag(w, r, deleteAuthKey)
+}
 
 // Init initializes vlstorage.
 //
@@ -246,6 +256,8 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotCreate(w, r)
 	case "/internal/partition/snapshot/list":
 		return processPartitionSnapshotList(w, r)
+	case "/delete":
+		return processDelete(r.Context(), w, r)
 	}
 	return false
 }
@@ -397,6 +409,85 @@ func writeJSONResponse(w http.ResponseWriter, response any) {
 	w.Write(responseBody)
 }
 
+// processDelete handles the /delete endpoint for both local and remote storage nodes.
+// It supports POST for scheduling deletes and GET for retrieving task status.
+func processDelete(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
+	if localStorage != nil {
+		if !CheckDeleteAuth(w, r) {
+			return true
+		}
+	}
+
+	authKey := r.FormValue("authKey")
+
+	switch r.Method {
+	case http.MethodPost:
+		if tenantIDsStr := r.FormValue("tenant_ids"); tenantIDsStr != "" {
+			tenantIDs, err := logstorage.UnmarshalTenantIDs([]byte(tenantIDsStr))
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot unmarshal tenant_ids=%q: %s", tenantIDsStr, err)
+				return true
+			}
+
+			timestampStr := r.FormValue("timestamp")
+			timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot parse timestamp=%q: %s", timestampStr, err)
+				return true
+			}
+
+			qStr := r.FormValue("query")
+			q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot parse query=%q: %s", qStr, err)
+				return true
+			}
+
+			if err := DeleteRows(ctx, tenantIDs, q, authKey); err != nil {
+				httpserver.Errorf(w, r, "cannot delete rows: %s", err)
+				return true
+			}
+		} else {
+			tenantID, err := logstorage.GetTenantIDFromRequest(r)
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot obtain tenantID: %s", err)
+				return true
+			}
+
+			qStr := r.FormValue("query")
+			q, err := logstorage.ParseQuery(qStr)
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot parse query [%s]: %s", qStr, err)
+				return true
+			}
+
+			if err := DeleteRows(ctx, []logstorage.TenantID{tenantID}, q, authKey); err != nil {
+				httpserver.Errorf(w, r, "%s", err)
+				return true
+			}
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+
+	case http.MethodGet:
+		tasks, err := ListDeleteTasks(ctx, authKey)
+		if err != nil {
+			httpserver.Errorf(w, r, "cannot list delete tasks: %s", err)
+			return true
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(tasks); err != nil {
+			httpserver.Errorf(w, r, "internal error: %s", err)
+		}
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+	return true
+}
+
 // Storage implements insertutil.LogRowsStorage interface
 type Storage struct{}
 
@@ -498,6 +589,41 @@ func GetStreamIDs(qctx *logstorage.QueryContext, limit uint64) ([]logstorage.Val
 		return localStorage.GetStreamIDs(qctx, limit)
 	}
 	return netstorageSelect.GetStreamIDs(qctx, limit)
+}
+
+// DeleteRows marks rows matching q with the Deleted marker (full or partial) and flushes markers to disk immediately.
+func DeleteRows(ctx context.Context, tenantIDs []logstorage.TenantID, q *logstorage.Query, authKey string) error {
+	if err := logstorage.ValidateDeleteQuery(q); err != nil {
+		return fmt.Errorf("validate query: %w", err)
+	}
+
+	if localStorage != nil {
+		return localStorage.DeleteRows(ctx, tenantIDs, q)
+	}
+
+	return netstorageSelect.DeleteRows(ctx, tenantIDs, q, authKey)
+}
+
+// IsLocalStorage confirms whether the running instance is a storage node.
+func IsLocalStorage() bool {
+	return localStorage != nil
+}
+
+// ListDeleteTasks collects delete task information either from the local storage or from all configured storage nodes.
+// It returns a slice with the tasks and an extra Storage field indicating the source node address (or "local" for the embedded storage).
+func ListDeleteTasks(ctx context.Context, authKey string) ([]logstorage.DeleteTaskInfoWithSource, error) {
+	if localStorage != nil {
+		tasks := localStorage.ListDeleteTasks()
+		out := make([]logstorage.DeleteTaskInfoWithSource, len(tasks))
+		for i, t := range tasks {
+			out[i] = logstorage.DeleteTaskInfoWithSource{
+				DeleteTaskInfo: t,
+			}
+		}
+		return out, nil
+	}
+
+	return netstorageSelect.ListDeleteTasks(ctx, authKey)
 }
 
 func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {

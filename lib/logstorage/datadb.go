@@ -130,6 +130,12 @@ type partWrapper struct {
 
 	// The deadline when in-memory part must be flushed to disk.
 	flushDeadline time.Time
+
+	// taskSeq is the highest task sequence applied to this part.
+	// Avoid storing this field on disk, as it requires updating every part of the affected partitions.
+	// The drawback is that on restart, it doesn't remember whether the task was completed and will re-run it.
+	// Therefore, the task must be idempotent to ensure this works correctly.
+	taskSeq atomic.Uint64
 }
 
 func (pw *partWrapper) incRef() {
@@ -310,7 +316,7 @@ func (ddb *datadb) mustFlushInmemoryPartsToFiles(isFinal bool) {
 
 	ddb.partsLock.Lock()
 	for _, pw := range ddb.inmemoryParts {
-		if !pw.isInMerge && (isFinal || pw.flushDeadline.Before(currentTime)) {
+		if !pw.isInMerge && (isFinal || pw.flushDeadline.Before(currentTime)) && !pw.hasPendingTask() {
 			pw.isInMerge = true
 			pws = append(pws, pw)
 		}
@@ -451,9 +457,11 @@ func (ddb *datadb) bigPartsMerger() {
 func getPartsToMergeLocked(pws []*partWrapper, maxOutBytes uint64) []*partWrapper {
 	pwsRemaining := make([]*partWrapper, 0, len(pws))
 	for _, pw := range pws {
-		if !pw.isInMerge {
-			pwsRemaining = append(pwsRemaining, pw)
+		if pw.isInMerge || pw.hasPendingTask() {
+			continue
 		}
+
+		pwsRemaining = append(pwsRemaining, pw)
 	}
 
 	pwsToMerge := appendPartsToMerge(nil, pwsRemaining, maxOutBytes)
@@ -585,6 +593,7 @@ func (ddb *datadb) mustMergeParts(pws []*partWrapper, isFinal bool) {
 		mpNew.ph = ph
 	} else {
 		ph.mustWriteMetadata(dstPartPath)
+
 		// Make sure the created part directory contents is synced and visible in case of unclean shutdown.
 		fs.MustSyncPathAndParentDir(dstPartPath)
 	}
@@ -1026,6 +1035,20 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
 
 	if pwNew != nil {
+		// Find the minimum taskSeq across all the source parts.
+		// This is the sequence number of the last applied task.
+		minSeq := uint64(math.MaxUint64)
+		for _, pw := range pws {
+			seq := pw.taskSeq.Load()
+			if seq < minSeq {
+				minSeq = seq
+			}
+		}
+		if minSeq == math.MaxUint64 {
+			minSeq = 0
+		}
+		pwNew.taskSeq.Store(minSeq)
+
 		switch dstPartType {
 		case partInmemory:
 			ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
@@ -1110,12 +1133,22 @@ func newPartWrapper(p *part, mp *inmemoryPart, flushDeadline time.Time) *partWra
 
 		flushDeadline: flushDeadline,
 	}
+	seq := p.pt.deleteQueue.seq.Load()
+	pw.taskSeq.Store(seq)
 
 	// Increase reference counter for newly created part - it is decreased when the part
 	// is removed from the list of open parts.
 	pw.incRef()
 
 	return pw
+}
+
+func (pw *partWrapper) hasPendingTask() bool {
+	pt := pw.p.pt
+	curSeq := pt.deleteQueue.seq.Load()
+	isPartitionPayingDebt := pt.s.deleteTaskSeq.Load() == curSeq
+	isPartInDebt := pw.taskSeq.Load() < curSeq
+	return isPartitionPayingDebt && isPartInDebt
 }
 
 func (ddb *datadb) getFlushToDiskDeadline(pws []*partWrapper) time.Time {
@@ -1481,8 +1514,8 @@ func (ddb *datadb) mustForceMergeAllParts() {
 
 	// Collect all the file parts for forced merge
 	ddb.partsLock.Lock()
-	pws = appendAllPartsForMergeLocked(pws, ddb.smallParts)
-	pws = appendAllPartsForMergeLocked(pws, ddb.bigParts)
+	pws = appendAllPartsForForceMergeLocked(pws, ddb.smallParts)
+	pws = appendAllPartsForForceMergeLocked(pws, ddb.bigParts)
 	ddb.partsLock.Unlock()
 
 	// If len(pws) == 1, then the merge must run anyway.
@@ -1508,7 +1541,7 @@ func (ddb *datadb) mustForceMergeAllParts() {
 	putWaitGroup(wg)
 }
 
-func appendAllPartsForMergeLocked(dst, src []*partWrapper) []*partWrapper {
+func appendAllPartsForForceMergeLocked(dst, src []*partWrapper) []*partWrapper {
 	for _, pw := range src {
 		if !pw.isInMerge {
 			pw.isInMerge = true

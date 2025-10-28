@@ -1,7 +1,9 @@
 package logstorage
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -42,6 +44,9 @@ type partition struct {
 	// which may be in the process of flushing to disk by concurrently running
 	// snapshot process.
 	snapshotLock sync.Mutex
+
+	// deleteQueue tracks queued delete operations for the partition.
+	deleteQueue *deleteTaskQueue
 }
 
 // mustCreatePartition creates a partition at the given path.
@@ -108,8 +113,10 @@ func mustOpenPartition(s *Storage, path string) *partition {
 		mustCreateDatadb(datadbPath)
 	}
 
-	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
+	// delete tasks must be loaded before datadb
+	pt.mustLoadDeleteTasks()
 
+	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
 	return pt
 }
 
@@ -273,3 +280,38 @@ func getPartitionNameFromDay(day int64) string {
 }
 
 const partitionNameFormat = "20060102"
+
+// mustSaveDeleteTasks persists the current delete tasks to disk.
+func (pt *partition) mustSaveDeleteTasks() {
+	pt.deleteQueue.mu.Lock()
+	snapshot := append([]deleteTask(nil), pt.deleteQueue.ts...)
+	pt.deleteQueue.mu.Unlock()
+
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		logger.Panicf("FATAL: cannot marshal delete tasks: %s", err)
+	}
+
+	tasksPath := filepath.Join(pt.path, deleteTasksFilename)
+	fs.MustWriteAtomic(tasksPath, data, true)
+}
+
+// mustLoadDeleteTasks loads delete tasks from disk during partition startup.
+func (pt *partition) mustLoadDeleteTasks() {
+	tasksPath := filepath.Join(pt.path, deleteTasksFilename)
+	if !fs.IsPathExist(tasksPath) {
+		pt.deleteQueue = newDeleteTaskQueue(pt, nil)
+		return
+	}
+
+	data, err := os.ReadFile(tasksPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot read delete tasks from %q: %s", tasksPath, err)
+	}
+
+	tasks, err := unmarshalDeleteTasks(data)
+	if err != nil {
+		logger.Panicf("FATAL: cannot unmarshal delete tasks from %q: %s", tasksPath, err)
+	}
+	pt.deleteQueue = newDeleteTaskQueue(pt, tasks)
+}

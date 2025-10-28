@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/snapshot/snapshotutil"
@@ -180,6 +182,10 @@ type Storage struct {
 	//
 	// It reduces the load on persistent storage during querying by _stream:{...} filter.
 	filterStreamCache *cache
+
+	// deleteTaskState is used to stop the delete task worker.
+	deleteTaskState deleteTaskState
+	deleteTaskSeq   atomic.Uint64
 }
 
 // PartitionAttach attaches the partition with the given name to s.
@@ -349,6 +355,62 @@ func (s *Storage) PartitionSnapshotList() []string {
 	return snapshotPaths
 }
 
+type deleteTaskState struct {
+	waiter atomic.Int32
+	mu     sync.Mutex
+	ch     chan struct{}
+}
+
+// init prepares the pause channel; must be called once at storage startup.
+func (dts *deleteTaskState) init() {
+	dts.mu.Lock()
+	if dts.ch == nil {
+		dts.ch = make(chan struct{})
+	}
+	dts.mu.Unlock()
+}
+
+// addWaiter increments the waiter counter and returns the channel
+// that will be closed when the delete-task worker acknowledges the pause.
+func (dts *deleteTaskState) addWaiter() <-chan struct{} {
+	dts.mu.Lock()
+	ch := dts.ch
+	dts.waiter.Add(1)
+	dts.mu.Unlock()
+	return ch
+}
+
+// doneWaiter decrements the waiter counter, signalling that the caller has
+// finished the critical section.
+func (dts *deleteTaskState) doneWaiter() {
+	if n := dts.waiter.Add(-1); n == 0 {
+		// All waiters are done – prepare a fresh channel for the next pause.
+		dts.mu.Lock()
+		if dts.ch == nil {
+			dts.ch = make(chan struct{})
+		}
+		dts.mu.Unlock()
+	}
+}
+
+// isPaused returns true if the delete-task worker may proceed with work. If
+// there are active waiters, it closes the channel to acknowledge the pause and
+// returns false.
+func (dts *deleteTaskState) isPaused() bool {
+	if dts.waiter.Load() == 0 {
+		return false
+	}
+
+	dts.mu.Lock()
+	if dts.ch != nil {
+		close(dts.ch)
+		dts.ch = nil
+	}
+	dts.mu.Unlock()
+
+	return true
+}
+
 type partitionWrapper struct {
 	// refCount is the number of active references to partition.
 	// When it reaches zero, then the partition is closed.
@@ -478,6 +540,9 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		filterStreamCache: filterStreamCache,
 	}
 
+	// Initialize the delete-task pause mechanism.
+	s.deleteTaskState.init()
+
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
 	fs.MustSyncPath(path)
@@ -543,6 +608,10 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	s.partitions = ptws
 	s.runRetentionWatcher()
 	s.runMaxDiskSpaceUsageWatcher()
+
+	// Start background delete-task reconciler.
+	s.startDeleteTaskWorker()
+
 	return s
 }
 
@@ -768,6 +837,14 @@ func (s *Storage) MustForceMerge(partitionNamePrefix string) {
 	}
 	s.partitionsLock.Unlock()
 
+	// Pause the delete-task worker.
+	ch := s.deleteTaskState.addWaiter()
+	defer s.deleteTaskState.doneWaiter()
+
+	// Wait until the worker acknowledges pause by closing the channel.
+	<-ch
+
+	// shutdown must wait for force merge.
 	s.wg.Add(1)
 	defer s.wg.Done()
 
@@ -831,6 +908,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			s.rowsDroppedTooBigTimestamp.Add(1)
 			continue
 		}
+
 		lrPart := m[day]
 		if lrPart == nil {
 			lrPart = GetLogRows(nil, nil, nil, nil, "")
@@ -984,4 +1062,184 @@ func (s *Storage) DebugFlush() {
 
 func durationToDays(d time.Duration) int64 {
 	return int64(d / (time.Hour * 24))
+}
+
+// ValidateDeleteQuery ensures the query has a filter (required for deletion) and only allows
+// the `limit` pipe. It automatically adjusts the end time to the current time to prevent
+// accidental deletion of future data.
+func ValidateDeleteQuery(q *Query) error {
+	if len(q.pipes) > 0 {
+		// Only `limit` pipe is allowed for delete queries.
+		for _, p := range q.pipes {
+			if _, ok := p.(*pipeLimit); !ok {
+				return fmt.Errorf("delete supports only | limit N pipe")
+			}
+		}
+	}
+
+	if q.f == nil {
+		return fmt.Errorf("query must contain a filter")
+	}
+
+	minTS, maxTS := q.GetFilterTimeRange()
+	now := int64(fasttime.UnixTimestamp() * 1e9)
+
+	// vlselect already adds a timestamp floor(now).
+	// vlstorage parses the time by adding +0.999, so we need to use now+1 to avoid
+	// duplicating the addition of _time filters.
+	if maxTS > now+int64(time.Second) {
+		q.AddTimeFilter(minTS, now)
+	}
+
+	return nil
+}
+
+// taskSeq provides unique, monotonically increasing sequence numbers for delete tasks.
+var taskSeq = func() *atomic.Uint64 {
+	var x atomic.Uint64
+	x.Store(uint64(time.Now().UnixNano()))
+	return &x
+}()
+
+// DeleteRows schedules deletion of log rows matching the query filter for the specified tenants.
+// The actual deletion is performed by background workers to avoid blocking the caller.
+func (s *Storage) DeleteRows(ctx context.Context, tenantIDs []TenantID, q *Query) error {
+	minTS, maxTS := q.GetFilterTimeRange()
+	minDay := minTS / nsecsPerDay
+	maxDay := maxTS / nsecsPerDay
+	seq := taskSeq.Add(1)
+
+	s.partitionsLock.Lock()
+	var ptws []*partitionWrapper
+	for _, ptw := range s.partitions {
+		if ptw.day < minDay || ptw.day > maxDay {
+			continue // outside time window
+		}
+		ptw.incRef()
+		ptws = append(ptws, ptw)
+	}
+	s.partitionsLock.Unlock()
+
+	for _, ptw := range ptws {
+		ptw.pt.deleteQueue.add(tenantIDs, q, seq)
+		ptw.decRef()
+	}
+
+	return nil
+}
+
+// markDeleteRowsOnParts behaves like MarkRows but only processes data from the supplied parts.
+// allowed map must contain *part keys that can be modified.
+func (s *Storage) markDeleteRowsOnParts(ctx context.Context, tenantIDs []TenantID, qStr string, seq uint64, allowed map[*partition][]*partWrapper) error {
+	q, err := ParseQuery(qStr)
+	if err != nil {
+		return fmt.Errorf("parse query: %w", err)
+	}
+	if len(q.pipes) > 0 {
+		for _, p := range q.pipes {
+			if _, ok := p.(*pipeLimit); !ok {
+				return fmt.Errorf("delete supports only | limit N pipe")
+			}
+		}
+	}
+
+	minTs, maxTs := q.GetFilterTimeRange()
+	for pt, pws := range allowed {
+		kept := pws[:0] // reuse underlying array
+		for _, pw := range pws {
+			if pw.p.ph.MinTimestamp > maxTs || pw.p.ph.MaxTimestamp < minTs {
+				continue // part is fully outside [minTs, maxTs]
+			}
+			kept = append(kept, pw)
+		}
+		if len(kept) == 0 {
+			delete(allowed, pt) // drop partition entirely if nothing left
+		} else {
+			allowed[pt] = kept
+		}
+	}
+
+	// Build mapping of parts to wrappers and log allowed parts
+	pwMap := make(map[*part]*partWrapper)
+	for _, ptw := range allowed {
+		for _, pw := range ptw {
+			pwMap[pw.p] = pw
+		}
+	}
+
+	type partMarkerData struct {
+		part      *partWrapper
+		delMarker *deleteMarker
+	}
+	partMarkers := make(map[string]*partMarkerData)
+
+	var partMarkersLock sync.Mutex
+	writeBlockResult := func(_ uint, br *blockResult) {
+		if br == nil || br.rowsLen == 0 {
+			return
+		}
+		bm := br.bm
+		if bm == nil || bm.isZero() {
+			return
+		}
+		bs := br.bs
+		if bs == nil {
+			return
+		}
+		p := bs.bsw.p
+		if p == nil {
+			return
+		}
+
+		rowsCount := int(bs.bsw.bh.rowsCount)
+		ones := bm.onesCount()
+
+		blockID := bs.bsw.bh.columnsHeaderOffset
+		var rle boolRLE
+		if ones == rowsCount {
+			rle = boolRLE(nil).SetAllOnes(rowsCount)
+		} else {
+			rle = boolRLE(bm.MarshalBoolRLE(nil))
+		}
+
+		if !rle.IsStateful() {
+			return // need at least 2 items in RLE bitmap
+		}
+
+		if bs.bsw.dm != nil {
+			existedRLE, ok := bs.bsw.dm.GetMarkedRows(blockID)
+			if ok && rle.IsSubsetOf(existedRLE) {
+				return // already marked
+			}
+		}
+
+		partPath := p.path
+		partMarkersLock.Lock()
+		m, ok := partMarkers[partPath]
+		if !ok {
+			m = &partMarkerData{
+				part:      pwMap[p],
+				delMarker: &deleteMarker{},
+			}
+			partMarkers[partPath] = m
+		}
+		m.delMarker.AddBlock(blockID, rle)
+		partMarkersLock.Unlock()
+	}
+
+	// Use specialized search that only processes allowed parts
+	if err := s.runQueryWithParts(ctx, tenantIDs, q, allowed, writeBlockResult); err != nil {
+		return fmt.Errorf("find rows: %w", err)
+	}
+
+	for _, pm := range partMarkers {
+		flushDeleteMarker(pm.part, pm.delMarker, seq)
+	}
+
+	// DEBUG:
+	partCount := 0
+	for i := range allowed {
+		partCount += len(allowed[i])
+	}
+	return nil
 }

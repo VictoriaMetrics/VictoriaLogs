@@ -15,8 +15,14 @@ const (
 	messageValuesFilename      = "message_values.bin"
 	messageBloomFilename       = "message_bloom.bin"
 
+	// Filename for per-row marker data (e.g. delete markers).
+	deleteMarkerFilename = "deleted_rows.bin"
+
 	metadataFilename = "metadata.json"
 	partsFilename    = "parts.json"
+
+	// Filename for delete tasks storage at partition level.
+	deleteTasksFilename = "delete_tasks.json"
 
 	indexdbDirname    = "indexdb"
 	datadbDirname     = "datadb"

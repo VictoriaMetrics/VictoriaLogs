@@ -20,7 +20,19 @@ func mustMergeBlockStreams(ph *partHeader, bsw *blockStreamWriter, bsrs []*block
 			break
 		}
 		bsr := bsm.readersHeap[0]
-		bsm.mustWriteBlock(&bsr.blockData)
+
+		// Use columnsHeaderOffset (uint64) as a stable identifier for the block.
+		var currBlockID uint64
+		if len(bsr.blockHeaders) > 0 {
+			idx := bsr.nextBlockIdx - 1
+			if idx >= 0 && idx < len(bsr.blockHeaders) {
+				currBlockID = bsr.blockHeaders[idx].columnsHeaderOffset
+			}
+		}
+		if !bsm.processDeleteMarker(bsr, currBlockID) {
+			bsm.mustWriteBlock(&bsr.blockData)
+		}
+
 		if bsr.NextBlock() {
 			heap.Fix(&bsm.readersHeap, 0)
 		} else {
@@ -291,4 +303,43 @@ func (h *blockStreamReadersHeap) Pop() any {
 	x[len(x)-1] = nil
 	*h = x[:len(x)-1]
 	return bsr
+}
+
+// processDeleteMarker applies delete-markers to the current block in bsr.
+// It returns true if the caller must `continue` the outer merge loop.
+// Depending on the marker entry the function can:
+//  1. Skip the block entirely (full delete);
+//  2. Partially prune rows and re-queue the pruned block so that heap order is preserved.
+//
+// In both cases the original reader is advanced to the next block or popped when exhausted.
+func (bsm *blockStreamMerger) processDeleteMarker(bsr *blockStreamReader, blockID uint64) bool {
+	dm := bsr.deleteMarker
+	if len(dm.blockIDs) == 0 {
+		return false
+	}
+
+	bm, ok := dm.GetMarkedRows(blockID)
+	if !ok {
+		return false
+	}
+
+	rowsTotal := int(bsr.blockData.rowsCount)
+
+	// FULL DELETE ─ drop block completely.
+	if bm.IsOnes(uint64(rowsTotal)) {
+		return true
+	}
+
+	// PARTIAL DELETE ─ keep compressed block, attach new marker because we must
+	// preserve ordering by minTimestamp and avoid heavy rewriting.
+	// Since we are about to write a block that originally followed everything
+	// already flushed, we must make sure nothing is buffered.
+	bsm.mustFlushRows()
+
+	// Write the original block bytes unchanged.
+	bsm.bsw.MustWriteBlockData(&bsr.blockData)
+	newID := bsm.bsw.lastBlockID
+	bsm.bsw.dm.AddBlock(newID, bm)
+
+	return true
 }

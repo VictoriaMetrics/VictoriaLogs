@@ -129,8 +129,7 @@ func (sr *streamReaders) reset() {
 }
 
 func (sr *streamReaders) init(partFormatVersion uint, columnNamesReader, columnIdxsReader, metaindexReader, indexReader,
-	columnsHeaderIndexReader, columnsHeaderReader, timestampsReader filestream.ReadCloser,
-	messageBloomValuesReader, oldBloomValuesReader bloomValuesStreamReader, bloomValuesShards []bloomValuesStreamReader,
+	columnsHeaderIndexReader, columnsHeaderReader, timestampsReader filestream.ReadCloser, messageBloomValuesReader, oldBloomValuesReader bloomValuesStreamReader, bloomValuesShards []bloomValuesStreamReader,
 ) {
 	sr.partFormatVersion = partFormatVersion
 
@@ -235,6 +234,9 @@ type blockStreamReader struct {
 	// ph is the header for the part
 	ph partHeader
 
+	// deleteMarker holds delete marker data for the given part.
+	deleteMarker deleteMarker
+
 	// streamReaders contains data readers in stream mode
 	streamReaders streamReaders
 
@@ -295,6 +297,7 @@ func (bsr *blockStreamReader) reset() {
 	bsr.globalRowsCount = 0
 	bsr.globalBlocksCount = 0
 
+	bsr.deleteMarker = deleteMarker{}
 	bsr.sidLast.reset()
 	bsr.minTimestampLast = 0
 }
@@ -332,6 +335,11 @@ func (bsr *blockStreamReader) MustInitFromInmemoryPart(mp *inmemoryPart) {
 
 	// Read metaindex data
 	bsr.indexBlockHeaders = mustReadIndexBlockHeaders(bsr.indexBlockHeaders[:0], &bsr.streamReaders.metaindexReader)
+
+	// Initialize delete marker
+	if len(mp.deleteMarker.blockIDs) > 0 {
+		bsr.deleteMarker = mp.deleteMarker
+	}
 }
 
 // MustInitFromFilePart initializes bsr from file part at the given path.
@@ -346,6 +354,7 @@ func (bsr *blockStreamReader) MustInitFromFilePart(path string) {
 
 	columnNamesPath := filepath.Join(path, columnNamesFilename)
 	columnIdxsPath := filepath.Join(path, columnIdxsFilename)
+	deleteMarkersPath := filepath.Join(path, deleteMarkerFilename)
 	metaindexPath := filepath.Join(path, metaindexFilename)
 	indexPath := filepath.Join(path, indexFilename)
 	columnsHeaderIndexPath := filepath.Join(path, columnsHeaderIndexFilename)
@@ -372,6 +381,14 @@ func (bsr *blockStreamReader) MustInitFromFilePart(path string) {
 
 	var indexReader filestream.ReadCloser
 	pfo.Add(indexPath, &indexReader, nocache)
+
+	// Open marker readers - check if files exist first
+	var deleteMarkerReader filestream.ReadCloser
+	var hasDeleteMarker bool
+	if fs.IsPathExist(deleteMarkersPath) {
+		hasDeleteMarker = true
+		pfo.Add(deleteMarkersPath, &deleteMarkerReader, nocache)
+	}
 
 	var columnsHeaderIndexReader filestream.ReadCloser
 	if bsr.ph.FormatVersion >= 1 {
@@ -420,6 +437,12 @@ func (bsr *blockStreamReader) MustInitFromFilePart(path string) {
 
 	// Read metaindex data
 	bsr.indexBlockHeaders = mustReadIndexBlockHeaders(bsr.indexBlockHeaders[:0], &bsr.streamReaders.metaindexReader)
+
+	// Read delete marker if available
+	if hasDeleteMarker {
+		bsr.deleteMarker = mustReadDeleteMarkerData(deleteMarkerReader)
+		deleteMarkerReader.MustClose()
+	}
 }
 
 // NextBlock reads the next block from bsr and puts it into bsr.blockData.

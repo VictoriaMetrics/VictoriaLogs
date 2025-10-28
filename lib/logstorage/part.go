@@ -6,6 +6,8 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 
+	"sync/atomic"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/filestream"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
@@ -15,6 +17,9 @@ import (
 type part struct {
 	// pt is the partition the part belongs to
 	pt *partition
+
+	// deleteMarker holds delete marker data. May be nil if not present.
+	deleteMarker atomic.Pointer[deleteMarker]
 
 	// path is the path to the part on disk.
 	//
@@ -100,6 +105,8 @@ func mustOpenInmemoryPart(pt *partition, mp *inmemoryPart) *part {
 		},
 	}
 
+	p.deleteMarker.Store(&mp.deleteMarker)
+
 	return &p
 }
 
@@ -111,6 +118,7 @@ func mustOpenFilePart(pt *partition, path string) *part {
 
 	columnNamesPath := filepath.Join(path, columnNamesFilename)
 	columnIdxsPath := filepath.Join(path, columnIdxsFilename)
+	deleteMarkerPath := filepath.Join(path, deleteMarkerFilename)
 	metaindexPath := filepath.Join(path, metaindexFilename)
 	indexPath := filepath.Join(path, indexFilename)
 	columnsHeaderIndexPath := filepath.Join(path, columnsHeaderIndexFilename)
@@ -168,6 +176,15 @@ func mustOpenFilePart(pt *partition, path string) *part {
 			valuesPath := getValuesFilePath(path, uint64(i))
 			shard.values = fs.MustOpenReaderAt(valuesPath)
 		}
+	}
+
+	// Load marker data
+	p.deleteMarker.Store(nil)
+	if fs.IsPathExist(deleteMarkerPath) {
+		deleteMarkerReader := filestream.MustOpen(deleteMarkerPath, true)
+		deleteMarker := mustReadDeleteMarkerData(deleteMarkerReader)
+		p.deleteMarker.Store(&deleteMarker)
+		deleteMarkerReader.MustClose()
 	}
 
 	return &p
