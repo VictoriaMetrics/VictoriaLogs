@@ -189,7 +189,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, task deleteTask, laggin
 		allowed[pw.p.pt] = append(allowed[pw.p.pt], pw)
 	}
 
-	err := s.markDeleteRowsOnParts(ctx, task.TenantIDs, task.Query, task.Seq, allowed)
+	err := s.markDeleteRowsOnParts(ctx, task.TenantIDs, task.Query, task.Timestamp, task.Seq, allowed)
 	if err != nil {
 		return fmt.Errorf("failed to mark delete rows on parts: %w", err)
 	}

@@ -21,6 +21,7 @@ const (
 type deleteTask struct {
 	TenantIDs   []TenantID       `json:"tenantIDs,omitempty"`
 	Query       string           `json:"query"`
+	Timestamp   int64            `json:"timestamp,omitempty"`
 	Seq         uint64           `json:"seq,omitempty"`
 	Status      deleteTaskStatus `json:"status,omitempty"`
 	CreatedTime int64            `json:"createdTime,omitempty"`
@@ -95,6 +96,7 @@ func (dq *deleteTaskQueue) add(tenantIDs []TenantID, q *Query, seq uint64) uint6
 		Seq:         seq,
 		TenantIDs:   tenantIDs,
 		Query:       q.String(),
+		Timestamp:   q.GetTimestamp(),
 		Status:      deleteTaskPending,
 		CreatedTime: time.Now().UnixNano(),
 	}

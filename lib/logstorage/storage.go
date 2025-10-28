@@ -1130,8 +1130,14 @@ func (s *Storage) DeleteRows(ctx context.Context, tenantIDs []TenantID, q *Query
 
 // markDeleteRowsOnParts behaves like MarkRows but only processes data from the supplied parts.
 // allowed map must contain *part keys that can be modified.
-func (s *Storage) markDeleteRowsOnParts(ctx context.Context, tenantIDs []TenantID, qStr string, seq uint64, allowed map[*partition][]*partWrapper) error {
-	q, err := ParseQuery(qStr)
+func (s *Storage) markDeleteRowsOnParts(ctx context.Context, tenantIDs []TenantID, qStr string, qTimestamp int64, seq uint64, allowed map[*partition][]*partWrapper) error {
+	var q *Query
+	var err error
+	if qTimestamp != 0 {
+		q, err = ParseQueryAtTimestamp(qStr, qTimestamp)
+	} else {
+		q, err = ParseQuery(qStr)
+	}
 	if err != nil {
 		return fmt.Errorf("parse query: %w", err)
 	}
