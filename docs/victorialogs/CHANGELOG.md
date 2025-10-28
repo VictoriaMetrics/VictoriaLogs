@@ -26,6 +26,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * BUGFIX: [pattern_match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter): fix non-progress loop in `pattern_match(...)` filter when the pattern starts with a literal separator that occurs multiple times in the target string and the rest of the pattern doesn't match. Previously this could make queries spin indefinitely. Now the matcher advances correctly and returns no match as expected. See [#759](https://github.com/VictoriaMetrics/VictoriaLogs/pull/759).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix page not resetting after changing the query in the Group View tab. See [#753](https://github.com/VictoriaMetrics/VictoriaLogs/issues/753).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix log rendering with `markdown` enabled and [`collapse_nums` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe). See [#647](https://github.com/VictoriaMetrics/VictoriaLogs/issues/647).
 
 ## [v1.36.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.1)
 
