@@ -21,7 +21,7 @@ before you start working with VictoriaLogs.
 
 ## How to install and run VictoriaLogs
 
-There are the following options exist:
+The following options are available:
 
 - [To run pre-built binaries](https://docs.victoriametrics.com/victorialogs/quickstart/#pre-built-binaries)
 - [To run Docker image](https://docs.victoriametrics.com/victorialogs/quickstart/#docker-image)
@@ -31,7 +31,7 @@ There are the following options exist:
 ### Pre-built binaries
 
 Pre-built binaries for VictoriaLogs are available at the [releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases/) page.
-Just download archive for the needed Operating system and architecture, unpack it and run `victoria-logs-prod` from it.
+Just download the archive for the needed operating system and architecture, unpack it, and run `victoria-logs-prod` from it.
 
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
@@ -43,8 +43,8 @@ tar xzf victoria-logs-linux-amd64-v1.36.1.tar.gz
 
 VictoriaLogs is ready for [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 and [querying](https://docs.victoriametrics.com/victorialogs/querying/) at the TCP port `9428` now!
-It has no any external dependencies, so it may run in various environments without additional setup and configuration.
-VictoriaLogs automatically adapts to the available CPU and RAM resources. It also automatically setups and creates
+It has no external dependencies, so it can run in various environments without additional setup or configuration.
+VictoriaLogs automatically adapts to the available CPU and RAM resources. It also automatically sets up and creates
 the needed indexes during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 
 See also:
@@ -71,28 +71,28 @@ See also:
 
 ### Helm charts
 
-You can run VictoriaLogs in Kubernetes environment
+You can run VictoriaLogs in a Kubernetes environment
 with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) helm charts.
+or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) Helm charts.
 
 ### Building from source code
 
-Follow the following steps in order to build VictoriaLogs from source code:
+Follow these steps to build VictoriaLogs from source code:
 
-- Checkout VictoriaLogs source code:
+- Check out the VictoriaLogs source code:
 
   ```sh
   git clone https://github.com/VictoriaMetrics/VictoriaLogs
   cd VictoriaLogs
   ```
 
-- Checkout to the needed commit if needed:
+- Check out a specific commit if needed:
 
   ```sh
   git checkout <commit-hash-here>
   ```
 
-- Build VictoriaLogs (it needs Go installed on your computer. See [how to install Go](https://golang.org/doc/install)):
+- Build VictoriaLogs (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
 
   ```sh
   make victoria-logs
@@ -106,18 +106,18 @@ Follow the following steps in order to build VictoriaLogs from source code:
 
 VictoriaLogs is ready for [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 and [querying](https://docs.victoriametrics.com/victorialogs/querying/) at the TCP port `9428` now!
-It has no any external dependencies, so it may run in various environments without additional setup and configuration.
-VictoriaLogs automatically adapts to the available CPU and RAM resources. It also automatically setups and creates
+It has no external dependencies, so it can run in various environments without additional setup or configuration.
+VictoriaLogs automatically adapts to the available CPU and RAM resources. It also automatically sets up and creates
 the needed indexes during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 
-An alternative approach is to build victoria-logs inside Docker builder container. This approach doesn't require Go installation,
-but it requires Docker installed on your computer. See [how to install Docker](https://docs.docker.com/engine/install/):
+An alternative approach is to build VictoriaLogs inside a Docker builder container. This approach doesn't require Go to be installed,
+but it does require Docker on your computer. See [how to install Docker](https://docs.docker.com/engine/install/):
 
 ```sh
 make victoria-logs-prod
 ```
 
-This will build `victoria-logs-prod` executable inside the `bin` folder.
+This will build the `victoria-logs-prod` executable inside the `bin` folder.
 
 See also:
 
@@ -127,8 +127,8 @@ See also:
 
 ## How to configure VictoriaLogs
 
-VictoriaLogs is configured via command-line flags. All the command-line flags have sane defaults,
-so there is no need in tuning them in general case. VictoriaLogs runs smoothly in most environments
+VictoriaLogs is configured via command-line flags. All command-line flags have sane defaults,
+so there is generally no need to tune them. VictoriaLogs runs smoothly in most environments
 without additional configuration.
 
 Pass `-help` to VictoriaLogs in order to see the list of supported command-line flags with their description and default values:
@@ -137,15 +137,15 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
 /path/to/victoria-logs -help
 ```
 
-VictoriaLogs stores the ingested data to the `victoria-logs-data` directory by default. The directory can be changed
-via `-storageDataPath` command-line flag. See [these docs](https://docs.victoriametrics.com/victorialogs/#storage) for details.
+VictoriaLogs stores ingested data in the `victoria-logs-data` directory by default. The directory can be changed
+via `-storageDataPath` command-line flag. See [Storage](https://docs.victoriametrics.com/victorialogs/#storage) for details.
 
 By default, VictoriaLogs stores [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/) with timestamps
-in the time range `[now-7d, now]`, while dropping logs outside the given time range.
-E.g. it uses the retention of 7 days. Read [these docs](https://docs.victoriametrics.com/victorialogs/#retention) on how to control the retention
-for the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs.
+in the time range `[now-7d, now]` and drops logs outside this time range
+(i.e., a retention of 7 days). See [Retention](https://docs.victoriametrics.com/victorialogs/#retention) for details on controlling retention
+for [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs.
 
-It is recommended setting up monitoring of VictoriaLogs according to [these docs](https://docs.victoriametrics.com/victorialogs/#monitoring).
+We recommend setting up monitoring of VictoriaLogs according to [Monitoring](https://docs.victoriametrics.com/victorialogs/#monitoring).
 
 See also:
 
@@ -154,10 +154,10 @@ See also:
 
 ## Docker demos
 
-Docker-compose demos for single-node and cluster version of VictoriaLogs that include logs collection,
-monitoring, alerting and Grafana are available [here](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker#readme).
+Docker Compose demos for the single-node and cluster versions of VictoriaLogs that include log collection,
+monitoring, alerting, and Grafana are available [here](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker#readme).
 
-Docker-compose demos that integrate VictoriaLogs and various log collectors:
+Docker Compose demos that integrate VictoriaLogs and various log collectors:
 
 - [Filebeat demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/filebeat)
 - [Fluentbit demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/fluentbit)
@@ -165,6 +165,4 @@ Docker-compose demos that integrate VictoriaLogs and various log collectors:
 - [Vector demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/vector)
 - [Promtail demo](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/promtail)
 
-You can use [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/)
-or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) helm charts as a demo for running Vector
-in Kubernetes with VictoriaLogs.
+You can use the [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/) or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) Helm charts to run the Vector demo in Kubernetes.
