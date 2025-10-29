@@ -283,7 +283,7 @@ The `/internal/force_flush` endpoint can be protected from unauthorized access v
 The setup consists of the following components:
 
 - **Log Collector**: The log collector should support sending the same collected data to multiple destinations (aka replication).
-It is recommended to use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/). Otherp popular log collectors also provide this ability:
+It is recommended to use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/). Other popular log collectors also provide this ability:
 - [How to setup replication at FluentBit](https://docs.fluentbit.io/manual/concepts/data-pipeline/router)
 - [How to setup replication at Logstash](https://www.elastic.co/guide/en/logstash/current/output-plugins.html)
 - [How to setup replication at Fluentd](https://docs.fluentd.org/output/copy)
