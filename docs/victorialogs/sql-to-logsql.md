@@ -13,6 +13,9 @@ tags:
 This is a tutorial for the migration from SQL to [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
 It is expected you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
+See also [this playground, which automatically converts SQL queries to LogsQL queries](https://play-sql.victoriametrics.com/).
+The source code of this project is available [here](https://github.com/VictoriaMetrics/sql-to-logsql/).
+
 ## data model
 
 SQL is usually used for querying relational tables. Every such table contains a pre-defined set of columns with pre-defined types.

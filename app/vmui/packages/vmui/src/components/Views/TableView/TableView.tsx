@@ -1,5 +1,4 @@
-import { FC, memo, useMemo, useCallback, useState } from "preact/compat";
-import DownloadLogsButton from "../../../pages/QueryPage/DownloadLogsButton/DownloadLogsButton";
+import { FC, memo, useMemo, useState } from "preact/compat";
 import { createPortal } from "preact/compat";
 import "./style.scss";
 import { ViewProps } from "../../../pages/QueryPage/QueryPageBody/types";
@@ -32,8 +31,6 @@ const TableView: FC<ViewProps> = ({ data, settingsRef }) => {
     setSearchParamsFromKeys({ rows_per_page: limit });
   };
 
-  const getLogs = useCallback(() => data, [data]);
-
   const renderSettings = () => {
     if (!settingsRef.current) return null;
 
@@ -44,7 +41,6 @@ const TableView: FC<ViewProps> = ({ data, settingsRef }) => {
           onChange={handleSetRowsPerPage}
         />
         <div className="vm-table-view__settings-buttons">
-          {data.length > 0 && <DownloadLogsButton getLogs={getLogs} />}
           <TableSettings
             columns={columns}
             selectedColumns={displayColumns}

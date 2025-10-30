@@ -3,7 +3,7 @@
 .vm-alert {
   position: relative;
   display: grid;
-  grid-template-columns: 20px 1fr;
+  grid-template-columns: 30px 1fr;
   align-items: center;
   gap: $padding-small;
   padding: $padding-global;
@@ -47,7 +47,9 @@
     align-items: center;
     justify-content: center;
     align-self: flex-start;
-    min-height: 24px;
+    min-height: 30px;
+    padding: 4px;
+    aspect-ratio: 1;
   }
 
   &__content {

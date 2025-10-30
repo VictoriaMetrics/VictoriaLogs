@@ -1086,12 +1086,12 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, nil)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		processBlock := func(_ uint, _ *blockResult) {
 			panic(fmt.Errorf("unexpected match"))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("missing-tenant-bigger-than-existing", func(_ *testing.T) {
 		tenantID := TenantID{
@@ -1101,12 +1101,12 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, nil)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		processBlock := func(_ uint, _ *blockResult) {
 			panic(fmt.Errorf("unexpected match"))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("missing-tenant-middle", func(_ *testing.T) {
 		tenantID := TenantID{
@@ -1116,12 +1116,12 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, nil)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		processBlock := func(_ uint, _ *blockResult) {
 			panic(fmt.Errorf("unexpected match"))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("matching-tenant-id", func(t *testing.T) {
 		for i := 0; i < tenantsCount; i++ {
@@ -1132,13 +1132,13 @@ func TestStorageSearch(t *testing.T) {
 			minTimestamp := baseTimestamp
 			maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 			f := getBaseFilter(minTimestamp, maxTimestamp, nil)
-			so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+			sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 			qs := &QueryStats{}
 			var rowsCountTotal atomic.Uint32
 			processBlock := func(_ uint, br *blockResult) {
 				rowsCountTotal.Add(uint32(br.rowsLen))
 			}
-			s.searchParallel(workersCount, so, qs, nil, processBlock)
+			s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 			expectedRowsCount := streamsPerTenant * blocksPerStream * rowsPerBlock
 			if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1150,13 +1150,13 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, nil)
-		so := newTestGenericSearchOptions(allTenantIDs, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions(allTenantIDs, f, []string{"_msg"})
 		qs := &QueryStats{}
 		var rowsCountTotal atomic.Uint32
 		processBlock := func(_ uint, br *blockResult) {
 			rowsCountTotal.Add(uint32(br.rowsLen))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 		expectedRowsCount := tenantsCount * streamsPerTenant * blocksPerStream * rowsPerBlock
 		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1168,12 +1168,12 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-		so := newTestGenericSearchOptions(allTenantIDs, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions(allTenantIDs, f, []string{"_msg"})
 		qs := &QueryStats{}
 		processBlock := func(_ uint, _ *blockResult) {
 			panic(fmt.Errorf("unexpected match"))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("matching-stream-id", func(t *testing.T) {
 		for i := 0; i < streamsPerTenant; i++ {
@@ -1185,13 +1185,13 @@ func TestStorageSearch(t *testing.T) {
 			minTimestamp := baseTimestamp
 			maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 			f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-			so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+			sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 			qs := &QueryStats{}
 			var rowsCountTotal atomic.Uint32
 			processBlock := func(_ uint, br *blockResult) {
 				rowsCountTotal.Add(uint32(br.rowsLen))
 			}
-			s.searchParallel(workersCount, so, qs, nil, processBlock)
+			s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 			expectedRowsCount := blocksPerStream * rowsPerBlock
 			if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1208,13 +1208,13 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		var rowsCountTotal atomic.Uint32
 		processBlock := func(_ uint, br *blockResult) {
 			rowsCountTotal.Add(uint32(br.rowsLen))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 		expectedRowsCount := streamsPerTenant * blocksPerStream * rowsPerBlock
 		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1239,13 +1239,13 @@ func TestStorageSearch(t *testing.T) {
 				},
 			},
 		}
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		var rowsCountTotal atomic.Uint32
 		processBlock := func(_ uint, br *blockResult) {
 			rowsCountTotal.Add(uint32(br.rowsLen))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 		expectedRowsCount := streamsPerTenant * blocksPerStream * 2
 		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1261,13 +1261,13 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp + (rowsPerBlock-2)*1e9
 		maxTimestamp := baseTimestamp + (rowsPerBlock-1)*1e9 - 1
 		f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		var rowsCountTotal atomic.Uint32
 		processBlock := func(_ uint, br *blockResult) {
 			rowsCountTotal.Add(uint32(br.rowsLen))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 
 		expectedRowsCount := blocksPerStream
 		if n := rowsCountTotal.Load(); n != uint32(expectedRowsCount) {
@@ -1283,12 +1283,12 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp + (rowsPerBlock+1)*1e9
 		maxTimestamp := baseTimestamp + (rowsPerBlock+2)*1e9
 		f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-		so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
+		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		processBlock := func(_ uint, _ *blockResult) {
 			panic(fmt.Errorf("unexpected match"))
 		}
-		s.searchParallel(workersCount, so, qs, nil, processBlock)
+		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 
 	s.MustClose()
@@ -1317,11 +1317,11 @@ func TestParseStreamFieldsSuccess(t *testing.T) {
 	f(`{a="a=,b\"c}",b="d"}`, `{"a":"a=,b\"c}","b":"d"}`)
 }
 
-func newTestGenericSearchOptions(tenantIDs []TenantID, f filter, neededColumns []string) *genericSearchOptions {
+func newTestStorageSearchOptions(tenantIDs []TenantID, f filter, neededColumns []string) *storageSearchOptions {
 	var pf prefixfilter.Filter
 	pf.AddAllowFilters(neededColumns)
 
-	return &genericSearchOptions{
+	return &storageSearchOptions{
 		tenantIDs:    tenantIDs,
 		minTimestamp: math.MinInt64,
 		maxTimestamp: math.MaxInt64,

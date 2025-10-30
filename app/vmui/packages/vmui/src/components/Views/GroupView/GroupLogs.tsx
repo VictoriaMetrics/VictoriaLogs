@@ -18,7 +18,6 @@ import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { usePaginateGroups } from "../../../pages/QueryPage/hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
-import DownloadLogsButton from "../../../pages/QueryPage/DownloadLogsButton/DownloadLogsButton";
 
 interface Props {
   logs: Logs[];
@@ -86,8 +85,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     setPage(newPage);
     window.scrollTo({ top: 0 });
   };
-
-  const getLogs = useCallback(() => logs, [logs]);
 
   useEffect(() => {
     setExpandGroups(prev => {
@@ -158,7 +155,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               ariaLabel={expandAll ? "Collapse All" : "Expand All"}
             />
           </Tooltip>
-          <DownloadLogsButton getLogs={getLogs}/>
           <GroupLogsConfigurators logs={logs}/>
         </div>
       ), settingsRef.current)}

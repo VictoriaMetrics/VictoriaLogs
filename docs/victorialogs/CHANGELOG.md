@@ -21,9 +21,14 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 * SECURITY: upgrade Go builder from Go1.25.2 to Go1.25.3. See [the list of issues addressed in Go1.25.3](https://github.com/golang/go/issues?q=milestone%3AGo1.25.3%20label%3ACherryPickApproved).
 * SECURITY: upgrade base docker image (Alpine) from 3.22.1 to 3.22.2. See [Alpine 3.22.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.19.9-3.20.8-3.21.5-3.22.2-released.html).
 
+* FEATURE: add an ability to limit the age of the accepted logs via `-maxBackfillAge` command-line flag. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#backfilling).
+* FEATURE: add an ability to temporarily enable logging of newly ingested [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) during the given number of seconds. See [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
+* FEATURE: add `-fs.maxConcurrency` command-line flag for tuning the number of concurrent operations with files. See [#774](https://github.com/VictoriaMetrics/VictoriaLogs/issues/774).
+* FEATURE: add linux/s390x artifact to releases. See [#646](https://github.com/VictoriaMetrics/VictoriaLogs/issues/646).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add Overview page for quick log characteristic inspection. See [#516](https://github.com/VictoriaMetrics/VictoriaLogs/issues/516).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allows grouping hits graph by any field with configurable top-N. See [#110](https://github.com/VictoriaMetrics/VictoriaLogs/issues/110).
-* FEATURE: add linux/s390x artifact to releases. See [#646](https://github.com/VictoriaMetrics/VictoriaLogs/issues/646).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an option to download all logs without limit in `.jsonl` format. See [#627](https://github.com/VictoriaMetrics/VictoriaLogs/issues/627).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allows opening time zone settings from the date/time picker.
 
 * BUGFIX: [pattern_match filter](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter): fix non-progress loop in `pattern_match(...)` filter when the pattern starts with a literal separator that occurs multiple times in the target string and the rest of the pattern doesn't match. Previously this could make queries spin indefinitely. Now the matcher advances correctly and returns no match as expected. See [#759](https://github.com/VictoriaMetrics/VictoriaLogs/pull/759).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix page not resetting after changing the query in the Group View tab. See [#753](https://github.com/VictoriaMetrics/VictoriaLogs/issues/753).

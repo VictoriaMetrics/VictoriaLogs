@@ -144,6 +144,26 @@ func (idb *indexdb) updateStats(d *IndexdbStats) {
 	d.IndexdbInmemoryItemsMerged += tm.InmemoryItemsMerged
 }
 
+func (idb *indexdb) appendStreamString(dst []byte, sid *streamID) []byte {
+	dstLen := len(dst)
+	dst = idb.appendStreamTagsByStreamID(dst, sid)
+	if len(dst) == dstLen {
+		// Couldn't find stream tags by sid. This may be the case when the corresponding log stream
+		// was recently registered and its tags aren't visible to search yet.
+		// The stream tags must become visible in a few seconds.
+		// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6042
+		return dst
+	}
+
+	st := GetStreamTags()
+	streamTagsCanonical := bytesutil.ToUnsafeString(dst[dstLen:])
+	mustUnmarshalStreamTags(st, streamTagsCanonical)
+	dst = st.marshalString(dst[:dstLen])
+	PutStreamTags(st)
+
+	return dst
+}
+
 func (idb *indexdb) appendStreamTagsByStreamID(dst []byte, sid *streamID) []byte {
 	is := idb.getIndexSearch()
 	defer idb.putIndexSearch(is)
@@ -565,7 +585,7 @@ func (idb *indexdb) marshalStreamFilterCacheKey(dst []byte, tenantIDs []TenantID
 	dst = encoding.MarshalBytes(dst, bytesutil.ToUnsafeBytes(idb.partitionName))
 	dst = encoding.MarshalVarUint64(dst, uint64(len(tenantIDs)))
 	for i := range tenantIDs {
-		dst = tenantIDs[i].marshal(dst)
+		dst = tenantIDs[i].Marshal(dst)
 	}
 	dst = sf.marshalForCacheKey(dst)
 	return dst
@@ -966,7 +986,7 @@ const commonPrefixLen = 1 + 8
 
 func marshalCommonPrefix(dst []byte, nsPrefix byte, tenantID TenantID) []byte {
 	dst = append(dst, nsPrefix)
-	dst = tenantID.marshal(dst)
+	dst = tenantID.Marshal(dst)
 	return dst
 }
 
@@ -976,7 +996,7 @@ func unmarshalCommonPrefix(dstTenantID *TenantID, src []byte) ([]byte, byte, err
 	}
 	prefix := src[0]
 	src = src[1:]
-	tail, err := dstTenantID.unmarshal(src)
+	tail, err := dstTenantID.Unmarshal(src)
 	if err != nil {
 		return nil, 0, fmt.Errorf("cannot unmarshal tenantID: %w", err)
 	}

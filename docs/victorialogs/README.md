@@ -189,6 +189,13 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
+## Backfilling
+
+VictoriaLogs accepts logs with timestamps in the time range `[now-retentionPeriod ... now+futureRetention]`,
+where `retentionPeriod` is the value for the `-retentionPeriod` command-line flag and `futureRetention` is the value for the `-futureRetention` command-line flag.
+Sometimes it is needed to reject logs older than the given age. This can be achieved by passing `-maxBackfillAge=d` command-line flag to VictoriaLogs,
+where `d` is the maximum age of logs to be accepted. Older logs are rejected and a sample of these logs is put into VictoriaLogs output logs, so they could be investigated.
+
 ## Storage
 
 VictoriaLogs stores all its data in a single directory - `victoria-logs-data`. The path to the directory can be changed via `-storageDataPath` command-line flag.
@@ -247,6 +254,20 @@ This scheme can be implemented with the following simple cron job, which must ru
 
 All the VictoriaLogs instances with NVMe and HDD disks can be queried simultaneously via `vlselect` component of [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/),
 since [single-node VictoriaLogs instances can be a part of cluster](https://docs.victoriametrics.com/victorialogs/cluster/#single-node-and-cluster-mode-duality).
+
+## Logging new streams
+
+VictoriaLogs can log new [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+This is useful during the debugging of high cardinality or churn rate issues for the ingested log streams.
+This functionality can be enabled either on a permanent basis via `-logNewStreams` command-line flag or temporarily for the given number of seconds
+by sending HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
+of new log streams for 10 seconds:
+
+```
+curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
+```
+
+See also [data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
 ## Forced merge
 
@@ -395,6 +416,7 @@ or similar authorization proxies. See [Security and Load balancing docs](https:/
 
 It is recommended protecting internal HTTP endpoints from unauthorized access:
 
+- [`/internal/log_new_streams`](https://docs.victoriametrics.com/victorialogs/#logging-new-streams) - via `-logNewStreamsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_flush`](https://docs.victoriametrics.com/victorialogs/#forced-flush) - via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_merge`](https://docs.victoriametrics.com/victorialogs/#forced-merge) - via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
@@ -522,6 +544,8 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Flag value can be read from the given http/https url when using -forceMergeAuthKey=http://host/path or -forceMergeAuthKey=https://host/path
   -fs.disableMmap
         Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
+  -fs.maxConcurrency int
+        The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 256)
   -futureRetention value
         Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
         The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
@@ -617,6 +641,10 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/ ; see also -logNewStreams
   -logNewStreams
         Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields ; see also -logIngestedRows
+  -logNewStreamsAuthKey value
+        authKey, which must be passed in query string to /internal/log_new_streams . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#logging-new-streams
+        Flag value can be read from the given file when using -logNewStreamsAuthKey=file:///abs/path/to/file or -logNewStreamsAuthKey=file://./relative/path/to/file.
+        Flag value can be read from the given http/https url when using -logNewStreamsAuthKey=http://host/path or -logNewStreamsAuthKey=https://host/path
   -loggerDisableTimestamps
         Whether to disable writing timestamps in logs
   -loggerErrorsPerSecondLimit int
@@ -640,6 +668,9 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
   -loki.maxRequestSize size
         The maximum size in bytes of a single Loki request
         Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -maxBackfillAge value
+        Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#backfilling
+        The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 0)
   -maxConcurrentInserts int
         The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 32)
   -memory.allowedBytes size
@@ -702,10 +733,15 @@ Pass `-help` to VictoriaLogs in order to see the list of supported command-line 
         The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 16)
   -search.maxQueryDuration duration
         The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
-  -search.maxQueryTimeRange duration
+  -search.maxQueryTimeRange value
         The maximum time range, which can be set in the query sent to querying APIs. Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits
+        The following unit suffixes are required: s (second), m (minute), h (hour), d (day), w (week), y (year). Bare numbers without units are not allowed (except 0) (default 0)
   -search.maxQueueDuration duration
         The maximum time the search request waits for execution when -search.maxConcurrentRequests limit is reached; see also -search.maxQueryDuration (default 10s)
+  -secret.flags array
+        Comma-separated list of flag names with secret values. Values for these flags are hidden in logs and on /metrics page
+        Supports an array of values separated by comma or specified via multiple flags.
+        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -select.disable
         Whether to disable /select/* HTTP endpoints
   -select.disableCompression
