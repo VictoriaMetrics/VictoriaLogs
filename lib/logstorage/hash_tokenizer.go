@@ -201,7 +201,7 @@ func (t *hashTokenizer) tokenizeString(dst []uint64, s string) []uint64 {
 		for i < len(s) {
 			c := *(*byte)(unsafe.Add(ptr, uintptr(i)))
 			unicodeFlag := (c & 0x80) >> 7
-			curUnicodeFlag |= unicodeFlag
+			curUnicodeFlag |= unicodeFlag // Unicode strings may begin with a non-Unicode character.
 			found := lookupTables[curUnicodeFlag][c]
 			if found != 0 {
 				i++
