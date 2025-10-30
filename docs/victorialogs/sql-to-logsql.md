@@ -13,7 +13,11 @@ tags:
 This is a tutorial for the migration from SQL to [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
 It is expected that you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
+
 ## Data Model
+
+See also [this playground, which automatically converts SQL queries to LogsQL queries](https://play-sql.victoriametrics.com/).
+The source code of this project is available [here](https://github.com/VictoriaMetrics/sql-to-logsql/).
 
 SQL is usually used for querying relational tables. Every such table contains a predefined set of columns with predefined types.
 LogsQL is used for querying logs. Logs are stored in [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).

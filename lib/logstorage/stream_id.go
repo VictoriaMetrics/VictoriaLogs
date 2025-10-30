@@ -68,7 +68,7 @@ func (sid *streamID) equal(a *streamID) bool {
 
 // marshal appends the marshaled sid to dst and returns the result
 func (sid *streamID) marshal(dst []byte) []byte {
-	dst = sid.tenantID.marshal(dst)
+	dst = sid.tenantID.Marshal(dst)
 	dst = sid.id.marshal(dst)
 	return dst
 }
@@ -76,7 +76,7 @@ func (sid *streamID) marshal(dst []byte) []byte {
 // unmarshal unmarshals sid from src and returns the tail from src.
 func (sid *streamID) unmarshal(src []byte) ([]byte, error) {
 	srcOrig := src
-	tail, err := sid.tenantID.unmarshal(src)
+	tail, err := sid.tenantID.Unmarshal(src)
 	if err != nil {
 		return srcOrig, err
 	}

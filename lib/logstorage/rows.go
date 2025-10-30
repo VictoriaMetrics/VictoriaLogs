@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/valyala/quicktemplate"
-
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
+	"github.com/valyala/quicktemplate"
 )
 
 // Field is a single field for the log entry.
@@ -213,11 +212,8 @@ func (rs *rows) reset() {
 
 	rs.timestamps = rs.timestamps[:0]
 
-	rows := rs.rows
-	for i := range rows {
-		rows[i] = nil
-	}
-	rs.rows = rows[:0]
+	clear(rs.rows)
+	rs.rows = rs.rows[:0]
 }
 
 // appendRows appends rows with the given timestamps to rs.

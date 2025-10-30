@@ -280,7 +280,7 @@ VictoriaLogs works perfectly with such fields unless they are associated with [l
 VictoriaLogs exposes `vl_streams_created_total` [metric](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total),
 which shows the number of created streams since the last VictoriaLogs restart. If this metric grows at a rapid rate
 over a long period of time, then there is a high chance of high-cardinality issues mentioned above.
-VictoriaLogs can log all the newly registered streams when `-logNewStreams` command-line flag is passed to it.
+VictoriaLogs can log all the newly registered streams - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
 This can help narrow down and eliminate high-cardinality fields from [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
 ### Other fields

@@ -13,6 +13,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/metrics"
@@ -36,6 +37,8 @@ var (
 	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent")
 	futureRetention     = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
+	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
+		"see https://docs.victoriametrics.com/victorialogs/#backfilling")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
 	inmemoryDataFlushInterval = flag.Duration("inmemoryDataFlushInterval", 5*time.Second, "The interval for guaranteed saving of in-memory data to disk. "+
@@ -49,6 +52,8 @@ var (
 	minFreeDiskSpaceBytes = flagutil.NewBytes("storage.minFreeDiskSpaceBytes", 10e6, "The minimum free disk space at -storageDataPath after which "+
 		"the storage stops accepting new data")
 
+	logNewStreamsAuthKey = flagutil.NewPassword("logNewStreamsAuthKey", "authKey, which must be passed in query string to /internal/log_new_streams . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#logging-new-streams")
 	forceMergeAuthKey = flagutil.NewPassword("forceMergeAuthKey", "authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#forced-merge")
 	forceFlushAuthKey = flagutil.NewPassword("forceFlushAuthKey", "authKey, which must be passed in query string to /internal/force_flush . It overrides -httpAuth.* . "+
@@ -127,6 +132,7 @@ func initLocalStorage() {
 		MaxDiskUsagePercent:    *maxDiskUsagePercent,
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
+		MaxBackfillAge:         maxBackfillAge.Duration(),
 		LogNewStreams:          *logNewStreams,
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,
@@ -232,6 +238,8 @@ func Stop() {
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := r.URL.Path
 	switch path {
+	case "/internal/log_new_streams":
+		return processLogNewStreams(w, r)
 	case "/internal/force_merge":
 		return processForceMerge(w, r)
 	case "/internal/force_flush":
@@ -248,6 +256,29 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotList(w, r)
 	}
 	return false
+}
+
+func processLogNewStreams(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// logging of new streams is available only at local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, logNewStreamsAuthKey) {
+		return true
+	}
+
+	seconds, err := httputil.GetInt(r, "seconds")
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot parse 'seconds' query arg: %s", err)
+		return true
+	}
+	if seconds <= 0 {
+		seconds = 10
+	}
+
+	localStorage.EnableLogNewStreams(seconds)
+	return true
 }
 
 func processForceMerge(w http.ResponseWriter, r *http.Request) bool {

@@ -40,6 +40,12 @@
       gap: $padding-small;
       font-size: $font-size-small;
       margin-bottom: $padding-small;
+      cursor: pointer;
+
+      &:hover {
+        color: $color-primary;
+        text-decoration: underline;
+      }
 
       &__title {}
 

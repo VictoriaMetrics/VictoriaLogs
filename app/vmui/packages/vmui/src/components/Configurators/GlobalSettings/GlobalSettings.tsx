@@ -1,4 +1,4 @@
-import { FC, useRef } from "preact/compat";
+import { forwardRef, useImperativeHandle, useRef } from "preact/compat";
 import { ArrowDownIcon, SettingsIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import Modal from "../../Main/Modal/Modal";
@@ -6,7 +6,7 @@ import "./style.scss";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { getAppModeEnable } from "../../../utils/app-mode";
 import classNames from "classnames";
-import Timezones from "./Timezones/Timezones";
+import TimezonesPicker from "./Timezones/TimezonesPicker";
 import ThemeControl from "../ThemeControl/ThemeControl";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
@@ -17,7 +17,11 @@ export interface ChildComponentHandle {
   handleApply: () => void;
 }
 
-const GlobalSettings: FC = () => {
+export interface GlobalSettingsHandle {
+  open: () => void;
+}
+
+const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
   const { isMobile } = useDeviceDetect();
 
   const appModeEnable = getAppModeEnable();
@@ -42,13 +46,17 @@ const GlobalSettings: FC = () => {
   const controls = [
     {
       show: true,
-      component: <Timezones ref={timezoneSettingRef}/>
+      component: <TimezonesPicker ref={timezoneSettingRef}/>
     },
     {
       show: !appModeEnable,
       component: <ThemeControl/>
     }
   ].filter(control => control.show);
+
+  useImperativeHandle(ref, () => ({
+    open: handleOpen,
+  }));
 
   return <>
     {isMobile ? (
@@ -115,6 +123,6 @@ const GlobalSettings: FC = () => {
       </Modal>
     )}
   </>;
-};
+});
 
 export default GlobalSettings;

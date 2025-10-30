@@ -1,5 +1,4 @@
 import { FC, useMemo, useCallback, createPortal, memo } from "preact/compat";
-import DownloadLogsButton from "../../../pages/QueryPage/DownloadLogsButton/DownloadLogsButton";
 import { ViewProps } from "../../../pages/QueryPage/QueryPageBody/types";
 import EmptyLogs from "../../EmptyLogs/EmptyLogs";
 import "./style.scss";
@@ -11,8 +10,6 @@ import { JsonView as JsonViewComponent } from "./JsonView";
 const MemoizedJsonView = memo(JsonViewComponent);
 
 const JsonLogsView: FC<ViewProps> = ({ data, settingsRef }) => {
-  const getLogs = useCallback(() => data, [data]);
-
   const fields = useMemo(() => {
     const keys = new Set(data.flatMap(Object.keys));
     return Array.from(keys);
@@ -41,7 +38,6 @@ const JsonLogsView: FC<ViewProps> = ({ data, settingsRef }) => {
             getData={getData}
             successfulCopiedMessage={"Copied JSON to clipboard"}
           />
-          <DownloadLogsButton getLogs={getLogs} />
         </div>
       ),
       settingsRef.current

@@ -82,6 +82,11 @@ type StorageConfig struct {
 	// Log entries with timestamps bigger than now+FutureRetention are ignored.
 	FutureRetention time.Duration
 
+	// MaxBackfillAge is the maximum allowed age for the backfilled logs.
+	//
+	// Log entries with timestamps older than now-MaxBackfillAge are ignored.
+	MaxBackfillAge time.Duration
+
 	// MinFreeDiskSpaceBytes is the minimum free disk space at storage path after which the storage stops accepting new data
 	// and enters read-only mode.
 	MinFreeDiskSpaceBytes int64
@@ -130,11 +135,14 @@ type Storage struct {
 	// futureRetention is the maximum allowed interval to write data into the future
 	futureRetention time.Duration
 
+	// maxBackfillAge is the maximum age of logs with historical timestamps to accept
+	maxBackfillAge time.Duration
+
 	// minFreeDiskSpaceBytes is the minimum free disk space at path after which the storage stops accepting new data
 	minFreeDiskSpaceBytes uint64
 
 	// logNewStreams instructs to log new streams if it is set to true
-	logNewStreams bool
+	logNewStreams atomic.Bool
 
 	// logIngestedRows instructs to log all the ingested log entries if it is set to true
 	logIngestedRows bool
@@ -349,6 +357,28 @@ func (s *Storage) PartitionSnapshotList() []string {
 	return snapshotPaths
 }
 
+// EnableLogNewStreams enables logging newly ingested streams during the given number of seconds
+func (s *Storage) EnableLogNewStreams(seconds int) {
+	if seconds <= 0 {
+		// Do nothing.
+		return
+	}
+
+	vPrev := s.logNewStreams.Swap(true)
+	if vPrev {
+		logger.Infof("logging of new streams is already enabled")
+		return
+	}
+
+	logger.Infof("enabled logging of new streams for %d seconds", seconds)
+
+	d := time.Second * time.Duration(seconds)
+	time.AfterFunc(d, func() {
+		s.logNewStreams.Swap(false)
+		logger.Infof("disabled logging of new streams")
+	})
+}
+
 type partitionWrapper struct {
 	// refCount is the number of active references to partition.
 	// When it reaches zero, then the partition is closed.
@@ -445,6 +475,11 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		futureRetention = 24 * time.Hour
 	}
 
+	maxBackfillAge := cfg.MaxBackfillAge
+	if maxBackfillAge <= 0 || maxBackfillAge > retention {
+		maxBackfillAge = retention
+	}
+
 	var minFreeDiskSpaceBytes uint64
 	if cfg.MinFreeDiskSpaceBytes >= 0 {
 		minFreeDiskSpaceBytes = uint64(cfg.MinFreeDiskSpaceBytes)
@@ -468,8 +503,8 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		maxDiskUsagePercent:    cfg.MaxDiskUsagePercent,
 		flushInterval:          flushInterval,
 		futureRetention:        futureRetention,
+		maxBackfillAge:         maxBackfillAge,
 		minFreeDiskSpaceBytes:  minFreeDiskSpaceBytes,
-		logNewStreams:          cfg.LogNewStreams,
 		logIngestedRows:        cfg.LogIngestedRows,
 		flockF:                 flockF,
 		stopCh:                 make(chan struct{}),
@@ -477,6 +512,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		streamIDCache:     streamIDCache,
 		filterStreamCache: filterStreamCache,
 	}
+	s.logNewStreams.Store(cfg.LogNewStreams)
 
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
@@ -522,7 +558,8 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	sortPartitions(ptws)
 
 	// Delete partitions from the future if needed
-	maxAllowedDay := s.getMaxAllowedDay()
+	now := time.Now().UnixNano()
+	maxAllowedDay := s.getMaxAllowedDay(now)
 	j := len(ptws) - 1
 	for j >= 0 {
 		ptw := ptws[j]
@@ -577,7 +614,8 @@ func (s *Storage) watchRetention() {
 	defer ticker.Stop()
 	for {
 		var ptwsToDelete []*partitionWrapper
-		minAllowedDay := s.getMinAllowedDay()
+		now := time.Now().UnixNano()
+		minAllowedDay := s.getMinAllowedDay(now)
 
 		s.partitionsLock.Lock()
 
@@ -707,12 +745,12 @@ func (s *Storage) updateDeletedPartitionsLocked(ptwsToDelete []*partitionWrapper
 	}
 }
 
-func (s *Storage) getMinAllowedDay() int64 {
-	return time.Now().UTC().Add(-s.retention).UnixNano() / nsecsPerDay
+func (s *Storage) getMinAllowedDay(now int64) int64 {
+	return (now - s.retention.Nanoseconds()) / nsecsPerDay
 }
 
-func (s *Storage) getMaxAllowedDay() int64 {
-	return time.Now().UTC().Add(s.futureRetention).UnixNano() / nsecsPerDay
+func (s *Storage) getMaxAllowedDay(now int64) int64 {
+	return (now + s.futureRetention.Nanoseconds()) / nsecsPerDay
 }
 
 // MustClose closes s.
@@ -806,8 +844,11 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 	}
 
 	// Slow path - rows cannot be added to the hot partition, so split rows among available partitions
-	minAllowedDay := s.getMinAllowedDay()
-	maxAllowedDay := s.getMaxAllowedDay()
+	now := time.Now().UnixNano()
+	minAllowedDay := s.getMinAllowedDay(now)
+	maxAllowedDay := s.getMaxAllowedDay(now)
+	minAllowedTimestamp := now - s.maxBackfillAge.Nanoseconds()
+
 	m := make(map[int64]*LogRows)
 	for i, ts := range lr.timestamps {
 		day := ts / nsecsPerDay
@@ -831,6 +872,17 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			s.rowsDroppedTooBigTimestamp.Add(1)
 			continue
 		}
+		if ts < minAllowedTimestamp {
+			line := MarshalFieldsToJSON(nil, lr.rows[i])
+			tsf := TimeFormatter(ts)
+			minAllowedTsf := TimeFormatter(minAllowedTimestamp)
+			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp=%s; it must be bigger than %s according "+
+				"to the configured -maxBackfillAge=%s. See https://docs.victoriametrics.com/victorialogs/#backfilling ; "+
+				"log entry: %s", &tsf, &minAllowedTsf, s.maxBackfillAge, line)
+			s.rowsDroppedTooSmallTimestamp.Add(1)
+			continue
+		}
+
 		lrPart := m[day]
 		if lrPart == nil {
 			lrPart = GetLogRows(nil, nil, nil, nil, "")

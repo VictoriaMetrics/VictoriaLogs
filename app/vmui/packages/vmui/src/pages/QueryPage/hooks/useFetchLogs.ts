@@ -14,6 +14,7 @@ interface FetchLogsParams {
   limit?: number;
   extraParams?: URLSearchParams;
   beforeFetch?: BeforeFetch;
+  isDownload?: boolean;
 }
 
 export type BeforeFetchResult =
@@ -29,6 +30,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   const [searchParams] = useSearchParams();
 
   const [logs, setLogs] = useState<Logs[]>([]);
+  const [queryParams, setQueryParams] = useState<Record<string, string>>({});
   const [durationMs, setDurationMs] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
   const [error, setError] = useState<ErrorTypes | string>();
@@ -76,8 +78,16 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     period,
     extraParams,
     beforeFetch,
+    isDownload = false,
   }: FetchLogsParams) => {
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    const options = buildOptions({ signal });
+
     let baseBody = buildBody({ query, limit, period, extraParams });
+
+    const preQueryParams = { ...Object.fromEntries(baseBody), ...options.headers };
+    setQueryParams(preQueryParams);
 
     if (beforeFetch) {
       // new instance to avoid mutation of original body
@@ -89,17 +99,18 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     }
 
     const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
-
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
+    const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));
     setError(undefined);
 
     try {
-      const options = buildOptions({ signal });
       const response = await fetch(url,  { body, ...options });
+
+      if (isDownload) {
+        return response;
+      }
 
       const duration = response.headers.get("vl-request-duration-seconds");
       setDurationMs(duration ? Number(duration) * 1000 : undefined);
@@ -113,6 +124,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
 
       const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
+      setQueryParams(tmpQueryParams);
       return data;
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
@@ -143,6 +155,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
 
   return {
     logs,
+    queryParams,
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchLogs,

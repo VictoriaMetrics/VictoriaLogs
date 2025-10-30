@@ -71,6 +71,10 @@ vlutils-linux-ppc64le: \
 	vlagent-linux-ppc64le \
 	vlogscli-linux-ppc64le
 
+vlutils-linux-s390x: \
+        vlagent-linux-s390x \
+        vlogscli-linux-s390x
+
 vlutils-darwin-amd64: \
 	vlagent-darwin-amd64 \
 	vlogscli-darwin-amd64
@@ -100,6 +104,7 @@ victoria-logs-crossbuild: \
 	victoria-logs-linux-arm64 \
 	victoria-logs-linux-arm \
 	victoria-logs-linux-ppc64le \
+	victoria-logs-linux-s390x \
 	victoria-logs-darwin-amd64 \
 	victoria-logs-darwin-arm64 \
 	victoria-logs-freebsd-amd64 \
@@ -112,6 +117,7 @@ vlutils-crossbuild: \
 	vlutils-linux-arm64 \
 	vlutils-linux-arm \
 	vlutils-linux-ppc64le \
+	vlutils-linux-s390x \
 	vlutils-darwin-amd64 \
 	vlutils-darwin-arm64 \
 	vlutils-freebsd-amd64 \
@@ -136,6 +142,7 @@ release-victoria-logs:
 		release-victoria-logs-linux-amd64 \
 		release-victoria-logs-linux-arm \
 		release-victoria-logs-linux-arm64 \
+		release-victoria-logs-linux-s390x \
 		release-victoria-logs-darwin-amd64 \
 		release-victoria-logs-darwin-arm64 \
 		release-victoria-logs-freebsd-amd64 \
@@ -153,6 +160,9 @@ release-victoria-logs-linux-arm:
 
 release-victoria-logs-linux-arm64:
 	GOOS=linux GOARCH=arm64 $(MAKE) release-victoria-logs-goos-goarch
+
+release-victoria-logs-linux-s390x:
+	GOOS=linux GOARCH=s390x $(MAKE) release-victoria-logs-goos-goarch
 
 release-victoria-logs-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 $(MAKE) release-victoria-logs-goos-goarch
@@ -193,6 +203,7 @@ release-vlutils: \
 	release-vlutils-linux-amd64 \
 	release-vlutils-linux-arm64 \
 	release-vlutils-linux-arm \
+	release-vlutils-linux-s390x \
 	release-vlutils-darwin-amd64 \
 	release-vlutils-darwin-arm64 \
 	release-vlutils-freebsd-amd64 \
@@ -210,6 +221,9 @@ release-vlutils-linux-arm64:
 
 release-vlutils-linux-arm:
 	GOOS=linux GOARCH=arm $(MAKE) release-vlutils-goos-goarch
+
+release-vlutils-linux-s390x:
+	GOOS=linux GOARCH=s390x $(MAKE) release-vlutils-goos-goarch
 
 release-vlutils-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 $(MAKE) release-vlutils-goos-goarch

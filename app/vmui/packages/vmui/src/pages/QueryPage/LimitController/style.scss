@@ -9,11 +9,15 @@
     line-height: 1.3;
   }
 
+  &-download {
+    padding-block: $padding-small;
+  }
+
   &-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: calc($padding-large*4);
+    gap: calc($padding-large * 4);
 
     &__actions {
       display: flex;
