@@ -146,7 +146,7 @@ func (pt *partition) mustAddRows(lr *LogRows) {
 		}
 	}
 	if len(pendingRows) > 0 {
-		logNewStreams := pt.s.logNewStreams
+		logNewStreams := pt.s.logNewStreams.Load()
 		streamTagsCanonicals := lr.streamTagsCanonicals
 		sort.Slice(pendingRows, func(i, j int) bool {
 			return streamIDs[pendingRows[i]].less(&streamIDs[pendingRows[j]])

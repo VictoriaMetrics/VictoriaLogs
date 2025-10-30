@@ -682,7 +682,7 @@ func (r *InsertRow) Reset() {
 
 // Marshal appends marshaled r to dst and returns the result.
 func (r *InsertRow) Marshal(dst []byte) []byte {
-	dst = r.TenantID.marshal(dst)
+	dst = r.TenantID.Marshal(dst)
 	dst = encoding.MarshalBytes(dst, bytesutil.ToUnsafeBytes(r.StreamTagsCanonical))
 	dst = encoding.MarshalUint64(dst, uint64(r.Timestamp))
 	dst = encoding.MarshalVarUint64(dst, uint64(len(r.Fields)))
@@ -698,7 +698,7 @@ func (r *InsertRow) Marshal(dst []byte) []byte {
 func (r *InsertRow) UnmarshalInplace(src []byte) ([]byte, error) {
 	srcOrig := src
 
-	tail, err := r.TenantID.unmarshal(src)
+	tail, err := r.TenantID.Unmarshal(src)
 	if err != nil {
 		return srcOrig, fmt.Errorf("cannot unmarshal tenantID: %w", err)
 	}

@@ -7,7 +7,7 @@
     position: sticky;
     top: 0;
     margin: -$padding-medium 0-$padding-medium 0;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr repeat(3, auto);
     background-color: $color-background-block;
     z-index: 3;
 

@@ -50,15 +50,15 @@ func (tid *TenantID) marshalString(dst []byte) []byte {
 	return dst
 }
 
-// marshal appends the marshaled tid to dst and returns the result
-func (tid *TenantID) marshal(dst []byte) []byte {
+// Marshal appends the marshaled tid to dst and returns the result
+func (tid *TenantID) Marshal(dst []byte) []byte {
 	dst = encoding.MarshalUint32(dst, tid.AccountID)
 	dst = encoding.MarshalUint32(dst, tid.ProjectID)
 	return dst
 }
 
-// unmarshal unmarshals tid from src and returns the remaining tail.
-func (tid *TenantID) unmarshal(src []byte) ([]byte, error) {
+// Unmarshal unmarshals tid from src and returns the remaining tail.
+func (tid *TenantID) Unmarshal(src []byte) ([]byte, error) {
 	if len(src) < 8 {
 		return src, fmt.Errorf("cannot unmarshal tenantID from %d bytes; need at least 8 bytes", len(src))
 	}
@@ -123,7 +123,7 @@ func ParseTenantID(s string) (TenantID, error) {
 // MarshalTenantIDs appends marshaled tenantIDs to dst and returns the result.
 func MarshalTenantIDs(dst []byte, tenantIDs []TenantID) []byte {
 	for i := range tenantIDs {
-		dst = tenantIDs[i].marshal(dst)
+		dst = tenantIDs[i].Marshal(dst)
 	}
 	return dst
 }
@@ -133,7 +133,7 @@ func UnmarshalTenantIDs(src []byte) ([]TenantID, error) {
 	var tenantIDs []TenantID
 	for len(src) > 0 {
 		var tid TenantID
-		tail, err := tid.unmarshal(src)
+		tail, err := tid.Unmarshal(src)
 		if err != nil {
 			return nil, fmt.Errorf("cannot unmarshal tenantID #%d: %w", len(tenantIDs), err)
 		}

@@ -1,0 +1,80 @@
+@use "src/styles/variables" as *;
+
+.vm-download-logs {
+  display: grid;
+  gap: calc($padding-global * 2);
+  padding: 0 $padding-small $padding-small;
+  width: clamp(200px, 50vw, 600px);
+
+  &-section {
+    &__title {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: $font-size;
+      font-weight: bold;
+      margin-bottom: $padding-global;
+    }
+  }
+
+  &-filename {
+    display: flex;
+    align-items: flex-end;
+    gap: $padding-small;
+
+    &__extension {
+      position: absolute;
+      background-color: $color-background-block;
+      right: 0;
+    }
+  }
+
+  &__description {
+    margin-top: $padding-small;
+    grid-column: 1/span 2;
+    font-size: $font-size-small;
+    color: $color-text-secondary;
+    line-height: 130%;
+  }
+
+  &-context {
+
+    &-item {
+      display: flex;
+      flex-wrap: wrap;
+
+      &__label,
+      &__value,
+      &__query {
+        padding-block: $padding-small;
+      }
+
+      &__label {
+        display: inline-block;
+        font-size: $font-size;
+        min-width: 90px;
+      }
+
+      &__query {
+        display: inline-block;
+        font-size: $font-size-small;
+        font-family: monospace;
+        white-space: pre-wrap;
+        padding-inline: $padding-global;
+        background-color: $color-hover-black;
+        border-radius: $border-radius-small;
+        line-height: 1.3;
+      }
+    }
+  }
+
+
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: $padding-small;
+    padding-top: $padding-global;
+    width: 100%;
+  }
+}

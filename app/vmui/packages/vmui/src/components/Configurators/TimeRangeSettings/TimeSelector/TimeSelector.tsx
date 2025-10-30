@@ -19,7 +19,11 @@ import useBoolean from "../../../../hooks/useBoolean";
 import useWindowSize from "../../../../hooks/useWindowSize";
 import usePrevious from "../../../../hooks/usePrevious";
 
-export const TimeSelector: FC = () => {
+type Props = {
+  onOpenSettings?: () => void;
+}
+
+export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -88,6 +92,11 @@ export const TimeSelector: FC = () => {
   const onCancelClick = () => {
     setUntil(formatDateForNativeInput(dateFromSeconds(end)));
     setFrom(formatDateForNativeInput(dateFromSeconds(start)));
+    handleCloseOptions();
+  };
+
+  const handleClickTimezone = () => {
+    onOpenSettings && onOpenSettings();
     handleCloseOptions();
   };
 
@@ -179,7 +188,10 @@ export const TimeSelector: FC = () => {
               onEnter={setTimeAndClosePicker}
             />
           </div>
-          <div className="vm-time-selector-left-timezone">
+          <div
+            className="vm-time-selector-left-timezone"
+            onClick={handleClickTimezone}
+          >
             <div className="vm-time-selector-left-timezone__title">{activeTimezone.region}</div>
             <div className="vm-time-selector-left-timezone__utc">{activeTimezone.utc}</div>
           </div>

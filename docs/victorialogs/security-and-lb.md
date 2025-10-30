@@ -12,7 +12,7 @@ tags:
 This document describes how to configure and use vmauth and VictoriaLogs components
 in the context of load balancing, access protection and log visibility management.
 
-To configure secure communication between components in cluster mode of VictoriaLogs, follow [this documentation](https://docs.victoriametrics.com/victorialogs/cluster/#security).
+To configure secure communication between components in VictoriaLogs cluster mode, follow [this documentation](https://docs.victoriametrics.com/victorialogs/cluster/#security).
 
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) is an HTTP proxy that provides the following features:
 - Load balancing across configured HTTP backends.
@@ -27,7 +27,7 @@ Therefore, you can use any other HTTP proxy such as Nginx, Traefik, Envoy or HAP
 However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/)
 from the VictoriaMetrics team if any issues arise.
 
-For more detailed information and advanced vmauth configuration see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/).
+For more detailed information and advanced vmauth configuration, see [vmauth documentation](https://docs.victoriametrics.com/victoriametrics/vmauth/).
 
 All configuration examples in this documentation apply to
 [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/),
@@ -40,7 +40,7 @@ since they have the same search/write API.
 
 For log search, both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints,
-which [start with `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
+which [start with the `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
 When configuring request authorization or load balancing, it is important to allow access to this path prefix.
 
 Below is an example of a vmauth configuration that:
@@ -60,7 +60,7 @@ users:
 ```
 
 `victoria-logs-1` and `victoria-logs-2` can be either two VictoriaLogs single-node instances with replicated data according to [these docs](https://docs.victoriametrics.com/victorialogs/#high-availability),
-or `vlselect` instances in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
+or `vlselect` instances in the [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
 Enumerate all the `vlselect` instances in the cluster under the `url_prefix` config above in order to spread load among all the available `vlselect` instances.
 
 The diagram below illustrates this architecture in the clustered version of VictoriaLogs:
@@ -89,15 +89,15 @@ flowchart BT
 ```
 
 Update the connection settings in all clients (like Grafana) after configuring the `vmauth` in order
-to match the selected authentication method and the vmauth endpoint.
+to match the selected authentication method and the `vmauth` endpoint.
 
-Important: Requests sent directly to VictoriaLogs bypass vmauth and are not authorized.
+Important: Requests sent directly to VictoriaLogs bypass `vmauth` and are not authorized.
 To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
 
 It is recommended to pass the `-insert.disable` command-line flag to `vlselect` to disable the write API.
 This helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
-For configuration examples using Bearer tokens, Basic auth, and mTLS see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS, see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Cluster routing
 
@@ -121,8 +121,8 @@ The configuration above enables proxying all requests that start with the path p
 and requests with the path prefix `/hot/select/` to the backend located at `http://victoria-logs-hot:9428`.
 
 This approach is useful when applying different retention policies for various types of logs.
-For example, you might store warn-level and higher severity logs in the cold instance / cluster with longer retention,
-while keeping debug-level and higher severity logs only in the hot instance / cluster with shorter retention.
+For example, you might store warn-level and higher severity logs in the cold instance/cluster with longer retention,
+while keeping debug-level and higher severity logs only in the hot instance/cluster with shorter retention.
 
 The `drop_src_path_prefix_parts` parameter is used to remove the prefix from the path when proxying the request to VictoriaLogs.
 For example, if vmauth receives a request to `/cold/select/logsql/query`,
@@ -159,7 +159,7 @@ unauthorized_user:
 
 See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).
 
-This allows building VictoriaLogs storage system with distinct per-tenant retention configs
+This allows building a VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
 ### Proxying requests to the given tenants
@@ -183,9 +183,9 @@ users:
 ```
 
 If the user sets the `AccountID` or `ProjectID` headers themselves,
-for example through vmui or Grafana data source settings, they will be overridden.
+for example through `vmui` or Grafana data source settings, they will be overridden.
 
-A more practical example, if you have many tenants and want to separate them by name,
+A more practical example: if you have many tenants and want to separate them by name,
 vmauth configuration might look like this:
 
 ```yaml
@@ -225,10 +225,10 @@ users:
 ```
 
 This configuration allows user `foo` to access 3 different tenants, and user `admin` to access all tenants.
-However, user `admin` needs to set the required `AccountID` or `ProjectID` headers by themselves, because vmauth will not set them.
+However, user `admin` needs to set the required `AccountID` or `ProjectID` headers themselves, because vmauth will not set them.
 
-In Grafana, you need to create a separate data source for each tenant and user, an example of such address is: `http://vmauth:8427/my-account/mobile-logs`.
-Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set them.
+In Grafana, you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs`.
+Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set it.
 Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui`.
 
 If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
@@ -253,7 +253,7 @@ To allow unauthenticated access to a specific tenant, define the `unauthorized_u
 ```yaml
 unauthorized_user:
   url_map:
-  - src_paths: ["/my-account/frontend-logs/.*"]
+  - src_paths: ["/my-account/frontend-logs/select/.*"]
     url_prefix: "http://victoria-logs:9428"
     headers:
     - "AccountID: 1"
@@ -269,7 +269,7 @@ VictoriaLogs will assume that the corresponding header has a value of 0.
 
 ### Access control inside a single tenant
 
-`VictoriaLogs` can apply extra filters per each request to select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
+`VictoriaLogs` can apply extra filters for each request to the select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
 This is useful when you need to give access to a subset of data within a single tenant.
 If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`:
 
@@ -319,7 +319,7 @@ users:
     drop_src_path_prefix_parts: 1
 ```
 
-`extra_filters` and `extra_stream_filters` must be encoded using [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
+`extra_filters` and `extra_stream_filters` should be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding) when they include characters that are not URL-safe. 
 For example, the query `_stream:{service=frontend-logs}` should be written as `_stream%3A%7Bservice%3Dfrontend-logs%7D`.
 
 Prefer using `extra_stream_filters` over `extra_filters` whenever possible.
@@ -330,7 +330,7 @@ processes searches using stream filters faster than regular filters. See [LogsQL
 
 For log writing, [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same write API endpoints
-which [start with `/insert/` prefix](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis),
+which [start with the `/insert/` prefix](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis),
 so when configuring write requests, it is important to set this path for request authorization.
 
 Example vmauth configuration that allows insert requests
@@ -353,7 +353,7 @@ Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replic
 
 If you trust the writing side, for example when collecting logs within your own cluster, you can set
 the [query parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters)
-and [tenant headers](https://docs.victoriametrics.com/victorialogs/#multitenancy) directly at the log shipper side without an extra proxy.
+and [tenant headers](https://docs.victoriametrics.com/victorialogs/#multitenancy) directly on the log shipper side without an extra proxy.
 In such cases, it's usually sufficient to restrict network access so only trusted agents can write to VictoriaLogs.
 
 On the other hand, if you do not trust the writing side, for example, if the logs come from frontend or mobile apps,
@@ -367,7 +367,7 @@ it is very important to secure the write API:
 It is recommended to pass the `-select.disable` command-line flag to `vlinsert` in order to disable the search API.
 This will secure access to the stored logs in case an attacker has direct network access to `vlinsert`.
 
-For configuration examples using Bearer tokens, Basic auth, and mTLS see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+For configuration examples using Bearer tokens, Basic auth, and mTLS, see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
 ### Tenant assignment
 
@@ -433,7 +433,7 @@ flowchart BT
     vlagent -->|Bearer auth<br>/my-account/mobile-logs| vmauth
     filebeat -->|mTLS<br>/my-account/frontend-logs| vmauth
 
-    vmauth -->|AccountID: X<br>ProjectID:Y| vlinsert-az1
+    vmauth -->|AccountID: X<br>ProjectID: Y| vlinsert-az1
 ```
 
 ### Tenant-based proxying of data ingestion requests
@@ -465,7 +465,7 @@ unauthorized_user:
     - "AccountID: 0"
 ```
 
-This allows building VictoriaLogs storage system with distinct per-tenant retention configs
+This allows building a VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
 
@@ -492,4 +492,4 @@ users:
 ```
 
 Any field sent by the application will be overridden by the value set in the `extra_fields`, if defined.
-This protects from unexpected overriding of the provided `extra_fields` by the log shipper.
+This prevents the log shipper from unexpectedly overriding the provided `extra_fields`.

@@ -756,7 +756,11 @@ func (q *Query) CanReturnLastNResults() bool {
 
 // GetFilterTimeRange returns filter time range for the given q.
 func (q *Query) GetFilterTimeRange() (int64, int64) {
-	switch t := q.f.(type) {
+	return getFilterTimeRange(q.f)
+}
+
+func getFilterTimeRange(f filter) (int64, int64) {
+	switch t := f.(type) {
 	case *filterAnd:
 		minTimestamp := int64(math.MinInt64)
 		maxTimestamp := int64(math.MaxInt64)
@@ -790,8 +794,15 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 		return
 	}
 
-	timeOffset := q.opts.timeOffset
+	q.f = addTimeFilter(q.f, start, end, q.opts.timeOffset)
 
+	// Initialize rate functions with the step calculated from _time:[start, end] filter.
+	// This fixes the bug where rate_sum() doesn't divide by stepSeconds when
+	// time filter is specified via HTTP params instead of LogsQL expression
+	q.initStatsRateFuncsFromTimeFilter()
+}
+
+func addTimeFilter(f filter, start, end, offset int64) filter {
 	// use nanosecond precision for [start, end] time range in order to avoid
 	// automatic adjustement of timestamps for its' string representation.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/587
@@ -804,33 +815,30 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 	endStr := marshalTimestampRFC3339NanoPreciseString(nil, end)
 
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(start, timeOffset),
-		maxTimestamp: subNoOverflowInt64(end, timeOffset),
+		minTimestamp: subNoOverflowInt64(start, offset),
+		maxTimestamp: subNoOverflowInt64(end, offset),
 
 		stringRepr: fmt.Sprintf("[%s,%s]", startStr, endStr),
 	}
 
-	fa, ok := q.f.(*filterAnd)
+	fa, ok := f.(*filterAnd)
 	if ok {
 		filters := make([]filter, len(fa.filters)+1)
 		filters[0] = ft
 		copy(filters[1:], fa.filters)
 		fa.filters = filters
 	} else {
-		q.f = &filterAnd{
-			filters: []filter{ft, q.f},
+		f = &filterAnd{
+			filters: []filter{ft, f},
 		}
 	}
 
-	q.f = flattenFiltersAnd(q.f)
+	f = flattenFiltersAnd(f)
 
 	// Remove `*` filters after adding the `_time` filter, since they are no longer needed.
-	q.f = removeStarFilters(q.f)
+	f = removeStarFilters(f)
 
-	// Initialize rate functions with the step calculated from HTTP time filter
-	// This fixes the bug where rate_sum() doesn't divide by stepSeconds when
-	// time filter is specified via HTTP params instead of LogsQL expression
-	q.initStatsRateFuncsFromTimeFilter()
+	return f
 }
 
 // AddExtraFilters adds extraFilters to q

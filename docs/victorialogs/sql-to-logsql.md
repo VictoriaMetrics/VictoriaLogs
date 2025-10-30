@@ -11,24 +11,28 @@ tags:
 ---
 
 This is a tutorial for the migration from SQL to [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
-It is expected you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
+It is expected that you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
-## data model
 
-SQL is usually used for querying relational tables. Every such table contains a pre-defined set of columns with pre-defined types.
+## Data Model
+
+See also [this playground, which automatically converts SQL queries to LogsQL queries](https://play-sql.victoriametrics.com/).
+The source code of this project is available [here](https://github.com/VictoriaMetrics/sql-to-logsql/).
+
+SQL is usually used for querying relational tables. Every such table contains a predefined set of columns with predefined types.
 LogsQL is used for querying logs. Logs are stored in [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-So log streams is an analogue of tables in relational databases. Log streams and relational tables have the following major differences:
+So log streams are analogous to tables in relational databases. Log streams and relational tables have the following major differences:
 
 - Log streams are created automatically when the first log entry (row) is ingested into them.
-- There is no pre-defined scheme in log streams - logs with arbitrary set of fields can be ingested into every log stream.
-  Both names and values in every log entry have string type. They may contain arbitrary string data.
+- There is no predefined schema in log streams, so logs with an arbitrary set of fields can be ingested into every log stream.
+  Both names and values in every log entry are strings. They may contain arbitrary string data.
 - Every log entry (row) can be represented as a flat JSON object: `{"f1":"v1",...,"fN":"vN"}`. See [these docs](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
-- By default VictoriaLogs selects log entries across all the log streams. The needed set of log streams can be specified
+- By default, VictoriaLogs selects log entries across all log streams. The needed set of log streams can be specified
   via [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
-- By default VictoriaLogs returns all the fields across the selected logs. The set of returned fields
-  can be limited with [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe).
+- By default, VictoriaLogs returns all the fields across the selected logs. The set of returned fields
+  can be limited with the [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe).
 
-## query structure
+## Query Structure
 
 SQL query structure is quite convoluted:
 
@@ -57,18 +61,18 @@ FROM <table>
 The `<filters>` part selects the needed logs (rows) according to the provided [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
 Then the provided [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) are executed sequentially.
 Every such pipe receives all the rows from the previous stage, performs some calculations and/or transformations,
-and then pushes the resulting rows to the next stage. This simplifies reading and understanding the query - just read it from the beginning
-to the end in order to understand what does it do at every stage.
+and then pushes the resulting rows to the next stage. This simplifies reading and understanding the query: just read it from beginning
+to end to understand what it does at every stage.
 
-LogsQL pipes cover all the functionality from SQL: aggregations, calculations, transformations, subqueries, joins, post-filters, sorting, etc.
+LogsQL pipes cover all the functionality of SQL: aggregations, calculations, transformations, subqueries, joins, post-filters, sorting, etc.
 See the [conversion rules](https://docs.victoriametrics.com/victorialogs/sql-to-logsql/#conversion-rules) on how to convert SQL to LogsQL.
 
-## conversion rules
+## Conversion Rules
 
-The following rules must be used for converting SQL query into LogsQL query:
+The following rules must be used for converting an SQL query into a LogsQL query:
 
 - If the SQL query contains `WHERE`, then convert it into [LogsQL filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
-  Otherwise just start LogsQL query with [`*`](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter).
+  Otherwise, just start the LogsQL query with [`*`](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter).
   For example, `SELECT * FROM table WHERE field1=value1 AND field2<>value2` is converted into `field1:=value1 field2:!=value2`,
   while `SELECT * FROM table` is converted into `*`.
 - `IN` subqueries inside `WHERE` must be converted into [`in` filters](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter).
@@ -80,7 +84,7 @@ The following rules must be used for converting SQL query into LogsQL query:
 - If the SQL query contains `GROUP BY` / aggregate functions, then convert them to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
   For example, `SELECT count(*) FROM table` is converted into `* | count()`, while `SELECT user_id, count(*) FROM table GROUP BY user_id`
   is converted to `* | stats by (user_id) count()`. Note how the LogsQL query mentions the `GROUP BY` fields only once,
-  while SQL forces mentioning these fields twice - at the `SELECT` and at the `GROUP BY`. How many times did you hit the discrepancy
+  while SQL forces you to mention these fields twice: in the `SELECT` and in the `GROUP BY` clauses. How many times have you run into a discrepancy
   between `SELECT` and `GROUP BY` fields?
 - If the SQL query contains additional calculations and/or transformations at the `SELECT`, which aren't covered yet by `GROUP BY`,
   then convert them into the corresponding [LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
@@ -92,16 +96,16 @@ The following rules must be used for converting SQL query into LogsQL query:
 - If the SQL query contains `ORDER BY`, `LIMIT` and `OFFSET`, then convert them into [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe).
   For example, `SELECT * FROM table ORDER BY field1, field2 LIMIT 10 OFFSET 20` is converted into `* | sort by (field1, field2) limit 10 offset 20`.
 - If the SQL query contains `UNION`, then convert it into [`union` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe).
-  For example `SELECT * FROM table WHERE filters1 UNION ALL SELECT * FROM table WHERE filters2` is converted into `filters1 | union (filters2)`.
+  For example, `SELECT * FROM table WHERE filters1 UNION ALL SELECT * FROM table WHERE filters2` is converted into `filters1 | union (filters2)`.
 
-SQL queries are frequently used for obtaining top N column values, which are the most frequently seen in the selected rows.
-For example, the query below returns top 5 `user_id` values, which present in the biggest number of rows:
+SQL queries are frequently used to obtain top N column values that are the most frequently seen in the selected rows.
+For example, the query below returns the top 5 `user_id` values that are present in the largest number of rows:
 
 ```sql
 SELECT user_id, count(*) hits FROM table GROUP BY user_id ORDER BY hits DESC LIMIT 5
 ```
 
-LogsQL provides a shortcut syntax with [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe) for this case:
+LogsQL provides a shortcut syntax with the [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe) for this case:
 
 ```logsql
 * | top 5 (user_id)
@@ -113,6 +117,6 @@ It is equivalent to the longer LogsQL query:
 * | by (user_id) count() hits | sort by (hits desc) limit 5
 ```
 
-[LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) support much wider functionality comparing to SQL,
-so spend your spare time by reading [pipe docs](https://docs.victoriametrics.com/victorialogs/logsql/) and playing with them
+[LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) support much wider functionality compared to SQL,
+so spend some time reading [pipe docs](https://docs.victoriametrics.com/victorialogs/logsql/) and playing with them
 at [VictoriaLogs demo playground](https://play-vmlogs.victoriametrics.com/) or at [the playground for Grafana datasource for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).

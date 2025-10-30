@@ -11,7 +11,8 @@ import (
 
 // mustMergeBlockStreams merges bsrs to bsw and updates ph accordingly.
 //
-// Finalize() is guaranteed to be called on bsrs and bsw before returning from the func.
+// Finalize() is guaranteed to be called on bsw before returning from the func.
+// MustClose() is guatanteed to be called on bsrs before returning from the func.
 func mustMergeBlockStreams(ph *partHeader, bsw *blockStreamWriter, bsrs []*blockStreamReader, stopCh <-chan struct{}) {
 	bsm := getBlockStreamMerger()
 	bsm.mustInit(bsw, bsrs)
@@ -20,7 +21,7 @@ func mustMergeBlockStreams(ph *partHeader, bsw *blockStreamWriter, bsrs []*block
 			break
 		}
 		bsr := bsm.readersHeap[0]
-		bsm.mustWriteBlock(&bsr.blockData, bsw)
+		bsm.mustWriteBlock(&bsr.blockData)
 		if bsr.NextBlock() {
 			heap.Fix(&bsm.readersHeap, 0)
 		} else {
@@ -72,15 +73,11 @@ type blockStreamMerger struct {
 	//
 	// It is used for flushing rows to blocks when their size reaches maxUncompressedBlockSize
 	uncompressedRowsSizeBytes uint64
-
-	// uniqueFields is an upper bound estimation for the number of unique fields in either rows or bd
-	//
-	// It is used for limiting the number of columns written per block
-	uniqueFields int
 }
 
 func (bsm *blockStreamMerger) reset() {
 	bsm.bsw = nil
+	bsm.bsrs = nil
 
 	rhs := bsm.readersHeap
 	for i := range rhs {
@@ -108,7 +105,24 @@ func (bsm *blockStreamMerger) resetRows() {
 	bsm.rowsTmp.reset()
 
 	bsm.uncompressedRowsSizeBytes = 0
-	bsm.uniqueFields = 0
+}
+
+func (bsm *blockStreamMerger) assertNoRows() {
+	if bsm.bd.rowsCount > 0 {
+		logger.Panicf("BUG: bsm.bd must be empty; got %d rows", bsm.bd.rowsCount)
+	}
+	if len(bsm.a.b) > 0 {
+		logger.Panicf("BUG: bsm.a must be empty; got %d bytes", len(bsm.a.b))
+	}
+	if len(bsm.rows.timestamps) > 0 {
+		logger.Panicf("BUG: bsm.rows must be empty; got %d rows", len(bsm.rows.timestamps))
+	}
+	if len(bsm.rowsTmp.timestamps) > 0 {
+		logger.Panicf("BUG: bsm.rowsTmp must be empty; got %d rows", len(bsm.rowsTmp.timestamps))
+	}
+	if bsm.uncompressedRowsSizeBytes != 0 {
+		logger.Panicf("BUG: bsm.uncompressedRowsSizeBytes must be 0; got %d", bsm.uncompressedRowsSizeBytes)
+	}
 }
 
 func (bsm *blockStreamMerger) mustInit(bsw *blockStreamWriter, bsrs []*blockStreamReader) {
@@ -128,49 +142,24 @@ func (bsm *blockStreamMerger) mustInit(bsw *blockStreamWriter, bsrs []*blockStre
 }
 
 // mustWriteBlock writes bd to bsm
-func (bsm *blockStreamMerger) mustWriteBlock(bd *blockData, bsw *blockStreamWriter) {
+func (bsm *blockStreamMerger) mustWriteBlock(bd *blockData) {
 	bsm.checkNextBlock(bd)
-	uniqueFields := len(bd.columnsData) + len(bd.constColumns)
 	switch {
 	case !bd.streamID.equal(&bsm.streamID):
 		// The bd contains another streamID.
-		// Write the current log entries under the current streamID, then process the bd.
+		// Write the bsm logs under the current streamID, then process the bd.
 		bsm.mustFlushRows()
 		bsm.streamID = bd.streamID
-		if bd.uncompressedSizeBytes >= maxUncompressedBlockSize {
-			// Fast path - write full bd to the output without extracting log entries from it.
-			bsw.MustWriteBlockData(bd)
-		} else {
-			// Slow path - copy the bd to the curr bd.
-			bsm.a.reset()
-			bsm.bd.copyFrom(&bsm.a, bd)
-			bsm.uniqueFields = uniqueFields
-		}
-	case bsm.uniqueFields+uniqueFields > maxColumnsPerBlock:
-		// Cannot merge bd with bsm.rows, because too many columns will be created.
-		// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4762
-		//
-		// Flush bsm.rows and copy the bd to the curr bd.
+		bsm.mustWriteBlockData(bd)
+	case bsm.uncompressedRowsSizeBytes+bd.uncompressedSizeBytes >= 2*maxUncompressedBlockSize:
+		// The bd cannot be merged with bsm, since the final block size will be too big.
+		// Write the bsm logs, then process the bd.
 		bsm.mustFlushRows()
-		if uniqueFields >= maxColumnsPerBlock {
-			bsw.MustWriteBlockData(bd)
-		} else {
-			bsm.a.reset()
-			bsm.bd.copyFrom(&bsm.a, bd)
-			bsm.uniqueFields = uniqueFields
-		}
-	case bd.uncompressedSizeBytes >= maxUncompressedBlockSize:
-		// The bd contains the same streamID and it is full,
-		// so it can be written next after the current log entries
-		// without the need to merge the bd with the current log entries.
-		// Write the current log entries and then the bd.
-		bsm.mustFlushRows()
-		bsw.MustWriteBlockData(bd)
+		bsm.mustWriteBlockData(bd)
 	default:
-		// The bd contains the same streamID and it isn't full,
-		// so it must be merged with the current log entries.
+		// The bd contains the same streamID and the summary size of bsm logs and bd doesn't exceed the maximum allowed.
+		// Merge them.
 		bsm.mustMergeRows(bd)
-		bsm.uniqueFields += uniqueFields
 	}
 }
 
@@ -218,6 +207,19 @@ func (bsm *blockStreamMerger) ReadersPaths() string {
 	return fmt.Sprintf("[%s]", strings.Join(paths, ","))
 }
 
+// mustWriteBlockData writes bd to bsm.
+func (bsm *blockStreamMerger) mustWriteBlockData(bd *blockData) {
+	bsm.assertNoRows()
+
+	if bd.uncompressedSizeBytes >= maxUncompressedBlockSize {
+		// Fast path - write full bd to the output without extracting log entries from it.
+		bsm.bsw.MustWriteBlockData(bd)
+		return
+	}
+
+	bsm.bd.copyFrom(&bsm.a, bd)
+}
+
 // mustMergeRows merges the current log entries inside bsm with bd log entries.
 func (bsm *blockStreamMerger) mustMergeRows(bd *blockData) {
 	if bsm.bd.rowsCount > 0 {
@@ -245,6 +247,7 @@ func (bsm *blockStreamMerger) mustMergeRows(bd *blockData) {
 
 func (bsm *blockStreamMerger) mustUnmarshalRows(bd *blockData) {
 	rowsLen := len(bsm.rows.timestamps)
+
 	if bsm.sbu == nil {
 		bsm.sbu = getStringsBlockUnmarshaler()
 	}
@@ -254,6 +257,7 @@ func (bsm *blockStreamMerger) mustUnmarshalRows(bd *blockData) {
 	if err := bd.unmarshalRows(&bsm.rows, bsm.sbu, bsm.vd); err != nil {
 		logger.Panicf("FATAL: cannot merge %s: cannot unmarshal log entries from blockData: %s", bsm.ReadersPaths(), err)
 	}
+
 	bsm.uncompressedRowsSizeBytes += uncompressedRowsSizeBytes(bsm.rows.rows[rowsLen:])
 }
 

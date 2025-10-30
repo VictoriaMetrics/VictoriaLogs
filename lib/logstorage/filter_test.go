@@ -196,7 +196,7 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f filter, neededColumnName string, expectedValues []string, expectedTimestamps []int64) {
 	t.Helper()
 
-	so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{neededColumnName, "_time"})
+	sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{neededColumnName, "_time"})
 	qs := &QueryStats{}
 
 	type result struct {
@@ -207,7 +207,7 @@ func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f fi
 	var results []result
 
 	const workersCount = 3
-	s.searchParallel(workersCount, so, qs, nil, func(_ uint, br *blockResult) {
+	s.searchParallel(workersCount, sso, qs, nil, func(_ uint, br *blockResult) {
 		// Verify columns
 		cs := br.getColumns()
 		if len(cs) != 2 {

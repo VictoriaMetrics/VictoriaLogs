@@ -1,5 +1,4 @@
-import { FC, RefObject, useCallback, useRef, createPortal } from "preact/compat";
-import DownloadLogsButton from "../../../pages/QueryPage/DownloadLogsButton/DownloadLogsButton";
+import { FC, RefObject, useRef, createPortal } from "preact/compat";
 import Button from "../../Main/Button/Button";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { DeleteIcon, PauseIcon, PlayCircleOutlineIcon, SettingsIcon } from "../../Main/Icons";
@@ -28,7 +27,6 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
   settingsRef,
   rowsPerPage,
   handleSetRowsPerPage,
-  logs,
   isPaused,
   handleResumeLiveTailing,
   pauseLiveTailing,
@@ -40,8 +38,6 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
 }) => {
   const settingButtonRef = useRef<HTMLDivElement>(null);
   const { value: isSettingsOpen, setFalse: closeSettings, setTrue: openSettings } = useBoolean(false);
-
-  const getLogs = useCallback(() => logs.map(({ _log_id, ...log }) => log), [logs]);
 
   if (!settingsRef.current) return null;
 
@@ -61,35 +57,18 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
         renderOptionLabel={(offset: number) => `${offset}s`}
       />
       <div className="vm-live-tailing-view__settings-buttons">
-        {logs.length > 0 && <DownloadLogsButton getLogs={getLogs}/>}
-        {isPaused ? (
-          <Tooltip
-            title={"Resume live tailing"}
-          >
-            <Button
-              variant="text"
-              color="primary"
-              onClick={handleResumeLiveTailing}
-              startIcon={<PlayCircleOutlineIcon/>}
-              ariaLabel={"Resume live tailing"}
-            />
-          </Tooltip>
-        ) : (
-          <Tooltip
-            title={"Pause live tailing"}
-          >
-            <Button
-              variant="text"
-              color="primary"
-              onClick={pauseLiveTailing}
-              startIcon={<PauseIcon/>}
-              ariaLabel={"Pause live tailing"}
-            />
-          </Tooltip>
-        )}
         <Tooltip
-          title={"Clear logs"}
+          title={`${isPaused ? "Resume" : "Pause"} live tailing`}
         >
+          <Button
+            variant="text"
+            color="primary"
+            onClick={isPaused ? handleResumeLiveTailing : pauseLiveTailing}
+            startIcon={isPaused ? <PlayCircleOutlineIcon/> : <PauseIcon/>}
+            ariaLabel={`${isPaused ? "Resume" : "Pause"} live tailing`}
+          />
+        </Tooltip>
+        <Tooltip title={"Clear logs"}>
           <Button
             variant="text"
             color="secondary"
@@ -98,9 +77,7 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
             ariaLabel={"Clear logs"}
           />
         </Tooltip>
-        <Tooltip
-          title={"Settings"}
-        >
+        <Tooltip title={"Settings"}>
           <Button
             ref={settingButtonRef}
             variant="text"

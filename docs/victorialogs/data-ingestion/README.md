@@ -341,6 +341,7 @@ VictoriaLogs provides the following command-line flags, which can help debugging
 - `-logNewStreams` - if this flag is passed to VictoriaLogs, then it logs all the newly
   registered [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
   This may help debugging [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
+  Logging of new streams can be also enabled for the given number of seconds - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
 - `-logIngestedRows` - if this flag is passed to VictoriaLogs, then it logs all the ingested
   [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
   See also `debug` [parameter](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
@@ -357,7 +358,7 @@ VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victoria
 - [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
   since the last VictoriaLogs restart. If this metric grows rapidly during extended periods of time, then this may lead
   to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
-  The newly created log streams can be inspected in logs by passing `-logNewStreams` command-line flag to VictoriaLogs.
+  The newly created log streams can be inspected in logs - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
 
 ## Log collectors and data ingestion formats
 

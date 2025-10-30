@@ -8,9 +8,9 @@ import (
 func TestTenantIDMarshalUnmarshal(t *testing.T) {
 	f := func(tid *TenantID) {
 		t.Helper()
-		data := tid.marshal(nil)
+		data := tid.Marshal(nil)
 		var tid2 TenantID
-		tail, err := tid2.unmarshal(data)
+		tail, err := tid2.Unmarshal(data)
 		if err != nil {
 			t.Fatalf("unexpected error at unmarshal(%s): %s", tid, err)
 		}
@@ -38,7 +38,7 @@ func TestTenantIDUnmarshalFailure(t *testing.T) {
 		t.Helper()
 		dataOrig := append([]byte{}, data...)
 		var tid TenantID
-		tail, err := tid.unmarshal(data)
+		tail, err := tid.Unmarshal(data)
 		if err == nil {
 			t.Fatalf("expecting non-nil error")
 		}

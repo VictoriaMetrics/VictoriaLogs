@@ -1,12 +1,13 @@
-import { FC } from "preact/compat";
+import { FC, useRef } from "preact/compat";
 import classNames from "classnames";
-import GlobalSettings from "../../components/Configurators/GlobalSettings/GlobalSettings";
+import GlobalSettings, { GlobalSettingsHandle } from "../../components/Configurators/GlobalSettings/GlobalSettings";
 import { ControlsProps } from "../Header/HeaderControls/HeaderControls";
 import { TimeSelector } from "../../components/Configurators/TimeRangeSettings/TimeSelector/TimeSelector";
 import TenantsFields from "../../components/Configurators/GlobalSettings/TenantsConfiguration/TenantsFields";
 import { ExecutionControls } from "../../components/Configurators/TimeRangeSettings/ExecutionControls/ExecutionControls";
 
 const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
+  const settingsRef = useRef<GlobalSettingsHandle>(null);
 
   return (
     <div
@@ -17,9 +18,9 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
     >
 
       {headerSetup?.tenant && <TenantsFields/>}
-      {headerSetup?.timeSelector && <TimeSelector/>}
+      {headerSetup?.timeSelector && <TimeSelector onOpenSettings={settingsRef?.current?.open}/>}
       {headerSetup?.executionControls &&  <ExecutionControls/>}
-      <GlobalSettings/>
+      <GlobalSettings ref={settingsRef}/>
     </div>
   );
 };

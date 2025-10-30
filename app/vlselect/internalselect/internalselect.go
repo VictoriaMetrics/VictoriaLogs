@@ -331,7 +331,8 @@ func (cp *commonParams) UpdatePerQueryStatsMetrics() {
 func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonParams, error) {
 	version := r.FormValue("version")
 	if version != expectedProtocolVersion {
-		return nil, fmt.Errorf("unexpected version=%q; want %q", version, expectedProtocolVersion)
+		return nil, fmt.Errorf("unexpected protocol version=%q; want %q; the most likely casue of this error is different versions of VictoriaLogs cluster components; "+
+			"make sure VictoriaLogs compoments have the same release version", version, expectedProtocolVersion)
 	}
 
 	tenantIDsStr := r.FormValue("tenant_ids")
