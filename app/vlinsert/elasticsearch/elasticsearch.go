@@ -107,7 +107,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, lmp)
 		lmp.MustClose()
 		if err != nil {
-			logger.Warnf("cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
+			logger.Warnf("%s: cannot decode log message #%d in /_bulk request: %s, stream fields: %s, stream: %q", streamName, n, err, cp.StreamFields)
 			return true
 		}
 
@@ -192,7 +192,12 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 	defer logstorage.PutJSONParser(p)
 
 	if err := p.ParseLogMessage(line); err != nil {
-		return false, fmt.Errorf("cannot parse json-encoded log entry: %w", err)
+		const tailBytes = 128
+		lineTail := line
+		if len(lineTail) > tailBytes {
+			lineTail = lineTail[len(lineTail)-tailBytes:]
+		}
+		return false, fmt.Errorf("cannot parse json-encoded log entry: %w; last %d bytes: %q", err, len(lineTail), lineTail)
 	}
 
 	ts, err := extractTimestampFromFields(timeFields, p.Fields)
