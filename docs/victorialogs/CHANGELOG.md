@@ -18,6 +18,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
+* BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing): fix `/select/logsql/tail` requests being rejected by `-search.maxQueryTimeRange` when the query relied on the tail window for the time filter. Live tailing now continues to work with that flag enabled.
+
 ## [v1.37.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.37.0)
 
 Released at 2025-10-30
