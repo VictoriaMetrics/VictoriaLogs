@@ -189,10 +189,7 @@ func (bsm *blockStreamMerger) mustWriteBlock(bd *blockData) {
 		bsm.mustFlushRows()
 		bsm.setStreamID(bd.streamID)
 		bsm.mustWriteBlockData(bd)
-	case bsm.uncompressedRowsSizeBytes == 0 && bd.uncompressedSizeBytes >= maxUncompressedBlockSize:
-		// The bsm is empty and the bd is full. Just write db to the output.
-		bsm.mustWriteBlockData(bd)
-	case bsm.uncompressedRowsSizeBytes == 0 && bd.uncompressedSizeBytes >= maxUncompressedBlockSize:
+	case bsm.uncompressedRowsSizeBytes == 0 && bsm.bd.rowsCount == 0 && bd.uncompressedSizeBytes >= maxUncompressedBlockSize:
 		// The bsm is empty and the bd is full. Just write db to the output.
 		bsm.mustWriteBlockData(bd)
 	case bsm.uncompressedRowsSizeBytes+bd.uncompressedSizeBytes >= 2*maxUncompressedBlockSize:
