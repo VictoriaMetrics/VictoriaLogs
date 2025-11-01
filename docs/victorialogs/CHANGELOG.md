@@ -18,7 +18,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
-* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api): Elasticsearch `_bulk` parse warnings now show the client address, request URI, and tail of the bad payload, so broken batches are easy to spot. See [#60](https://github.com/VictoriaMetrics/VictoriaLogs/issues/60).
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api): Elasticsearch `_bulk` parse warnings now show the client address, request URI, and tail of the bad payload, so broken batches are easier to spot. See [#60](https://github.com/VictoriaMetrics/VictoriaLogs/issues/60).
 
 ## [v1.37.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.37.0)
 
