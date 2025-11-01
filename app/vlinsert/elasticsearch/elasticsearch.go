@@ -107,7 +107,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, lmp)
 		lmp.MustClose()
 		if err != nil {
-			logger.Warnf("%s: cannot decode log message #%d in /_bulk request: %s, stream fields: %s, stream: %q", streamName, n, err, cp.StreamFields)
+			logger.Warnf("%s: cannot decode log message #%d in /_bulk request: %s, stream fields: %s", streamName, n, err, cp.StreamFields)
 			return true
 		}
 
