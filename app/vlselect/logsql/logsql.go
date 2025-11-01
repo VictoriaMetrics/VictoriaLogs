@@ -557,7 +557,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgs(r)
+	ca, err := parseCommonArgsWithConfig(r, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -1136,6 +1136,10 @@ func (ca *commonArgs) getSelectedTimeRange() string {
 }
 
 func parseCommonArgs(r *http.Request) (*commonArgs, error) {
+	return parseCommonArgsWithConfig(r, false)
+}
+
+func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*commonArgs, error) {
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
@@ -1226,7 +1230,7 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		}
 	}
 
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start
