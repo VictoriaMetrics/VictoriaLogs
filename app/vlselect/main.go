@@ -303,7 +303,7 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		logsql.ProcessStreamsRequest(ctx, w, r)
 		logsqlStreamsDuration.UpdateDuration(startTime)
 		return true
-	case "/select/admin/tenants":
+	case "/select/tenant_ids":
 		logsqlAdminTenantsRequests.Inc()
 		logsql.ProcessAdminTenantsRequest(ctx, w, r)
 		return true
@@ -442,5 +442,5 @@ var (
 	deleteStopTaskRequests    = metrics.NewCounter(`vl_http_requests_total{path="/delete/stop_task"}`)
 	deleteActiveTasksRequests = metrics.NewCounter(`vl_http_requests_total{path="/delete/active_tasks"}`)
 
-	logsqlAdminTenantsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/admin/tenants"}`)
+	logsqlAdminTenantsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
 )

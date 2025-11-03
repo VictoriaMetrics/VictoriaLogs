@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"sync"
@@ -17,7 +16,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage"
@@ -380,19 +378,13 @@ func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	start, okStart, err := getTimeNsec(r, "start")
+	start, err := getInt64FromRequest(r, "start")
 	if err != nil {
 		return fmt.Errorf("cannot parse start timestamp: %w", err)
 	}
-	end, okEnd, err := getTimeNsec(r, "end")
+	end, err := getInt64FromRequest(r, "end")
 	if err != nil {
 		return fmt.Errorf("cannot parse end timestamp: %w", err)
-	}
-	if !okStart {
-		start = math.MinInt64
-	}
-	if !okEnd {
-		end = math.MaxInt64
 	}
 
 	disableCompression := false
@@ -546,17 +538,4 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 	}
 	*dst = b
 	return nil
-}
-
-func getTimeNsec(r *http.Request, argName string) (int64, bool, error) {
-	s := r.FormValue(argName)
-	if s == "" {
-		return 0, false, nil
-	}
-	currentTimestamp := time.Now().UnixNano()
-	nsecs, err := timeutil.ParseTimeAt(s, currentTimestamp)
-	if err != nil {
-		return 0, false, fmt.Errorf("cannot parse %s=%s: %w", argName, s, err)
-	}
-	return nsecs, true, nil
 }

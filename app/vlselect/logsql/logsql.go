@@ -1074,7 +1074,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	writeResponseHeadersOnce()
 }
 
-// ProcessAdminTenantsRequest processes /select/admin/tenants request.
+// ProcessAdminTenantsRequest processes /select/tenant_ids request.
 func ProcessAdminTenantsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	start, okStart, err := getTimeNsec(r, "start")
 	if err != nil {
