@@ -2,6 +2,7 @@ package logsql
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -1097,15 +1098,27 @@ func ProcessAdminTenantsRequest(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
 		return
 	}
 
-	WriteTenantsResponse(w, tenants)
+	t, err := json.Marshal(tenants)
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
+		return
+	}
+
+	// Write response header
+	h := w.Header()
+
+	h.Set("Content-Type", "application/json")
+
+	if _, err := w.Write(t); err != nil {
+		httpserver.Errorf(w, r, "cannot send response to the client: %s", err)
+		return
+	}
 }
 
 type syncWriter struct {

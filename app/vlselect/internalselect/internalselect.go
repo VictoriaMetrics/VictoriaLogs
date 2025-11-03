@@ -395,12 +395,29 @@ func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		end = math.MaxInt64
 	}
 
+	disableCompression := false
+	if err := getBoolFromRequest(&disableCompression, r, "disable_compression"); err != nil {
+		return err
+	}
+
 	tenantIDs, err := vlstorage.GetTenantIDs(ctx, start, end)
 	if err != nil {
 		return fmt.Errorf("cannot obtain tenant IDs: %w", err)
 	}
 
-	return writeTenantIDs(w, tenantIDs, false)
+	// Marshal tenantIDs at first
+	b, err := json.Marshal(tenantIDs)
+	if err != nil {
+		return fmt.Errorf("cannot marshal tenantIDs: %w", err)
+	}
+	if !disableCompression {
+		b = zstd.CompressLevel(nil, b, 1)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(b); err != nil {
+		return fmt.Errorf("cannot send response to the client: %w", err)
+	}
+	return nil
 }
 
 type commonParams struct {
@@ -499,22 +516,6 @@ func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, v
 		return fmt.Errorf("cannot send response to the client: %w", err)
 	}
 
-	return nil
-}
-
-func writeTenantIDs(w http.ResponseWriter, tenantIDs []logstorage.TenantID, disableCompression bool) error {
-	// Marshal tenantIDs at first
-	b, err := json.Marshal(tenantIDs)
-	if err != nil {
-		return fmt.Errorf("cannot marshal tenantIDs: %w", err)
-	}
-	if !disableCompression {
-		b = zstd.CompressLevel(nil, b, 1)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(b); err != nil {
-		return fmt.Errorf("cannot send response to the client: %w", err)
-	}
 	return nil
 }
 

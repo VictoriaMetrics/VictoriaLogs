@@ -246,12 +246,20 @@ func (sn *storageNode) getStreamIDs(qctx *logstorage.QueryContext, limit uint64)
 	return sn.getValuesWithHits(qctx, "/internal/select/stream_ids", args)
 }
 
-func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]byte, error) {
+func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	args := url.Values{}
 	args.Set("start", fmt.Sprintf("%d", start))
 	args.Set("end", fmt.Sprintf("%d", end))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
-	return sn.getResponseForPathAndArgs(ctx, "/internal/select/tenant_ids", args)
+	b, err := sn.getResponseForPathAndArgs(ctx, "/internal/select/tenant_ids", args)
+	if err != nil {
+		return nil, err
+	}
+	var tIDs []logstorage.TenantID
+	if err := json.Unmarshal(b, &tIDs); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal tenant IDs from %q: %w", b, err)
+	}
+	return tIDs, nil
 }
 
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
@@ -581,7 +589,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	results := make([][]byte, len(s.sns))
+	results := make([][]logstorage.TenantID, len(s.sns))
 	errs := make([]error, len(s.sns))
 
 	var wg sync.WaitGroup
@@ -605,12 +613,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		return nil, err
 	}
 
-	unique := make(map[logstorage.TenantID]struct{}, len(results))
-	for i := range results {
-		var tenants []logstorage.TenantID
-		if err := json.Unmarshal(results[i], &tenants); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal tenantIDs from storage node %d: %w", i, err)
-		}
+	unique := make(map[logstorage.TenantID]struct{})
+	for _, tenants := range results {
 		// Deduplicate tenantIDs
 		for _, tenant := range tenants {
 			unique[tenant] = struct{}{}
