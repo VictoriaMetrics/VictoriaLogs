@@ -19,6 +19,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 ## tip
 
 * FEATURE: add an ability to delete stored logs. See [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) and [#43](https://github.com/VictoriaMetrics/VictoriaLogs/issues/43). Thanks to @func25 for the initial idea and implementation at [#4](https://github.com/VictoriaMetrics/VictoriaLogs/pull/4).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): simplify "Download logs" dialog - show only file name field and description with time range and tenant. See [#789](https://github.com/VictoriaMetrics/VictoriaLogs/issues/789).
 
 ## [v1.37.2](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.37.2)
 

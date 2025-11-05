@@ -109,10 +109,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
           className="vm-query-page-body-header__settings"
           ref={settingsRef}
         />
-        <DownloadLogsModal
-          data={data}
-          queryParams={queryParams}
-        >
+        <DownloadLogsModal queryParams={queryParams}>
           <Tooltip title="Download Logs">
             <Button
               variant="text"
