@@ -23,6 +23,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix `hits` chart not updating when changing the `group by` field. See [#788](https://github.com/VictoriaMetrics/VictoriaLogs/issues/788).
 
+* BUGFIX: [`/select/logsql/query` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs): fix incorrect handling of the right time boundary when sorting query results. Logs located close to the right boundary could be excluded from the returned result. The bug has been introduced in [v1.36.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.36.0). See [#802](https://github.com/VictoriaMetrics/VictoriaLogs/issues/802).
+
 ## [v1.37.2](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.37.2)
 
 Released at 2025-11-01
