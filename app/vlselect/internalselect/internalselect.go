@@ -380,11 +380,11 @@ func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *htt
 func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	start, err := getInt64FromRequest(r, "start")
 	if err != nil {
-		return fmt.Errorf("cannot parse start timestamp: %w", err)
+		return err
 	}
 	end, err := getInt64FromRequest(r, "end")
 	if err != nil {
-		return fmt.Errorf("cannot parse end timestamp: %w", err)
+		return err
 	}
 
 	disableCompression := false
