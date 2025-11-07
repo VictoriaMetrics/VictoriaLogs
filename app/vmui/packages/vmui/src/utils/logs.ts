@@ -12,9 +12,15 @@ export const getStreamPairs = (value: string): string[] => {
 export const getHitsTimeParams = (period: TimeParams) => {
   const start = dayjs(period.start * 1000);
   const end = dayjs(period.end * 1000);
-  const totalMs = end.diff(start, "milliseconds");
-  const step = Math.ceil(totalMs / LOGS_BARS_VIEW) || 1;
-  return { start, end, step };
+  const totalMs = Math.max(1, end.diff(start, "ms"));
+
+  let bars = Math.min(LOGS_BARS_VIEW, totalMs);
+  while (bars > 1 && (totalMs % bars) !== 0) bars--;
+
+  const step = Math.max(1, Math.floor(totalMs / bars));
+  const offset = ((start.valueOf() % step) + step) % step;
+
+  return { start, end, step, offset };
 };
 
 export const convertToFieldFilter = (value: string, field = LOGS_GROUP_BY) => {

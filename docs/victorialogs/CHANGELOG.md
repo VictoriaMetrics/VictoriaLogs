@@ -20,6 +20,8 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 * FEATURE: add an ability to delete stored logs. See [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) and [#43](https://github.com/VictoriaMetrics/VictoriaLogs/issues/43). Thanks to @func25 for the initial idea and implementation at [#4](https://github.com/VictoriaMetrics/VictoriaLogs/pull/4).
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix `/hits` graph showing the first point outside the selected time range. See [#737](https://github.com/VictoriaMetrics/VictoriaLogs/issues/737).
+
 ## [v1.37.2](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.37.2)
 
 Released at 2025-11-01
