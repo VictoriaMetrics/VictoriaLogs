@@ -1,4 +1,3 @@
-
 package vlselect
 
 import (
