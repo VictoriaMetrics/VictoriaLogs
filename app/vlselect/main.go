@@ -1,3 +1,4 @@
+
 package vlselect
 
 import (
@@ -35,6 +36,8 @@ var (
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
+		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -179,6 +182,18 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	ok := processSelectRequest(ctxWithTimeout, w, r, path)
 	if !ok {
 		return false
+	}
+
+	// Log slow queries
+	if *logSlowQueryDuration > 0 {
+		d := time.Since(startTime)
+		if d >= *logSlowQueryDuration {
+			remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+			requestURI := httpserver.GetRequestURI(r)
+			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, duration=%.3f seconds; requestURI: %q",
+				*logSlowQueryDuration, remoteAddr, d.Seconds(), requestURI)
+			slowQueries.Inc()
+		}
 	}
 
 	logRequestErrorIfNeeded(ctxWithTimeout, w, r, startTime)
@@ -437,4 +452,5 @@ var (
 	deleteRunTaskRequests     = metrics.NewCounter(`vl_http_requests_total{path="/delete/run_task"}`)
 	deleteStopTaskRequests    = metrics.NewCounter(`vl_http_requests_total{path="/delete/stop_task"}`)
 	deleteActiveTasksRequests = metrics.NewCounter(`vl_http_requests_total{path="/delete/active_tasks"}`)
+	slowQueries = metrics.NewCounter(`vl_slow_queries_total`)
 )
