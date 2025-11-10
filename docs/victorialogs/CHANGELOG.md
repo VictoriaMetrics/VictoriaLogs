@@ -18,7 +18,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/quicksta
 
 ## tip
 
-* FEATURE: add logs to record slow query. See [#750](https://github.com/VictoriaMetrics/VictoriaLogs/issues/750).
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): add slow query logging via `-search.logSlowQueryDuration`; increments `vl_slow_queries_total`. See [#750](https://github.com/VictoriaMetrics/VictoriaLogs/issues/750).
 * FEATURE: add an ability to delete stored logs. See [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) and [#43](https://github.com/VictoriaMetrics/VictoriaLogs/issues/43). Thanks to @func25 for the initial idea and implementation at [#4](https://github.com/VictoriaMetrics/VictoriaLogs/pull/4).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): simplify "Download logs" dialog - show only file name field and description with time range and tenant. See [#789](https://github.com/VictoriaMetrics/VictoriaLogs/issues/789).
 
