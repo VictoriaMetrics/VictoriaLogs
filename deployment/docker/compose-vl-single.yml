@@ -1,7 +1,7 @@
 services:
   # Grafana instance configured with VictoriaLogs as datasource
   grafana:
-    image: grafana/grafana:12.0.2
+    image: grafana/grafana:12.2.1
     depends_on:
       - "victoriametrics"
       - "victorialogs"
@@ -47,7 +47,7 @@ services:
   # VictoriaMetrics instance, a single process responsible for
   # scraping, storing metrics and serve read requests.
   victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.120.0
+    image: victoriametrics/victoria-metrics:v1.129.1
     ports:
       - "8428:8428"
     volumes:
@@ -56,13 +56,14 @@ services:
     command:
       - "--storageDataPath=/storage"
       - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--vmalert.proxyURL=http://vmalert:8880"
     restart: always
 
   # vmauth is a router and balancer for HTTP requests.
   # It proxies query requests from vmalert to either VictoriaMetrics or VictoriaLogs,
   # depending on the requested path.
   vmauth:
-    image: victoriametrics/vmauth:v1.120.0
+    image: victoriametrics/vmauth:v1.129.1
     depends_on:
       - "victoriametrics"
       - "victorialogs"
@@ -76,7 +77,7 @@ services:
 
   # vmalert executes alerting and recording rules according to the given rule type.
   vmalert:
-    image: victoriametrics/vmalert:v1.120.0
+    image: victoriametrics/vmalert:v1.129.1
     depends_on:
       - "vmauth"
       - "alertmanager"
@@ -106,7 +107,7 @@ services:
   # alertmanager receives alerting notifications from vmalert
   # and distributes them according to --config.file.
   alertmanager:
-    image: prom/alertmanager:v0.28.0
+    image: prom/alertmanager:v0.28.1
     volumes:
       - ./alertmanager.yml:/config/alertmanager.yml
     command:
