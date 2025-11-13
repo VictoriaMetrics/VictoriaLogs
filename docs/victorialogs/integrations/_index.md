@@ -10,7 +10,7 @@ menu:
 
 VictoriaLogs integrates with many popular monitoring solutions as remote storage or datasource:
 
-* [Grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) (read)
+* [Grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/)
 * [Perses](https://docs.victoriametrics.com/victorialogs/integrations/perses/)
 
 If you think that community will benefit from new integrations, open a [feature request on GitHub](https://github.com/VictoriaMetrics/VictoriaLogs/issues).
