@@ -239,7 +239,7 @@ which occupy the most of disk space across the logs ingested during the last day
 is returned in the `total_bytes` field.
 
 If you use [VictoriaLogs web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
-or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/),
+or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/integrations/grafana/),
 then make sure the selected time range covers the last day. Otherwise, the query above returns
 results on the intersection of the last day and the selected time range.
 
