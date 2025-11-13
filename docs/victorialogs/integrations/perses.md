@@ -7,7 +7,7 @@ menu:
     parent: integrations-vl
     weight: 2
 ---
-Starting with release [v0.53.0-beta.2](https://github.com/perses/perses/releases/tag/v0.53.0-beta.2) [Perses](https://perses.dev/) introduces first-class integration with VictoriaLogs.
+Starting with [Perses](https://perses.dev/) [v0.53.0-beta.2](https://github.com/perses/perses/releases/tag/v0.53.0-beta.2) release introduces first-class integration with VictoriaLogs.
 
 ![Overview VictoriaLogs Perses integration](./perses-overview.webp)
 
