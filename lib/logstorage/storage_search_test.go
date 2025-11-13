@@ -1452,7 +1452,115 @@ func TestDataBlock_MarshalUnmarshal(t *testing.T) {
 	f(db)
 }
 
+func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
+	t.Parallel()
+
+	tenantIDs := []TenantID{
+		{
+			AccountID: 123,
+			ProjectID: 456,
+		},
+	}
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention: 30 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	now := time.Now().UnixNano()
+
+	check := func(qStr string, hiddenFieldsFilters, rowsExpected []string) {
+		t.Helper()
+		checkQueryResults(t, s, tenantIDs, qStr, hiddenFieldsFilters, rowsExpected)
+	}
+
+	storeRowsForSearchHiddenFieldsFilters(s, tenantIDs, now)
+
+	// Verify that all the rows are successfully written
+	q := `*`
+	hiddenFieldsFilters := []string{}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"3500"}`})
+
+	// Select the specific log
+	q = `"value #12" "day 2" "streamID=3" | limit 1 | keep row_id, tenant_id, app, host`
+	hiddenFieldsFilters = []string{}
+	check(q, hiddenFieldsFilters, []string{`{"row_id":"12","tenant_id":"{accountID=123,projectID=456}","app":"app-203","host":"host-3"}`})
+
+	// Hide tenant_id and host fields
+	q = `"value #12" "day 2" "streamID=3" | limit 1 | keep row_id, tenant_id, app, host`
+	hiddenFieldsFilters = []string{"tenant_id", "ho*"}
+	check(q, hiddenFieldsFilters, []string{`{"row_id":"12","app":"app-203"}`})
+
+	// Search for the visible field
+	q = `host:="host-3"`
+	hiddenFieldsFilters = []string{"tenant_id"}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"700"}`})
+
+	// Search for the hidden field
+	q = `host:="host-3"`
+	hiddenFieldsFilters = []string{"tenant_id", "ho*"}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
+
+	s.MustClose()
+
+	fs.MustRemoveDir(path)
+}
+
+func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now int64) {
+	// Generate rows and put them in the storage
+
+	streamTags := []string{
+		"host",
+		"app",
+	}
+
+	lr := GetLogRows(streamTags, nil, nil, nil, "")
+	var fields []Field
+
+	const days = 7
+	const streamsPerTenant = 5
+	const rowsPerDayPerStream = 100
+
+	for rowID := 0; rowID < rowsPerDayPerStream; rowID++ {
+		for streamID := 0; streamID < streamsPerTenant; streamID++ {
+			fields = append(fields[:0], Field{
+				Name:  "host",
+				Value: fmt.Sprintf("host-%d", streamID),
+			}, Field{
+				Name:  "app",
+				Value: fmt.Sprintf("app-%d", 200+streamID),
+			})
+			for _, tenantID := range tenantIDs {
+				for dayID := int64(0); dayID < days; dayID++ {
+					fields = append(fields, Field{
+						Name:  "_msg",
+						Value: fmt.Sprintf("value #%d at the day %d for the tenantID=%s and streamID=%d", rowID, dayID, tenantID, streamID),
+					}, Field{
+						Name:  "row_id",
+						Value: fmt.Sprintf("%d", rowID),
+					}, Field{
+						Name:  "tenant_id",
+						Value: tenantID.String(),
+					})
+					timestamp := now - dayID*nsecsPerDay
+					lr.MustAdd(tenantID, timestamp, fields, nil)
+					if lr.NeedFlush() {
+						s.MustAddRows(lr)
+						lr.ResetKeepSettings()
+					}
+				}
+			}
+		}
+	}
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+
+	s.DebugFlush()
+}
+
 func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
-	return NewQueryContext(context.Background(), qs, tenantIDs, q, false)
+	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
 }

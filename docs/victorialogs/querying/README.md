@@ -988,6 +988,30 @@ The `extra_filters` may contain also arbitrary [LogsQL filter](https://docs.vict
 
 The arg passed to `extra_filters` and `extra_stream_filters` must be properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
+See also [hidden fields](https://docs.victoriametrics.com/victorialogs/querying/#hidden-fields).
+
+## Hidden fields
+
+All the [querying APIs at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) accept optional `hidden_fields_filters` query arg,
+which can be used for hiding the specific [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) during query execution.
+These fields become invisible during query execution - they aren't visible during [filtering](https://docs.victoriametrics.com/victorialogs/logsql/#filters)
+and they aren't visible during execution of all the [LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+This functionality is useful for restricting acces to certain log fields with sensitive information for the particular authorized users.
+The `hidden_fields_filters` query arg can be attached to the request by auth proxy such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#enforcing-query-args).
+
+VictoriaLogs accepts the following formats for the `hidden_fields_filters` query arg:
+
+- Comma-separated list of field names or field name prefixes ending with `*`. For example, `hidden_fields_filters=pass*,pin` hides all the fields starting with `pass`
+  plus the `pin` field.
+
+- JSON array with field names or field name prefixes ending with `*`. For example, `hidden_fields_filters=["pass*","pin"]` is equivalent to the previous example.
+  JSON array formatting allows specifying field names with commas contrary to the comma-separated formatting.
+
+Make sure that the `hidden_fields_filters` value is properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
+
+See also [extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
+
 ## Partial responses
 
 [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) returns `502 Bad Gateway` response if some of the configured `vlstorage` nodes are unavailable.
@@ -1033,7 +1057,7 @@ See also [command line interface](https://docs.victoriametrics.com/victorialogs/
 
 ## Visualization in Grafana
 
-[VictoriaLogs Grafana datasource](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) allows you to query and visualize VictoriaLogs data in Grafana.
+[VictoriaLogs Grafana datasource](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) allows you to query and visualize VictoriaLogs data in Grafana.
 Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
 
 ## Command-line

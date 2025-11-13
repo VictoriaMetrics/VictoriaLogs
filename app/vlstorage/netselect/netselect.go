@@ -2,6 +2,7 @@ package netselect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -30,37 +31,37 @@ const (
 	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldNamesProtocolVersion = "v3"
+	FieldNamesProtocolVersion = "v4"
 
 	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldValuesProtocolVersion = "v3"
+	FieldValuesProtocolVersion = "v4"
 
 	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldNamesProtocolVersion = "v3"
+	StreamFieldNamesProtocolVersion = "v4"
 
 	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldValuesProtocolVersion = "v3"
+	StreamFieldValuesProtocolVersion = "v4"
 
 	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamsProtocolVersion = "v3"
+	StreamsProtocolVersion = "v4"
 
 	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamIDsProtocolVersion = "v3"
+	StreamIDsProtocolVersion = "v4"
 
 	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	QueryProtocolVersion = "v3"
+	QueryProtocolVersion = "v4"
 
 	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
 	//
@@ -255,6 +256,13 @@ func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryConte
 	args.Set("timestamp", fmt.Sprintf("%d", qctx.Query.GetTimestamp()))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
 	args.Set("allow_partial_response", fmt.Sprintf("%v", qctx.AllowPartialResponse))
+
+	hiddenFieldsFilters, err := json.Marshal(qctx.HiddenFieldsFilters)
+	if err != nil {
+		logger.Panicf("BUG: cannot marshal HiddenFieldsFilters=%#v: %s", qctx.HiddenFieldsFilters, err)
+	}
+	args.Set("hidden_fields_filters", string(hiddenFieldsFilters))
+
 	return args
 }
 

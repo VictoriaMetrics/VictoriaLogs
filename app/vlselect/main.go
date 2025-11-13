@@ -262,6 +262,10 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	httpserver.EnableCORS(w, r)
 	startTime := time.Now()
 	switch path {
+	case "/select/logsql/query_time_range":
+		logsqlQueryTimeRangeRequests.Inc()
+		logsql.ProcessQueryTimeRangeRequest(ctx, w, r)
+		return true
 	case "/select/logsql/facets":
 		logsqlFacetsRequests.Inc()
 		logsql.ProcessFacetsRequest(ctx, w, r)
@@ -446,6 +450,9 @@ var (
 
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
+
+	// no need to track the duration for query_time_range requests, since they are instant
+	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
 
 	// no need to track duration for /delete/* requests, because they are asynchornous
 	deleteRunTaskRequests     = metrics.NewCounter(`vl_http_requests_total{path="/delete/run_task"}`)

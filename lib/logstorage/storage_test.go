@@ -181,7 +181,7 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 
 	check := func(tenantIDs []TenantID, filters string, rowsExpected []string) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, filters, rowsExpected)
+		checkQueryResults(t, s, tenantIDs, filters, nil, rowsExpected)
 	}
 
 	deleteRows := func(tenantIDs []TenantID, filters string) {
@@ -214,7 +214,7 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	// Verify that all the rows are properly stored across all the tenants
 	check(allTenantIDs, "* | count() rows", []string{`{"rows":"10500"}`})
 	for i := range allTenantIDs {
-		checkQueryResults(t, s, []TenantID{allTenantIDs[i]}, "* | count() rows", []string{`{"rows":"3500"}`})
+		checkQueryResults(t, s, []TenantID{allTenantIDs[i]}, "* | count() rows", nil, []string{`{"rows":"3500"}`})
 	}
 	check([]TenantID{allTenantIDs[0], allTenantIDs[2]}, "* | count() rows", []string{`{"rows":"7000"}`})
 
@@ -283,7 +283,7 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
-func checkQueryResults(t *testing.T, s *Storage, tenantIDs []TenantID, qStr string, resultsExpected []string) {
+func checkQueryResults(t *testing.T, s *Storage, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
 	t.Helper()
 
 	q, err := ParseQuery(qStr)
@@ -293,7 +293,7 @@ func checkQueryResults(t *testing.T, s *Storage, tenantIDs []TenantID, qStr stri
 
 	ctx := t.Context()
 	var qs QueryStats
-	qctx := NewQueryContext(ctx, &qs, tenantIDs, q, false)
+	qctx := NewQueryContext(ctx, &qs, tenantIDs, q, false, hiddenFieldsFilters)
 
 	var buf []byte
 	var bufLock sync.Mutex

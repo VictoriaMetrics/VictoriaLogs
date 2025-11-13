@@ -1,5 +1,5 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251030105710-60f777620f02
-## explicit; go 1.25.3
+# github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251113200439-c93937101cd1
+## explicit; go 1.25.4
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/blockcache
@@ -11,6 +11,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/chunkedbuffer
 github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/decimal
 github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding
+github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/snappy
 github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd
 github.com/VictoriaMetrics/VictoriaMetrics/lib/envflag
 github.com/VictoriaMetrics/VictoriaMetrics/lib/envtemplate
@@ -107,7 +108,7 @@ github.com/valyala/fastrand
 # github.com/valyala/fasttemplate v1.2.2
 ## explicit; go 1.12
 github.com/valyala/fasttemplate
-# github.com/valyala/gozstd v1.23.2
+# github.com/valyala/gozstd v1.24.0
 ## explicit; go 1.12
 github.com/valyala/gozstd
 # github.com/valyala/histogram v1.2.0
