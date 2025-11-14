@@ -422,12 +422,15 @@ type commonParams struct {
 	// Whether to allow partial response when some of vlstorage nodes are unavailable.
 	AllowPartialResponse bool
 
+	// Optional list of log fields or log field prefixes ending with *, which must be hidden during query execution.
+	HiddenFieldsFilters []string
+
 	// qs contains execution statistics for the Query.
 	qs logstorage.QueryStats
 }
 
 func (cp *commonParams) NewQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse)
+	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
 }
 
 func (cp *commonParams) UpdatePerQueryStatsMetrics() {
@@ -456,13 +459,18 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 		return nil, fmt.Errorf("cannot unmarshal query=%q: %w", qStr, err)
 	}
 
-	disableCompression := false
-	if err := getBoolFromRequest(&disableCompression, r, "disable_compression"); err != nil {
+	disableCompression, err := getBoolFromRequest(r, "disable_compression")
+	if err != nil {
 		return nil, err
 	}
 
-	allowPartialResponse := false
-	if err := getBoolFromRequest(&allowPartialResponse, r, "allow_partial_response"); err != nil {
+	allowPartialResponse, err := getBoolFromRequest(r, "allow_partial_response")
+	if err != nil {
+		return nil, err
+	}
+
+	hiddenFieldsFilters, err := getStringSliceFromRequest(r, "hidden_fields_filters")
+	if err != nil {
 		return nil, err
 	}
 
@@ -473,6 +481,7 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 		DisableCompression: disableCompression,
 
 		AllowPartialResponse: allowPartialResponse,
+		HiddenFieldsFilters:  hiddenFieldsFilters,
 	}
 	return cp, nil
 }
@@ -520,6 +529,9 @@ func marshalQueryStatsBlock(dst []byte, qctx *logstorage.QueryContext) []byte {
 
 func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
 	s := r.FormValue(argName)
+	if s == "" {
+		return 0, fmt.Errorf("missing the required arg %s", argName)
+	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse %s=%q: %w", argName, s, err)
@@ -527,15 +539,29 @@ func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
 	return n, nil
 }
 
-func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
+func getBoolFromRequest(r *http.Request, argName string) (bool, error) {
 	s := r.FormValue(argName)
 	if s == "" {
-		return nil
+		return false, fmt.Errorf("missing the required arg %s", argName)
 	}
 	b, err := strconv.ParseBool(s)
 	if err != nil {
-		return fmt.Errorf("cannot parse %s=%q as bool: %w", argName, s, err)
+		return false, fmt.Errorf("cannot parse %s=%q as bool: %w", argName, s, err)
 	}
-	*dst = b
-	return nil
+
+	return b, nil
+}
+
+func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
+	s := r.FormValue(argName)
+	if s == "" {
+		return nil, fmt.Errorf("missing the required arg %s", argName)
+	}
+
+	var a []string
+	if err := json.Unmarshal([]byte(s), &a); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal JSON array from %s=%q: %w", argName, s, err)
+	}
+
+	return a, nil
 }

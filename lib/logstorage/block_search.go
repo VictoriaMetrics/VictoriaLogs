@@ -234,8 +234,15 @@ func (bs *blockSearch) partFormatVersion() uint {
 	return bs.bsw.p.ph.FormatVersion
 }
 
+func (bs *blockSearch) isHiddenField(name string) bool {
+	return bs.bsw.pso.hiddenFieldsFilter.MatchString(name)
+}
+
 func (bs *blockSearch) getConstColumnValue(name string) string {
 	name = getCanonicalFieldName(name)
+	if bs.isHiddenField(name) {
+		return ""
+	}
 
 	if bs.partFormatVersion() < 1 {
 		csh := bs.getColumnsHeader()
@@ -282,6 +289,9 @@ func (bs *blockSearch) getConstColumnValue(name string) string {
 
 func (bs *blockSearch) getColumnHeader(name string) *columnHeader {
 	name = getCanonicalFieldName(name)
+	if bs.isHiddenField(name) {
+		return nil
+	}
 
 	if bs.partFormatVersion() < 1 {
 		csh := bs.getColumnsHeader()

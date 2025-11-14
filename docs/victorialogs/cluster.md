@@ -68,7 +68,7 @@ sequenceDiagram
 ```
 
 - `vlinsert` handles log ingestion via [all supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).  
-  It distributes incoming logs evenly across `vlstorage` nodes, as specified by the `-storageNode` command-line flag.
+  It distributes (shards) incoming logs evenly across `vlstorage` nodes, as specified by the `-storageNode` command-line flag.
 
 - `vlselect` receives queries through [all supported HTTP query endpoints](https://docs.victoriametrics.com/victorialogs/querying/).  
   It fetches the required data from the configured `vlstorage` nodes, processes the queries, and returns the results.
@@ -184,7 +184,24 @@ style LS fill:#9fe49b
 
 There is no magic coordination logic or consensus algorithms in this scheme. This simplifies managing and troubleshooting this HA scheme.
 
-See also [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
+See also [replication](https://docs.victoriametrics.com/victorialogs/cluster/#replication) and [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
+
+## Replication
+
+`vlinsert` doesn't replicate incoming logs among `vlstorage` nodes. Instead, it spreads evenly (shards) incoming logs among `vlstorage` nodes specified in the `-storageNode` command-line flag.
+This provides cost-efficient linear scalability for the cluster capacity, data ingestion performance and querying performance proportional to the number of `vlstorage` nodes.
+
+It is recommended making regular backups for the data stored across all the `vlstorage` nodes in order to make sure that the data isn't lost in case of any disaster
+(such as accidental data removal because of incorrect config updates or incorrect upgrades, or physical corruption of the data on the persistent storage).
+See [how to backup and restore data for VictoriaLogs - these docs apply to vlstorage nodes](https://docs.victoriametrics.com/victorialogs/#backup-and-restore).
+
+If you need restoring the data between the backup time and the current time, then it is recommended building
+[HA setup for VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/#high-availability),
+so you could copy the needed per-day partitions from cluster replica.
+
+Usually the disaster event occurs rarely (e.g. once per year). Every such event has unique preconditions and consequences,
+so it is impossible to automate recovering from disaster events. These events require human attention and carefully thought manual actions,
+so there is little practical sense in relying on automatic data recovery from the magically replicated data among storage nodes.
 
 ## Single-node and cluster mode duality
 
@@ -291,15 +308,46 @@ See also [generic mTLS docs for VictoriaLogs](https://docs.victoriametrics.com/v
 [Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/) can be downloaded and evaluated for free
 from [the releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest). See [how to request a free trial license](https://victoriametrics.com/products/enterprise/trial/).
 
+## Rebalancing
+
+Every `vlinsert` node spreads evenly (shards) incoming logs among `vlstorage` nodes specified in the `-storageNode` command-line flag
+according to the [VictoriaLogs cluster architecture](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+This guarantees that the data is spread evenly among `vlstorage` nodes. When new `vlstorage` nodes are added to the `-storageNode` list
+at `vlinsert`, then all the newly ingested logs are spread evenly among old and new `vlstorage` nodes, while historical data remains
+on the old `vlstorage` nodes. This improves data ingestion performance and querying performance for typical production workloads,
+since newly ingested logs are spread evenly across all the `vlstorage` nodes, while typical queries are performed over the newly ingested logs,
+which are already present among all the `vlstorage` nodes. This also provides the following benefits comparing to the scheme
+with automatic data rebalancing:
+
+- Cluster performance remains reliable just after adding new `vlstorage` nodes, since network bandwidth, disk IO and CPU resources
+  aren't spent on automatic data rebalancing, which may take days for re-balancing of petabytes of data.
+- This eliminates the whole class of hard-to-troubleshoot and resolve issues, which may happen with the cluster during automatic data rebalancing.
+  For example, what happens if some of `vlstorage` nodes become unavailable during the re-balancing? Or what happens if new `vlstorage` nodes
+  are added while the previous data re-balancing isn't finished yet?
+- This allows building flexible cluster schemes where distinct subsets of `vlinsert` nodes spread incoming logs among different subsets of `vlstorage`
+  nodes with different configs and different hardware resources.
+
+The following approaches exist for manual data re-balancing among old and new `vlstorage` nodes if it is really needed:
+
+- To wait until historical data is automatically deleted from old `vlstorage` nodes according to the configured [retention](https://docs.victoriametrics.com/victorialogs/#retention).
+  Then old and new `vlstorage` nodes will have equal amounts of data.
+- To configure `vlinsert` to write newly ingested logs only to new `vlstorage` nodes, while `vlselect` nodes should continue querying data from all the `vlstorage` nodes.
+  Then wait until the data size on the new `vlstorage` nodes becomes equal to the data size on the old `vlstorage` nodes, and return back old `vlstorage` nodes
+  to `-storageNode` list at `vlinsert`.
+- To manually move historical per-day partitions from old `vlstorage` nodes to new `vlstorage` nodes. VictoriaLogs provides the functionality, which simplifies
+  doing this work without the need to stop or restart `vlstorage` nodes - see [partitions lifecycle docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle).
+
 ## Quick start
 
-The following guide covers the following topics for a Linux host:
+The following topics for are covered below:
 
 - How to download the VictoriaLogs executable.
 - How to start a VictoriaLogs cluster, which consists of two `vlstorage` nodes, a single `vlinsert` node and a single `vlselect` node
   running on localhost according to [cluster architecture](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
 - How to ingest logs into the cluster.
 - How to query the ingested logs.
+
+If you want running VictoriaLogs cluster in Kubernetes, then please read [these docs](https://docs.victoriametrics.com/helm/victorialogs-cluster/).
 
 Download and unpack the latest VictoriaLogs release:
 

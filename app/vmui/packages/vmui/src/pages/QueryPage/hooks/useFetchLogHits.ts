@@ -37,11 +37,12 @@ export const useFetchLogHits = (defaultQuery = "*") => {
   const url = useMemo(() => getLogHitsUrl(serverUrl), [serverUrl]);
 
   const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field }: OptionsParams) => {
-    const { start, end, step } = getHitsTimeParams(period);
+    const { start, end, step, offset } = getHitsTimeParams(period);
 
     const params = new URLSearchParams({
       query: query.trim(),
       step: `${step}ms`,
+      offset: `${offset}ms`,
       start: start.toISOString(),
       end: end.toISOString(),
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,

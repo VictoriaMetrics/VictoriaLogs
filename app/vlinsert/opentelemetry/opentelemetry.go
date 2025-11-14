@@ -23,7 +23,8 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 	// use the same path as opentelemetry collector
 	// https://opentelemetry.io/docs/specs/otlp/#otlphttp-request
 	case "/insert/opentelemetry/v1/logs":
-		if r.Header.Get("Content-Type") == "application/json" {
+		ct := r.Header.Get("Content-Type")
+		if insertutil.IsJSONContentType(ct) {
 			httpserver.Errorf(w, r, "json encoding isn't supported for opentelemetry format. Use protobuf encoding")
 			return true
 		}

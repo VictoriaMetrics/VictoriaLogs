@@ -5111,7 +5111,7 @@ _time:5m "database" | count()
 
 The [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) is the essential one - if it is missing, then VictoriaLogs literally scans all the logs stored in the database.
 The `_time` filter allows reducing the amount of logs to scan to the given time range only. Note that [Web UI for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
-and [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) automatically set the `_time` filter to the selected time range,
+and [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) automatically set the `_time` filter to the selected time range,
 so there is no need to specify it manually in the query.
 
 ### Test stream filters in the query
@@ -5233,7 +5233,7 @@ Drop all the [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes
 the [time range filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) like `_time:5m`.
 This query returns all the logs on the given time range. If the query is executed
 via [the built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) or
-via [the Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/),
+via [the Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/integrations/grafana/),
 then just leave `*` in the query input field, since both the web UI and Grafana plugin for VictoriaLogs automatically filter
 logs on the selected time range. Add [`| count()`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats) at the end of the query and measure the time it takes to execute.
 This is the worst-case time needed for executing the query. The query also returns the number of logs, which need to be processed

@@ -32,5 +32,8 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "scripts/**/*.ts",
   ]
 }

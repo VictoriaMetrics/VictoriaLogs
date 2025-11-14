@@ -346,3 +346,8 @@ var (
 	_                             = metrics.NewGauge(`vl_insert_processors_count`, func() float64 { return float64(messageProcessorCount.Load()) })
 	messageProcessorCount         atomic.Int64
 )
+
+// IsJSONContentType returns true if ct is JSON content-type.
+func IsJSONContentType(ct string) bool {
+	return ct == "application/json" || strings.HasPrefix(ct, "application/json;")
+}

@@ -35,6 +35,9 @@ const QueryPage: FC = () => {
   const { duration, relativeTime, period: periodState } = useTimeState();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const { topHits, groupFieldHits } = useHitsChartConfig();
+  const prevTopHits = usePrevious(topHits);
+  const prevGroupFieldHits = usePrevious(groupFieldHits);
+
   const [searchParams] = useSearchParams();
 
   const hideChart = useMemo(() => Boolean(searchParams.get("hide_chart")), [searchParams]);
@@ -138,9 +141,15 @@ const QueryPage: FC = () => {
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
-    if (hideChart || !prevHideChart) return;
+    const topChanged = prevTopHits && (topHits !== prevTopHits);
+    const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
+    const becameVisible = prevHideChart && !hideChart;
+
+    if (!(topChanged || groupChanged || becameVisible)) return;
+
+    dataLogHits.abortController.abort?.();
     fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
-  }, [hideChart, prevHideChart, period, groupFieldHits, topHits, fetchLogHits]);
+  }, [hideChart, prevHideChart, period, groupFieldHits, prevGroupFieldHits, topHits, prevTopHits, fetchLogHits]);
 
   useEffect(() => {
     if (hideLogs || !prevHideLogs) return;

@@ -38,6 +38,12 @@ type QueryContext struct {
 	// AllowPartialResponse indicates whether to allow partial response. This flag is used only in cluster setup when vlselect queries vlstorage nodes.
 	AllowPartialResponse bool
 
+	// HiddenFieldsFilters is an optional list of field filters, which must be hidden during query execution.
+	//
+	// The list may contain full field names and field prefixes ending with *.
+	// Prefix match all the fields starting with the given prefix.
+	HiddenFieldsFilters []string
+
 	// startTime is creation time for the QueryContext.
 	//
 	// It is used for calculating query druation.
@@ -45,24 +51,24 @@ type QueryContext struct {
 }
 
 // NewQueryContext returns new context for the given query.
-func NewQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool) *QueryContext {
+func NewQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string) *QueryContext {
 	startTime := time.Now()
-	return newQueryContext(ctx, qs, tenantIDs, q, allowPartialResponse, startTime)
+	return newQueryContext(ctx, qs, tenantIDs, q, allowPartialResponse, hiddenFieldsFilters, startTime)
 }
 
 // WithQuery returns new QueryContext with the given q, while preserving other fields from qctx.
 func (qctx *QueryContext) WithQuery(q *Query) *QueryContext {
-	return newQueryContext(qctx.Context, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.startTime)
+	return newQueryContext(qctx.Context, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // WithContext returns new QueryContext with the given ctx, while preserving other fields from qctx.
 func (qctx *QueryContext) WithContext(ctx context.Context) *QueryContext {
-	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.Query, qctx.AllowPartialResponse, qctx.startTime)
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.Query, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // WithContextAndQuery returns new QueryContext with the given ctx and q, while preserving other fields from qctx.
 func (qctx *QueryContext) WithContextAndQuery(ctx context.Context, q *Query) *QueryContext {
-	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.startTime)
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // QueryDurationNsecs returns the duration in nanoseconds since the NewQueryContext call.
@@ -70,7 +76,7 @@ func (qctx *QueryContext) QueryDurationNsecs() int64 {
 	return time.Since(qctx.startTime).Nanoseconds()
 }
 
-func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool, startTime time.Time) *QueryContext {
+func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string, startTime time.Time) *QueryContext {
 	if q.opts.allowPartialResponse != nil {
 		// query options override other settings for allowPartialResponse.
 		allowPartialResponse = *q.opts.allowPartialResponse
@@ -83,6 +89,7 @@ func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, 
 		Query:      q,
 
 		AllowPartialResponse: allowPartialResponse,
+		HiddenFieldsFilters:  hiddenFieldsFilters,
 
 		startTime: startTime,
 	}
@@ -116,6 +123,9 @@ type storageSearchOptions struct {
 	// fieldsFilter is the filter of fields to return in the result
 	fieldsFilter *prefixfilter.Filter
 
+	// hiddenFieldsFilter is the filter of fields, which must be hidden during query
+	hiddenFieldsFilter *prefixfilter.Filter
+
 	// timeOffset is the offset in nanoseconds, which must be subtracted from the selected the _time values before these values are passed to query pipes.
 	timeOffset int64
 }
@@ -143,6 +153,9 @@ type partitionSearchOptions struct {
 
 	// fieldsFilter is the filter of fields to return in the result
 	fieldsFilter *prefixfilter.Filter
+
+	// hiddenFieldsFilter is the filter of fields, which must be hidden during query
+	hiddenFieldsFilter *prefixfilter.Filter
 }
 
 func (pso *partitionSearchOptions) matchStreamID(sid *streamID) bool {
@@ -207,7 +220,7 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 	}
 	q := qNew
 
-	sso := s.getSearchOptions(qctx.TenantIDs, q)
+	sso := s.getSearchOptions(qctx.TenantIDs, q, qctx.HiddenFieldsFilters)
 
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
 		workersCount := q.GetParallelReaders(s.defaultParallelReaders)
@@ -219,7 +232,7 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 	return runPipes(qctx, q.pipes, search, writeBlock, concurrency)
 }
 
-func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query) *storageSearchOptions {
+func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
 		return streamIDs[i].less(&streamIDs[j])
@@ -229,15 +242,24 @@ func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query) *storageSearc
 	sf, f := getCommonStreamFilter(q.f)
 	fieldsFilter := getNeededColumns(q.pipes)
 
+	var hiddenFieldsFilter *prefixfilter.Filter
+	if len(hiddenFieldsFilters) > 0 {
+		fieldsFilter.AddDenyFilters(hiddenFieldsFilters)
+		var hff prefixfilter.Filter
+		hff.AddAllowFilters(hiddenFieldsFilters)
+		hiddenFieldsFilter = &hff
+	}
+
 	return &storageSearchOptions{
-		tenantIDs:    tenantIDs,
-		streamIDs:    streamIDs,
-		minTimestamp: minTimestamp,
-		maxTimestamp: maxTimestamp,
-		streamFilter: sf,
-		filter:       f,
-		fieldsFilter: fieldsFilter,
-		timeOffset:   -q.opts.timeOffset,
+		tenantIDs:          tenantIDs,
+		streamIDs:          streamIDs,
+		minTimestamp:       minTimestamp,
+		maxTimestamp:       maxTimestamp,
+		streamFilter:       sf,
+		filter:             f,
+		fieldsFilter:       fieldsFilter,
+		hiddenFieldsFilter: hiddenFieldsFilter,
+		timeOffset:         -q.opts.timeOffset,
 	}
 }
 
@@ -1407,12 +1429,13 @@ func (pt *partition) getSearchOptions(sso *storageSearchOptions) *partitionSearc
 		f = initStreamFilters(sso.tenantIDs, pt.idb, f)
 	}
 	return &partitionSearchOptions{
-		tenantIDs:    tenantIDs,
-		streamIDs:    streamIDs,
-		minTimestamp: sso.minTimestamp,
-		maxTimestamp: sso.maxTimestamp,
-		filter:       f,
-		fieldsFilter: sso.fieldsFilter,
+		tenantIDs:          tenantIDs,
+		streamIDs:          streamIDs,
+		minTimestamp:       sso.minTimestamp,
+		maxTimestamp:       sso.maxTimestamp,
+		filter:             f,
+		fieldsFilter:       sso.fieldsFilter,
+		hiddenFieldsFilter: sso.hiddenFieldsFilter,
 	}
 }
 

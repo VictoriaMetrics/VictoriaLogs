@@ -75,6 +75,9 @@ You can run VictoriaLogs in a Kubernetes environment
 with [VictoriaLogs single](https://docs.victoriametrics.com/helm/victoria-logs-single/)
 or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) Helm charts.
 
+See also [victoria-logs-collector](https://docs.victoriametrics.com/helm/victoria-logs-collector/) Helm chart for collecting logs
+from all the Kubernetes containers and sending them to VictoriaLogs.
+
 ### Building from source code
 
 Follow these steps to build VictoriaLogs from source code:

@@ -922,7 +922,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	q.AddTimeFilter(start, end)
 
 	var qs QueryStats
-	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false)
+	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false, nil)
 
 	// Initialize subqueries
 	qNew, err := initSubqueries(qctx, s.runQuery, true)
@@ -932,7 +932,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	}
 	q = qNew
 
-	sso := s.getSearchOptions(dt.TenantIDs, q)
+	sso := s.getSearchOptions(dt.TenantIDs, q, qctx.HiddenFieldsFilters)
 
 	// reset fieldsFilter in order to avoid loading all the log fields
 	// during search for parts which contain rows to delete, since these fields aren't needed.

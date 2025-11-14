@@ -35,6 +35,8 @@ var (
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
+		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -181,6 +183,18 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		return false
 	}
 
+	// Log slow queries
+	if *logSlowQueryDuration > 0 {
+		d := time.Since(startTime)
+		if d >= *logSlowQueryDuration {
+			remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+			requestURI := httpserver.GetRequestURI(r)
+			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, duration=%.3f seconds; requestURI: %q",
+				*logSlowQueryDuration, remoteAddr, d.Seconds(), requestURI)
+			slowQueries.Inc()
+		}
+	}
+
 	logRequestErrorIfNeeded(ctxWithTimeout, w, r, startTime)
 	return true
 }
@@ -248,6 +262,10 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	httpserver.EnableCORS(w, r)
 	startTime := time.Now()
 	switch path {
+	case "/select/logsql/query_time_range":
+		logsqlQueryTimeRangeRequests.Inc()
+		logsql.ProcessQueryTimeRangeRequest(ctx, w, r)
+		return true
 	case "/select/logsql/facets":
 		logsqlFacetsRequests.Inc()
 		logsql.ProcessFacetsRequest(ctx, w, r)
@@ -304,8 +322,9 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		logsqlStreamsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/tenant_ids":
-		logsqlAdminTenantsRequests.Inc()
+		logsqlTenantIDsRequests.Inc()
 		logsql.ProcessAdminTenantsRequest(ctx, w, r)
+		logsqlTenantIDsDuration.UpdateDuration(startTime)
 		return true
 	default:
 		return false
@@ -434,13 +453,19 @@ var (
 	logsqlStreamsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/streams"}`)
 	logsqlStreamsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/streams"}`)
 
+	logsqlTenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
+	logsqlTenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
+
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
+
+	// no need to track the duration for query_time_range requests, since they are instant
+	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
 
 	// no need to track duration for /delete/* requests, because they are asynchornous
 	deleteRunTaskRequests     = metrics.NewCounter(`vl_http_requests_total{path="/delete/run_task"}`)
 	deleteStopTaskRequests    = metrics.NewCounter(`vl_http_requests_total{path="/delete/stop_task"}`)
 	deleteActiveTasksRequests = metrics.NewCounter(`vl_http_requests_total{path="/delete/active_tasks"}`)
 
-	logsqlAdminTenantsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
+	slowQueries = metrics.NewCounter(`vl_slow_queries_total`)
 )

@@ -27,7 +27,7 @@ VictoriaLogs provides the following features:
 - It provides easy yet powerful query language, which supports fast full-text search, fast advanced analytics and fast data extraction and transformation at query time.
   See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/).
 - It provides [built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) for logs' exploration.
-- It provides [Grafana plugin](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) for building arbitrary dashboards in Grafana.
+- It provides [Grafana plugin](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) for building arbitrary dashboards in Grafana.
 - It provides [interactive command-line tool for querying VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
 - It can be seamlessly combined with good old Unix tools for log analysis such as `grep`, `less`, `sort`, `jq`, etc.
   See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details.

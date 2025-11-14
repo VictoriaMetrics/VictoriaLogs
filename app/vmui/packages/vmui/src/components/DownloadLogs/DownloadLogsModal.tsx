@@ -1,49 +1,24 @@
-import { FC, useCallback, useEffect, useMemo, useState } from "preact/compat";
+import { FC, useCallback, useMemo, useState } from "preact/compat";
 import useBoolean from "../../hooks/useBoolean";
 import { ReactNode } from "react";
 import Modal from "../Main/Modal/Modal";
 import "./style.scss";
 import Button from "../Main/Button/Button";
-import RadioGroup from "../Main/RadioGroup/RadioGroup";
 import TextField from "../Main/TextField/TextField";
 import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../constants/date";
-import { Logs } from "../../api/types";
-import { downloadCSV, downloadJSON, downloadJSONL } from "../../utils/file";
 import { DownloadIcon, SpinnerIcon } from "../Main/Icons";
 import Alert from "../Main/Alert/Alert";
 import useDownloadLogs from "./useDownloadLogs";
 
 type Props = {
-  data?: Logs[];
   children: ReactNode;
   queryParams?: Record<string, string>;
 };
 
-enum Format {
-  csv = "csv",
-  json = "json",
-  jsonl = "jsonl",
-}
+const fileExtension = "jsonl";
 
-enum LimitOption {
-  limit = "limit",
-  unlimit = "unlimit",
-}
-
-const downloader = {
-  [Format.jsonl]: (data: Logs[], filename: string) => {
-    const jsonl = data.map(x => JSON.stringify(x)).join("\n");
-    downloadJSONL(jsonl, filename);
-  },
-  [Format.json]: (data: Logs[], filename: string) => {
-    const json = JSON.stringify(data, null, 2);
-    downloadJSON(json, filename);
-  },
-  [Format.csv]: downloadCSV
-};
-
-const DownloadLogsModal: FC<Props> = ({ data, children, queryParams }) => {
+const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   const {
     value: isOpen,
     setTrue: handleOpen,
@@ -53,45 +28,27 @@ const DownloadLogsModal: FC<Props> = ({ data, children, queryParams }) => {
   const { downloadLogs, error, isLoading } = useDownloadLogs();
 
   const [filename, setFilename] = useState("vmui_logs_export");
-  const [fileExtension, setFileExtension] = useState(Format.jsonl);
-  const [limitOption, setLimitOption] = useState(data ? LimitOption.limit : LimitOption.unlimit);
 
-  const unlimitDisabled = fileExtension !== Format.jsonl;
-
-  const queryContext = useMemo(() => {
-    if (!queryParams) return [];
-
-    const { start, end, limit, AccountID, ProjectID } = queryParams;
-
-    const localeStart = start ? dayjs(start).format(DATE_TIME_FORMAT) : null;
-    const localeEnd = end ? dayjs(end).format(DATE_TIME_FORMAT) : null;
+  const period = useMemo(() => {
+    if (!queryParams) return "";
+    const { start, end } = queryParams;
+    const localeStart = start ? dayjs(start).format(DATE_TIME_FORMAT) : "";
+    const localeEnd = end ? dayjs(end).format(DATE_TIME_FORMAT) : "";
     const tz = dayjs(start).format("Z");
+    return `${localeStart} - ${localeEnd} (${tz})`;
+  }, [queryParams?.start, queryParams?.end]);
 
-    return [
-      { label: "Time range", value: `${localeStart} - ${localeEnd} (${tz})` },
-      { label: "Limit", value: limitOption === LimitOption.unlimit ? "" : limit },
-      { label: "Tenant ID", value: `${AccountID}:${ProjectID}` },
-    ].filter(item => item.value);
-  }, [queryParams, limitOption]);
+  const tenant = useMemo(() => {
+    if (!queryParams) return "";
+    const { AccountID, ProjectID } = queryParams;
+    return `${AccountID}:${ProjectID}`;
+  }, [queryParams?.AccountID, queryParams?.ProjectID]);
 
   const handleDownload = useCallback(async () => {
-    const outName = `${filename}.${fileExtension}`;
-
-    if (limitOption === LimitOption.unlimit) {
-      await downloadLogs({ filename: outName, queryParams });
-    }
-
-    if (limitOption === LimitOption.limit && data) {
-      const localDownloader = downloader[fileExtension];
-      if (localDownloader) localDownloader(data, outName);
-    }
-  }, [filename, fileExtension, queryParams, limitOption, data, downloadLogs]);
-
-  useEffect(() => {
-    if (limitOption === LimitOption.unlimit && unlimitDisabled) {
-      setLimitOption(LimitOption.limit);
-    }
-  }, [fileExtension]);
+    const safeName = filename.trim() || "vmui_logs_export";
+    const outName = `${safeName}.${fileExtension}`;
+    await downloadLogs({ filename: outName, queryParams });
+  }, [filename, queryParams, downloadLogs]);
 
   return (
     <>
@@ -118,83 +75,9 @@ const DownloadLogsModal: FC<Props> = ({ data, children, queryParams }) => {
                   onChange={setFilename}
                 />
               </div>
-            </div>
 
-            <div className="vm-download-logs-section">
-              <h3 className="vm-download-logs-section__title">
-                Format
-              </h3>
-
-              <RadioGroup
-                value={fileExtension}
-                onChange={(opt) => setFileExtension(opt.value as Format)}
-                options={[
-                  {
-                    label: "JSONL",
-                    value: Format.jsonl,
-                    description: "Recommended. Exports visible rows or runs an unlimited query."
-                  },
-                  {
-                    label: "JSON",
-                    value: Format.json,
-                    disabled: !data,
-                    description: "Exports currently loaded rows as a JSON array."
-                  },
-                  {
-                    label: "CSV",
-                    value: Format.csv,
-                    disabled: !data,
-                    description: "Exports currently loaded rows as a CSV table."
-                  },
-                ]}
-              />
-            </div>
-
-            <div className="vm-download-logs-section">
-              <h3 className="vm-download-logs-section__title">
-                Export scope
-              </h3>
-
-              <RadioGroup
-                value={limitOption}
-                onChange={(opt) => setLimitOption(opt.value as LimitOption)}
-                options={[
-                  {
-                    label: "Visible results only",
-                    value: LimitOption.limit,
-                    description: "Export only the logs currently displayed in the UI.",
-                    disabled: !data
-                  },
-                  {
-                    label: "All logs (no limit)",
-                    value: LimitOption.unlimit,
-                    description: "Export all matching logs as JSONL.",
-                    disabled: unlimitDisabled
-                  }
-                ]}
-              />
-            </div>
-
-            <div className="vm-download-logs-section">
-              <h3 className="vm-download-logs-section__title">
-                Query context
-              </h3>
-
-              <div className="vm-download-logs-context">
-                <div className="vm-download-logs-context-item">
-                  <span className="vm-download-logs-context-item__label">LogsQL:</span>
-                  <code className="vm-download-logs-context-item__query">{queryParams?.query}</code>
-                </div>
-
-                {queryContext.map(({ label, value }) => (
-                  <div
-                    key={label}
-                    className="vm-download-logs-context-item"
-                  >
-                    <span className="vm-download-logs-context-item__label">{label}:</span>
-                    <span className="vm-download-logs-context-item__value">{value}</span>
-                  </div>
-                ))}
+              <div className="vm-download-logs__description">
+                This will download all logs for {period} using your current query for tenant {tenant}.
               </div>
             </div>
 

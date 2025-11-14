@@ -1,9 +1,9 @@
 module github.com/VictoriaMetrics/VictoriaLogs
 
-go 1.25.3
+go 1.25.4
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251030105710-60f777620f02
+	github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251113200439-c93937101cd1
 	github.com/VictoriaMetrics/easyproto v0.1.4
 	github.com/VictoriaMetrics/metrics v1.40.2
 	github.com/cespare/xxhash/v2 v2.3.0
@@ -21,7 +21,7 @@ require (
 	github.com/VictoriaMetrics/metricsql v0.84.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/valyala/gozstd v1.23.2 // indirect
+	github.com/valyala/gozstd v1.24.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect

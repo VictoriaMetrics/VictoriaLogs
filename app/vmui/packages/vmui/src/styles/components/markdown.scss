@@ -14,6 +14,7 @@
     padding: .5em;
     line-height: 1.25;
     overflow-x: scroll;
+    white-space: pre-wrap;
   }
 
   a,
@@ -134,6 +135,5 @@
     font-variant-ligatures: none;
     padding: 0.12em 0.4em;
     font-size: 0.9em;
-    white-space: nowrap;
   }
 }
