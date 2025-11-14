@@ -58,8 +58,12 @@ export const useFetchFieldNames = () => {
         return;
       }
 
-      const url = `${serverUrl}/select/logsql/field_names?${queryParams}`;
-      const response = await fetch(url, { headers });
+      const url = `${serverUrl}/select/logsql/field_names`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: params,
+      });
 
       if (!response.ok) {
         const errorResponse = await response.text();

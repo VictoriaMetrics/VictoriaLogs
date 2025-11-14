@@ -8,7 +8,6 @@ interface FetchOptions {
   start: number;
   end: number;
   query?: string;
-  limit?: number;
   extraParams?: URLSearchParams;
 }
 
@@ -51,8 +50,12 @@ export const useFetchStreamFieldNames = () => {
         return;
       }
 
-      const url = `${serverUrl}/select/logsql/stream_field_names?${queryParams}`;
-      const response = await fetch(url, { headers });
+      const url = `${serverUrl}/select/logsql/stream_field_names`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: params,
+      });
 
       if (!response.ok) {
         const errorResponse = await response.text();

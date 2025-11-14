@@ -78,9 +78,11 @@ export const useFetchLogsQLOptions = (contextData?: ContextData) => {
         return;
       }
 
-      const response = await fetch(`${serverUrl}/select/logsql/${urlSuffix}?${params}`, {
+      const response = await fetch(`${serverUrl}/select/logsql/${urlSuffix}`, {
         signal,
-        headers: { ...tenant }
+        method: "POST",
+        headers: { ...tenant },
+        body: params,
       });
 
       if (response.ok) {
