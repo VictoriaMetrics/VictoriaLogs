@@ -1130,6 +1130,15 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
 func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	accountID := r.Header.Get("AccountID")
+	if accountID != "" {
+		// Security measure - prevent from requesting tenant_ids for requests with the already specified tenant.
+		// This allows enforcing the needed tenants at vmauth side, so they won't have access to /select/tenant_ids endpoint.
+		// See https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers
+		httpserver.Errorf(w, r, "The /select/tenant_ids endpoint cannot be requested with non-empty AccountID=%q header", accountID)
+		return
+	}
+
 	start, okStart, err := getTimeNsec(r, "start")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
@@ -1145,10 +1154,16 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	}
 	if !okEnd {
 		end = math.MaxInt64
+	} else {
+		// Treat HTTP 'end' query arg as exclusive: [start, end)
+		// Convert to inclusive bound for internal filter by subtracting 1ns.
+		if end != math.MinInt64 {
+			end--
+		}
 	}
 
 	if start > end {
-		httpserver.Errorf(w, r, "'start' time must be less than 'end' time")
+		httpserver.Errorf(w, r, "'start=%d' must be smaller than 'end=%d'", start, end)
 		return
 	}
 
@@ -1158,18 +1173,15 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	t, err := json.Marshal(tenants)
+	data, err := json.Marshal(tenants)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
 		return
 	}
 
-	// Write response header
-	h := w.Header()
+	w.Header().Set("Content-Type", "application/json")
 
-	h.Set("Content-Type", "application/json")
-
-	if _, err := w.Write(t); err != nil {
+	if _, err := w.Write(data); err != nil {
 		httpserver.Errorf(w, r, "cannot send response to the client: %s", err)
 		return
 	}

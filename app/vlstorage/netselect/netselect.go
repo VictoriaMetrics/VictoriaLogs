@@ -250,16 +250,17 @@ func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]lo
 	args := url.Values{}
 	args.Set("start", fmt.Sprintf("%d", start))
 	args.Set("end", fmt.Sprintf("%d", end))
-	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
-	b, err := sn.getResponseForPathAndArgs(ctx, "/internal/select/tenant_ids", args)
+
+	path := "/internal/select/tenant_ids"
+	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
 		return nil, err
 	}
-	var tIDs []logstorage.TenantID
-	if err := json.Unmarshal(b, &tIDs); err != nil {
-		return nil, fmt.Errorf("cannot unmarshal tenant IDs from %q: %w", b, err)
+	var tenantIDs []logstorage.TenantID
+	if err := json.Unmarshal(data, &tenantIDs); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal tenantIDs received from %q; data=%q: %w", reqURL, data, err)
 	}
-	return tIDs, nil
+	return tenantIDs, nil
 }
 
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
@@ -599,6 +600,10 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 	results := make([][]logstorage.TenantID, len(s.sns))
 	errs := make([]error, len(s.sns))
 
+	// Return an error to the caller when at least a single storage node is unavailable,
+	// since this may result in incomplete list of the returned tenantIDs, which may mislead the caller.
+	allowPartialResponse := false
+
 	var wg sync.WaitGroup
 	for i := range s.sns {
 		wg.Add(1)
@@ -608,7 +613,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 			sn := s.sns[nodeIdx]
 			tenantIDs, err := sn.getTenantIDs(ctxWithCancel, start, end)
 			results[nodeIdx] = tenantIDs
-			errs[nodeIdx] = err
+			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
+
 			if err != nil {
 				// Cancel the remaining parallel requests
 				cancel()
@@ -616,21 +622,22 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		}(i)
 	}
 	wg.Wait()
-	if err := getFirstError(errs, false); err != nil {
+
+	if err := getFirstError(errs, allowPartialResponse); err != nil {
 		return nil, err
 	}
 
-	unique := make(map[logstorage.TenantID]struct{})
-	for _, tenants := range results {
-		// Deduplicate tenantIDs
-		for _, tenant := range tenants {
-			unique[tenant] = struct{}{}
+	// Deduplicate tenantIDs
+	m := make(map[logstorage.TenantID]struct{})
+	for _, tenantIDs := range results {
+		for _, tenantID := range tenantIDs {
+			m[tenantID] = struct{}{}
 		}
 	}
 
-	tenantIDs := make([]logstorage.TenantID, 0, len(unique))
-	for key := range unique {
-		tenantIDs = append(tenantIDs, key)
+	tenantIDs := make([]logstorage.TenantID, 0, len(m))
+	for tenantID := range m {
+		tenantIDs = append(tenantIDs, tenantID)
 	}
 
 	return tenantIDs, nil

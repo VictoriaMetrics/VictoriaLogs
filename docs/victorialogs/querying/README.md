@@ -31,6 +31,7 @@ VictoriaLogs provides the following HTTP endpoints:
 - [`/select/logsql/stream_field_values`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values) for querying [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field values.
 - [`/select/logsql/field_names`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names.
 - [`/select/logsql/field_values`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
+- [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants) for querying [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy) across the stored data.
 
 See also:
 
@@ -843,6 +844,26 @@ See also:
 - [Querying field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names)
 - [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
 - [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
+
+### Querying tenants
+
+VictoriaLogs provides `/select/tenant_ids?start=<start>&end=<end>` endpoint, which returns [tenant ids](https://docs.victoriametrics.com/victorialogs/#multitenancy)
+for the ingested logs on the given `[start ... end)` time range.
+
+This endpoint must be called with empty `AccountID` request header for security reasons - this prevents from unauthorized calls for this endpoint
+from clients who have access to the specified `AccountID` tenant. This can be enforced at `vmauth` side
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers).
+
+Example response returned by the `/select/tenant_ids` endpoint:
+
+```sh
+[
+  {
+    "account_id": 0,
+    "project_id": 0
+  }
+]
+```
 
 ### Querying field names
 

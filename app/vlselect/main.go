@@ -322,9 +322,9 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		logsqlStreamsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/tenant_ids":
-		logsqlTenantIDsRequests.Inc()
-		logsql.ProcessAdminTenantsRequest(ctx, w, r)
-		logsqlTenantIDsDuration.UpdateDuration(startTime)
+		tenantIDsRequests.Inc()
+		logsql.ProcessTenantIDsRequest(ctx, w, r)
+		tenantIDsDuration.UpdateDuration(startTime)
 		return true
 	default:
 		return false
@@ -453,8 +453,8 @@ var (
 	logsqlStreamsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/streams"}`)
 	logsqlStreamsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/streams"}`)
 
-	logsqlTenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
-	logsqlTenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
+	tenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
+	tenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
 
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
