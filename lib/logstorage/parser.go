@@ -2482,6 +2482,21 @@ func newFilterRegexp(fieldName, arg string) (filter, error) {
 func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	lex.nextToken()
 
+	// Check for '**' no-op field filter
+	if !lex.isSkippedSpace && lex.isKeyword("*") {
+		lex.nextToken()
+		if lex.isSkippedSpace || lex.isKeyword("", ")", "|") {
+			if fieldName == "" {
+				return nil, fmt.Errorf("'**' requires a field name; use '*' for a global no-op filter")
+			}
+			f := &filterNoopField{
+				fieldName: getCanonicalColumnName(fieldName),
+			}
+			return f, nil
+		}
+		return nil, fmt.Errorf("unexpected token after '**': %q", lex.token)
+	}
+
 	if lex.isSkippedSpace || lex.isKeyword("", ")", "|") {
 		// '*' or 'fieldName:*' filter
 		f := &filterPrefix{

@@ -21,6 +21,8 @@ according to the follosing docs:
 
 ## tip
 
+* FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`field:**` filter](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter) for matching log entries where a field exists with any value, including empty values. This complements the existing `field:*` syntax which matches only non-empty values.
+
 ## [v1.38.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.38.0)
 
 Released at 2025-11-14

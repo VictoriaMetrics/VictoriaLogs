@@ -835,6 +835,12 @@ This can be performed with `log_field:*` syntax. For example, the following quer
 host.hostname:*
 ```
 
+To match log entries where a field exists with any value (including empty), use `log_field:**` syntax:
+
+```logsql
+host.hostname:**
+```
+
 See also:
 
 - [Empty value filter](https://docs.victoriametrics.com/victorialogs/logsql/#empty-value-filter)
