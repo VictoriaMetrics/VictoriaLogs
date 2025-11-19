@@ -4954,6 +4954,8 @@ Internally duration values are converted into nanoseconds.
 - If the logs are stored at high-latency storage systems such as NFS or S3, then increasing the number of parallel readers can help improve query performance.
   See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option) for details.
 
+See also [query performance troubleshooting](https://docs.victoriametrics.com/victorialogs/logsql/#troubleshooting).
+
 ## Query options
 
 VictoriaLogs supports the following options, which can be passed in the beginning of [LogsQL query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) `<q>`

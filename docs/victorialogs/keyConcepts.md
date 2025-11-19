@@ -121,8 +121,8 @@ VictoriaLogs supports the following special fields in addition to arbitrary [oth
 
 ### Message field
 
-Every ingested [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) must contain at least a `_msg` field with the actual log message. For example, this is the minimal
-log entry for VictoriaLogs:
+It is expected that every ingested [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) contains at least a `_msg` field with the actual log message.
+For example, this is the minimal log entry for VictoriaLogs:
 
 ```json
 {
@@ -136,7 +136,8 @@ For example, if the log message is located in the `event.original` field, then s
 See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details.
 
 If the `_msg` field remains empty after an attempt to get it from `_msg_field`, then VictoriaLogs automatically sets it to the value specified
-via `-defaultMsgValue` command-line flag.
+via `-defaultMsgValue` command-line flag. It is OK to have an empty `_msg` field if log entry contains essential information in other fields -
+VictoriaLogs just fills the `_msg` with the `-defaultMsgValue` constant, which is very lightweight for processing and querying.
 
 ```mermaid
 flowchart LR
@@ -144,7 +145,7 @@ flowchart LR
   B -- yes --> C["Use first non-empty (by list order) as _msg"]
   B -- no  --> D{"_msg present?"}
   D -- yes --> E["Use _msg"]
-  D -- no  --> F["Use default message"]
+  D -- no  --> F["Use -defaultMsgValue"]
 ```
 
 ### Time field

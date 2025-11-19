@@ -1599,7 +1599,7 @@
             "uid": "$ds"
           },
           "editorMode": "code",
-          "expr": "max(vl_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
+          "expr": "sum(vl_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -5321,7 +5321,7 @@
               },
               "editorMode": "code",
               "exemplar": true,
-              "expr": "max(max_over_time(vl_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (job)\n/\nmax(vl_total_disk_space_bytes{job=~\"$job\", instance=~\"$instance\"}) by (job)",
+              "expr": "max(sum(vl_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) without (type) / sum(vl_total_disk_space_bytes{job=~\"$job\", instance=~\"$instance\"}) without (path)) by (job)",
               "hide": false,
               "interval": "",
               "legendFormat": "{{job}}",
