@@ -96,6 +96,10 @@ type blockStreamMerger struct {
 	// rowsTmp is temporary storage for log entries during merge.
 	rowsTmp rows
 
+	// firstBlockMinTimestamp is the minimum timestamp (according to block metadata)
+	// for log entries currently stored in rows.
+	firstBlockMinTimestamp int64
+
 	// uncompressedRowsSizeBytes is the current size of uncompressed rows.
 	//
 	// It is used for flushing rows to blocks when their size reaches maxUncompressedBlockSize
@@ -137,6 +141,7 @@ func (bsm *blockStreamMerger) resetRows() {
 	bsm.rowsTmp.reset()
 
 	bsm.uncompressedRowsSizeBytes = 0
+	bsm.firstBlockMinTimestamp = 0
 }
 
 func (bsm *blockStreamMerger) assertNoRows() {
@@ -232,7 +237,7 @@ func (bsm *blockStreamMerger) checkNextBlock(bd *blockData) {
 		}
 		return
 	}
-	minTimestamp := bsm.rows.timestamps[0]
+	minTimestamp := bsm.firstBlockMinTimestamp
 	if nextMinTimestamp < minTimestamp {
 		logger.Panicf("FATAL: cannot merge %s: the next block's minTimestamp=%d is smaller than the minTimestamp=%d for log entries for the current block",
 			bsm.ReadersPaths(), nextMinTimestamp, minTimestamp)
@@ -313,6 +318,9 @@ func (bsm *blockStreamMerger) mustUnmarshalRows(bd *blockData) {
 	}
 
 	td := &bd.timestampsData
+	if rowsLen == 0 {
+		bsm.firstBlockMinTimestamp = td.minTimestamp
+	}
 	if bsm.needDropRows(&bd.streamID, td.minTimestamp, td.maxTimestamp) {
 		stream, streamID := bsm.getStreamAndStreamID()
 		bsm.rows.skipRowsByDropFilter(bsm.dropFilter, &bsm.dropFilterFields, rowsLen, stream, streamID)

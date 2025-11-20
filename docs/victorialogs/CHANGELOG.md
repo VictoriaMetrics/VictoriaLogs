@@ -21,6 +21,8 @@ according to the follosing docs:
 
 ## tip
 
+* BUGFIX: [logs deletion](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): fix a panic that could occur during long-running delete tasks, when the delete filter removed rows with the smallest timestamps in a block, which then confused an internal timestamp ordering check during merge. Previously this could make VictoriaLogs crash and immediately restart the same delete task in a loop. See [#825](https://github.com/VictoriaMetrics/VictoriaLogs/issues/825).
+
 ## [v1.38.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.38.0)
 
 Released at 2025-11-14
