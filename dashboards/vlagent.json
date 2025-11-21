@@ -67,7 +67,7 @@
       "targetBlank": true,
       "title": "Found a bug?",
       "type": "link",
-      "url": "https://github.com/VictoriaMetrics/VictoriaMetrics/issues"
+      "url": "https://github.com/VictoriaMetrics/VictoriaLogs/issues"
     },
     {
       "icon": "external link",
@@ -75,7 +75,7 @@
       "targetBlank": true,
       "title": "New releases",
       "type": "link",
-      "url": "https://github.com/VictoriaMetrics/VictoriaMetrics/releases"
+      "url": "https://github.com/VictoriaMetrics/VictoriaLogs/releases"
     },
     {
       "asDropdown": false,
