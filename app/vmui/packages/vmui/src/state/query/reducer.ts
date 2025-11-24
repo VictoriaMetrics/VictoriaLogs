@@ -6,6 +6,7 @@ import {
   QueryAutocompleteCacheItem
 } from "../../components/Configurators/QueryEditor/QueryAutocompleteCache";
 import { AutocompleteOptions } from "../../components/Main/Autocomplete/Autocomplete";
+import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 
 export interface QueryHistoryType {
   index: number;
@@ -19,6 +20,7 @@ export interface QueryState {
   autocompleteQuick: boolean;
   autocompleteCache: QueryAutocompleteCache;
   metricsQLFunctions: AutocompleteOptions[];
+  queryHasTimeFilter: boolean;
 }
 
 export type QueryAction =
@@ -28,6 +30,7 @@ export type QueryAction =
   | { type: "TOGGLE_AUTOCOMPLETE" }
   | { type: "SET_AUTOCOMPLETE_QUICK", payload: boolean }
   | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: QueryAutocompleteCacheItem, value: string[] } }
+  | { type: "SET_QUERY_HAS_TIME_FILTER", payload: boolean }
 
 const query = getQueryArray();
 export const initialQueryState: QueryState = {
@@ -37,6 +40,7 @@ export const initialQueryState: QueryState = {
   autocompleteQuick: false,
   autocompleteCache: new QueryAutocompleteCache(),
   metricsQLFunctions: [],
+  queryHasTimeFilter: false,
 };
 
 export function reducer(state: QueryState, action: QueryAction): QueryState {
@@ -75,6 +79,11 @@ export function reducer(state: QueryState, action: QueryAction): QueryState {
         ...state
       };
     }
+    case "SET_QUERY_HAS_TIME_FILTER":
+      return {
+        ...state,
+        queryHasTimeFilter: getOverrideValue() ? action.payload : false
+      };
     default:
       throw new Error();
   }

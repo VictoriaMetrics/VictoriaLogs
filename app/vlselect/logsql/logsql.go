@@ -50,9 +50,10 @@ var (
 //	{
 //	  "start":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
 //	  "end":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
+//	  "hasTimeFilter":true|false
 //	}
 func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	minTimestamp, maxTimestamp, err := parseQueryTimeRangeArgs(r)
+	minTimestamp, maxTimestamp, hasTimeFilter, err := parseQueryTimeRangeArgs(r)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -62,25 +63,29 @@ func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r 
 
 	startStr := timestampToRFC3339Nano(minTimestamp)
 	endStr := timestampToRFC3339Nano(maxTimestamp)
-	fmt.Fprintf(w, `{"start":%q,"end":%q}`, startStr, endStr)
+	fmt.Fprintf(w, `{"start":%q,"end":%q,"hasTimeFilter":%t}`, startStr, endStr, hasTimeFilter)
 }
 
-func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, error) {
+func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, bool, error) {
 	qStr := r.FormValue("query")
 	if qStr == "" {
-		return 0, 0, fmt.Errorf("`query` arg cannot be empty")
+		return 0, 0, false, fmt.Errorf("`query` arg cannot be empty")
 	}
 	currTimestamp := time.Now().UnixNano()
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, currTimestamp)
 	if err != nil {
-		return 0, 0, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
+		return 0, 0, false, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
 	}
 
 	minTimestamp, maxTimestamp := q.GetFilterTimeRange()
+
+	// hasTimeFilter is true if the query itself contains a _time filter
+	hasTimeFilter := (minTimestamp != math.MinInt64 || maxTimestamp != math.MaxInt64)
+
 	if minTimestamp == math.MinInt64 {
 		start, ok, err := getTimeNsec(r, "start")
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
 		}
 		if ok {
 			minTimestamp = start
@@ -89,14 +94,14 @@ func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, error) {
 	if maxTimestamp == math.MaxInt64 {
 		end, ok, err := getTimeNsec(r, "end")
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
 		}
 		if ok {
 			maxTimestamp = end
 		}
 	}
 
-	return minTimestamp, maxTimestamp, nil
+	return minTimestamp, maxTimestamp, hasTimeFilter, nil
 }
 
 func timestampToRFC3339Nano(nsec int64) string {
