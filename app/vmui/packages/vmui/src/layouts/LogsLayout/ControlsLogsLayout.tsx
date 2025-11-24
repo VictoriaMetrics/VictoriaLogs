@@ -5,8 +5,13 @@ import { ControlsProps } from "../Header/HeaderControls/HeaderControls";
 import { TimeSelector } from "../../components/Configurators/TimeRangeSettings/TimeSelector/TimeSelector";
 import TenantsFields from "../../components/Configurators/GlobalSettings/TenantsConfiguration/TenantsFields";
 import { ExecutionControls } from "../../components/Configurators/TimeRangeSettings/ExecutionControls/ExecutionControls";
+import ShortcutKeys from "../../components/Main/ShortcutKeys/ShortcutKeys";
+import { getAppModeEnable } from "../../utils/app-mode";
+import Button from "../../components/Main/Button/Button";
+import { KeyboardIcon } from "../../components/Main/Icons";
 
 const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
+  const appModeEnable = getAppModeEnable();
   const settingsRef = useRef<GlobalSettingsHandle>(null);
 
   return (
@@ -21,6 +26,16 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
       {headerSetup?.timeSelector && <TimeSelector onOpenSettings={settingsRef?.current?.open}/>}
       {headerSetup?.executionControls &&  <ExecutionControls/>}
       <GlobalSettings ref={settingsRef}/>
+      {!isMobile && (
+        <ShortcutKeys>
+          <Button
+            className={appModeEnable ? "" : "vm-header-button"}
+            variant="contained"
+            color="primary"
+            startIcon={<KeyboardIcon/>}
+          />
+        </ShortcutKeys>
+      )}
     </div>
   );
 };

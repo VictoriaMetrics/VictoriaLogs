@@ -21,6 +21,8 @@ according to the follosing docs:
 
 ## tip
 
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the help button with shortcuts reference and controls for charts and query input. See [#77](https://github.com/VictoriaMetrics/VictoriaLogs/issues/77).
+
 ## [v1.38.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.38.0)
 
 Released at 2025-11-14

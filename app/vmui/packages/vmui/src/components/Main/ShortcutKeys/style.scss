@@ -15,13 +15,8 @@
 
     &__title {
       font-weight: bold;
+      line-height: 24px;
       margin-bottom: $padding-global;
-    }
-
-    &__read-more {
-      position: absolute;
-      top: -8px;
-      right: 0;
     }
 
     &-list {
