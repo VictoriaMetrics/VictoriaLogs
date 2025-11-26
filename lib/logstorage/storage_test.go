@@ -212,71 +212,71 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	storeRowsForProcessDeleteTaskTest(s, allTenantIDs, now)
 
 	// Verify that all the rows are properly stored across all the tenants
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"10500"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"10500"}`})
 	for i := range allTenantIDs {
-		checkQueryResults(t, s, []TenantID{allTenantIDs[i]}, "* | count() rows", nil, []string{`{"rows":"3500"}`})
+		checkQueryResults(t, s, []TenantID{allTenantIDs[i]}, "* | count(host) rows", nil, []string{`{"rows":"3500"}`})
 	}
-	check([]TenantID{allTenantIDs[0], allTenantIDs[2]}, "* | count() rows", []string{`{"rows":"7000"}`})
+	check([]TenantID{allTenantIDs[0], allTenantIDs[2]}, "* | count(host) rows", []string{`{"rows":"7000"}`})
 
 	// Try deleting non-existing logs
-	check(allTenantIDs, "row_id:=foobar | count() rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "row_id:=foobar | count(host) rows", []string{`{"rows":"0"}`})
 	deleteRows(allTenantIDs, "row_id:=foobar")
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"10500"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"10500"}`})
 
 	// Delete logs with the given row_id across all the tenants
-	check(allTenantIDs, "row_id:=42 | count() rows", []string{`{"rows":"105"}`})
+	check(allTenantIDs, "row_id:=42 | count(host) rows", []string{`{"rows":"105"}`})
 	deleteRows(allTenantIDs, "row_id:=42")
-	check(allTenantIDs, "row_id:=42 | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "row_id:!=42 | count() rows", []string{`{"rows":"10395"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"10395"}`})
+	check(allTenantIDs, "row_id:=42 | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "row_id:!=42 | count(host) rows", []string{`{"rows":"10395"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"10395"}`})
 
 	// Delete logs for the given row_id at two tenants
 	tenantIDs := []TenantID{
 		allTenantIDs[0],
 		allTenantIDs[2],
 	}
-	check(allTenantIDs, "row_id:=10 | count() rows", []string{`{"rows":"105"}`})
-	check(tenantIDs, "row_id:=10 | count() rows", []string{`{"rows":"70"}`})
+	check(allTenantIDs, "row_id:=10 | count(host) rows", []string{`{"rows":"105"}`})
+	check(tenantIDs, "row_id:=10 | count(host) rows", []string{`{"rows":"70"}`})
 	deleteRows(tenantIDs, "row_id:=10")
-	check(tenantIDs, "row_id:=10 | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "row_id:=10 | count() rows", []string{`{"rows":"35"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"10325"}`})
+	check(tenantIDs, "row_id:=10 | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "row_id:=10 | count(host) rows", []string{`{"rows":"35"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"10325"}`})
 
 	// Delete all the logs for the particular tenant
 	tenantIDs = []TenantID{
 		allTenantIDs[1],
 	}
-	check(tenantIDs, "* | count() rows", []string{`{"rows":"3465"}`})
+	check(tenantIDs, "* | count(host) rows", []string{`{"rows":"3465"}`})
 	deleteRows(tenantIDs, "*")
-	check(tenantIDs, "* | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"6860"}`})
+	check(tenantIDs, "* | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"6860"}`})
 
 	// Delete all the logs for the particular day
 	filter := "_time:1d offset 2d"
-	check(allTenantIDs, filter+" | count() rows", []string{`{"rows":"980"}`})
+	check(allTenantIDs, filter+" | count(host) rows", []string{`{"rows":"980"}`})
 	deleteRows(allTenantIDs, filter)
-	check(allTenantIDs, filter+" | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"5880"}`})
+	check(allTenantIDs, filter+" | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"5880"}`})
 
 	// Delete logs by _stream filter at the particular tenant
 	tenantIDs = []TenantID{
 		allTenantIDs[0],
 	}
 	filter = `{host="host-4",app=~"app-.+"}`
-	check(tenantIDs, filter+" | count() rows", []string{`{"rows":"588"}`})
+	check(tenantIDs, filter+" | count(host) rows", []string{`{"rows":"588"}`})
 	deleteRows(tenantIDs, filter)
-	check(tenantIDs, filter+" | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"5292"}`})
+	check(tenantIDs, filter+" | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"5292"}`})
 
 	// Delete logs by composite filter at the particular tenant
 	tenantIDs = []TenantID{
 		allTenantIDs[2],
 	}
 	filter = `(_msg:3 row_id:23 _time:2d) or (row_id:56 {host=~"host-[23]"} app:*02* tenant_id:~"56")`
-	check(tenantIDs, filter+" | count() rows", []string{`{"rows":"8"}`})
+	check(tenantIDs, filter+" | count(host) rows", []string{`{"rows":"8"}`})
 	deleteRows(tenantIDs, filter)
-	check(tenantIDs, filter+" | count() rows", []string{`{"rows":"0"}`})
-	check(allTenantIDs, "* | count() rows", []string{`{"rows":"5284"}`})
+	check(tenantIDs, filter+" | count(host) rows", []string{`{"rows":"0"}`})
+	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"5284"}`})
 
 	s.MustClose()
 

@@ -21,7 +21,10 @@ according to the follosing docs:
 
 ## tip
 
+* FEATURE: [syslog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/): add support for automatic parsing of [`@cee` messages](http://cee.mitre.org/language/1.0-beta1/clt.html#syslog). Thanks to @exherb for the pull request [#842](https://github.com/VictoriaMetrics/VictoriaLogs/pull/842).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the help button with shortcuts reference and controls for charts and query input. See [#77](https://github.com/VictoriaMetrics/VictoriaLogs/issues/77).
+
+* BUGFIX: [delete API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): prevent from possible fatal error (panic) at `block_stream_merger.go:237` during the deletion of the logs. See [#825](https://github.com/VictoriaMetrics/VictoriaLogs/issues/825).
 
 ## [v1.38.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.38.0)
 
