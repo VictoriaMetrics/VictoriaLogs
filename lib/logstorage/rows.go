@@ -219,6 +219,16 @@ func (rs *rows) reset() {
 	rs.rows = rs.rows[:0]
 }
 
+func (rs *rows) hasNonEmptyRows() bool {
+	rows := rs.rows
+	for _, fields := range rows {
+		if len(fields) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // appendRows appends rows with the given timestamps to rs.
 func (rs *rows) appendRows(timestamps []int64, rows [][]Field) {
 	rs.timestamps = append(rs.timestamps, timestamps...)
@@ -306,6 +316,19 @@ func (rs *rows) skipRowsByDropFilter(dropFilter *partitionSearchOptions, dropFil
 		if !dropFilter.filter.matchRow(tmpFields.Fields) {
 			dstTimestamps = append(dstTimestamps, srcTimestamp)
 			dstRows = append(dstRows, srcFields)
+		} else if i == 0 {
+			// The first row with the minimum timestamp is deleted.
+			// Replace it with an empty row with the original timestamp in order to keep valid the assumptions
+			// that blocks for the same log stream are sorted by their first (minimum) timestamps.
+			// Violating these assumptions leads to data loss during background merge
+			// when obtaining the next block to merge via blockStreamReadersHeap.Less.
+			//
+			// It is safe to use an empty row here, since it is treated as non-existing row
+			// during filtering because of VictoraLogs data model - https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+			//
+			// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/825
+			dstTimestamps = append(dstTimestamps, srcTimestamp)
+			dstRows = append(dstRows, nil)
 		}
 
 		clear(tmpFields.Fields[tmpFieldsBaseLen:])
