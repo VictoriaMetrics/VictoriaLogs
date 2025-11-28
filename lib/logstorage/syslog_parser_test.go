@@ -123,9 +123,9 @@ func TestSyslogParser(t *testing.T) {
 	f(`Sep 29 08:26:10 host`, time.UTC, `format=rfc3164 timestamp=2024-09-29T08:26:10Z hostname=host`)
 	f(`Sep 29 08:26:10`, time.UTC, `format=rfc3164 timestamp=2024-09-29T08:26:10Z`)
 
-	// @cee
-	f(`Jun  3 12:08:33 abcd systemd[1]: @cee: {"k":"v","message":"test"}`, time.UTC,
-		`format=rfc3164 timestamp=2024-06-03T12:08:33Z hostname=abcd app_name=systemd proc_id=1 k=v message=test`)
-	f(`Jun  3 12:08:33 abcd systemd[1]: @cee: {"k":"v","message":"two words"}`, time.UTC,
-		`format=rfc3164 timestamp=2024-06-03T12:08:33Z hostname=abcd app_name=systemd proc_id=1 k=v message="two words"`)
+	// @cee - https://cee.mitre.org/language/1.0-beta1/clt.html#syslog
+	f(`Jun  3 12:08:33 abcd systemd[1]: @cee: {"k":"v","message":"test"}`, time.UTC, `format=rfc3164 timestamp=2024-06-03T12:08:33Z hostname=abcd app_name=systemd proc_id=1 k=v message=test`)
+	f(`Jun  3 12:08:33 abcd systemd[1]: @cee: {"k":"v","message":"two words"}`, time.UTC, `format=rfc3164 timestamp=2024-06-03T12:08:33Z hostname=abcd app_name=systemd proc_id=1 k=v message="two words"`)
+	f(`<0>Dec 20 12:42:20 syslog-relay process[35]: @cee: {"crit":123,"id":"abc","appname":"application","pname":"auth","pid":123,"host":"system.example.com","pri":10,"time":"2011-12-20T12:38:05.123456-05:00","action":"login","domain":"app","object":"account","service":"web","status":"success"}`, time.UTC, `priority=0 facility_keyword=kern level=emerg facility=0 severity=0 format=rfc3164 timestamp=2024-12-20T12:42:20Z hostname=syslog-relay app_name=process proc_id=35 crit=123 id=abc appname=application pname=auth pid=123 host=system.example.com pri=10 time=2011-12-20T12:38:05.123456-05:00 action=login domain=app object=account service=web status=success`)
+	f(`<165>1 2011-12-20T12:38:06Z 10.10.0.1 process - example-event-1 @cee:{"pname":"auth","host":"system.example.com","time":"2011-12-20T12:38:05.123456-05:00"}`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2011-12-20T12:38:06Z hostname=10.10.0.1 app_name=process proc_id=- msg_id=example-event-1 pname=auth host=system.example.com time=2011-12-20T12:38:05.123456-05:00`)
 }

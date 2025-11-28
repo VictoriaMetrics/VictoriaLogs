@@ -50,9 +50,10 @@ var (
 //	{
 //	  "start":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
 //	  "end":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
+//	  "hasTimeFilter":true|false
 //	}
 func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	minTimestamp, maxTimestamp, err := parseQueryTimeRangeArgs(r)
+	minTimestamp, maxTimestamp, hasTimeFilter, err := parseQueryTimeRangeArgs(r)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -62,25 +63,29 @@ func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r 
 
 	startStr := timestampToRFC3339Nano(minTimestamp)
 	endStr := timestampToRFC3339Nano(maxTimestamp)
-	fmt.Fprintf(w, `{"start":%q,"end":%q}`, startStr, endStr)
+	fmt.Fprintf(w, `{"start":%q,"end":%q,"hasTimeFilter":%t}`, startStr, endStr, hasTimeFilter)
 }
 
-func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, error) {
+func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, bool, error) {
 	qStr := r.FormValue("query")
 	if qStr == "" {
-		return 0, 0, fmt.Errorf("`query` arg cannot be empty")
+		return 0, 0, false, fmt.Errorf("`query` arg cannot be empty")
 	}
 	currTimestamp := time.Now().UnixNano()
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, currTimestamp)
 	if err != nil {
-		return 0, 0, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
+		return 0, 0, false, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
 	}
 
 	minTimestamp, maxTimestamp := q.GetFilterTimeRange()
+
+	// hasTimeFilter is true if the query itself contains a _time filter
+	hasTimeFilter := (minTimestamp != math.MinInt64 || maxTimestamp != math.MaxInt64)
+
 	if minTimestamp == math.MinInt64 {
 		start, ok, err := getTimeNsec(r, "start")
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
 		}
 		if ok {
 			minTimestamp = start
@@ -89,14 +94,14 @@ func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, error) {
 	if maxTimestamp == math.MaxInt64 {
 		end, ok, err := getTimeNsec(r, "end")
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, false, err
 		}
 		if ok {
 			maxTimestamp = end
 		}
 	}
 
-	return minTimestamp, maxTimestamp, nil
+	return minTimestamp, maxTimestamp, hasTimeFilter, nil
 }
 
 func timestampToRFC3339Nano(nsec int64) string {
@@ -193,7 +198,7 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteFacetsResponse(w, m)
@@ -252,6 +257,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	// Add a pipe, which calculates hits over time with the given step and offset for the given fields.
 	ca.q.AddCountByTimePipe(int64(step), int64(offset), fields)
+	start, end := ca.q.GetFilterTimeRange()
 
 	var mLock sync.Mutex
 	m := make(map[string]*hitsSeries)
@@ -268,7 +274,10 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 		bb := blockResultPool.Get()
 		for i := 0; i < rowsCount; i++ {
-			timestampStr := strings.Clone(timestampValues[i])
+			timestampNsec, ok := logstorage.TryParseTimestampRFC3339Nano(timestampValues[i])
+			if !ok {
+				logger.Panicf("BUG: cannot parse timestamp=%q", timestampValues[i])
+			}
 			hitsStr := strings.Clone(hitsValues[i])
 			hits, err := strconv.ParseUint(hitsStr, 10, 64)
 			if err != nil {
@@ -281,11 +290,10 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			mLock.Lock()
 			hs, ok := m[string(bb.B)]
 			if !ok {
-				k := string(bb.B)
 				hs = &hitsSeries{}
-				m[k] = hs
+				m[string(bb.B)] = hs
 			}
-			hs.timestamps = append(hs.timestamps, timestampStr)
+			hs.timestamps = append(hs.timestamps, timestampNsec)
 			hs.hits = append(hs.hits, hits)
 			hs.hitsTotal += hits
 			mLock.Unlock()
@@ -304,15 +312,57 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	m = getTopHitsSeries(m, fieldsLimit)
+	addMissingZeroHits(m, start, end, int64(step), int64(offset))
 
 	// Write response headers
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteHitsSeries(w, m)
+}
+
+func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64) {
+	if start == math.MinInt64 {
+		start = math.MaxInt64
+		for _, hs := range m {
+			start = min(start, slices.Min(hs.timestamps))
+		}
+	} else {
+		start -= start%step - offset
+	}
+
+	if end == math.MaxInt64 {
+		end = math.MinInt64
+		for _, hs := range m {
+			end = max(end, slices.Max(hs.timestamps))
+		}
+	} else {
+		end -= start%step - offset
+	}
+
+	if start > end {
+		// nothing to do
+		return
+	}
+
+	for _, hs := range m {
+		ts := start
+		for ts <= end {
+			if !slices.Contains(hs.timestamps, ts) {
+				hs.timestamps = append(hs.timestamps, ts)
+				hs.hits = append(hs.hits, 0)
+			}
+
+			if ts+step < ts {
+				// stop on int64 overflow
+				break
+			}
+			ts += step
+		}
+	}
 }
 
 var blockResultPool bytesutil.ByteBufferPool
@@ -337,15 +387,15 @@ func getTopHitsSeries(m map[string]*hitsSeries, fieldsLimit int) map[string]*hit
 		return a[i].hs.hitsTotal > a[j].hs.hitsTotal
 	})
 
-	hitsOther := make(map[string]uint64)
+	hitsOther := make(map[int64]uint64)
 	for _, x := range a[fieldsLimit:] {
-		for i, timestampStr := range x.hs.timestamps {
-			hitsOther[timestampStr] += x.hs.hits[i]
+		for i, timestamp := range x.hs.timestamps {
+			hitsOther[timestamp] += x.hs.hits[i]
 		}
 	}
 	var hsOther hitsSeries
-	for timestampStr, hits := range hitsOther {
-		hsOther.timestamps = append(hsOther.timestamps, timestampStr)
+	for timestamp, hits := range hitsOther {
+		hsOther.timestamps = append(hsOther.timestamps, timestamp)
 		hsOther.hits = append(hsOther.hits, hits)
 		hsOther.hitsTotal += hits
 	}
@@ -361,7 +411,7 @@ func getTopHitsSeries(m map[string]*hitsSeries, fieldsLimit int) map[string]*hit
 
 type hitsSeries struct {
 	hitsTotal  uint64
-	timestamps []string
+	timestamps []int64
 	hits       []uint64
 }
 
@@ -407,7 +457,7 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, fieldNames)
@@ -452,7 +502,7 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -483,7 +533,7 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, names)
@@ -528,7 +578,7 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -566,7 +616,7 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streamIDs)
@@ -604,7 +654,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streams)
@@ -938,7 +988,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteStatsQueryRangeResponse(w, rows)
@@ -1028,7 +1078,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteStatsQueryResponse(w, rows)
@@ -1095,7 +1145,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		h := w.Header()
 
 		h.Set("Content-Type", "application/stream+json")
-		writeRequestDuration(h, startTime)
+		ca.writeResponseHeaders(h, startTime)
 	})
 
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
@@ -1538,7 +1588,21 @@ func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error
 	return a, nil
 }
 
-func writeRequestDuration(h http.Header, startTime time.Time) {
-	h.Set("Access-Control-Expose-Headers", "VL-Request-Duration-Seconds")
+func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
+	// Write request duration
+	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds"}
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
+
+	if len(ca.tenantIDs) == 1 {
+		// Write the used AccountID and ProjectID, so the client could show them properly.
+		accessControlExposeHeaders = append(accessControlExposeHeaders, "AccountID", "ProjectID")
+		tenantID := ca.tenantIDs[0]
+		h.Set("AccountID", fmt.Sprintf("%d", tenantID.AccountID))
+		h.Set("ProjectID", fmt.Sprintf("%d", tenantID.ProjectID))
+	}
+
+	for i, v := range accessControlExposeHeaders {
+		accessControlExposeHeaders[i] = http.CanonicalHeaderKey(v)
+	}
+	h.Set("Access-Control-Expose-Headers", strings.Join(accessControlExposeHeaders, ", "))
 }

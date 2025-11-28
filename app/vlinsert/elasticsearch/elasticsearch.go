@@ -11,7 +11,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bufferedwriter"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter"
@@ -107,7 +106,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, lmp)
 		lmp.MustClose()
 		if err != nil {
-			logger.Warnf("%s: cannot decode log message #%d in /_bulk request: %s, stream fields: %s", streamName, n, err, cp.StreamFields)
+			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
 			return true
 		}
 
@@ -149,9 +148,9 @@ func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields
 
 	n := 0
 	for {
-		ok, err := readBulkLine(lr, timeFields, msgFields, lmp)
+		hasMoreLines, err := readBulkLine(lr, timeFields, msgFields, lmp)
 		wcr.DecConcurrency()
-		if err != nil || !ok {
+		if err != nil || !hasMoreLines {
 			return n, err
 		}
 		n++

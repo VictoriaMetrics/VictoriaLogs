@@ -7,7 +7,7 @@ import Alert from "../../components/Main/Alert/Alert";
 import QueryPageHeader from "./QueryPageHeader/QueryPageHeader";
 import "./style.scss";
 import { ErrorTypes, TimeParams } from "../../types";
-import { useTimeState } from "../../state/time/TimeStateContext";
+import { useTimeDispatch, useTimeState } from "../../state/time/TimeStateContext";
 import { getFromStorage, saveToStorage } from "../../utils/storage";
 import HitsChart from "./HitsChart/HitsChart";
 import { useFetchLogHits } from "./hooks/useFetchLogHits";
@@ -23,6 +23,8 @@ import { ExtraFilter } from "../OverviewPage/FiltersBar/types";
 import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
 import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
+import { useFetchQueryTime } from "./hooks/useFetchQueryTime";
+import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
 const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
@@ -30,9 +32,10 @@ const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
 type FetchFlags = { logs: boolean; hits: boolean };
 
 const QueryPage: FC = () => {
-  const { queryHistory } = useQueryState();
+  const { queryHistory, queryHasTimeFilter } = useQueryState();
   const queryDispatch = useQueryDispatch();
   const { duration, relativeTime, period: periodState } = useTimeState();
+  const timeDispatch = useTimeDispatch();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const { topHits, groupFieldHits } = useHitsChartConfig();
   const prevTopHits = usePrevious(topHits);
@@ -48,6 +51,8 @@ const QueryPage: FC = () => {
 
   const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
   const [query, setQuery] = useStateSearchParams("*", "query");
+
+  const [skipNextPeriodEffect, setSkipNextPeriodEffect] = useState(false);
 
   const handleChangeLimit = (limit: number) => {
     setLimit(limit);
@@ -74,6 +79,7 @@ const QueryPage: FC = () => {
 
   const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration, queryParams } = useFetchLogs(query, limit);
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
+  const { fetchQueryTime } = useFetchQueryTime(query);
 
   const fetchData = async (period: TimeParams, flags: FetchFlags) => {
     if (flags.logs) {
@@ -95,14 +101,32 @@ const QueryPage: FC = () => {
     return getTimeperiodForDuration(duration, until());
   };
 
-  const handleRunQuery = () => {
+  const handleRunQuery = async () => {
     if (!query) {
       setQueryError(ErrorTypes.validQuery);
       return;
     }
     setQueryError("");
 
-    const newPeriod = getPeriod();
+    const uiPeriod = getPeriod();
+    const apiPeriod = getOverrideValue()
+      ? await fetchQueryTime({ query, period: uiPeriod })
+      : undefined;
+
+    const newPeriod = apiPeriod ?? uiPeriod;
+
+    queryDispatch({ type: "SET_QUERY_HAS_TIME_FILTER", payload: !!apiPeriod?.hasTimeFilter });
+    if (apiPeriod?.hasTimeFilter) {
+      setSkipNextPeriodEffect(true);
+      timeDispatch({
+        type: "SET_PERIOD",
+        payload: {
+          from: new Date(newPeriod.start * 1000),
+          to: new Date(newPeriod.end * 1000)
+        }
+      });
+    }
+
     setPeriod(newPeriod);
     dataLogHits.abortController.abort?.();
     abortController.abort?.();
@@ -115,6 +139,7 @@ const QueryPage: FC = () => {
     });
     updateHistory();
   };
+
   const handleApplyFilter = (val: ExtraFilter) => {
     setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
     setIsUpdatingQuery(true);
@@ -131,6 +156,10 @@ const QueryPage: FC = () => {
 
   useEffect(() => {
     if (!query) return;
+    if (skipNextPeriodEffect) {
+      setSkipNextPeriodEffect(false);
+      return;
+    }
     handleRunQuery();
   }, [periodState]);
 
@@ -174,6 +203,13 @@ const QueryPage: FC = () => {
         isLoading={isLoading || dataLogHits.isLoading}
       />
       {error && <Alert variant="error">{error}</Alert>}
+      {queryHasTimeFilter && <Alert variant="warning">
+        <p>
+          Time range is overridden by the query `_time` filter.
+          Remove `_time` from the query to use manual selection.
+          Disable query time override in Settings.
+        </p>
+      </Alert>}
       {!error && (
         <HitsChart
           {...dataLogHits}

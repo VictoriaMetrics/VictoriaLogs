@@ -336,7 +336,8 @@ app-local-windows-goarch:
 	CGO_ENABLED=0 GOOS=windows GOARCH=$(GOARCH) go build $(RACE) -ldflags "$(GO_BUILDINFO)" -o bin/$(APP_NAME)-windows-$(GOARCH)$(RACE).exe $(PKG_PREFIX)/app/$(APP_NAME)
 
 quicktemplate-gen: install-qtc
-	qtc
+	qtc -dir=lib
+	qtc -dir=app
 
 install-qtc:
 	which qtc || go install github.com/valyala/quicktemplate/qtc@latest

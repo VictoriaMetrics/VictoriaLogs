@@ -197,6 +197,11 @@ VictoriaLogs automatically parses [CEF Syslog messages for SIEM](https://www.mic
 
 An optional `extension` fields are parsed into `cef.extension.<key>=<value>` fields.
 
+## CEE
+
+VictoriaLogs automatically parses [`@cee` messages](http://cee.mitre.org/language/1.0-beta1/clt.html#syslog) into distinct log fields.
+See [these docs](https://www.rsyslog.com/json-elasticsearch/) for more details.
+
 ## Dropping fields
 
 VictoriaLogs supports `-syslog.ignoreFields.tcp`, `-syslog.ignoreFields.udp` and `-syslog.ignoreFields.unix` command-line flags for skipping

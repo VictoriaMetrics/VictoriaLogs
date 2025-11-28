@@ -7,7 +7,6 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 // GetSyslogParser returns syslog parser from the pool.
@@ -61,6 +60,11 @@ type SyslogParser struct {
 	// See https://datatracker.ietf.org/doc/html/rfc5424#section-6.3
 	sdParser logfmtParser
 
+	// jsonParser is used for parsing CEE messages.
+	//
+	// See https://cee.mitre.org/language/1.0-beta1/clt.html#syslog
+	jsonParser *JSONParser
+
 	// currentYear is used as the current year for rfc3164 messages.
 	currentYear int
 
@@ -72,6 +76,11 @@ type SyslogParser struct {
 }
 
 func (p *SyslogParser) reset() {
+	if p.jsonParser != nil {
+		PutJSONParser(p.jsonParser)
+		p.jsonParser = nil
+	}
+
 	p.currentYear = 0
 	p.timezone = nil
 	p.resetFields()
@@ -83,30 +92,44 @@ func (p *SyslogParser) resetFields() {
 
 	p.buf = p.buf[:0]
 	p.sdParser.reset()
+
+	if p.jsonParser != nil {
+		p.jsonParser.reset()
+	}
 }
 
 func (p *SyslogParser) AddMessageField(s string) {
-	if strings.HasPrefix(s, "CEF:") {
-		fields := p.Fields
-		if p.parseCEFMessage(strings.TrimPrefix(s, "CEF:")) {
-			return
-		}
+	fields := p.Fields
+	if !p.parseSpecialMessage(s) {
 		p.Fields = fields
+		p.AddField("message", s)
 	}
+}
 
-	if strings.HasPrefix(s, "@cee:") {
-		jsonP := GetJSONParser()
-		defer PutJSONParser(jsonP)
-		jsonStr := strings.TrimPrefix(s, "@cee:")
-		if err := jsonP.ParseLogMessage(bytesutil.ToUnsafeBytes(jsonStr)); err == nil {
-			p.Fields = append(p.Fields, jsonP.Fields...)
-			return
-		} else {
-			logger.Warnf("parse @cee json fail, %s", jsonStr)
-		}
+func (p *SyslogParser) parseSpecialMessage(s string) bool {
+	switch {
+	case strings.HasPrefix(s, "CEF:"):
+		cefStr := strings.TrimPrefix(s, "CEF:")
+		return p.parseCEFMessage(cefStr)
+	case strings.HasPrefix(s, "@cee:"):
+		ceeStr := strings.TrimPrefix(s, "@cee:")
+		return p.parseCEEMessage(ceeStr)
+	default:
+		return false
 	}
+}
 
-	p.AddField("message", s)
+// parseCEEMessage parses CEE message. See https://cee.mitre.org/language/1.0-beta1/clt.html#syslog
+func (p *SyslogParser) parseCEEMessage(s string) bool {
+	if p.jsonParser == nil {
+		p.jsonParser = GetJSONParser()
+	}
+	err := p.jsonParser.ParseLogMessage(bytesutil.ToUnsafeBytes(s))
+	if err != nil {
+		return false
+	}
+	p.Fields = append(p.Fields, p.jsonParser.Fields...)
+	return true
 }
 
 // AddField adds name=value log field to p.Fields.
@@ -328,7 +351,10 @@ func (p *SyslogParser) parseRFC5424(s string) {
 
 func (p *SyslogParser) parseRFC5424SD(s string) (string, bool) {
 	if strings.HasPrefix(s, "- ") {
-		return s[2:], true
+		return s[len("- "):], true
+	}
+	if strings.HasPrefix(s, "@cee:") {
+		return s, true
 	}
 
 	for {

@@ -67,4 +67,28 @@ describe("useLocalStorageBoolean", () => {
 
     expect(result.current[0]).toBe(false);
   });
+
+  it("uses customGetter instead of getFromStorage and reacts to storage events", () => {
+    const mockGetFromStorage = getFromStorage as Mock;
+    const customGetter = vi.fn(() => true);
+
+    const { result } = renderHook(() =>
+      useLocalStorageBoolean(testStorageKey, customGetter)
+    );
+
+    expect(customGetter).toHaveBeenCalledWith(testStorageKey);
+    expect(result.current[0]).toBe(true);
+
+    expect(mockGetFromStorage).not.toHaveBeenCalled();
+
+    (customGetter as Mock).mockReturnValueOnce(false);
+
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: testStorageKey, newValue: "false" })
+      );
+    });
+
+    expect(result.current[0]).toBe(false);
+  });
 });

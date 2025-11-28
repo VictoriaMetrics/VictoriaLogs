@@ -26,6 +26,7 @@ The following options are available:
 - [To run pre-built binaries](https://docs.victoriametrics.com/victorialogs/quickstart/#pre-built-binaries)
 - [To run Docker image](https://docs.victoriametrics.com/victorialogs/quickstart/#docker-image)
 - [To run in Kubernetes with Helm charts](https://docs.victoriametrics.com/victorialogs/quickstart/#helm-charts)
+- [To run in Kubernetes with VictoriaMetrics Operator (VLSingle / VLCluster CRDs)](https://docs.victoriametrics.com/operator/resources/)
 - [To build VictoriaLogs from source code](https://docs.victoriametrics.com/victorialogs/quickstart/#building-from-source-code)
 
 ### Pre-built binaries
@@ -77,6 +78,13 @@ or [cluster](https://docs.victoriametrics.com/helm/victoria-logs-cluster/) Helm 
 
 See also [victoria-logs-collector](https://docs.victoriametrics.com/helm/victoria-logs-collector/) Helm chart for collecting logs
 from all the Kubernetes containers and sending them to VictoriaLogs.
+
+### VictoriaMetrics Operator
+
+You can also run VictoriaLogs in Kubernetes using [VictoriaMetrics Operator](https://docs.victoriametrics.com/operator/resources/).
+
+- [`VLSingle` CRD](https://docs.victoriametrics.com/operator/resources/vlsingle/) declaratively defines a single-node VictoriaLogs deployment.
+- [`VLCluster` CRD](https://docs.victoriametrics.com/operator/resources/vlcluster/) declaratively defines a VictoriaLogs cluster and lets the Operator manage `vlinsert`, `vlselect` and `vlstorage` components for you.
 
 ### Building from source code
 

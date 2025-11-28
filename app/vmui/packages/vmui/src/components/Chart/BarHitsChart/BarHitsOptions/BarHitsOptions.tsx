@@ -5,10 +5,11 @@ import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../../Main/Button/Button";
-import { SettingsIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
+import { SettingsIcon, TipIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
+import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 
 interface Props {
   onChange: (options: GraphOptions) => void;
@@ -61,6 +62,13 @@ const BarHitsOptions: FC<Props> = ({ onChange }) => {
 
   return (
     <div className="vm-bar-hits-options">
+      <ShortcutKeys>
+        <Button
+          variant="text"
+          color="gray"
+          startIcon={<TipIcon/>}
+        />
+      </ShortcutKeys>
       <div ref={optionsButtonRef}>
         <Tooltip title="Graph settings">
           <Button

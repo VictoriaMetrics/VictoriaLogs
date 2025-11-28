@@ -10,6 +10,7 @@ import TimezonesPicker from "./Timezones/TimezonesPicker";
 import ThemeControl from "../ThemeControl/ThemeControl";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
+import QueryTimeOverride from "./QueryTimeOverride/QueryTimeOverride";
 
 const title = "Settings";
 
@@ -47,6 +48,10 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     {
       show: true,
       component: <TimezonesPicker ref={timezoneSettingRef}/>
+    },
+    {
+      show: true,
+      component: <QueryTimeOverride/>
     },
     {
       show: !appModeEnable,

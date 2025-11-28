@@ -160,13 +160,13 @@ func streamhitsSeriesLine(qw422016 *qt422016.Writer, m map[string]*hitsSeries, k
 //line app/vlselect/logsql/hits_response.qtpl:51
 	if len(timestamps) > 0 {
 //line app/vlselect/logsql/hits_response.qtpl:52
-		qw422016.N().Q(timestamps[0])
+		qw422016.N().Q(timestampToString(timestamps[0]))
 //line app/vlselect/logsql/hits_response.qtpl:53
 		for _, ts := range timestamps[1:] {
 //line app/vlselect/logsql/hits_response.qtpl:53
 			qw422016.N().S(`,`)
 //line app/vlselect/logsql/hits_response.qtpl:54
-			qw422016.N().Q(ts)
+			qw422016.N().Q(timestampToString(ts))
 //line app/vlselect/logsql/hits_response.qtpl:55
 		}
 //line app/vlselect/logsql/hits_response.qtpl:56
