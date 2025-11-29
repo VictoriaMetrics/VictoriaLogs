@@ -153,7 +153,7 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		// Slow path - the bb must be sent to the client.
 		if err := sendBuf(bb); err != nil {
 			errGlobalLock.Lock()
-			if errGlobal != nil {
+			if errGlobal == nil {
 				errGlobal = err
 			}
 			errGlobalLock.Unlock()
