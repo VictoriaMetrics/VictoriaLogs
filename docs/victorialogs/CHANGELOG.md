@@ -21,6 +21,8 @@ according to the follosing docs:
 
 ## tip
 
+* FEATURE: [vmui](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#vmui): show VictoriaLogs version in the vmui's footer. See [#116](https://github.com/VictoriaMetrics/VictoriaLogs/issues/116).
+
 ## [v1.39.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.39.0)
 
 Released at 2025-11-29

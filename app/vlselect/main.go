@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
@@ -137,6 +138,27 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 
 func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	ctx := r.Context()
+
+	if path == "/select/buildinfo" {
+		httpserver.EnableCORS(w, r)
+
+		if r.Method != http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			fmt.Fprintf(w, `{"status":"error","msg":"method %q isn't allowed"}`, r.Method)
+			return true
+		}
+
+		v := buildinfo.ShortVersion()
+		if v == "" {
+			// buildinfo.ShortVersion() may return empty result for builds without tags
+			v = buildinfo.Version
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"success","data":{"version":%q}}`, v)
+		return true
+	}
 
 	if path == "/select/vmui" {
 		// VMUI access via incomplete url without `/` in the end. Redirect to complete url.
