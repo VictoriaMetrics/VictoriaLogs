@@ -9,59 +9,77 @@ import (
 	"testing"
 )
 
-// QueryOpts contains various params used for querying or ingesting data
+// QueryOpts contains params used for querying VictoriaLogs via /select/logsq/query
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 type QueryOpts struct {
 	Timeout      string
 	Start        string
 	End          string
-	Time         string
-	Step         string
+	Limit        string
 	ExtraFilters []string
-	ExtraLabels  []string
 }
 
 func (qos *QueryOpts) asURLValues() url.Values {
 	uv := make(url.Values)
-	addNonEmpty := func(name string, values ...string) {
-		for _, value := range values {
-			if len(value) == 0 {
-				continue
-			}
-			uv.Add(name, value)
-		}
-	}
-	addNonEmpty("start", qos.Start)
-	addNonEmpty("end", qos.End)
-	addNonEmpty("time", qos.Time)
-	addNonEmpty("step", qos.Step)
-	addNonEmpty("timeout", qos.Timeout)
-	addNonEmpty("extra_label", qos.ExtraLabels...)
-	addNonEmpty("extra_filters", qos.ExtraFilters...)
-
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "start", qos.Start)
+	addNonEmpty(uv, "end", qos.End)
+	addNonEmpty(uv, "limit", qos.Limit)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
 	return uv
 }
 
-// QueryOptsLogs contains various params used for VictoriaLogs querying or ingesting data
-type QueryOptsLogs struct {
+// StatsQueryOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
+type StatsQueryOpts struct {
+	Timeout      string
+	Time         string
+	ExtraFilters []string
+}
+
+func (qos *StatsQueryOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "time", qos.Time)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	return uv
+}
+
+// StatsQueryRangeOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query_range
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
+type StatsQueryRangeOpts struct {
+	Timeout      string
+	Start        string
+	End          string
+	Step         string
+	ExtraFilters []string
+}
+
+func (qos *StatsQueryRangeOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "start", qos.Start)
+	addNonEmpty(uv, "end", qos.End)
+	addNonEmpty(uv, "step", qos.Step)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	return uv
+}
+
+// IngestOpts contains various params used for VictoriaLogs ingesting data
+type IngestOpts struct {
 	MessageField string
 	StreamFields string
 	TimeField    string
 }
 
-func (qos *QueryOptsLogs) asURLValues() url.Values {
+func (qos *IngestOpts) asURLValues() url.Values {
 	uv := make(url.Values)
-	addNonEmpty := func(name string, values ...string) {
-		for _, value := range values {
-			if len(value) == 0 {
-				continue
-			}
-			uv.Add(name, value)
-		}
-	}
-	addNonEmpty("_time_field", qos.TimeField)
-	addNonEmpty("_stream_fields", qos.StreamFields)
-	addNonEmpty("_msg_field", qos.MessageField)
-
+	addNonEmpty(uv, "_time_field", qos.TimeField)
+	addNonEmpty(uv, "_stream_fields", qos.StreamFields)
+	addNonEmpty(uv, "_msg_field", qos.MessageField)
 	return uv
 }
 
@@ -104,4 +122,12 @@ func NewLogsQLQueryResponse(t *testing.T, s string) *LogsQLQueryResponse {
 	}
 
 	return res
+}
+
+func addNonEmpty(uv url.Values, name string, values ...string) {
+	for _, value := range values {
+		if value != "" {
+			uv.Add(name, value)
+		}
+	}
 }

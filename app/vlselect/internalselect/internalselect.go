@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -129,11 +130,10 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	var bufs atomicutil.Slice[bytesutil.ByteBuffer]
 
-	var errGlobalLock sync.Mutex
-	var errGlobal error
+	var errGlobal atomic.Pointer[error]
 
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
-		if errGlobal != nil {
+		if errGlobal.Load() != nil {
 			return
 		}
 
@@ -152,11 +152,7 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 		// Slow path - the bb must be sent to the client.
 		if err := sendBuf(bb); err != nil {
-			errGlobalLock.Lock()
-			if errGlobal != nil {
-				errGlobal = err
-			}
-			errGlobalLock.Unlock()
+			errGlobal.CompareAndSwap(nil, &err)
 		}
 	}
 
@@ -166,8 +162,8 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
 		return err
 	}
-	if errGlobal != nil {
-		return errGlobal
+	if errP := errGlobal.Load(); errP != nil {
+		return *errP
 	}
 
 	// Send the remaining data

@@ -99,34 +99,33 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
             items={tabs}
             onChange={handleChangeTab}
           />
-          {activeTab !== DisplayType.liveTailing && (
-            <div className="vm-query-page-body-header__log-info">
-              Total logs returned: <b>{data.length}</b>
-            </div>
-          )}
         </div>
         <div
-          className="vm-query-page-body-header__settings"
-          ref={settingsRef}
-        />
-        <DownloadLogsModal queryParams={queryParams}>
-          <Tooltip title="Download Logs">
+          className={classNames({
+          "vm-query-page-body-header__settings": true,
+          "vm-query-page-body-header__settings_mobile": isMobile,
+        })}
+        >
+          <div ref={settingsRef}/>
+          <DownloadLogsModal queryParams={queryParams}>
+            <Tooltip title="Download Logs">
+              <Button
+                variant="text"
+                startIcon={<DownloadIcon/>}
+                ariaLabel="Download Logs"
+              />
+            </Tooltip>
+          </DownloadLogsModal>
+          <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
             <Button
               variant="text"
-              startIcon={<DownloadIcon/>}
-              ariaLabel="Download Logs"
+              color="primary"
+              startIcon={hideLogs ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+              onClick={toggleHideLogs}
+              ariaLabel="settings"
             />
           </Tooltip>
-        </DownloadLogsModal>
-        <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
-          <Button
-            variant="text"
-            color="primary"
-            startIcon={hideLogs ? <VisibilityOffIcon/> : <VisibilityIcon/>}
-            onClick={toggleHideLogs}
-            ariaLabel="settings"
-          />
-        </Tooltip>
+        </div>
       </div>
 
       <div

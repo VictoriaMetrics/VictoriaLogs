@@ -57,7 +57,7 @@ func StartVlagent(instance string, remoteWriteURLs []string, flags []string, cli
 // POST request to /insert/jsonline vlagent endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
-func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts QueryOptsLogs) {
+func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
 	t.Helper()
 
 	data := []byte(strings.Join(records, "\n"))

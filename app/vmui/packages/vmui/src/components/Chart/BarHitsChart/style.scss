@@ -22,6 +22,7 @@
 
   &-header {
     display: flex;
+    flex-wrap: wrap;
     align-content: center;
     justify-content: space-between;
     gap: $padding-small;
@@ -34,6 +35,10 @@
       color: $color-text-secondary;
       font-size: $font-size-small;
       font-family: monospace;
+
+      &_mobile {
+        flex-wrap: wrap;
+      }
     }
   }
 }

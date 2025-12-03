@@ -81,7 +81,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
         ref={buttonRef}
       >
         <div>
-          {label || "Rows per page"}: <b>{renderOptionLabel ? renderOptionLabel(limit, true) : limit || "All"}</b>
+          {label || (isMobile ? "Rows" : "Rows per page")}: <b>{renderOptionLabel ? renderOptionLabel(limit, true) : limit || "All"}</b>
         </div>
         <ArrowDropDownIcon/>
       </div>

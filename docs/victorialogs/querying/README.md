@@ -132,7 +132,10 @@ curl http://localhost:9428/select/logsql/query -H 'AccountID: 12' -H 'ProjectID:
 The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
 with [`vl_http_requests_total{path="/select/logsql/query"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_requests_total) metric.
 
-The `/select/logsql/query` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/query` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -333,7 +336,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/hits -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
-The `/select/logsql/hits` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/hits` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -429,7 +435,10 @@ Add `keep_const_fields=1` query arg if you need such log fields:
 curl http://localhost:9428/select/logsql/facets -d 'query=_time:1h' -d 'keep_const_fields=1'
 ```
 
-The `/select/logsql/facets` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/facets` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -445,6 +454,12 @@ in the format compatible with [Prometheus querying API](https://prometheus.io/do
 
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
 with labels from `by(...)` clause of the `| stats by(...)` pipe.
+
+The [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats), [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
+and [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) stats functions create labels instead of metrics.
+
+Additional labels can be created from metrics via [`format` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe).
+Additional metrics can be created from the existing metrics via [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe).
 
 The `<t>` arg can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<t>` is missing, then it equals to the current time.
@@ -501,7 +516,10 @@ Below is an example JSON output returned from this endpoint:
 
 The `/select/logsql/stats_query` API is useful for generating Prometheus-compatible alerts and calculating recording rules results.
 
-The `/select/logsql/stats_query` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/stats_query` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -519,6 +537,16 @@ The stats is returned in the format compatible with [Prometheus querying API](ht
 
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
 with labels from `by(...)` clause of the `| stats by(...)` pipe.
+
+The [`row_any`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats), [`row_min`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats)
+and [`row_max`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) stats functions create labels instead of metrics.
+
+Additional labels can be created from metrics via [`format` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe).
+Additional metrics can be created from the existing metrics via [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe).
+
+It may be useful to use [`running_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe)
+and [`total_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe) pipes for calculating running and total stats over the stats
+returned by the [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
@@ -601,7 +629,10 @@ Below is an example JSON output returned from this endpoint:
 
 The `/select/logsql/stats_query_range` API is useful for generating Prometheus-compatible graphs in Grafana.
 
-The `/select/logsql/stats_query_range` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/stats_query_range` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -662,7 +693,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_ids -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/stream_ids` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/stream_ids` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -722,7 +756,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/streams -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/streams` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/streams` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -779,7 +816,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_field_names -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/stream_field_names` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/stream_field_names` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -835,7 +875,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/stream_field_values -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/stream_field_values` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/stream_field_values` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -911,7 +954,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/field_names -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/field_names` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/field_names` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -972,7 +1018,10 @@ for `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/field_values -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=_time:5m'
 ```
 
-The `/select/logsql/field_values` returns `VL-Request-Duration-Seconds` HTTP header in the response, which contains the duration of the query until the first response byte.
+The `/select/logsql/field_values` returns the following additional HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 

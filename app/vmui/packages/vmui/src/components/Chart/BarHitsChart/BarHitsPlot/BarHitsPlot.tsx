@@ -17,6 +17,7 @@ import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 
 interface Props {
   logHits: LogHits[];
@@ -29,6 +30,7 @@ interface Props {
 }
 
 const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+  const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
   const [containerRef, containerSize] = useElementSize();
@@ -135,11 +137,13 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
           className="vm-line-chart__u-plot"
           ref={uPlotRef}
         />
-        <BarHitsTooltip
-          uPlotInst={uPlotInst}
-          data={_data}
-          focusDataIdx={focusDataIdx}
-        />
+        {!isMobile && (
+          <BarHitsTooltip
+            uPlotInst={uPlotInst}
+            data={_data}
+            focusDataIdx={focusDataIdx}
+          />
+        )}
       </div>
       {uPlotInst && <BarHitsLegend
         uPlotInst={uPlotInst}

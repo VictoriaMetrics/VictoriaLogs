@@ -65,4 +65,27 @@
       gap: $padding-small;
     }
   }
+
+  &-warning {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    grid-column: 1/span 2;
+    color: $color-warning;
+    padding: 0 $padding-global $padding-global;
+    border-bottom: $border-divider;
+    margin-bottom: $padding-global;
+    line-height: 1.3;
+    font-size: $font-size-small;
+
+    &__interactive {
+      cursor: pointer;
+      transition: filter 0.2s;
+      text-decoration: underline;
+
+      &:hover {
+        filter: brightness(0.8);
+      }
+    }
+  }
 }

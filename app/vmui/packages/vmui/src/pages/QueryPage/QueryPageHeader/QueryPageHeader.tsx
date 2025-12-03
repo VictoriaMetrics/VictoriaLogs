@@ -117,30 +117,31 @@ const QueryPageHeader: FC<Props> = ({
               label={"Autocomplete"}
               value={autocomplete}
               onChange={onChangeAutocomplete}
-              fullWidth={isMobile}
             />
           </Tooltip>
         </div>
-        <div className="vm-query-page-header-bottom-helpful">
-          <a
-            className="vm-link vm-link_with-icon"
-            target="_blank"
-            href="https://docs.victoriametrics.com/victorialogs/logsql/"
-            rel="help noreferrer"
-          >
-            <InfoIcon/>
-            Query language docs
-          </a>
-          <a
-            className="vm-link vm-link_with-icon"
-            target="_blank"
-            href="https://docs.victoriametrics.com/victorialogs/"
-            rel="help noreferrer"
-          >
-            <WikiIcon/>
-            Documentation
-          </a>
-        </div>
+        {!isMobile && (
+          <div className="vm-query-page-header-bottom-helpful">
+            <a
+              className="vm-link vm-link_with-icon"
+              target="_blank"
+              href="https://docs.victoriametrics.com/victorialogs/logsql/"
+              rel="help noreferrer"
+            >
+              <InfoIcon/>
+              Query language docs
+            </a>
+            <a
+              className="vm-link vm-link_with-icon"
+              target="_blank"
+              href="https://docs.victoriametrics.com/victorialogs/"
+              rel="help noreferrer"
+            >
+              <WikiIcon/>
+              Documentation
+            </a>
+          </div>
+        )}
         <div className="vm-query-page-header-bottom-buttons">
           <QueryHistory
             handleSelectQuery={handleSelectHistory}

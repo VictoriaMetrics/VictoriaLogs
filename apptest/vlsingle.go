@@ -71,7 +71,7 @@ func (app *Vlsingle) ForceFlush(t *testing.T) {
 // POST request to /insert/jsonline vlsingle endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
-func (app *Vlsingle) JSONLineWrite(t *testing.T, records []string, opts QueryOptsLogs) {
+func (app *Vlsingle) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
 	t.Helper()
 
 	data := []byte(strings.Join(records, "\n"))
@@ -112,7 +112,7 @@ func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, o
 // /select/logsql/query endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
-func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOptsLogs) *LogsQLQueryResponse {
+func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOpts) *LogsQLQueryResponse {
 	t.Helper()
 
 	values := opts.asURLValues()
@@ -127,7 +127,7 @@ func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOptsLogs)
 // a POST to /select/logsql/stats_query and returns raw body and status code.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
-func (app *Vlsingle) StatsQueryRaw(t *testing.T, query string, opts QueryOpts) (string, int) {
+func (app *Vlsingle) StatsQueryRaw(t *testing.T, query string, opts StatsQueryOpts) (string, int) {
 	t.Helper()
 
 	values := opts.asURLValues()
@@ -141,7 +141,7 @@ func (app *Vlsingle) StatsQueryRaw(t *testing.T, query string, opts QueryOpts) (
 // a POST to /select/logsql/stats_query_range and returns raw body and status code.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
-func (app *Vlsingle) StatsQueryRangeRaw(t *testing.T, query string, opts QueryOpts) (string, int) {
+func (app *Vlsingle) StatsQueryRangeRaw(t *testing.T, query string, opts StatsQueryRangeOpts) (string, int) {
 	t.Helper()
 
 	values := opts.asURLValues()

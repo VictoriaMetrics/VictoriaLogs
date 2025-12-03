@@ -22,10 +22,10 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 
 	type opts struct {
 		ingestRecords   []string
-		ingestQueryArgs apptest.QueryOptsLogs
+		ingestQueryArgs apptest.IngestOpts
 		wantResponse    *apptest.LogsQLQueryResponse
 		query           string
-		selectQueryArgs apptest.QueryOptsLogs
+		selectQueryArgs apptest.QueryOpts
 	}
 
 	f := func(opts *opts) {
@@ -57,7 +57,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"my_msg":"case 2","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"my_msg_other":"case 2","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 		},
-		ingestQueryArgs: apptest.QueryOptsLogs{
+		ingestQueryArgs: apptest.IngestOpts{
 			MessageField: "my_msg,my_msg_other",
 		},
 		query: "case 2",
@@ -76,7 +76,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"my_msg":"case 3","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 			`{"my_msg":"case 3","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo","foo":"bar","baz":"bar"}`,
 		},
-		ingestQueryArgs: apptest.QueryOptsLogs{
+		ingestQueryArgs: apptest.IngestOpts{
 			MessageField: "my_msg",
 			StreamFields: "foo,bar,baz",
 		},
@@ -96,7 +96,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"_msg":"case 4","my_time_field": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"_msg":"case 4","my_other_time_field": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 		},
-		ingestQueryArgs: apptest.QueryOptsLogs{
+		ingestQueryArgs: apptest.IngestOpts{
 			TimeField: "my_time_field,my_other_time_field",
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{

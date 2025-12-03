@@ -1033,29 +1033,29 @@ func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
 	}
 }
 
-// GetStatsByFields returns `by (...)` fields from the last `stats` pipe at q.
-func (q *Query) GetStatsByFields() ([]string, error) {
-	return q.GetStatsByFieldsAddGroupingByTime(0)
+// GetStatsLabels returns stats labels from q for /select/logsql/stats_query endpoint
+//
+// The remaining fields are considered metrics.
+func (q *Query) GetStatsLabels() ([]string, error) {
+	return q.GetStatsLabelsAddGroupingByTime(0)
 }
 
-// GetStatsByFieldsAddGroupingByTime returns `by (...)` fields from the last `stats` pipe at q.
+// GetStatsLabelsAddGroupingByTime returns stats labels from q for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints
 //
 // if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
-func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) {
-	pipes := q.pipes
-
-	idx := getLastPipeStatsIdx(pipes)
+func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
+	idx := getLastPipeStatsIdx(q.pipes)
 	if idx < 0 {
 		return nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
 	}
-	ps := pipes[idx].(*pipeStats)
+	ps := q.pipes[idx].(*pipeStats)
 
 	// For range stats (step > 0), verify that pipes in front of the last `stats` pipe
 	// do not modify or delete the `_time` field, since it is required for bucketing by step.
 	// For instant stats (step == 0), allow such pipes for broader query flexibility.
 	if step > 0 {
 		for i := 0; i < idx; i++ {
-			p := pipes[i]
+			p := q.pipes[i]
 			if _, ok := p.(*pipeStats); ok {
 				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
 				continue
@@ -1075,56 +1075,66 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 	// add 'partition by (_time)' to 'sort', 'first' and 'last' pipes.
 	q.addPartitionByTime(step)
 
+	labelFields := make([]string, 0, len(ps.byFields))
+	metricFields := make(map[string]struct{}, len(ps.funcs))
+
+	addToLabelFields := func(f string) {
+		if !slices.Contains(labelFields, f) {
+			labelFields = append(labelFields, f)
+		}
+		delete(metricFields, f)
+	}
+
+	addToMetricFields := func(f string) {
+		if idx := slices.Index(labelFields, f); idx >= 0 {
+			labelFields = append(labelFields[:idx], labelFields[idx+1:]...)
+		}
+		metricFields[f] = struct{}{}
+	}
+
 	// extract by(...) field names from ps
-	byFields := make([]string, len(ps.byFields))
-	for i, f := range ps.byFields {
-		byFields[i] = f.name
+	for _, f := range ps.byFields {
+		addToLabelFields(f.name)
 	}
 
 	// extract metric fields from stats pipe
-	metricFields := make(map[string]struct{}, len(ps.funcs))
 	for i := range ps.funcs {
 		f := &ps.funcs[i]
-		if slices.Contains(byFields, f.resultName) {
-			return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", f.resultName, ps, q)
+		switch f.f.(type) {
+		case *statsRowAny, *statsRowMin, *statsRowMax:
+			addToLabelFields(f.resultName)
+		default:
+			addToMetricFields(f.resultName)
 		}
-		metricFields[f.resultName] = struct{}{}
 	}
 
 	// verify that all the pipes after the idx do not add new fields
-	for i := idx + 1; i < len(pipes); i++ {
-		p := pipes[i]
+	for i := idx + 1; i < len(q.pipes); i++ {
+		p := q.pipes[i]
 		switch t := p.(type) {
 		case *pipeFilter:
 			// This pipe doesn't change the set of fields.
 		case *pipeFirst, *pipeLast, *pipeSort:
 			// These pipes do not change the set of fields.
 		case *pipeRunningStats:
-			// `| running_stats ...` pipe must contain the same byFields as the preceding `stats` pipe.
-			if !hasNeededFieldsExceptTime(t.byFields, byFields) {
+			// `| running_stats ...` pipe must contain the same labelFields as the preceding `stats` pipe.
+			if !hasNeededFieldsExceptTime(t.byFields, labelFields) {
 				return nil, fmt.Errorf("the %q must contain the same list of fields as `stats` pipe in the query [%s]", t, q)
 			}
-			// `| running_stats ...` pipe cannot override byFields.
 			for _, f := range t.funcs {
-				if slices.Contains(byFields, f.resultName) {
-					return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", f.resultName, t, q)
-				}
-				metricFields[f.resultName] = struct{}{}
+				addToMetricFields(f.resultName)
 			}
 		case *pipeMath:
 			// Allow `| math ...` pipe, since it adds additional metrics to the given set of fields.
-			// Verify that the result fields at math pipe do not override byFields.
 			for _, me := range t.entries {
-				if slices.Contains(byFields, me.resultField) {
-					return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", me.resultField, t, q)
-				}
-				metricFields[me.resultField] = struct{}{}
+				addToMetricFields(me.resultField)
 			}
 		case *pipeFields:
-			// `| fields ...` pipe must contain all the by(...) fields, otherwise it breaks output.
-			for _, f := range byFields {
-				if !prefixfilter.MatchFilters(t.fieldFilters, f) {
-					return nil, fmt.Errorf("missing %q field at %q pipe in the query [%s]", f, p, q)
+			labelFieldsCopy := append([]string{}, labelFields...)
+			labelFields = make([]string, 0, len(labelFields))
+			for _, f := range labelFieldsCopy {
+				if prefixfilter.MatchFilters(t.fieldFilters, f) {
+					labelFields = append(labelFields, f)
 				}
 			}
 			for f := range maps.Clone(metricFields) {
@@ -1133,10 +1143,11 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 				}
 			}
 		case *pipeDelete:
-			// Disallow deleting by(...) fields, since this breaks output.
-			for _, f := range byFields {
-				if prefixfilter.MatchFilters(t.fieldFilters, f) {
-					return nil, fmt.Errorf("the %q field cannot be deleted via %q in the query [%s]", f, p, q)
+			labelFieldsCopy := append([]string{}, labelFields...)
+			labelFields = make([]string, 0, len(labelFields))
+			for _, f := range labelFieldsCopy {
+				if !prefixfilter.MatchFilters(t.fieldFilters, f) {
+					labelFields = append(labelFields, f)
 				}
 			}
 			for f := range maps.Clone(metricFields) {
@@ -1150,25 +1161,20 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 				fSrc := t.srcFieldFilters[i]
 				fDst := t.dstFieldFilters[i]
 
-				for _, f := range byFields {
-					if prefixfilter.MatchFilter(fDst, f) {
-						return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", f, t, q)
-					}
+				for _, f := range labelFields {
 					if prefixfilter.MatchFilter(fSrc, f) {
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
-						if slices.Contains(byFields, dstFieldName) {
-							return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", dstFieldName, t, q)
-						}
-						byFields = append(byFields, dstFieldName)
+						addToLabelFields(dstFieldName)
 					}
 				}
+
 				for f := range maps.Clone(metricFields) {
 					if prefixfilter.MatchFilter(fDst, f) {
 						delete(metricFields, f)
 					}
 					if prefixfilter.MatchFilter(fSrc, f) {
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
-						metricFields[dstFieldName] = struct{}{}
+						addToMetricFields(dstFieldName)
 					}
 				}
 			}
@@ -1178,16 +1184,14 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 				fSrc := t.srcFieldFilters[i]
 				fDst := t.dstFieldFilters[i]
 
-				for j, f := range byFields {
-					if prefixfilter.MatchFilter(fDst, f) {
-						return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", f, t, q)
-					}
+				labelFieldsCopy := append([]string{}, labelFields...)
+				labelFields = make([]string, 0, len(labelFields))
+				for _, f := range labelFieldsCopy {
 					if prefixfilter.MatchFilter(fSrc, f) {
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
-						if slices.Contains(byFields, dstFieldName) {
-							return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", dstFieldName, t, q)
-						}
-						byFields[j] = dstFieldName
+						addToLabelFields(dstFieldName)
+					} else {
+						addToLabelFields(f)
 					}
 				}
 
@@ -1198,17 +1202,24 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 					if prefixfilter.MatchFilter(fSrc, f) {
 						delete(metricFields, f)
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
-						metricFields[dstFieldName] = struct{}{}
+						addToMetricFields(dstFieldName)
 					}
 				}
 			}
 		case *pipeFormat:
 			// Assume that `| format ...` pipe generates an additional by(...) label
-			if slices.Contains(byFields, t.resultField) {
-				return nil, fmt.Errorf("the %q field cannot be overridden at %q in the query [%s]", t.resultField, t, q)
+			addToLabelFields(t.resultField)
+		case *pipeUnpackJSON:
+			// Assume that `| unpack_json ... fields (...)` pipe generates an additional by(...) labels from fields(...)
+			if len(t.fieldFilters) == 0 {
+				return nil, fmt.Errorf("missing fields(...) after %q in the query [%s]", t, q)
 			}
-			byFields = append(byFields, t.resultField)
-			delete(metricFields, t.resultField)
+			for _, f := range t.fieldFilters {
+				if prefixfilter.IsWildcardFilter(f) {
+					return nil, fmt.Errorf("fields(...) at %q cannot contain wildcard filter; got %s; query [%s]", t, f, q)
+				}
+				addToLabelFields(f)
+			}
 		default:
 			return nil, fmt.Errorf("the %q pipe cannot be put after %q pipe in the query [%s]", p, ps, q)
 		}
@@ -1218,7 +1229,7 @@ func (q *Query) GetStatsByFieldsAddGroupingByTime(step int64) ([]string, error) 
 		return nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
 	}
 
-	return byFields, nil
+	return labelFields, nil
 }
 
 func hasNeededFieldsExceptTime(fields, neededFields []string) bool {
@@ -1646,7 +1657,7 @@ func ParseStatsQuery(s string, timestamp int64) (*Query, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := q.GetStatsByFields(); err != nil {
+	if _, err := q.GetStatsLabels(); err != nil {
 		return nil, err
 	}
 	return q, nil

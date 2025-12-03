@@ -21,6 +21,28 @@ according to the follosing docs:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.25.4 to Go1.25.5. See [the list of issues addressed in Go1.25.5](https://github.com/golang/go/issues?q=milestone%3AGo1.25.5%20label%3ACherryPickApproved).
+
+* FEATURE: [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api): automatically convert the results of [`row_any()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats), [`row_min()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats) and [`row_max()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) stats functions to labels in [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) functions. This allows obtaining a sample of log message in alerting rules with the following query: `... | stats count() as hits, row_any(_msg) as msg_sample`. See [#81](https://github.com/VictoriaMetrics/VictoriaLogs/issues/81).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show VictoriaLogs version in the vmui's footer. See [#116](https://github.com/VictoriaMetrics/VictoriaLogs/issues/116).
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix mobile layout styles.
+
+## [v1.39.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.39.0)
+
+Released at 2025-11-29
+
+* FEATURE: [syslog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/): add support for automatic parsing of [`@cee` messages](http://cee.mitre.org/language/1.0-beta1/clt.html#syslog). Thanks to @exherb for the pull request [#842](https://github.com/VictoriaMetrics/VictoriaLogs/pull/842).
+* FEATURE: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): return `AccountID` and `ProjectID` response headers, which match the corresponding request headers when executing [queries for the particular tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy). These response headers can be used by client such as [built-in web UI for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) for the proper displaying of the queried tenant. See [#656](https://github.com/VictoriaMetrics/VictoriaLogs/issues/656).
+* FETURE: [Elasticsearch data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api): return the first parse error to the client, so the error could be quickly fixed. Previously the parse error was logged into VictoriaLogs internal logs and `success` response was returned to the client. This could complicate troubleshooting, since users need to have access to VictoriaLogs internal logs for the troubleshooting. See [#817](https://github.com/VictoriaMetrics/VictoriaLogs/issues/817) and [#60](https://github.com/VictoriaMetrics/VictoriaLogs/issues/60).
+* FEATURE: [hits API](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): consistently return zero hits on the selected `[start .. end)` time range. Previously zero hits weren't returned, so this complicated processing of the hits response by clients. See [#700](https://github.com/VictoriaMetrics/VictoriaLogs/issues/700).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add the help button with shortcuts reference and controls for charts and query input. See [#77](https://github.com/VictoriaMetrics/VictoriaLogs/issues/77).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): auto-sync time picker with `_time` filter from the query (can be disabled). See [#558](https://github.com/VictoriaMetrics/VictoriaLogs/issues/558).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): automatically load and display available tenants using `/select/tenant_ids`. See [#821](https://github.com/VictoriaMetrics/VictoriaLogs/issues/821).
+
+* BUGFIX: [delete API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): prevent from possible fatal error (panic) at `block_stream_merger.go:237` during the deletion of the logs. See [#825](https://github.com/VictoriaMetrics/VictoriaLogs/issues/825).
+* BUGFIX: [`/select/logsql/query` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs): properly return the last N logs with the biggest timestamps when the `limit=N` query arg is passed to this endpoint. Also, properly return logs from [LogsQL queries](https://docs.victoriametrics.com/victorialogs/logsql/) ending with `| sort by (_time desc) limit N` pipe. Previously some logs may be missing because of off-by-one error. See [#802](https://github.com/VictoriaMetrics/VictoriaLogs/issues/802).
+
 ## [v1.38.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.38.0)
 
 Released at 2025-11-14
@@ -329,10 +351,10 @@ Released at 2025-06-20
 * FEATURE: [`sum_len` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#sum_len-stats): allow calculating the sum of byte lengths for all the fields with common prefix via `sum_len(prefix*)` syntax.
 * FEATURE: [`count` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats): allow calculating the number of logs with at least a single non-empty field across fields with common prefix via `count(prefix*)` syntax.
 * FEATURE: [`count_empty` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#count_empty-stats): allow calculating the number of logs with empty fields with common prefix via `count_empty(prefix*)` syntax.
-* FEATURE: [`rate_sum` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats): allow calculating the per-second rate over the sum of all the fields with common prefix via `rate_sum(prefix*)` syntax.
-* FEATURE: [`row_any` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats): allow returning all the fields with common prefix via `row_any(prefix*)` syntax.
-* FEATURE: [`row_max` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats): allow returning all the fields with common prefix via `row_max(max_field, prefix*)` syntax.
-* FEATURE: [`row_min` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#avg-stats): allow returning all the fields with common prefix via `row_min(min_field, prefix*)` syntax.
+* FEATURE: [`rate_sum` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#rate_sum-stats): allow calculating the per-second rate over the sum of all the fields with common prefix via `rate_sum(prefix*)` syntax.
+* FEATURE: [`row_any` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats): allow returning all the fields with common prefix via `row_any(prefix*)` syntax.
+* FEATURE: [`row_max` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats): allow returning all the fields with common prefix via `row_max(max_field, prefix*)` syntax.
+* FEATURE: [`row_min` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats): allow returning all the fields with common prefix via `row_min(min_field, prefix*)` syntax.
 * FEATURE: [`uniq_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats): allow fetching unique values for all the fields with common prefix via `uniq_values(prefix*)` syntax.
 * FEATURE: [`values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#values-stats): allow fetching values for all the fields with common prefix via `values(prefix*)` syntax.
 * FEATURE: [`json_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats): allow fetching values for all the fields with common prefix via `json_values(prefix*)` syntax.
@@ -724,7 +746,7 @@ Released at 2024-12-05
 * FEATURE: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): expose `vl_too_long_lines_skipped_total` [counter](https://docs.victoriametrics.com/victoriametrics/keyconcepts/#counter) at `/metrics` page. This counter tracks the number of the ingested lines with the length bigger than the value of `-insert.maxLineSizeBytes` command-line flag. Such lines are ignored.
 
 * BUGFIX: [`/select/logsql/stats_query_range` API](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats): properly handle the [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe) after the [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe). Previously the `limit` was applied globally across all calculated stats, while it must be applied individually for each `step` on the `start ... end` time range. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7699).
-* BUGFIX: [vmui](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#vmui): fix for `showLegend` and `alias` flags in predefined panels. [See this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7565)
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix for `showLegend` and `alias` flags in predefined panels. [See this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7565)
 * BUGFIX: fix a `too many columns detected in the block` panic when the ingested logs contain more than 2000 fields with different names per [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields). See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7568) for details.
 * BUGFIX: properly parse lines after too long [JSON lines](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api) and [Elasticsearch lines](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api) with the length exceeding `-insert.maxLineSizeBytes`. Previously all the lines after the too long line in the stream were ignored.
 
@@ -825,7 +847,7 @@ Released at 2024-10-16
 * BUGFIX: avoid possible panic when logs for a new day are ingested during execution of concurrent queries.
 * BUGFIX: avoid panic at `lib/logstorage.(*blockResultColumn).forEachDictValue()` when the query contains [stats with additional filters](https://docs.victoriametrics.com/victorialogs/logsql/#stats-with-additional-filters). The panic has been introduced in [v0.33.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v0.33.0-victorialogs) in [this commit](https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a350be48b68330ee1a487e1fb09b002d3be45163).
 * BUGFIX: add more checks for [stats query APIs](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) to avoid invalid results.
-* BUGFIX: [vmui](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#vmui): fix error messages rendering from overflowing the screen with long messages. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7207).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix error messages rendering from overflowing the screen with long messages. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7207).
 
 ## [v0.35.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v0.35.0-victorialogs)
 
@@ -921,7 +943,7 @@ Released at 2024-09-08
 * FEATURE: [vlinsert](https://docs.victoriametrics.com/victorialogs/): added OpenTelemetry logs ingestion support. See this [PR](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/6218) for details.
 
 * BUGFIX: properly handle Logstash requests for Elasticsearch configuration when using `outputs.elasticsearch` in Logstash pipelines. Previously, the requests could be rejected with `400 Bad Request` response. Updates [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4750).
-* BUGFIX: [vmui](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#vmui): fix `not found index.js` error when loading vmui in VictoriaLogs. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6764). Thanks to @yincongcyincong for the [pull request](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/6770).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix `not found index.js` error when loading vmui in VictoriaLogs. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6764). Thanks to @yincongcyincong for the [pull request](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/6770).
 * BUGFIX: properly execute queries with `OR` [filters](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for distinct [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model). For example, `field1:foo OR field2:bar`. Previously logs matching these filters may be skipped during querying. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6554) for details. Thanks to @yincongcyincong for the [pull request](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/6556).
 
 ## [v0.28.0](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v0.28.0-victorialogs)

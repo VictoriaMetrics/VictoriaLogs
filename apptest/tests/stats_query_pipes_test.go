@@ -24,12 +24,12 @@ func TestVlsingleStatsQueryPipesTimeFieldConstraints(t *testing.T) {
 		`{"_msg":"a","_time":"2025-01-01T00:00:00Z","x":"1"}`,
 		`{"_msg":"b","_time":"2025-01-01T00:00:01Z","x":"2"}`,
 	}
-	sut.JSONLineWrite(t, records, apptest.QueryOptsLogs{})
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
 	sut.ForceFlush(t)
 
 	type opts struct {
-		queryOpts   apptest.QueryOpts
-		instantOpts apptest.QueryOpts
+		queryOpts   apptest.StatsQueryRangeOpts
+		instantOpts apptest.StatsQueryOpts
 		wantOK      bool
 	}
 
@@ -49,7 +49,7 @@ func TestVlsingleStatsQueryPipesTimeFieldConstraints(t *testing.T) {
 
 	// Range stats MUST reject pipes that modify/remove _time (step > 0 requires _time)
 	opt := &opts{
-		queryOpts: apptest.QueryOpts{
+		queryOpts: apptest.StatsQueryRangeOpts{
 			Start: "2025-01-01T00:00:00Z",
 			End:   "2025-01-01T00:05:00Z",
 			Step:  "1m",
@@ -71,7 +71,9 @@ func TestVlsingleStatsQueryPipesTimeFieldConstraints(t *testing.T) {
 	f(`* | stats count()`, opt, true, false)
 
 	// Instant stats MUST allow time-modifying pipes
-	opt.instantOpts = apptest.QueryOpts{Time: "2025-01-01T00:05:00Z"}
+	opt.instantOpts = apptest.StatsQueryOpts{
+		Time: "2025-01-01T00:05:00Z",
+	}
 	f(`* | delete _time | stats count()`, opt, false, true)
 	f(`* | fields x | stats count()`, opt, false, true)
 	f(`* | stats count()`, opt, false, true)

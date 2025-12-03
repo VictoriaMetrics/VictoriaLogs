@@ -16,6 +16,7 @@ import { useFetchFieldNames } from "../../../pages/OverviewPage/hooks/useFetchFi
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilters";
 import { getDurationFromMilliseconds } from "../../../utils/time";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   logHits: LogHits[];
@@ -28,6 +29,8 @@ interface Props {
 }
 
 const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs }) => {
+  const { isMobile } = useDeviceDetect();
+
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
     stacked: false,
@@ -58,7 +61,12 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
       })}
     >
       <div className="vm-bar-hits-chart-header">
-        <div className="vm-bar-hits-chart-header-info">
+        <div
+          className={classNames({
+          "vm-bar-hits-chart-header-info": true,
+          "vm-bar-hits-chart-header-info_mobile": isMobile,
+        })}
+        >
           <SelectLimit
             label="Top hits"
             options={[5, 10, 25, 50]}

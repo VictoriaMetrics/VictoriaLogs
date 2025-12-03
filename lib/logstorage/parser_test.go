@@ -3611,7 +3611,7 @@ func TestQueryDropAllPipes(t *testing.T) {
 	f(`foo | filter bar:baz | stats by (x) min(y)`, `foo bar:baz`)
 }
 
-func TestQueryGetStatsByFieldsAddGroupingByTime_Success(t *testing.T) {
+func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f := func(qStr string, step int64, fieldsExpected []string, qExpected string) {
 		t.Helper()
 
@@ -3619,12 +3619,12 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsByFieldsAddGroupingByTime(step)
+		fields, err := q.GetStatsLabelsAddGroupingByTime(step)
 		if err != nil {
-			t.Fatalf("unexpected error in GetStatsByFieldsAddGroupingByTime(): %s", err)
+			t.Fatalf("unexpected error in GetStatsLabelsAddGroupingByTime(): %s", err)
 		}
 		if !reflect.DeepEqual(fields, fieldsExpected) {
-			t.Fatalf("unexpected byFields;\ngot\n%q\nwant\n%q", fields, fieldsExpected)
+			t.Fatalf("unexpected labelFields;\ngot\n%q\nwant\n%q", fields, fieldsExpected)
 		}
 
 		// Verify the resulting query
@@ -3654,6 +3654,8 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | count() hits | copy hits x, a b`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | copy hits as x, a as b`)
 	f(`* | count() hits | mv hits x, a b`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | rename hits as x, a as b`)
 	f(`* | count() hits | format "foo<hits>" as bar`, nsecsPerDay, []string{"_time", "bar"}, `* | stats by (_time:86400000000000) count(*) as hits | format "foo<hits>" as bar`)
+	f(`* | count() hits, row_any(_msg) msg_sample`, nsecsPerDay, []string{"_time", "msg_sample"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample`)
+	f(`* | count() hits, row_any(_msg) msg_sample | unpack_json from msg_sample fields (_msg) | rm msg_sample`, nsecsPerDay, []string{"_time", "_msg"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample | unpack_json from msg_sample fields (_msg) | delete msg_sample`)
 
 	// multiple stats pipes and sort pipes
 	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, []string{"requests", "_time"}, `* | stats by (path, _time:86400000000000) count(*) as requests | stats by (requests, _time:86400000000000) count(*) as hits | first by (hits desc) partition by (_time)`)
@@ -3685,9 +3687,34 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Success(t *testing.T) {
 	f("* | unpack_syslog x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_syslog from x | stats by (_time:86400000000000) count(*) as x`)
 	f("* | unpack_words x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_words from x | stats by (_time:86400000000000) count(*) as x`)
 	f("* | unroll by (x) | count() x", nsecsPerDay, []string{"_time"}, `* | unroll by (x) | stats by (_time:86400000000000) count(*) as x`)
+
+	// Unusual cases, which override the original stats labels
+
+	f(`* | count() | running_stats sum(hits) _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | running_stats sum(hits) as _time`)
+	f(`* | by (x) count() | running_stats by (x) sum(hits) x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | running_stats by (x) sum(hits) as x`)
+
+	f(`* | count() | total_stats sum(hits) _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | total_stats sum(hits) as _time`)
+	f(`* | by (x) count() | total_stats by (x) sum(hits) x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | total_stats by (x) sum(hits) as x`)
+
+	f(`* | count() | math a+b _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | math (a + b) as _time`)
+	f(`* | by (x) count() | math a+b x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | math (a + b) as x`)
+
+	f(`* | count() | rm _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | delete _time`)
+	f(`* | by (x) count() | rm x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | delete x`)
+
+	f(`* | count() | cp a _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | copy a as _time`)
+	f(`* | by (x) count() | cp a x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | copy a as x`)
+
+	f(`* | count() | mv a _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | rename a as _time`)
+	f(`* | by (x) count() | mv a x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | rename a as x`)
+
+	f(`* | count() | format "a" as _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | format a as _time`)
+	f(`* | by (x) count() | format "a" as x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | format a as x`)
+
+	f(`* | stats by (host) count() total | rename host as server | fields host, total`, nsecsPerDay, []string{}, `* | stats by (host, _time:86400000000000) count(*) as total | rename host as server | fields host, total`)
 }
 
-func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
+func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f := func(qStr string) {
 		t.Helper()
 
@@ -3695,7 +3722,7 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsByFieldsAddGroupingByTime(nsecsPerHour)
+		fields, err := q.GetStatsLabelsAddGroupingByTime(nsecsPerHour)
 		if err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
@@ -3707,27 +3734,14 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
 	f(`*`)
 
 	// verify invalid pipes after the stats pipe
-	f(`* | count() | running_stats sum(hits) _time`)
-	f(`* | by (x) count() | running_stats by (x) sum(hits) x`)
 	f(`* | count() | running_stats by (x) sum(a) b`)
 	f(`* | by (x) count() | running_stats sum(a) b`)
-	f(`* | count() | total_stats sum(hits) _time`)
-	f(`* | by (x) count() | total_stats by (x) sum(hits) x`)
 	f(`* | count() | total_stats by (x) sum(a) b`)
 	f(`* | by (x) count() | total_stats sum(a) b`)
-	f(`* | by (x) count() | math a+b as x`)
-	f(`* | by (x) count() | math a+b as _time`)
 	f(`* | count() | fields a,b`)
-	f(`* | count() | delete _time`)
-	f(`* | by (x) count() | delete x*`)
-	f(`* | count() | copy x _time`)
-	f(`* | by (x) count() | copy a x`)
-	f(`* | count() | mv a _time`)
-	f(`* | by (x) count() | mv a x`)
-	f(`* | count() | format "foo" as _time`)
-	f(`* | by (x) count() | format "foo" as x`)
+	f(`* | by (x) count() y | unpack_json from y`)
+	f(`* | by (x) count() y | unpack_json from y fields(z*)`)
 
-	f(`* | stats by (host) count() total | rename host as server | fields host, total`)
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
@@ -3763,7 +3777,7 @@ func TestQueryGetStatsByFieldsAddGroupingByTime_Failure(t *testing.T) {
 	f("* | uniq (x) | count()")
 }
 
-func TestQueryGetStatsByFields_Success(t *testing.T) {
+func TestQueryGetStatsLabels_Success(t *testing.T) {
 	f := func(qStr string, fieldsExpected []string) {
 		t.Helper()
 
@@ -3771,12 +3785,12 @@ func TestQueryGetStatsByFields_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsByFields()
+		fields, err := q.GetStatsLabels()
 		if err != nil {
-			t.Fatalf("unexpected error in GetStatsByFields(%q): %s", qStr, err)
+			t.Fatalf("unexpected error in GetStatsLabels(%q): %s", qStr, err)
 		}
 		if !reflect.DeepEqual(fields, fieldsExpected) {
-			t.Fatalf("unexpected byFields;\ngot\n%q\nwant\n%q", fields, fieldsExpected)
+			t.Fatalf("unexpected labelFields;\ngot\n%q\nwant\n%q", fields, fieldsExpected)
 		}
 	}
 
@@ -3845,9 +3859,29 @@ func TestQueryGetStatsByFields_Success(t *testing.T) {
 	// check first and last pipes
 	f(`foo | stats by (x) count() y | first by (y)`, []string{"x"})
 	f(`foo | stats by (x) count() y | last by (y)`, []string{"x"})
+
+	// unusual cases, which override the original labels
+
+	f(`foo | by (a, b) count() | copy a b`, []string{"a", "b"})
+	f(`foo | by (a, b) count() | copy a* b*`, []string{"a", "b"})
+	f(`foo | by (x) count() | cp a x`, []string{"x"})
+	f(`foo | by (x) count() | cp a* x*`, []string{"x"})
+
+	f(`foo | by (x) count() | mv a x`, []string{"x"})
+	f(`foo | by (x) count() | mv a* x*`, []string{"x"})
+	f(`foo | by (a, x) count() | mv a x`, []string{"x"})
+	f(`foo | by (a, x) count() | mv a* x*`, []string{"x"})
+
+	f(`foo | by (a, b) count() | delete a`, []string{"b"})
+	f(`foo | by (a, b) count() | delete a*`, []string{"b"})
+
+	f(`foo | by (x) count() y | math y*100 as x`, []string{})
+	f(`foo | by (x) count() y | math y*100 as x`, []string{})
+
+	f(`* | by (x) count() | format 'foo' as x`, []string{"x"})
 }
 
-func TestQueryGetStatsByFields_Failure(t *testing.T) {
+func TestQueryGetStatsLabels_Failure(t *testing.T) {
 	f := func(qStr string) {
 		t.Helper()
 
@@ -3855,7 +3889,7 @@ func TestQueryGetStatsByFields_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsByFields()
+		fields, err := q.GetStatsLabels()
 		if err == nil {
 			t.Fatalf("expecting non-nil error for ParseQuery(%q)", qStr)
 		}
@@ -3866,11 +3900,7 @@ func TestQueryGetStatsByFields_Failure(t *testing.T) {
 
 	f(`*`)
 	f(`foo bar`)
-	f(`foo | by (a, b) count() | copy a b`)
-	f(`foo | by (a, b) count() | copy a* b*`)
 	f(`foo | by (a, b) count() | decolorize a`)
-	f(`foo | by (a, b) count() | delete a`)
-	f(`foo | by (a, b) count() | delete a*`)
 	f(`foo | count() | drop_empty_fields`)
 	f(`foo | count() | extract "foo<bar>baz"`)
 	f(`foo | count() | extract_regexp "(?P<ip>([0-9]+[.]){3}[0-9]+)"`)
@@ -3904,36 +3934,19 @@ func TestQueryGetStatsByFields_Failure(t *testing.T) {
 	f(`foo | count() | len(a)`)
 	f(`foo | count() | hash(a)`)
 
-	// drop by(...) field
-	f(`* | by (x) count() as rows | math rows * 10, rows / 10 | drop x`)
-
 	// missing metric fields
 	f(`* | count() x | fields y`)
 	f(`* | count() x | fields y*`)
 	f(`* | by (x) count() y | fields x`)
 	f(`* | by (x) count() y | fields x*`)
 
-	// math results override by(...) fields
-	f(`* | by (x) count() y | math y*100 as x`)
-
-	// copy to existing by(...) field
-	f(`* | by (x) count() | cp a x`)
-	f(`* | by (x) count() | cp a* x*`)
-
 	// copy to the remaining metric field
 	f(`* | by (x) count() y | cp a y`)
 	f(`* | by (x) count() y | cp a* y*`)
 
-	// mv to existing by(...) field
-	f(`* | by (x) count() | mv a x`)
-	f(`* | by (x) count() | mv a* x*`)
-
 	// mv to the remaining metric fields
 	f(`* | by (x) count() y | mv x y`)
 	f(`* | by (x) count() y | mv x* y*`)
-
-	// format to by(...) field
-	f(`* | by (x) count() | format 'foo' as x`)
 
 	// format to the remaining metric field
 	f(`* | by (x) count() y | format 'foo' as y`)

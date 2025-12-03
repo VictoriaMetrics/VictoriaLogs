@@ -2,6 +2,7 @@ import { FC, memo } from "preact/compat";
 import { LogoShortIcon } from "../../components/Main/Icons";
 import "./style.scss";
 import { footerLinksToLogs } from "../../constants/footerLinks";
+import useGetVersion from "../../hooks/useGetVersion";
 
 interface Props {
   links?: {
@@ -13,6 +14,7 @@ interface Props {
 
 const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
   const copyrightYears = `2019-${new Date().getFullYear()}`;
+  const { version } = useGetVersion();
 
   return <footer className="vm-footer">
     <a
@@ -36,9 +38,8 @@ const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
         {title}
       </a>
     ))}
-    <div className="vm-footer__copyright">
-      &copy; {copyrightYears} VictoriaMetrics
-    </div>
+    <div className="vm-footer__copyright">&copy; {copyrightYears} VictoriaMetrics.</div>
+    {version && <span className="vm-footer__version">&nbsp;Version: {version}</span>}
   </footer>;
 });
 

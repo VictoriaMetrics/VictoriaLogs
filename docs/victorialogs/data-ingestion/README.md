@@ -53,7 +53,9 @@ echo '{"create":{}}
 ' | curl -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:9428/insert/elasticsearch/_bulk
 ```
 
-It is possible to push thousands of log lines in a single request to this API.
+It is possible to push arbitrary number of log lines in a single request to this API - it parses logs line-by-line
+and immediately stores them into VictoriaLogs. It stops parsing logs on the first encountered error and returns
+the error to the client, so it could be quickly identified and resolved.
 
 If the [timestamp field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) is set to `"0"`,
 then the current timestamp at VictoriaLogs side is used per each ingested log line.

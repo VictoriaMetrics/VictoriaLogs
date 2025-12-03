@@ -341,7 +341,7 @@ func (bsm *blockStreamMerger) getStreamAndStreamID() (string, string) {
 func (bsm *blockStreamMerger) mustFlushRows() {
 	if len(bsm.rows.timestamps) == 0 {
 		bsm.bsw.MustWriteBlockData(&bsm.bd)
-	} else {
+	} else if bsm.rows.hasNonEmptyRows() {
 		bsm.bsw.MustWriteRows(&bsm.streamID, bsm.rows.timestamps, bsm.rows.rows)
 	}
 	bsm.resetRows()

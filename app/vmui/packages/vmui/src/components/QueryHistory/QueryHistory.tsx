@@ -113,7 +113,7 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
         startIcon={<ClockIcon/>}
         ariaLabel={"Query history"}
       >
-        Query history
+        {!isMobile && "Query history"}
       </Button>
 
       {openModal && (

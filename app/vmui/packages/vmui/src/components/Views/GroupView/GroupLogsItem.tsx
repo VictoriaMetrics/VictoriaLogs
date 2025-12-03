@@ -18,6 +18,7 @@ import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import StreamContextButton from "../../../pages/StreamContext/StreamContextButton";
 import { useAppState } from "../../../state/common/StateContext";
 import { formatDateWithNanoseconds } from "../../../utils/time";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   log: Logs;
@@ -30,6 +31,7 @@ interface Props {
 
 const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hideGroupButton, className, onItemClick }) => {
   const { isDarkTheme } = useAppState();
+  const { isMobile } = useDeviceDetect();
 
   const {
     value: isOpenFields,
@@ -119,6 +121,7 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
       <div
         className={classNames({
           "vm-group-logs-row-content": true,
+          "vm-group-logs-row-content_mobile": isMobile,
           "vm-group-logs-row-content_dark": isDarkTheme,
           "vm-group-logs-row-content_active": isOpenFields,
           "vm-group-logs-row-content_interactive": !disabledHovers,
