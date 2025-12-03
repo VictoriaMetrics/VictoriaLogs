@@ -54,8 +54,8 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 	fb := getFmtBuffer()
 	defer putFmtBuffer(fb)
 
-	resourceFields := logstorage.GetFields()
-	defer logstorage.PutFields(resourceFields)
+	fs := logstorage.GetFields()
+	defer logstorage.PutFields(fs)
 
 	// Decode resource
 	data, ok, err := findMessageData(src, 1)
@@ -63,10 +63,11 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 		return fmt.Errorf("cannot find Resource: %w", err)
 	}
 	if ok {
-		if err = decodeResource(data, resourceFields, fb); err != nil {
+		if err = decodeResource(data, fs, fb); err != nil {
 			return fmt.Errorf("cannot decode Resource: %w", err)
 		}
 	}
+	resourceFieldsLen := len(fs.Fields)
 
 	// Decode scope_logs
 	var fc easyproto.FieldContext
@@ -82,7 +83,9 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 				return fmt.Errorf("cannot read ScopeLogs data")
 			}
 
-			if err := decodeScopeLogs(data, resourceFields.Fields, pushLogs); err != nil {
+			fs.Fields = fs.Fields[:resourceFieldsLen]
+
+			if err := decodeScopeLogs(data, fs, pushLogs); err != nil {
 				return fmt.Errorf("cannot decode ScopeLogs: %w", err)
 			}
 		}
@@ -116,7 +119,7 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 	return nil
 }
 
-func decodeScopeLogs(src []byte, resource []logstorage.Field, pushLogs pushLogsHandler) (err error) {
+func decodeScopeLogs(src []byte, fs *logstorage.Fields, pushLogs pushLogsHandler) (err error) {
 	// message ScopeLogs {
 	//   repeated LogRecord log_records = 2;
 	// }
@@ -124,11 +127,7 @@ func decodeScopeLogs(src []byte, resource []logstorage.Field, pushLogs pushLogsH
 	fb := getFmtBuffer()
 	defer putFmtBuffer(fb)
 
-	fs := logstorage.GetFields()
-	defer logstorage.PutFields(fs)
-
-	// Resource fields must be present in every log entry.
-	fs.Fields = append(fs.Fields, resource...)
+	resourceFieldsLen := len(fs.Fields)
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
@@ -144,7 +143,7 @@ func decodeScopeLogs(src []byte, resource []logstorage.Field, pushLogs pushLogsH
 			}
 
 			fb.reset()
-			fs.Fields = fs.Fields[:len(resource)]
+			fs.Fields = fs.Fields[:resourceFieldsLen]
 
 			var timestamp int64
 			timestamp, err = decodeLogRecord(data, fs, fb)
@@ -152,7 +151,7 @@ func decodeScopeLogs(src []byte, resource []logstorage.Field, pushLogs pushLogsH
 				return fmt.Errorf("cannot decode LogRecord: %w", err)
 			}
 
-			pushLogs(timestamp, fs.Fields, len(resource))
+			pushLogs(timestamp, fs.Fields, resourceFieldsLen)
 		}
 	}
 	return nil
@@ -255,42 +254,6 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (int64, e
 	}
 
 	return timestamp, nil
-}
-
-// https://github.com/open-telemetry/opentelemetry-collector/blob/cd1f7623fe67240e32e74735488c3db111fad47b/pdata/plog/severity_number.go#L41
-var logSeverities = []string{
-	"Unspecified",
-	"Trace",
-	"Trace2",
-	"Trace3",
-	"Trace4",
-	"Debug",
-	"Debug2",
-	"Debug3",
-	"Debug4",
-	"Info",
-	"Info2",
-	"Info3",
-	"Info4",
-	"Warn",
-	"Warn2",
-	"Warn3",
-	"Warn4",
-	"Error",
-	"Error2",
-	"Error3",
-	"Error4",
-	"Fatal",
-	"Fatal2",
-	"Fatal3",
-	"Fatal4",
-}
-
-func formatSeverity(severity int32) string {
-	if severity < 0 || severity >= int32(len(logSeverities)) {
-		return logSeverities[0]
-	}
-	return logSeverities[severity]
 }
 
 func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) error {
@@ -439,7 +402,7 @@ func findMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err err
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return nil, false, fmt.Errorf("cannot read next field: %s", err)
+			return nil, false, fmt.Errorf("cannot read next field: %w", err)
 		}
 
 		if fc.FieldNum != fieldNum {
@@ -453,4 +416,40 @@ func findMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err err
 		return data, true, nil
 	}
 	return nil, false, nil
+}
+
+func formatSeverity(severity int32) string {
+	if severity < 0 || severity >= int32(len(logSeverities)) {
+		return logSeverities[0]
+	}
+	return logSeverities[severity]
+}
+
+// https://github.com/open-telemetry/opentelemetry-collector/blob/cd1f7623fe67240e32e74735488c3db111fad47b/pdata/plog/severity_number.go#L41
+var logSeverities = []string{
+	"Unspecified",
+	"Trace",
+	"Trace2",
+	"Trace3",
+	"Trace4",
+	"Debug",
+	"Debug2",
+	"Debug3",
+	"Debug4",
+	"Info",
+	"Info2",
+	"Info3",
+	"Info4",
+	"Warn",
+	"Warn2",
+	"Warn3",
+	"Warn4",
+	"Error",
+	"Error2",
+	"Error3",
+	"Error4",
+	"Fatal",
+	"Fatal2",
+	"Fatal3",
+	"Fatal4",
 }

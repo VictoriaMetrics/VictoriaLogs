@@ -122,8 +122,8 @@ func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjs
 			if !ok {
 				return nil, fmt.Errorf("cannot read BytesValue")
 			}
-			b64 := fb.formatBase64(bytesValue)
-			return a.NewString(b64), nil
+			v := fb.formatBase64(bytesValue)
+			return a.NewString(v), nil
 		}
 	}
 	return nil, nil
@@ -186,7 +186,7 @@ func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb
 
 	v, err := decodeAnyValueToJSON(data, a, fb)
 	if err != nil {
-		return fmt.Errorf("cannot decode AnyValue: %s", err)
+		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
 
 	dst.Set(fieldName, v)
