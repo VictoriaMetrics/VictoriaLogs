@@ -4,6 +4,7 @@ import "./style.scss";
 import classNames from "classnames";
 import GroupLogsFieldRow from "./GroupLogsFieldRow";
 import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   log: Logs;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
+  const { isMobile } = useDeviceDetect();
+
   const sortedFields = useMemo(() => {
     return Object.entries(log)
       .sort(([aKey], [bKey]) => aKey.localeCompare(bKey));
@@ -22,6 +25,7 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
     <div
       className={classNames({
         "vm-group-logs-row-fields": true,
+        "vm-group-logs-row-fields_mobile": isMobile,
         "vm-group-logs-row-fields_interactive": !disabledHovers
       })}
     >

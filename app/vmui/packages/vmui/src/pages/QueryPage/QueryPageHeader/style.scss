@@ -20,11 +20,6 @@
     justify-content: flex-end;
     gap: $padding-global;
 
-    @media (max-width: 500px) {
-      display: grid;
-      justify-content: normal;
-    }
-
     &-contols {
       display: flex;
       align-items: center;

@@ -26,6 +26,8 @@ according to the follosing docs:
 * FEATURE: [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api): automatically convert the results of [`row_any()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats), [`row_min()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats) and [`row_max()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) stats functions to labels in [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) functions. This allows obtaining a sample of log message in alerting rules with the following query: `... | stats count() as hits, row_any(_msg) as msg_sample`. See [#81](https://github.com/VictoriaMetrics/VictoriaLogs/issues/81).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show VictoriaLogs version in the vmui's footer. See [#116](https://github.com/VictoriaMetrics/VictoriaLogs/issues/116).
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix mobile layout styles.
+
 ## [v1.39.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.39.0)
 
 Released at 2025-11-29

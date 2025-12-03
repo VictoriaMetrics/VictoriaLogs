@@ -38,10 +38,8 @@ const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
         {title}
       </a>
     ))}
-    <div className="vm-footer__copyright">
-      &copy; {copyrightYears} VictoriaMetrics.
-      {version && <span className="vm-footer__version">&nbsp;Version: {version}</span>}
-    </div>
+    <div className="vm-footer__copyright">&copy; {copyrightYears} VictoriaMetrics.</div>
+    {version && <span className="vm-footer__version">&nbsp;Version: {version}</span>}
   </footer>;
 });
 

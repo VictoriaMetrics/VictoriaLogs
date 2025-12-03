@@ -42,6 +42,8 @@ $button-radius: 6px;
 
     svg {
       width: 14px;
+      min-width: 14px;
+      max-width: 14px;
     }
   }
 
@@ -51,6 +53,8 @@ $button-radius: 6px;
 
     svg {
       width: 16px;
+      min-width: 16px;
+      max-width: 16px;
     }
   }
 
@@ -60,6 +64,8 @@ $button-radius: 6px;
 
     svg {
       width: 18px;
+      min-width: 18px;
+      max-width: 18px;
       line-height: 16px;
     }
   }

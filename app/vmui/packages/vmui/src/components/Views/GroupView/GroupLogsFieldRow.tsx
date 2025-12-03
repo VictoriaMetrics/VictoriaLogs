@@ -5,6 +5,8 @@ import { CopyIcon, StorageIcon, VisibilityIcon } from "../../Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import { useSearchParams } from "react-router-dom";
 import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
+import classNames from "classnames";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   field: string;
@@ -13,6 +15,7 @@ interface Props {
 }
 
 const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
+  const { isMobile } = useDeviceDetect();
   const copyToClipboard = useCopyToClipboard();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -54,7 +57,12 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
   }, [copied]);
 
   return (
-    <tr className="vm-group-logs-row-fields-item">
+    <tr
+      className={classNames({
+      "vm-group-logs-row-fields-item": true,
+      "vm-group-logs-row-fields-item_mobile": isMobile
+    })}
+    >
       <td className="vm-group-logs-row-fields-item-controls">
         <div className="vm-group-logs-row-fields-item-controls__wrapper">
           <Tooltip title={copied ? "Copied" : "Copy to clipboard"}>

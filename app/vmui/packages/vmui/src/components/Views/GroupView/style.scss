@@ -13,6 +13,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
   &-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
 
@@ -142,6 +143,12 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
       display: flex;
       padding: 2px $actions-width 2px 2px;
       cursor: pointer;
+
+      &_mobile {
+        flex-wrap: wrap;
+        gap: $padding-small;
+        border-bottom: $border-divider;
+      }
 
       &_active {
         padding-right: 0;
@@ -318,6 +325,12 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
       font-size: $font-size-logs;
       font-variant-numeric: tabular-nums;
 
+      &_mobile {
+        height: auto;
+        margin: $padding-small 0;
+        padding: calc($padding-small / 2);
+      }
+
       &_interactive &-item {
         contain: layout;
         will-change: background-color;
@@ -328,6 +341,37 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
       }
 
       &-item {
+        &_mobile {
+          max-width: calc(100vw - ($padding-global * 4));
+          display: flex;
+          flex-wrap: wrap;
+          gap: calc($padding-small / 2);
+          align-items: flex-start;
+          justify-content: flex-start;
+          border-bottom: $border-divider;
+        }
+
+        &_mobile &__key {
+          flex-grow: 1;
+          color: $color-text-secondary;
+          max-width: calc(100% - 100px);
+          order: 1;
+        }
+
+        &_mobile &-controls {
+          flex-grow: 1;
+          order: 2;
+        }
+
+        &_mobile &__value {
+          order: 3;
+        }
+
+        &_mobile &-controls__wrapper {
+          width: 100%;
+          justify-content: flex-end;
+        }
+
         &-controls {
           padding: 0 calc($padding-small / 2);
 
@@ -353,7 +397,6 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
         &__key {
           overflow-wrap: break-word;
-          width: max-content;
         }
 
         &__value {
