@@ -104,10 +104,7 @@ func parseProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFi
 			fieldsTmp.Fields = fieldsTmp.Fields[:commonFieldsLen]
 
 			for _, lp := range e.StructuredMetadata {
-				fieldsTmp.Fields = append(fieldsTmp.Fields, logstorage.Field{
-					Name:  lp.Name,
-					Value: lp.Value,
-				})
+				fieldsTmp.Add(lp.Name, lp.Value)
 			}
 
 			allowMsgRenaming := false

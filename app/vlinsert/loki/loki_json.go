@@ -106,10 +106,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 		fieldsTmp.Reset()
 		labels.Visit(func(k []byte, v *fastjson.Value) {
 			vStr := getMarshaledJSONValue(v)
-			fieldsTmp.Fields = append(fieldsTmp.Fields, logstorage.Field{
-				Name:  bytesutil.ToUnsafeString(k),
-				Value: bytesutil.ToUnsafeString(vStr),
-			})
+			fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 		})
 		if err != nil {
 			return fmt.Errorf("error when parsing `stream` object: %w", err)
@@ -158,10 +155,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				}
 				structuredMetadata.Visit(func(k []byte, v *fastjson.Value) {
 					vStr := getMarshaledJSONValue(v)
-					fieldsTmp.Fields = append(fieldsTmp.Fields, logstorage.Field{
-						Name:  bytesutil.ToUnsafeString(k),
-						Value: bytesutil.ToUnsafeString(vStr),
-					})
+					fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 				})
 				if err != nil {
 					return fmt.Errorf("error when parsing `structuredMetadata` object: %w", err)

@@ -303,10 +303,7 @@ func (rs *rows) skipRowsByDropFilter(dropFilter *partitionSearchOptions, dropFil
 
 		if dropFilterFields.MatchString("_time") {
 			bb.B = marshalTimestampISO8601String(bb.B[:0], srcTimestamp)
-			tmpFields.Fields = append(tmpFields.Fields, Field{
-				Name:  "_time",
-				Value: bytesutil.ToUnsafeString(bb.B),
-			})
+			tmpFields.Add("_time", bytesutil.ToUnsafeString(bb.B))
 		}
 
 		for _, f := range srcFields {
@@ -369,6 +366,14 @@ type Fields struct {
 func (f *Fields) Reset() {
 	clear(f.Fields)
 	f.Fields = f.Fields[:0]
+}
+
+// Add adds (name, value) field to f.
+func (f *Fields) Add(name, value string) {
+	f.Fields = append(f.Fields, Field{
+		Name:  name,
+		Value: value,
+	})
 }
 
 // GetFields returns an empty Fields from the pool.
