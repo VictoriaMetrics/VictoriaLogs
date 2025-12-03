@@ -1,28 +1,25 @@
 package opentelemetry
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/easyproto"
-	"github.com/valyala/fastjson"
 )
 
-type handler func(timestamp int64, resource, attributes []logstorage.Field)
+// the pushLogsHandler must store log entry with the given args.
+//
+// The handler must copy resource and attributes before returning,
+// since the caller can change them, so they become invalid if not copied.
+type pushLogsHandler func(timestamp int64, fields []logstorage.Field, resourceFieldsLen int)
 
-// decodeRequest parses a LogsData protobuf message from src
-// and calls the provided handler for each decoded log record.
+// decodeLogsData parses a LogsData protobuf message from src and calls the provided pushLogs for each decoded log record.
 //
 // See the definition of LogsData here:
 // https://github.com/open-telemetry/opentelemetry-proto/blob/34d29fe5ad4689b5db0259d3750de2bfa195bc85/opentelemetry/proto/logs/v1/logs.proto#L38
-func decodeRequest(src []byte, handle handler) (err error) {
+func decodeLogsData(src []byte, pushLogs pushLogsHandler) (err error) {
 	// message LogsData {
 	//   repeated ResourceLogs resource_logs = 1;
 	// }
@@ -31,7 +28,7 @@ func decodeRequest(src []byte, handle handler) (err error) {
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return fmt.Errorf("cannot read next field in ExportLogsServiceRequest: %s", err)
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
@@ -40,15 +37,15 @@ func decodeRequest(src []byte, handle handler) (err error) {
 				return fmt.Errorf("cannot read ResourceLogs data")
 			}
 
-			if err := decodeResourceLogs(data, handle); err != nil {
-				return fmt.Errorf("cannot decode ResourceLogs: %s", err)
+			if err := decodeResourceLogs(data, pushLogs); err != nil {
+				return fmt.Errorf("cannot decode ResourceLogs: %w", err)
 			}
 		}
 	}
 	return nil
 }
 
-func decodeResourceLogs(src []byte, handle handler) (err error) {
+func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 	// message ResourceLogs {
 	//   Resource resource = 1;
 	//   repeated ScopeLogs scope_logs = 2;
@@ -56,28 +53,27 @@ func decodeResourceLogs(src []byte, handle handler) (err error) {
 
 	fb := getFmtBuffer()
 	defer putFmtBuffer(fb)
-	fs := getFieldsSlice()
-	defer putFieldsSlice(fs)
+
+	resourceFields := logstorage.GetFields()
+	defer logstorage.PutFields(resourceFields)
 
 	// Decode resource
 	data, ok, err := findMessageData(src, 1)
 	if err != nil {
-		return fmt.Errorf("cannot find Resource in ResourceLogs: %s", err)
+		return fmt.Errorf("cannot find Resource: %w", err)
 	}
 	if ok {
-		fs.s, err = decodeResource(fs.s, data, fb)
-		if err != nil {
-			return fmt.Errorf("cannot decode Resource: %s", err)
+		if err = decodeResource(data, resourceFields, fb); err != nil {
+			return fmt.Errorf("cannot decode Resource: %w", err)
 		}
 	}
-	resource := fs.s
 
 	// Decode scope_logs
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return fmt.Errorf("cannot read next ScopeLogs in ResourceLogs: %s", err)
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 2:
@@ -86,8 +82,8 @@ func decodeResourceLogs(src []byte, handle handler) (err error) {
 				return fmt.Errorf("cannot read ScopeLogs data")
 			}
 
-			if err := decodeScopeLogs(data, resource, handle); err != nil {
-				return fmt.Errorf("cannot decode ScopeLogs: %s", err)
+			if err := decodeScopeLogs(data, resourceFields.Fields, pushLogs); err != nil {
+				return fmt.Errorf("cannot decode ScopeLogs: %w", err)
 			}
 		}
 	}
@@ -95,7 +91,7 @@ func decodeResourceLogs(src []byte, handle handler) (err error) {
 	return nil
 }
 
-func decodeResource(dst []logstorage.Field, src []byte, fb *fmtBuffer) (_ []logstorage.Field, err error) {
+func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error) {
 	// message Resource {
 	//   repeated KeyValue attributes = 1;
 	// }
@@ -104,41 +100,41 @@ func decodeResource(dst []logstorage.Field, src []byte, fb *fmtBuffer) (_ []logs
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return dst, fmt.Errorf("cannot read next field in Resource")
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
 			data, ok := fc.MessageData()
 			if !ok {
-				return dst, fmt.Errorf("cannot read Attributes data")
+				return fmt.Errorf("cannot read Attributes data")
 			}
-			dst, err = decodeKeyValue(fb, dst, "", data)
-			if err != nil {
-				return dst, fmt.Errorf("cannot decode Attributes: %s", err)
+			if err := decodeKeyValue(data, fs, fb, ""); err != nil {
+				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
 	}
-	return dst, nil
+	return nil
 }
 
-func decodeScopeLogs(src []byte, resource []logstorage.Field, handle handler) (err error) {
+func decodeScopeLogs(src []byte, resource []logstorage.Field, pushLogs pushLogsHandler) (err error) {
 	// message ScopeLogs {
 	//   repeated LogRecord log_records = 2;
 	// }
 
 	fb := getFmtBuffer()
 	defer putFmtBuffer(fb)
-	fs := getFieldsSlice()
-	defer putFieldsSlice(fs)
+
+	fs := logstorage.GetFields()
+	defer logstorage.PutFields(fs)
 
 	// Resource fields must be present in every log entry.
-	fs.s = append(fs.s, resource...)
+	fs.Fields = append(fs.Fields, resource...)
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return fmt.Errorf("cannot read next field in ScopeLogs: %w", err)
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 2:
@@ -148,22 +144,21 @@ func decodeScopeLogs(src []byte, resource []logstorage.Field, handle handler) (e
 			}
 
 			fb.reset()
-			fs.s = fs.s[:len(resource)]
+			fs.Fields = fs.Fields[:len(resource)]
 
 			var timestamp int64
-			fs.s, timestamp, err = decodeLogRecord(fs.s, data, fb)
+			timestamp, err = decodeLogRecord(data, fs, fb)
 			if err != nil {
 				return fmt.Errorf("cannot decode LogRecord: %w", err)
 			}
 
-			attrs := fs.s
-			handle(timestamp, resource, attrs)
+			pushLogs(timestamp, fs.Fields, len(resource))
 		}
 	}
 	return nil
 }
 
-func decodeLogRecord(dst []logstorage.Field, src []byte, fb *fmtBuffer) ([]logstorage.Field, int64, error) {
+func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (int64, error) {
 	// message LogRecord {
 	//   fixed64 time_unix_nano = 1;
 	//   fixed64 observed_time_unix_nano = 11;
@@ -187,76 +182,67 @@ func decodeLogRecord(dst []logstorage.Field, src []byte, fb *fmtBuffer) ([]logst
 		var err error
 		src, err = fc.NextField(src)
 		if err != nil {
-			return nil, 0, fmt.Errorf("cannot read next field in LogRecord: %w", err)
+			return 0, fmt.Errorf("cannot read the next field: %w", err)
 		}
 		var ok bool
 		switch fc.FieldNum {
 		case 1:
 			timeUnixNano, ok = fc.Fixed64()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read log record timestamp")
+				return 0, fmt.Errorf("cannot read log record timestamp")
 			}
 		case 11:
 			observedTimeUnixNano, ok = fc.Fixed64()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read log record observed timestamp")
+				return 0, fmt.Errorf("cannot read log record observed timestamp")
 			}
 		case 2:
 			severityNumber, ok = fc.Int32()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read severity number")
+				return 0, fmt.Errorf("cannot read severity number")
 			}
 		case 3:
 			severityText, ok = fc.String()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read severity string")
+				return 0, fmt.Errorf("cannot read severity string")
 			}
 		case 5:
 			body, ok := fc.MessageData()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read Body")
+				return 0, fmt.Errorf("cannot read Body")
 			}
-			dst, err = decodeAnyValue(dst, body, "", fb)
-			if err != nil {
-				return nil, 0, fmt.Errorf("cannot decode Body: %w", err)
+			if err := decodeAnyValue(body, fs, fb, ""); err != nil {
+				return 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:
 			data, ok := fc.MessageData()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read attributes data")
+				return 0, fmt.Errorf("cannot read Attributes data")
 			}
-			dst, err = decodeKeyValue(fb, dst, "", data)
-			if err != nil {
-				return nil, 0, fmt.Errorf("cannot decode attributes: %w", err)
+			if err := decodeKeyValue(data, fs, fb, ""); err != nil {
+				return 0, fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		case 9:
 			traceID, ok := fc.Bytes()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read trace id")
+				return 0, fmt.Errorf("cannot read trace id")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  "trace_id",
-				Value: fb.formatHex(traceID),
-			})
+			traceIDHex := fb.formatHex(traceID)
+			fs.Add("trace_id", traceIDHex)
 		case 10:
 			spanID, ok := fc.Bytes()
 			if !ok {
-				return nil, 0, fmt.Errorf("cannot read span id")
+				return 0, fmt.Errorf("cannot read span id")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  "span_id",
-				Value: fb.formatHex(spanID),
-			})
+			spanIDHex := fb.formatHex(spanID)
+			fs.Add("span_id", spanIDHex)
 		}
 	}
 
 	if severityText == "" {
 		severityText = formatSeverity(severityNumber)
 	}
-	dst = append(dst, logstorage.Field{
-		Name:  "severity",
-		Value: severityText,
-	})
+	fs.Add("severity", severityText)
 
 	var timestamp int64
 	switch {
@@ -268,7 +254,7 @@ func decodeLogRecord(dst []logstorage.Field, src []byte, fb *fmtBuffer) ([]logst
 		timestamp = time.Now().UnixNano()
 	}
 
-	return dst, timestamp, nil
+	return timestamp, nil
 }
 
 // https://github.com/open-telemetry/opentelemetry-collector/blob/cd1f7623fe67240e32e74735488c3db111fad47b/pdata/plog/severity_number.go#L41
@@ -307,7 +293,7 @@ func formatSeverity(severity int32) string {
 	return logSeverities[severity]
 }
 
-func decodeKeyValue(fb *fmtBuffer, dst []logstorage.Field, fieldName string, src []byte) (_ []logstorage.Field, err error) {
+func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) error {
 	// message KeyValue {
 	//   string key = 1;
 	//   AnyValue value = 2;
@@ -316,31 +302,31 @@ func decodeKeyValue(fb *fmtBuffer, dst []logstorage.Field, fieldName string, src
 	// Decode key
 	data, ok, err := findMessageData(src, 1)
 	if err != nil {
-		return dst, fmt.Errorf("cannot find Key in KeyValue: %s", err)
+		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
 	if !ok {
-		return dst, fmt.Errorf("key is missing in KeyValue")
+		return fmt.Errorf("key is missing in KeyValue")
 	}
-	fieldName = fb.formatSubFieldName(fieldName, data)
+	fieldName := fb.formatSubFieldName(fieldNamePrefix, data)
 
 	// Decode value
 	data, ok, err = findMessageData(src, 2)
 	if err != nil {
-		return dst, fmt.Errorf("cannot find Value in KeyValue: %s", err)
+		return fmt.Errorf("cannot find Value in KeyValue: %w", err)
 	}
 	if !ok {
 		// Value is null, skip it.
-		return dst, nil
+		return nil
 	}
 
-	dst, err = decodeAnyValue(dst, data, fieldName, fb)
-	if err != nil {
-		return dst, fmt.Errorf("cannot decode AnyValue: %s", err)
+	if err := decodeAnyValue(data, fs, fb, fieldName); err != nil {
+		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
-	return dst, nil
+
+	return nil
 }
 
-func decodeAnyValue(dst []logstorage.Field, src []byte, fieldName string, fb *fmtBuffer) (_ []logstorage.Field, err error) {
+func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -357,93 +343,73 @@ func decodeAnyValue(dst []logstorage.Field, src []byte, fieldName string, fb *fm
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return dst, fmt.Errorf("cannot read next field in AnyValue")
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
 			stringValue, ok := fc.String()
 			if !ok {
-				return dst, fmt.Errorf("cannot read StringValue")
+				return fmt.Errorf("cannot read StringValue")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: stringValue,
-			})
+			fs.Add(fieldName, stringValue)
 		case 2:
 			boolValue, ok := fc.Bool()
 			if !ok {
-				return dst, fmt.Errorf("cannot read BoolValue")
+				return fmt.Errorf("cannot read BoolValue")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: strconv.FormatBool(boolValue),
-			})
+			boolValueStr := strconv.FormatBool(boolValue)
+			fs.Add(fieldName, boolValueStr)
 		case 3:
 			intValue, ok := fc.Int64()
 			if !ok {
-				return dst, fmt.Errorf("cannot read IntValue")
+				return fmt.Errorf("cannot read IntValue")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: fb.formatInt(intValue),
-			})
+			intValueStr := fb.formatInt(intValue)
+			fs.Add(fieldName, intValueStr)
 		case 4:
 			doubleValue, ok := fc.Double()
 			if !ok {
-				return dst, fmt.Errorf("cannot read DoubleValue")
+				return fmt.Errorf("cannot read DoubleValue")
 			}
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: fb.formatFloat(doubleValue),
-			})
+			doubleValueStr := fb.formatFloat(doubleValue)
+			fs.Add(fieldName, doubleValueStr)
 		case 5:
 			data, ok := fc.MessageData()
 			if !ok {
-				return dst, fmt.Errorf("cannot read ArrayValue")
+				return fmt.Errorf("cannot read ArrayValue")
 			}
 
-			arena := jsonArenaPool.Get()
+			a := jsonArenaPool.Get()
 			// Encode arrays as JSON to match the behavior of /insert/jsonline
-			arr, err := decodeArrayValueToJSON(arena, data)
+			arr, err := decodeArrayValueToJSON(data, a, fb)
 			if err != nil {
-				return dst, fmt.Errorf("cannot decode ArrayValue: %s", err)
+				return fmt.Errorf("cannot decode ArrayValue: %w", err)
 			}
 			encodedArr := fb.encodeJSONValue(arr)
-			jsonArenaPool.Put(arena)
+			jsonArenaPool.Put(a)
 
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: encodedArr,
-			})
+			fs.Add(fieldName, encodedArr)
 		case 6:
 			data, ok := fc.MessageData()
 			if !ok {
-				return dst, fmt.Errorf("cannot read KeyValueList")
+				return fmt.Errorf("cannot read KeyValueList")
 			}
-			dst, err = decodeKeyValueList(fb, dst, fieldName, data)
-			if err != nil {
-				return dst, fmt.Errorf("cannot decode KeyValueList: %s", err)
+			if err := decodeKeyValueList(data, fs, fb, fieldName); err != nil {
+				return fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 		case 7:
 			bytesValue, ok := fc.Bytes()
 			if !ok {
-				return dst, fmt.Errorf("cannot read BytesValue")
+				return fmt.Errorf("cannot read BytesValue")
 			}
 			v := fb.formatBase64(bytesValue)
-			dst = append(dst, logstorage.Field{
-				Name:  fieldName,
-				Value: v,
-			})
-		default:
-			unsupportedTypeLogger.Warnf("unsupported AnyValue type %d, please create an issue: https://github.com/VictoriaMetrics/VictoriaLogs/issues", fc.FieldNum)
+			fs.Add(fieldName, v)
 		}
 	}
-	return dst, nil
+	return nil
 }
 
-var unsupportedTypeLogger = logger.WithThrottler("otel_unsupported_type", 10*time.Second)
-
-func decodeKeyValueList(fb *fmtBuffer, fields []logstorage.Field, fieldName string, src []byte) (_ []logstorage.Field, err error) {
+func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) (err error) {
 	// message KeyValueList {
 	//   repeated KeyValue values = 1;
 	// }
@@ -452,21 +418,20 @@ func decodeKeyValueList(fb *fmtBuffer, fields []logstorage.Field, fieldName stri
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
 		if err != nil {
-			return fields, fmt.Errorf("cannot read next field in KeyValueList")
+			return fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
 			data, ok := fc.MessageData()
 			if !ok {
-				return fields, fmt.Errorf("cannot read Value data")
+				return fmt.Errorf("cannot read KeyValue data")
 			}
-			fields, err = decodeKeyValue(fb, fields, fieldName, data)
-			if err != nil {
-				return fields, fmt.Errorf("cannot decode KeyValue: %s", err)
+			if err := decodeKeyValue(data, fs, fb, fieldNamePrefix); err != nil {
+				return fmt.Errorf("cannot decode KeyValue: %w", err)
 			}
 		}
 	}
-	return fields, nil
+	return nil
 }
 
 func findMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err error) {
@@ -488,109 +453,4 @@ func findMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err err
 		return data, true, nil
 	}
 	return nil, false, nil
-}
-
-type fieldSlice struct {
-	s []logstorage.Field
-}
-
-var fieldsSlicePool = sync.Pool{
-	New: func() any {
-		return &fieldSlice{}
-	},
-}
-
-func getFieldsSlice() *fieldSlice {
-	c := fieldsSlicePool.Get().(*fieldSlice)
-	return c
-}
-
-func putFieldsSlice(c *fieldSlice) {
-	c.reset()
-	fieldsSlicePool.Put(c)
-}
-
-func (c *fieldSlice) reset() {
-	clear(c.s)
-	c.s = c.s[:0]
-}
-
-type fmtBuffer struct {
-	buf []byte
-}
-
-var fmtBufferPool = sync.Pool{
-	New: func() any {
-		return &fmtBuffer{}
-	},
-}
-
-func getFmtBuffer() *fmtBuffer {
-	fb := fmtBufferPool.Get().(*fmtBuffer)
-	return fb
-}
-
-func putFmtBuffer(fb *fmtBuffer) {
-	fb.reset()
-	fmtBufferPool.Put(fb)
-}
-
-func (fb *fmtBuffer) reset() {
-	fb.buf = fb.buf[:0]
-}
-
-func (fb *fmtBuffer) formatInt(v int64) string {
-	n := len(fb.buf)
-	fb.buf = strconv.AppendInt(fb.buf, v, 10)
-	return bytesutil.ToUnsafeString(fb.buf[n:])
-}
-
-func (fb *fmtBuffer) formatFloat(v float64) string {
-	n := len(fb.buf)
-	fb.buf = strconv.AppendFloat(fb.buf, v, 'f', -1, 64)
-	return bytesutil.ToUnsafeString(fb.buf[n:])
-}
-
-func (fb *fmtBuffer) formatSubFieldName(prefix string, suffix []byte) string {
-	if prefix == "" {
-		// There is no prefix, so just return the suffix as is.
-		return bytesutil.ToUnsafeString(suffix)
-	}
-
-	n := len(fb.buf)
-	fb.buf = append(fb.buf, prefix...)
-	fb.buf = append(fb.buf, '.')
-	fb.buf = append(fb.buf, suffix...)
-
-	fieldName := bytesutil.ToUnsafeString(fb.buf[n:])
-	return fieldName
-}
-
-func (fb *fmtBuffer) formatHex(src []byte) string {
-	n := len(fb.buf)
-	size := hex.EncodedLen(len(src))
-
-	fb.buf = bytesutil.ResizeNoCopyMayOverallocate(fb.buf, n+size)
-	hex.Encode(fb.buf[n:], src)
-
-	v := bytesutil.ToUnsafeString(fb.buf[n:])
-	return v
-}
-
-func (fb *fmtBuffer) formatBase64(src []byte) string {
-	n := len(fb.buf)
-	size := base64.StdEncoding.EncodedLen(len(src))
-
-	fb.buf = bytesutil.ResizeNoCopyMayOverallocate(fb.buf, n+size)
-	base64.StdEncoding.Encode(fb.buf[n:], src)
-
-	v := bytesutil.ToUnsafeString(fb.buf[n:])
-	return v
-}
-
-func (fb *fmtBuffer) encodeJSONValue(value *fastjson.Value) string {
-	n := len(fb.buf)
-	fb.buf = value.MarshalTo(fb.buf)
-	v := bytesutil.ToUnsafeString(fb.buf[n:])
-	return v
 }

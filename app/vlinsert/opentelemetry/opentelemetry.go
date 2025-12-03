@@ -75,20 +75,20 @@ var (
 )
 
 func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields bool) error {
-	push := func(timestamp int64, resource, attributes []logstorage.Field) {
-		logstorage.RenameField(attributes, msgFields, "_msg")
+	pushLogs := func(timestamp int64, fields []logstorage.Field, resourceFieldsLen int) {
+		logstorage.RenameField(fields[resourceFieldsLen:], msgFields, "_msg")
 
 		var streamFields []logstorage.Field
 		if useDefaultStreamFields {
-			streamFields = resource
+			streamFields = fields[:resourceFieldsLen]
 		}
 
-		lmp.AddRow(timestamp, attributes, streamFields)
+		lmp.AddRow(timestamp, fields, streamFields)
 	}
 
-	if err := decodeRequest(data, push); err != nil {
+	if err := decodeLogsData(data, pushLogs); err != nil {
 		errorsTotal.Inc()
-		return fmt.Errorf("cannot decode request from %d bytes: %w", len(data), err)
+		return fmt.Errorf("cannot decode LogsData request from %d bytes: %w", len(data), err)
 	}
 	return nil
 }

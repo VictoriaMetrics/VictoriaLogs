@@ -1,18 +1,16 @@
 package opentelemetry
 
 import (
-	"encoding/base64"
 	"fmt"
+	"math"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/easyproto"
 	"github.com/valyala/fastjson"
 )
 
-// decodeArrayValueToJSON decodes a protobuf ArrayValue message
-// into a JSON array represented by fastjson.Value.
-func decodeArrayValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err error) {
+// decodeArrayValueToJSON decodes a protobuf ArrayValue message into a JSON array represented by fastjson.Value.
+func decodeArrayValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
 	// message ArrayValue {
 	//   repeated AnyValue values = 1;
 	// }
@@ -20,10 +18,12 @@ func decodeArrayValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, e
 	dst := a.NewArray()
 
 	var fc easyproto.FieldContext
-	for i := 0; len(src) > 0; i++ {
+	i := 0
+	for len(src) > 0 {
+		var err error
 		src, err = fc.NextField(src)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read next field in ArrayValue")
+			return nil, fmt.Errorf("cannot read the next field: %w", err)
 		}
 
 		switch fc.FieldNum {
@@ -33,18 +33,19 @@ func decodeArrayValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, e
 				return nil, fmt.Errorf("cannot read Value data")
 			}
 
-			v, err := decodeAnyValueToJSON(a, data)
+			v, err := decodeAnyValueToJSON(data, a, fb)
 			if err != nil {
-				return nil, fmt.Errorf("cannot decode AnyValue: %s", err)
+				return nil, fmt.Errorf("cannot decode AnyValue: %w", err)
 			}
 			dst.SetArrayItem(i, v)
+			i++
 		}
 	}
 
 	return dst, nil
 }
 
-func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err error) {
+func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -59,9 +60,10 @@ func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
+		var err error
 		src, err = fc.NextField(src)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read next field in AnyValue")
+			return nil, fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
@@ -85,7 +87,10 @@ func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err
 			if !ok {
 				return nil, fmt.Errorf("cannot read IntValue")
 			}
-			return a.NewNumberInt(int(intValue)), nil
+			if intValue >= math.MinInt && intValue <= math.MaxInt {
+				return a.NewNumberInt(int(intValue)), nil
+			}
+			return a.NewNumberFloat64(float64(intValue)), nil
 		case 4:
 			doubleValue, ok := fc.Double()
 			if !ok {
@@ -97,9 +102,9 @@ func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err
 			if !ok {
 				return nil, fmt.Errorf("cannot read ArrayValue")
 			}
-			arr, err := decodeArrayValueToJSON(a, data)
+			arr, err := decodeArrayValueToJSON(data, a, fb)
 			if err != nil {
-				return nil, fmt.Errorf("cannot decode ArrayValue: %s", err)
+				return nil, fmt.Errorf("cannot decode ArrayValue: %w", err)
 			}
 			return arr, nil
 		case 6:
@@ -107,9 +112,9 @@ func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err
 			if !ok {
 				return nil, fmt.Errorf("cannot read KeyValueList")
 			}
-			obj, err := decodeKeyValueListToJSON(a, data)
+			obj, err := decodeKeyValueListToJSON(data, a, fb)
 			if err != nil {
-				return nil, fmt.Errorf("cannot decode KeyValueList: %s", err)
+				return nil, fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 			return obj, nil
 		case 7:
@@ -117,16 +122,14 @@ func decodeAnyValueToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err
 			if !ok {
 				return nil, fmt.Errorf("cannot read BytesValue")
 			}
-			b64 := base64.StdEncoding.EncodeToString(bytesValue)
+			b64 := fb.formatBase64(bytesValue)
 			return a.NewString(b64), nil
-		default:
-			logger.Warnf("unsupported AnyValue type %d, please create an issue: https://github.com/VictoriaMetrics/VictoriaLogs/issues", fc.FieldNum)
 		}
 	}
 	return nil, nil
 }
 
-func decodeKeyValueListToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value, err error) {
+func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
 	// message KeyValueList {
 	//   repeated KeyValue values = 1;
 	// }
@@ -135,9 +138,10 @@ func decodeKeyValueListToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value,
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
+		var err error
 		src, err = fc.NextField(src)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read next field in KeyValueList")
+			return nil, fmt.Errorf("cannot read the next field: %w", err)
 		}
 		switch fc.FieldNum {
 		case 1:
@@ -146,15 +150,15 @@ func decodeKeyValueListToJSON(a *fastjson.Arena, src []byte) (_ *fastjson.Value,
 				return nil, fmt.Errorf("cannot read Value data")
 			}
 
-			if err := decodeKeyValueToJSON(a, dst, data); err != nil {
-				return nil, fmt.Errorf("cannot decode KeyValue: %s", err)
+			if err := decodeKeyValueToJSON(data, dst, a, fb); err != nil {
+				return nil, fmt.Errorf("cannot decode KeyValue: %w", err)
 			}
 		}
 	}
 	return dst, nil
 }
 
-func decodeKeyValueToJSON(a *fastjson.Arena, dst *fastjson.Value, src []byte) (err error) {
+func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb *fmtBuffer) error {
 	// message KeyValue {
 	//   string key = 1;
 	//   AnyValue value = 2;
@@ -163,7 +167,7 @@ func decodeKeyValueToJSON(a *fastjson.Arena, dst *fastjson.Value, src []byte) (e
 	// Decode key
 	data, ok, err := findMessageData(src, 1)
 	if err != nil {
-		return fmt.Errorf("cannot find Key in KeyValue: %s", err)
+		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
 	if !ok {
 		return fmt.Errorf("key is missing in KeyValue")
@@ -173,14 +177,14 @@ func decodeKeyValueToJSON(a *fastjson.Arena, dst *fastjson.Value, src []byte) (e
 	// Decode value
 	data, ok, err = findMessageData(src, 2)
 	if err != nil {
-		return fmt.Errorf("cannot find Value in KeyValue: %s", err)
+		return fmt.Errorf("cannot find Value in KeyValue: %w", err)
 	}
 	if !ok {
 		// Value is null, skip it.
 		return nil
 	}
 
-	v, err := decodeAnyValueToJSON(a, data)
+	v, err := decodeAnyValueToJSON(data, a, fb)
 	if err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %s", err)
 	}
