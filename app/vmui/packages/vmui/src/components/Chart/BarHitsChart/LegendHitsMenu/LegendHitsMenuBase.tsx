@@ -33,29 +33,27 @@ const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
   const options: LegendLogHitsMenu[] = [
     {
       title: `Copy ${groupFieldHits} name`,
-      icon: <CopyIcon/>,
+      iconStart: <CopyIcon/>,
       handler: handlerCopyLabel,
     },
     {
       title: `Add ${groupFieldHits} to filter`,
-      icon: <FilterIcon/>,
+      iconStart: <FilterIcon/>,
       handler:  handleAddStreamToFilter(ExtraFilterOperator.Equals),
     },
     {
       title: `Exclude ${groupFieldHits} to filter`,
-      icon: <FilterOffIcon/>,
+      iconStart: <FilterOffIcon/>,
       handler: handleAddStreamToFilter(ExtraFilterOperator.NotEquals),
     }
   ];
 
   return (
     <div className="vm-legend-hits-menu-section">
-      {options.map(({ icon, title, handler }) => (
+      {options.map(({ ...menuProps }) => (
         <LegendHitsMenuRow
-          key={title}
-          iconStart={icon}
-          title={title}
-          handler={handler}
+          key={menuProps.title}
+          {...menuProps}
         />
       ))}
     </div>

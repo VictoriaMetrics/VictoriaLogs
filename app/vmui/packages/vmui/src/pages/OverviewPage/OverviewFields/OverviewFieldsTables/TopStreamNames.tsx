@@ -11,8 +11,8 @@ import { useOverviewState } from "../../../../state/overview/OverviewStateContex
 import { ExtraFilterOperator } from "../../FiltersBar/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
-import { isMacOs } from "../../../../utils/detect-device";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
+import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 
 const TopStreamNames: FC = () => {
   const { period: { start, end } } = useTimeState();
@@ -81,13 +81,13 @@ const TopStreamNames: FC = () => {
         {
           label: "Include",
           icon: <FilterIcon/>,
-          shortcut: (isMacOs() ? "Option" : "Alt") + " + Click",
+          shortcut: `${altKeyLabel} + Click`,
           onClick: () => handleAddIncludeFilter(row)
         },
         {
           label: "Exclude",
           icon: <FilterOffIcon/>,
-          shortcut: (isMacOs() ? "Cmd" : "Ctrl") + " + Click",
+          shortcut: `${ctrlKeyLabel} + Click`,
           onClick: () => handleAddExcludeFilter(row)
         }
       ],

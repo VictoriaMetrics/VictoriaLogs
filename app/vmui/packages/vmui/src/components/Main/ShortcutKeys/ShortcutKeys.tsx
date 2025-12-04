@@ -6,10 +6,11 @@ import keyList from "./constants/keyList";
 import { isMacOs } from "../../../utils/detect-device";
 import useBoolean from "../../../hooks/useBoolean";
 import useEventListener from "../../../hooks/useEventListener";
+import { ctrlKeyLabel } from "../../../utils/keyboard";
 
 const title = "Shortcut keys";
 const isMac = isMacOs();
-const keyOpenHelp = isMac ? "Cmd + /" : "F1";
+const keyOpenHelp = isMac ? `${ctrlKeyLabel} + /` : "F1";
 
 type Props = {
   children?: ReactNode

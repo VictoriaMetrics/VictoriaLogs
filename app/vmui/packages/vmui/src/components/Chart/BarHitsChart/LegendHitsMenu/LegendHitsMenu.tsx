@@ -1,7 +1,6 @@
 import { FC } from "preact/compat";
-import { Series } from "uplot";
 import "./style.scss";
-import { LegendLogHits } from "../../../../api/types";
+import { LegendLogHits, LegendLogHitsMenu } from "../../../../api/types";
 import LegendHitsMenuStats from "./LegendHitsMenuStats";
 import LegendHitsMenuBase from "./LegendHitsMenuBase";
 import LegendHitsMenuRow from "./LegendHitsMenuRow";
@@ -10,32 +9,20 @@ import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
 import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 
-const otherDescription = `aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
+const otherDescription = `Aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
 
 interface Props {
   legend: LegendLogHits;
   fields: string[];
-  series: Series[];
+  optionsVisibilitySection: LegendLogHitsMenu[];
   onApplyFilter: (value: ExtraFilter) => void;
-  onRedrawGraph: () => void;
   onClose: () => void;
 }
 
-const LegendHitsMenu: FC<Props> = ({ legend, fields, series, onApplyFilter, onRedrawGraph, onClose }) => {
+const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, onApplyFilter, onClose }) => {
   return (
     <div className="vm-legend-hits-menu">
-      {legend.isOther && (
-        <div className="vm-legend-hits-menu-section vm-legend-hits-menu-section_info">
-          <LegendHitsMenuRow title={otherDescription}/>
-        </div>
-      )}
-
-      <LegendHitsMenuVisibility
-        legend={legend}
-        series={series}
-        onRedrawGraph={onRedrawGraph}
-        onClose={onClose}
-      />
+      <LegendHitsMenuVisibility options={optionsVisibilitySection} />
 
       {!legend.isOther && (
         <LegendHitsMenuBase
@@ -54,6 +41,12 @@ const LegendHitsMenu: FC<Props> = ({ legend, fields, series, onApplyFilter, onRe
       )}
 
       <LegendHitsMenuStats legend={legend}/>
+
+      {legend.isOther && (
+        <div className="vm-legend-hits-menu-section vm-legend-hits-menu-section_info">
+          <LegendHitsMenuRow title={otherDescription}/>
+        </div>
+      )}
     </div>
   );
 };

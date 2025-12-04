@@ -37,7 +37,7 @@ interface UseGetBarHitsOptionsArgs {
   timezone: string;
 }
 
-export const OTHER_HITS_LABEL = "other";
+export const OTHER_HITS_LABEL = "other fields";
 
 export const getLabelFromLogHit = (logHit: LogHits) => {
   if (logHit?._isOther) return OTHER_HITS_LABEL;

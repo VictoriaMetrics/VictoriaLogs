@@ -1,3 +1,5 @@
+import { ctrlKeyLabel } from "../../../../utils/keyboard";
+
 const DocFieldNames = () => (
   <a
     href="https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names"
@@ -42,7 +44,7 @@ const OverviewFieldsHelpContent = () => (
     <h3>Click behavior</h3>
     <ul>
       <li>Click a row → selects the name and focuses it (adds a blue filter badge).</li>
-      <li><strong>Ctrl/Cmd + Click</strong> → applies <strong>Exclude</strong> immediately.</li>
+      <li><strong>{ctrlKeyLabel} + Click</strong> → applies <strong>Exclude</strong> immediately.</li>
       <li>See <strong>Row actions</strong> for more options.</li>
     </ul>
 
@@ -68,7 +70,7 @@ const OverviewFieldsHelpContent = () => (
     <h3>Click behavior</h3>
     <ul>
       <li>Click a row → focuses the value (adds a blue filter badge).</li>
-      <li><strong>Ctrl/Cmd + Click</strong> → applies <strong>Exclude</strong> immediately.</li>
+      <li><strong>{ctrlKeyLabel} + Click</strong> → applies <strong>Exclude</strong> immediately.</li>
       <li>See <strong>Row actions</strong>.</li>
     </ul>
 

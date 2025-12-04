@@ -51,7 +51,9 @@ export interface LegendLogHits {
 
 export interface LegendLogHitsMenu {
   title: string;
-  icon?: ReactNode;
+  iconStart?: ReactNode;
+  iconEnd?: ReactNode;
+  shortcut?: string;
   handler?: () => void;
 }
 

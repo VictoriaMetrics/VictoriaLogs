@@ -47,17 +47,17 @@ const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => 
     return [
       {
         title: "Copy",
-        icon: <CopyIcon/>,
+        iconStart: <CopyIcon/>,
         handler: handleCopy(field),
       },
       {
         title: "Add to filter",
-        icon: <FilterIcon/>,
+        iconStart: <FilterIcon/>,
         handler: handleAddToFilter(field, ExtraFilterOperator.Equals),
       },
       {
         title: "Exclude to filter",
-        icon: <FilterOffIcon/>,
+        iconStart: <FilterOffIcon/>,
         handler: handleAddToFilter(field, ExtraFilterOperator.NotEquals),
       }
     ];
