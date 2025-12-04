@@ -365,6 +365,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 			// Encode arrays as JSON to match the behavior of /insert/jsonline
 			arr, err := decodeArrayValueToJSON(data, a, fb)
 			if err != nil {
+				jsonArenaPool.Put(a)
 				return fmt.Errorf("cannot decode ArrayValue: %w", err)
 			}
 			encodedArr := fb.encodeJSONValue(arr)
