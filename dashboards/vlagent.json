@@ -1,4 +1,59 @@
 {
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "12.2.1"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "victoriametrics-metrics-datasource",
+      "name": "VictoriaMetrics",
+      "version": "0.19.7"
+    }
+  ],
   "annotations": {
     "list": [
       {
@@ -35,7 +90,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
         "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(job, instance)",
@@ -50,7 +105,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 22,
+  "id": null,
   "links": [
     {
       "icon": "doc",
@@ -90,7 +145,6 @@
       "url": "https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting"
     }
   ],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
@@ -123,7 +177,7 @@
         "content": "<div style=\"text-align: center;\">$version</div>",
         "mode": "markdown"
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "title": "Version",
       "type": "text"
     },
@@ -142,7 +196,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -186,12 +240,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "expr": "sum(increase(vm_log_messages_total{job=~\"$job\", instance=~\"$instance\", level!=\"info\"}[30m]))",
           "interval": "",
@@ -217,7 +271,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -254,12 +308,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "expr": "sum(vlagent_remotewrite_pending_data_bytes{job=~\"$job\", instance=~\"$instance\"})",
           "interval": "",
@@ -285,7 +339,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           }
@@ -317,12 +371,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
@@ -352,7 +406,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -386,12 +440,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -408,11 +462,109 @@
       "type": "stat"
     },
     {
-      "columns": [],
       "datasource": {
         "uid": "$ds"
       },
-      "fontSize": "100%",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "decimals": 2,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "uptime"
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.align"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "rgba(245, 54, 54, 0.9)",
+                      "value": 0
+                    },
+                    {
+                      "color": "rgba(237, 129, 40, 0.89)",
+                      "value": 1800
+                    },
+                    {
+                      "color": "rgba(50, 172, 45, 0.97)",
+                      "value": 3600
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "instance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align"
+              }
+            ]
+          }
+        ]
+      },
       "gridPos": {
         "h": 7,
         "w": 6,
@@ -420,70 +572,16 @@
         "y": 1
       },
       "id": 164,
-      "scroll": true,
-      "showHeader": true,
-      "sort": {
-        "col": 3,
-        "desc": false
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
       },
-      "styles": [
-        {
-          "alias": "uptime",
-          "align": "auto",
-          "colorMode": "cell",
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 2,
-          "mappingType": 1,
-          "pattern": "Value",
-          "thresholds": [
-            "1800",
-            "3600"
-          ],
-          "type": "number",
-          "unit": "s"
-        },
-        {
-          "alias": "",
-          "align": "auto",
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 2,
-          "mappingType": 1,
-          "pattern": "instance",
-          "thresholds": [],
-          "type": "string",
-          "unit": "short"
-        },
-        {
-          "alias": "",
-          "align": "auto",
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "dateFormat": "YYYY-MM-DD HH:mm:ss",
-          "decimals": 2,
-          "mappingType": 1,
-          "pattern": "/.*/",
-          "thresholds": [],
-          "type": "hidden",
-          "unit": "short"
-        }
-      ],
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
-            "uid": "$ds"
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
           },
           "expr": "sort((time() - vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}) or (up{job=~\"$job\", instance=~\"$instance\"}))",
           "format": "table",
@@ -495,67 +593,109 @@
         }
       ],
       "title": "Uptime",
-      "transform": "table",
-      "type": "table-old"
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {
+            "reducers": []
+          }
+        }
+      ],
+      "type": "table"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
       "datasource": {
         "uid": "$ds"
       },
       "fieldConfig": {
         "defaults": {
-          "links": []
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "links": [],
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
         },
         "overrides": []
       },
-      "fill": 1,
-      "fillGradient": 0,
       "gridPos": {
         "h": 4,
         "w": 15,
         "x": 0,
         "y": 4
       },
-      "hiddenSeries": false,
       "id": 166,
-      "legend": {
-        "alignAsTable": true,
-        "avg": false,
-        "current": true,
-        "hideEmpty": false,
-        "hideZero": false,
-        "max": false,
-        "min": false,
-        "rightSide": true,
-        "show": true,
-        "sort": "current",
-        "sortDesc": false,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 1,
-      "nullPointMode": "null as zero",
       "options": {
-        "alertThreshold": true
+        "alertThreshold": true,
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "asc"
+        }
       },
-      "percentage": false,
-      "pluginVersion": "9.2.3",
-      "pointradius": 2,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": true,
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
-            "uid": "$ds"
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
           },
           "expr": "sort(sum(up{job=~\"$job\", instance=~\"$instance\"}) by (job, instance))",
           "format": "time_series",
@@ -565,39 +705,8 @@
           "refId": "A"
         }
       ],
-      "thresholds": [],
-      "timeRegions": [],
       "title": "Uptime",
-      "tooltip": {
-        "shared": true,
-        "sort": 1,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "mode": "time",
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": 0,
-          "format": "short",
-          "logBase": 1,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": 2
-      }
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -616,7 +725,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               }
             ]
           },
@@ -650,12 +759,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -696,11 +805,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -709,6 +820,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -716,6 +828,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -733,7 +846,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -787,12 +900,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_rows_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type) > 0",
@@ -823,7 +936,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Shows the persistent queue size of pending logs in bytes >2MB which hasn't been flushed to remote storage yet. \n\nIncreasing of value might be a sign of connectivity issues. In such cases, vlagent starts to flush pending data on disk with attempt to send it later once connection is restored.\n\nRemote write URLs are hidden by default but might be unveiled once `-remoteWrite.showURL` is set to true.\n\nClick on the line and choose Drilldown to show the persistent queue size per instance.\n",
       "fieldConfig": {
@@ -832,11 +945,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -845,6 +960,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -852,6 +968,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -875,7 +992,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -919,7 +1036,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
@@ -941,7 +1058,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics",
       "fieldConfig": {
@@ -950,11 +1067,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -963,6 +1082,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -970,6 +1090,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -987,7 +1108,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -1025,7 +1146,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
@@ -1048,7 +1169,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Shows rate of dropped logs from persistent queue. vlagent drops log lines from queue if in-memory and on-disk queues are full and it is unable to flush them to remote storage.\nThe max size of on-disk queue is configured by `-remoteWrite.maxDiskUsagePerURL` flag.",
       "fieldConfig": {
@@ -1057,11 +1178,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1070,6 +1193,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1077,6 +1201,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1094,7 +1219,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": null
+                "value": 0
               },
               {
                 "color": "red",
@@ -1137,7 +1262,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.2.1",
       "targets": [
         {
           "datasource": {
@@ -1158,7 +1283,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Shows the rate of logging the messages by their level. Unexpected spike in rate is a good reason to check logs.",
       "fieldConfig": {
@@ -1203,8 +1328,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1267,7 +1391,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "Errors rate shows rate for multiple metrics that track possible errors in vlagent, such as network or parsing errors.",
       "fieldConfig": {
@@ -1312,8 +1436,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1373,7 +1496,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_protoparser_read_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, type) > 0",
@@ -1397,7 +1520,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_protoparser_unmarshal_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, type) > 0",
@@ -1435,7 +1558,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Percentage of used RSS memory (resident).\nThe RSS memory shows the amount of memory recently accessed by the application. It includes anonymous memory and data from recently accessed files (aka page cache).\nThe application's performance will significantly degrade when memory usage is close to 100%.\n\nClick on the line and choose Drilldown to show memory usage per instance",
           "fieldConfig": {
@@ -1486,8 +1609,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1547,7 +1669,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1597,8 +1719,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1660,7 +1781,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Share for memory allocated by the process itself. When memory usage reaches 100% it will be likely OOM-killed.\nSafe memory usage % considered to be below 80%\n\nClick on the line and choose Drilldown to show memory usage per instance",
           "fieldConfig": {
@@ -1705,8 +1826,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -1766,7 +1886,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.",
           "fieldConfig": {
@@ -1812,8 +1932,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -1866,7 +1985,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_cpu_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -1931,8 +2050,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -1971,7 +2089,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_memory_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2004,7 +2122,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Shows the number of bytes read/write from the storage layer when vlagent has to buffer data on disk or read already buffered data.\n\nClick on the line and choose Drilldown to show CPU usage per instance",
           "fieldConfig": {
@@ -2054,8 +2172,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2126,7 +2243,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_written_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job)",
@@ -2190,8 +2307,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2232,7 +2348,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(max_over_time(go_goroutines{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job)",
@@ -2296,8 +2412,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2336,7 +2451,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_io_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2369,7 +2484,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -2414,8 +2529,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2473,7 +2587,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Network usage shows the bytes rate for data accepted by vlagent and pushed via remotewrite protocol.\nDiscrepancies are possible because of different protocols used for ingesting, scraping and writing data.",
           "fieldConfig": {
@@ -2517,8 +2631,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2586,7 +2699,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(vlagent_remotewrite_conn_bytes_written_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) * 8",
@@ -2648,8 +2761,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2690,7 +2802,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(\n  rate(go_gc_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) \n / rate(process_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n ) by(job)",
@@ -2754,8 +2866,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2796,7 +2907,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (job, instance, le))) by(job)",
@@ -2860,8 +2971,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -2898,7 +3008,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(go_memstats_alloc_bytes_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2962,8 +3072,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3004,7 +3113,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(\n    max_over_time(process_open_fds{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n    /\n    process_max_fds{job=~\"$job\", instance=~\"$instance\"}\n) by(job)",
@@ -3082,8 +3191,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
+                    "color": "transparent"
                   },
                   {
                     "color": "red",
@@ -3126,7 +3234,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3189,8 +3297,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
+                    "color": "transparent"
                   },
                   {
                     "color": "red",
@@ -3233,7 +3340,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3295,8 +3402,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3339,7 +3445,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3401,8 +3507,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3445,7 +3550,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3471,7 +3576,9 @@
               },
               "custom": {
                 "align": "auto",
-                "displayMode": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
                 "inspect": false
               },
               "mappings": [],
@@ -3479,8 +3586,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3546,7 +3652,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -3634,8 +3740,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3676,7 +3781,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) > 0) by(job)",
@@ -3751,8 +3856,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3792,7 +3896,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3822,7 +3926,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Shows the rate of write errors in ingestserver (UDP, TCP connections) and HTTP server.",
           "fieldConfig": {
@@ -3867,8 +3971,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3919,7 +4022,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "exemplar": true,
               "expr": "sum(rate(vlagent_http_request_errors_total{job=~\"$job\", instance=~\"$instance\", protocol!=\"\"}[$__rate_interval])) by(protocol) > 0",
@@ -3994,8 +4097,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4036,7 +4138,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4098,8 +4200,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4140,7 +4241,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4202,8 +4303,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4244,7 +4344,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4306,8 +4406,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4348,7 +4447,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4410,8 +4509,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
+                    "color": "transparent"
                   },
                   {
                     "color": "red",
@@ -4452,7 +4550,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4481,6 +4579,10 @@
       "id": 113,
       "panels": [
         {
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 2,
             "w": 24,
@@ -4498,6 +4600,7 @@
             "mode": "markdown"
           },
           "pluginVersion": "9.2.3",
+          "title": "",
           "transparent": true,
           "type": "text"
         },
@@ -4549,8 +4652,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4589,7 +4691,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -4653,8 +4755,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   }
                 ]
               },
@@ -4693,7 +4794,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4755,8 +4856,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4803,7 +4903,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4864,8 +4964,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4921,7 +5020,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, instance)",
@@ -4958,8 +5057,7 @@
     }
   ],
   "refresh": "",
-  "schemaVersion": 37,
-  "style": "dark",
+  "schemaVersion": 42,
   "tags": [
     "victoriametrics",
     "victorialogs"
@@ -4967,39 +5065,22 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": true,
-          "text": "default",
-          "value": "default"
-        },
-        "hide": 0,
+        "current": {},
         "includeAll": false,
-        "multi": false,
         "name": "ds",
         "options": [],
         "query": "prometheus",
-        "queryValue": "",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "type": "datasource"
       },
       {
-        "current": {
-          "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(vm_app_version{version=~\"^vlagent.*\"}, job)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "job",
@@ -5010,27 +5091,16 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "allValue": ".*",
-        "current": {
-          "selected": true,
-          "text": [
-            "localhost:9429"
-          ],
-          "value": [
-            "localhost:9429"
-          ]
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "$ds"
         },
         "definition": "label_values(vm_app_version{job=~\"$job\"}, instance)",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "instance",
@@ -5041,24 +5111,17 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "allValue": ".*",
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(vlagent_remotewrite_requests_total{job=~\"$job\", instance=~\"$instance\"}, url)",
         "description": "The remote write URLs",
-        "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "url",
@@ -5069,17 +5132,10 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
-        "current": {
-          "isNone": true,
-          "selected": false,
-          "text": "None",
-          "value": ""
-        },
+        "current": {},
         "datasource": {
           "type": "prometheus",
           "uid": "${ds}"
@@ -5087,7 +5143,6 @@
         "definition": "label_values(vm_app_version{job=~\"$job\", instance=~\"$instance\"},short_version)",
         "hide": 2,
         "includeAll": false,
-        "multi": false,
         "name": "version",
         "options": [],
         "query": {
@@ -5096,20 +5151,16 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "baseFilters": [],
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "filters": [],
-        "hide": 0,
         "name": "adhoc",
-        "skipUrlSync": false,
         "type": "adhoc"
       }
     ]
@@ -5134,6 +5185,6 @@
   "timezone": "",
   "title": "VictoriaLogs - vlagent",
   "uid": "Y5Z9GzMGz",
-  "version": 5,
+  "version": 3,
   "weekStart": ""
 }
