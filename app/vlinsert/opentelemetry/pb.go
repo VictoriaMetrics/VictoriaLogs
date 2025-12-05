@@ -57,7 +57,7 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 	defer logstorage.PutFields(fs)
 
 	// Decode resource
-	data, ok, err := findMessageData(src, 1)
+	data, ok, err := easyproto.GetMessageData(src, 1)
 	if err != nil {
 		return fmt.Errorf("cannot find Resource: %w", err)
 	}
@@ -282,7 +282,7 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 	// }
 
 	// Decode key
-	data, ok, err := findMessageData(src, 1)
+	data, ok, err := easyproto.GetMessageData(src, 1)
 	if err != nil {
 		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
@@ -292,7 +292,7 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 	fieldName := fb.formatSubFieldName(fieldNamePrefix, data)
 
 	// Decode value
-	data, ok, err = findMessageData(src, 2)
+	data, ok, err = easyproto.GetMessageData(src, 2)
 	if err != nil {
 		return fmt.Errorf("cannot find Value in KeyValue: %w", err)
 	}
@@ -414,27 +414,6 @@ func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldN
 		}
 	}
 	return nil
-}
-
-func findMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err error) {
-	var fc easyproto.FieldContext
-	for len(src) > 0 {
-		src, err = fc.NextField(src)
-		if err != nil {
-			return nil, false, fmt.Errorf("cannot read next field: %w", err)
-		}
-
-		if fc.FieldNum != fieldNum {
-			continue
-		}
-
-		data, ok = fc.MessageData()
-		if !ok {
-			return nil, false, fmt.Errorf("cannot read field data")
-		}
-		return data, true, nil
-	}
-	return nil, false, nil
 }
 
 func formatSeverity(severity int32) string {

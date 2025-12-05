@@ -90,8 +90,6 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 		defer logstorage.PutJSONParser(msgParser)
 	}
 
-	currentTimestamp := time.Now().UnixNano()
-
 	for _, stream := range streams {
 		// populate common labels from `stream` dict
 		labelsV := stream.Get("stream")
@@ -144,7 +142,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				return fmt.Errorf("cannot parse log timestamp %q: %w", timestamp, err)
 			}
 			if ts == 0 {
-				ts = currentTimestamp
+				ts = time.Now().UnixNano()
 			}
 
 			// parse structured metadata - see https://grafana.com/docs/loki/latest/reference/loki-http-api/#ingest-logs
@@ -167,8 +165,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			if err != nil {
 				return fmt.Errorf("unexpected log message type for %q; want string", lineA[1])
 			}
-			allowMsgRenaming := false
-			fieldsTmp.Fields, allowMsgRenaming = addMsgField(fieldsTmp.Fields, msgParser, bytesutil.ToUnsafeString(msg))
+			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg))
 
 			var streamFields []logstorage.Field
 			if useDefaultStreamFields {
@@ -184,22 +181,19 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 	return nil
 }
 
-func addMsgField(dst []logstorage.Field, msgParser *logstorage.JSONParser, msg string) ([]logstorage.Field, bool) {
+func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg string) bool {
 	if msgParser == nil || len(msg) < 2 || msg[0] != '{' || msg[len(msg)-1] != '}' {
-		return append(dst, logstorage.Field{
-			Name:  "_msg",
-			Value: msg,
-		}), false
+		fs.Add("_msg", msg)
+		return false
 	}
 	if msgParser != nil && len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
 		if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg)); err == nil {
-			return append(dst, msgParser.Fields...), true
+			fs.Fields = append(fs.Fields, msgParser.Fields...)
+			return true
 		}
 	}
-	return append(dst, logstorage.Field{
-		Name:  "_msg",
-		Value: msg,
-	}), false
+	fs.Add("_msg", msg)
+	return false
 }
 
 func parseLokiTimestamp(s string) (int64, error) {

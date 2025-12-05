@@ -39,8 +39,8 @@ func benchmarkParseProtobufRequest(b *testing.B, streams, rows, labels int) {
 
 func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 	var b []byte
-	var entries []Entry
-	streams := make([]Stream, streamsCount)
+	var entries []entry
+	streams := make([]stream, streamsCount)
 	for i := range streams {
 		b = b[:0]
 		b = append(b, '{')
@@ -63,7 +63,7 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 			rowsBufLen := len(rowsBuf)
 			rowsBuf = append(rowsBuf, "value_"...)
 			rowsBuf = strconv.AppendInt(rowsBuf, int64(j), 10)
-			entries = append(entries, Entry{
+			entries = append(entries, entry{
 				Timestamp: time.Now(),
 				Line:      bytesutil.ToUnsafeString(rowsBuf[rowsBufLen:]),
 			})
@@ -73,7 +73,7 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 		st.Labels = labels
 		st.Entries = entries[entriesLen:]
 	}
-	pr := PushRequest{
+	pr := pushRequest{
 		Streams: streams,
 	}
 

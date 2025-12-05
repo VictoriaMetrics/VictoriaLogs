@@ -165,7 +165,7 @@ func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb
 	// }
 
 	// Decode key
-	data, ok, err := findMessageData(src, 1)
+	data, ok, err := easyproto.GetMessageData(src, 1)
 	if err != nil {
 		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
@@ -175,7 +175,7 @@ func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb
 	fieldName := bytesutil.ToUnsafeString(data)
 
 	// Decode value
-	data, ok, err = findMessageData(src, 2)
+	data, ok, err = easyproto.GetMessageData(src, 2)
 	if err != nil {
 		return fmt.Errorf("cannot find Value in KeyValue: %w", err)
 	}
