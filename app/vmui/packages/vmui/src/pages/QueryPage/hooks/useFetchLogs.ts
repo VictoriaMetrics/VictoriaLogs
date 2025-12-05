@@ -7,6 +7,7 @@ import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { mergeSearchParams } from "../../../utils/query-string";
+import { TenantType } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
 
 interface FetchLogsParams {
   query?: string;
@@ -27,7 +28,7 @@ export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFet
 export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const [queryParams, setQueryParams] = useState<Record<string, string>>({});
@@ -72,6 +73,12 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     };
   };
 
+  const updateTenant = ({ accountId, projectId }: Partial<TenantType>) => {
+    if (accountId) searchParams.set("accountID", accountId);
+    if (projectId) searchParams.set("projectID", projectId);
+    setSearchParams(searchParams);
+  };
+
   const fetchLogs = useCallback(async ({
     query = defaultQuery,
     limit = defaultLimit,
@@ -111,6 +118,16 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
       if (isDownload) {
         return response;
       }
+
+      const uiAccountId = (options.headers as Record<string, string>)?.AccountID;
+      const vlAccountId = response.headers.get("AccountID");
+      const changedAccountId = vlAccountId && vlAccountId !== uiAccountId;
+      if (changedAccountId) updateTenant({ accountId: vlAccountId });
+
+      const uiProjectId = (options.headers as Record<string, string>)?.ProjectID;
+      const vlProjectId = response.headers.get("ProjectID");
+      const changedProjectId = vlProjectId && vlProjectId !== uiProjectId;
+      if (changedProjectId) updateTenant({ projectId: vlProjectId });
 
       const duration = response.headers.get("vl-request-duration-seconds");
       setDurationMs(duration ? Number(duration) * 1000 : undefined);

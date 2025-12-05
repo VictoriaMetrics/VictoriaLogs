@@ -14,8 +14,8 @@ import { buildFieldValuesQuery } from "./topFieldValuesUtils";
 import { useOverviewState } from "../../../../state/overview/OverviewStateContext";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
-import { isMacOs } from "../../../../utils/detect-device";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
+import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 
 const MODE_CONFIG = {
   top: {
@@ -115,13 +115,13 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
         {
           label: "Include",
           icon: <FilterIcon/>,
-          shortcut: (isMacOs() ? "Option" : "Alt") + " + Click",
+          shortcut: `${altKeyLabel} + Click`,
           onClick: () => handleAddFilter(row, ExtraFilterOperator.Equals)
         },
         {
           label: "Exclude",
           icon: <FilterOffIcon/>,
-          shortcut: `${isMacOs() ? "Cmd" : "Ctrl"} + Click`,
+          shortcut: `${ctrlKeyLabel} + Click`,
           onClick: () => handleAddFilter(row, ExtraFilterOperator.NotEquals)
         }
       ],

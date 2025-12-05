@@ -1183,7 +1183,7 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		// This allows enforcing the needed tenants at vmauth side, so they won't have access to /select/tenant_ids endpoint.
 		// See https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers
 		err := &httpserver.ErrorWithStatusCode{
-			Err:        fmt.Errorf("the /select/tenant_ids enpoint cannot be requested with non-empty AccountID=%q header", accountID),
+			Err:        fmt.Errorf("the /select/tenant_ids endpoint cannot be requested with non-empty AccountID=%q header", accountID),
 			StatusCode: http.StatusForbidden,
 		}
 		httpserver.Errorf(w, r, "%s", err)

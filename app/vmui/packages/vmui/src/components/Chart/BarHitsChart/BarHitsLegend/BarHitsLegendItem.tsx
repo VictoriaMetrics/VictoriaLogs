@@ -8,6 +8,8 @@ import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
 import LegendHitsMenu from "../LegendHitsMenu/LegendHitsMenu";
 import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { useCallback } from "react";
+import useLegendHitsVisibilityMenu from "./hooks/useLegendHitsVisibilityMenu";
 
 interface Props {
   legend: LegendLogHits;
@@ -27,6 +29,7 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
   const [clickPosition, setClickPosition] = useState<{ top: number; left: number } | null>(null);
 
   const targetSeries = useMemo(() => series.find(s => s.label === legend.label), [series]);
+  const isOnlyTargetVisible = series.every(s => s === targetSeries || !s.show);
 
   const fields = useMemo(() => getStreamPairs(legend.label), [legend.label]);
 
@@ -39,6 +42,47 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
     handleOpenContextMenu();
   };
 
+  const handleVisibilityToggle = useCallback(() => {
+    if (!targetSeries) return;
+    targetSeries.show = !targetSeries.show;
+    onRedrawGraph();
+    handleCloseContextMenu();
+  }, [targetSeries, onRedrawGraph, handleCloseContextMenu]);
+
+  const handleFocusToggle = useCallback(() => {
+    series.forEach(s => {
+      s.show = isOnlyTargetVisible || (s === targetSeries);
+    });
+    onRedrawGraph();
+    handleCloseContextMenu();
+  }, [series, isOnlyTargetVisible, targetSeries, onRedrawGraph, handleCloseContextMenu]);
+
+  const handleClickByLegend = (e: MouseEvent<HTMLDivElement>) => {
+    const { ctrlKey, metaKey, altKey } = e;
+
+    // alt + key // see useLegendHitsVisibilityMenu.tsx
+    if (altKey) {
+      handleVisibilityToggle();
+      return;
+    }
+
+    // cmd/ctrl + click // see useLegendHitsVisibilityMenu.tsx
+    const ctrlMetaKey = ctrlKey || metaKey;
+    if (ctrlMetaKey) {
+      handleFocusToggle();
+      return;
+    }
+
+    handleContextMenu(e);
+  };
+
+  const optionsVisibilitySection = useLegendHitsVisibilityMenu({
+    targetSeries,
+    isOnlyTargetVisible,
+    handleVisibilityToggle,
+    handleFocusToggle
+  });
+
   return (
     <div
       ref={legendRef}
@@ -48,7 +92,7 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
         "vm-bar-hits-legend-item_active": openContextMenu,
         "vm-bar-hits-legend-item_hide": !targetSeries?.show,
       })}
-      onClick={handleContextMenu}
+      onClick={handleClickByLegend}
     >
       <div
         className="vm-bar-hits-legend-item__marker"
@@ -67,9 +111,8 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
         <LegendHitsMenu
           legend={legend}
           fields={fields}
-          series={series}
+          optionsVisibilitySection={optionsVisibilitySection}
           onApplyFilter={onApplyFilter}
-          onRedrawGraph={onRedrawGraph}
           onClose={handleCloseContextMenu}
         />
       </Popper>

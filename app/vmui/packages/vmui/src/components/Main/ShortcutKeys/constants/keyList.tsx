@@ -1,8 +1,9 @@
 import { isMacOs } from "../../../../utils/detect-device";
+import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 
-const ctrlMeta = <code>{isMacOs() ? "Cmd" : "Ctrl"}</code>;
+const ctrlMeta = <code>{ctrlKeyLabel}</code>;
 
-export const AUTOCOMPLETE_QUICK_KEY = <>{<code>{isMacOs() ? "Option" : "Ctrl"}</code>} + <code>Space</code></>;
+export const AUTOCOMPLETE_QUICK_KEY = <>{<code>{isMacOs() ? altKeyLabel : "Ctrl"}</code>} + <code>Space</code></>;
 
 const keyList = [
   {
@@ -48,6 +49,14 @@ const keyList = [
       {
         keys: <><code>click</code> on legend item</>,
         description: "Open the legend item menu"
+      },
+      {
+        keys: <><code>{altKeyLabel}</code> + <code>click</code> on legend item</>,
+        description: "Hide or show this series"
+      },
+      {
+        keys: <>{ctrlMeta} + <code>click</code> on legend item</>,
+        description: "Show only this series or show all series"
       }
     ]
   },

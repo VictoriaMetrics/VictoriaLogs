@@ -82,7 +82,15 @@ export default [...compat.extends(
     "react/jsx-first-prop-new-line": [1, "multiline"],
 
     // Disable core indent rule due to recursion issues in ESLint 9; use JSX-specific rules instead
-    indent: "off",
+    indent: ["error", 2, {
+      SwitchCase: 1,
+      ignoredNodes: [
+        "JSXElement",
+        "JSXElement *",
+        "JSXFragment",
+        "JSXFragment *",
+      ],
+    }],
     "react/jsx-indent": ["error", 2],
     "react/jsx-indent-props": ["error", 2],
 
