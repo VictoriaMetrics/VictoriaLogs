@@ -1,7 +1,7 @@
 github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251126195227-50fc48ac476b h1:rtWEkp9Ai5d0S0YzJ8FWUkzcw7uoTmDgpK41dC2IK2A=
 github.com/VictoriaMetrics/VictoriaMetrics v0.0.0-20251126195227-50fc48ac476b/go.mod h1:p/uiDZSYawWaSgIbZrcbuzjNObxcrZ/u42zYSv40kCY=
-github.com/VictoriaMetrics/easyproto v0.1.4 h1:r8cNvo8o6sR4QShBXQd1bKw/VVLSQma/V2KhTBPf+Sc=
-github.com/VictoriaMetrics/easyproto v0.1.4/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
+github.com/VictoriaMetrics/easyproto v1.0.0 h1:/Flmb/RyupM4uQuVQOIknRA+wKvI66C2IM3Z41AwW/s=
+github.com/VictoriaMetrics/easyproto v1.0.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/VictoriaMetrics/metrics v1.40.2 h1:OVSjKcQEx6JAwGeu8/KQm9Su5qJ72TMEW4xYn5vw3Ac=
 github.com/VictoriaMetrics/metrics v1.40.2/go.mod h1:XE4uudAAIRaJE614Tl5HMrtoEU6+GDZO4QTnNSsZRuA=
 github.com/VictoriaMetrics/metricsql v0.84.8 h1:5JXrvPJiYkYNqJVT7+hMZmpAwRHd3txBdlVIw4rJ1VM=
