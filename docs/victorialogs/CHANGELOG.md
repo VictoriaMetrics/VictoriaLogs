@@ -23,6 +23,8 @@ according to the follosing docs:
 
 * FEATURE: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): parse [`scope` inside ScopeLogs](https://github.com/open-telemetry/opentelemetry-proto/blob/a5f0eac5b802f7ae51dfe41e5116fe5548955e64/opentelemetry/proto/logs/v1/logs.proto#L72) and store it into [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) starting with `scope.` prefix. See [#826](https://github.com/VictoriaMetrics/VictoriaLogs/issues/826).
 
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): properly handle `null` values inside arrays. Previously, such arrays could cause a panic during ingestion. See [#869](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3627177567).
+
 ## [v1.40.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.40.0)
 
 Released at 2025-12-05

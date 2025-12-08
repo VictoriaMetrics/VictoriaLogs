@@ -125,7 +125,7 @@ func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjs
 			return a.NewString(v), nil
 		}
 	}
-	return nil, nil
+	return a.NewNull(), nil
 }
 
 func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {

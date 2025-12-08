@@ -356,6 +356,12 @@ func TestPushProtobufRequest(t *testing.T) {
 	timestampsExpected = []int64{1234}
 	resultsExpected = `{"_msg":"[\"Zm9vIGJhcg==\"]","severity":"Unspecified"}`
 	f(data, timestampsExpected, resultsExpected)
+
+	// decode null in ArrayValue
+	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[null,{}]}}}]}]}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"_msg":"[null,null]","severity":"Unspecified"}`
+	f(data, timestampsExpected, resultsExpected)
 }
 
 var mp easyproto.MarshalerPool
@@ -430,6 +436,9 @@ type anyValue struct {
 }
 
 func (av *anyValue) marshalProtobuf(mm *easyproto.MessageMarshaler) {
+	if av == nil {
+		return
+	}
 	switch {
 	case av.StringValue != nil:
 		mm.AppendString(1, *av.StringValue)
