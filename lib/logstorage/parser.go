@@ -2273,11 +2273,11 @@ func parseFilterIPv4Range(lex *lexer, fieldName string) (filter, error) {
 		}
 		minValue, ok := tryParseIPv4(args[0])
 		if !ok {
-			return nil, fmt.Errorf("cannot parse lower bound ip %q in %s()", funcName, args[0])
+			return nil, fmt.Errorf("cannot parse lower bound ip %q in %s()", args[0], funcName)
 		}
 		maxValue, ok := tryParseIPv4(args[1])
 		if !ok {
-			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", funcName, args[1])
+			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", args[1], funcName)
 		}
 		fr := &filterIPv4Range{
 			fieldName: getCanonicalColumnName(fieldName),
