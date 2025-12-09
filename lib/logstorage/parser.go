@@ -1061,7 +1061,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
 				continue
 			}
 			if !p.canReturnLastNResults() {
-				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it modifies or deletes `_time` field", p, ps)
+				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
 			}
 		}
 	}
