@@ -125,6 +125,7 @@ func readCheckpoints(path string) ([]checkpoint, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			logger.Infof("no checkpoints file found at %q; vlagent will read log files from the beginning", path)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot read file checkpoints: %w", err)

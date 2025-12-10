@@ -271,7 +271,7 @@ release-vlutils-windows-goarch: \
 		vlogscli-windows-$(GOARCH)-prod.exe
 
 pprof-cpu:
-	go tool pprof -trim_path=github.com/VictoriaMetrics/VictoriaLogs@ $(PPROF_FILE)
+	go tool pprof -trim_path=github.com/VictoriaMetrics/VictoriaLogs $(PPROF_FILE)
 
 fmt:
 	gofmt -l -w -s ./lib

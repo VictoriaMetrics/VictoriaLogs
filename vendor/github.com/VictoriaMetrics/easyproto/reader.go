@@ -246,6 +246,16 @@ func (fc *FieldContext) Bool() (bool, bool) {
 	return getBool(fc.intValue)
 }
 
+// Enum returns enum value for fc.
+//
+// False is returned if fc doesn't contain enum value.
+func (fc *FieldContext) Enum() (int32, bool) {
+	if fc.wireType != wireTypeVarint {
+		return 0, false
+	}
+	return getInt32(fc.intValue)
+}
+
 // Fixed64 returns fixed64 value for fc.
 //
 // False is returned if fc doesn't contain fixed64 value.
@@ -865,6 +875,28 @@ func GetBool(src []byte, fieldNum uint32) (b bool, ok bool, err error) {
 	return b, true, nil
 }
 
+// GetEnum returns enum value for the given fieldNum from protobuf-encoded message at src.
+//
+// ok=false is returned if src doesn't contain the given fieldNum.
+//
+// This function is useful when only a single message with the given fieldNum must be obtained from protobuf-encoded src.
+// Otherwise use FieldContext for obtaining multiple message from protobuf-encoded src.
+func GetEnum(src []byte, fieldNum uint32) (n int32, ok bool, err error) {
+	var fc FieldContext
+	ok, err = fc.getField(src, fieldNum, wireTypeVarint)
+	if err != nil {
+		return 0, false, err
+	}
+	if !ok {
+		return 0, false, nil
+	}
+	n, ok = getInt32(fc.intValue)
+	if !ok {
+		return 0, false, fmt.Errorf("fieldNum=%d contains invalid integer %d, which cannot be converted to enum", fieldNum, fc.intValue)
+	}
+	return n, true, nil
+}
+
 // GetFixed64 returns fixed64 value for the given fieldNum from protobuf-encoded message at src.
 //
 // ok=false is returned if src doesn't contain the given fieldNum.
@@ -975,6 +1007,64 @@ func GetMessageData(src []byte, fieldNum uint32) (data []byte, ok bool, err erro
 		return nil, false, nil
 	}
 	return fc.data, true, nil
+}
+
+// GetFixed32 returns fixed32 value for the given fieldNum from protobuf-encoded message at src.
+//
+// ok=false is returned if src doesn't contain the given fieldNum.
+//
+// This function is useful when only a single message with the given fieldNum must be obtained from protobuf-encoded src.
+// Otherwise use FieldContext for obtaining multiple message from protobuf-encoded src.
+func GetFixed32(src []byte, fieldNum uint32) (n uint32, ok bool, err error) {
+	var fc FieldContext
+	ok, err = fc.getField(src, fieldNum, wireTypeI32)
+	if err != nil {
+		return 0, false, err
+	}
+	if !ok {
+		return 0, false, nil
+	}
+	n = mustGetUint32(fc.intValue)
+	return n, true, nil
+}
+
+// GetSfixed32 returns sfixed32 value for the given fieldNum from protobuf-encoded message at src.
+//
+// ok=false is returned if src doesn't contain the given fieldNum.
+//
+// This function is useful when only a single message with the given fieldNum must be obtained from protobuf-encoded src.
+// Otherwise use FieldContext for obtaining multiple message from protobuf-encoded src.
+func GetSfixed32(src []byte, fieldNum uint32) (n int32, ok bool, err error) {
+	var fc FieldContext
+	ok, err = fc.getField(src, fieldNum, wireTypeI32)
+	if err != nil {
+		return 0, false, err
+	}
+	if !ok {
+		return 0, false, nil
+	}
+	n = mustGetInt32(fc.intValue)
+	return n, true, nil
+}
+
+// GetFloat returns float32 value for the given fieldNum from protobuf-encoded message at src.
+//
+// ok=false is returned if src doesn't contain the given fieldNum.
+//
+// This function is useful when only a single message with the given fieldNum must be obtained from protobuf-encoded src.
+// Otherwise use FieldContext for obtaining multiple message from protobuf-encoded src.
+func GetFloat(src []byte, fieldNum uint32) (f float32, ok bool, err error) {
+	var fc FieldContext
+	ok, err = fc.getField(src, fieldNum, wireTypeI32)
+	if err != nil {
+		return 0, false, err
+	}
+	if !ok {
+		return 0, false, nil
+	}
+	u32 := mustGetUint32(fc.intValue)
+	f = math.Float32frombits(u32)
+	return f, true, nil
 }
 
 func decodeZigZagInt64(u64 uint64) int64 {

@@ -44,7 +44,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/syncwg
 github.com/VictoriaMetrics/VictoriaMetrics/lib/timerpool
 github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter
-# github.com/VictoriaMetrics/easyproto v1.1.1
+# github.com/VictoriaMetrics/easyproto v1.1.3
 ## explicit; go 1.18
 github.com/VictoriaMetrics/easyproto
 # github.com/VictoriaMetrics/metrics v1.40.2

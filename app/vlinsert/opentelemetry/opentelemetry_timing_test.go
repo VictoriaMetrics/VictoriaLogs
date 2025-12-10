@@ -62,7 +62,7 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 		}
 	}
 
-	pr := exportLogsServiceRequest{
+	pr := logsData{
 		ResourceLogs: []resourceLogs{
 			{
 				Resource: resource{

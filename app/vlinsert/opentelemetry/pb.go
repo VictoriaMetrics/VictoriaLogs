@@ -175,13 +175,15 @@ func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs 
 				pushLogs(timestamp, fs.Fields, streamFieldsLen+1)
 
 				// Return back common fields to their places before the next iteration
+				fieldsLen := len(fs.Fields)
 				fs.Fields = append(fs.Fields[:streamFieldsLen], fs.Fields[streamFieldsLen+1:commonFieldsLen+1]...)
+				clear(fs.Fields[commonFieldsLen:fieldsLen])
 			} else {
 				pushLogs(timestamp, fs.Fields, streamFieldsLen)
-			}
 
-			clear(fs.Fields[commonFieldsLen:])
-			fs.Fields = fs.Fields[:commonFieldsLen]
+				clear(fs.Fields[commonFieldsLen:])
+				fs.Fields = fs.Fields[:commonFieldsLen]
+			}
 
 			fb.buf = fb.buf[:fbLen]
 		}
@@ -359,7 +361,9 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("key is missing in KeyValue")
+		// Key is missing, skip it.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3631307996
+		return nil
 	}
 	fieldName := fb.formatSubFieldName(fieldNamePrefix, key)
 
