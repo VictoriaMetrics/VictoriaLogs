@@ -80,6 +80,7 @@ func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, 
 	if q.opts.allowPartialResponse != nil {
 		// query options override other settings for allowPartialResponse.
 		allowPartialResponse = *q.opts.allowPartialResponse
+		qs.IsPartial.Swap(allowPartialResponse)
 	}
 
 	return &QueryContext{

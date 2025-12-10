@@ -44,6 +44,9 @@ type QueryStats struct {
 
 	// BytesProcessedUncompressedValues is the total number of uncompressed values bytes processed during the search.
 	BytesProcessedUncompressedValues uint64
+
+	// IsPartial is the field for setting later the VL-Partial-Response header.
+	IsPartial atomic.Bool
 }
 
 // GetBytesReadTotal returns the total number of bytes read, which is tracked by qs.
