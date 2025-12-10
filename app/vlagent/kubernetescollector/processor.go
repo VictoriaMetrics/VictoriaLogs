@@ -188,7 +188,7 @@ func (lfp *logFileProcessor) addLineInternal(timestamp int64, line []byte) {
 		})
 	} else {
 		// vlagent should override the timestamp from CRI to the timestamp parsed from the log line.
-		n := fieldIndex(parser.Fields, *timeField)
+		n := fieldIndex(parser.Fields, getTimeFields())
 		if n >= 0 {
 			f := &parser.Fields[n]
 			v, ok := logstorage.TryParseTimestampRFC3339Nano(f.Value)
@@ -199,12 +199,12 @@ func (lfp *logFileProcessor) addLineInternal(timestamp int64, line []byte) {
 			}
 		}
 
-		logstorage.RenameField(parser.Fields, *msgField, "_msg")
+		logstorage.RenameField(parser.Fields, getMsgFields(), "_msg")
 	}
 
 	if len(parser.Fields) > 1000 {
 		line := logstorage.MarshalFieldsToJSON(nil, parser.Fields)
-		logger.Warnf("dropping log line with %d fields; %s", parser.Fields, line)
+		logger.Warnf("dropping log line with %d fields; %s", len(parser.Fields), line)
 		return
 	}
 
@@ -396,6 +396,24 @@ func initExtraFields() {
 	})
 
 	parsedExtraFields = fields
+}
+
+var defaultMsgFields = []string{"message", "msg", "log"}
+
+func getMsgFields() []string {
+	if len(*msgField) == 0 {
+		return defaultMsgFields
+	}
+	return *msgField
+}
+
+var defaultTimeFields = []string{"time", "timestamp", "ts"}
+
+func getTimeFields() []string {
+	if len(*timeField) == 0 {
+		return defaultTimeFields
+	}
+	return *timeField
 }
 
 var partialCRIContentBufPool bytesutil.ByteBufferPool

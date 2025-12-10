@@ -108,7 +108,7 @@ as [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-f
 - `msg`
 - `log`
 
-You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgFields` command-line flag with comma-separated list of field names.
+You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgField` command-line flag with comma-separated list of field names.
 
 `vlagent` extracts timestamp from the log line and uses it as
 [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field, using the following fields:
