@@ -40,15 +40,19 @@ export const promValueToNumber = (s: string): number => {
   }
 };
 
-export const isHistogramData = (result: MetricBase[]) => {
-  if (result.length < 2) return false;
-  const histogramLabels = ["le", "vmrange"];
+export const buildMetricLabel = (metric: Record<string, string>): string => {
+  if (!metric) return "";
 
-  const firstLabels = Object.keys(result[0].metric).filter(n => !histogramLabels.includes(n));
-  const isHistogram = result.every(r => {
-    const labels = Object.keys(r.metric).filter(n => !histogramLabels.includes(n));
-    return firstLabels.length === labels.length && labels.every(l => r.metric[l] === result[0].metric[l]);
-  });
+  const { __name__, ...rest } = metric;
+  const name = __name__ ?? "";
 
-  return isHistogram && result.every(r => histogramLabels.some(l => l in r.metric));
+  const labels = Object.entries(rest)
+    .filter(([_k, v]) => v)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}:"${v}"`)
+    .join(", ");
+
+  if (!name && !labels) return "";
+
+  return labels ? `${name} {${labels}}` : name;
 };

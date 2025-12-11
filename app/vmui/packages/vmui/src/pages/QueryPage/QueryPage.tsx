@@ -25,6 +25,7 @@ import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
 import { useFetchQueryTime } from "./hooks/useFetchQueryTime";
 import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
+import { GRAPH_QUERY_MODE } from "../../components/Chart/BarHitsChart/types";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
 const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
@@ -48,6 +49,9 @@ const QueryPage: FC = () => {
 
   const hideLogs = useMemo(() => Boolean(searchParams.get("hide_logs")), [searchParams]);
   const prevHideLogs = usePrevious(hideLogs);
+
+  const [graphQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
+  const prevGraphMode = usePrevious(graphQueryMode);
 
   const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
   const [query, setQuery] = useStateSearchParams("*", "query");
@@ -88,7 +92,7 @@ const QueryPage: FC = () => {
     }
 
     if (flags.hits) {
-      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
+      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
     }
   };
 
@@ -173,12 +177,24 @@ const QueryPage: FC = () => {
     const topChanged = prevTopHits && (topHits !== prevTopHits);
     const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
     const becameVisible = prevHideChart && !hideChart;
+    const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
 
-    if (!(topChanged || groupChanged || becameVisible)) return;
+    if (!(topChanged || groupChanged || becameVisible || queryModeChanged)) return;
 
     dataLogHits.abortController.abort?.();
-    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
-  }, [hideChart, prevHideChart, period, groupFieldHits, prevGroupFieldHits, topHits, prevTopHits, fetchLogHits]);
+    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
+  }, [
+    hideChart,
+    prevHideChart,
+    period,
+    groupFieldHits,
+    prevGroupFieldHits,
+    topHits,
+    prevTopHits,
+    graphQueryMode,
+    prevGraphMode,
+    fetchLogHits,
+  ]);
 
   useEffect(() => {
     if (hideLogs || !prevHideLogs) return;

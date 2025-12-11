@@ -22,10 +22,11 @@ interface Props {
   period: TimeParams;
   error?: string;
   isLoading: boolean;
+  isOverview?: boolean;
   onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const HitsChart: FC<Props> = ({ query, logHits, period, error, isLoading, onApplyFilter, durationMs }) => {
+const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoading, isOverview, onApplyFilter }) => {
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
@@ -109,12 +110,13 @@ const HitsChart: FC<Props> = ({ query, logHits, period, error, isLoading, onAppl
 
       {error && noDataMessage && (
         <div className="vm-query-page-chart__empty">
-          <Alert variant="error">{error}</Alert>
+          <Alert variant="error"><pre>{error}</pre></Alert>
         </div>
       )}
 
       {data && (
         <BarHitsChart
+          isOverview={isOverview}
           logHits={logHits}
           durationMs={durationMs}
           query={query}

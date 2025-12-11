@@ -1,5 +1,5 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { GraphOptions, GRAPH_STYLES } from "../types";
+import { GraphOptions, GRAPH_STYLES, GRAPH_QUERY_MODE } from "../types";
 import Switch from "../../../Main/Switch/Switch";
 import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
@@ -10,21 +10,32 @@ import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 
 interface Props {
+  isOverview?: boolean;
   onChange: (options: GraphOptions) => void;
 }
 
-const BarHitsOptions: FC<Props> = ({ onChange }) => {
+const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
+  const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
 
   const options: GraphOptions = useMemo(() => ({
     graphStyle: GRAPH_STYLES.BAR,
+    queryMode,
     stacked,
     fill: true,
     hideChart,
-  }), [stacked, hideChart]);
+  }), [stacked, hideChart, queryMode]);
+
+  const handleChangeMode = (val: boolean) => {
+    const mode = val ? GRAPH_QUERY_MODE.stats : GRAPH_QUERY_MODE.hits;
+    setQueryMode(mode);
+    val ? searchParams.set("graph_mode", mode) : searchParams.delete("graph_mode");
+    setSearchParams(searchParams);
+  };
 
   const handleChangeStacked = (val: boolean) => {
     setStacked(val);
@@ -47,6 +58,15 @@ const BarHitsOptions: FC<Props> = ({ onChange }) => {
 
   return (
     <div className="vm-bar-hits-options">
+      {!isOverview && (
+        <div className="vm-bar-hits-options-item">
+          <Switch
+            label="Stats view"
+            value={isStatsMode}
+            onChange={handleChangeMode}
+          />
+        </div>
+      )}
       <div className="vm-bar-hits-options-item">
         <Switch
           label={"Stacked"}
