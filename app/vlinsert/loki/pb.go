@@ -50,7 +50,11 @@ func decodeStream(src []byte, pushLogs pushLogsHandler) error {
 	// }
 
 	fs := logstorage.GetFields()
-	defer logstorage.PutFields(fs)
+	defer func() {
+		// Expand slice to capacity to clear all field references before returning to pool.
+		fs.Fields = fs.Fields[:cap(fs.Fields)]
+		logstorage.PutFields(fs)
+	}()
 
 	labels, ok, err := easyproto.GetString(src, 1)
 	if err != nil {
