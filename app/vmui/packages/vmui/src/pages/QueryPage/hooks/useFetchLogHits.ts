@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "preact/compat";
-import { getLogHitsUrl } from "../../../api/logs";
+import { getLogHitsUrl, getStatsQueryRangeUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
 import { getHitsTimeParams } from "../../../utils/logs";
@@ -8,6 +8,14 @@ import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
+import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
+import useProcessStatsQueryRange from "./useProcessStatsQueryRange";
+
+
+
+type ResponseHits = {
+  hits: LogHits[];
+}
 
 interface FetchHitsParams {
   query?: string;
@@ -15,6 +23,7 @@ interface FetchHitsParams {
   extraParams?: URLSearchParams;
   field?: string;
   fieldsLimit?: number;
+  queryMode?: GRAPH_QUERY_MODE
 }
 
 interface OptionsParams extends FetchHitsParams {
@@ -27,14 +36,23 @@ export const useFetchLogHits = (defaultQuery = "*") => {
   const [searchParams] = useSearchParams();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
-  const [isLoading, setIsLoading] = useState<{[key: number]: boolean;}>([]);
+  const [isLoading, setIsLoading] = useState<{ [key: number]: boolean; }>([]);
   const [error, setError] = useState<ErrorTypes | string>();
   const [durationMs, setDurationMs] = useState<number | undefined>();
   const abortControllerRef = useRef(new AbortController());
 
+  const processStatsQueryRange = useProcessStatsQueryRange({ setLogHits, setError });
+
   const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
-  const url = useMemo(() => getLogHitsUrl(serverUrl), [serverUrl]);
+  const getUrl = useCallback((queryMode: GRAPH_QUERY_MODE) => {
+    switch (queryMode) {
+      case GRAPH_QUERY_MODE.hits:
+        return getLogHitsUrl(serverUrl);
+      case GRAPH_QUERY_MODE.stats:
+        return getStatsQueryRangeUrl(serverUrl);
+    }
+  }, [serverUrl]);
 
   const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field }: OptionsParams) => {
     const { start, end, step, offset } = getHitsTimeParams(period);
@@ -64,7 +82,24 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     };
   };
 
+  const processHits = (data: ResponseHits) => {
+    const hitsRaw = data?.hits as LogHits[];
+
+    if (!hitsRaw) {
+      const error = "Error: No 'hits' field in response";
+      setError(error);
+      return [];
+    }
+
+    const hits = hitsRaw.map(markIsOther).sort(sortHits);
+    setLogHits(hits);
+
+    return hits;
+  };
+
   const fetchLogHits = useCallback(async (params: FetchHitsParams) => {
+    const queryMode = params.queryMode || GRAPH_QUERY_MODE.hits;
+
     abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
@@ -75,6 +110,7 @@ export const useFetchLogHits = (defaultQuery = "*") => {
 
     try {
       const options = getOptions({ ...params, signal });
+      const url = getUrl(queryMode);
       const response = await fetch(url, options);
 
       const duration = response.headers.get("vl-request-duration-seconds");
@@ -82,29 +118,37 @@ export const useFetchLogHits = (defaultQuery = "*") => {
 
       if (!response.ok || !response.body) {
         const text = await response.text();
-        setError(text);
+        try {
+          setError(JSON.stringify(JSON.parse(text), null, 2));
+        } catch (_e) {
+          setError(text);
+        }
         setLogHits([]);
         setIsLoading(prev => ({ ...prev, [id]: false }));
         return;
       }
 
       const data = await response.json();
-      const hits = data?.hits as LogHits[];
-      if (!hits) {
-        const error = "Error: No 'hits' field in response";
-        setError(error);
+
+      switch (queryMode) {
+        case GRAPH_QUERY_MODE.hits:
+          return processHits(data);
+        case GRAPH_QUERY_MODE.stats: {
+          const fieldsLimit = +(options.body.get("fields_limit") || LOGS_LIMIT_HITS);
+          return processStatsQueryRange(data, fieldsLimit);
+        }
       }
 
-      setLogHits(hits.map(markIsOther).sort(sortHits));
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
         setError(String(e));
         console.error(e);
         setLogHits([]);
       }
+    } finally {
+      setIsLoading(prev => ({ ...prev, [id]: false }));
     }
-    setIsLoading(prev => ({ ...prev, [id]: false }));
-  }, [url, defaultQuery, tenant]);
+  }, [getUrl, defaultQuery, tenant]);
 
   useEffect(() => {
     return () => {

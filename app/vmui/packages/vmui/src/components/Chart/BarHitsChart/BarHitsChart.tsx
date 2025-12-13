@@ -5,7 +5,7 @@ import { AlignedData } from "uplot";
 import { TimeParams } from "../../../types";
 import classNames from "classnames";
 import { LogHits } from "../../../api/types";
-import { GraphOptions, GRAPH_STYLES } from "./types";
+import { GRAPH_QUERY_MODE, GRAPH_STYLES, GraphOptions } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
@@ -23,20 +23,24 @@ interface Props {
   data: AlignedData;
   query?: string;
   period: TimeParams;
-  durationMs?: number;
+  durationMs?: number
+  isOverview?: boolean;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
   onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs }) => {
+const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs, isOverview }) => {
   const { isMobile } = useDeviceDetect();
 
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
+    queryMode: GRAPH_QUERY_MODE.hits,
     stacked: false,
     fill: false,
     hideChart: false,
   });
+
+  const isHitsMode = graphOptions.queryMode === GRAPH_QUERY_MODE.hits;
 
   const totalHits = useMemo(() => calculateTotalHits(logHits), [logHits]);
 
@@ -73,17 +77,21 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
             limit={topHits}
             onChange={setTopHits}
           /> |
-          <SelectLimit
-            searchable
-            label="Group by"
-            limit={groupFieldHits}
-            options={fieldNamesOptions}
-            textNoOptions={"No fields found"}
-            isLoading={loading}
-            error={error ? String(error) : ""}
-            onOpenSelect={handleOpenFields}
-            onChange={setGroupFieldHits}
-          /> |
+          {isHitsMode && (
+            <>
+              <SelectLimit
+                searchable
+                label="Group by"
+                limit={groupFieldHits}
+                options={fieldNamesOptions}
+                textNoOptions={"No fields found"}
+                isLoading={loading}
+                error={error ? String(error) : ""}
+                onOpenSelect={handleOpenFields}
+                onChange={setGroupFieldHits}
+              /> |
+            </>
+          )}
           <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
           {durationMs !== undefined && (
             <>
@@ -92,7 +100,10 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
             </>
           )}
         </div>
-        <BarHitsOptions onChange={setGraphOptions}/>
+        <BarHitsOptions
+          isOverview={isOverview}
+          onChange={setGraphOptions}
+        />
       </div>
       {!graphOptions.hideChart && (
         <BarHitsPlot

@@ -229,7 +229,7 @@ However, user `admin` needs to set the required `AccountID` or `ProjectID` heade
 
 In Grafana, you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs`.
 Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set it.
-Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui`.
+Each tenant will have `vmui` at the address `/select/vmui/`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui/`.
 
 If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
 it is enough to not specify the corresponding field in the `headers` section.

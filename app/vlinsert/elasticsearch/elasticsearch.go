@@ -52,6 +52,12 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		fmt.Fprintf(w, `{}`)
 		return true
 	}
+	if strings.HasPrefix(path, "/insert/elasticsearch/_rollup") {
+		// Return fake response for Elasticsearch rollup apis
+		// See: https://www.elastic.co/guide/en/elasticsearch/reference/8.8/rollup-apis.html
+		fmt.Fprintf(w, `{}`)
+		return true
+	}
 	if strings.HasPrefix(path, "/insert/elasticsearch/logstash") || strings.HasPrefix(path, "/insert/elasticsearch/_logstash") {
 		// Return fake response for Logstash APIs requests.
 		// See: https://www.elastic.co/guide/en/elasticsearch/reference/8.8/logstash-apis.html

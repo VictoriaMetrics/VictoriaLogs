@@ -23,7 +23,7 @@ func TestPushProtobufRequest(t *testing.T) {
 			t.Fatalf("unexpected error when parsing JSON: %s", err)
 		}
 
-		lr := exportLogsServiceRequest{
+		lr := logsData{
 			ResourceLogs: rls,
 		}
 
@@ -100,6 +100,8 @@ func TestPushProtobufRequest(t *testing.T) {
 			"attributes": [
 				{"key":"logger","value":{"stringValue":"context"}},
 				{"key":"instance_id","value":{"intValue":10}},
+				{"key":"","value":{"stringValue":"missing-key"}},
+				{"key":"missing-value","value":{"stringValue":""}},
 				{"key":"node_taints","value":{"keyValueList":{"values":
 					[{"key":"role","value":{"stringValue":"dev"}},{"key":"cluster_load_percent","value":{"doubleValue":0.55}}]
 				}}}
@@ -194,6 +196,16 @@ func TestPushProtobufRequest(t *testing.T) {
 								"key": "type",
 								"value": {
 									"stringValue": "document_parsing_exception"
+								}
+							}, {
+								"key": "missing-value",
+								"value": {
+									"stringValue": ""
+								}
+							}, {
+								"key": "",
+								"value": {
+									"stringValue": "missing-key"
 								}
 							}, {
 								"key": "reason",
@@ -366,13 +378,13 @@ func TestPushProtobufRequest(t *testing.T) {
 
 var mp easyproto.MarshalerPool
 
-// exportLogsServiceRequest represents the corresponding OTEL protobuf message.
-type exportLogsServiceRequest struct {
+// logsData represents the corresponding OTEL protobuf message.
+type logsData struct {
 	ResourceLogs []resourceLogs `json:"resourceLogs,omitzero"`
 }
 
 // MarshalProtobuf marshals r to a protobuf message, appends it to dst and returns the result.
-func (r *exportLogsServiceRequest) marshalProtobuf(dst []byte) []byte {
+func (r *logsData) marshalProtobuf(dst []byte) []byte {
 	m := mp.Get()
 	r.marshalProtobufInternal(m.MessageMarshaler())
 	dst = m.Marshal(dst)
@@ -380,7 +392,7 @@ func (r *exportLogsServiceRequest) marshalProtobuf(dst []byte) []byte {
 	return dst
 }
 
-func (r *exportLogsServiceRequest) marshalProtobufInternal(mm *easyproto.MessageMarshaler) {
+func (r *logsData) marshalProtobufInternal(mm *easyproto.MessageMarshaler) {
 	for _, rm := range r.ResourceLogs {
 		rm.marshalProtobuf(mm.AppendMessage(1))
 	}
@@ -418,7 +430,9 @@ type keyValue struct {
 }
 
 func (kv *keyValue) marshalProtobuf(mm *easyproto.MessageMarshaler) {
-	mm.AppendString(1, kv.Key)
+	if kv.Key != "" {
+		mm.AppendString(1, kv.Key)
+	}
 	if kv.Value != nil {
 		kv.Value.marshalProtobuf(mm.AppendMessage(2))
 	}

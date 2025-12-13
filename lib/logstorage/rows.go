@@ -368,6 +368,15 @@ func (f *Fields) Reset() {
 	f.Fields = f.Fields[:0]
 }
 
+// ClearUpToCapacity clears f.Fields up to its' capacity.
+//
+// This function is useful in order to make sure f.Fields do not reference underlying byte slices,
+// so they could be freed by Go GC.
+func (f *Fields) ClearUpToCapacity() {
+	clear(f.Fields[:cap(f.Fields)])
+	f.Fields = f.Fields[:0]
+}
+
 // Add adds (name, value) field to f.
 func (f *Fields) Add(name, value string) {
 	f.Fields = append(f.Fields, Field{

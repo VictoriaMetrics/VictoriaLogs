@@ -36,6 +36,7 @@ const OverviewHits: FC = () => {
   return (
     <div>
       <HitsChart
+        isOverview
         {...dataLogHits}
         query={query}
         period={period}

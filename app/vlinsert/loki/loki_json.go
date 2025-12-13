@@ -82,7 +82,12 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 	}
 
 	fieldsTmp := logstorage.GetFields()
-	defer logstorage.PutFields(fieldsTmp)
+	defer func() {
+		// Explicitly clear fieldsTmp up to its' capacity in order to free up
+		// all the references to the original byte slice, so it could be freed by Go GC.
+		fieldsTmp.ClearUpToCapacity()
+		logstorage.PutFields(fieldsTmp)
+	}()
 
 	var msgParser *logstorage.JSONParser
 	if parseMessage {
@@ -106,9 +111,6 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			vStr := getMarshaledJSONValue(v)
 			fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 		})
-		if err != nil {
-			return fmt.Errorf("error when parsing `stream` object: %w", err)
-		}
 
 		// populate messages from `values` array
 		linesV := stream.Get("values")
@@ -155,9 +157,6 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 					vStr := getMarshaledJSONValue(v)
 					fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 				})
-				if err != nil {
-					return fmt.Errorf("error when parsing `structuredMetadata` object: %w", err)
-				}
 			}
 
 			// parse log message

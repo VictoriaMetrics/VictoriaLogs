@@ -25,8 +25,8 @@ to the Internet.
 
 vmagent is used for scraping and pushing time series to VictoriaMetrics instance. 
 It accepts Prometheus-compatible configuration with listed targets for scraping:
-* [scraping VictoriaLogs single-node](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/prometheus-vl-single.yml) services;
-* [scraping VictoriaLogs cluster](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/prometheus-vl-cluster.yml) services;
+* [scraping VictoriaLogs single-node](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/prometheus-vl-single.yml) services;
+* [scraping VictoriaLogs cluster](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/prometheus-vl-cluster.yml) services;
 
 Web interface link is [http://localhost:8429/](http://localhost:8429/).
 
@@ -36,7 +36,7 @@ To spin-up environment with VictoriaLogs run the following command:
 ```
 make docker-vl-single-up
 ```
-_See [compose-vl-single.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/compose-vl-single.yml)_
+_See [compose-vl-single.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/compose-vl-single.yml)_
 
 VictoriaLogs will be accessible on the `--httpListenAddr=:9428` port.
 In addition to VictoriaLogs server, the docker compose contains the following components:
@@ -56,7 +56,7 @@ In addition to VictoriaLogs server, the docker compose contains the following co
 To access Grafana use link [http://localhost:3000](http://localhost:3000).
 
 To access [VictoriaLogs UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
-use link [http://localhost:8427/select/vmui](http://localhost:8427/select/vmui).
+use link [http://localhost:8427/select/vmui/](http://localhost:8427/select/vmui/).
 
 Please, also see [how to monitor](https://docs.victoriametrics.com/victorialogs/#monitoring) 
 VictoriaLogs installations.
@@ -74,7 +74,7 @@ To spin-up environment with VictoriaLogs cluster run the following command:
 ```
 make docker-vl-cluster-up
 ```
-_See [compose-vl-cluster.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/compose-vl-cluster.yml)_
+_See [compose-vl-cluster.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/compose-vl-cluster.yml)_
 
 VictoriaLogs cluster environment consists of `vlinsert`, `vlstorage` and `vlselect` components.
 `vlinsert` and `vlselect` are available through `vmauth` on port `:8427`.
@@ -103,7 +103,7 @@ In addition to VictoriaLogs cluster, the docker compose contains the following c
 To access Grafana use link [http://localhost:3000](http://localhost:3000).
 
 To access [VictoriaLogs UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
-use link [http://localhost:8427/select/vmui](http://localhost:8427/select/vmui).
+use link [http://localhost:8427/select/vmui/](http://localhost:8427/select/vmui/).
 
 Please, also see [how to monitor](https://docs.victoriametrics.com/victorialogs/#monitoring)
 VictoriaLogs installations.
@@ -135,13 +135,13 @@ Please see more examples on integration of VictoriaLogs with other log shippers 
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) acts as a [load balancer](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing)
 to spread the load across `vlselect` nodes. [Grafana](#grafana) and [vmalert](#vmalert) use vmauth for read queries.
 vmauth routes read queries to VictoriaLogs depending on requested path.
-vmauth config is available here for [VictoriaLogs single-server](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/auth-vl-single.yml) and
-[VictoriaLogs cluster](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/auth-vl-cluster.yml).
+vmauth config is available here for [VictoriaLogs single-server](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/auth-vl-single.yml) and
+[VictoriaLogs cluster](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/auth-vl-cluster.yml).
 
 
 ## vmalert
 
-vmalert evaluates various [alerting rules](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules).
+vmalert evaluates various [alerting rules](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules).
 It is connected with AlertManager for firing alerts, and with VictoriaLogs for executing queries and storing alert's state.
 
 Web interface link [http://localhost:8880/](http://localhost:8880/).
@@ -149,7 +149,7 @@ Web interface link [http://localhost:8880/](http://localhost:8880/).
 ## alertmanager
 
 AlertManager accepts notifications from `vmalert` and fires alerts.
-All notifications are blackholed according to [alertmanager.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/alertmanager.yml) config.
+All notifications are blackholed according to [alertmanager.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/alertmanager.yml) config.
 
 Web interface link [http://localhost:9093/](http://localhost:9093/).
 
@@ -168,10 +168,12 @@ Grafana is provisioned with default dashboards and datasources.
 See below a list of recommended alerting rules for VictoriaLogs components for running in production.
 Some alerting rules thresholds are just recommendations and could require an adjustment.
 The list of alerting rules is the following:
-* [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules/alerts-health.yml):
+* [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml):
   alerting rules related to all VictoriaMetrics components for tracking their "health" state;
-* [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules/alerts-vlogs.yml):
+* [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml):
   alerting rules related to [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/);
+* [alerts-vlagent.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml):
+  alerting rules related to [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/);
 
 Please, also see [how to monitor VictoriaLogs installations](https://docs.victoriametrics.com/victorialogs/#monitoring).
 

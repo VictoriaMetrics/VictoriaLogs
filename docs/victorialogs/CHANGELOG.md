@@ -22,8 +22,13 @@ according to the following docs:
 ## tip
 
 * FEATURE: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): parse [`scope` inside ScopeLogs](https://github.com/open-telemetry/opentelemetry-proto/blob/a5f0eac5b802f7ae51dfe41e5116fe5548955e64/opentelemetry/proto/logs/v1/logs.proto#L72) and store it into [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) starting with `scope.` prefix. See [#826](https://github.com/VictoriaMetrics/VictoriaLogs/issues/826).
+* FEATURE: [ElasticSearch data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api): return stub responses for the requests to `/insert/elasticsearch/_rollup*` endpoints. Thanks to @Sakalya for the [pull request #890](https://github.com/VictoriaMetrics/VictoriaLogs/pull/890).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): implement "Stats view" mode for the graph using `stats_query_range` to display log stats. See [#34](https://github.com/VictoriaMetrics/VictoriaLogs/issues/34).
 
-* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): properly handle `null` values inside arrays. Previously, such arrays could cause a panic during ingestion. See [#869](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3627177567).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): properly handle `null` values inside arrays. Previously, such arrays could cause a panic during ingestion. See [#869](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3627177567). The issue has been introduced in [v1.40.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.40.0).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): properly skip attributes with missing key. See [this report](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3631307996).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): reduce memory usage after [v1.40.0 release](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.40.0). See [#869](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869).
+* BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): properly handle unset [`-kubernetesCollector.msgField`](https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-collector-configuration) and [`-kubernetesCollector.timeField`](https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-collector-configuration) flags. Previously, vlagent didn't apply the default values described in the documentation.
 
 ## [v1.40.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.40.0)
 
@@ -473,7 +478,7 @@ Released at 2025-04-25
 Released at 2025-04-22
 
 * FEATURE: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): reduce CPU usage by up to 10x when ingesting small number of log entries per request.
-* FEATURE: [dashboards/cluster](https://grafana.com/grafana/dashboards/23274): add Grafana dashboard for cluster version of VictoriaLogs. The source of the dashboard is available [here](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/dashboards/victorialogs-cluster.json) and will continue to improve with time.
+* FEATURE: [dashboards/cluster](https://grafana.com/grafana/dashboards/23274): add Grafana dashboard for cluster version of VictoriaLogs. The source of the dashboard is available [here](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-cluster.json) and will continue to improve with time.
 * FEATURE: [deployment/docker](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/deployment/docker#readme): add [docker-compose environment for VictoriaLogs cluster](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/deployment/docker#victorialogs-cluster) deployment. It is intended for demonstrative purposes, includes alerting and Grafana dashboards.
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix high CPU usage when hovering over log entries due to complex button styles. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8135).
@@ -840,7 +845,7 @@ Released at 2024-10-29
 Released at 2024-10-18
 
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add ability to hide hits chart. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/7117).
-* FEATURE: add basic [alerting rules](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules/alerts-vlogs.yml) for VictoriaLogs process. See details at [monitoring docs](https://docs.victoriametrics.com/victorialogs/#monitoring).
+* FEATURE: add basic [alerting rules](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml) for VictoriaLogs process. See details at [monitoring docs](https://docs.victoriametrics.com/victorialogs/#monitoring).
 * FEATURE: improve [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) performance on systems with many CPU cores when `by(...)` fields contain a large number of unique values. For example, `_time:1d | stats by (user_id) count() x` should be executed much faster when the `user_id` field contains millions of unique values.
 * FEATURE: improve performance for [`top`](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe), [`uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq-pipe) and [`field_values`](https://docs.victoriametrics.com/victorialogs/logsql/#field_values-pipe) pipes on systems with many CPU cores when applied to [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with a large number of unique values. For example, `_time:1d | top 5 (user_id)` should be executed much faster when the `user_id` field contains millions of unique values.
 * FEATURE: improve performance for [`field_names` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#field_names-pipe) when it is applied to logs with hundreds of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).

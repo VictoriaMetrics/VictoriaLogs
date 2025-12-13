@@ -108,7 +108,7 @@ as [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-f
 - `msg`
 - `log`
 
-You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgFields` command-line flag with comma-separated list of field names.
+You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgField` command-line flag with comma-separated list of field names.
 
 `vlagent` extracts timestamp from the log line and uses it as
 [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field, using the following fields:
@@ -148,9 +148,12 @@ so that the exported metrics may be analyzed later.
 
 See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/).
 
-Use [the official Grafana dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/vlagent.json) for `vlagent` state overview.
+Use [the official Grafana dashboard for `vlagent` state overview](https://grafana.com/grafana/dashboards/24513).
 Graphs on this dashboard contain useful hints — hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
+
+We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 ## Troubleshooting
 

@@ -1,0 +1,90 @@
+# File contains default list of alerts for vlagent service.
+# The alerts below are just recommendations and may require some updates
+# and threshold calibration according to every specific setup.
+groups:
+  - name: vlagent
+    rules:
+      - alert: PersistentQueueIsDroppingData
+        expr: sum(increase(vm_persistentqueue_bytes_dropped_total[5m])) without (path) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} is dropping data from persistent queue"
+          description: "vlagent dropped {{ $value | humanize1024 }} from persistent queue
+              on instance {{ $labels.instance }} for the last 10m."
+
+      - alert: RejectedRemoteWriteDataBlocksAreDropped
+        expr: sum(increase(vlagent_remotewrite_packets_dropped_total[5m])) without (url) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "vlagent is dropping data blocks that are rejected by remote storage"
+          description: "Job \"{{ $labels.job }}\" on instance {{ $labels.instance }} drops the rejected by 
+            remote-write server data blocks. Check the logs to find the reason for rejects."
+
+      - alert: TooManyRemoteWriteErrors
+        expr: rate(vlagent_remotewrite_retries_count_total[5m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job \"{{ $labels.job }}\" on instance {{ $labels.instance }} fails to push to remote storage"
+          description: "vlagent fails to push data via remote write protocol to destination \"{{ $labels.url }}\"\n
+            Ensure that destination is up and reachable."
+
+      - alert: RemoteWriteConnectionIsSaturated
+        expr: rate(vlagent_remotewrite_send_duration_seconds_total[5m]) / vlagent_remotewrite_queues > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Remote write connection from \"{{ $labels.job }}\" (instance {{ $labels.instance }}) to {{ $labels.url }} is saturated"
+          description: "The remote write connection between vlagent \"{{ $labels.job }}\" (instance {{ $labels.instance }}) and destination \"{{ $labels.url }}\"
+            is saturated by more than 90% and vlagent won't be able to keep up.\n
+            There could be the following reasons for this:\n
+             * vlagent can't send data fast enough through the existing network connections. Increase `-remoteWrite.queues` cmd-line flag value to establish more connections per destination.\n
+             * remote destination can't accept data fast enough. Check if remote destination has enough resources for processing."
+
+      - alert: PersistentQueueForWritesIsSaturated
+        expr: rate(vm_persistentqueue_write_duration_seconds_total[5m]) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Persistent queue writes for instance {{ $labels.instance }} are saturated"
+          description: "Persistent queue writes for vlagent \"{{ $labels.job }}\" (instance {{ $labels.instance }})
+            are saturated by more than 90% and vlagent won't be able to keep up with flushing data on disk. 
+            In this case, consider to decrease load on the vlagent or improve the disk throughput."
+
+      - alert: PersistentQueueForReadsIsSaturated
+        expr: rate(vm_persistentqueue_read_duration_seconds_total[5m]) > 0.9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Persistent queue reads for instance {{ $labels.instance }} are saturated"
+          description: "Persistent queue reads for vlagent \"{{ $labels.job }}\" (instance {{ $labels.instance }})
+            are saturated by more than 90% and vlagent won't be able to keep up with reading data from the disk. 
+            In this case, consider to decrease load on the vlagent or improve the disk throughput."
+
+      - alert: RequestErrorsToAPI
+        expr: increase(vl_http_errors_total[5m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many errors served for path {{ $labels.path }} (instance {{ $labels.instance }})"
+          description: "Requests to path {{ $labels.path }} are receiving errors.
+            Please verify if clients are sending correct requests."
+
+      - alert: RowsRejectedOnIngestion
+        expr: rate(vl_rows_dropped_total[5m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Some rows are rejected on \"{{ $labels.instance }}\" on ingestion attempt"
+          description: "VictoriaLogs is rejecting to ingest rows on \"{{ $labels.instance }}\" due to the
+            following reason: \"{{ $labels.reason }}\""

@@ -50,7 +50,12 @@ func decodeStream(src []byte, pushLogs pushLogsHandler) error {
 	// }
 
 	fs := logstorage.GetFields()
-	defer logstorage.PutFields(fs)
+	defer func() {
+		// Explicitly clear fs up to its' capacity in order to free up
+		// all the references to the original byte slice, so it could be freed by Go GC.
+		fs.ClearUpToCapacity()
+		logstorage.PutFields(fs)
+	}()
 
 	labels, ok, err := easyproto.GetString(src, 1)
 	if err != nil {

@@ -3,9 +3,7 @@ import { ReactNode } from "preact/compat";
 
 export interface MetricBase {
   group: number;
-  metric: {
-    [key: string]: string;
-  };
+  metric: Record<string, string>
 }
 
 export interface MetricResult extends MetricBase {

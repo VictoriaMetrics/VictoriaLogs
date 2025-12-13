@@ -54,7 +54,12 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 	defer putFmtBuffer(fb)
 
 	fs := logstorage.GetFields()
-	defer logstorage.PutFields(fs)
+	defer func() {
+		// Explicitly clear fs up to its' capacity in order to free up
+		// all the references to the original byte slice, so it could be freed by Go GC.
+		fs.ClearUpToCapacity()
+		logstorage.PutFields(fs)
+	}()
 
 	// Decode resource
 	resourceData, ok, err := easyproto.GetMessageData(src, 1)
@@ -88,9 +93,7 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 				return fmt.Errorf("cannot decode ScopeLogs: %w", err)
 			}
 
-			clear(fs.Fields[streamFieldsLen:])
 			fs.Fields = fs.Fields[:streamFieldsLen]
-
 			fb.buf = fb.buf[:fbLen]
 		}
 	}
@@ -178,10 +181,9 @@ func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs 
 				fs.Fields = append(fs.Fields[:streamFieldsLen], fs.Fields[streamFieldsLen+1:commonFieldsLen+1]...)
 			} else {
 				pushLogs(timestamp, fs.Fields, streamFieldsLen)
-			}
 
-			clear(fs.Fields[commonFieldsLen:])
-			fs.Fields = fs.Fields[:commonFieldsLen]
+				fs.Fields = fs.Fields[:commonFieldsLen]
+			}
 
 			fb.buf = fb.buf[:fbLen]
 		}
@@ -359,7 +361,9 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return fmt.Errorf("cannot find Key in KeyValue: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("key is missing in KeyValue")
+		// Key is missing, skip it.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3631307996
+		return nil
 	}
 	fieldName := fb.formatSubFieldName(fieldNamePrefix, key)
 

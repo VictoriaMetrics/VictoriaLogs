@@ -1116,7 +1116,7 @@ VictoriaLogs provides the following options to limit resource usage by the execu
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
-at `http://localhost:9428/select/vmui`. Try [VictoriaLogs web UI demo playground](https://play-vmlogs.victoriametrics.com/).
+at `http://localhost:9428/select/vmui/`. Try [VictoriaLogs web UI demo playground](https://play-vmlogs.victoriametrics.com/).
 
 There are three modes of displaying query results:
 
