@@ -16,7 +16,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.2.1"
+      "version": "12.3.0"
     },
     {
       "type": "datasource",
@@ -47,12 +47,6 @@
       "id": "timeseries",
       "name": "Time series",
       "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "victoriametrics-metrics-datasource",
-      "name": "VictoriaMetrics",
-      "version": "0.19.7"
     }
   ],
   "annotations": {
@@ -78,7 +72,7 @@
       {
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "$ds"
+          "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
         "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
@@ -91,7 +85,7 @@
       {
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
         "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(job, instance)",
@@ -106,7 +100,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": null,
   "links": [
     {
       "icon": "doc",
@@ -189,14 +182,14 @@
         "content": "<div style=\"text-align: center;\">$version</div>",
         "mode": "markdown"
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "title": "Version",
       "type": "text"
     },
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows number of generated  error messages in  logs over last 30m. Non-zero value may be a sign of connectivity or misconfiguration errors.",
       "fieldConfig": {
@@ -252,12 +245,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "expr": "sum(increase(vm_log_messages_total{job=~\"$job\", instance=~\"$instance\", level!=\"info\"}[30m]))",
           "interval": "",
@@ -271,7 +264,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Persistent queue size shows size of pending logs in bytes which hasn't been flushed to remote storage yet. \nIncreasing of value might be a sign of connectivity issues. In such cases, vlagent starts to flush pending data on disk with attempt to send it later once connection is restored.",
       "fieldConfig": {
@@ -320,12 +313,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "expr": "sum(vlagent_remotewrite_pending_data_bytes{job=~\"$job\", instance=~\"$instance\"})",
           "interval": "",
@@ -339,7 +332,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows the cumulative number of log entries ingested. \n\nThe size is calculated before compression.",
       "fieldConfig": {
@@ -383,12 +376,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
@@ -404,7 +397,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Total number of available CPUs for selected vlagents. ",
       "fieldConfig": {
@@ -452,12 +445,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -475,11 +468,12 @@
     },
     {
       "datasource": {
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
           "custom": {
+            "align": "auto",
             "cellOptions": {
               "type": "auto"
             },
@@ -588,12 +582,12 @@
         "cellHeight": "sm",
         "showHeader": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "expr": "sort((time() - vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}) or (up{job=~\"$job\", instance=~\"$instance\"}))",
           "format": "table",
@@ -617,7 +611,7 @@
     },
     {
       "datasource": {
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "fieldConfig": {
         "defaults": {
@@ -702,12 +696,12 @@
           "sort": "asc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "expr": "sort(sum(up{job=~\"$job\", instance=~\"$instance\"}) by (job, instance))",
           "format": "time_series",
@@ -723,7 +717,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Total size of available memory for selected vlagents.",
       "fieldConfig": {
@@ -771,12 +765,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -808,7 +802,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "$ds"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows ingestion rate in number of log entries and bytes per second.",
       "fieldConfig": {
@@ -912,12 +906,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_rows_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type) > 0",
@@ -931,7 +925,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type) > 0",
@@ -948,7 +942,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows the persistent queue size of pending logs in bytes >2MB which hasn't been flushed to remote storage yet. \n\nIncreasing of value might be a sign of connectivity issues. In such cases, vlagent starts to flush pending data on disk with attempt to send it later once connection is restored.\n\nRemote write URLs are hidden by default but might be unveiled once `-remoteWrite.showURL` is set to true.\n\nClick on the line and choose Drilldown to show the persistent queue size per instance.\n",
       "fieldConfig": {
@@ -1048,12 +1042,12 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1070,7 +1064,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics",
       "fieldConfig": {
@@ -1158,12 +1152,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_http_requests_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (path) > 0",
@@ -1181,7 +1175,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows rate of dropped logs from persistent queue. vlagent drops log lines from queue if in-memory and on-disk queues are full and it is unable to flush them to remote storage.\nThe max size of on-disk queue is configured by `-remoteWrite.maxDiskUsagePerURL` flag.",
       "fieldConfig": {
@@ -1274,12 +1268,12 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_persistentqueue_bytes_dropped_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (path) > 0",
@@ -1295,7 +1289,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Shows the rate of logging the messages by their level. Unexpected spike in rate is a good reason to check logs.",
       "fieldConfig": {
@@ -1304,11 +1298,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "bars",
             "fillOpacity": 100,
             "gradientMode": "none",
@@ -1317,6 +1313,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1324,6 +1321,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1340,7 +1338,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1378,12 +1377,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -1403,7 +1402,7 @@
     {
       "datasource": {
         "type": "victoriametrics-metrics-datasource",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "$DS_PROMETHEUS"
       },
       "description": "Errors rate shows rate for multiple metrics that track possible errors in vlagent, such as network or parsing errors.",
       "fieldConfig": {
@@ -1412,11 +1411,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -1425,6 +1426,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1432,6 +1434,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1448,7 +1451,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -1491,12 +1495,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_http_request_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, protocol) > 0",
@@ -1508,7 +1512,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_protoparser_read_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, type) > 0",
@@ -1520,7 +1524,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_ingestserver_request_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, type) > 0",
@@ -1532,7 +1536,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_protoparser_unmarshal_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, type) > 0",
@@ -1544,7 +1548,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_promscrape_dial_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) > 0",
@@ -1570,7 +1574,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Percentage of used RSS memory (resident).\nThe RSS memory shows the amount of memory recently accessed by the application. It includes anonymous memory and data from recently accessed files (aka page cache).\nThe application's performance will significantly degrade when memory usage is close to 100%.\n\nClick on the line and choose Drilldown to show memory usage per instance",
           "fieldConfig": {
@@ -1664,7 +1668,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -1681,7 +1685,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "fieldConfig": {
             "defaults": {
@@ -1774,7 +1778,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1793,7 +1797,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Share for memory allocated by the process itself. When memory usage reaches 100% it will be likely OOM-killed.\nSafe memory usage % considered to be below 80%\n\nClick on the line and choose Drilldown to show memory usage per instance",
           "fieldConfig": {
@@ -1881,7 +1885,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -1898,7 +1902,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.",
           "fieldConfig": {
@@ -1983,7 +1987,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_cpu_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -1997,7 +2001,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_cpu_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2016,7 +2020,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows memory pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.",
           "fieldConfig": {
@@ -2101,7 +2105,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_memory_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2115,7 +2119,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_memory_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2134,7 +2138,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the number of bytes read/write from the storage layer when vlagent has to buffer data on disk or read already buffered data.\n\nClick on the line and choose Drilldown to show CPU usage per instance",
           "fieldConfig": {
@@ -2240,7 +2244,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) ",
@@ -2255,7 +2259,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_written_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job)",
@@ -2274,7 +2278,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "fieldConfig": {
             "defaults": {
@@ -2360,7 +2364,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(max_over_time(go_goroutines{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job)",
@@ -2378,7 +2382,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows IO pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.",
           "fieldConfig": {
@@ -2463,7 +2467,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_io_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2477,7 +2481,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_io_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -2496,7 +2500,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "fieldConfig": {
             "defaults": {
@@ -2582,7 +2586,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(max_over_time(process_num_threads{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job)",
@@ -2599,7 +2603,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Network usage shows the bytes rate for data accepted by vlagent and pushed via remotewrite protocol.\nDiscrepancies are possible because of different protocols used for ingesting, scraping and writing data.",
           "fieldConfig": {
@@ -2699,7 +2703,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(vm_tcplistener_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) * 8 \n+ sum(rate(vm_promscrape_conn_bytes_read_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) * 8",
@@ -2711,7 +2715,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(vlagent_remotewrite_conn_bytes_written_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job) * 8",
@@ -2727,7 +2731,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the percent of CPU spent on garbage collection.\n\nIf % is high, then CPU usage can be decreased by changing GOGC to higher values. Increasing GOGC value will increase memory usage, and decrease CPU usage.\n\nTry searching for keyword `GOGC` at https://docs.victoriametrics.com/victoriametrics/troubleshooting/ ",
           "fieldConfig": {
@@ -2814,7 +2818,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "max(\n  rate(go_gc_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) \n / rate(process_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n ) by(job)",
@@ -2832,7 +2836,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the time goroutines have spent in runnable state before actually running. The lower is better.\n\nHigh values or values exceeding the threshold is usually a sign of            insufficient CPU resources or CPU throttling. \n\nVerify that service has enough CPU resources. Otherwise, the service could work unreliably with delays in processing.",
           "fieldConfig": {
@@ -2919,7 +2923,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "max(histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (job, instance, le))) by(job)",
@@ -2937,7 +2941,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the rate of allocations in memory. Sudden increase in allocations would mean increased pressure on Go Garbage Collector and can saturate CPU resources of the application.",
           "fieldConfig": {
@@ -3020,7 +3024,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(go_memstats_alloc_bytes_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
@@ -3038,7 +3042,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Panel shows the percentage of open file descriptors in the OS per instance.\nReaching the limit of open files (100%) can cause various issues and must be prevented.\n\nSee how to change limits here https://medium.com/@muhammadtriwibowo/set-permanently-ulimit-n-open-files-in-ubuntu-4d61064429a",
           "fieldConfig": {
@@ -3125,7 +3129,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "max(\n    max_over_time(process_open_fds{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n    /\n    process_max_fds{job=~\"$job\", instance=~\"$instance\"}\n) by(job)",
@@ -3157,7 +3161,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows write saturation of the persistent queue. If the threshold of 0.9sec is reached, then the persistent queue is saturated by more than 90% and vlagent won't be able to keep up with flushing data on disk. In this case, consider to decrease load on the vlagent or improve the disk throughput.",
           "fieldConfig": {
@@ -3246,7 +3250,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3263,7 +3267,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows read saturation of the persistent queue. If the threshold of 0.9sec is reached, then the persistent queue is saturated by more than 90% and vlagent won't be able to keep up with reading data from the disk. In this case, consider to decrease load on the vlagent or improve the disk throughput.",
           "fieldConfig": {
@@ -3352,7 +3356,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3369,7 +3373,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the rate of dropped data blocks in cases when remote storage replies with `400 Bad Request` and `409 Conflict` HTTP responses.",
           "fieldConfig": {
@@ -3457,7 +3461,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3474,7 +3478,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the rate of dropped log lines in cases when -remoteWrite.dropSamplesOnOverload or multiple -remoteWrite.disableOnDiskQueue options are set",
           "fieldConfig": {
@@ -3562,7 +3566,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3579,7 +3583,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "fieldConfig": {
             "defaults": {
@@ -3664,7 +3668,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -3706,7 +3710,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the number of restarts per job. The chart can be useful to identify periodic process restarts and correlate them with potential issues or anomalies. Normally, processes shouldn't restart unless restart was inited by user. The reason of restarts should be figured out by checking the logs of each specific service. ",
           "fieldConfig": {
@@ -3793,7 +3797,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) > 0) by(job)",
@@ -3823,7 +3827,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows how many concurrent inserts are taking place.\n\nIf the number of concurrent inserts hitting the `limit` or is close to the `limit` constantly - it might be a sign of a resource shortage.\n\n If vlagent's CPU usage and remote write connection saturation are at normal level, it might be that `-maxConcurrentInserts` cmd-line flag need to be increased.",
           "fieldConfig": {
@@ -3908,7 +3912,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3921,7 +3925,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -3938,7 +3942,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the rate of write errors in ingestserver (UDP, TCP connections) and HTTP server.",
           "fieldConfig": {
@@ -4023,7 +4027,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "exemplar": true,
               "expr": "sum(rate(vm_ingestserver_request_errors_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(type, net) > 0",
@@ -4034,7 +4038,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "exemplar": true,
               "expr": "sum(rate(vlagent_http_request_errors_total{job=~\"$job\", instance=~\"$instance\", protocol!=\"\"}[$__rate_interval])) by(protocol) > 0",
@@ -4063,7 +4067,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the rate of requests to configured remote write endpoints by url and status code.\n\nRemote write URLs are hidden by default but might be unveiled once `-remoteWrite.showURL` is set to true.\n\n",
           "fieldConfig": {
@@ -4150,7 +4154,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4167,7 +4171,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the global rate for number of written bytes via remote write connections.",
           "fieldConfig": {
@@ -4253,7 +4257,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4270,7 +4274,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows requests retry rate by url. Number of retries is unlimited but protected with delays up to 1m between attempts.\n\nRemote write URLs are hidden by default but might be unveiled once `-remoteWrite.showURL` is set to true.\n\n",
           "fieldConfig": {
@@ -4356,7 +4360,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4373,7 +4377,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows current number of established connections to remote write endpoints.\n\n",
           "fieldConfig": {
@@ -4459,7 +4463,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4476,7 +4480,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows saturation of every connection to remote storage. If the threshold of 90% is reached, then the connection is saturated (busy or slow) by more than 90%, so vlagent won't be able to keep up and can start buffering data. \n\nThis usually means that `-remoteWrite.queues` command-line flag must be increased in order to increase the number of connections per each remote storage.\n",
           "fieldConfig": {
@@ -4562,7 +4566,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4619,7 +4623,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "",
           "fieldConfig": {
@@ -4703,7 +4707,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -4722,7 +4726,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the used memory (resident).\nThe application's performance will significantly degrade when memory usage is close to 100%.",
           "fieldConfig": {
@@ -4806,7 +4810,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4823,7 +4827,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the persistent queue size of pending samples in bytes which hasn't been flushed to remote storage yet. \n\nIncreasing of value might be a sign of connectivity issues. In such cases, vlagent starts to flush pending data on disk with attempt to send it later once connection is restored.\n\nRemote write URLs are hidden by default but might be unveiled once `-remoteWrite.showURL` is set to true.",
           "fieldConfig": {
@@ -4915,7 +4919,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4932,7 +4936,7 @@
         {
           "datasource": {
             "type": "victoriametrics-metrics-datasource",
-            "uid": "$ds"
+            "uid": "$DS_PROMETHEUS"
           },
           "description": "Shows the number of bytes read/write from the storage layer when vlagent has to buffer data on disk or read already buffered data.",
           "fieldConfig": {
@@ -5032,7 +5036,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "${DS_PROMETHEUS}"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job, instance)",
@@ -5047,7 +5051,7 @@
             {
               "datasource": {
                 "type": "victoriametrics-metrics-datasource",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_io_storage_written_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by(job,instance)",
@@ -5068,6 +5072,7 @@
       "type": "row"
     }
   ],
+  "preload": false,
   "refresh": "",
   "schemaVersion": 42,
   "tags": [
@@ -5077,9 +5082,14 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "text": "",
+          "value": "${DS_PROMETHEUS}",
+          "selected": true
+        },
         "includeAll": false,
-        "name": "ds",
+        "label": "Datasource",
+        "name": "DS_PROMETHEUS",
         "options": [],
         "query": "victoriametrics-metrics-datasource",
         "refresh": 1,
@@ -5090,7 +5100,7 @@
         "current": {},
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "$DS_PROMETHEUS"
         },
         "definition": "label_values(vm_app_version{version=~\"^vlagent.*\"}, job)",
         "includeAll": true,
@@ -5110,7 +5120,7 @@
         "current": {},
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "$ds"
+          "uid": "$DS_PROMETHEUS"
         },
         "definition": "label_values(vm_app_version{job=~\"$job\"}, instance)",
         "includeAll": true,
@@ -5130,7 +5140,7 @@
         "current": {},
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "$DS_PROMETHEUS"
         },
         "definition": "label_values(vlagent_remotewrite_requests_total{job=~\"$job\", instance=~\"$instance\"}, url)",
         "description": "The remote write URLs",
@@ -5150,7 +5160,7 @@
         "current": {},
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "${ds}"
+          "uid": "$DS_PROMETHEUS"
         },
         "definition": "label_values(vm_app_version{job=~\"$job\", instance=~\"$instance\"},short_version)",
         "hide": 2,
@@ -5169,7 +5179,7 @@
         "baseFilters": [],
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "$DS_PROMETHEUS"
         },
         "filters": [],
         "name": "adhoc",
@@ -5178,7 +5188,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -5197,6 +5207,7 @@
   "timezone": "",
   "title": "VictoriaLogs - vlagent (VM)",
   "uid": "Y5Z9GzMGz_vm",
-  "version": 3,
-  "weekStart": ""
+  "version": 2,
+  "weekStart": "",
+  "id": null
 }

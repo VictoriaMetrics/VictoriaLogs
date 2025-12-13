@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.2.1"
+      "version": "12.3.0"
     },
     {
       "type": "datasource",
@@ -46,12 +46,6 @@
       "id": "timeseries",
       "name": "Time series",
       "version": ""
-    },
-    {
-      "type": "datasource",
-      "id": "victoriametrics-metrics-datasource",
-      "name": "VictoriaMetrics",
-      "version": "0.19.7"
     }
   ],
   "annotations": {
@@ -77,7 +71,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "enable": true,
         "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
@@ -102,7 +96,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "${ds}"
+          "uid": "${DS_PROMETHEUS}"
         },
         "enable": false,
         "filter": {
@@ -128,7 +122,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [
     {
       "icon": "doc",
@@ -232,12 +225,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -304,12 +297,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -376,12 +369,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -448,12 +441,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -520,12 +513,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -559,7 +552,7 @@
         "content": "<div style=\"text-align: center;\">$version</div>",
         "mode": "markdown"
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "title": "Version",
       "type": "text"
     },
@@ -614,12 +607,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -686,12 +679,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -758,12 +751,12 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -830,11 +823,11 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -970,12 +963,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vl_rows_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type) > 0",
@@ -1006,7 +999,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics",
       "fieldConfig": {
@@ -1095,7 +1088,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -1118,7 +1111,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "$ds"
+        "uid": "${DS_PROMETHEUS}"
       },
       "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics",
       "fieldConfig": {
@@ -1203,7 +1196,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
@@ -1223,7 +1216,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1332,12 +1325,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.2.1",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "max(vl_http_request_duration_seconds{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}) by (path) > 0",
@@ -1388,6 +1381,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1443,12 +1437,12 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "max(vl_total_disk_space_bytes{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
@@ -1499,6 +1493,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1582,12 +1577,12 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.0",
+      "pluginVersion": "12.3.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(rate(vm_log_messages_total{job=~\"$job\", instance=~\"$instance\", level!=\"info\"}[$__rate_interval])) by (instance, level, location)",
@@ -1708,7 +1703,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
@@ -1820,7 +1815,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "expr": "sum(increase(vl_streams_created_total{job=~\"$job\", instance=~\"$instance\"}[1d])) by (instance)",
@@ -1931,7 +1926,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2040,7 +2035,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
           "exemplar": true,
@@ -2081,7 +2076,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Percentage of physical RAM used compared to the memory limit. If this percentage is high, check the `RSS` anonymous vs resident ratio panel for more details.",
           "fieldConfig": {
@@ -2161,7 +2156,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "How much memory (RAM) the VictoriaLogs process is actually using, compared to its allowed container or system limit. See 'Memory Usage' panel for a detailed breakdown.\n\n- Good: Below 70% most of the time, maybe spiking a bit under load.\n- Bad: Above 90% for more than 5 minutes = risk of out-of-memory (OOM) kill.",
           "fieldConfig": {
@@ -2271,7 +2266,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Portion of RAM that CANNOT be reclaimed without swapping. If both the `RSS`-to-limit percentage and this ratio are high, the process is at high risk of an `OOM` kill.",
           "fieldConfig": {
@@ -2343,7 +2338,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "- Anonymous resident memory: Private memory allocated to the application that **cannot** be reclaimed by the kernel. Refer to the [Check/profile](https://docs.victoriametrics.com/victorialogs/#profiling) Go heap section for troubleshooting.\n- File-backed resident memory: Memory mapped from files, which can be safely reclaimed. Increases during querying. Correlate with `I/O` panels for further analysis.\n- Shared resident memory: Typically negligible. Large spikes may indicate unexpected shared memory consumers.",
           "fieldConfig": {
@@ -2449,7 +2444,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(process_resident_memory_file_bytes{job=~\"$job\", instance=~\"$instance\"})",
@@ -2481,7 +2476,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "fieldConfig": {
             "defaults": {
@@ -2592,7 +2587,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Lower is better, e.g. 20% means the process was delayed by memory pressure 20% of the time. See [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\n- waiting: Time fraction where at least one thread was blocked on memory.\n- stalled: Time fraction where every thread was blocked on memory (severe pressure).\n\nIf queries slow down and both series spike, the host is likely limited by RAM or I/O throughput.",
           "fieldConfig": {
@@ -2702,7 +2697,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_memory_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
@@ -2813,7 +2808,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_cpu_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
@@ -2846,7 +2841,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of read/write calls application makes:\n\n- read call: Number of read*()-family system calls your process has issued since start. Each call can move 1 byte or megabytes, cached or uncached.\n- write call: Number of write*()-family system calls (including write, pwrite, writev, etc.) made by the process.",
           "fieldConfig": {
@@ -2965,7 +2960,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(rate(process_io_write_syscalls_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
@@ -3093,7 +3088,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max_over_time(process_open_fds{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n/\nprocess_max_fds{job=~\"$job\", instance=~\"$instance\"}",
@@ -3216,7 +3211,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(rate(process_io_storage_read_bytes_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
@@ -3250,7 +3245,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "IO pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html). The lower the better.\n\n- waiting: at least one runnable thread blocked on block-`I/O` (disk, NVMe, network-storage) while others could still make progress.\n- stalled: all non-idle threads simultaneously waiting on `I/O`; no useful user code ran during these periods → true `I/O` thrashing.\n\nIf stalled > 0 while querying, it's recommended to increase queue depth on NVMe, raise blk-mq budgets, or relax cgroup I/O limits.",
           "fieldConfig": {
@@ -3354,7 +3349,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(process_pressure_io_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
@@ -3465,7 +3460,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(vm_tcplistener_conns{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
@@ -3575,7 +3570,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(go_goroutines{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
@@ -3684,7 +3679,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(rate(vm_tcplistener_accepts_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
@@ -3794,7 +3789,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(process_num_threads{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
@@ -3902,7 +3897,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(\n  rate(go_gc_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) \n / rate(process_cpu_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n ) by(instance)",
@@ -4011,7 +4006,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (instance, le))) by (instance)",
@@ -4096,7 +4091,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": false,
@@ -4205,7 +4200,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4335,7 +4330,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -4367,7 +4362,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${ds}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of storage merge operations by type (sum across instances). Merges compact smaller parts into larger ones; bursts are normal after activity spikes.",
           "fieldConfig": {
@@ -4477,7 +4472,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${ds}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "99th percentile duration of merge operations by storage type. Merge operations combine smaller storage parts into larger ones for optimization. \n\nNormal merge durations vary by storage type and data volume. Consistently high durations may indicate storage performance issues, high write load, or insufficient resources for background operations. Monitor for trends that could impact overall system performance.",
           "fieldConfig": {
@@ -4586,7 +4581,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${ds}"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "99th percentile of data volume processed during merge operations by storage type. \n\nThis metric indicates the scale of background storage optimization activities. Larger merge sizes generally improve storage efficiency but require more resources. Consistently high values may indicate heavy write loads or large storage parts that need optimization. Monitor correlation with merge duration for performance insights.",
           "fieldConfig": {
@@ -4710,7 +4705,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Rate of incoming log insertion requests by endpoint path. This metric tracks the ingestion load on VictoriaLogs, including different insertion methods and protocols.\n\nHigher rates indicate increased log ingestion activity. Monitor for sudden spikes that might indicate new log sources, application deployments, or potential issues requiring capacity planning. Sustained high rates may require scaling ingestion capacity.",
           "fieldConfig": {
@@ -4832,7 +4827,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type) > 0",
@@ -4942,7 +4937,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(vl_http_requests_total{job=~\"$job\", instance=~\"$instance\",path=~\"^/(internal/)?insert.*\"}[$__rate_interval])) by (path) > 0",
@@ -5052,7 +5047,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(vl_http_request_duration_seconds{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\", path=~\"^/(internal/)?insert.*\"}) by (path) > 0",
@@ -5162,7 +5157,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(vl_http_request_duration_seconds{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\", path=~\"^/(internal/)?insert.*\"}) by (path) > 0",
@@ -5273,7 +5268,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(max_over_time(vl_insert_processors_count{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
@@ -5304,7 +5299,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of log rows waiting to be written to storage, categorized by type. Pending rows indicate temporary queuing during ingestion. Consistently high values may suggest storage write bottlenecks or insufficient write capacity.\n\nPending rows are flushed in two ways:\n\n- After a specific time period (typically 1 second)\n- When the pending row size exceeds a threshold (typically 1.75 MB)",
           "fieldConfig": {
@@ -5414,7 +5409,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of concurrent insert operations has reached the configured limit: -maxConcurrentInserts (default: 2x CPU cores\n",
           "fieldConfig": {
@@ -5540,7 +5535,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of insert requests that timed out while waiting for available concurrency slots. This indicates sustained ingestion overload beyond configured limits.\n\nHigh values suggest:\n- Insert queue is consistently full\n- Insert requests waiting too long for execution slots\n- System under sustained heavy ingestion load\n- Need for horizontal scaling or ingestion optimization\n\nCombined with `Insert concurrency limit reached`, provides complete picture of ingestion rejection patterns.",
           "fieldConfig": {
@@ -5645,7 +5640,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "99th percentile duration of background flush operations by type. High values may indicate disk pressure or heavy ingestion. Correlate with `I/O` panels.",
           "fieldConfig": {
@@ -5768,7 +5763,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Rate of incoming query requests by endpoint path. This metric tracks the query load on VictoriaLogs, including different query interfaces and internal operations. \n\nHigher rates indicate increased query activity from users or applications. Monitor for sudden spikes that might indicate new dashboards, automated queries, or potential performance issues. Sustained high rates may require scaling query processing capacity.",
           "fieldConfig": {
@@ -5879,7 +5874,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "99th percentile of query execution duration. This represents the time it takes for 99% of queries to complete:\n\n- High values indicate slow query performance that affects user experience. \n- Spikes may suggest complex queries, resource contention, or inefficient indexes. Monitor for trends that could indicate degrading performance.",
           "fieldConfig": {
@@ -5989,7 +5984,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "$ds"
+            "uid": "${DS_PROMETHEUS}"
           },
           "description": "Number of concurrent select (query) operations compared to the configured limit.\n\nHigh utilization near the limit may indicate query bottlenecks or insufficient query processing capacity.\n\nIf it's consistently high while CPU usage remains low, consider increasing the concurrency limit (`-search.maxConcurrentRequests`) or optimizing query performance to support more concurrent users.",
           "fieldConfig": {
@@ -6111,7 +6106,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "max(max_over_time(vl_concurrent_select_capacity{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
@@ -6215,7 +6210,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "expr": "sum(rate(vl_concurrent_select_limit_timeout_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance) > 0",
@@ -6337,7 +6332,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6447,7 +6442,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6557,7 +6552,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6665,7 +6660,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6775,7 +6770,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6885,7 +6880,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -6995,7 +6990,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -7105,7 +7100,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "${ds}"
+                "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -7125,6 +7120,7 @@
       "type": "row"
     }
   ],
+  "preload": false,
   "refresh": "",
   "schemaVersion": 42,
   "tags": [
@@ -7134,9 +7130,14 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "text": "",
+          "value": "${DS_PROMETHEUS}",
+          "selected": true
+        },
         "includeAll": false,
-        "name": "ds",
+        "label": "Datasource",
+        "name": "DS_PROMETHEUS",
         "options": [],
         "query": "prometheus",
         "refresh": 1,
@@ -7165,7 +7166,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "definition": "label_values(vm_app_version{job=~\"$job\"}, instance)",
         "includeAll": true,
@@ -7203,7 +7204,7 @@
         "baseFilters": [],
         "datasource": {
           "type": "prometheus",
-          "uid": "$ds"
+          "uid": "${DS_PROMETHEUS}"
         },
         "filters": [],
         "name": "adhoc",
@@ -7219,6 +7220,7 @@
   "timezone": "",
   "title": "VictoriaLogs - single-node",
   "uid": "OqPIZTX4z",
-  "version": 1,
-  "weekStart": ""
+  "version": 7,
+  "weekStart": "",
+  "id": null
 }

@@ -11,5 +11,5 @@ dashboard-copy:
 # The command should be called before committing changes to dashboards/* files.
 dashboards-sync:
 	SRC=vlagent.json D_UID=Y5Z9GzMGz TITLE="VictoriaLogs - vlagent" $(MAKE) dashboard-copy
-	SRC=victorialogs.json D_UID=OqPIZTX4z TITLE="VictoriaLogs" $(MAKE) dashboard-copy
+	SRC=victorialogs.json D_UID=OqPIZTX4z TITLE="VictoriaLogs - single-node" $(MAKE) dashboard-copy
 	SRC=victorialogs-cluster.json D_UID=XqCOFEX4z TITLE="VictoriaLogs - cluster" $(MAKE) dashboard-copy
