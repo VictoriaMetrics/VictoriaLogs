@@ -172,6 +172,8 @@ The list of alerting rules is the following:
   alerting rules related to all VictoriaMetrics components for tracking their "health" state;
 * [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules/alerts-vlogs.yml):
   alerting rules related to [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/);
+* [alerts-vlagent.yml](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/deployment/docker/rules/alerts-vlagent.yml):
+  alerting rules related to [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/);
 
 Please, also see [how to monitor VictoriaLogs installations](https://docs.victoriametrics.com/victorialogs/#monitoring).
 

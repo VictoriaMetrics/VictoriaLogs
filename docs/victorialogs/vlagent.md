@@ -148,9 +148,12 @@ so that the exported metrics may be analyzed later.
 
 See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/).
 
-Use [the official Grafana dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/vlagent.json) for `vlagent` state overview.
+Use [the official Grafana dashboard](https://grafana.com/grafana/dashboards/24513-victorialogs-vlagent/) for `vlagent` state overview.
 Graphs on this dashboard contain useful hints — hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
+
+We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 ## Troubleshooting
 
