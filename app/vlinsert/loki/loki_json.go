@@ -111,9 +111,6 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			vStr := getMarshaledJSONValue(v)
 			fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 		})
-		if err != nil {
-			return fmt.Errorf("error when parsing `stream` object: %w", err)
-		}
 
 		// populate messages from `values` array
 		linesV := stream.Get("values")
@@ -160,9 +157,6 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 					vStr := getMarshaledJSONValue(v)
 					fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 				})
-				if err != nil {
-					return fmt.Errorf("error when parsing `structuredMetadata` object: %w", err)
-				}
 			}
 
 			// parse log message
