@@ -1,8 +1,8 @@
-import { getFromStorage, saveToStorage, StorageKeys } from "../../utils/storage";
+import { getFromStorage, saveToStorage, ActiveStorageKeys } from "../../utils/storage";
 import { QueryHistoryType } from "../../state/query/reducer";
 import { MAX_QUERIES_HISTORY, MAX_QUERY_FIELDS } from "../../constants/logs";
 
-export type HistoryKey = Extract<StorageKeys, "LOGS_QUERY_HISTORY">;
+export type HistoryKey = Extract<ActiveStorageKeys, "LOGS_QUERY_HISTORY">;
 export type HistoryType = "QUERY_HISTORY" | "QUERY_FAVORITES";
 
 const getHistoryFromStorage = (key: HistoryKey) => {

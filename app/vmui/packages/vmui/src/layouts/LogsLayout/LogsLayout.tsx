@@ -9,6 +9,8 @@ import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
+import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
+import { migrateStorageToPrefixedKeys } from "../../utils/storage";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
@@ -27,6 +29,13 @@ const LogsLayout: FC = () => {
 
   useEffect(setDocumentTitle, [pathname]);
 
+  useEffect(() => {
+    const migrateStorage = migrateStorageToPrefixedKeys();
+    if (migrateStorage.removed.length || migrateStorage.migrated.length) {
+      console.info(migrateStorage);
+    }
+  }, []);
+
   return <section className="vm-container">
     <Header controlsComponent={ControlsLogsLayout}/>
     <div
@@ -39,6 +48,8 @@ const LogsLayout: FC = () => {
       <Outlet/>
     </div>
     {!appModeEnable && <Footer links={footerLinksToLogs}/>}
+
+    <WebStorageCheck/>
   </section>;
 };
 

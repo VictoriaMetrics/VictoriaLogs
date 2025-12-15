@@ -2,11 +2,11 @@ import { act, renderHook } from "@testing-library/preact";
 import { useLocalStorageBoolean } from "./useLocalStorageBoolean";
 import * as storageUtils from "../utils/storage";
 import { Mock } from "vitest";
-import { StorageKeys } from "../utils/storage";
+import { ActiveStorageKeys } from "../utils/storage";
 
 vi.mock("../utils/storage");
 
-const testStorageKey = "TEST_STORAGE_KEY" as StorageKeys;
+const testStorageKey = "TEST_STORAGE_KEY" as ActiveStorageKeys;
 
 describe("useLocalStorageBoolean", () => {
   const { getFromStorage, saveToStorage } = storageUtils;
