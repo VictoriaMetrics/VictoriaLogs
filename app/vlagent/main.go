@@ -28,6 +28,7 @@ var (
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
+	tmpDataPath = flag.String("tmpDataPath", "", "Default path for storing vlagent data")
 )
 
 func main() {
@@ -47,9 +48,9 @@ func main() {
 	startTime := time.Now()
 
 	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
-	remotewrite.Init()
+	remotewrite.Init(*tmpDataPath)
 
-	kubernetescollector.Init()
+	kubernetescollector.Init(*tmpDataPath)
 	vlinsert.Init()
 
 	go httpserver.Serve(listenAddrs, requestHandler, httpserver.ServeOptions{

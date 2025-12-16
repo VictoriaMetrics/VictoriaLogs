@@ -96,7 +96,7 @@ See [replication and high availability docs](https://docs.victoriametrics.com/vi
 For Kubernetes in Docker (in case you run `vlagent` using tools like minikube or kind), you may need to mount `/var/lib` directory.
 
 `vlagent` uses checkpoints to persist its state across restarts.
-Default location for checkpoints is `./vlagent-kubernetes-checkpoints.json`.
+Default location for checkpoints is `vlagent-kubernetes-checkpoints.json`, which is relative to `-tmpDataPath`.
 You can specify a different location for checkpoints with `-kubernetesCollector.checkpointsPath` command-line flag.
 Make sure that this file is available for `vlagent` across restarts.
 Use [`hostPath`](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) volume
@@ -198,6 +198,7 @@ via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via 
   The number of dropped blocks can be monitored via `vlagent_remotewrite_packets_dropped_total` metric exported on the [/metrics page](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring).
 
 - `vlagent` buffers the collected logs at the `-remoteWrite.tmpDataPath` directory until they are sent to the `-remoteWrite.url`.
+  Default value for `-remoteWrite.tmpDataPath` is "vlagent-remotewrite-data", which is relative to `tmpDataPath`.
   The directory can grow large when the remote storage is unavailable for extended periods of time and if the maximum directory size isn't limited
   with `-remoteWrite.maxDiskUsagePerURL` command-line flag.
   If you don't want to send all the buffered data from the directory to remote storage, then simply stop `vlagent` and
@@ -384,7 +385,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -kubernetesCollector
         Whether to enable collecting logs from Kubernetes
   -kubernetesCollector.checkpointsPath string
-        Path to file with checkpoints for Kubernetes logs. Checkpoints are used to persist the read offsets for Kubernetes container logs. When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication (default "./vlagent-kubernetes-checkpoints.json")
+        Path to file with checkpoints for Kubernetes logs. Checkpoints are used to persist the read offsets for Kubernetes container logs. When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication
   -kubernetesCollector.decolorizeFields array
         Fields to remove ANSI color codes across logs ingested from Kubernetes
         Supports an array of values separated by comma or specified via multiple flags.
@@ -589,7 +590,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.tmpDataPath string
-        Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . See also -remoteWrite.maxDiskUsagePerURL (default "vlagent-remotewrite-data")
+        Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . See also -remoteWrite.maxDiskUsagePerURL
   -remoteWrite.url array
         Remote storage URL to write data to. It must support VictoriaLogs native protocol. Example url: http://<victorialogs-host>:9428/internal/insert. Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.
         Supports an array of values separated by comma or specified via multiple flags.
@@ -762,6 +763,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
         Optional minimum TLS version to use for the corresponding -httpListenAddr if -tls is set. Supported values: TLS10, TLS11, TLS12, TLS13
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -tmpDataPath string
+        Default path for storing vlagent data
   -version
         Show VictoriaMetrics version
 ```

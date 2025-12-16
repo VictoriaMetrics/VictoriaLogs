@@ -30,7 +30,7 @@ var (
 		"Buffered data is stored in ~500MB chunks. It is recommended to set the value for this flag to a multiple of the block size 500MB. "+
 		"Disk usage is unlimited if the value is set to 0")
 
-	tmpDataPath = flag.String("remoteWrite.tmpDataPath", "vlagent-remotewrite-data", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . "+
+	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . "+
 		"See also -remoteWrite.maxDiskUsagePerURL")
 	queues = flag.Int("remoteWrite.queues", cgroup.AvailableCPUs()*2, "The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues "+
 		"isn't enough for sending high volume of collected data to remote storage. "+
@@ -75,7 +75,7 @@ func InitSecretFlags() {
 // It must be called after flag.Parse().
 //
 // Stop must be called for graceful shutdown.
-func Init() {
+func Init(tmpDataPath string) {
 	if len(*remoteWriteURLs) == 0 {
 		logger.Fatalf("at least one `-remoteWrite.url` command-line flag must be set")
 	}
@@ -85,8 +85,12 @@ func Init() {
 	if *queues <= 0 {
 		*queues = 1
 	}
-	initRemoteWriteCtxs(*remoteWriteURLs)
-	dropDanglingQueues()
+	path := *remoteWriteTmpDataPath
+	if len(path) == 0 {
+		path = filepath.Join(tmpDataPath, "vlagent-remotewrite-data")
+	}
+	initRemoteWriteCtxs(path, *remoteWriteURLs)
+	dropDanglingQueues(path)
 }
 
 // Stop stops remotewrite.
@@ -99,7 +103,7 @@ func Stop() {
 	rwctxsGlobal = nil
 }
 
-func dropDanglingQueues() {
+func dropDanglingQueues(tmpDataPath string) {
 	// Remove dangling persistent queues, if any.
 	// This is required for the case when the number of queues has been changed or URL have been changed.
 	// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4014
@@ -112,7 +116,7 @@ func dropDanglingQueues() {
 		existingQueues[rwctx.fq.Dirname()] = struct{}{}
 	}
 
-	queuesDir := filepath.Join(*tmpDataPath, persistentQueueDirname)
+	queuesDir := filepath.Join(tmpDataPath, persistentQueueDirname)
 	files := fs.MustReadDir(queuesDir)
 	removed := 0
 	for _, f := range files {
@@ -125,11 +129,11 @@ func dropDanglingQueues() {
 		}
 	}
 	if removed > 0 {
-		logger.Infof("removed %d dangling queues from %q, active queues: %d", removed, *tmpDataPath, len(rwctxsGlobal))
+		logger.Infof("removed %d dangling queues from %q, active queues: %d", removed, tmpDataPath, len(rwctxsGlobal))
 	}
 }
 
-func initRemoteWriteCtxs(urls []string) {
+func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 	if len(urls) == 0 {
 		logger.Panicf("BUG: urls must be non-empty")
 	}
@@ -155,7 +159,7 @@ func initRemoteWriteCtxs(urls []string) {
 		if *showRemoteWriteURL {
 			sanitizedURL = fmt.Sprintf("%d:%s", i+1, remoteWriteURL)
 		}
-		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL)
+		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
 		rwctxIdx[i] = i
 	}
 
@@ -192,7 +196,7 @@ type remoteWriteCtx struct {
 	pssNextIdx atomic.Uint64
 }
 
-func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks int, sanitizedURL string) *remoteWriteCtx {
+func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks int, sanitizedURL, tmpDataPath string) *remoteWriteCtx {
 	// protocol version is required by victoria-logs
 	q := remoteWriteURL.Query()
 	q.Set("version", netinsert.ProtocolVersion)
@@ -203,7 +207,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	pqURL.RawQuery = ""
 	pqURL.Fragment = ""
 	h := xxhash.Sum64([]byte(pqURL.String()))
-	queuePath := filepath.Join(*tmpDataPath, persistentQueueDirname, fmt.Sprintf("%d_%016X", argIdx+1, h))
+	queuePath := filepath.Join(tmpDataPath, persistentQueueDirname, fmt.Sprintf("%d_%016X", argIdx+1, h))
 	maxPendingBytes := maxPendingBytesPerURL.GetOptionalArg(argIdx)
 	if maxPendingBytes != 0 && maxPendingBytes < persistentqueue.DefaultChunkFileSize {
 		// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4195

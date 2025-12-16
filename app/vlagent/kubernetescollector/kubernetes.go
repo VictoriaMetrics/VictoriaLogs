@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -15,7 +16,7 @@ import (
 
 var (
 	enabled         = flag.Bool("kubernetesCollector", false, "Whether to enable collecting logs from Kubernetes")
-	checkpointsPath = flag.String("kubernetesCollector.checkpointsPath", "vlagent-kubernetes-checkpoints.json",
+	checkpointsPath = flag.String("kubernetesCollector.checkpointsPath", "",
 		"Path to file with checkpoints for Kubernetes logs. "+
 			"Checkpoints are used to persist the read offsets for Kubernetes container logs. "+
 			"When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication")
@@ -31,7 +32,7 @@ var (
 
 var collector *kubernetesCollector
 
-func Init() {
+func Init(tmpDataPath string) {
 	if !*enabled {
 		return
 	}
@@ -51,6 +52,11 @@ func Init() {
 		logger.Fatalf("cannot get current node name: %s", err)
 	}
 
+	path := *checkpointsPath
+	if len(path) == 0 {
+		path = filepath.Join(tmpDataPath, "vlagent-kubernetes-checkpoints.json")
+	}
+
 	var excludeF *logstorage.Filter
 	if *excludeFilter != "" {
 		excludeF, err = logstorage.ParseFilter(*excludeFilter)
@@ -59,7 +65,7 @@ func Init() {
 		}
 	}
 
-	kc, err := startKubernetesCollector(c, currentNodeName, *logsPath, *checkpointsPath, excludeF)
+	kc, err := startKubernetesCollector(c, currentNodeName, *logsPath, path, excludeF)
 	if err != nil {
 		logger.Fatalf("cannot start kubernetes collector: %s", err)
 	}
