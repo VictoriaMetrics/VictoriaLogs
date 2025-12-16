@@ -71,7 +71,7 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	entries := make([]logRecord, rowsCount)
 	for j := 0; j < rowsCount; j++ {
 		entries[j] = logRecord{
-			TimeUnixNano: 12345678910,
+			TimeUnixNano:         12345678910,
 			ObservedTimeUnixNano: 12345678910,
 			Body: anyValue{
 				StringValue: ptrTo("12345678910"),
@@ -83,7 +83,7 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	for j := 0; j < scopesCount; j++ {
 		scopes[j] = scopeLogs{
 			Scope: &instrumentationScope{
-				Name: "abc",
+				Name:    "abc",
 				Version: "v1.2.345",
 				Attributes: []*keyValue{
 					{
