@@ -1,12 +1,5 @@
 const STORAGE_PREFIX = "VLUI:" as const;
 
-/**
- * Do not use this type in local storage type
- * @deprecated
- * */
-const DEPRECATED_STORAGE_KEYS = ["QUERY_HISTORY", "QUERY_FAVORITES"] as const;
-type DeprecatedStorageKeys = (typeof DEPRECATED_STORAGE_KEYS)[number];
-
 export const ALL_STORAGE_KEYS = [
   "AUTOCOMPLETE",
   "TIMEZONE",
@@ -20,21 +13,19 @@ export const ALL_STORAGE_KEYS = [
   "SERVER_URL",
   "RAW_JSON_LIVE_VIEW",
   "LOGS_OVERRIDE_TIME",
-  ...DEPRECATED_STORAGE_KEYS,
 ] as const;
 
-type StorageKeys = (typeof ALL_STORAGE_KEYS)[number];
-export type ActiveStorageKeys = Exclude<StorageKeys, DeprecatedStorageKeys>;
+export type StorageKeys = (typeof ALL_STORAGE_KEYS)[number];
 
 type PrefixedStorageKeys = `${typeof STORAGE_PREFIX}${StorageKeys}`;
 
-const toPrefixedKey = (key: ActiveStorageKeys): PrefixedStorageKeys => {
+const toPrefixedKey = (key: StorageKeys): PrefixedStorageKeys => {
   return `${STORAGE_PREFIX}${key}`;
 };
 
 type StorageValue = string | boolean | Record<string, unknown>;
 
-export const saveToStorage = (key: ActiveStorageKeys, value: StorageValue, withPrefix = true): void => {
+export const saveToStorage = (key: StorageKeys, value: StorageValue, withPrefix = true): void => {
   try {
     const storageKey = withPrefix ? toPrefixedKey(key) : key;
 
@@ -50,7 +41,7 @@ export const saveToStorage = (key: ActiveStorageKeys, value: StorageValue, withP
   }
 };
 
-export const getFromStorage = (key: ActiveStorageKeys, withPrefix = true): undefined | StorageValue => {
+export const getFromStorage = (key: StorageKeys, withPrefix = true): undefined | StorageValue => {
   const storageKey = withPrefix ? toPrefixedKey(key) : key;
   const valueObj = window.localStorage.getItem(storageKey);
 
@@ -63,7 +54,7 @@ export const getFromStorage = (key: ActiveStorageKeys, withPrefix = true): undef
   }
 };
 
-export const removeFromStorage = (keys: ActiveStorageKeys[], withPrefix = true): void => {
+export const removeFromStorage = (keys: StorageKeys[], withPrefix = true): void => {
   const storageKeys = withPrefix ? keys.map(toPrefixedKey) : keys;
   storageKeys.forEach(k => window.localStorage.removeItem(k));
 };
@@ -74,9 +65,9 @@ export const removeFromStorage = (keys: ActiveStorageKeys[], withPrefix = true):
  */
 
 type StorageMigrationResult = {
-  migrated: ActiveStorageKeys[];
-  removed: ActiveStorageKeys[];
-  skipped: ActiveStorageKeys[];
+  migrated: StorageKeys[];
+  removed: StorageKeys[];
+  skipped: StorageKeys[];
 };
 
 export const migrateStorageToPrefixedKeys = (): StorageMigrationResult => {
@@ -87,9 +78,7 @@ export const migrateStorageToPrefixedKeys = (): StorageMigrationResult => {
   };
 
   for (const key of ALL_STORAGE_KEYS) {
-    if (DEPRECATED_STORAGE_KEYS.includes(key as DeprecatedStorageKeys)) continue;
-
-    const legacyKey = key as ActiveStorageKeys; // unprefixed
+    const legacyKey = key as StorageKeys; // unprefixed
     const legacyValue = getFromStorage(legacyKey, false);
     const prefixedValue = getFromStorage(legacyKey, true);
 
