@@ -49,6 +49,23 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(cp.TimeFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting time fields; ignoring them; timeField=%q", cp.TimeFields)
+		cp.TimeFields = nil
+	}
+	if len(cp.MsgFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting msg fields; ignoring them; msgField=%q", cp.MsgFields)
+		cp.MsgFields = nil
+	}
+	if len(cp.StreamFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting stream fields; ignoring them; streamField=%q", cp.StreamFields)
+		cp.StreamFields = nil
+	}
+	if len(cp.DecolorizeFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting decolorize fields; ignoring them; decolorizeField=%q", cp.DecolorizeFields)
+		cp.DecolorizeFields = nil
+	}
+
 	encoding := r.Header.Get("Content-Encoding")
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.NewLogMessageProcessor("nativeinsert", false)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/metrics"
 
@@ -42,6 +43,27 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	if err := insertutil.CanWriteData(); err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
+	}
+
+	if cp.TenantID.AccountID != 0 || cp.TenantID.ProjectID != 0 {
+		logger.Warnf("/internal/insert endpoint doesn't support setting tenantID; ignoring it; tenantID=%q", cp.TenantID)
+		cp.TenantID = logstorage.TenantID{}
+	}
+	if len(cp.TimeFields) > 0 {
+		logger.Warnf("/internal/insert endpoint doesn't support setting time fields; ignoring them; timeField=%q", cp.TimeFields)
+		cp.TimeFields = nil
+	}
+	if len(cp.MsgFields) > 0 {
+		logger.Warnf("/internal/insert endpoint doesn't support setting msg fields; ignoring them; msgField=%q", cp.MsgFields)
+		cp.MsgFields = nil
+	}
+	if len(cp.StreamFields) > 0 {
+		logger.Warnf("/internal/insert endpoint doesn't support setting stream fields; ignoring them; streamField=%q", cp.StreamFields)
+		cp.StreamFields = nil
+	}
+	if len(cp.DecolorizeFields) > 0 {
+		logger.Warnf("/internal/insert endpoint doesn't support setting decolorize fields; ignoring them; decolorizeField=%q", cp.DecolorizeFields)
+		cp.DecolorizeFields = nil
 	}
 
 	encoding := r.Header.Get("Content-Encoding")
