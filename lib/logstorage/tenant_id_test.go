@@ -60,10 +60,10 @@ func TestTenantIDLessEqual(t *testing.T) {
 	if tid2.less(tid1) {
 		t.Fatalf("less for equal values must return false")
 	}
-	if !tid1.equal(tid2) {
+	if !tid1.Equal(tid2) {
 		t.Fatalf("unexpected equal(%s, %s) result; got false; want true", tid1, tid2)
 	}
-	if !tid2.equal(tid1) {
+	if !tid2.Equal(tid1) {
 		t.Fatalf("unexpected equal(%s, %s) result; got false; want true", tid2, tid1)
 	}
 
@@ -81,10 +81,10 @@ func TestTenantIDLessEqual(t *testing.T) {
 	if tid2.less(tid1) {
 		t.Fatalf("less for equal values must return false")
 	}
-	if !tid1.equal(tid2) {
+	if !tid1.Equal(tid2) {
 		t.Fatalf("unexpected equal(%s, %s) result; got false; want true", tid1, tid2)
 	}
-	if !tid2.equal(tid1) {
+	if !tid2.Equal(tid1) {
 		t.Fatalf("unexpected equal(%s, %s) result; got false; want true", tid2, tid1)
 	}
 
@@ -101,7 +101,7 @@ func TestTenantIDLessEqual(t *testing.T) {
 	if tid2.less(tid1) {
 		t.Fatalf("unexpected result for less(%s, %s); got true; want false", tid2, tid1)
 	}
-	if tid1.equal(tid2) {
+	if tid1.Equal(tid2) {
 		t.Fatalf("unexpected result for equal(%s, %s); got true; want false", tid1, tid2)
 	}
 
@@ -118,7 +118,7 @@ func TestTenantIDLessEqual(t *testing.T) {
 	if tid2.less(tid1) {
 		t.Fatalf("unexpected result for less(%s, %s); got true; want false", tid2, tid1)
 	}
-	if tid1.equal(tid2) {
+	if tid1.Equal(tid2) {
 		t.Fatalf("unexpected result for equal(%s, %s); got true; want false", tid1, tid2)
 	}
 }

@@ -32,14 +32,14 @@ Please download and unpack the `vlutils` archive from [releases page](https://gi
 `vlagent` is also available as Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/vlagent/tags)
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
-- `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/internal/insert`.
+- `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/insert/native`.
   The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
 
 Example command, which starts `vlagent` for accepting logs over HTTP-based [supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 at the port `9429` and sends the collected logs to VictoriaLogs instance at `victoria-logs-host:9428`:
 
 ```sh
-/path/to/vlagent-prod -remoteWrite.url=http://victoria-logs-host:9428/internal/insert
+/path/to/vlagent-prod -remoteWrite.url=http://victoria-logs-host:9428/insert/native
 ```
 
 Pass `-help` to `vlagent` in order to see [the full list of supported command-line flags with their descriptions](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage).
@@ -82,10 +82,10 @@ Pass `-kubernetesCollector` command-line flag to `vlagent` in order to start dis
 running inside all the pods on the given Kubernetes node. Pass VictoriaLogs address to store the collected logs
 via `-remoteWrite.url` command-line flag.
 
-Here is the minimal configuration for `vlagent` to collect logs on the current Kubernetes node and send them to `http://victoria-logs:9428/internal/insert`:
+Here is the minimal configuration for `vlagent` to collect logs on the current Kubernetes node and send them to `http://victoria-logs:9428/insert/native`:
 
 ```sh
-./vlagent -kubernetesCollector -remoteWrite.url=http://victoria-logs:9428/internal/insert
+./vlagent -kubernetesCollector -remoteWrite.url=http://victoria-logs:9428/insert/native
 ```
 
 `vlagent` can send the copies of the collected logs into multiple destinations.
@@ -182,6 +182,39 @@ If you have suggestions for improvements or have found a bug, please open an iss
 
 We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
+
+## Multitenancy
+
+### `/insert/native` endpoint
+
+When using this endpoint to send logs, any tenant IDs configured for specific sources within `vlagent` will be ignored by VictoriaLogs.
+By default, logs will be written to tenant `0:0`.
+
+To specify a tenant ID in this mode, you must use the flag `-remoteWrite.headers`. For example:
+
+```sh
+./vlagent -remoteWrite.url http://victoria-logs:9428/insert/native \
+  -remoteWrite.headers='AccountID:42^^ProjectID:42'
+```
+
+If `vlagent` is configured for `/insert/native`, any attempt to pass a tenant ID via a local insertion protocol will not work.
+For example, in the following request, the `AccountID` and `ProjectID` headers will be ignored, and the log will be written to tenant `0:0`:
+
+```sh
+curl -X POST http://vlagent:9429/insert/jsonline \
+  -H "AccountID:12" -H "ProjectID:34" 
+  -H "Content-Type:application/json" -d '{"_msg":"foobar"}'
+```
+
+### `/internal/insert` endpoint
+
+If you need to manage tenant IDs on the `vlagent` side, you should use the `/internal/insert` endpoint.
+
+In this mode, you can specify tenant IDs individually for each data source within `vlagent`. 
+This can be done via command-line flags, such as [`-syslog.tenantID.*`](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy)
+and [`-kubernetesCollector.tenantID`](https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-collector-configuration), 
+or by passing [`ProjectID`](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers) and [`AccountID`](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers) 
+headers when inserting logs via [supported HTTP protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis).
 
 ## Troubleshooting
 
@@ -591,7 +624,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -remoteWrite.tmpDataPath string
         Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . See also -remoteWrite.maxDiskUsagePerURL (default "vlagent-remotewrite-data")
   -remoteWrite.url array
-        Remote storage URL to write data to. It must support VictoriaLogs native protocol. Example url: http://<victorialogs-host>:9428/internal/insert. Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.
+        Remote storage URL to write data to. It must support VictoriaLogs native protocol. Example url: http://<victorialogs-host>:9428/insert/native. Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.
         Supports an array of values separated by comma or specified via multiple flags.
         Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -secret.flags array
