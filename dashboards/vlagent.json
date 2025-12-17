@@ -111,30 +111,13 @@
       "icon": "doc",
       "tags": [],
       "targetBlank": true,
-      "title": "vlagent wiki",
-      "tooltip": "",
+      "title": "Docs",
       "type": "link",
       "url": "https://docs.victoriametrics.com/victorialogs/vlagent/"
     },
     {
-      "icon": "external link",
-      "tags": [],
-      "targetBlank": true,
-      "title": "Found a bug?",
-      "type": "link",
-      "url": "https://github.com/VictoriaMetrics/VictoriaLogs/issues"
-    },
-    {
-      "icon": "external link",
-      "tags": [],
-      "targetBlank": true,
-      "title": "New releases",
-      "type": "link",
-      "url": "https://github.com/VictoriaMetrics/VictoriaLogs/releases"
-    },
-    {
       "asDropdown": false,
-      "icon": "external link",
+      "icon": "question",
       "includeVars": false,
       "keepTime": false,
       "tags": [],
@@ -143,6 +126,34 @@
       "tooltip": "",
       "type": "link",
       "url": "https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting"
+    },
+    {
+      "icon": "info",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Community support",
+      "type": "link",
+      "url": "https://victoriametrics.com/support/community-support/"
+    },
+    {
+      "asDropdown": false,
+      "icon": "bolt",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Enterprise support",
+      "tooltip": "",
+      "type": "link",
+      "url": "https://victoriametrics.com/support/enterprise-support/"
+    },
+    {
+      "icon": "info",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Releases",
+      "type": "link",
+      "url": "https://github.com/VictoriaMetrics/VictoriaLogs/releases"
     }
   ],
   "panels": [
