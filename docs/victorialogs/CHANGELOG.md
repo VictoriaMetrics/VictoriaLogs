@@ -21,7 +21,12 @@ according to the following docs:
 
 ## tip
 
+## [v1.41.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.41.1)
+
+Released at 2025-12-17
+
 * BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): accept timestamps with timezone offsets in `±HHMM` format (e.g. `2025-12-15T02:12:34.977+0100`) in addition to `±HH:MM` (RFC3339) format. See [#902](https://github.com/VictoriaMetrics/VictoriaLogs/issues/902).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): fix a memory leak during ingestion of logs with complex attributes. See [this comment at #869](https://github.com/VictoriaMetrics/VictoriaLogs/issues/869#issuecomment-3656714711).
 
 ## [v1.41.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.41.0)
 
