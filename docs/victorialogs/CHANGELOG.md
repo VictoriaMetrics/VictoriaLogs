@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix incorrect y-axis scaling in stats charts when displaying negative values. See [#905](https://github.com/VictoriaMetrics/VictoriaLogs/issues/905).
+
 ## [v1.41.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.41.1)
 
 Released at 2025-12-17
