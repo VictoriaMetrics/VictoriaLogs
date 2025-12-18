@@ -12,9 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 type client interface {
@@ -44,7 +45,7 @@ type kubernetesCollector struct {
 // startKubernetesCollector starts watching Kubernetes cluster on the given node and starts collecting container logs.
 // The collector monitors container logs in the specified logsPath directory and uses checkpointsPath to track reading progress.
 // The caller must call stop() when the kubernetesCollector is no longer needed.
-func startKubernetesCollector(client client, currentNode, logsPath, checkpointsPath string) (*kubernetesCollector, error) {
+func startKubernetesCollector(client client, currentNode, logsPath, checkpointsPath string, filter *logstorage.Filter) (*kubernetesCollector, error) {
 	_, err := os.Stat(logsPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access logs dir: %w", err)
@@ -63,7 +64,7 @@ func startKubernetesCollector(client client, currentNode, logsPath, checkpointsP
 	newProcessor := func(commonFields []logstorage.Field) processor {
 		return newLogFileProcessor(storage, commonFields)
 	}
-	fc := startFileCollector(checkpointsPath, newProcessor)
+	fc := startFileCollector(checkpointsPath, filter, newProcessor)
 	c.fileCollector = fc
 
 	c.startWatchCluster(c.ctx)

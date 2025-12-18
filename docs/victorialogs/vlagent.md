@@ -140,6 +140,34 @@ pass `-kubernetesCollector.tenantID` command-line flag with a tenant ID in the f
 
 Use these fields for fast filtering and grouping of logs in VictoriaLogs via [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
 
+### Filtering Kubernetes logs
+
+vlagent allows filtering Kubernetes container logs based on metadata fields. 
+It is applied before reading the log files, which saves CPU and I/O resources by skipping unwanted data.
+
+Supported metadata fields:
+
+- `kubernetes.container_name` - name of the container.
+- `kubernetes.pod_name` - name of the pod.
+- `kubernetes.pod_node_name` - name of the node where the pod is running.
+- `kubernetes.pod_namespace` - Kubernetes namespace of the pod.
+- `kubernetes.pod_ip` - IP address assigned to the pod.
+- `kubernetes.container_id` - ID of the container in the runtime.
+- `kubernetes.pod_labels.*` - any Pod label (e.g., `kubernetes.pod_labels.app`).
+
+To enable filtering, use the `-kubernetesCollector.filter` command-line flag with any [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
+Note that [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) are not supported in filter expressions.
+
+Example usage:
+
+```sh
+./vlagent -remoteWrite.url=http://victoria-logs:9428/internal/insert -kubernetesCollector \
+  -kubernetesCollector.filter='kubernetes.pod_labels.logging.vlagent.io/exclude:=true or kubernetes.pod_namespace:in(test, logging)'
+```
+
+This command starts vlagent with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true` 
+and skips all logs from the `test` and `logging` namespaces.
+
 ## Monitoring
 
 `vlagent` exports various metrics in Prometheus exposition format at `http://vlagent-host:9429/metrics` page.
