@@ -1,6 +1,6 @@
 exporters:
   otlphttp:
-    logs_endpoint: http://victorialogs:9428/insert/opentelemetry/v1/logs
+    logs_endpoint: http://vlagent:9429/insert/opentelemetry/v1/logs
   debug:
     verbosity: detailed
 receivers:

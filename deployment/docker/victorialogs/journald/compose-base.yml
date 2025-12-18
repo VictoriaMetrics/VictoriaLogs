@@ -8,7 +8,9 @@ services:
     user: root
     entrypoint: /lib/systemd/systemd
     depends_on:
-      victorialogs:
+      vlagent:
+        condition: service_healthy
+      vmauth:
         condition: service_healthy
       victoriametrics:
         condition: service_healthy

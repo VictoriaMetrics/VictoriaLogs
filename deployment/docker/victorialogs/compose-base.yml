@@ -5,7 +5,6 @@ services:
     command:
       - -storageDataPath=/vlogs
       - -loggerFormat=json
-      - -syslog.listenAddr.tcp=0.0.0.0:8094
       - -datadog.streamFields=service,hostname,ddsource
       - -journald.streamFields=_HOSTNAME,_SYSTEMD_UNIT,_PID
       - -journald.ignoreFields=MESSAGE_ID,INVOCATION_ID,USER_INVOCATION_ID
@@ -18,48 +17,61 @@ services:
       timeout: 1s
       retries: 10
 
-  dd-proxy:
-    image: docker.io/victoriametrics/vmauth:v1.120.0
+  vmauth:
+    image: docker.io/victoriametrics/vmauth:v1.132.0
     restart: on-failure
     volumes:
       - ./:/etc/vmauth
     command: -auth.config=/etc/vmauth/vmauth.yml
-
-  victorialogs:
-    extends: .victorialogs
     ports:
-      - '9428:9428'
+      - '8427:8427'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8427/health"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    depends_on:
+      victorialogs-1:
+        condition: service_healthy
+      victorialogs-2:
+        condition: service_healthy
+
+  victorialogs-1:
+    extends: .victorialogs
     volumes:
-      - victorialogs:/vlogs
+      - victorialogs-1:/vlogs
     deploy:
       replicas: 1
 
-  # second replica is needed for HA setup and its replica count is set to 1 in compose-ha.yml file
   victorialogs-2:
     extends: .victorialogs
-    ports:
-      - '9429:9428'
     volumes:
       - victorialogs-2:/vlogs
     deploy:
-      replicas: 0
+      replicas: 1
 
-  # vlagent is needed for HA setup and its replica count is set to 1 in compose-ha.yml file
   vlagent:
-    image: victoriametrics/vlagent:v0.0.1
+    image: victoriametrics/vlagent:v1.41.0
     volumes:
       - vlagent:/vlagent
     command:
       - '--remoteWrite.tmpDataPath=/vlagent'
-      - '--remoteWrite.url=http://victorialogs:9428/internal/insert'
+      - '--remoteWrite.url=http://victorialogs-1:9428/internal/insert'
       - '--remoteWrite.url=http://victorialogs-2:9428/internal/insert'
-    deploy:
-      replicas: 0
+      - '--syslog.listenAddr.tcp=0.0.0.0:8094'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9429/health"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    depends_on:
+      victorialogs-1:
+        condition: service_healthy
+      victorialogs-2:
+        condition: service_healthy
 
   victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.112.0
-    ports:
-      - '8428:8428'
+    image: victoriametrics/victoria-metrics:v1.132.0
     command:
       - -storageDataPath=/vmsingle
       - -loggerFormat=json
@@ -72,7 +84,7 @@ services:
       retries: 10
 
 volumes:
-  victorialogs:
+  victorialogs-1:
   victorialogs-2:
   victoriametrics:
   vlagent:

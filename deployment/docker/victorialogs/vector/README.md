@@ -5,8 +5,8 @@ The folder contains examples of [Vector](https://vector.dev/docs/) integration w
 * [elasticsearch](./elasticsearch)
 * [loki](./loki)
 * [jsonline single node](./jsonline)
-* [jsonline HA setup](./jsonline-ha)
 * [datadog](./datadog)
+* [splunk](./splunk)
 
 ## Quick start
 
@@ -22,9 +22,11 @@ docker compose down -v
 
 The docker compose file contains the following components:
 
-* vector - logs collection agent configured to collect and write data to `victorialogs`
-* victorialogs - logs database, receives data from `vector` agent
-* victoriametrics - metrics database, which collects metrics from `victorialogs` and `vector` for observability purposes
+* vector - logs collection agent configured to collect and write data to `vlagent`
+* vlagent - agent, that replicates log data to `victorialogs-x` instances
+* victorialogs-x - logs database instances, receive data from `vlagent` agent
+* vmauth - proxy that serves as a query entrypoint for `victorialogs-x` instances
+* victoriametrics - metrics database, which collects metrics from `vector` for observability purposes
 
 ## Querying
 
@@ -35,7 +37,6 @@ Vector configuration example can be found below:
 * [elasticsearch](./elasticsearch/vector.yml)
 * [loki](./loki/vector.yml)
 * [jsonline single node](./jsonline/vector.yml)
-* [jsonline HA setup](./jsonline-ha/vector.yml)
 * [datadog](./datadog/vector.yml)
 
 > Please, note that `_stream_fields` parameter must follow recommended [best practices](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) to achieve better performance.

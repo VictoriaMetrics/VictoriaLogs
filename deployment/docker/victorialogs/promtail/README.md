@@ -18,9 +18,11 @@ docker compose down -v
 
 The docker compose file contains the following components:
 
-* promtail - logs collection agent configured to collect and write data to `victorialogs`
-* victorialogs - logs database, receives data from `promtail` agent
-* victoriametrics - metrics database, which collects metrics from `victorialogs` and `promtail` for observability purposes
+* promtail - logs collection agent configured to collect and write data to `vlagent`
+* vlagent - agent, that replicates log data to `victorialogs-x` instances
+* victorialogs-x - logs database instances, receive data from `vlagent` agent
+* vmauth - proxy that serves as a query entrypoint for `victorialogs-x` instances
+* victoriametrics - metrics database, which collects metrics from `promtail` for observability purposes
 
 ## Querying
 
