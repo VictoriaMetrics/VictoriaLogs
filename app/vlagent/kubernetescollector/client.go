@@ -10,7 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
@@ -34,21 +36,25 @@ func newKubeAPIClient(cfg *kubeAPIConfig) (*kubeAPIClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot get CA certificate: %w", err)
 	}
-	tlsConfig := &tls.Config{
-		RootCAs: certPool,
-	}
+
+	var clientCerts []tls.Certificate
 	if len(cfg.ClientCert) != 0 {
-		clientCert, err := tls.X509KeyPair(cfg.ClientCert, cfg.ClientCertKey)
+		cc, err := tls.X509KeyPair(cfg.ClientCert, cfg.ClientCertKey)
 		if err != nil {
 			return nil, fmt.Errorf("cannot load client certificate: %w", err)
 		}
-		tlsConfig.Certificates = []tls.Certificate{clientCert}
+		clientCerts = append(clientCerts, cc)
 	}
+
+	tr := httputil.NewTransport(false, "vlagent_kubernetescollector")
+	tr.IdleConnTimeout = time.Minute
+	tr.TLSHandshakeTimeout = time.Second * 15
+	tr.TLSClientConfig.RootCAs = certPool
+	tr.TLSClientConfig.Certificates = clientCerts
+
 	// todo: ca cert can be updated, so we need to reload it periodically
 	c := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+		Transport: tr,
 	}
 
 	apiURL, err := url.Parse(cfg.Server)
