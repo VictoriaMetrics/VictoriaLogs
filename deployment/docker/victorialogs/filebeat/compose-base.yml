@@ -15,4 +15,4 @@ services:
     user: root
     command:
       - "--strict.perms=false"
-    depends_on: [victorialogs]
+    depends_on: [vlagent]

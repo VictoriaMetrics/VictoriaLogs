@@ -5,7 +5,6 @@ The folder contains examples of [FluentBit](https://docs.fluentbit.io/manual) in
 * [datadog](./datadog)
 * [loki](./loki)
 * [jsonline single node](./jsonline)
-* [jsonline HA setup](./jsonline-ha)
 * [otlp](./otlp)
 
 ## Quick start
@@ -22,9 +21,11 @@ docker compose down -v
 
 The docker compose file contains the following components:
 
-* fluentbit - logs collection agent configured to collect and write data to `victorialogs`
-* victorialogs - logs database, receives data from `fluentbit` agent
-* victoriametrics - metrics database, collects metrics from `victorialogs` and `fluentbit` for observability purposes
+* fluentbit - logs collection agent configured to collect and write data to `vlagent`
+* vlagent - agent, that replicates log data to `victorialogs-x` instances
+* victorialogs-x - logs database instances, receive data from `vlagent` agent
+* vmauth - proxy that serves as a query entrypoint for `victorialogs-x` instances
+* victoriametrics - metrics database, which collects metrics from `fluentbit` for observability purposes
 
 ## Querying
 
@@ -35,7 +36,6 @@ FluentBit configuration example can be found below:
 * [datadog](./datadog/fluent-bit.conf)
 * [loki](./loki/fluent-bit.conf)
 * [jsonline single node](./jsonline/fluent-bit.conf)
-* [jsonline HA setup](./jsonline-ha/fluent-bit.conf)
 * [otlp](./otlp/fluent-bit.conf)
 
 > Please, note that `_stream_fields` parameter must follow recommended [best practices](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) to achieve better performance.

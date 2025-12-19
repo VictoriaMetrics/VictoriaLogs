@@ -7,7 +7,6 @@ import { MinMax, SetMinMax } from "../../../../types";
 import { LogHits } from "../../../../api/types";
 import getSeriesPaths from "../../../../utils/uplot/paths";
 import { GraphOptions, GRAPH_STYLES } from "../types";
-import { getMaxFromArray } from "../../../../utils/math";
 import { getColorFromString } from "../../../../utils/color";
 
 const seriesColors = [
@@ -45,10 +44,30 @@ export const getLabelFromLogHit = (logHit: LogHits) => {
   return fields.map((value) => value || "\"\"").join(", ");
 };
 
-const getYRange = (u: uPlot, _initMin = 0, initMax = 1) => {
-  const maxValues = u.series.filter(({ scale }) => scale === "y").map(({ max }) => max || initMax);
-  const max = getMaxFromArray(maxValues);
-  return getMinMaxBuffer(0, max || initMax);
+const getYRange = (u: uPlot, initMin = 0, initMax = 1) => {
+  const ySeries = u.series.filter(({ scale }) => scale === "y");
+
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const s of ySeries) {
+    const sMin = Number.isFinite(s.min) ? (s.min as number) : initMin;
+    const sMax = Number.isFinite(s.max) ? (s.max as number) : initMax;
+
+    if (sMin < min) min = sMin;
+    if (sMax > max) max = sMax;
+  }
+
+  let lo = Number.isFinite(min) ? min : initMin;
+  let hi = Number.isFinite(max) ? max : initMax;
+
+  // If the whole dataset is non-negative, anchor the lower bound at 0
+  if (lo >= 0) lo = 0;
+
+  // If the whole dataset is non-positive, anchor the upper bound at 0
+  if (hi <= 0) hi = 0;
+
+  return getMinMaxBuffer(lo, hi);
 };
 
 const useBarHitsOptions = ({

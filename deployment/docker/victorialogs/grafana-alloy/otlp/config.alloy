@@ -26,7 +26,7 @@ otelcol.receiver.prometheus "default" {
 
 otelcol.exporter.otlphttp "default" {
   client {
-    endpoint = "http://victorialogs:9428/insert/opentelemetry"
+    endpoint = "http://vlagent:9429/insert/opentelemetry"
     headers  = { "VL-Stream-Fields" = "container_name" }
   }
   metrics_endpoint = "http://victoriametrics:8428/opentelemetry/v1/metrics"

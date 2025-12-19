@@ -1687,7 +1687,7 @@ func (p *part) searchByTenantIDs(pso *partitionSearchOptions, qs *QueryStats, bh
 				return !bhs[i].streamID.tenantID.less(tenantID)
 			})
 			bhs = bhs[n:]
-			for len(bhs) > 0 && bhs[0].streamID.tenantID.equal(tenantID) {
+			for len(bhs) > 0 && bhs[0].streamID.tenantID.Equal(tenantID) {
 				bh := &bhs[0]
 				bhs = bhs[1:]
 				th := &bh.timestampsHeader

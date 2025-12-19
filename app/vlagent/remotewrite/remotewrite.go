@@ -23,7 +23,7 @@ import (
 
 var (
 	remoteWriteURLs = flagutil.NewArrayString("remoteWrite.url", "Remote storage URL to write data to. It must support VictoriaLogs native protocol. "+
-		"Example url: http://<victorialogs-host>:9428/internal/insert. "+
+		"Example url: http://<victorialogs-host>:9428/insert/native. "+
 		"Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.")
 	maxPendingBytesPerURL = flagutil.NewArrayBytes("remoteWrite.maxDiskUsagePerURL", 0, "The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath "+
 		"for each -remoteWrite.url. When buffer size reaches the configured maximum, then old data is dropped when adding new data to the buffer. "+

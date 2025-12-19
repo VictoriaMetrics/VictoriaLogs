@@ -170,6 +170,8 @@ For example, the following command starts VictoriaLogs, which writes syslog mess
 ./victoria-logs -syslog.listenAddr.tcp=:514 -syslog.tenantID.tcp=12:34
 ```
 
+See [how to configure `vlagent` for storing syslog logs for the given tenants](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
+
 ## Stream fields
 
 VictoriaLogs uses `(hostname, app_name, proc_id)` fields as [log stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.

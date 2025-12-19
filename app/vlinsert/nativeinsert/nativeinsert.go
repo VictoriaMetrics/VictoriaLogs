@@ -1,4 +1,4 @@
-package internalinsert
+package nativeinsert
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/metrics"
 
@@ -16,10 +17,14 @@ import (
 )
 
 var (
-	maxRequestSize = flagutil.NewBytes("internalinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /internal/insert HTTP endpoint")
+	maxRequestSize = flagutil.NewBytes("nativeinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /insert/native HTTP endpoint")
 )
 
-// RequestHandler processes /internal/insert requests.
+// RequestHandler processes /insert/native requests.
+//
+// This handler uses the same data format as /internal/insert;
+// the distinction is that this handler supports all the data ingestion HTTP parameters.
+// See https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	if r.Method != "POST" {
@@ -46,22 +51,24 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	encoding := r.Header.Get("Content-Encoding")
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
-		lmp := cp.NewLogMessageProcessor("internalinsert", false)
+		lmp := cp.NewLogMessageProcessor("nativeinsert", false)
 		irp := lmp.(insertutil.InsertRowProcessor)
-		err := parseData(irp, data)
+		err := parseData(irp, data, cp.TenantID)
 		lmp.MustClose()
 		return err
 	})
 	if err != nil {
 		errorsTotal.Inc()
-		httpserver.Errorf(w, r, "cannot parse internal insert request: %s", err)
+		httpserver.Errorf(w, r, "cannot parse native insert request: %s", err)
 		return
 	}
 
 	requestDuration.UpdateDuration(startTime)
 }
 
-func parseData(irp insertutil.InsertRowProcessor, data []byte) error {
+func parseData(irp insertutil.InsertRowProcessor, data []byte, tenantID logstorage.TenantID) error {
+	var zeroTenantID logstorage.TenantID
+
 	r := logstorage.GetInsertRow()
 	defer logstorage.PutInsertRow(r)
 
@@ -75,15 +82,25 @@ func parseData(irp insertutil.InsertRowProcessor, data []byte) error {
 		src = tail
 		i++
 
+		if !r.TenantID.Equal(&zeroTenantID) && !r.TenantID.Equal(&tenantID) {
+			invalidTenantIDLogger.Warnf("use %q from AccountID and ProjectID request headers as tenantID for the log entry instead of %q; "+
+				"see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy ; "+
+				"log entry: %s", tenantID, r.TenantID, logstorage.MarshalFieldsToJSON(nil, r.Fields))
+		}
+
+		r.TenantID = tenantID
+
 		irp.AddInsertRow(r)
 	}
 
 	return nil
 }
 
-var (
-	requestsTotal = metrics.NewCounter(`vl_http_requests_total{path="/internal/insert"}`)
-	errorsTotal   = metrics.NewCounter(`vl_http_errors_total{path="/internal/insert"}`)
+var invalidTenantIDLogger = logger.WithThrottler("invalid_tenant_id", 5*time.Second)
 
-	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/internal/insert"}`)
+var (
+	requestsTotal = metrics.NewCounter(`vl_http_requests_total{path="/insert/native"}`)
+	errorsTotal   = metrics.NewCounter(`vl_http_errors_total{path="/insert/native"}`)
+
+	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/native"}`)
 )

@@ -935,7 +935,7 @@ func (sp *tagToStreamIDsRowParser) InitOnlyTail(tail []byte) error {
 //
 // Prefix contains (tenantID:name:value)
 func (sp *tagToStreamIDsRowParser) EqualPrefix(x *tagToStreamIDsRowParser) bool {
-	if !sp.TenantID.equal(&x.TenantID) {
+	if !sp.TenantID.Equal(&x.TenantID) {
 		return false
 	}
 	if !sp.Tag.equal(&x.Tag) {

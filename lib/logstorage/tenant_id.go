@@ -33,8 +33,8 @@ func (tid TenantID) String() string {
 	return fmt.Sprintf("{accountID=%d,projectID=%d}", tid.AccountID, tid.ProjectID)
 }
 
-// equal returns true if tid equals to a.
-func (tid *TenantID) equal(a *TenantID) bool {
+// Equal returns true if tid equals to a.
+func (tid *TenantID) Equal(a *TenantID) bool {
 	return tid.AccountID == a.AccountID && tid.ProjectID == a.ProjectID
 }
 
