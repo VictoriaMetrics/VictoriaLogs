@@ -898,6 +898,25 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	m := make(map[string]*statsSeries)
 	var mLock sync.Mutex
 
+	addPoint := func(name string, labels []logstorage.Field, p statsPoint) {
+		dst := append([]byte{}, name...)
+		dst = logstorage.MarshalFieldsToJSON(dst, labels)
+		key := string(dst)
+
+		mLock.Lock()
+		ss := m[key]
+		if ss == nil {
+			ss = &statsSeries{
+				key:    key,
+				Name:   name,
+				Labels: labels,
+			}
+			m[key] = ss
+		}
+		ss.Points = append(ss.Points, p)
+		mLock.Unlock()
+	}
+
 	writeBlock := func(_ uint, db *logstorage.DataBlock) {
 		rowsCount := db.RowsCount()
 
@@ -928,32 +947,42 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 				}
 			}
 
-			var dst []byte
 			for j, c := range columns {
-				if !slices.Contains(labelFields, c.Name) {
-					name := clonedColumnNames[j]
-					dst = dst[:0]
-					dst = append(dst, name...)
-					dst = logstorage.MarshalFieldsToJSON(dst, labels)
-					key := string(dst)
-					p := statsPoint{
-						Timestamp: ts,
-						Value:     strings.Clone(c.Values[i]),
-					}
-
-					mLock.Lock()
-					ss := m[key]
-					if ss == nil {
-						ss = &statsSeries{
-							key:    key,
-							Name:   name,
-							Labels: labels,
-						}
-						m[key] = ss
-					}
-					ss.Points = append(ss.Points, p)
-					mLock.Unlock()
+				if slices.Contains(labelFields, c.Name) {
+					continue
 				}
+
+				v := strings.Clone(c.Values[i])
+				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
+					// Special case - the value is the result of histogram() stats function.
+					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+					// Convert it to values for individual buckets.
+					var buckets []histogramBucket
+					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
+						name := clonedColumnNames[j] + "_bucket"
+						for _, bucket := range buckets {
+							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
+							copy(bucketLabels, labels)
+							bucketLabels = append(bucketLabels, logstorage.Field{
+								Name:  "vmrange",
+								Value: bucket.VMRange,
+							})
+							p := statsPoint{
+								Timestamp: ts,
+								Value:     strconv.FormatUint(bucket.Hits, 10),
+							}
+							addPoint(name, bucketLabels, p)
+						}
+
+						continue
+					}
+				}
+
+				p := statsPoint{
+					Timestamp: ts,
+					Value:     v,
+				}
+				addPoint(clonedColumnNames[j], labels, p)
 			}
 		}
 	}
@@ -1044,18 +1073,51 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 			}
 
 			for j, c := range columns {
-				if !slices.Contains(labelFields, c.Name) {
-					r := statsRow{
-						Name:      clonedColumnNames[j],
-						Labels:    labels,
-						Timestamp: timestamp,
-						Value:     strings.Clone(c.Values[i]),
-					}
-
-					rowsLock.Lock()
-					rows = append(rows, r)
-					rowsLock.Unlock()
+				if slices.Contains(labelFields, c.Name) {
+					continue
 				}
+
+				v := strings.Clone(c.Values[i])
+				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
+					// Special case - the value is the result of histogram() stats function.
+					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+					// Convert it to values for individual buckets.
+					var buckets []histogramBucket
+					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
+						name := clonedColumnNames[j] + "_bucket"
+						bucketRows := make([]statsRow, 0, len(buckets))
+						for _, bucket := range buckets {
+							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
+							copy(bucketLabels, labels)
+							bucketLabels = append(bucketLabels, logstorage.Field{
+								Name:  "vmrange",
+								Value: bucket.VMRange,
+							})
+							bucketRows = append(bucketRows, statsRow{
+								Name:      name,
+								Labels:    bucketLabels,
+								Timestamp: timestamp,
+								Value:     strconv.FormatUint(bucket.Hits, 10),
+							})
+						}
+						rowsLock.Lock()
+						rows = append(rows, bucketRows...)
+						rowsLock.Unlock()
+
+						continue
+					}
+				}
+
+				r := statsRow{
+					Name:      clonedColumnNames[j],
+					Labels:    labels,
+					Timestamp: timestamp,
+					Value:     v,
+				}
+
+				rowsLock.Lock()
+				rows = append(rows, r)
+				rowsLock.Unlock()
 			}
 		}
 	}
@@ -1086,6 +1148,11 @@ type statsRow struct {
 	Labels    []logstorage.Field
 	Timestamp int64
 	Value     string
+}
+
+type histogramBucket struct {
+	VMRange string `json:"vmrange"`
+	Hits    uint64 `json:"hits"`
 }
 
 // ProcessQueryRequest handles /select/logsql/query request.

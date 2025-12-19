@@ -12,9 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 type client interface {
@@ -44,7 +45,7 @@ type kubernetesCollector struct {
 // startKubernetesCollector starts watching Kubernetes cluster on the given node and starts collecting container logs.
 // The collector monitors container logs in the specified logsPath directory and uses checkpointsPath to track reading progress.
 // The caller must call stop() when the kubernetesCollector is no longer needed.
-func startKubernetesCollector(client client, currentNode, logsPath, checkpointsPath string) (*kubernetesCollector, error) {
+func startKubernetesCollector(client client, currentNode, logsPath, checkpointsPath string, excludeFilter *logstorage.Filter) (*kubernetesCollector, error) {
 	_, err := os.Stat(logsPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access logs dir: %w", err)
@@ -63,7 +64,7 @@ func startKubernetesCollector(client client, currentNode, logsPath, checkpointsP
 	newProcessor := func(commonFields []logstorage.Field) processor {
 		return newLogFileProcessor(storage, commonFields)
 	}
-	fc := startFileCollector(checkpointsPath, newProcessor)
+	fc := startFileCollector(checkpointsPath, excludeFilter, newProcessor)
 	c.fileCollector = fc
 
 	c.startWatchCluster(c.ctx)
@@ -183,22 +184,22 @@ func (kc *kubernetesCollector) handleUpdateEvent(data json.RawMessage) {
 var streamFieldNames = []string{"kubernetes.container_name", "kubernetes.pod_name", "kubernetes.pod_namespace"}
 
 func getCommonFields(p pod, cs containerStatus) []logstorage.Field {
-	var dst []logstorage.Field
+	var fs logstorage.Fields
 
 	// Fields should match vector.dev kubernetes_source for easy migration.
-	dst = append(dst, logstorage.Field{Name: "kubernetes.container_name", Value: cs.Name})
-	dst = append(dst, logstorage.Field{Name: "kubernetes.pod_name", Value: p.Metadata.Name})
-	dst = append(dst, logstorage.Field{Name: "kubernetes.pod_namespace", Value: p.Metadata.Namespace})
-	dst = append(dst, logstorage.Field{Name: "kubernetes.container_id", Value: cs.ContainerID})
-	dst = append(dst, logstorage.Field{Name: "kubernetes.pod_ip", Value: p.Status.PodIP})
-	dst = append(dst, logstorage.Field{Name: "kubernetes.pod_node_name", Value: p.Spec.NodeName})
+	fs.Add("kubernetes.container_name", cs.Name)
+	fs.Add("kubernetes.pod_name", p.Metadata.Name)
+	fs.Add("kubernetes.pod_namespace", p.Metadata.Namespace)
+	fs.Add("kubernetes.container_id", cs.ContainerID)
+	fs.Add("kubernetes.pod_ip", p.Status.PodIP)
+	fs.Add("kubernetes.pod_node_name", p.Spec.NodeName)
 
 	for k, v := range p.Metadata.Labels {
 		fieldName := "kubernetes.pod_labels." + k
-		dst = append(dst, logstorage.Field{Name: fieldName, Value: v})
+		fs.Add(fieldName, v)
 	}
 
-	return dst
+	return fs.Fields
 }
 
 func (kc *kubernetesCollector) getLogFilePath(p pod, pc podContainer, cs containerStatus) string {

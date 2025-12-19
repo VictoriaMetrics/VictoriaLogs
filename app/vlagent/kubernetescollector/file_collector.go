@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // processor processes log lines from a single file.
@@ -36,6 +37,13 @@ type fileCollector struct {
 	logFiles     map[string]struct{}
 	logFilesLock sync.RWMutex
 
+	// excludeFilter defines the criteria for excluding log files from processing.
+	// It matches against common metadata fields associated with the log source,
+	// such as 'kubernetes.container_name', 'kubernetes.pod_node_name', or 'kubernetes.pod_namespace'.
+	//
+	// See getCommonFields for the full list of available metadata fields.
+	excludeFilter *logstorage.Filter
+
 	newProcessor func(commonFields []logstorage.Field) processor
 
 	checkpointsDB *checkpointsDB
@@ -50,7 +58,7 @@ type fileCollector struct {
 // The fileCollector maintains a checkpoint file that serves as persistent state storage.
 // This allows resuming log reading from the exact position where it was interrupted
 // when vlagent is restarted, preventing duplication.
-func startFileCollector(checkpointsPath string, newProcessor func(commonFields []logstorage.Field) processor) *fileCollector {
+func startFileCollector(checkpointsPath string, excludeFilter *logstorage.Filter, newProcessor func(commonFields []logstorage.Field) processor) *fileCollector {
 	checkpointsDB, err := startCheckpointsDB(checkpointsPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot start checkpoints DB: %s", err)
@@ -58,6 +66,7 @@ func startFileCollector(checkpointsPath string, newProcessor func(commonFields [
 
 	c := &fileCollector{
 		logFiles:      make(map[string]struct{}),
+		excludeFilter: excludeFilter,
 		newProcessor:  newProcessor,
 		checkpointsDB: checkpointsDB,
 		stopCh:        make(chan struct{}),
@@ -99,6 +108,12 @@ func (fc *fileCollector) startRead(filepath string, commonFields []logstorage.Fi
 
 func (fc *fileCollector) process(lf *logFile) {
 	defer lf.close()
+
+	if fc.excludeFilter != nil && fc.excludeFilter.MatchRow(lf.commonFields) {
+		// Filter matches - skip this file.
+		fc.forgetFile(lf.path)
+		return
+	}
 
 	bt := newBackoffTimer(time.Millisecond*100, time.Second*10)
 	defer bt.stop()
@@ -148,11 +163,7 @@ func (fc *fileCollector) process(lf *logFile) {
 			}
 			continue
 		case logFileStatusDeleted:
-			fc.checkpointsDB.delete(lf.path)
-
-			fc.logFilesLock.Lock()
-			delete(fc.logFiles, lf.path)
-			fc.logFilesLock.Unlock()
+			fc.forgetFile(lf.path)
 
 			if lf.tail != nil {
 				logger.Panicf("BUG: tail must be empty when the log file no longer exists; got: %q", lf.tail.B)
@@ -162,6 +173,16 @@ func (fc *fileCollector) process(lf *logFile) {
 			logger.Panicf("BUG: unexpected log file status")
 		}
 	}
+}
+
+// forgetFile removes the given file from the tracking list and deletes its checkpoint.
+// It is called when the file is not expected to reappear, so its state no longer needs to be stored.
+func (fc *fileCollector) forgetFile(filePath string) {
+	fc.checkpointsDB.delete(filePath)
+
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+	delete(fc.logFiles, filePath)
 }
 
 func (fc *fileCollector) continueFromCheckpoints() {

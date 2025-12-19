@@ -1797,6 +1797,11 @@ func (f *Filter) String() string {
 	return f.f.String()
 }
 
+// MatchRow must return true if the filter matches a row with the given fields.
+func (f *Filter) MatchRow(row []Field) bool {
+	return f.f.matchRow(row)
+}
+
 // ParseFilter parses LogsQL filter
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#filters

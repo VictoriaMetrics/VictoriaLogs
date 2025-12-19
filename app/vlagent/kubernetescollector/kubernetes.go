@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 var (
@@ -21,6 +23,10 @@ var (
 		"Path to the directory with Kubernetes container logs (usually /var/log/containers). "+
 			"This should point to the kubelet-managed directory containing symlinks to pod logs. "+
 			"vlagent must have read access to this directory and to the target log files, typically located under /var/log/pods and /var/lib on the host")
+	excludeFilter = flag.String("kubernetesCollector.excludeFilter", "", "Optional LogsQL filter for excluding container logs. "+
+		"The filter is applied to container metadata fields (e.g., kubernetes.namespace_name, kubernetes.container_name) before reading the log files. "+
+		"This significantly reduces CPU and I/O usage by skipping logs from unwanted containers. "+
+		"See https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs")
 )
 
 var collector *kubernetesCollector
@@ -45,7 +51,15 @@ func Init() {
 		logger.Fatalf("cannot get current node name: %s", err)
 	}
 
-	kc, err := startKubernetesCollector(c, currentNodeName, *logsPath, *checkpointsPath)
+	var excludeF *logstorage.Filter
+	if *excludeFilter != "" {
+		excludeF, err = logstorage.ParseFilter(*excludeFilter)
+		if err != nil {
+			logger.Fatalf("cannot parse LogsQL -kubernetesContainer.excludeFilter=%q: %s", *excludeFilter, err)
+		}
+	}
+
+	kc, err := startKubernetesCollector(c, currentNodeName, *logsPath, *checkpointsPath, excludeF)
 	if err != nil {
 		logger.Fatalf("cannot start kubernetes collector: %s", err)
 	}
