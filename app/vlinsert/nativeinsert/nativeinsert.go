@@ -50,19 +50,19 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(cp.TimeFields) > 0 {
-		logger.Warnf("/insert/native endpoint doesn't support setting time fields; ignoring them; timeField=%q", cp.TimeFields)
+		logger.Warnf("/insert/native endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; ignoring them; timeFields=%q", cp.TimeFields)
 		cp.TimeFields = nil
 	}
 	if len(cp.MsgFields) > 0 {
-		logger.Warnf("/insert/native endpoint doesn't support setting msg fields; ignoring them; msgField=%q", cp.MsgFields)
+		logger.Warnf("/insert/native endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; ignoring them; msgFields=%q", cp.MsgFields)
 		cp.MsgFields = nil
 	}
 	if len(cp.StreamFields) > 0 {
-		logger.Warnf("/insert/native endpoint doesn't support setting stream fields; ignoring them; streamField=%q", cp.StreamFields)
+		logger.Warnf("/insert/native endpoint doesn't support setting stream fields via _stream_fields query arg and via VL-Stream-Fields request header; ignoring them; streamFields=%q", cp.StreamFields)
 		cp.StreamFields = nil
 	}
 	if len(cp.DecolorizeFields) > 0 {
-		logger.Warnf("/insert/native endpoint doesn't support setting decolorize fields; ignoring them; decolorizeField=%q", cp.DecolorizeFields)
+		logger.Warnf("/insert/native endpoint doesn't support setting decolorize_fields query arg and VL-Decolorize-Fields request header; ignoring them; decolorizeFields=%q", cp.DecolorizeFields)
 		cp.DecolorizeFields = nil
 	}
 
