@@ -107,40 +107,99 @@ func TestProcessor(t *testing.T) {
 	f(in, expectedContents)
 }
 
-func BenchmarkProcessorFullLines(b *testing.B) {
-	data := [][]byte{
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr F foo`),
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr F bar`),
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr F buz`),
-	}
-	benchmarkProcessor(b, data)
-}
+func TestParseKlog(t *testing.T) {
+	f := func(src, fieldsExpected string, timestampExpected int64) {
+		t.Helper()
 
-func BenchmarkProcessorPartialLines(b *testing.B) {
-	in := [][]byte{
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr P foo`),
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr P bar`),
-		[]byte(`2025-10-16T15:37:36.330062387Z stderr F buz`),
-	}
-	benchmarkProcessor(b, in)
-}
-
-func benchmarkProcessor(b *testing.B, logLines [][]byte) {
-	totalSize := 0
-	for _, s := range logLines {
-		totalSize += len(s)
-	}
-	b.SetBytes(int64(totalSize))
-
-	storage := &benchmarkStorage{}
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			proc := newLogFileProcessor(storage, nil)
-			for _, s := range logLines {
-				proc.tryAddLine(s)
-			}
+		timestamp, fields, ok := tryParseKlog(nil, src)
+		if !ok {
+			t.Fatalf("cannot parse klog line %q", src)
 		}
-	})
+
+		got := logstorage.MarshalFieldsToJSON(nil, fields)
+		if string(got) != fieldsExpected {
+			t.Fatalf("unexpected result; got:\n%s\nwant:\n%s", got, fieldsExpected)
+		}
+
+		if timestamp != timestampExpected {
+			t.Fatalf("unexpected timestamp; got %d; want %d", timestamp, timestampExpected)
+		}
+	}
+
+	// Parse simple line
+	in := `I1215 07:34:12.017826       94 serving.go:374] foobar`
+	want := `{"level":"INFO","thread_id":"94","source_line":"serving.go:374","_msg":"foobar"}`
+	timestampExpected := int64(1765784052017826000)
+	f(in, want, timestampExpected)
+
+	// Parse multiple words
+	in = `I1215 07:34:12.017826       24 serving.go:374] Generated self-signed cert (/tmp/apiserver.crt, /tmp/apiserver.key)`
+	want = `{"level":"INFO","thread_id":"24","source_line":"serving.go:374","_msg":"Generated self-signed cert (/tmp/apiserver.crt, /tmp/apiserver.key)"}`
+	timestampExpected = 1765784052017826000
+	f(in, want, timestampExpected)
+
+	// Parse key="value" pair
+	in = `I1215 07:34:11.695645       42 controller.go:824] "Starting provisioner controller" component="rancher.io/local-path_local-path-provisioner-5cf85fd84d-bf8vk_626b5057-e081-4b71-9a19-5e371ae0211b"`
+	want = `{"level":"INFO","thread_id":"42","source_line":"controller.go:824","_msg":"Starting provisioner controller","component":"rancher.io/local-path_local-path-provisioner-5cf85fd84d-bf8vk_626b5057-e081-4b71-9a19-5e371ae0211b"}`
+	timestampExpected = 1765784051695645000
+	f(in, want, timestampExpected)
+
+	// Parse key="value" pairs
+	in = `I1215 10:34:26.907803       1 server.go:191] "Failed probe" probe="metric-storage-ready" err="no metrics to serve"`
+	want = `{"level":"INFO","thread_id":"1","source_line":"server.go:191","_msg":"Failed probe","probe":"metric-storage-ready","err":"no metrics to serve"}`
+	timestampExpected = 1765794866907803000
+	f(in, want, timestampExpected)
+
+	// Parse quoted msg without additional fields
+	in = `I1215 07:34:12.324492       1234 tlsconfig.go:240] "Starting DynamicServingCertificateController"`
+	want = `{"level":"INFO","thread_id":"1234","source_line":"tlsconfig.go:240","_msg":"Starting DynamicServingCertificateController"}`
+	timestampExpected = 1765784052324492000
+	f(in, want, timestampExpected)
+}
+
+func TestParseKlogFailure(t *testing.T) {
+	f := func(src string) {
+		t.Helper()
+
+		_, fields, ok := tryParseKlog(nil, src)
+		if ok {
+			got := logstorage.MarshalFieldsToJSON(nil, fields)
+			t.Fatalf("unexpected success; got\n%s", got)
+		}
+	}
+
+	// Empty line
+	f(``)
+	f(`   `)
+
+	// Invalid timestamp
+	f(`I foobar`)
+	f(`Ifoobar`)
+	f(`I1215 01:34:12.000000999 1 main.go:1] foo`)
+	f(`I1215 01:34:12.000000`)
+	f(`I1215 01:34:12.`)
+	f(`I1215 01:34`)
+	f(`I1215 01`)
+	f(`I1215 `)
+	f(`I1215`)
+	f(`I12`)
+	f(`I`)
+
+	// Missing msg
+	f(`I1215 07:34:12.017826       1 serving.go:374] `)
+	f(`I1215 07:34:12.017826       1 serving.go:374]`)
+	f(`I1215 07:34:12.017826       1 serving.go:374`)
+
+	// Missing thread ID
+	f(`I1215 07:34:12.017826`)
+	f(`I1215 07:34:12.017826 `)
+	f(`I1215 07:34:12.324492 1234tlsconfig.go:240] foo`)
+
+	// Unfinished quoted msg
+	f(`I1215 07:34:12.324492       1234 tlsconfig.go:240] "Starting`)
+
+	// Unfinished key="value" pair
+	f(`I1215 07:34:12.324309       1 configmap_cafile_content.go:202] "Starting controller" name="client-`)
 }
 
 func TestParseCRILine(t *testing.T) {
@@ -173,17 +232,6 @@ func TestParseCRILine(t *testing.T) {
 	// Content with spaces
 	f(`2025-10-16T15:37:36Z stdout F  `, 1760629056000000000, false, " ")
 	f(`2025-10-16T15:37:36Z stdout F      `, 1760629056000000000, false, "     ")
-}
-
-func BenchmarkParseCRILine(b *testing.B) {
-	line := []byte(`2025-10-16T15:37:36.330062387Z stderr F foo bar baz`)
-
-	for b.Loop() {
-		_, err := parseCRILine(line)
-		if err != nil {
-			b.Fatalf("cannot parse CRI log line: %s", err)
-		}
-	}
 }
 
 // Storage implements insertutil.LogRowsStorage interface
@@ -259,13 +307,4 @@ func removeRepeats(s string) string {
 	}
 
 	return sb.String()
-}
-
-type benchmarkStorage struct{}
-
-func (s *benchmarkStorage) MustAddRows(*logstorage.LogRows) {
-}
-
-func (s *benchmarkStorage) CanWriteData() error {
-	return nil
 }

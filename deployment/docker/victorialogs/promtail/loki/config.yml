@@ -6,7 +6,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: http://victorialogs:9428/insert/loki/api/v1/push?_stream_fields=instance,job,host,app
+  - url: http://vlagent:9429/insert/loki/api/v1/push?_stream_fields=instance,job,host,app
     tenant_id: "0:0"
 
 scrape_configs:

@@ -6,7 +6,7 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ${PWD}/fluent.conf:/fluentd/etc/fluent.conf
-    depends_on: [victorialogs]
+    depends_on: [vlagent]
     ports:
       - "5140:5140"
       - "24224:24224"

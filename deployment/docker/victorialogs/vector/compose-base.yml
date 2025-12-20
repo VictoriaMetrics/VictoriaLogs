@@ -2,7 +2,7 @@ include:
  - ../compose-base.yml
 services:
   vector:
-    image: docker.io/timberio/vector:0.42.X-distroless-libc
+    image: docker.io/timberio/vector:0.51.X-distroless-libc
     restart: on-failure
     volumes:
       - type: bind
@@ -16,7 +16,9 @@ services:
     ports:
       - '8686:8686'
     depends_on:
-      victorialogs:
+      vmauth:
+        condition: service_healthy
+      vlagent:
         condition: service_healthy
       victoriametrics:
         condition: service_healthy

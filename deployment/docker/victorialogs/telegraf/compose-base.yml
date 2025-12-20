@@ -14,7 +14,9 @@ services:
       - ${PWD}/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     command: --config /etc/telegraf/telegraf.conf
     depends_on:
-      victorialogs:
+      vmauth:
+        condition: service_healthy
+      vlagent:
         condition: service_healthy
       victoriametrics:
         condition: service_healthy

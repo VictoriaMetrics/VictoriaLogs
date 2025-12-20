@@ -6,7 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
@@ -19,7 +22,7 @@ import (
 
 var (
 	tenantID = flag.String("kubernetesCollector.tenantID", "0:0",
-		"Default tenant ID to use for logs collected from Kubernetes pods in format: <accountID>:<projectID>")
+		"Default tenant ID to use for logs collected from Kubernetes pods in format: <accountID>:<projectID>. See https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy")
 	ignoreFields     = flagutil.NewArrayString("kubernetesCollector.ignoreFields", "Fields to ignore across logs ingested from Kubernetes")
 	decolorizeFields = flagutil.NewArrayString("kubernetesCollector.decolorizeFields", "Fields to remove ANSI color codes across logs ingested from Kubernetes")
 	msgField         = flagutil.NewArrayString("kubernetesCollector.msgField", "Fields that may contain the _msg field. "+
@@ -28,7 +31,7 @@ var (
 		"Default: time,timestamp,ts. If none of the specified fields is found in the log line, then the write time will be used. "+
 		"See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field")
 	extraFields = flag.String("kubernetesCollector.extraFields", "", "Extra fields to add to each log line collected from Kubernetes pods in JSON format. "+
-		`For example: -kubernetes.extraFields='{"cluster":"cluster-1","env":"production"}'`)
+		`For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'`)
 )
 
 type logFileProcessor struct {
@@ -176,30 +179,21 @@ func (lfp *logFileProcessor) joinPartialLines(criLine criLine) (int64, []byte, b
 	return criLine.timestamp, content, true
 }
 
-func (lfp *logFileProcessor) addLineInternal(timestamp int64, line []byte) {
+func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 	parser := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(parser)
 
-	ok := parseLogRowContent(parser, line)
+	timestamp, ok := parseLogRowContent(parser, line)
 	if !ok {
 		parser.Fields = append(parser.Fields, logstorage.Field{
 			Name:  "_msg",
 			Value: bytesutil.ToUnsafeString(line),
 		})
-	} else {
-		// vlagent should override the timestamp from CRI to the timestamp parsed from the log line.
-		n := fieldIndex(parser.Fields, getTimeFields())
-		if n >= 0 {
-			f := &parser.Fields[n]
-			v, ok := logstorage.TryParseTimestampRFC3339Nano(f.Value)
-			if ok {
-				timestamp = v
-				// Set the time field to empty string to ignore it during data ingestion.
-				f.Value = ""
-			}
-		}
+	}
 
-		logstorage.RenameField(parser.Fields, getMsgFields(), "_msg")
+	if timestamp <= 0 {
+		// Timestamp from the log line is missing or invalid, use the timestamp from Container Runtime Interface.
+		timestamp = criTimestamp
 	}
 
 	if len(parser.Fields) > 1000 {
@@ -221,27 +215,171 @@ func (lfp *logFileProcessor) addRow(timestamp int64, fields []logstorage.Field) 
 	lfp.lr.ResetKeepSettings()
 }
 
-func parseLogRowContent(dst *logstorage.JSONParser, data []byte) bool {
+func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 	if len(data) == 0 {
-		return false
+		return 0, false
 	}
 
 	switch data[0] {
 	case '{':
-		err := dst.ParseLogMessage(data)
+		err := p.ParseLogMessage(data)
 		if err != nil {
-			return false
+			return 0, false
 		}
-		return true
+
+		// Try to parse timestamp from the time fields.
+		var timestamp int64
+		n := fieldIndex(p.Fields, getTimeFields())
+		if n >= 0 {
+			f := &p.Fields[n]
+			v, ok := logstorage.TryParseTimestampRFC3339Nano(f.Value)
+			if ok {
+				timestamp = v
+				// Set the time field to empty string to ignore it during data ingestion.
+				f.Value = ""
+			}
+		}
+
+		// Rename the message field to _msg.
+		logstorage.RenameField(p.Fields, getMsgFields(), "_msg")
+
+		return timestamp, true
 	case 'I', 'W', 'E', 'F':
-		// todo: parse klog native format
-		// Template of this format: Lmmdd hh:mm:ss.uuuuuu threadid file:line] "<_msg>" key1="value" key2="value"
-		// See: https://kubernetes.io/docs/concepts/cluster-administration/system-logs/
-	case '1', '2':
-		// todo: parse nginx error log format
-		// Template of this format: yyyy/mm/dd hh:mm:ss [level] pid#tid: *cid message
+		timestamp, fields, ok := tryParseKlog(p.Fields, bytesutil.ToUnsafeString(data))
+		if !ok {
+			return 0, false
+		}
+		p.Fields = fields
+		return timestamp, true
 	}
-	return false
+
+	return 0, false
+}
+
+// tryParseKlog parses the given string in Kubernetes Log format and returns the parsed fields.
+// See https://github.com/kubernetes/klog/
+func tryParseKlog(dst []logstorage.Field, src string) (int64, []logstorage.Field, bool) {
+	if len(src) < len("I0101 00:00:00.000000 1 p:1] m") {
+		return 0, nil, false
+	}
+
+	// Parse level.
+	level := getKlogLevel(src[0])
+	src = src[1:]
+	dst = append(dst, logstorage.Field{Name: "level", Value: level})
+
+	// Parse timestamp.
+	timestampStr := src[:len("0102 15:04:05.000000")]
+	t, err := time.ParseInLocation("0102 15:04:05.000000", timestampStr, time.UTC)
+	if err != nil {
+		return 0, nil, false
+	}
+	src = src[len("0102 15:04:05.000000"):]
+	t = t.AddDate(time.Now().Year(), 0, 0)
+	timestamp := t.UnixNano()
+
+	// Remove trailing spaces.
+	if len(src) == 0 || src[0] != ' ' {
+		return 0, nil, false
+	}
+	src = strings.TrimLeft(src, " ")
+
+	// Parse thread ID.
+	n := strings.IndexByte(src, ' ')
+	if n <= 0 {
+		return 0, nil, false
+	}
+	threadID := src[:n]
+	src = src[n+1:]
+	dst = append(dst, logstorage.Field{Name: "thread_id", Value: threadID})
+
+	// Parse file:line.
+	n = strings.IndexByte(src, ']')
+	if n <= 0 {
+		return 0, nil, false
+	}
+	sourceLine := src[:n]
+	src = src[n+1:]
+	if len(src) == 0 || src[0] != ' ' {
+		return 0, nil, false
+	}
+	src = src[1:]
+	dst = append(dst, logstorage.Field{Name: "source_line", Value: sourceLine})
+
+	// Parse log content.
+	var ok bool
+	dst, ok = tryParseKlogContent(dst, src)
+	if !ok {
+		return 0, nil, false
+	}
+
+	return timestamp, dst, true
+}
+
+func tryParseKlogContent(dst []logstorage.Field, src string) ([]logstorage.Field, bool) {
+	if len(src) == 0 {
+		return dst, false
+	}
+	if src[0] != '"' {
+		// Fast path: message is not quoted and does not contain additional key="value" fields.
+		return append(dst, logstorage.Field{Name: "_msg", Value: src}), true
+	}
+
+	// Slow path: message is quoted and contains additional key="value" fields.
+	prefix, err := strconv.QuotedPrefix(src)
+	if err != nil {
+		return nil, false
+	}
+	msg, err := strconv.Unquote(prefix)
+	if err != nil {
+		return nil, false
+	}
+	src = src[len(prefix):]
+	dst = append(dst, logstorage.Field{Name: "_msg", Value: msg})
+
+	// Parse key="value" pairs.
+	for len(src) > 0 {
+		if src[0] == ' ' {
+			src = src[1:]
+		}
+
+		n := strings.IndexByte(src, '=')
+		if n <= 0 {
+			return nil, false
+		}
+		key := src[:n]
+		src = src[n+1:]
+
+		prefix, err := strconv.QuotedPrefix(src)
+		if err != nil {
+			return nil, false
+		}
+		value, err := strconv.Unquote(prefix)
+		if err != nil {
+			return nil, false
+		}
+		src = src[len(prefix):]
+
+		dst = append(dst, logstorage.Field{Name: key, Value: value})
+	}
+
+	return dst, true
+}
+
+// getKlogLevel returns the string representation of the given klog level character.
+// See https://github.com/kubernetes/klog/blob/main/internal/severity/severity.go#L41-L47
+func getKlogLevel(l byte) string {
+	switch l {
+	case 'I':
+		return "INFO"
+	case 'W':
+		return "WARNING"
+	case 'E':
+		return "ERROR"
+	case 'F':
+		return "FATAL"
+	}
+	return "UNKNOWN"
 }
 
 func fieldIndex(fields []logstorage.Field, names []string) int {
@@ -367,7 +505,7 @@ func getTenantID() logstorage.TenantID {
 func initTenantID() {
 	v, err := logstorage.ParseTenantID(*tenantID)
 	if err != nil {
-		logger.Fatalf("cannot parse -kubernetes.tenantID=%q: %s", *tenantID, err)
+		logger.Fatalf("cannot parse -kubernetesCollector.tenantID=%q: %s", *tenantID, err)
 	}
 	parsedTenantID = v
 }
@@ -387,7 +525,7 @@ func initExtraFields() {
 
 	p := logstorage.GetJSONParser()
 	if err := p.ParseLogMessage([]byte(*extraFields)); err != nil {
-		logger.Fatalf("cannot parse -kubernetes.extraFields=%q: %s", *extraFields, err)
+		logger.Fatalf("cannot parse -kubernetesCollector.extraFields=%q: %s", *extraFields, err)
 	}
 
 	fields := p.Fields

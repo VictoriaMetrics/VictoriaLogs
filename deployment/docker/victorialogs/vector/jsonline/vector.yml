@@ -18,7 +18,7 @@ sinks:
     type: http
     inputs:
       - msg_parser
-    uri: http://victorialogs:9428/insert/jsonline
+    uri: http://vlagent:9429/insert/jsonline
     encoding:
       codec: json
     framing:

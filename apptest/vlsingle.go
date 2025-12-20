@@ -90,7 +90,7 @@ func (app *Vlsingle) JSONLineWrite(t *testing.T, records []string, opts IngestOp
 }
 
 // NativeWrite is a test helper function that sends a collection of records
-// to /internal/insert API.
+// to /insert/native API.
 //
 // See https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vlinsert/internalinsert/internalinsert.go
 func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, opts QueryOpts) {
@@ -99,7 +99,7 @@ func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, o
 	for _, record := range records {
 		data = record.Marshal(data)
 	}
-	dstURL := fmt.Sprintf("http://%s/internal/insert", app.httpListenAddr)
+	dstURL := fmt.Sprintf("http://%s/insert/native", app.httpListenAddr)
 	uv := opts.asURLValues()
 	uv.Add("version", "v1")
 	dstURL += "?" + uv.Encode()

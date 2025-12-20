@@ -115,7 +115,8 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context) {
 					return
 				}
 
-				if errors.Is(err, io.EOF) && time.Since(lastEOF) > time.Minute {
+				isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+				if isEOF && time.Since(lastEOF) > time.Minute {
 					// Kubernetes API server closed the connection.
 					// This is expected to happen from time to time.
 					// Ignore EOF errors happening not more often than once per minute.

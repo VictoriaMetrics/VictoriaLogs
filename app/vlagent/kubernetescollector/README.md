@@ -32,7 +32,7 @@ You can change the kubeconfig path via the `KUBECONFIG` environment variable.
 3. Run vlagent with Kubernetes discovery enabled:
 
 ```bash
-./vlagent -remoteWrite.url=http://localhost:9428/internal/insert -kubernetes
+./vlagent -remoteWrite.url=http://localhost:9428/insert/native -kubernetesCollector
 ```
 
 vlagent connects to the Kubernetes API to discover pods and containers running in the cluster.

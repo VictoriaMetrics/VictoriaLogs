@@ -1044,6 +1044,9 @@ All the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/query
   which must be applied to the `query` before returning results. Multiple `extra_stream_filters` args may be passed in a single request.
   All the stream filters across all the `extra_stream_filters` args are applied to the `query` then.
 
+Note that `extra_filters` and `extra_stream_filters` are global constraints. They are unconditionally propagated into all the subqueries
+inside the `query` (for example, queries inside `| join ... (...)`, `| union(...)`, `...:in(<query>)`, etc). This behavior is needed for reliable access control (e.g. restricting queries to a subset of logs) - otherwise it can be bypassed via subqueries.
+
 The `extra_filters` and `extra_stream_filters` values can have the following format:
 
 - JSON object with `"field":"value"` entries. For example, the following JSON applies `namespace:=my-app and env:=prod` filter to the `query`

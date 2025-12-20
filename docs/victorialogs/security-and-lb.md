@@ -271,7 +271,11 @@ VictoriaLogs will assume that the corresponding header has a value of 0.
 
 `VictoriaLogs` can apply extra filters for each request to the select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
 This is useful when you need to give access to a subset of data within a single tenant.
-If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`:
+If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`.
+
+`extra_filters` are enforced globally - they are propagated into all the subqueries inside the provided `query`. This makes it impossible to bypass the restrictions via `join`, `union`, `in(<query>)` and other subqueries.
+
+Consider the example below:
 
 ```yaml
 users:

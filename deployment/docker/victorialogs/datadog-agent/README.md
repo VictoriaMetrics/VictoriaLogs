@@ -18,9 +18,11 @@ docker compose down -v
 
 The docker compose file contains the following components:
 
-* datadog - Datadog logs collection agent, which is configured to collect and write data to `victorialogs`
-* victorialogs - VictoriaLogs log database, which accepts the data from `datadog`
-* victoriametrics - VictoriaMetrics metrics database, collects metrics from `victorialogs` and `datadog`
+* datadog - Datadog logs collection agent, which is configured to collect and write data to `vlagent`
+* vlagent - agent, that replicates log data to `victorialogs-x` instances
+* victorialogs-x - logs database instances, receive data from `vlagent` agent
+* vmauth - proxy that serves as a query entrypoint for `victorialogs-x` instances
+* victoriametrics - metrics database, which collects metrics from `datadog` for observability purposes
 
 ## Querying
 

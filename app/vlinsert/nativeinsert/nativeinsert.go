@@ -1,0 +1,123 @@
+package nativeinsert
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
+	"github.com/VictoriaMetrics/metrics"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage/netinsert"
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+)
+
+var (
+	maxRequestSize = flagutil.NewBytes("nativeinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /insert/native HTTP endpoint")
+)
+
+// RequestHandler processes /insert/native requests.
+//
+// This handler uses the same data format as /internal/insert;
+// the distinction is that this handler supports all the data ingestion HTTP parameters.
+// See https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters
+func RequestHandler(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	version := r.FormValue("version")
+	if version != netinsert.ProtocolVersion {
+		httpserver.Errorf(w, r, "unsupported protocol version=%q; want %q", version, netinsert.ProtocolVersion)
+		return
+	}
+
+	requestsTotal.Inc()
+
+	cp, err := insertutil.GetCommonParams(r)
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	if err := insertutil.CanWriteData(); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+
+	if len(cp.TimeFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; ignoring them; timeFields=%q", cp.TimeFields)
+		cp.TimeFields = nil
+	}
+	if len(cp.MsgFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; ignoring them; msgFields=%q", cp.MsgFields)
+		cp.MsgFields = nil
+	}
+	if len(cp.StreamFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting stream fields via _stream_fields query arg and via VL-Stream-Fields request header; ignoring them; streamFields=%q", cp.StreamFields)
+		cp.StreamFields = nil
+	}
+	if len(cp.DecolorizeFields) > 0 {
+		logger.Warnf("/insert/native endpoint doesn't support setting decolorize_fields query arg and VL-Decolorize-Fields request header; ignoring them; decolorizeFields=%q", cp.DecolorizeFields)
+		cp.DecolorizeFields = nil
+	}
+
+	encoding := r.Header.Get("Content-Encoding")
+	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
+		lmp := cp.NewLogMessageProcessor("nativeinsert", false)
+		irp := lmp.(insertutil.InsertRowProcessor)
+		err := parseData(irp, data, cp.TenantID)
+		lmp.MustClose()
+		return err
+	})
+	if err != nil {
+		errorsTotal.Inc()
+		httpserver.Errorf(w, r, "cannot parse native insert request: %s", err)
+		return
+	}
+
+	requestDuration.UpdateDuration(startTime)
+}
+
+func parseData(irp insertutil.InsertRowProcessor, data []byte, tenantID logstorage.TenantID) error {
+	var zeroTenantID logstorage.TenantID
+
+	r := logstorage.GetInsertRow()
+	defer logstorage.PutInsertRow(r)
+
+	src := data
+	i := 0
+	for len(src) > 0 {
+		tail, err := r.UnmarshalInplace(src)
+		if err != nil {
+			return fmt.Errorf("cannot parse row #%d: %s", i, err)
+		}
+		src = tail
+		i++
+
+		if !r.TenantID.Equal(&zeroTenantID) && !r.TenantID.Equal(&tenantID) {
+			invalidTenantIDLogger.Warnf("use %q from AccountID and ProjectID request headers as tenantID for the log entry instead of %q; "+
+				"see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy ; "+
+				"log entry: %s", tenantID, r.TenantID, logstorage.MarshalFieldsToJSON(nil, r.Fields))
+		}
+
+		r.TenantID = tenantID
+
+		irp.AddInsertRow(r)
+	}
+
+	return nil
+}
+
+var invalidTenantIDLogger = logger.WithThrottler("invalid_tenant_id", 5*time.Second)
+
+var (
+	requestsTotal = metrics.NewCounter(`vl_http_requests_total{path="/insert/native"}`)
+	errorsTotal   = metrics.NewCounter(`vl_http_errors_total{path="/insert/native"}`)
+
+	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/native"}`)
+)

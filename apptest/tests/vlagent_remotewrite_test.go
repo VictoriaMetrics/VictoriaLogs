@@ -29,7 +29,7 @@ func TestVlagentRemoteWrite(t *testing.T) {
 	}
 
 	sut := tc.MustStartVlsingle(instance, sutFlags)
-	remoteWriteURL := fmt.Sprintf("http://%s/internal/insert", sut.HTTPAddr())
+	remoteWriteURL := fmt.Sprintf("http://%s/insert/native", sut.HTTPAddr())
 
 	vlagent := tc.MustStartDefaultVlagent([]string{remoteWriteURL})
 	vlagent.JSONLineWrite(t, []string{
@@ -95,8 +95,8 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	sutR1 := tc.MustStartVlsingle(instanceReplica1, sutFlagsR1)
 
 	vlagentRemoteWriteURLs := []string{
-		fmt.Sprintf("http://%s/internal/insert", sutR0.HTTPAddr()),
-		fmt.Sprintf("http://%s/internal/insert", sutR1.HTTPAddr()),
+		fmt.Sprintf("http://%s/insert/native", sutR0.HTTPAddr()),
+		fmt.Sprintf("http://%s/insert/native", sutR1.HTTPAddr()),
 	}
 	vlagentFlags := []string{
 		"-remoteWrite.tmpDataPath=" + fmt.Sprintf("%s/%s-%d", os.TempDir(), vlagentInstance, time.Now().UnixNano()),
