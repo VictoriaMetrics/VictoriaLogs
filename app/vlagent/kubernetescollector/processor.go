@@ -32,6 +32,15 @@ var (
 		"See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field")
 	extraFields = flag.String("kubernetesCollector.extraFields", "", "Extra fields to add to each log line collected from Kubernetes pods in JSON format. "+
 		`For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'`)
+
+	includePodLabels = flag.Bool("kubernetesCollector.includePodLabels", true, "Include Pod labels as additional fields in the log entries. "+
+		"Even this setting is disabled, Pod labels are available for filtering via -kubernetes.excludeFilter flag")
+	includePodAnnotations = flag.Bool("kubernetesCollector.includePodAnnotations", false, "Include Pod annotations as additional fields in the log entries. "+
+		"Even this setting is disabled, Pod annotations are available for filtering via -kubernetes.excludeFilter flag")
+	includeNodeLabels = flag.Bool("kubernetesCollector.includeNodeLabels", false, "Include Node labels as additional fields in the log entries. "+
+		"Even this setting is disabled, Node labels are available for filtering via -kubernetes.excludeFilter flag")
+	includeNodeAnnotations = flag.Bool("kubernetesCollector.includeNodeAnnotations", false, "Include Node annotations as additional fields in the log entries. "+
+		"Even this setting is disabled, Node annotations are available for filtering via -kubernetes.excludeFilter flag")
 )
 
 type logFileProcessor struct {
@@ -55,7 +64,25 @@ type logFileProcessor struct {
 	partialCRIContentSize int
 }
 
+// newLogFileProcessor returns a new logFileProcessor for the given storage.
+// commonFields must not be modified as they can be accessed from multiple goroutines.
 func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logstorage.Field) *logFileProcessor {
+	// Exclude labels or annotations if they should not be included.
+	if !*includePodLabels || !*includePodAnnotations || !*includeNodeLabels || !*includeNodeAnnotations {
+		var fields []logstorage.Field
+		for _, f := range commonFields {
+			excludeField := !*includePodLabels && strings.HasPrefix(f.Name, "kubernetes.pod_labels.") ||
+				!*includePodAnnotations && strings.HasPrefix(f.Name, "kubernetes.pod_annotations.") ||
+				!*includeNodeLabels && strings.HasPrefix(f.Name, "kubernetes.node_labels.") ||
+				!*includeNodeAnnotations && strings.HasPrefix(f.Name, "kubernetes.node_annotations.")
+
+			if !excludeField {
+				fields = append(fields, f)
+			}
+		}
+		commonFields = fields
+	}
+
 	// move stream fields to the beginning of commonFields
 
 	streamFields := make([]logstorage.Field, 0, len(commonFields))

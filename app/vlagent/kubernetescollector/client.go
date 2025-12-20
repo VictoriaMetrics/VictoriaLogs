@@ -137,10 +137,11 @@ type pod struct {
 }
 
 type podMetadata struct {
-	Name      string            `json:"name"`
-	Labels    map[string]string `json:"labels"`
-	Namespace string            `json:"namespace"`
-	UID       string            `json:"uid"`
+	Name        string            `json:"name"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Namespace   string            `json:"namespace"`
+	UID         string            `json:"uid"`
 }
 
 type podSpec struct {
@@ -213,7 +214,9 @@ func (c *kubeAPIClient) getPod(ctx context.Context, namespace, podName string) (
 }
 
 type nodeMetadata struct {
-	Name string `json:"name"`
+	Name        string            `json:"name"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
 }
 
 type node struct {
@@ -253,6 +256,33 @@ func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
 		nodes = append(nodes, n.Metadata.Name)
 	}
 	return nodes, nil
+}
+
+// getNodes returns a node by its name.
+//
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-node-v1-core
+func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (node, error) {
+	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/nodes/"+nodeName, nil)
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return node{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		payload, err := io.ReadAll(resp.Body)
+		if err != nil {
+			payload = []byte(err.Error())
+		}
+		return node{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
+	}
+
+	var n node
+	if err := json.NewDecoder(resp.Body).Decode(&n); err != nil {
+		return node{}, fmt.Errorf("cannot decode response body: %w", err)
+	}
+
+	return n, nil
 }
 
 func (c *kubeAPIClient) mustCreateRequest(ctx context.Context, method, urlPath string, args url.Values) *http.Request {

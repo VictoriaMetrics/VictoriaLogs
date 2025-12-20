@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): add an ability to include and exclude Pod/Node labels and annotation fields from logs. This metadata is also available for [filtering](https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs). See [#923](https://github.com/VictoriaMetrics/VictoriaLogs/issues/923) and [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-metadata-configuration) for details.
+
 ## [v1.42.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.42.0)
 
 Released at 2025-12-20
