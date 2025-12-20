@@ -19,7 +19,8 @@ var (
 	checkpointsPath = flag.String("kubernetesCollector.checkpointsPath", "",
 		"Path to file with checkpoints for Kubernetes logs. "+
 			"Checkpoints are used to persist the read offsets for Kubernetes container logs. "+
-			"When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication")
+			"When vlagent is restarted, it resumes reading logs from the stored offsets to avoid log duplication; "+
+			"if this flag isn't set, then checkpoints are saved into vlagent-kubernetes-checkpoints.json under -tmpDataPath directory")
 	logsPath = flag.String("kubernetesCollector.logsPath", "/var/log/containers",
 		"Path to the directory with Kubernetes container logs (usually /var/log/containers). "+
 			"This should point to the kubelet-managed directory containing symlinks to pod logs. "+

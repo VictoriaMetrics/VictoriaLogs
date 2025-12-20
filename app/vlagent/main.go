@@ -28,7 +28,7 @@ var (
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
-	tmpDataPath = flag.String("tmpDataPath", "", "Default path for storing vlagent data")
+	tmpDataPath = flag.String("tmpDataPath", "", "Default path for storing vlagent data; see also -remoteWrite.tmpDataPath and -kubernetesCollector.checkpointsPath")
 )
 
 func main() {
