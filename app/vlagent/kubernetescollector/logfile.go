@@ -34,8 +34,6 @@ type logFile struct {
 	// commitOffset tracks the offset of the last committed log entry.
 	commitOffset int64
 
-	commonFields []logstorage.Field
-
 	// tail contains the last incomplete line read from the file.
 	// Can be truncated if it exceeds maxLineSize.
 	tail *bytesutil.ByteBuffer
@@ -43,21 +41,20 @@ type logFile struct {
 	tailSize int
 }
 
-func newLogFile(symlink string, commonFields []logstorage.Field) *logFile {
+func newLogFile(symlink string) *logFile {
 	return &logFile{
-		path:         symlink,
-		commonFields: commonFields,
+		path: symlink,
 	}
 }
 
-func newLogFileFromFile(f *os.File, symlink string, commonFields []logstorage.Field) (*logFile, error) {
+func newLogFileFromFile(f *os.File, symlink string) (*logFile, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get file info of %q: %w", f.Name(), err)
 	}
 	inode := getInode(fi)
 
-	lf := newLogFile(symlink, commonFields)
+	lf := newLogFile(symlink)
 	lf.inode = inode
 	lf.commitInode = inode
 	lf.file = f
@@ -307,10 +304,9 @@ func (lf *logFile) close() {
 
 func (lf *logFile) checkpoint() checkpoint {
 	return checkpoint{
-		Path:         lf.path,
-		Inode:        lf.commitInode,
-		Offset:       lf.commitOffset,
-		CommonFields: lf.commonFields,
+		Path:   lf.path,
+		Inode:  lf.commitInode,
+		Offset: lf.commitOffset,
 	}
 }
 

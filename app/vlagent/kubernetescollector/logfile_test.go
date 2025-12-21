@@ -17,7 +17,7 @@ func TestReadLines(t *testing.T) {
 		filePath, _ := createTestLogFile(t)
 
 		writeLinesToFile(t, filePath, in...)
-		lf := newLogFile(filePath, nil)
+		lf := newLogFile(filePath)
 
 		proc := newTestLogFileProcessor()
 		lf.readLines(stopCh, proc)
@@ -166,7 +166,7 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 
 	stopCh := make(chan struct{})
 	b.RunParallel(func(pb *testing.PB) {
-		lf := newLogFile(logFilePath, nil)
+		lf := newLogFile(logFilePath)
 		defer lf.close()
 
 		for pb.Next() {

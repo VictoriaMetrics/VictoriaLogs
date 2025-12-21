@@ -12,8 +12,6 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // checkpointsDB manages persistent log file reading state checkpoints.
@@ -67,10 +65,9 @@ func startCheckpointsDB(path string) (*checkpointsDB, error) {
 // checkpoint includes pod metadata (common and stream fields) to allow immediate log processing
 // without waiting for the Kubernetes API server to provide pod information.
 type checkpoint struct {
-	Path         string             `json:"path"`
-	Inode        uint64             `json:"inode"`
-	Offset       int64              `json:"offset"`
-	CommonFields []logstorage.Field `json:"commonFields"`
+	Path   string `json:"path"`
+	Inode  uint64 `json:"inode"`
+	Offset int64  `json:"offset"`
 }
 
 func (db *checkpointsDB) set(cp checkpoint) {
