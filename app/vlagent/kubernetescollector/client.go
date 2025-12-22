@@ -1,7 +1,6 @@
 package kubernetescollector
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -127,24 +126,19 @@ type podWatchStream struct {
 	r io.ReadCloser
 }
 
-func (er podWatchStream) readEvents(h func(event watchEvent)) error {
-	lr := newLineReader(er.r)
+func (pws podWatchStream) readEvents(h func(event watchEvent)) error {
+	d := json.NewDecoder(pws.r)
 	for {
-		line, err := lr.readLine()
-		if err != nil {
-			return fmt.Errorf("cannot read event line: %w", err)
-		}
-
 		var e watchEvent
-		if err := json.Unmarshal(line, &e); err != nil {
-			return fmt.Errorf("cannot decode event %q: %w", line, err)
+		if err := d.Decode(&e); err != nil {
+			return fmt.Errorf("cannot parse WatchEvent json response: %w", err)
 		}
 		h(e)
 	}
 }
 
-func (er podWatchStream) close() error {
-	return er.r.Close()
+func (pws podWatchStream) close() error {
+	return pws.r.Close()
 }
 
 type pod struct {
@@ -360,41 +354,4 @@ func (c *kubeAPIClient) mustCreateRequest(ctx context.Context, method, urlPath s
 		req.Header.Set("Authorization", "Bearer "+c.config.BearerToken)
 	}
 	return req
-}
-
-// lineReader is like bufio.Scanner but it can read lines of arbitrary length.
-type lineReader struct {
-	lr  *bufio.Reader
-	buf []byte
-}
-
-func newLineReader(r io.Reader) lineReader {
-	return lineReader{
-		lr:  bufio.NewReaderSize(r, 16*1024),
-		buf: []byte{},
-	}
-}
-
-func (lr *lineReader) readLine() ([]byte, error) {
-	lr.buf = lr.buf[:0]
-	for {
-		line, isPrefix, err := lr.lr.ReadLine()
-		if err != nil {
-			return nil, err
-		}
-		if isPrefix {
-			// The line is incomplete, we need to read more data to finish it.
-			lr.buf = append(lr.buf, line...)
-			continue
-		}
-
-		if len(lr.buf) == 0 {
-			// Fast path: the entire line fits within the *bufio.Reader, no need for further reading.
-			return line, nil
-		}
-
-		// Slow path: the line doesn't fit in the buffer, so we append the remainder to the prefix and return the complete line.
-		lr.buf = append(lr.buf, line...)
-		return lr.buf, nil
-	}
 }
