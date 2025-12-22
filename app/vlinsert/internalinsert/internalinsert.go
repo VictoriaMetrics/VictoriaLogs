@@ -50,7 +50,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		cp.TenantID = logstorage.TenantID{}
 	}
 
-	// the TimeFields is always default to `_time` in a `/internalinsert` request due to the handling in CommonParams.
+	// the TimeFields is always default to `_time` in a `/internal/insert` request due to the handling in CommonParams.
 	// we should reset it to empty. In the meantime, if this field is set manually, log a warning.
 	if cp.IsTimeFieldSet {
 		logger.Warnf("/internal/insert endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; ignoring them; timeFields=%q", cp.TimeFields)
