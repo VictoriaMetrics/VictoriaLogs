@@ -18,23 +18,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-type client interface {
-	// watchNodePods starts watching Pod scheduled on the given node.
-	//
-	// It uses resourceVersion to resume from a specific state.
-	// If empty, the watch provides the current state of all active Pods on the node first,
-	// followed by incremental updates.
-	watchNodePods(ctx context.Context, node, resourceVersion string) (podWatchStream, error)
-
-	// getNodePods returns information about Pods scheduled on the given node.
-	getNodePods(ctx context.Context, node string) (podList, error)
-
-	// getNodeByName returns information about the node with the given name.
-	getNodeByName(ctx context.Context, nodeName string) (node, error)
-}
-
 type kubernetesCollector struct {
-	client client
+	client *kubeAPIClient
 
 	currentNode node
 
@@ -54,7 +39,7 @@ type kubernetesCollector struct {
 // startKubernetesCollector starts watching Kubernetes cluster on the given node and starts collecting container logs.
 // The collector monitors container logs in the specified logsPath directory and uses checkpointsPath to track reading progress.
 // The caller must call stop() when the kubernetesCollector is no longer needed.
-func startKubernetesCollector(client client, currentNodeName, logsPath, checkpointsPath string, excludeFilter *logstorage.Filter) (*kubernetesCollector, error) {
+func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, checkpointsPath string, excludeFilter *logstorage.Filter) (*kubernetesCollector, error) {
 	_, err := os.Stat(logsPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot access logs dir: %w", err)
