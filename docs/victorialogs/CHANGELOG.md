@@ -24,6 +24,8 @@ according to the following docs:
 * FEATURE: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): add an ability to include and exclude Pod/Node labels and annotation fields from logs. This metadata is also available for [filtering](https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs). See [#923](https://github.com/VictoriaMetrics/VictoriaLogs/issues/923) and [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-metadata-configuration) for details.
 * FEATURE: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): reduce a load on the Kubernetes API by using [resource versions](https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-versions) to ignore already processed events when a TCP connection is dropped. In the previous version, vlagent would request the full state of the current node from the control plane every 5 minutes, which could lead to an increased load on the central API server in large clusters.
 
+* BUGFIX: [vlstorage](https://docs.victoriametrics.com/victorialogs/): fix incorrect warning logs about time field in `/internal/insert` and `/internal/native` APIs. Thanks to @cyberzz-dev for the [issue #937](https://github.com/VictoriaMetrics/VictoriaLogs/issues/937).
+
 ## [v1.42.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.42.0)
 
 Released at 2025-12-20

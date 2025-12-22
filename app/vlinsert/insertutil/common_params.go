@@ -36,7 +36,10 @@ type CommonParams struct {
 	DecolorizeFields []string
 	ExtraFields      []logstorage.Field
 
-	IsTimeFieldSet  bool
+	// IsTimeFieldSet means whether the TimeFields is set **manually**.
+	// The TimeFields has default value `_time`. It's not empty even if the IsTimeFieldSet is false.
+	IsTimeFieldSet bool
+
 	Debug           bool
 	DebugRequestURI string
 	DebugRemoteAddr string
