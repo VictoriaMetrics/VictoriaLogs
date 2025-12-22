@@ -19,10 +19,15 @@ import (
 )
 
 type client interface {
-	// watchNodePods starts watching Pods scheduled on the given node.
-	// The returned stream includes initial events representing the current state
-	// of all Pods running on that node, followed by incremental updates.
-	watchNodePods(ctx context.Context, node string) (podWatchStream, error)
+	// watchNodePods starts watching Pod scheduled on the given node.
+	//
+	// It uses resourceVersion to resume from a specific state.
+	// If empty, the watch provides the current state of all active Pods on the node first,
+	// followed by incremental updates.
+	watchNodePods(ctx context.Context, node, resourceVersion string) (podWatchStream, error)
+
+	// getNodePods returns information about Pods scheduled on the given node.
+	getNodePods(ctx context.Context, node string) (podList, error)
 
 	// getNodeByName returns information about the node with the given name.
 	getNodeByName(ctx context.Context, nodeName string) (node, error)
@@ -78,14 +83,49 @@ func startKubernetesCollector(client client, currentNodeName, logsPath, checkpoi
 	fc := startFileCollector(checkpointsPath, excludeFilter, newProcessor)
 	kc.fileCollector = fc
 
-	kc.startWatchCluster(kc.ctx)
+	pl, err := client.getNodePods(ctx, currentNodeName)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("cannot get Pods on node %q: %w", currentNodeName, err)
+	}
+
+	// Start reading existing Pod logs.
+	for _, pod := range pl.Items {
+		kc.startReadPodLogs(pod)
+	}
+	// Cleanup checkpoints for deleted Pods.
+	fc.cleanupCheckpoints()
+
+	// Start watching for new Pods.
+	kc.startWatchCluster(kc.ctx, pl.Metadata.ResourceVersion)
 
 	return kc, nil
 }
 
 // startWatchCluster starts watching Pods scheduled on the given node.
 // It calls handleUpdateEvent for each received event.
-func (kc *kubernetesCollector) startWatchCluster(ctx context.Context) {
+func (kc *kubernetesCollector) startWatchCluster(ctx context.Context, resourceVersion string) {
+	handleEvent := func(event watchEvent) {
+		switch event.Type {
+		case "ADDED", "MODIFIED":
+			var pod pod
+			if err := json.Unmarshal(event.Object, &pod); err != nil {
+				logger.Panicf("FATAL: cannot unmarshal Kubernetes event object %q: %s", event.Object, err)
+			}
+
+			kc.startReadPodLogs(pod)
+
+			// Update resourceVersion to the latest seen.
+			resourceVersion = pod.Metadata.ResourceVersion
+		case "DELETED":
+			// Ignore deleted pods.
+		case "ERROR":
+			logger.Errorf("got an error event from Kubernetes API: %q", string(event.Object))
+		default:
+			logger.Errorf("unexpected Kubernetes event type %q: %s", event.Type, string(event.Object))
+		}
+	}
+
 	currentNodeName := kc.currentNode.Metadata.Name
 
 	kc.wg.Add(1)
@@ -101,7 +141,7 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context) {
 		lastEOF := time.Time{}
 
 		for {
-			r, err := kc.client.watchNodePods(ctx, currentNodeName)
+			r, err := kc.client.watchNodePods(ctx, currentNodeName, resourceVersion)
 			if err != nil {
 				if ctx.Err() != nil {
 					return
@@ -121,7 +161,7 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context) {
 
 			bt.reset()
 
-			err = r.readEvents(kc.handleEvent)
+			err = r.readEvents(handleEvent)
 			_ = r.close()
 			if err != nil {
 				if ctx.Err() != nil {
@@ -145,27 +185,7 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context) {
 	}()
 }
 
-func (kc *kubernetesCollector) handleEvent(event watchEvent) {
-	switch event.Type {
-	case "ADDED", "MODIFIED":
-		kc.handleUpdateEvent(event.Object)
-	case "DELETED":
-		// ignore deleted pods
-	case "ERROR":
-		logger.Errorf("got an error event from Kubernetes API: %q", string(event.Object))
-	default:
-		logger.Errorf("unexpected Kubernetes event type %q: %s", event.Type, string(event.Object))
-	}
-}
-
-// handleUpdateEvent prepares log file path and common fields for the given pod
-// and delegates log file processing to fileCollector.
-func (kc *kubernetesCollector) handleUpdateEvent(data json.RawMessage) {
-	var pod pod
-	if err := json.Unmarshal(data, &pod); err != nil {
-		logger.Panicf("FATAL: cannot unmarshal Kubernetes event object %q: %s", data, err)
-	}
-
+func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	startRead := func(pc podContainer, cs containerStatus) {
 		commonFields := getCommonFields(kc.currentNode, pod, cs)
 

@@ -76,9 +76,14 @@ type watchEvent struct {
 
 // watchNodePods starts watching Pod changes on the specified node.
 // It returns a stream of watchEvent values representing updates to those Pods.
-//
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#watch-pod-v1-core
-func (c *kubeAPIClient) watchNodePods(ctx context.Context, nodeName string) (podWatchStream, error) {
+//
+// watchNodePods accepts the resourceVersion argument to skip already processed events.
+// It is recommended to skip already processed events to significantly reduce the load on the Kubernetes API server.
+// The resourceVersion value can be obtained from the podListMetadata.ResourceVersion field returned by getNodePods
+// or from the watchEvent.Object.metadata.resourceVersion field.
+// See https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes
+func (c *kubeAPIClient) watchNodePods(ctx context.Context, nodeName, resourceVersion string) (podWatchStream, error) {
 	args := url.Values{
 		"watch": []string{"true"},
 		"fieldSelector": []string{
@@ -88,10 +93,22 @@ func (c *kubeAPIClient) watchNodePods(ctx context.Context, nodeName string) (pod
 		},
 	}
 
+	// Set resourceVersion if it is non-empty to skip already processed events.
+	if resourceVersion != "" {
+		args["resourceVersion"] = []string{resourceVersion}
+	}
+
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/pods", args)
 	resp, err := c.c.Do(req)
 	if err != nil {
 		return podWatchStream{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
+	}
+
+	if resp.StatusCode == http.StatusGone && resourceVersion != "" {
+		// Requested watch operation fail because the historical resourceVersion is too old.
+		// Fallback to watching from the beginning.
+		// See https://kubernetes.io/docs/reference/using-api/api-concepts/#semantics-for-watch
+		return c.watchNodePods(ctx, nodeName, "")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -137,11 +154,12 @@ type pod struct {
 }
 
 type podMetadata struct {
-	Name        string            `json:"name"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-	Namespace   string            `json:"namespace"`
-	UID         string            `json:"uid"`
+	Name            string            `json:"name"`
+	Labels          map[string]string `json:"labels"`
+	Annotations     map[string]string `json:"annotations"`
+	Namespace       string            `json:"namespace"`
+	ResourceVersion string            `json:"resourceVersion"`
+	UID             string            `json:"uid"`
 }
 
 type podSpec struct {
@@ -185,6 +203,50 @@ func (ps *podStatus) findInitContainerStatus(containerName string) (containerSta
 		}
 	}
 	return containerStatus{}, false
+}
+
+type podList struct {
+	Metadata podListMetadata `json:"metadata"`
+	Items    []pod           `json:"items"`
+}
+
+type podListMetadata struct {
+	ResourceVersion string `json:"resourceVersion"`
+}
+
+// getNodePods returns a list of pods on the given node.
+//
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#list-all-namespaces-pod-v1-core
+func (c *kubeAPIClient) getNodePods(ctx context.Context, nodeName string) (podList, error) {
+	args := url.Values{
+		"fieldSelector": []string{
+			// Watch pods only on the given node.
+			// See https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
+			"spec.nodeName=" + nodeName,
+		},
+	}
+
+	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/pods", args)
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return podList{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		payload, err := io.ReadAll(resp.Body)
+		if err != nil {
+			payload = []byte(err.Error())
+		}
+		_ = resp.Body.Close()
+		return podList{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
+	}
+
+	var pl podList
+	if err := json.NewDecoder(resp.Body).Decode(&pl); err != nil {
+		return podList{}, fmt.Errorf("cannot decode response body: %w", err)
+	}
+	return pl, nil
 }
 
 // getPod returns the pod with the given namespace and name.
