@@ -49,9 +49,11 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(cp.TimeFields) > 0 {
+	// the TimeFields is always default to `_time` in a `/nativeinsert` request due to the handling in CommonParams.
+	// we should reset it to empty. In the meantime, if this field is set manually, log a warning.
+	cp.TimeFields = nil
+	if cp.IsTimeFieldSet {
 		logger.Warnf("/insert/native endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; ignoring them; timeFields=%q", cp.TimeFields)
-		cp.TimeFields = nil
 	}
 	if len(cp.MsgFields) > 0 {
 		logger.Warnf("/insert/native endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; ignoring them; msgFields=%q", cp.MsgFields)

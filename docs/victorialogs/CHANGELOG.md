@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [vlstorage](https://docs.victoriametrics.com/victorialogs/): fix incorrect warning logs about time field in `/internal/insert` and `/internal/native` APIs. Thanks to @cyberzz-dev for the [issue #937](https://github.com/VictoriaMetrics/VictoriaLogs/issues/937).
+
 ## [v1.42.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.42.0)
 
 Released at 2025-12-20
