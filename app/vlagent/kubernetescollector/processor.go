@@ -41,6 +41,10 @@ var (
 		"Even this setting is disabled, Node labels are available for filtering via -kubernetes.excludeFilter flag")
 	includeNodeAnnotations = flag.Bool("kubernetesCollector.includeNodeAnnotations", false, "Include Node annotations as additional fields in the log entries. "+
 		"Even this setting is disabled, Node annotations are available for filtering via -kubernetes.excludeFilter flag")
+	includeNamespaceLabels = flag.Bool("kubernetesCollector.includeNamespaceLabels", false, "Include Namespace labels as additional fields in the log entries. "+
+		"Even this setting is disabled, Namespace labels are available for filtering via -kubernetes.excludeFilter flag")
+	includeNamespaceAnnotations = flag.Bool("kubernetesCollector.includeNamespaceAnnotations", false, "Include Namespace annotations as additional fields in the log entries. "+
+		"Even this setting is disabled, Namespace annotations are available for filtering via -kubernetes.excludeFilter flag")
 )
 
 type logFileProcessor struct {
@@ -68,13 +72,15 @@ type logFileProcessor struct {
 // commonFields must not be modified as they can be accessed from multiple goroutines.
 func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logstorage.Field) *logFileProcessor {
 	// Exclude labels or annotations if they should not be included.
-	if !*includePodLabels || !*includePodAnnotations || !*includeNodeLabels || !*includeNodeAnnotations {
+	if !*includePodLabels || !*includePodAnnotations || !*includeNodeLabels || !*includeNodeAnnotations || !*includeNamespaceLabels || !*includeNamespaceAnnotations {
 		var fields []logstorage.Field
 		for _, f := range commonFields {
 			excludeField := !*includePodLabels && strings.HasPrefix(f.Name, "kubernetes.pod_labels.") ||
 				!*includePodAnnotations && strings.HasPrefix(f.Name, "kubernetes.pod_annotations.") ||
 				!*includeNodeLabels && strings.HasPrefix(f.Name, "kubernetes.node_labels.") ||
-				!*includeNodeAnnotations && strings.HasPrefix(f.Name, "kubernetes.node_annotations.")
+				!*includeNodeAnnotations && strings.HasPrefix(f.Name, "kubernetes.node_annotations.") ||
+				!*includeNamespaceLabels && strings.HasPrefix(f.Name, "kubernetes.namespace_labels.") ||
+				!*includeNamespaceAnnotations && strings.HasPrefix(f.Name, "kubernetes.namespace_annotations.")
 
 			if !excludeField {
 				fields = append(fields, f)

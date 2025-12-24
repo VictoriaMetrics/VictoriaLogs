@@ -31,12 +31,19 @@ type client interface {
 
 	// getNodeByName returns information about the node with the given name.
 	getNodeByName(ctx context.Context, nodeName string) (node, error)
+
+	// getNamespace returns information about the namespace with the given name.
+	getNamespace(ctx context.Context, namespace string) (namespace, error)
 }
 
 type kubernetesCollector struct {
 	client client
 
 	currentNode node
+
+	// namespaces caches metadata for already requested namespaces to avoid repeated API calls.
+	namespaces     map[string]namespace
+	namespacesLock sync.Mutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -74,6 +81,7 @@ func startKubernetesCollector(client client, currentNodeName, logsPath, checkpoi
 		ctx:         ctx,
 		cancel:      cancel,
 		logsPath:    logsPath,
+		namespaces:  make(map[string]namespace),
 	}
 
 	storage := &remotewrite.Storage{}
@@ -187,7 +195,8 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context, resourceVe
 
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	startRead := func(pc podContainer, cs containerStatus) {
-		commonFields := getCommonFields(kc.currentNode, pod, cs)
+		ns := kc.getNamespace(pod.Metadata.Namespace)
+		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
 
 		filePath := kc.getLogFilePath(pod, pc, cs)
 
@@ -217,7 +226,7 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 // Must be synced with getCommonFields.
 var streamFieldNames = []string{"kubernetes.container_name", "kubernetes.pod_name", "kubernetes.pod_namespace"}
 
-func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
+func getCommonFields(n node, ns namespace, p pod, cs containerStatus) []logstorage.Field {
 	var fs logstorage.Fields
 
 	// Fields should match vector.dev kubernetes_source for easy migration.
@@ -234,6 +243,15 @@ func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
 	}
 	for k, v := range p.Metadata.Annotations {
 		fieldName := "kubernetes.pod_annotations." + k
+		fs.Add(fieldName, v)
+	}
+
+	for k, v := range ns.Metadata.Labels {
+		fieldName := "kubernetes.namespace_labels." + k
+		fs.Add(fieldName, v)
+	}
+	for k, v := range ns.Metadata.Annotations {
+		fieldName := "kubernetes.namespace_annotations." + k
 		fs.Add(fieldName, v)
 	}
 
@@ -271,4 +289,29 @@ func (kc *kubernetesCollector) stop() {
 	kc.cancel()
 	kc.wg.Wait()
 	kc.fileCollector.stop()
+}
+
+func (kc *kubernetesCollector) getNamespace(namespaceName string) namespace {
+	kc.namespacesLock.Lock()
+	ns, ok := kc.namespaces[namespaceName]
+	kc.namespacesLock.Unlock()
+	if ok {
+		return ns
+	}
+
+	ns, err := kc.client.getNamespace(kc.ctx, namespaceName)
+	if err != nil {
+		logger.Errorf("cannot get namespace %q metadata: %s", namespaceName, err)
+		return namespace{
+			Metadata: namespaceMetadata{
+				Name: namespaceName,
+			},
+		}
+	}
+
+	kc.namespacesLock.Lock()
+	kc.namespaces[namespaceName] = ns
+	kc.namespacesLock.Unlock()
+
+	return ns
 }

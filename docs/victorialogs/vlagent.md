@@ -156,14 +156,16 @@ Supported metadata fields:
 - `kubernetes.container_id` - ID of the container in the runtime.
 - `kubernetes.pod_labels.*` - any Pod label (e.g., `kubernetes.pod_labels.app`).
 - `kubernetes.pod_annotations.*` - any Pod annotation (e.g., `kubernetes.pod_annotation.logging.vlagent.io/exclude`).
+- `kubernetes.namespace_labels.*` - any Namespace label (e.g., `kubernetes.namespace_labels.environment`).
+- `kubernetes.namespace_annotations.*` - any Namespace annotation (e.g., `kubernetes.namespace_annotations.owner`).
 - `kubernetes.node_labels.*` - any Node label (e.g., `kubernetes.io/arch`).
 - `kubernetes.node_annotations.*` - any Node annotation (e.g., `disk-type.gke.io/pd-ssd`).
 
 To enable filtering, use the `-kubernetesCollector.excludeFilter` command-line flag with any [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
 Note that [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) are not supported in filter expressions.
 
-Note that even if Pod/Node labels and annotations are excluded from logs via `-kubernetesCollector.ignoreFields` 
-or `-kubernetesCollector.includePodLabels` (the same for Node labels and annotations) flags,
+Note that even if Pod/Node/Namespace labels and annotations are excluded from logs via `-kubernetesCollector.ignoreFields` 
+or `-kubernetesCollector.includePodLabels` (the same for Namespace and Node labels and annotations) flags,
 they are still available for filtering via `-kubernetesCollector.excludeFilter` flag. 
 You don't need to include this information in logs just to be able to filter by it.
 
@@ -186,6 +188,8 @@ You can control which metadata fields are attached to every log entry using the 
 * `-kubernetesCollector.includePodAnnotations` (default: `false`) - attach Pod annotations to every log entry.
 * `-kubernetesCollector.includeNodeLabels` (default: `false`) - attach Node labels to every log entry.
 * `-kubernetesCollector.includeNodeAnnotations` (default: `false`) - attach Node annotations to every log entry.
+* `-kubernetesCollector.includeNamespaceLabels` (default: `false`) - attach Namespace labels to every log entry.
+* `-kubernetesCollector.includeNamespaceAnnotations` (default: `false`) - attach Namespace annotations to every log entry.
 
 Note that vlagent does not update node or pod labels during runtime. 
 Therefore, if node/pod metadata changes, you must restart vlagent to apply those changes.
