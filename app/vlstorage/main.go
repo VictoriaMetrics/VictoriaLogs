@@ -306,16 +306,17 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
-	if localStorage == nil {
-		// Force merge isn't supported by non-local storage
-		return false
-	}
-
 	if !httpserver.CheckAuthFlag(w, r, forceFlushAuthKey) {
 		return true
 	}
 
 	logger.Infof("flushing storage to make pending data available for reading")
+
+	if localStorage == nil {
+		netstorageInsert.DebugFlush()
+		return true
+	}
+
 	localStorage.DebugFlush()
 	return true
 }

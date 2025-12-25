@@ -1,5 +1,6 @@
 {% import (
 	"slices"
+	"sort"
 ) %}
 
 {% stripspace %}
@@ -28,7 +29,13 @@
 {
 	"field_name":{%q= k %},
 	"values":[
-		{% code	fes := m[k] %}
+		{% code
+			fes := m[k]
+			sort.Slice(fes, func(i, j int) bool {
+				a, b := &fes[i], &fes[j]
+				return a.hits > b.hits || a.value < b.value
+			})
+		%}
 		{% if len(fes) > 0 %}
 			{%= facetLine(fes[0]) %}
 			{% for _, fe := range fes[1:] %}

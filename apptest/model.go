@@ -30,6 +30,31 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	return uv
 }
 
+// FacetsOpts contains params used for querying VictoriaLogs via /select/logsql/facets
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-facets
+type FacetsOpts struct {
+	Start             string
+	End               string
+	Limit             string
+	MaxValuesPerField string
+	MaxValueLen       string
+	KeepConstFields   string
+	ExtraFilters      []string
+}
+
+func (fos *FacetsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "max_values_per_field", fos.MaxValuesPerField)
+	addNonEmpty(uv, "max_value_len", fos.MaxValueLen)
+	addNonEmpty(uv, "keep_const_fields", fos.KeepConstFields)
+	addNonEmpty(uv, "extra_filters", fos.ExtraFilters...)
+	return uv
+}
+
 // StatsQueryOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
@@ -93,6 +118,7 @@ type LogsQLQueryResponse struct {
 // instance of LogsQLQueryResponse by unmarshalling a json string.
 func NewLogsQLQueryResponse(t *testing.T, s string) *LogsQLQueryResponse {
 	t.Helper()
+
 	res := &LogsQLQueryResponse{}
 	if len(s) == 0 {
 		return res

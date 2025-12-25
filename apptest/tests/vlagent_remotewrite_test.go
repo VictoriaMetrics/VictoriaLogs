@@ -25,7 +25,6 @@ func TestVlagentRemoteWrite(t *testing.T) {
 	sutFlags := []string{
 		"-httpListenAddr=127.0.0.1:" + r1Port,
 		"-storageDataPath=" + tc.Dir() + "/" + instance,
-		"-retentionPeriod=100y",
 	}
 
 	sut := tc.MustStartVlsingle(instance, sutFlags)
@@ -83,12 +82,10 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	sutFlagsR0 := []string{
 		"-httpListenAddr=127.0.0.1:" + vlsinglePortR0,
 		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica0),
-		"-retentionPeriod=100y",
 	}
 	sutFlagsR1 := []string{
 		"-httpListenAddr=127.0.0.1:" + vlsinglePortR1,
 		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica1),
-		"-retentionPeriod=100y",
 	}
 
 	sutR0 := tc.MustStartVlsingle(instanceReplica0, sutFlagsR0)

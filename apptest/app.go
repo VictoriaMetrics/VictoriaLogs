@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -26,43 +28,34 @@ type app struct {
 	binary   string
 	flags    []string
 	process  *os.Process
-	wait     bool
 }
 
-// appOptions holds the optional configuration of an app, such as default flags
-// to set and things to extract from the app's log.
-type appOptions struct {
-	defaultFlags map[string]string
-	extractREs   []*regexp.Regexp
-	wait         bool
-}
-
-// startApp starts an instance of an app using the app binary file path and
-// flags. When the opts are set, it also sets the default flag values and
-// extracts runtime information from the app's log.
+// mustStartApp starts an instance of an app using the app binary file path and flags.
 //
 // If the app has started successfully and all the requested items has been
 // extracted from logs, the function returns the instance of the app and the
 // extracted items. The extracted items are returned in the same order as the
-// corresponding extract regular expression have been provided in the opts.
+// corresponding extract regular expression have been provided in the extractREs.
 //
-// The function returns an error if the application has failed to start or the
-// function has timed out extracting items from the log (normally because no log
-// records match the regular expression).
-func startApp(instance string, binary string, flags []string, opts *appOptions) (*app, []string, error) {
-	flags = setDefaultFlags(flags, opts.defaultFlags)
+// The function exits with fatal error if the current process if the application
+// has failed to startor the function has timed out extracting items from the
+// log (normally because no log records match the regular expression).
+func mustStartApp(t *testing.T, instance string, binary string, flags []string, extractREs []*regexp.Regexp) (*app, []string) {
+	t.Helper()
+
+	log.Printf("starting %s from %s with flags %s", instance, binary, flags)
 
 	cmd := exec.Command(binary, flags...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, nil, err
+		t.Fatalf("cannot obtain stdout for %s started from %s with flags %s: %s", instance, binary, flags, err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, nil, err
+		t.Fatalf("cannot obtain stderr for %s started from %s with flags %s: %s", instance, binary, flags, err)
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, nil, err
+		t.Fatalf("cannot start %s from %s with flags %s: %s", instance, binary, flags, err)
 	}
 
 	app := &app{
@@ -70,46 +63,50 @@ func startApp(instance string, binary string, flags []string, opts *appOptions) 
 		binary:   binary,
 		flags:    flags,
 		process:  cmd.Process,
-		wait:     opts.wait,
 	}
 
 	go app.processOutput("stdout", stdout, app.writeToStderr)
 
-	lineProcessors := make([]lineProcessor, len(opts.extractREs))
-	reExtractors := make([]*reExtractor, len(opts.extractREs))
+	lineProcessors := make([]lineProcessor, len(extractREs))
+	reExtractors := make([]*reExtractor, len(extractREs))
 	timeout := time.NewTimer(5 * time.Second).C
-	for i, re := range opts.extractREs {
+	for i, re := range extractREs {
 		reExtractors[i] = newREExtractor(re, timeout)
 		lineProcessors[i] = reExtractors[i].extractRE
 	}
 	go app.processOutput("stderr", stderr, append(lineProcessors, app.writeToStderr)...)
 
-	extracts, err := extractREs(reExtractors, timeout)
+	extracts, err := extractREMatches(reExtractors, timeout)
 	if err != nil {
 		app.Stop()
-		return nil, nil, err
+		t.Fatalf("cannot extract %s from stdout and stderr for %s started from %s with flags %s: %s", extractREs, instance, binary, flags, err)
 	}
 
-	if app.wait {
-		err = cmd.Wait()
-	}
-
-	return app, extracts, err
+	return app, extracts
 }
 
-// setDefaultFlags adds flags with default values to `flags` if it does not
-// initially contain them.
+// setDefaultFlags adds flags with default values to `flags` if it does not initially contain them.
 func setDefaultFlags(flags []string, defaultFlags map[string]string) []string {
-	for _, flag := range flags {
-		for name := range defaultFlags {
-			if strings.HasPrefix(flag, name) {
-				delete(defaultFlags, name)
-				continue
-			}
+	var flagNames []string
+	for _, f := range flags {
+		if !strings.HasPrefix(f, "-") {
+			panic(fmt.Sprintf("BUG: flag must start with '-'; got %q", f))
 		}
+		n := strings.IndexByte(f, '=')
+		if n < 0 {
+			panic(fmt.Sprintf("BUG: cannot find '=' in the flag %q", f))
+		}
+		flagName := f[:n]
+		flagNames = append(flagNames, flagName)
 	}
+
 	for name, value := range defaultFlags {
-		flags = append(flags, name+"="+value)
+		if !strings.HasPrefix(name, "-") {
+			panic(fmt.Sprintf("BUG: default flag name must start with '-'; got %q", name))
+		}
+		if !slices.Contains(flagNames, name) {
+			flags = append(flags, fmt.Sprintf("%s=%s", name, value))
+		}
 	}
 	return flags
 }
@@ -117,9 +114,6 @@ func setDefaultFlags(flags []string, defaultFlags map[string]string) []string {
 // Stop sends the app process a SIGINT signal and waits until it terminates
 // gracefully.
 func (app *app) Stop() {
-	if app.wait {
-		return
-	}
 	if err := app.process.Signal(os.Interrupt); err != nil {
 		log.Fatalf("Could not send SIGINT signal to %s process: %v", app.instance, err)
 	}
@@ -180,12 +174,12 @@ func (app *app) writeToStderr(line string) bool {
 	return false
 }
 
-// extractREs waits until all reExtractors return the result and then returns
+// extractREMatches waits until all reExtractors return the result and then returns
 // the combined result with items ordered the same way as reExtractors.
 //
 // The function returns an error if timeout occurs sooner then all reExtractors
 // finish its work.
-func extractREs(reExtractors []*reExtractor, timeout <-chan time.Time) ([]string, error) {
+func extractREMatches(reExtractors []*reExtractor, timeout <-chan time.Time) ([]string, error) {
 	n := len(reExtractors)
 	notFoundREs := make(map[int]string)
 	extracts := make([]string, n)

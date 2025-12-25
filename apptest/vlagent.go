@@ -19,37 +19,34 @@ type Vlagent struct {
 	httpListenAddr      string
 }
 
-// StartVlagent starts an instance of vlagent with the given flags.
+// MustStartVlagent starts an instance of vlagent with the given flags.
 // It also sets the default flags and populates the app instance state with runtime
 // values extracted from the application log (such as httpListenAddr)
-func StartVlagent(instance string, remoteWriteURLs []string, flags []string, cli *Client) (*Vlagent, error) {
+func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, flags []string, cli *Client) *Vlagent {
+	t.Helper()
+
 	extractREs := []*regexp.Regexp{
 		httpListenAddrRE,
 	}
 
-	app, stderrExtracts, err := startApp(instance, "../../bin/vlagent", flags, &appOptions{
-		defaultFlags: map[string]string{
-			"-httpListenAddr":            "127.0.0.1:0",
-			"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
-			"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
-			"-remoteWrite.flushInterval": "10ms",
-			"-remoteWrite.showURL":       "true",
-		},
-		extractREs: extractREs,
+	flags = setDefaultFlags(flags, map[string]string{
+		"-httpListenAddr":            "127.0.0.1:0",
+		"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
+		"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
+		"-remoteWrite.flushInterval": "10ms",
+		"-remoteWrite.showURL":       "true",
 	})
-	if err != nil {
-		return nil, err
-	}
+	app, extracts := mustStartApp(t, instance, "../../bin/vlagent", flags, extractREs)
 
 	return &Vlagent{
 		app:                 app,
 		remoteStoragesCount: len(remoteWriteURLs),
 		ServesMetrics: &ServesMetrics{
-			metricsURL: fmt.Sprintf("http://%s/metrics", stderrExtracts[0]),
+			metricsURL: fmt.Sprintf("http://%s/metrics", extracts[0]),
 			cli:        cli,
 		},
-		httpListenAddr: stderrExtracts[0],
-	}, nil
+		httpListenAddr: extracts[0],
+	}
 }
 
 // JSONLineWrite is a test helper function that inserts a

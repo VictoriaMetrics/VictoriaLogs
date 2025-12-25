@@ -47,7 +47,7 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`foo | drop_empty_fields`, `foo | drop_empty_fields`, ``)
 	f(`foo | extract "foo<bar>baz"`, `foo | extract "foo<bar>baz"`, ``)
 	f(`foo | extract_regexp "foo(?P<ip>[^;]+)"`, `foo | extract_regexp "foo(?P<ip>[^;]+)"`, ``)
-	f(`foo | facets`, `foo | facets 18446744073709551615 | fields field_name, field_value, hits`, `stats by (field_name, field_value) sum(hits) as hits | total_stats by (field_name) count(*) as field_values_count | filter field_values_count:<=1000 | sort by (hits desc) partition by (field_name) limit 10 | sort by (field_name, hits desc)`)
+	f(`foo | facets`, `foo | facets 18446744073709551615 | fields field_name, field_value, hits`, `stats by (field_name, field_value) sum(hits) as hits | total_stats by (field_name) count(*) as field_values_count | filter field_values_count:<=1000 | delete field_values_count | sort by (hits desc) partition by (field_name) limit 10 | sort by (field_name, hits desc)`)
 	f(`foo | field_names`, `foo | field_names | fields hits, name`, `stats by (name) sum(hits) as hits`)
 	f(`foo | field_values x`, `foo | field_values x | fields hits, x`, `field_values_local x`)
 	f(`foo | fields x, y`, `foo | fields x, y`, ``)

@@ -115,7 +115,7 @@ func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryRespo
 	sort.Strings(got.LogLines)
 	sort.Strings(want.LogLines)
 	if len(got.LogLines) != len(want.LogLines) {
-		t.Errorf("unexpected response len: -%d: +%d\n%s", len(want.LogLines), len(got.LogLines), strings.Join(got.LogLines, "\n"))
+		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(want.LogLines), len(got.LogLines), strings.Join(got.LogLines, "\n"), strings.Join(want.LogLines, "\n"))
 		return
 	}
 	for i := range len(want.LogLines) {

@@ -156,10 +156,7 @@ func (tc *TestCase) Assert(opts *AssertOptions) {
 func (tc *TestCase) MustStartDefaultVlsingle() *Vlsingle {
 	tc.t.Helper()
 
-	return tc.MustStartVlsingle("vlsingle", []string{
-		"-storageDataPath=" + tc.Dir() + "/vlsingle",
-		"-retentionPeriod=100y",
-	})
+	return tc.MustStartVlsingle("vlsingle", nil)
 }
 
 // MustStartVlsingle is a test helper function that starts an instance of
@@ -167,10 +164,7 @@ func (tc *TestCase) MustStartDefaultVlsingle() *Vlsingle {
 func (tc *TestCase) MustStartVlsingle(instance string, flags []string) *Vlsingle {
 	tc.t.Helper()
 
-	app, err := StartVlsingle(instance, flags, tc.cli)
-	if err != nil {
-		tc.t.Fatalf("Could not start %s: %v", instance, err)
-	}
+	app := MustStartVlsingle(tc.t, instance, flags, tc.cli)
 	tc.addApp(instance, app)
 	return app
 }
@@ -188,10 +182,17 @@ func (tc *TestCase) MustStartDefaultVlagent(remoteWriteURLs []string) *Vlagent {
 func (tc *TestCase) MustStartVlagent(instance string, remoteWriteURLs []string, flags []string) *Vlagent {
 	tc.t.Helper()
 
-	app, err := StartVlagent(instance, remoteWriteURLs, flags, tc.cli)
-	if err != nil {
-		tc.t.Fatalf("Could not start %s: %v", instance, err)
-	}
+	app := MustStartVlagent(tc.t, instance, remoteWriteURLs, flags, tc.cli)
+	tc.addApp(instance, app)
+	return app
+}
+
+// MustStartVlcluster starts Vlcluster with default settings
+func (tc *TestCase) MustStartDefaultVlcluster() *Vlcluster {
+	tc.t.Helper()
+
+	instance := "vlcluster"
+	app := MustStartVlcluster(tc.t, instance, nil, tc.cli)
 	tc.addApp(instance, app)
 	return app
 }
