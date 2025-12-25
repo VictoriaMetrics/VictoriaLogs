@@ -765,6 +765,12 @@ func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, keepInSubquery bo
 		return nil, fmt.Errorf("cannot initialize `in` subqueries: %w", err)
 	}
 
+	runLateralQuery := func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error {
+		qctxLocal := qctx.WithContextAndQuery(ctx, q)
+		return runQuery(qctxLocal, writeBlock)
+	}
+	qNew = initLateralJoinQueries(qNew, qctx.Context, runLateralQuery)
+
 	getJoinMap := func(q *Query, byFields []string, prefix string) (map[string][][]Field, error) {
 		qctxLocal := qctx.WithQuery(q)
 		return getJoinMapGeneric(qctxLocal, runQuery, byFields, prefix)
@@ -894,6 +900,55 @@ func initJoinMaps(q *Query, getJoinMap getJoinMapFunc) (*Query, error) {
 func hasJoinPipes(pipes []pipe) bool {
 	for _, p := range pipes {
 		if _, ok := p.(*pipeJoin); ok {
+			return true
+		}
+	}
+	return false
+}
+
+type runLateralQueryFunc func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error
+
+func initLateralJoinQueries(q *Query, baseCtx context.Context, runQuery runLateralQueryFunc) *Query {
+	if !hasLateralJoinPipes(q.pipes) {
+		return q
+	}
+
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+
+	pipesNew := make([]pipe, len(q.pipes))
+	for i, p := range q.pipes {
+		if pj, ok := p.(*pipeJoin); ok && pj.isLateral {
+			pjCopy := *pj
+			pjCopy.baseCtx = baseCtx
+			pjCopy.runSubQuery = runQuery
+			// defaults
+			if pjCopy.maxSubqueries == 0 {
+				pjCopy.maxSubqueries = 1000
+			}
+			if pjCopy.maxPerKey == 0 {
+				pjCopy.maxPerKey = 100
+			}
+			if pjCopy.concurrency == 0 {
+				pjCopy.concurrency = 4
+			}
+			if pjCopy.subQueryTimeout == 0 {
+				pjCopy.subQueryTimeout = 5 * time.Second
+			}
+			p = &pjCopy
+		}
+		pipesNew[i] = p
+	}
+
+	qNew := q.cloneShallow()
+	qNew.pipes = pipesNew
+	return qNew
+}
+
+func hasLateralJoinPipes(pipes []pipe) bool {
+	for _, p := range pipes {
+		if pj, ok := p.(*pipeJoin); ok && pj.isLateral {
 			return true
 		}
 	}

@@ -2429,6 +2429,46 @@ See also:
 - [conditional `stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-with-additional-filters)
 - [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe)
 
+#### Lateral join
+
+The `lateral` variant allows `<q2>` to be evaluated dynamically per row (or per join key) during `<q1>` execution, and reference fields from the current row:
+
+```logsql
+<q1> | join lateral by (k1, k2) (<q2_with_placeholders>) [options(...)] [inner] [prefix ...]
+```
+
+`inner`, `prefix` and `options(...)` can be supplied in any order after `<q2>`; they are canonicalized in the printed form.
+
+Differences from regular `join`:
+
+- `<q2>` is not pre-executed; it runs on demand for each unique `by (k1, k2)` key.
+- `<q2>` can use placeholders like `${field}`, which are replaced with values from the current row's unpacked fields (not limited to `by` fields; missing values are replaced with empty strings).
+- Results for each "placeholder-instantiated `<q2>`" are cached locally, keyed by the rendered query string; identical rendered queries hit the cache.
+- `<q2>` must include a `_time` filter; otherwise the subquery is skipped for that row to avoid unbounded scans.
+- `prefix` is applied to fields returned from `<q2>` the same way as in regular `join`.
+
+Optional `options(...)` parameters (comma-separated), with defaults: `max_subqueries=1000`, `max_per_key=100`, `concurrency=4`, `timeout=5s`:
+
+- `max_subqueries`: maximum total number of subqueries allowed for the entire query.
+- `max_per_key`: maximum number of result rows per join key.
+- `concurrency`: maximum number of subqueries executed in parallel.
+- `timeout`: timeout for each individual subquery.
+
+Example: for each pod, fetch recent error logs from the same pod over the last 10 minutes:
+
+```logsql
+_time:10m | join lateral by (kubernetes.pod_name) (
+  level:error | filter pod:"${kubernetes.pod_name}" _time:10m
+) prefix "err." options(max_subqueries=200,max_per_key=10,concurrency=3)
+```
+
+**Performance and safety tips**:
+
+- Always specify a time window in `<q2>` (e.g., `_time:5m`) to avoid full-table scans.
+- Tune `max_subqueries` and `concurrency` to prevent overload from high-cardinality keys.
+- Subquery errors or timeouts return empty results and do not interrupt the main query; each subquery is cancelled when its timeout elapses.
+- Best suited for correlated subquery scenarios (trace/user-based lookups); not suitable for large static broadcasts.
+
 ### json_array_len pipe
 
 `<q> | json_array_len(field) as result_field` calculates the length of JSON array at the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
