@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -81,93 +82,110 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	// Cleanup checkpoints for deleted Pods.
 	fc.cleanupCheckpoints()
 
-	// Start watching for new Pods.
-	kc.startWatchCluster(kc.ctx, pl.Metadata.ResourceVersion)
+	// Begin watching for new Pods and start reading their logs.
+	kc.wg.Add(1)
+	go func() {
+		defer kc.wg.Done()
+		kc.watchForPodsUpdates(ctx, pl.Metadata.ResourceVersion)
+	}()
 
 	return kc, nil
 }
 
-// startWatchCluster starts watching Pods scheduled on the given node.
-// It calls handleUpdateEvent for each received event.
-func (kc *kubernetesCollector) startWatchCluster(ctx context.Context, resourceVersion string) {
-	handleEvent := func(event watchEvent) {
+// watchForPodsUpdates starts watching Pods scheduled on the current node.
+// It calls startReadPodLogs for each new or modified Pod.
+func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resourceVersion string) {
+	currentNodeName := kc.currentNode.Metadata.Name
+
+	bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
+	defer bt.stop()
+
+	errorFired := false
+
+	handleEvent := func(event watchEvent) error {
 		switch event.Type {
 		case "ADDED", "MODIFIED":
+			bt.reset()
+
+			if errorFired {
+				logger.Infof("successfully re-established watching Pods on Node %q", currentNodeName)
+			}
+			errorFired = false
+
 			var pod pod
 			if err := json.Unmarshal(event.Object, &pod); err != nil {
-				logger.Panicf("FATAL: cannot unmarshal Kubernetes event object %q: %s", event.Object, err)
+				logger.Panicf("FATAL: cannot parse Kubernetes event object %q: %s", event.Object, err)
 			}
 
 			kc.startReadPodLogs(pod)
 
 			// Update resourceVersion to the latest seen.
 			resourceVersion = pod.Metadata.ResourceVersion
+			return nil
 		case "DELETED":
 			// Ignore deleted pods.
+			return nil
 		case "ERROR":
-			logger.Errorf("got an error event from Kubernetes API: %q", string(event.Object))
+			errorMessage := struct {
+				Code int `json:"code"`
+			}{}
+			if err := json.Unmarshal(event.Object, &errorMessage); err != nil {
+				logger.Panicf("FATAL: cannot parse Kubernetes error message %q: %s", event.Object, err)
+			}
+
+			if errorMessage.Code == http.StatusGone && resourceVersion != "" {
+				// The resourceVersion is no longer valid, see: https://kubernetes.io/docs/reference/using-api/api-concepts/#410-gone-responses
+				resourceVersion = ""
+				return nil
+			}
+
+			return fmt.Errorf("unexpected error message: %q", event.Object)
 		default:
-			logger.Errorf("unexpected Kubernetes event type %q: %s", event.Type, string(event.Object))
+			return fmt.Errorf("unexpected event type %q: %q", event.Type, event.Object)
 		}
 	}
 
-	currentNodeName := kc.currentNode.Metadata.Name
+	stopCh := ctx.Done()
 
-	kc.wg.Add(1)
-	go func() {
-		defer kc.wg.Done()
+	lastEOF := time.Time{}
 
-		stopCh := ctx.Done()
-		bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
-		defer bt.stop()
-
-		errorFired := false
-
-		lastEOF := time.Time{}
-
-		for {
-			r, err := kc.client.watchNodePods(ctx, currentNodeName, resourceVersion)
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-
-				errorFired = true
-
-				logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.currentDelay())
-				bt.wait(stopCh)
-				continue
+	for {
+		r, err := kc.client.watchNodePods(ctx, currentNodeName, resourceVersion)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
 			}
 
-			if errorFired {
-				logger.Infof("successfully re-established watching Pods on node %q", currentNodeName)
-			}
-			errorFired = false
+			errorFired = true
 
-			bt.reset()
-
-			err = r.readEvents(handleEvent)
-			_ = r.close()
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-
-				isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
-				if isEOF && time.Since(lastEOF) > time.Minute {
-					// Kubernetes API server closed the connection.
-					// This is expected to happen from time to time.
-					// Ignore EOF errors happening not more often than once per minute.
-					lastEOF = time.Now()
-					continue
-				}
-
-				logger.Errorf("failed to read the Kubernetes Pod watch stream: %s", err)
-				errorFired = true
-				continue
-			}
+			logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.currentDelay())
+			bt.wait(stopCh)
+			continue
 		}
-	}()
+
+		err = r.readEvents(handleEvent)
+		_ = r.close()
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
+			isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+			if isEOF && time.Since(lastEOF) > time.Minute {
+				// Kubernetes API server closed the connection.
+				// This is expected to happen from time to time.
+				// Ignore EOF errors happening not more often than once per minute.
+				lastEOF = time.Now()
+				continue
+			}
+
+			errorFired = true
+
+			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.currentDelay())
+			bt.wait(stopCh)
+			continue
+		}
+	}
 }
 
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {

@@ -22,6 +22,7 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [`/select/logsql/facets` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets): fix `expecting 3 columns; got 4 columns` panic when `/select/logsql/facets` endpoint is queried at [cluster version of VictoriaLogs](https://docs.victoriametrics.com/victorialogs/cluster/). See [#940](https://github.com/VictoriaMetrics/VictoriaLogs/issues/940). The issue has been introduced in [this commit](https://github.com/VictoriaMetrics/VictoriaLogs/commit/7f66493f5939de08b8af608b5ab2ed04b9c64c72) in the [release v1.35.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.35.0).
+* BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): properly handle "410 Gone" responses from the Kubernetes API server. Previously, vlagent could report 410 errors and fail to collect logs from newly discovered Pods. The bug has been introduced in [v1.43.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.0). 
 
 ## [v1.43.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.0)
 

@@ -126,14 +126,16 @@ type podWatchStream struct {
 	r io.ReadCloser
 }
 
-func (pws podWatchStream) readEvents(h func(event watchEvent)) error {
+func (pws podWatchStream) readEvents(h func(event watchEvent) error) error {
 	d := json.NewDecoder(pws.r)
 	for {
 		var e watchEvent
 		if err := d.Decode(&e); err != nil {
 			return fmt.Errorf("cannot parse WatchEvent json response: %w", err)
 		}
-		h(e)
+		if err := h(e); err != nil {
+			return err
+		}
 	}
 }
 
