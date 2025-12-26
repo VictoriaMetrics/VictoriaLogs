@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [Journald data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/): add `-journald.useRemoteIP` flag for saving the remote IP address in the `remote_ip` field.
+
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
 Released at 2025-12-26
