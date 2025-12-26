@@ -41,6 +41,8 @@ const TableSettings: FC<TableSettingsProps> = ({
 
   const [searchColumn, setSearchColumn] = useState("");
   const [indexFocusItem, setIndexFocusItem] = useState(-1);
+  const [draggingColumn, setDraggingColumn] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
   const customColumns = useMemo(() => {
     return selectedColumns.filter(col => !columns.includes(col));
@@ -122,6 +124,43 @@ const TableSettings: FC<TableSettingsProps> = ({
     onChangeColumns(columnsArray);
   }, []);
 
+  const handleDragStart = (column: string) => (e: DragEvent) => {
+    setDraggingColumn(column);
+    e.dataTransfer?.setData("text/plain", column);
+  };
+
+  const handleDragOver = (column: string) => (e: DragEvent) => {
+    e.preventDefault();
+    if (dragOverColumn === column) return;
+    setDragOverColumn(column);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverColumn(null);
+  };
+
+  const handleDrop = (targetColumn: string) => (e: DragEvent) => {
+    e.preventDefault();
+    if (!draggingColumn || draggingColumn === targetColumn) return;
+
+    const fromIndex = selectedColumns.indexOf(draggingColumn);
+    const toIndex = selectedColumns.indexOf(targetColumn);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const updatedColumns = [...selectedColumns];
+    updatedColumns.splice(fromIndex, 1);
+    updatedColumns.splice(toIndex, 0, draggingColumn);
+
+    handleChangeDisplayColumns(updatedColumns);
+    setDragOverColumn(null);
+    setDraggingColumn(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragOverColumn(null);
+    setDraggingColumn(null);
+  };
+
   return (
     <div className="vm-table-settings">
       <Tooltip title={title}>
@@ -193,6 +232,39 @@ const TableSettings: FC<TableSettingsProps> = ({
                 ))}
               </div>
             </div>
+            {!!selectedColumns.length && (
+              <div className="vm-table-settings-modal-columns-order">
+                <div className="vm-table-settings-modal-columns-order__title">
+                  Drag to reorder selected columns
+                </div>
+                <div className="vm-table-settings-modal-columns-order__list">
+                  {selectedColumns.map((col) => (
+                    <div
+                      className={classNames({
+                        "vm-table-settings-modal-columns-order__item": true,
+                        "vm-table-settings-modal-columns-order__item_dragging": draggingColumn === col,
+                        "vm-table-settings-modal-columns-order__item_over": dragOverColumn === col,
+                      })}
+                      key={col}
+                      draggable
+                      onDragStart={handleDragStart(col)}
+                      onDragOver={handleDragOver(col)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop(col)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <span
+                        className="vm-table-settings-modal-columns-order__drag"
+                        aria-hidden="true"
+                      />
+                      <span className="vm-table-settings-modal-columns-order__label">
+                        {col}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {toggleTableCompact && tableCompact !== undefined && (
             <div className="vm-table-settings-modal-section">

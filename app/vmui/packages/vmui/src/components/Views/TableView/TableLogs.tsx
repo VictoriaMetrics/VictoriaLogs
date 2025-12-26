@@ -45,12 +45,19 @@ const TableLogs: FC<TableLogsProps> = ({ logs, displayColumns, tableCompact, col
     }));
   }, [columns]);
 
+  const tableColumnsMap = useMemo(() => {
+    return new Map(tableColumns.map((col) => [String(col.key), col]));
+  }, [tableColumns]);
 
   const filteredColumns = useMemo(() => {
     if (tableCompact) return compactColumns;
     if (!displayColumns?.length) return [];
-    return tableColumns.filter(c => displayColumns.includes(c.key as string));
-  }, [tableColumns, displayColumns, tableCompact]);
+    return displayColumns.reduce<typeof tableColumns>((acc, key) => {
+      const column = tableColumnsMap.get(key);
+      if (column) acc.push(column);
+      return acc;
+    }, []);
+  }, [tableColumnsMap, displayColumns, tableCompact]);
 
   const paginationOffset = useMemo(() => {
     const startIndex = (page - 1) * rowsPerPage;
