@@ -15,6 +15,7 @@ import (
 type filterPatternMatch struct {
 	fieldName string
 	pm        *patternMatcher
+	isPrefix  bool
 
 	tokensOnce   sync.Once
 	tokens       []string
@@ -23,7 +24,9 @@ type filterPatternMatch struct {
 
 func (fp *filterPatternMatch) String() string {
 	funcName := "pattern_match"
-	if fp.pm.isFull {
+	if fp.isPrefix {
+		funcName = "pattern_match_prefix"
+	} else if fp.pm.isFull {
 		funcName = "pattern_match_full"
 	}
 	return fmt.Sprintf("%s%s(%s)", quoteFieldNameIfNeeded(fp.fieldName), funcName, quoteTokenIfNeeded(fp.pm.String()))
@@ -120,14 +123,14 @@ func (fp *filterPatternMatch) initTokens() {
 
 func (fp *filterPatternMatch) matchRow(fields []Field) bool {
 	v := getFieldValueByName(fields, fp.fieldName)
-	return fp.pm.Match(v)
+	return fp.matchValue(v)
 }
 
 func (fp *filterPatternMatch) applyToBlockResult(br *blockResult, bm *bitmap) {
 	c := br.getColumnByName(fp.fieldName)
 	if c.isConst {
 		v := c.valuesEncoded[0]
-		if !fp.pm.Match(v) {
+		if !fp.matchValue(v) {
 			bm.resetBits()
 		}
 		return
@@ -144,7 +147,7 @@ func (fp *filterPatternMatch) applyToBlockResult(br *blockResult, bm *bitmap) {
 		bb := bbPool.Get()
 		for _, v := range c.dictValues {
 			c := byte(0)
-			if fp.pm.Match(v) {
+			if fp.matchValue(v) {
 				c = 1
 			}
 			bb.B = append(bb.B, c)
@@ -179,7 +182,7 @@ func (fp *filterPatternMatch) applyToBlockResult(br *blockResult, bm *bitmap) {
 func (fp *filterPatternMatch) matchColumnGeneric(br *blockResult, bm *bitmap, c *blockResultColumn) {
 	values := c.getValues(br)
 	bm.forEachSetBit(func(idx int) bool {
-		return fp.pm.Match(values[idx])
+		return fp.matchValue(values[idx])
 	})
 }
 
@@ -189,7 +192,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	// Verify whether fp matches const column
 	v := bs.getConstColumnValue(fieldName)
 	if v != "" {
-		if !fp.pm.Match(v) {
+		if !fp.matchValue(v) {
 			bm.resetBits()
 		}
 		return
@@ -199,7 +202,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	ch := bs.getColumnHeader(fieldName)
 	if ch == nil {
 		// Fast path - there are no matching columns.
-		if !fp.pm.Match("") {
+		if !fp.matchValue("") {
 			bm.resetBits()
 		}
 		return
@@ -214,13 +217,13 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 			return
 		}
 		visitValues(bs, ch, bm, func(v string) bool {
-			return fp.pm.Match(v)
+			return fp.matchValue(v)
 		})
 	case valueTypeDict:
 		bb := bbPool.Get()
 		for _, v := range ch.valuesDict.values {
 			c := byte(0)
-			if fp.pm.Match(v) {
+			if fp.matchValue(v) {
 				c = 1
 			}
 			bb.B = append(bb.B, c)
@@ -235,7 +238,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toUint8String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeUint16:
@@ -246,7 +249,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toUint16String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeUint32:
@@ -257,7 +260,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toUint32String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeUint64:
@@ -268,7 +271,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toUint64String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeInt64:
@@ -279,7 +282,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toInt64String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeFloat64:
@@ -290,7 +293,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toFloat64String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeIPv4:
@@ -301,7 +304,7 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toIPv4String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	case valueTypeTimestampISO8601:
@@ -312,10 +315,17 @@ func (fp *filterPatternMatch) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		bb := bbPool.Get()
 		visitValues(bs, ch, bm, func(v string) bool {
 			s := toTimestampISO8601String(bs, bb, v)
-			return fp.pm.Match(s)
+			return fp.matchValue(s)
 		})
 		bbPool.Put(bb)
 	default:
 		logger.Panicf("FATAL: %s: unknown valueType=%d", bs.partPath(), ch.valueType)
 	}
+}
+
+func (fp *filterPatternMatch) matchValue(s string) bool {
+	if fp.isPrefix {
+		return fp.pm.MatchPrefix(s)
+	}
+	return fp.pm.Match(s)
 }

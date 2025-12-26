@@ -725,6 +725,33 @@ func TestFilterPatternMatch(t *testing.T) {
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
+	t.Run("prefix", func(t *testing.T) {
+		columns := []column{
+			{
+				name: "_msg",
+				values: []string{
+					"2025-01-02 foo bar",
+					"x 2025-01-02 foo bar",
+					"2025-01-02 foo",
+				},
+			},
+		}
+
+		fp := &filterPatternMatch{
+			fieldName: "_msg",
+			pm:        newPatternMatcher("<DATE> foo", false),
+			isPrefix:  true,
+		}
+		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 2})
+
+		fp = &filterPatternMatch{
+			fieldName: "_msg",
+			pm:        newPatternMatcher("foo", false),
+			isPrefix:  true,
+		}
+		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
+	})
+
 	t.Run("ipv4", func(t *testing.T) {
 		columns := []column{
 			{

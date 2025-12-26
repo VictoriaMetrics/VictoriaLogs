@@ -755,6 +755,14 @@ pattern_match("user_id=<N>, ip=<IP4>, time=<DATETIME>")
 
 If you need to match the whole `_msg` field value, then use the `pattern_match_full("pattern")` filter.
 
+If you need to match the pattern strictly at the beginning of a field, use `pattern_match_prefix("pattern")`. For example, the following filter matches messages that start with a datetime followed by a space and `foo`:
+
+```logsql
+pattern_match_prefix("<DATETIME> foo")
+```
+
+The filter can be applied to any given log field with the `log_field:pattern_match_prefix("pattern")` syntax.
+
 See also:
 
 - [`collapse_nums` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe)

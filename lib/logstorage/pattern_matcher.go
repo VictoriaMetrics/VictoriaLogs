@@ -137,6 +137,12 @@ func (pm *patternMatcher) Match(s string) bool {
 	return pm.matchSubstring(s)
 }
 
+// MatchPrefix returns true if s starts with the given pattern.
+func (pm *patternMatcher) MatchPrefix(s string) bool {
+	end := pm.indexEnd(s, 0)
+	return end >= 0
+}
+
 func (pm *patternMatcher) matchSubstring(s string) bool {
 	offset := 0
 	for {

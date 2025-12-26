@@ -2047,6 +2047,8 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterPatternMatch(lex, fieldName)
 	case lex.isKeyword("pattern_match_full"):
 		return parseFilterPatternMatch(lex, fieldName)
+	case lex.isKeyword("pattern_match_prefix"):
+		return parseFilterPatternMatch(lex, fieldName)
 	case lex.isKeyword("range"):
 		return parseFilterRange(lex, fieldName)
 	case lex.isKeyword("re"):
@@ -2457,10 +2459,12 @@ func parseFilterExact(lex *lexer, fieldName string) (filter, error) {
 
 func parseFilterPatternMatch(lex *lexer, fieldName string) (filter, error) {
 	isFull := lex.isKeyword("pattern_match_full")
+	isPrefix := lex.isKeyword("pattern_match_prefix")
 	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
 		fp := &filterPatternMatch{
 			fieldName: getCanonicalColumnName(fieldName),
 			pm:        newPatternMatcher(arg, isFull),
+			isPrefix:  isPrefix,
 		}
 		return fp, nil
 	})
@@ -3831,6 +3835,7 @@ var reservedKeywords = func() map[string]struct{} {
 		"lt_field",
 		"pattern_match",
 		"pattern_match_full",
+		"pattern_match_prefix",
 		"range",
 		"re",
 		"seq",

@@ -124,4 +124,18 @@ func TestPatternMatcherMatch(t *testing.T) {
 	// regression: leading separator present many times but placeholder doesn't match after it
 	f("xx<N>", "xxxxxxxxxxxxxxxx", false, false)
 	f("xx<N>", "xxxxxx123", false, true)
+
+	fPrefix := func(pattern, s string, expected bool) {
+		pm := newPatternMatcher(pattern, false)
+		if got := pm.MatchPrefix(s); got != expected {
+			t.Fatalf("unexpected MatchPrefix(%q, %q); got %v; want %v", pattern, s, got, expected)
+		}
+	}
+
+	// prefix matching
+	fPrefix("<DATETIME> foo", "2025-10-20T10:20:30Z foo bar", true)
+	fPrefix("<DATETIME> foo", "x 2025-10-20T10:20:30Z foo bar", false)
+	fPrefix("error", "error: disk full", true)
+	fPrefix("error", "INFO error: disk full", false)
+	fPrefix("", "anything", true)
 }
