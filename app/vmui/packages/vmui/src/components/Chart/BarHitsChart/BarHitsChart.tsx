@@ -12,6 +12,7 @@ import { calculateTotalHits } from "../../../utils/logs";
 import { ExtraFilter } from "../../../pages/OverviewPage/FiltersBar/types";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { useHitsChartConfig } from "../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { LOGS_BAR_COUNT_OPTIONS } from "../../../constants/logs";
 import { useFetchFieldNames } from "../../../pages/OverviewPage/hooks/useFetchFieldNames";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilters";
@@ -46,7 +47,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
 
   const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimeState();
-  const { topHits, setTopHits, groupFieldHits, setGroupFieldHits } = useHitsChartConfig();
+  const { topHits, setTopHits, groupFieldHits, setGroupFieldHits, barsCount, setBarsCount } = useHitsChartConfig();
   const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
 
   const fieldNamesOptions = useMemo(() => {
@@ -76,6 +77,12 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
             options={[5, 10, 25, 50]}
             limit={topHits}
             onChange={setTopHits}
+          /> |
+          <SelectLimit
+            label="Bars count"
+            options={LOGS_BAR_COUNT_OPTIONS}
+            limit={barsCount}
+            onChange={setBarsCount}
           /> |
           {isHitsMode && (
             <>
@@ -114,6 +121,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
           setPeriod={setPeriod}
           onApplyFilter={onApplyFilter}
           graphOptions={graphOptions}
+          barsCount={barsCount}
         />
       )}
     </div>

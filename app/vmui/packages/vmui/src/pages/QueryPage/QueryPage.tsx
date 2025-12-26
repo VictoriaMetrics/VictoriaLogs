@@ -38,9 +38,10 @@ const QueryPage: FC = () => {
   const { duration, relativeTime, period: periodState } = useTimeState();
   const timeDispatch = useTimeDispatch();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
-  const { topHits, groupFieldHits } = useHitsChartConfig();
+  const { topHits, groupFieldHits, barsCount } = useHitsChartConfig();
   const prevTopHits = usePrevious(topHits);
   const prevGroupFieldHits = usePrevious(groupFieldHits);
+  const prevBarsCount = usePrevious(barsCount);
 
   const [searchParams] = useSearchParams();
 
@@ -92,7 +93,7 @@ const QueryPage: FC = () => {
     }
 
     if (flags.hits) {
-      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
+      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode, barsCount });
     }
   };
 
@@ -176,13 +177,14 @@ const QueryPage: FC = () => {
   useEffect(() => {
     const topChanged = prevTopHits && (topHits !== prevTopHits);
     const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
+    const barsCountChanged = prevBarsCount && (barsCount !== prevBarsCount);
     const becameVisible = prevHideChart && !hideChart;
     const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
 
-    if (!(topChanged || groupChanged || becameVisible || queryModeChanged)) return;
+    if (!(topChanged || groupChanged || barsCountChanged || becameVisible || queryModeChanged)) return;
 
     dataLogHits.abortController.abort?.();
-    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
+    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode, barsCount });
   }, [
     hideChart,
     prevHideChart,
@@ -193,6 +195,8 @@ const QueryPage: FC = () => {
     prevTopHits,
     graphQueryMode,
     prevGraphMode,
+    barsCount,
+    prevBarsCount,
     fetchLogHits,
   ]);
 
@@ -231,6 +235,7 @@ const QueryPage: FC = () => {
           {...dataLogHits}
           query={query}
           period={period}
+          barsCount={barsCount}
           onApplyFilter={handleApplyFilter}
         />
       )}

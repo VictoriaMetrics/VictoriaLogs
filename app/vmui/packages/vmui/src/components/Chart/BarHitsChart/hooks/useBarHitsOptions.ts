@@ -34,6 +34,7 @@ interface UseGetBarHitsOptionsArgs {
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
   timezone: string;
+  barsCount: number;
 }
 
 export const OTHER_HITS_LABEL = "other fields";
@@ -80,6 +81,7 @@ const useBarHitsOptions = ({
   setPlotScale,
   graphOptions,
   timezone,
+  barsCount,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
 
@@ -114,10 +116,10 @@ const useBarHitsOptions = ({
         show: true,
         stroke: color,
         fill: graphOptions.fill && !isOther ? `${color}80` : graphOptions.fill ? color : "",
-        paths: getSeriesPaths(graphOptions.graphStyle),
+        paths: getSeriesPaths(graphOptions.graphStyle, barsCount),
       };
     });
-  }, [isDarkTheme, data, graphOptions]);
+  }, [isDarkTheme, data, graphOptions, barsCount]);
 
   const options: Options = {
     series,

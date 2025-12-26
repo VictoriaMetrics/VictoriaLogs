@@ -1,6 +1,6 @@
 import { TimeParams } from "../types";
 import dayjs from "dayjs";
-import { LOGS_BARS_VIEW, LOGS_GROUP_BY } from "../constants/logs";
+import { LOGS_DEFAULT_BAR_COUNT, LOGS_GROUP_BY } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../components/Chart/BarHitsChart/hooks/useBarHitsOptions";
 
@@ -9,12 +9,12 @@ export const getStreamPairs = (value: string): string[] => {
   return pairs.filter(Boolean);
 };
 
-export const getHitsTimeParams = (period: TimeParams) => {
+export const getHitsTimeParams = (period: TimeParams, barsCount = LOGS_DEFAULT_BAR_COUNT) => {
   const start = dayjs(period.start * 1000);
   const end = dayjs(period.end * 1000);
   const totalMs = Math.max(1, end.diff(start, "ms"));
 
-  let bars = Math.min(LOGS_BARS_VIEW, totalMs);
+  let bars = Math.max(1, Math.min(barsCount, totalMs));
   while (bars > 1 && (totalMs % bars) !== 0) bars--;
 
   const step = Math.max(1, Math.floor(totalMs / bars));

@@ -6,7 +6,9 @@ export const LOGS_MAX_LIMIT = 10000;
 
 export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 
-export const LOGS_BARS_VIEW = 100;
+export const LOGS_BAR_COUNT_OPTIONS = [12, 24, 48, 96, 288, 620, 1240];
+export const LOGS_DEFAULT_BAR_COUNT = 96;
+export const LOGS_BARS_VIEW = LOGS_DEFAULT_BAR_COUNT;
 export const LOGS_LIMIT_HITS = 5;
 
 // "Ungrouped" is a string that is used as a value for the "groupBy" parameter.
@@ -31,4 +33,3 @@ export const LOGS_URL_PARAMS = {
 // Maximum values for the logs autocomplete.
 export const MAX_QUERY_FIELDS = 1;
 export const MAX_QUERIES_HISTORY = 25;
-

@@ -20,13 +20,14 @@ interface Props {
   logHits: LogHits[];
   durationMs?: number;
   period: TimeParams;
+  barsCount: number;
   error?: string;
   isLoading: boolean;
   isOverview?: boolean;
   onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoading, isOverview, onApplyFilter }) => {
+const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, barsCount, error, isLoading, isOverview, onApplyFilter }) => {
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
@@ -45,7 +46,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
 
   const generateTimestamps = useCallback((date: dayjs.Dayjs) => {
     const result: number[] = [];
-    const { start, end, step } = getHitsTimeParams(period);
+    const { start, end, step } = getHitsTimeParams(period, barsCount);
     const stepsToFirstTimestamp = Math.ceil(start.diff(date, "milliseconds") / step);
     let firstTimestamp = date.add(stepsToFirstTimestamp * step, "milliseconds");
 
@@ -63,14 +64,14 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
     }
 
     return result;
-  }, [period]);
+  }, [period, barsCount]);
 
   const data = useMemo(() => {
     if (!logHits.length) return [[], []] as AlignedData;
     const xAxis = generateTimestamps(dayjs(logHits[0].timestamps[0]));
     const yAxes = getYAxes(logHits, xAxis);
     return [xAxis, ...yAxes] as AlignedData;
-  }, [logHits]);
+  }, [logHits, generateTimestamps]);
 
   const noDataMessage: string = useMemo(() => {
     if (isLoading) return "";

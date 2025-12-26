@@ -27,9 +27,10 @@ interface Props {
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
   onApplyFilter: (value: ExtraFilter) => void;
   graphOptions: GraphOptions;
+  barsCount: number;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter, barsCount }: Props) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
@@ -54,7 +55,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     onReadyChart,
     setPlotScale,
     graphOptions,
-    timezone
+    timezone,
+    barsCount,
   });
 
   const legendDetails: LegendLogHits[] = useMemo(() => {
