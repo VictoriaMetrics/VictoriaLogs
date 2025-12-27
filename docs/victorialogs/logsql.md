@@ -2261,6 +2261,16 @@ then `as _msg` part can be omitted. The following query is equivalent to the pre
 _time:5m | format "request from <ip>:<port>"
 ```
 
+Multiple formatted fields can be created in a single `format` pipe by separating definitions with commas (similar to [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe)):
+
+```logsql
+* | format
+    "<method> <path>" as request_line,
+    "<status>" as status keep_original_fields
+```
+
+Each `format` definition can optionally use `keep_original_fields` or `skip_empty_results` independently.
+
 String fields can be formatted with the following additional formatting rules:
 
 - The number of seconds in the [duration value](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values) - add `duration_seconds:` in front of the corresponding field name.

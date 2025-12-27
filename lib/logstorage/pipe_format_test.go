@@ -28,6 +28,8 @@ func TestParsePipeFormatSuccess(t *testing.T) {
 	f(`format if (x:y) "bar<baz><xyz>bac"`)
 	f(`format if (x:y) "bar<baz><xyz>bac" skip_empty_results`)
 	f(`format if (x:y) "bar<baz><xyz>bac" keep_original_fields`)
+	f(`format "<foo>" as x, "<bar>" as y`)
+	f(`format "<foo>" as x keep_original_fields, "<bar>" as y skip_empty_results`)
 }
 
 func TestParsePipeFormatFailure(t *testing.T) {
@@ -44,6 +46,7 @@ func TestParsePipeFormatFailure(t *testing.T) {
 	f(`format "foo<bar*>"`)
 	f(`format "foo<bar>" as *`)
 	f(`format "foo<bar>" as x*`)
+	f(`format "foo" as x,`)
 }
 
 func TestPipeFormat(t *testing.T) {
@@ -353,6 +356,30 @@ func TestPipeFormat(t *testing.T) {
 			{"c", "a: , b: x, x: "},
 		},
 	})
+
+	// multiple format entries in a single pipe
+	f(`format "<foo>" as out1, "<bar>" as out2 skip_empty_results`, [][]Field{
+		{
+			{"foo", "abc"},
+			{"bar", ""},
+			{"out2", "keep-me"},
+		},
+		{
+			{"bar", "bbb"},
+		},
+	}, [][]Field{
+		{
+			{"foo", "abc"},
+			{"bar", ""},
+			{"out2", "keep-me"},
+			{"out1", "abc"},
+		},
+		{
+			{"bar", "bbb"},
+			{"out2", "bbb"},
+			{"out1", ""},
+		},
+	})
 }
 
 func TestPipeFormatUpdateNeededFields(t *testing.T) {
@@ -439,6 +466,9 @@ func TestPipeFormatUpdateNeededFields(t *testing.T) {
 	f(`format if (x:z or y:w) "<f1>foo" as f2`, "f1,f2,y", "", "f1,f2,x,y", "")
 	f(`format if (x:z or y:w) "<f1>foo" as f2 skip_empty_results`, "f1,f2,y", "", "f1,f2,x,y", "")
 	f(`format if (x:z or y:w) "<f1>foo" as f2 keep_original_fields`, "f1,f2,y", "", "f1,f2,x,y", "")
+
+	// multiple format entries
+	f(`format "<f1>" as x, "<f2>" as y skip_empty_results`, "*", "", "*", "x")
 }
 
 func TestAppendUppercase(t *testing.T) {

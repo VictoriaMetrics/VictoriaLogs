@@ -20,6 +20,13 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe
 type pipeFormat struct {
+	entries []*pipeFormatEntry
+
+	// iff is an optional filter for skipping the format func
+	iff *ifFilter
+}
+
+type pipeFormatEntry struct {
 	formatStr string
 	steps     []patternStep
 
@@ -27,9 +34,6 @@ type pipeFormat struct {
 
 	keepOriginalFields bool
 	skipEmptyResults   bool
-
-	// iff is an optional filter for skipping the format func
-	iff *ifFilter
 }
 
 func (pf *pipeFormat) String() string {
@@ -37,16 +41,11 @@ func (pf *pipeFormat) String() string {
 	if pf.iff != nil {
 		s += " " + pf.iff.String()
 	}
-	s += " " + quoteTokenIfNeeded(pf.formatStr)
-	if !isMsgFieldName(pf.resultField) {
-		s += " as " + quoteTokenIfNeeded(pf.resultField)
+	a := make([]string, len(pf.entries))
+	for i, e := range pf.entries {
+		a[i] = e.String()
 	}
-	if pf.keepOriginalFields {
-		s += " keep_original_fields"
-	}
-	if pf.skipEmptyResults {
-		s += " skip_empty_results"
-	}
+	s += " " + strings.Join(a, ", ")
 	return s
 }
 
@@ -59,22 +58,29 @@ func (pf *pipeFormat) canLiveTail() bool {
 }
 
 func (pf *pipeFormat) canReturnLastNResults() bool {
-	return pf.resultField != "_time"
+	for _, e := range pf.entries {
+		if e.resultField == "_time" {
+			return false
+		}
+	}
+	return true
 }
 
 func (pf *pipeFormat) updateNeededFields(f *prefixfilter.Filter) {
-	if !f.MatchString(pf.resultField) {
-		return
-	}
+	for _, e := range pf.entries {
+		if !f.MatchString(e.resultField) {
+			continue
+		}
 
-	if pf.iff != nil {
-		f.AddAllowFilters(pf.iff.allowFilters)
-	} else if !pf.keepOriginalFields && !pf.skipEmptyResults {
-		f.AddDenyFilter(pf.resultField)
-	}
-	for _, step := range pf.steps {
-		if step.field != "" {
-			f.AddAllowFilter(step.field)
+		if pf.iff != nil {
+			f.AddAllowFilters(pf.iff.allowFilters)
+		} else if !e.keepOriginalFields && !e.skipEmptyResults {
+			f.AddDenyFilter(e.resultField)
+		}
+		for _, step := range e.steps {
+			if step.field != "" {
+				f.AddAllowFilter(step.field)
+			}
 		}
 	}
 }
@@ -97,6 +103,20 @@ func (pf *pipeFormat) visitSubqueries(visitFunc func(q *Query)) {
 	pf.iff.visitSubqueries(visitFunc)
 }
 
+func (pfe *pipeFormatEntry) String() string {
+	s := quoteTokenIfNeeded(pfe.formatStr)
+	if !isMsgFieldName(pfe.resultField) {
+		s += " as " + quoteTokenIfNeeded(pfe.resultField)
+	}
+	if pfe.keepOriginalFields {
+		s += " keep_original_fields"
+	}
+	if pfe.skipEmptyResults {
+		s += " skip_empty_results"
+	}
+	return s
+}
+
 func (pf *pipeFormat) newPipeProcessor(_ int, _ <-chan struct{}, _ func(), ppNext pipeProcessor) pipeProcessor {
 	return &pipeFormatProcessor{
 		pf:     pf,
@@ -114,8 +134,8 @@ type pipeFormatProcessor struct {
 type pipeFormatProcessorShard struct {
 	bm bitmap
 
-	a  arena
-	rc resultColumn
+	a   arena
+	rcs []resultColumn
 }
 
 func (pfp *pipeFormatProcessor) writeBlock(workerID uint, br *blockResult) {
@@ -137,39 +157,51 @@ func (pfp *pipeFormatProcessor) writeBlock(workerID uint, br *blockResult) {
 		}
 	}
 
-	shard.rc.name = pf.resultField
-
-	resultColumn := br.getColumnByName(pf.resultField)
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
-		v := ""
-		if pf.iff == nil || bm.isSetBit(rowIdx) {
-			v = shard.formatRow(pf, br, rowIdx)
-			if v == "" && pf.skipEmptyResults || pf.keepOriginalFields {
-				if vOrig := resultColumn.getValueAtRow(br, rowIdx); vOrig != "" {
-					v = vOrig
-				}
-			}
-		} else {
-			v = resultColumn.getValueAtRow(br, rowIdx)
-		}
-		shard.rc.addValue(v)
+	shard.rcs = shard.rcs[:0]
+	if cap(shard.rcs) < len(pf.entries) {
+		shard.rcs = make([]resultColumn, len(pf.entries))
+	} else {
+		shard.rcs = shard.rcs[:len(pf.entries)]
 	}
 
-	br.addResultColumn(shard.rc)
+	for i, e := range pf.entries {
+		rc := &shard.rcs[i]
+		rc.name = e.resultField
+
+		resultColumn := br.getColumnByName(e.resultField)
+		for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+			v := ""
+			if pf.iff == nil || bm.isSetBit(rowIdx) {
+				v = shard.formatRow(e.steps, br, rowIdx)
+				if (v == "" && e.skipEmptyResults) || e.keepOriginalFields {
+					if vOrig := resultColumn.getValueAtRow(br, rowIdx); vOrig != "" {
+						v = vOrig
+					}
+				}
+			} else {
+				v = resultColumn.getValueAtRow(br, rowIdx)
+			}
+			rc.addValue(v)
+		}
+
+		br.addResultColumn(*rc)
+	}
 	pfp.ppNext.writeBlock(workerID, br)
 
 	shard.a.reset()
-	shard.rc.reset()
+	for i := range shard.rcs {
+		shard.rcs[i].reset()
+	}
 }
 
 func (pfp *pipeFormatProcessor) flush() error {
 	return nil
 }
 
-func (shard *pipeFormatProcessorShard) formatRow(pf *pipeFormat, br *blockResult, rowIdx int) string {
+func (shard *pipeFormatProcessorShard) formatRow(steps []patternStep, br *blockResult, rowIdx int) string {
 	b := shard.a.b
 	bLen := len(b)
-	for _, step := range pf.steps {
+	for _, step := range steps {
 		b = append(b, step.prefix...)
 		if step.field == "" {
 			continue
@@ -264,6 +296,30 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 		iff = f
 	}
 
+	var entries []*pipeFormatEntry
+	for {
+		e, err := parsePipeFormatEntry(lex)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+
+		switch {
+		case lex.isKeyword(","):
+			lex.nextToken()
+		case lex.isKeyword("|", ")", ""):
+			pf := &pipeFormat{
+				entries: entries,
+				iff:     iff,
+			}
+			return pf, nil
+		default:
+			return nil, fmt.Errorf("unexpected token after 'format' expression [%s]: %q; expecting ',', '|' or ')'", entries[len(entries)-1], lex.token)
+		}
+	}
+}
+
+func parsePipeFormatEntry(lex *lexer) (*pipeFormatEntry, error) {
 	// parse format
 	formatStr, err := lex.nextCompoundToken()
 	if err != nil {
@@ -303,16 +359,14 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 		skipEmptyResults = true
 	}
 
-	pf := &pipeFormat{
+	e := &pipeFormatEntry{
 		formatStr:          formatStr,
 		steps:              steps,
 		resultField:        resultField,
 		keepOriginalFields: keepOriginalFields,
 		skipEmptyResults:   skipEmptyResults,
-		iff:                iff,
 	}
-
-	return pf, nil
+	return e, nil
 }
 
 func appendUppercase(dst []byte, s string) []byte {

@@ -1208,7 +1208,9 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
 			}
 		case *pipeFormat:
 			// Assume that `| format ...` pipe generates an additional by(...) label
-			addToLabelFields(t.resultField)
+			for _, e := range t.entries {
+				addToLabelFields(e.resultField)
+			}
 		case *pipeUnpackJSON:
 			// Assume that `| unpack_json ... fields (...)` pipe generates an additional by(...) labels from fields(...)
 			if len(t.fieldFilters) == 0 {
