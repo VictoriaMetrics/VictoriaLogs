@@ -191,8 +191,10 @@ You can control which metadata fields are attached to every log entry using the 
 * `-kubernetesCollector.includeNamespaceLabels` (default: `false`) - attach Namespace labels to every log entry.
 * `-kubernetesCollector.includeNamespaceAnnotations` (default: `false`) - attach Namespace annotations to every log entry.
 
-Note that vlagent does not update node or pod labels during runtime. 
-Therefore, if node/pod metadata changes, you must restart vlagent to apply those changes.
+Note that vlagent does not update node, pod, or namespace labels and annotations during runtime. 
+vlagent automatically discovers new namespaces created after startup and fetches their metadata.
+However, if labels or annotations of existing nodes, pods, or namespaces are changed, 
+you must restart vlagent to apply those changes.
 
 ## Monitoring
 

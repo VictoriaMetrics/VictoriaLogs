@@ -23,9 +23,10 @@ type kubernetesCollector struct {
 
 	currentNode node
 
-	// namespaces caches metadata for already requested namespaces to avoid repeated API calls.
+	// namespaces caches metadata for all namespaces in the cluster.
+	// namespacesLock guards concurrent access, since refreshNamespaces may run while events are handled.
 	namespaces     map[string]namespace
-	namespacesLock sync.Mutex
+	namespacesLock sync.RWMutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -65,6 +66,13 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 		logsPath:    logsPath,
 		namespaces:  make(map[string]namespace),
 	}
+
+	nsl, err := client.getAllNamespaces(ctx)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("cannot fetch namespaces: %w; this is required for proper filtering", err)
+	}
+	kc.setNamespaces(nsl.Items)
 
 	storage := &remotewrite.Storage{}
 	newProcessor := func(commonFields []logstorage.Field) processor {
@@ -176,8 +184,9 @@ func (kc *kubernetesCollector) startWatchCluster(ctx context.Context, resourceVe
 }
 
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
+	ns := kc.getNamespace(pod.Metadata.Namespace)
+
 	startRead := func(pc podContainer, cs containerStatus) {
-		ns := kc.getNamespace(pod.Metadata.Namespace)
 		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
 
 		filePath := kc.getLogFilePath(pod, pc, cs)
@@ -273,27 +282,53 @@ func (kc *kubernetesCollector) stop() {
 	kc.fileCollector.stop()
 }
 
-func (kc *kubernetesCollector) getNamespace(namespaceName string) namespace {
+// setNamespaces replaces the cached namespaces map with the provided list.
+func (kc *kubernetesCollector) setNamespaces(namespaces []namespace) {
+	m := make(map[string]namespace, len(namespaces))
+	for _, ns := range namespaces {
+		m[ns.Metadata.Name] = ns
+	}
+
 	kc.namespacesLock.Lock()
-	ns, ok := kc.namespaces[namespaceName]
+	kc.namespaces = m
 	kc.namespacesLock.Unlock()
+}
+
+// getNamespace returns namespace metadata from cache.
+// If the namespace is not in cache (e.g., it was created after vlagent startup),
+// this method refreshes the namespace list from Kubernetes API.
+// It terminates vlagent if the namespace cannot be found or if the API call fails,
+// as processing logs without complete namespace metadata could bypass excludeFilter.
+func (kc *kubernetesCollector) getNamespace(namespaceName string) namespace {
+	kc.namespacesLock.RLock()
+	ns, ok := kc.namespaces[namespaceName]
+	kc.namespacesLock.RUnlock()
 	if ok {
 		return ns
 	}
 
-	ns, err := kc.client.getNamespace(kc.ctx, namespaceName)
-	if err != nil {
-		logger.Errorf("cannot get namespace %q metadata: %s", namespaceName, err)
-		return namespace{
-			Metadata: namespaceMetadata{
-				Name: namespaceName,
-			},
-		}
+	if err := kc.refreshNamespaces(); err != nil {
+		logger.Fatalf("FATAL: cannot refresh namespaces: %s", err)
 	}
 
-	kc.namespacesLock.Lock()
-	kc.namespaces[namespaceName] = ns
-	kc.namespacesLock.Unlock()
-
+	kc.namespacesLock.RLock()
+	ns, ok = kc.namespaces[namespaceName]
+	kc.namespacesLock.RUnlock()
+	if !ok {
+		logger.Fatalf("FATAL: cannot find namespace %q in Kubernetes API response", namespaceName)
+	}
 	return ns
+}
+
+// refreshNamespaces fetches all namespaces from Kubernetes API and updates the cache.
+func (kc *kubernetesCollector) refreshNamespaces() error {
+	nsl, err := kc.client.getAllNamespaces(kc.ctx)
+	if err != nil {
+		return fmt.Errorf("cannot fetch namespaces from Kubernetes API: %w", err)
+	}
+
+	kc.setNamespaces(nsl.Items)
+
+	logger.Infof("refreshed namespace cache: %d namespaces", len(nsl.Items))
+	return nil
 }

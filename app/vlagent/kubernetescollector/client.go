@@ -269,28 +269,58 @@ func (c *kubeAPIClient) getPod(ctx context.Context, namespace, podName string) (
 	return p, nil
 }
 
-type nodeMetadata struct {
+type objectMeta struct {
 	Name        string            `json:"name"`
 	Labels      map[string]string `json:"labels"`
 	Annotations map[string]string `json:"annotations"`
 }
 
 type node struct {
-	Metadata nodeMetadata `json:"metadata"`
+	Metadata objectMeta `json:"metadata"`
 }
 
 type nodeList struct {
 	Items []node `json:"items"`
 }
 
-type namespaceMetadata struct {
-	Name        string            `json:"name"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
+type namespaceList struct {
+	Metadata listMetadata `json:"metadata"`
+	Items    []namespace  `json:"items"`
 }
 
 type namespace struct {
-	Metadata namespaceMetadata `json:"metadata"`
+	Metadata objectMeta `json:"metadata"`
+}
+
+type listMetadata struct {
+	ResourceVersion string `json:"resourceVersion"`
+}
+
+// getAllNamespaces returns all namespaces in the Kubernetes cluster.
+//
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#list-namespace-v1-core
+func (c *kubeAPIClient) getAllNamespaces(ctx context.Context) (namespaceList, error) {
+	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/namespaces", nil)
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return namespaceList{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		payload, err := io.ReadAll(resp.Body)
+		if err != nil {
+			payload = []byte(err.Error())
+		}
+		return namespaceList{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
+	}
+
+	var nsl namespaceList
+	if err := json.NewDecoder(resp.Body).Decode(&nsl); err != nil {
+		return namespaceList{}, fmt.Errorf("cannot decode response body: %w", err)
+	}
+
+	return nsl, nil
 }
 
 // getNodes returns the list of node names in the Kubernetes cluster.
@@ -349,33 +379,6 @@ func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (nod
 	}
 
 	return n, nil
-}
-
-// getNamespace returns the namespace with the given name.
-//
-// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-namespace-v1-core
-func (c *kubeAPIClient) getNamespace(ctx context.Context, namespaceName string) (namespace, error) {
-	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/namespaces/"+namespaceName, nil)
-	resp, err := c.c.Do(req)
-	if err != nil {
-		return namespace{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		payload, err := io.ReadAll(resp.Body)
-		if err != nil {
-			payload = []byte(err.Error())
-		}
-		return namespace{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
-	}
-
-	var ns namespace
-	if err := json.NewDecoder(resp.Body).Decode(&ns); err != nil {
-		return namespace{}, fmt.Errorf("cannot decode response body: %w", err)
-	}
-
-	return ns, nil
 }
 
 func (c *kubeAPIClient) mustCreateRequest(ctx context.Context, method, urlPath string, args url.Values) *http.Request {
