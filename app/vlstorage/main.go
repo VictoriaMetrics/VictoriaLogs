@@ -255,6 +255,8 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotCreate(w, r)
 	case "/internal/partition/snapshot/list":
 		return processPartitionSnapshotList(w, r)
+	case "/internal/partition/snapshot/delete":
+		return processPartitionSnapshotDelete(w, r)
 	}
 	return false
 }
@@ -416,6 +418,31 @@ func processPartitionSnapshotList(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	writeJSONResponse(w, snapshotPaths)
+	return true
+}
+
+func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	snapshotPath := r.FormValue("path")
+	if snapshotPath == "" {
+		httpserver.Errorf(w, r, "missing `path` query arg")
+		return true
+	}
+
+	if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return true
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 	return true
 }
 

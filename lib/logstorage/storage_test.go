@@ -2,12 +2,14 @@ package logstorage
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/snapshot/snapshotutil"
 )
 
 func TestStorageLifecycle(t *testing.T) {
@@ -108,6 +110,77 @@ func TestStorageMustAddRows(t *testing.T) {
 	s.MustClose()
 
 	fs.MustRemoveDir(path)
+}
+
+func TestStoragePartitionSnapshotDelete(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	cfg := &StorageConfig{
+		Retention:       365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+
+	s := MustOpenStorage(path, cfg)
+	t.Cleanup(func() {
+		s.MustClose()
+		fs.MustRemoveDir(path)
+	})
+
+	lr := newTestLogRows(1, 1, 0)
+	lr.timestamps[0] = time.Now().UTC().UnixNano()
+	s.MustAddRows(lr)
+	s.DebugFlush()
+
+	day := lr.timestamps[0] / nsecsPerDay
+	partitionName := getPartitionNameFromDay(day)
+
+	snapshotPath, err := s.PartitionSnapshotCreate(partitionName)
+	if err != nil {
+		t.Fatalf("cannot create snapshot: %s", err)
+	}
+	if !fs.IsPathExist(snapshotPath) {
+		t.Fatalf("unexpected non-existent snapshot path: %q", snapshotPath)
+	}
+
+	if err := s.PartitionSnapshotDelete(snapshotPath); err != nil {
+		t.Fatalf("cannot delete snapshot: %s", err)
+	}
+	if fs.IsPathExist(snapshotPath) {
+		t.Fatalf("snapshot still exists at %q", snapshotPath)
+	}
+	for _, p := range s.PartitionSnapshotList() {
+		if p == snapshotPath {
+			t.Fatalf("deleted snapshot %q is still returned in snapshot list", snapshotPath)
+		}
+	}
+}
+
+func TestStoragePartitionSnapshotDeleteRejectsInvalidPath(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	cfg := &StorageConfig{}
+
+	s := MustOpenStorage(path, cfg)
+	t.Cleanup(func() {
+		s.MustClose()
+		fs.MustRemoveDir(path)
+	})
+
+	if err := s.PartitionSnapshotDelete("relative/path"); err == nil || !strings.Contains(err.Error(), "must be absolute") {
+		t.Fatalf("expected error for relative path; got %v", err)
+	}
+
+	fakeSnapshotsDir := filepath.Join(path, "fake", snapshotsDirname)
+	fakeSnapshotPath := filepath.Join(fakeSnapshotsDir, snapshotutil.NewName())
+	absFakeSnapshotPath, err := filepath.Abs(fakeSnapshotPath)
+	if err != nil {
+		t.Fatalf("cannot obtain abs path: %s", err)
+	}
+	if err := s.PartitionSnapshotDelete(absFakeSnapshotPath); err == nil || !strings.Contains(err.Error(), "doesn't belong to any active partition") {
+		t.Fatalf("expected error for foreign snapshot path; got %v", err)
+	}
 }
 
 func TestStorageDeleteTaskOps(t *testing.T) {
