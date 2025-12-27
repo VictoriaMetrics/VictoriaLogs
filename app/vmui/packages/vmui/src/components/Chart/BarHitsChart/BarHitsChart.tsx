@@ -1,4 +1,5 @@
-import { FC, useCallback, useMemo, useState } from "preact/compat";
+import { FC, Fragment, useCallback, useMemo, useState } from "preact/compat";
+import { useSearchParams } from "react-router-dom";
 import "./style.scss";
 import "uplot/dist/uPlot.min.css";
 import { AlignedData } from "uplot";
@@ -31,18 +32,42 @@ interface Props {
 
 const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs, isOverview }) => {
   const { isMobile } = useDeviceDetect();
+  const [searchParams] = useSearchParams();
+
+  const initialQueryMode = useMemo(() => {
+    return searchParams.get("graph_mode") === GRAPH_QUERY_MODE.stats ? GRAPH_QUERY_MODE.stats : GRAPH_QUERY_MODE.hits;
+  }, [searchParams]);
 
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
-    queryMode: GRAPH_QUERY_MODE.hits,
+    queryMode: initialQueryMode,
     stacked: false,
     fill: false,
     hideChart: false,
+    cumulative: false,
   });
 
   const isHitsMode = graphOptions.queryMode === GRAPH_QUERY_MODE.hits;
 
   const totalHits = useMemo(() => calculateTotalHits(logHits), [logHits]);
+
+  const data = useMemo(() => {
+    if (_data.length <= 1) return _data;
+    if (!graphOptions.cumulative) return _data;
+
+    const [, ...series] = _data;
+
+    const cumulativeSeries = series.map(values => {
+      let sum = 0;
+      return values.map(value => {
+        const current = typeof value === "number" ? value : 0;
+        sum += current;
+        return sum;
+      });
+    });
+
+    return [_data[0], ...cumulativeSeries] as typeof _data;
+  }, [graphOptions.cumulative, _data]);
 
   const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimeState();
@@ -76,9 +101,10 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
             options={[5, 10, 25, 50]}
             limit={topHits}
             onChange={setTopHits}
-          /> |
+          />
           {isHitsMode && (
             <>
+              {" | "}
               <SelectLimit
                 searchable
                 label="Group by"
@@ -89,15 +115,16 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
                 error={error ? String(error) : ""}
                 onOpenSelect={handleOpenFields}
                 onChange={setGroupFieldHits}
-              /> |
+              />
+              {" | "}
+              <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
             </>
           )}
-          <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
           {durationMs !== undefined && (
-            <>
-              |
+            <Fragment>
+              {" | "}
               <p>Duration: <b>{getDurationFromMilliseconds(durationMs)}</b></p>
-            </>
+            </Fragment>
           )}
         </div>
         <BarHitsOptions
@@ -109,7 +136,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
         <BarHitsPlot
           logHits={logHits}
           totalHits={totalHits}
-          data={_data}
+          data={data}
           period={period}
           setPeriod={setPeriod}
           onApplyFilter={onApplyFilter}

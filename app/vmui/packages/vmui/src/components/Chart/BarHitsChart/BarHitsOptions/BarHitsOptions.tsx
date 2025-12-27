@@ -20,6 +20,7 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
+  const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
   const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
 
   const options: GraphOptions = useMemo(() => ({
@@ -28,7 +29,8 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
     stacked,
     fill: true,
     hideChart,
-  }), [stacked, hideChart, queryMode]);
+    cumulative,
+  }), [stacked, cumulative, hideChart, queryMode]);
 
   const handleChangeMode = (val: boolean) => {
     const mode = val ? GRAPH_QUERY_MODE.stats : GRAPH_QUERY_MODE.hits;
@@ -40,6 +42,12 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
   const handleChangeStacked = (val: boolean) => {
     setStacked(val);
     val ? searchParams.set("stacked", "true") : searchParams.delete("stacked");
+    setSearchParams(searchParams);
+  };
+
+  const handleChangeCumulative = (val: boolean) => {
+    setCumulative(val);
+    val ? searchParams.set("cumulative", "true") : searchParams.delete("cumulative");
     setSearchParams(searchParams);
   };
 
@@ -72,6 +80,13 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
           label={"Stacked"}
           value={stacked}
           onChange={handleChangeStacked}
+        />
+      </div>
+      <div className="vm-bar-hits-options-item">
+        <Switch
+          label={"Cumulative"}
+          value={cumulative}
+          onChange={handleChangeCumulative}
         />
       </div>
       <ShortcutKeys>

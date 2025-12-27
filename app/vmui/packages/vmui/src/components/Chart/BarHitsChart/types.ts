@@ -16,4 +16,5 @@ export interface GraphOptions {
   stacked: boolean;
   fill: boolean;
   hideChart: boolean;
+  cumulative: boolean;
 }

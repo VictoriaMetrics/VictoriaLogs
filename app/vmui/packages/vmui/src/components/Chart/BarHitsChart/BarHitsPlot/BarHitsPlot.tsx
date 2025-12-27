@@ -29,7 +29,7 @@ interface Props {
   graphOptions: GraphOptions;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: baseData, period, setPeriod, onApplyFilter }: Props) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
@@ -42,8 +42,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
   useZoomChart({ uPlotInst, xRange, setPlotScale });
 
   const { data, bands } = useMemo(() => {
-    return graphOptions.stacked ? stack(_data, () => false) : { data: _data, bands: [] };
-  }, [graphOptions, _data]);
+    return graphOptions.stacked ? stack(baseData, () => false) : { data: baseData, bands: [] };
+  }, [graphOptions.stacked, baseData]);
 
   const { options, series, focusDataIdx } = useBarHitsOptions({
     data,
@@ -140,7 +140,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
         {!isMobile && (
           <BarHitsTooltip
             uPlotInst={uPlotInst}
-            data={_data}
+            data={baseData}
             focusDataIdx={focusDataIdx}
           />
         )}
