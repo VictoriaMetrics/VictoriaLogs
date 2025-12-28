@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): make `-` and `!` negation operators stricter by rejecting whitespace after them (e.g. `- foo` / `! foo`). Use `-foo` / `!foo` or `NOT foo` instead. See [#752](https://github.com/VictoriaMetrics/VictoriaLogs/issues/752).
+
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
 Released at 2025-12-26

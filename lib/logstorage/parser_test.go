@@ -2176,6 +2176,10 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("NOT")
 	f("not (abc")
 	f("!")
+	f("- foo")
+	f("! foo")
+	f("- (foo)")
+	f("! (foo)")
 
 	// wildcard field names in filters
 	f(`*:foo`)

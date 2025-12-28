@@ -2132,7 +2132,11 @@ func parseFilterParens(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterNot(lex *lexer, fieldName string) (filter, error) {
+	op := lex.token
 	lex.nextToken()
+	if lex.isSkippedSpace && (op == "!" || op == "-") {
+		return nil, fmt.Errorf("unexpected whitespace after %q; use %s<filter> or NOT <filter>", op, op)
+	}
 
 	f, err := parseFilterGeneric(lex, fieldName)
 	if err != nil {
