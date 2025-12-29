@@ -29,7 +29,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
-  const [expandGroups, setExpandGroups] = useState<boolean[]>([]);
+  const [expandGroups, setExpandGroups] = useState<Record<string, boolean>>({});
 
   const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
@@ -38,8 +38,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const rowsPerPageRaw = searchParams.get(LOGS_URL_PARAMS.ROWS_PER_PAGE);
   const rowsPerPageNum = rowsPerPageRaw ? Number(rowsPerPageRaw) : 100;
   const rowsPerPage = isNaN(rowsPerPageNum) ? 0 : rowsPerPageNum;
-
-  const expandAll = useMemo(() => expandGroups.every(Boolean), [expandGroups]);
 
   const groupData: GroupLogsType[] = useMemo(() => {
     return groupByMultipleKeys(logs, [groupBy]).map((item) => {
@@ -57,17 +55,31 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     }).sort((a, b) => b.total - a.total); // groups sorting
   }, [logs, groupBy]);
 
+  const expandAll = useMemo(() =>
+    groupData.length > 0 && groupData.every(group => expandGroups[group.keysString])
+  , [groupData, expandGroups]);
+
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
   const handleToggleExpandAll = useCallback(() => {
-    setExpandGroups(new Array(groupData.length).fill(!expandAll));
-  }, [expandAll, groupData.length]);
+    setExpandGroups(prev => {
+      const shouldExpand = !expandAll;
+      const nextState = { ...prev };
 
-  const handleChangeExpand = useCallback((i: number) => (value: boolean) => {
+      groupData.forEach(group => {
+        nextState[group.keysString] = shouldExpand;
+      });
+
+      return nextState;
+    });
+  }, [expandAll, groupData]);
+
+  const handleChangeExpand = useCallback((groupKey: string) => (value: boolean) => {
     setExpandGroups((prev) => {
-      const newExpandGroups = [...prev];
-      newExpandGroups[i] = value;
-      return newExpandGroups;
+      return {
+        ...prev,
+        [groupKey]: value,
+      };
     });
   }, []);
 
@@ -88,10 +100,25 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
   useEffect(() => {
     setExpandGroups(prev => {
-      const keepClosed = (prev.every(v => !v) && prev.length) || isMobile;
-      return new Array(groupData.length).fill(!keepClosed);
+      const prevValues = Object.values(prev);
+      const shouldCollapseNew = isMobile || (prevValues.length > 0 && prevValues.every(v => !v));
+
+      const nextState: Record<string, boolean> = {};
+
+      groupData.forEach(group => {
+        const prevValue = prev[group.keysString];
+        nextState[group.keysString] = prevValue !== undefined ? prevValue : !shouldCollapseNew;
+      });
+
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(nextState);
+
+      const isSameSize = prevKeys.length === nextKeys.length;
+      const hasSameValues = isSameSize && nextKeys.every(key => prev[key] === nextState[key]);
+
+      return hasSameValues ? prev : nextState;
     });
-  }, [groupData]);
+  }, [groupData, isMobile]);
 
   useEffect(() => {
     setPage(1);
@@ -106,8 +133,8 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
             key={group.keysString}
           >
             <Accordion
-              defaultExpanded={expandGroups[groupN]}
-              onChange={handleChangeExpand(groupN)}
+              defaultExpanded={expandGroups[group.keysString]}
+              onChange={handleChangeExpand(group.keysString)}
               title={(
                 <GroupLogsHeader
                   group={group}
