@@ -1654,6 +1654,8 @@ LogsQL supports the following pipes:
 - [`stream_context`](https://docs.victoriametrics.com/victorialogs/logsql/#stream_context-pipe) allows selecting surrounding logs before and after the matching logs
   for each [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 - [`time_add`](https://docs.victoriametrics.com/victorialogs/logsql/#time_add-pipe) adds the given duration to the given field containing [RFC3339 time](https://www.rfc-editor.org/rfc/rfc3339).
+- [`top_over_time`](https://docs.victoriametrics.com/victorialogs/logsql/#top_over_time-pipe) returns top `N` field sets with the maximum number of matching logs per time bucket.
+- [`bottom_over_time`](https://docs.victoriametrics.com/victorialogs/logsql/#bottom_over_time-pipe) returns bottom `N` field sets with the minimum number of matching logs per time bucket.
 - [`top`](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe) returns top `N` field sets with the maximum number of matching logs.
 - [`total_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe) performs total (global) stats calculations over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`union`](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe) returns results from multiple LogsQL queries.
@@ -3468,6 +3470,72 @@ See also:
 
 - [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter).
 - [`time_offset` option](https://docs.victoriametrics.com/victorialogs/logsql/#query-options).
+
+### top_over_time pipe
+
+`<q> | top_over_time step <step> N by (field1, ..., fieldN)` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) returns top `N` sets for `(field1, ..., fieldN)` [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+with the maximum number of matching log entries inside every `_time` bucket with the given `<step>`.
+
+For example, the following query returns top 5 IP addresses per hour over the last day. The number of entries per bucket is returned in the `hits` field:
+
+```logsql
+_time:1d | top_over_time step 1h 5 by (ip)
+```
+
+The `N` is optional. If it is skipped, then top 10 entries are returned for each bucket. For example, the following query returns top 10 values
+for `path` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) seen in logs for every 30-minute bucket during the last 6 hours:
+
+```logsql
+_time:6h | top_over_time step 30m by (path)
+```
+
+It is possible to give another name for the `hits` field via `hits as <new_name>` syntax. For example, the following query returns top per-path hits in the `visits` field:
+
+```logsql
+_time:5m | top_over_time step 1m by (path) hits as visits
+```
+
+It is possible to set a `rank` field for each returned entry for the `top_over_time` pipe by adding `rank`. The rank is calculated separately for every time bucket. For example, the following query sets the `rank` field for each returned `ip` inside every 15-minute bucket:
+
+```logsql
+_time:1h | top_over_time step 15m 3 by (ip) rank
+```
+
+The `rank` field can have another name. For example, the following query uses the `position` field name instead of `rank` field name in the output:
+
+```logsql
+_time:1h | top_over_time step 15m 3 by (ip) rank as position
+```
+
+The `_time` bucket can be shifted with `offset`. For example, the following query calculates top 3 `_stream` values per day assuming the day starts at `UTC+02:00`:
+
+```logsql
+_time:7d | top_over_time step 1d offset 2h 3 by (_stream)
+```
+
+See also:
+
+- [`stats by time buckets`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets)
+- [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe)
+- [`bottom_over_time` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#bottom_over_time-pipe)
+
+### bottom_over_time pipe
+
+`<q> | bottom_over_time step <step> N by (field1, ..., fieldN)` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) returns bottom `N` sets for `(field1, ..., fieldN)` [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+with the minimum number of matching log entries inside every `_time` bucket with the given `<step>`.
+
+For example, the following query returns the least active IP address per hour over the last 12 hours:
+
+```logsql
+_time:12h | bottom_over_time step 1h 1 by (ip)
+```
+
+`hits` rename, `rank` (per bucket) and `offset` work in the same way as for [`top_over_time`](https://docs.victoriametrics.com/victorialogs/logsql/#top_over_time-pipe).
+
+See also:
+
+- [`top_over_time` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top_over_time-pipe)
+- [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe)
 
 ### top pipe
 
