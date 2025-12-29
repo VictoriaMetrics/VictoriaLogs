@@ -89,6 +89,11 @@ type StorageConfig struct {
 	// Log entries with timestamps older than now-MaxBackfillAge are ignored.
 	MaxBackfillAge time.Duration
 
+	// SnapshotsMaxAge is the maximum allowed age for partition snapshots.
+	//
+	// Snapshots older than SnapshotsMaxAge are automatically deleted if the value is non-zero.
+	SnapshotsMaxAge time.Duration
+
 	// MinFreeDiskSpaceBytes is the minimum free disk space at storage path after which the storage stops accepting new data
 	// and enters read-only mode.
 	MinFreeDiskSpaceBytes int64
@@ -139,6 +144,9 @@ type Storage struct {
 
 	// maxBackfillAge is the maximum age of logs with historical timestamps to accept
 	maxBackfillAge time.Duration
+
+	// snapshotsMaxAge is the maximum allowed age for partition snapshots
+	snapshotsMaxAge time.Duration
 
 	// minFreeDiskSpaceBytes is the minimum free disk space at path after which the storage stops accepting new data
 	minFreeDiskSpaceBytes uint64
@@ -365,6 +373,26 @@ func (s *Storage) PartitionSnapshotList() []string {
 	return snapshotPaths
 }
 
+func (s *Storage) deleteStaleSnapshots(maxAge time.Duration) {
+	if maxAge <= 0 {
+		return
+	}
+
+	expireDeadline := time.Now().UTC().Add(-maxAge)
+
+	s.partitionsLock.Lock()
+	ptws := append([]*partitionWrapper{}, s.partitions...)
+	for _, ptw := range ptws {
+		ptw.incRef()
+	}
+	s.partitionsLock.Unlock()
+
+	for _, ptw := range ptws {
+		ptw.pt.deleteStaleSnapshots(expireDeadline, maxAge)
+		ptw.decRef()
+	}
+}
+
 // DeleteRunTask starts deletion of logs according to the given filter f for the given tenantIDs.
 //
 // The taskID must contain an unique id of the task. It is used for tracking the task at the list returned by DeleteActiveTasks().
@@ -566,6 +594,11 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		futureRetention = 24 * time.Hour
 	}
 
+	snapshotsMaxAge := cfg.SnapshotsMaxAge
+	if snapshotsMaxAge < 0 {
+		snapshotsMaxAge = 0
+	}
+
 	maxBackfillAge := cfg.MaxBackfillAge
 	if maxBackfillAge <= 0 || maxBackfillAge > retention {
 		maxBackfillAge = retention
@@ -599,6 +632,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		flushInterval:          flushInterval,
 		futureRetention:        futureRetention,
 		maxBackfillAge:         maxBackfillAge,
+		snapshotsMaxAge:        snapshotsMaxAge,
 		minFreeDiskSpaceBytes:  minFreeDiskSpaceBytes,
 		logIngestedRows:        cfg.LogIngestedRows,
 		flockF:                 flockF,
@@ -677,6 +711,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	s.partitions = ptws
 	s.runRetentionWatcher()
 	s.runMaxDiskSpaceUsageWatcher()
+	s.runSnapshotsExpirationWatcher()
 	s.runDeleteTasksWatcher()
 	return s
 }
@@ -710,6 +745,17 @@ func (s *Storage) runDeleteTasksWatcher() {
 	s.wg.Add(1)
 	go func() {
 		s.watchDeleteTasks()
+		s.wg.Done()
+	}()
+}
+
+func (s *Storage) runSnapshotsExpirationWatcher() {
+	if s.snapshotsMaxAge <= 0 {
+		return
+	}
+	s.wg.Add(1)
+	go func() {
+		s.watchSnapshotsExpiration()
 		s.wg.Done()
 	}()
 }
@@ -839,6 +885,20 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func (s *Storage) watchSnapshotsExpiration() {
+	d := timeutil.AddJitterToDuration(11 * time.Second)
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.stopCh:
+			return
+		case <-ticker.C:
+		}
+		s.deleteStaleSnapshots(s.snapshotsMaxAge)
 	}
 }
 

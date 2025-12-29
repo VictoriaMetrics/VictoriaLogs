@@ -248,6 +248,31 @@ func (pt *partition) mustCreateSnapshot() string {
 	return snapshotPath
 }
 
+func (pt *partition) deleteStaleSnapshots(expireDeadline time.Time, maxAge time.Duration) {
+	snapshotsPath := filepath.Join(pt.path, snapshotsDirname)
+	if !fs.IsPathExist(snapshotsPath) {
+		return
+	}
+
+	des := fs.MustReadDir(snapshotsPath)
+	for _, de := range des {
+		name := de.Name()
+		t, err := snapshotutil.Time(name)
+		if err != nil {
+			logger.Warnf("unsupported snapshot name %q at %q: %s", name, snapshotsPath, err)
+			continue
+		}
+		if !t.Before(expireDeadline) {
+			continue
+		}
+		snapshotPath := filepath.Join(snapshotsPath, name)
+		logger.Infof("deleting snapshot %q for partition %q, since it is older than -snapshotsMaxAge=%s", snapshotPath, pt.name, maxAge)
+		pt.snapshotLock.Lock()
+		fs.MustRemoveDir(snapshotPath)
+		pt.snapshotLock.Unlock()
+	}
+}
+
 func (pt *partition) updateStats(ps *PartitionStats) {
 	pt.ddb.updateStats(&ps.DatadbStats)
 	pt.idb.updateStats(&ps.IndexdbStats)

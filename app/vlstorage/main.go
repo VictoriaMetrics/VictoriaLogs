@@ -40,6 +40,8 @@ var (
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#backfilling")
+	snapshotsMaxAge = flagutil.NewRetentionDuration("snapshotsMaxAge", "3d", "Automatically delete snapshots older than -snapshotsMaxAge if it is set to non-zero duration. "+
+		"Make sure that backup process has enough time to finish the backup before the corresponding snapshot is automatically deleted")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
 	inmemoryDataFlushInterval = flag.Duration("inmemoryDataFlushInterval", 5*time.Second, "The interval for guaranteed saving of in-memory data to disk. "+
@@ -134,6 +136,7 @@ func initLocalStorage() {
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
 		MaxBackfillAge:         maxBackfillAge.Duration(),
+		SnapshotsMaxAge:        snapshotsMaxAge.Duration(),
 		LogNewStreams:          *logNewStreams,
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,

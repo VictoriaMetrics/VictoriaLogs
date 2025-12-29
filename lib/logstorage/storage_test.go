@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -20,6 +21,45 @@ func TestStorageLifecycle(t *testing.T) {
 		s := MustOpenStorage(path, cfg)
 		s.MustClose()
 	}
+	fs.MustRemoveDir(path)
+}
+
+func TestStorageDeleteStaleSnapshots(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{}
+	s := MustOpenStorage(path, cfg)
+
+	now := time.Now().UTC()
+	lr := newTestLogRows(1, 1, 0)
+	lr.timestamps[0] = now.UnixNano()
+	s.MustAddRows(lr)
+	s.DebugFlush()
+
+	partitionName := now.Format(partitionNameFormat)
+	snapshotsPath := filepath.Join(path, partitionsDirname, partitionName, snapshotsDirname)
+	fs.MustMkdirIfNotExist(snapshotsPath)
+
+	oldSnapshotName := fmt.Sprintf("%s-%08X", now.Add(-2*time.Hour).Format("20060102150405"), 1)
+	recentSnapshotName := fmt.Sprintf("%s-%08X", now.Add(-time.Minute).Format("20060102150405"), 2)
+
+	fs.MustMkdirFailIfExist(filepath.Join(snapshotsPath, oldSnapshotName))
+	fs.MustMkdirFailIfExist(filepath.Join(snapshotsPath, recentSnapshotName))
+
+	s.deleteStaleSnapshots(time.Hour)
+
+	des := fs.MustReadDir(snapshotsPath)
+	snapshotNames := make([]string, len(des))
+	for i, de := range des {
+		snapshotNames[i] = de.Name()
+	}
+	if len(snapshotNames) != 1 || snapshotNames[0] != recentSnapshotName {
+		t.Fatalf("unexpected snapshots after cleanup; got %v; want [%s]", snapshotNames, recentSnapshotName)
+	}
+
+	s.MustClose()
 	fs.MustRemoveDir(path)
 }
 
