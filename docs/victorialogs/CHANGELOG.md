@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [HTTP data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): properly handle empty items in comma-separated HTTP ingestion params such as `VL-Stream-Fields`, `VL-Time-Field`, `VL-Msg-Field`, `VL-Ignore-Fields` and `VL-Decolorize-Fields`. Previously, empty items in `VL-Stream-Fields` (e.g. `foo,,bar`) could unexpectedly add `_msg` to stream fields and lead to unexpectedly high number of log streams. See [#966](https://github.com/VictoriaMetrics/VictoriaLogs/issues/966).
+
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
 Released at 2025-12-26

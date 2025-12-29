@@ -55,15 +55,15 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 
 	var isTimeFieldSet bool
 	timeFields := []string{"_time"}
-	if tfs := httputil.GetArray(r, "_time_field", "VL-Time-Field"); len(tfs) > 0 {
+	if tfs := removeEmptyTokens(httputil.GetArray(r, "_time_field", "VL-Time-Field")); len(tfs) > 0 {
 		isTimeFieldSet = true
 		timeFields = tfs
 	}
 
-	msgFields := httputil.GetArray(r, "_msg_field", "VL-Msg-Field")
-	streamFields := httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields")
-	ignoreFields := httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields")
-	decolorizeFields := httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	msgFields := removeEmptyTokens(httputil.GetArray(r, "_msg_field", "VL-Msg-Field"))
+	streamFields := removeEmptyTokens(httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields"))
+	ignoreFields := removeEmptyTokens(httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields"))
+	decolorizeFields := removeEmptyTokens(httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields"))
 
 	extraFields, err := getExtraFields(r)
 	if err != nil {
@@ -103,7 +103,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 }
 
 func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
-	efs := httputil.GetArray(r, "extra_fields", "VL-Extra-Fields")
+	efs := removeEmptyTokens(httputil.GetArray(r, "extra_fields", "VL-Extra-Fields"))
 	if len(efs) == 0 {
 		return nil, nil
 	}
@@ -120,6 +120,24 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 		}
 	}
 	return extraFields, nil
+}
+
+func removeEmptyTokens(a []string) []string {
+	if len(a) == 0 {
+		return nil
+	}
+	dst := a[:0]
+	for _, s := range a {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		dst = append(dst, s)
+	}
+	if len(dst) == 0 {
+		return nil
+	}
+	return dst
 }
 
 // GetCommonParamsForSyslog returns common params needed for parsing syslog messages and storing them to the given tenantID.
