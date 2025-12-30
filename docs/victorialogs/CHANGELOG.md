@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bars width calculation and visual misalignment relative to time axis. See [#900](https://github.com/VictoriaMetrics/VictoriaLogs/issues/900).
+
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
 Released at 2025-12-26
