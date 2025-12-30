@@ -1878,6 +1878,23 @@ with the biggest number of logs using [`top` pipe](https://docs.victoriametrics.
 _time:1d error | extract "ip=<ip> " from _msg | top 10 (ip)
 ```
 
+If you only need the part before `?` in `_msg`, you can skip `split` and directly extract both pieces:
+
+```logsql
+... | extract '<path>?<request_id>' from _msg | stats by (path) count()
+```
+
+If you already used [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe) to turn `_msg` into an array, placeholders let you pick specific items:
+
+First item:
+```logsql
+... | split "?" from _msg as parts | extract '["<path>"' from parts
+```
+Second item:
+```logsql
+... | split "?" from _msg as parts | extract '["<_>","<request_id>"' from parts
+```
+
 It is expected that `_msg` field contains `ip=...` substring ending with space. For example, `error ip=1.2.3.4 from user_id=42`.
 If there is no such substring in the current `_msg` field, then the `ip` output field will be empty.
 
@@ -1987,6 +2004,27 @@ For example, the following `pattern` properly matches `a < b` text by extracting
 ```
 <left> &lt; <right>
 ```
+
+If a field already contains a JSON array (for example produced by [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)), placeholders can skip earlier elements. The pattern below captures only the second array item into `second`:
+
+```logsql
+... | extract '["<_>","<second>"' from parts
+```
+
+For Example: split `_msg` by `?`, then extract `path` and `request_id` from the resulting array
+
+```
+2025-12-30 09:43:30.254522801 ["/api/v1/users","RequestId=1ab2c345-d6e7-4890-b1c2-d3e4f5a6b7c8"]
+```
+
+```logsql
+kubernetes.container_name:"nginx"
+  | split "?" from _msg as parts
+  | extract '["<path>","<request_id>"' from parts
+  | stats by (path) count()
+```
+
+This produces `path="/api/v1/users"` and `request_id="RequestId=1ab2c345-d6e7-4890-b1c2-d3e4f5a6b7c8"`, ready for grouping by `path`.
 
 #### Conditional extract
 
