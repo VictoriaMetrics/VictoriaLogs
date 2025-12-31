@@ -2222,7 +2222,8 @@ See also:
 `<q> | first N by (fields)` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) returns the first `N` logs from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) after sorting them
 by the given [`fields`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 
-The `first N` pipe is a shortcut for `sort by (...)` + `limit N` in a single step. It always performs its own "top N" selection.
+The `first N` pipe is a shortcut for sorting and taking top `N` rows in a single step (equivalent to `sort ... | limit N`).
+It always performs its own "top N" selection.
 
 - If `first` is used with `by (...)` (or just `(...)`), then it returns the top `N` rows according to these sort keys.
 - If `first` is used without sort keys (no `by (...)` / no `(...)`), then it returns the top `N` rows after sorting by **all the fields** in the row.
