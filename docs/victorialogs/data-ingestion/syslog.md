@@ -273,7 +273,7 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 1. Put the following line to [rsyslog](https://www.rsyslog.com/) config (this config is usually located at `/etc/rsyslog.conf`):
 
    ```
-   *.* @@victoria-logs-server:29514
+   *.* @@victoria-logs-server:29514;RSYSLOG_SyslogProtocol23Format
    ```
 
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs. See [these docs](https://www.rsyslog.com/sending-messages-to-a-remote-syslog-server/)
