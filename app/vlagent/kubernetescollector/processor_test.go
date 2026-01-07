@@ -9,18 +9,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-// expectedKlogTimestamp calculates the expected klog timestamp for the given month/day and time.
-// This matches the logic in tryParseKlog which uses time.Now().Year() to determine the year.
-func expectedKlogTimestamp(monthDay, timeStr string) int64 {
-	s := monthDay + " " + timeStr
-	t, err := time.ParseInLocation("0102 15:04:05.000000", s, time.UTC)
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse timestamp %q: %s", s, err))
-	}
-	t = t.AddDate(time.Now().Year(), 0, 0)
-	return t.UnixNano()
-}
-
 func TestProcessor(t *testing.T) {
 	f := func(in []string, resultsExpected []string) {
 		t.Helper()
@@ -168,6 +156,18 @@ func TestParseKlog(t *testing.T) {
 	want = `{"level":"INFO","thread_id":"1234","source_line":"tlsconfig.go:240","_msg":"Starting DynamicServingCertificateController"}`
 	timestampExpected = expectedKlogTimestamp("1215", "07:34:12.324492")
 	f(in, want, timestampExpected)
+}
+
+// expectedKlogTimestamp calculates the expected klog timestamp for the given month/day and time.
+// This matches the logic in tryParseKlog which uses time.Now().Year() to determine the year.
+func expectedKlogTimestamp(monthDay, timeStr string) int64 {
+	s := monthDay + " " + timeStr
+	t, err := time.ParseInLocation("0102 15:04:05.000000", s, time.UTC)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse timestamp %q: %s", s, err))
+	}
+	t = t.AddDate(time.Now().Year(), 0, 0)
+	return t.UnixNano()
 }
 
 func TestParseKlogFailure(t *testing.T) {
