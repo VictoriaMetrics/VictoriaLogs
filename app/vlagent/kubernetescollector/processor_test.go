@@ -109,10 +109,12 @@ func TestProcessor(t *testing.T) {
 }
 
 func TestParseKlog(t *testing.T) {
+	current := time.Date(1971, time.December, 20, 0, 0, 0, 0, time.UTC)
+
 	f := func(src, fieldsExpected string, timestampExpected int64) {
 		t.Helper()
 
-		timestamp, fields, ok := tryParseKlog(nil, src)
+		timestamp, fields, ok := tryParseKlog(nil, src, current)
 		if !ok {
 			t.Fatalf("cannot parse klog line %q", src)
 		}
@@ -130,51 +132,45 @@ func TestParseKlog(t *testing.T) {
 	// Parse simple line
 	in := `I1215 07:34:12.017826       94 serving.go:374] foobar`
 	want := `{"level":"INFO","thread_id":"94","source_line":"serving.go:374","_msg":"foobar"}`
-	timestampExpected := expectedKlogTimestamp("1215", "07:34:12.017826")
+	timestampExpected := int64(61630452017826000)
 	f(in, want, timestampExpected)
 
 	// Parse multiple words
 	in = `I1215 07:34:12.017826       24 serving.go:374] Generated self-signed cert (/tmp/apiserver.crt, /tmp/apiserver.key)`
 	want = `{"level":"INFO","thread_id":"24","source_line":"serving.go:374","_msg":"Generated self-signed cert (/tmp/apiserver.crt, /tmp/apiserver.key)"}`
-	timestampExpected = expectedKlogTimestamp("1215", "07:34:12.017826")
+	timestampExpected = 61630452017826000
 	f(in, want, timestampExpected)
 
 	// Parse key="value" pair
 	in = `I1215 07:34:11.695645       42 controller.go:824] "Starting provisioner controller" component="rancher.io/local-path_local-path-provisioner-5cf85fd84d-bf8vk_626b5057-e081-4b71-9a19-5e371ae0211b"`
 	want = `{"level":"INFO","thread_id":"42","source_line":"controller.go:824","_msg":"Starting provisioner controller","component":"rancher.io/local-path_local-path-provisioner-5cf85fd84d-bf8vk_626b5057-e081-4b71-9a19-5e371ae0211b"}`
-	timestampExpected = expectedKlogTimestamp("1215", "07:34:11.695645")
+	timestampExpected = 61630451695645000
 	f(in, want, timestampExpected)
 
 	// Parse key="value" pairs
 	in = `I1215 10:34:26.907803       1 server.go:191] "Failed probe" probe="metric-storage-ready" err="no metrics to serve"`
 	want = `{"level":"INFO","thread_id":"1","source_line":"server.go:191","_msg":"Failed probe","probe":"metric-storage-ready","err":"no metrics to serve"}`
-	timestampExpected = expectedKlogTimestamp("1215", "10:34:26.907803")
+	timestampExpected = 61641266907803000
 	f(in, want, timestampExpected)
 
 	// Parse quoted msg without additional fields
 	in = `I1215 07:34:12.324492       1234 tlsconfig.go:240] "Starting DynamicServingCertificateController"`
 	want = `{"level":"INFO","thread_id":"1234","source_line":"tlsconfig.go:240","_msg":"Starting DynamicServingCertificateController"}`
-	timestampExpected = expectedKlogTimestamp("1215", "07:34:12.324492")
+	timestampExpected = 61630452324492000
 	f(in, want, timestampExpected)
-}
 
-// expectedKlogTimestamp calculates the expected klog timestamp for the given month/day and time.
-// This matches the logic in tryParseKlog which uses time.Now().Year() to determine the year.
-func expectedKlogTimestamp(monthDay, timeStr string) int64 {
-	s := monthDay + " " + timeStr
-	t, err := time.ParseInLocation("0102 15:04:05.000000", s, time.UTC)
-	if err != nil {
-		panic(fmt.Sprintf("failed to parse timestamp %q: %s", s, err))
-	}
-	t = t.AddDate(time.Now().Year(), 0, 0)
-	return t.UnixNano()
+	// Adjust time to the previous year
+	in = `I1221 00:00:00.000001       1234 main.go:1] foo`
+	want = `{"level":"INFO","thread_id":"1234","source_line":"main.go:1","_msg":"foo"}`
+	timestampExpected = 30585600000001000
+	f(in, want, timestampExpected)
 }
 
 func TestParseKlogFailure(t *testing.T) {
 	f := func(src string) {
 		t.Helper()
 
-		_, fields, ok := tryParseKlog(nil, src)
+		_, fields, ok := tryParseKlog(nil, src, time.Now())
 		if ok {
 			got := logstorage.MarshalFieldsToJSON(nil, fields)
 			t.Fatalf("unexpected success; got\n%s", got)

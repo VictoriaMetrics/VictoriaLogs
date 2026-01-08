@@ -32,6 +32,7 @@ according to the following docs:
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): use local time zone for the VictoriaLogs server when the [`day_range`](https://docs.victoriametrics.com/victorialogs/logsql/#day-range-filter) or [`week_range`](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) filter doesn't contain explicitly specified `offset ...` suffix. This aligns with the behaviour when the timezone information is missing in the [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bars width calculation and visual misalignment relative to time axis. See [#900](https://github.com/VictoriaMetrics/VictoriaLogs/issues/900).
 * BUGFIX: [metrics](https://docs.victoriametrics.com/victorialogs/metrics/): fix `vl_http_errors_total{path="..."}` metric name mismatch for `/internal/select/*` endpoints (it was exposed as `vl_http_request_errors_total{path="..."}`). See [#1005](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1005).
+* BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): properly parse [Kubernetes system log](https://kubernetes.io/docs/concepts/cluster-administration/system-logs/) timestamps. This prevents future logs issues that occurred during the New Year transition.
 
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
