@@ -143,44 +143,58 @@ func (pws podWatchStream) close() error {
 	return pws.r.Close()
 }
 
-type pod struct {
-	Metadata podMetadata `json:"metadata"`
-	Status   podStatus   `json:"status"`
-	Spec     podSpec     `json:"spec"`
+// podList represents a Kubernetes PodList object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#podlist-v1-core
+type podList struct {
+	Items    []pod    `json:"items"`
+	Metadata listMeta `json:"metadata"`
 }
 
-type podMetadata struct {
+// pod represents a Kubernetes Pod object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#pod-v1-core
+type pod struct {
+	Metadata objectMeta `json:"metadata"`
+	Spec     podSpec    `json:"spec"`
+	Status   podStatus  `json:"status"`
+}
+
+// objectMeta represents a Kubernetes ObjectMeta object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#objectmeta-v1-meta
+type objectMeta struct {
 	Name            string            `json:"name"`
 	Labels          map[string]string `json:"labels"`
 	Annotations     map[string]string `json:"annotations"`
 	Namespace       string            `json:"namespace"`
 	ResourceVersion string            `json:"resourceVersion"`
-	UID             string            `json:"uid"`
 }
 
+// podSpec represents a Kubernetes PodSpec object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#podspec-v1-core
 type podSpec struct {
 	NodeName       string         `json:"nodeName"`
 	Containers     []podContainer `json:"containers"`
 	InitContainers []podContainer `json:"initContainers"`
 }
 
+// podContainer represents a Kubernetes Container object.
+// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#container-v1-core
 type podContainer struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name string `json:"name"`
 }
 
+// podStatus represents a Kubernetes PodStatus object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#podstatus-v1-core
 type podStatus struct {
-	Phase                 string            `json:"phase"`
 	PodIP                 string            `json:"podIP"`
 	ContainerStatuses     []containerStatus `json:"containerStatuses"`
 	InitContainerStatuses []containerStatus `json:"initContainerStatuses"`
-	QosClass              string            `json:"qosClass"`
 }
 
+// containerStatus represents a Kubernetes ContainerStatus object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#containerstatus-v1-core
 type containerStatus struct {
 	Name        string `json:"name"`
 	ContainerID string `json:"containerID"`
-	Image       string `json:"image"`
 }
 
 func (ps *podStatus) findContainerStatus(containerName string) (containerStatus, bool) {
@@ -201,12 +215,9 @@ func (ps *podStatus) findInitContainerStatus(containerName string) (containerSta
 	return containerStatus{}, false
 }
 
-type podList struct {
-	Metadata podListMetadata `json:"metadata"`
-	Items    []pod           `json:"items"`
-}
-
-type podListMetadata struct {
+// listMeta represents a Kubernetes ListMeta object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#listmeta-v1-meta
+type listMeta struct {
 	ResourceVersion string `json:"resourceVersion"`
 }
 
@@ -271,18 +282,16 @@ func (c *kubeAPIClient) getPod(ctx context.Context, namespace, podName string) (
 	return p, nil
 }
 
-type nodeMetadata struct {
-	Name        string            `json:"name"`
-	Labels      map[string]string `json:"labels"`
-	Annotations map[string]string `json:"annotations"`
-}
-
-type node struct {
-	Metadata nodeMetadata `json:"metadata"`
-}
-
+// nodeList represents a Kubernetes NodeList object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#nodelist-v1-core
 type nodeList struct {
 	Items []node `json:"items"`
+}
+
+// node represents a Kubernetes Node object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#node-v1-core
+type node struct {
+	Metadata objectMeta `json:"metadata"`
 }
 
 // getNodes returns the list of node names in the Kubernetes cluster.
