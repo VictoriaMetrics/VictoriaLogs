@@ -21,6 +21,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [metrics](https://docs.victoriametrics.com/victorialogs/metrics/): fix `vl_http_errors_total{path="..."}` metric name mismatch for `/internal/select/*` endpoints (it was exposed as `vl_http_request_errors_total{path="..."}`). See [#1005](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1005).
+
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
 
 Released at 2025-12-26
