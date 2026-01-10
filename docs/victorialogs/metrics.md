@@ -46,20 +46,14 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Counter
 **Labels:**
 - `path`: endpoint path
-- `reason`: `wrong_basic_auth`, `wrong_auth_key`, `unsupported`
-**Description:** Failed HTTP requests due to client errors or data problems. Counts authentication failures, unsupported content types, parameter errors, and cases where request data cannot be parsed (like malformed JSON or invalid log formats).
+- `format`: request format when applicable (e.g. `protobuf`)
+**Description:** Errors encountered while processing requests for the given endpoint. The counter is incremented by endpoint handlers on non-trivial processing errors (e.g. request decoding/parsing failures or query execution errors) and may differ from the number of HTTP responses with error status. For line-oriented ingestion (e.g. `/insert/jsonline`), it is incremented per invalid log line inside a request.
 
 ### vl_http_request_duration_seconds
 **Type:** Summary
 **Labels:**
 - `path`: endpoint path
 **Description:** Complete time spent processing each HTTP request from start to finish. Includes all processing steps: parsing request data, validating parameters, storing logs, and sending responses. Captured when requests complete successfully.
-
-### vl_http_request_errors_total
-**Type:** Counter
-**Labels:**
-- `path`: endpoint path
-**Description:** Failed request processing in internal cluster endpoints (`/internal/select/*`). Currently only tracks errors for cluster communication endpoints, not public API endpoints like `/select/logsql/query` or `/insert/jsonline`.
 
 ## Data Ingestion Metrics
 
