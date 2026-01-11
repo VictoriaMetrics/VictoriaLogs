@@ -61,13 +61,11 @@ func startCheckpointsDB(path string) (*checkpointsDB, error) {
 //  1. Log duplication when logs are re-read from the beginning.
 //  2. Log loss when a log file was rotated while vlagent was down.
 //     In this case we should find the rotated file.
-//
-// checkpoint includes pod metadata (common and stream fields) to allow immediate log processing
-// without waiting for the Kubernetes API server to provide pod information.
 type checkpoint struct {
-	Path   string `json:"path"`
-	Inode  uint64 `json:"inode"`
-	Offset int64  `json:"offset"`
+	Path        string `json:"path"`
+	Inode       uint64 `json:"inode"`
+	Fingerprint uint64 `json:"fingerprint"`
+	Offset      int64  `json:"offset"`
 }
 
 func (db *checkpointsDB) set(cp checkpoint) {

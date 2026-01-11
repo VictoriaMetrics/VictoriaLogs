@@ -124,12 +124,21 @@ func writeLinesToFile(t testing.TB, filePath string, lines ...string) {
 	defer f.Close()
 
 	for _, s := range lines {
-		if _, err := f.WriteString(s + "\n"); err != nil {
-			t.Fatalf("failed to write to file: %s", err)
-		}
+		writeToFile(t, f, s+"\n")
 	}
 	if err := f.Sync(); err != nil {
 		t.Fatalf("failed to sync file: %s", err)
+	}
+}
+
+func writeToFile(t testing.TB, f *os.File, data string) {
+	t.Helper()
+
+	if len(data) == 0 {
+		return
+	}
+	if _, err := f.WriteString(data); err != nil {
+		t.Fatalf("failed to write to file: %s", err)
 	}
 }
 
