@@ -359,3 +359,4 @@ These metrics follow the Prometheus exposition format and can be used for monito
 VictoriaLogs provides official Grafana dashboards that utilize these metrics:
 - [Single-node dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs.json)
 - [Cluster dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-cluster.json)
+- [Internal state dashboard](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-internal.json)

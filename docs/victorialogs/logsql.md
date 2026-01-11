@@ -5042,7 +5042,9 @@ Note that too large a number of parallel readers may result in excessive usage o
 
 ### `ignore_global_time_filter` query option
 
-When running via Web UI, Grafana, or APIs that may apply a global time range, VictoriaLogs injects a global `_time:[start,end]` filter into the query. Set `ignore_global_time_filter=true` to prevent injecting this global time filter.
+When running via Web UI, Grafana, or [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api) that may apply a global time range,
+VictoriaLogs injects a global `_time:[start,end]` filter into the query.
+Set `ignore_global_time_filter=true` to prevent injecting this global time filter.
 
 For example, the following query preserves the original time logic in the query body without adding a global `_time` filter:
 
@@ -5050,35 +5052,8 @@ For example, the following query preserves the original time logic in the query 
 options(ignore_global_time_filter=true) _time:>1h | count()
 ```
 
-### `allow_partial_response` query option
-
-In VictoriaLogs cluster mode, some `vlstorage` nodes may be temporarily unavailable. Set `allow_partial_response=true` to return partial results from available nodes instead of failing the whole query.
-
-For example:
-
-```logsql
-options(allow_partial_response=true) _time:1h error | stats count()
-```
-
-This may lead to incorrect results, so be careful when using this option. However, it's better to use this option instead of setting the `-search.allowPartialResponse` flag for more explicit control.
-
-### `time_offset` query option
-
-`time_offset` query option subtracts the given offset from all the [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) in the query,
-and then adds the given offset to the selected [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
-before passing them to query [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes). Allows comparing query results for the same duration at different offsets.
-Accepts [duration values](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values) like `12h`, `1d`, `1y`.
-For example, the following query returns the number of logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
-over the last hour 7 days ago.
-
-```logsql
-options(time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
-```
-
-### `ignore_global_time_filter` query option
-
-`ignore_global_time_filter` query option allows ignoring time filter from `start` and `end` args of [HTTP querying API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
-for the given (sub)query. For example, the following query returns the number of logs with `user_id` values seen in logs during December 2024, on the `[start...end)`
+This option can be used in subqueries for excluding the global time range for the given subquery.
+For example, the following query returns the number of logs with `user_id` values seen in logs during December 2024, on the `[start...end)`
 time range passed to [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs):
 
 ```logsql
@@ -5095,15 +5070,32 @@ user_id:in(_time:2024-12Z | keep user_id) | count()
 
 ### `allow_partial_response` query option
 
-`allow_partial_response` query option can be used in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/)
-for allowing partial responses when some of `vlstorage` nodes are unavailable for querying. For example, the following query returns
-logs for the last 5 minutes when some of the `vlstorage` nodes are unavailable (so the response may miss some logs, which are stored on the unavailable `vlstorage` nodes):
+In VictoriaLogs cluster mode, some `vlstorage` nodes may be temporarily unavailable.
+Set `allow_partial_response=true` to return partial results from available nodes instead of failing the whole query.
+
+For example:
 
 ```logsql
-options(allow_partial_response=true) _time:5m
+options(allow_partial_response=true) _time:1h error | stats count()
 ```
 
+This may lead to incorrect results, so be careful when using this option.
+However, it's better to use this option instead of setting the `-search.allowPartialResponse` flag for more explicit control.
+
 See also [partial response docs](https://docs.victoriametrics.com/victorialogs/querying/#partial-responses).
+
+### `time_offset` query option
+
+`time_offset` query option subtracts the given offset from all the [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) in the query,
+and then adds the given offset to the selected [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
+before passing them to query [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes). Allows comparing query results for the same duration at different offsets.
+Accepts [duration values](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values) like `12h`, `1d`, `1y`.
+For example, the following query returns the number of logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
+over the last hour 7 days ago.
+
+```logsql
+options(time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
+```
 
 ## Troubleshooting
 
