@@ -21,7 +21,7 @@ and [SQL to LogsQL conversion guide](https://docs.victoriametrics.com/victorialo
 
 LogsQL provides the following features:
 
-- Full-text search across [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- Full-text search in any [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) (defaults to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)).
   See [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter).
 - Ability to combine filters into arbitrary complex [logical filters](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter).
 - Ability to extract structured fields from unstructured logs at query time. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#transformations).
@@ -66,13 +66,13 @@ finds log messages with the `error: cannot find file` phrase:
 "error: cannot find file"
 ```
 
-Queries above match logs with any [timestamp](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field),
-e.g. they may return logs from the previous year alongside recently ingested logs.
+Queries above match logs with any [timestamp](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) unless it is additionally limited by query-time filters or server-side limits,
+e.g. they may return logs with timestamps from the previous year alongside recently received logs.
 
 Usually logs from the previous year aren't as interesting as the recently ingested logs.
 So it is recommended to add a [time filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) to the query.
 For example, the following query returns logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word),
-which were ingested into VictoriaLogs during the last 5 minutes:
+which have [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last 5 minutes:
 
 ```logsql
 error AND _time:5m
@@ -93,15 +93,15 @@ _time:5m error
 ```
 
 The query returns logs in arbitrary order because sorting a large number of logs may require non-trivial amounts of CPU and RAM.
-The number of logs with the `error` word over the last 5 minutes isn't usually too big (e.g., less than a few million), so it is OK to sort them with the [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe).
+If the number of logs with the `error` word over the last 5 minutes isn't too big (e.g., less than a few million), then it is OK to sort them with the [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe).
 The following query sorts the selected logs by [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field:
 
 ```logsql
 _time:5m error | sort by (_time)
 ```
 
-It is unlikely you are going to investigate more than a few hundred logs returned by the query above. So you can limit the number of returned logs
-with [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe). The following query returns the last 10 logs with the `error` word over the last 5 minutes:
+It is often convenient to limit the number of returned logs with [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe).
+The following query returns 10 most recent log entries (by [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)) with the `error` word over the last 5 minutes:
 
 ```logsql
 _time:5m error | sort by (_time) desc | limit 10
@@ -123,9 +123,8 @@ Then the following query removes all the logs from the buggy app, allowing us pa
 _time:5m error NOT buggy_app
 ```
 
-This query uses `NOT` [operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for removing log lines from the buggy app. The `NOT` operator is used frequently, so it can be substituted with `-` or `!` char
-(the `!` must be used instead of `-` in front of [`=`](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
-and [`~`](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter) filters like `!=` and `!~`).
+This query uses `NOT` [operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for removing log lines from the buggy app. The `NOT` operator is used frequently, so it can be substituted with `-` or `!` char.
+Also, [`=`](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter) and [`~`](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter) filters have shortcut negated forms: `!=` and `!~`.
 The following query is equivalent to the previous one:
 
 ```logsql
@@ -139,7 +138,7 @@ No problems - just add `-foobar` to the query in order to remove these buggy log
 _time:5m error -buggy_app -foobar
 ```
 
-This query can be rewritten to more clear query with the `OR` [operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) inside parentheses:
+This query can be rewritten to a clearer query with the `OR` [operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) inside parentheses:
 
 ```logsql
 _time:5m error -(buggy_app OR foobar)
@@ -148,7 +147,7 @@ _time:5m error -(buggy_app OR foobar)
 The parentheses are **required** here, since otherwise the query won't return the expected results.
 The query `error -buggy_app OR foobar` is interpreted as `(error AND NOT buggy_app) OR foobar` according to [priorities for AND, OR and NOT operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter).
 This query returns logs with `foobar` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word), even if they do not contain `error` word or contain `buggy_app` word.
-So it is recommended wrapping the needed query parts into explicit parentheses if you are unsure in priority rules.
+So it is recommended wrapping the needed query parts into explicit parentheses if you are unsure about operator precedence rules.
 As an additional bonus, explicit parentheses make queries easier to read and maintain.
 
 Queries above assume that the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) is stored in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
@@ -163,7 +162,7 @@ The field name can be wrapped into quotes if it contains special chars or keywor
 Any [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) also can be wrapped into quotes according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals). So the following query is equivalent to the previous one:
 
 ```logsql
-"_time":"5m" "log.level":"error" -("buggy_app" OR "foobar")
+_time:5m "log.level":"error" -("buggy_app" OR "foobar")
 ```
 
 What if the application identifier - such as `buggy_app` and `foobar` - is stored in the `app` field? Correct - just add `app:` prefix in front of `buggy_app` and `foobar`:
@@ -208,9 +207,9 @@ if you want to continue learning LogsQL.
 
 #### Word
 
-LogsQL splits all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into words
+LogsQL treats [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values as sequences of words
 delimited by non-word chars such as whitespace, parens, punctuation chars, etc. For example, the `foo: (bar,"тест")!` string
-is split into `foo`, `bar` and `тест` words. Words can contain arbitrary [utf-8](https://en.wikipedia.org/wiki/UTF-8) chars.
+is split into `foo`, `bar` and `тест` words. Words can contain arbitrary [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded letters and digits, plus `_`.
 These words are taken into account by full-text search filters such as
 [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter).
 
@@ -227,7 +226,7 @@ Tip: try [`*` filter](https://docs.victoriametrics.com/victorialogs/logsql/#any-
 Do not worry - this doesn't crash VictoriaLogs, even if the query selects trillions of logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line)
 if you are curious why.
 
-Additionally to filters, LogsQL query may contain arbitrary mix of optional actions for processing the selected logs. These actions are delimited by `|` and are known as [`pipes`](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+In addition to filters, LogsQL query may contain an arbitrary mix of optional actions for processing the selected logs. These actions are delimited by `|` and are known as [`pipes`](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
 For example, the following query uses [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) for returning the number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) for the last 5 minutes:
 
@@ -262,6 +261,7 @@ The list of LogsQL filters:
 - [Day range filter](https://docs.victoriametrics.com/victorialogs/logsql/#day-range-filter) - matches logs with [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) in the given per-day time range
 - [Week range filter](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) - matches logs with [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) in the given per-week day range
 - [Stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) - matches logs, which belong to the given [streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
+- [`_stream_id` filter](https://docs.victoriametrics.com/victorialogs/logsql/#_stream_id-filter) - matches logs, which belong to the given stream id(s)
 - [Word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) - matches logs with the given [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 - [Phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) - matches logs with the given phrase
 - [Prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter) - matches logs with the given word prefix or phrase prefix
@@ -295,13 +295,13 @@ The list of LogsQL filters:
 
 ### Time filter
 
-VictoriaLogs scans all the logs for each query if it doesn't contain the filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
-It uses various optimizations in order to accelerate full scan queries without the `_time` filter,
+VictoriaLogs scans all the logs for a query if it doesn't contain a filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+It uses various optimizations in order to accelerate queries without the `_time` filter,
 but such queries can be slow if the storage contains large number of logs over long time range. The easiest way to optimize queries
-is to narrow down the search with the filter on [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+is to narrow down the search with a filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 
-For example, the following query returns logs ingested into VictoriaLogs during the last hour, which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
-at the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
+For example, the following query returns logs with [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last hour, which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
+in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
 ```logsql
 _time:1h AND error
@@ -314,6 +314,7 @@ The following formats are supported for `_time` filter:
   - `_time:2.5d15m42.345s` - returns logs for the last 2.5 days, 15 minutes and 42.345 seconds
   - `_time:1y` - returns logs for the last year
 - `_time:>duration` - matches logs with timestamps older than `now-duration`.
+- `_time:<duration` - matches logs with timestamps newer than `now-duration`.
 - `_time:YYYY-MM-DDZ` - matches all the logs for the particular day by UTC. For example, `_time:2023-04-25Z` matches logs on April 25, 2023 by UTC.
 - `_time:YYYY-MMZ` - matches all the logs for the particular month by UTC. For example, `_time:2023-02Z` matches logs on February, 2023 by UTC.
 - `_time:YYYYZ` - matches all the logs for the particular year by UTC. For example, `_time:2023Z` matches logs on 2023 by UTC.
@@ -387,7 +388,7 @@ If the time range must be applied to other than UTC time zone, then add `offset 
 For example, the following query selects logs between `08:00` and `18:00` at `+0200` time zone:
 
 ```logsql
-_time:day_range[08:00, 18:00) offset 2h
+_time:day_range[08:00, 18:00) offset -2h
 ```
 
 Performance tip: it is recommended to specify a regular [time filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) additionally to the `day_range` filter. For example, the following query selects logs
