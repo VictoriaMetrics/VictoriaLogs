@@ -314,7 +314,7 @@ The following formats are supported for `_time` filter:
   - `_time:2.5d15m42.345s` - returns logs for the last 2.5 days, 15 minutes and 42.345 seconds
   - `_time:1y` - returns logs for the last year
 - `_time:>duration` - matches logs with timestamps older than `now-duration`.
-- `_time:<duration` - matches logs with timestamps newer than `now-duration`.
+- `_time:<duration` - matches logs with timestamps newer than `now-duration`. It is equivalent to `_time:duration`.
 - `_time:YYYY-MM-DDZ` - matches all the logs for the particular day by UTC. For example, `_time:2023-04-25Z` matches logs on April 25, 2023 by UTC.
 - `_time:YYYY-MMZ` - matches all the logs for the particular month by UTC. For example, `_time:2023-02Z` matches logs on February, 2023 by UTC.
 - `_time:YYYYZ` - matches all the logs for the particular year by UTC. For example, `_time:2023Z` matches logs on 2023 by UTC.
