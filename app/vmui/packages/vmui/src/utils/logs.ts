@@ -14,10 +14,8 @@ export const getHitsTimeParams = (period: TimeParams) => {
   const end = dayjs(period.end * 1000);
   const totalMs = Math.max(1, end.diff(start, "ms"));
 
-  let bars = Math.min(LOGS_BARS_VIEW, totalMs);
-  while (bars > 1 && (totalMs % bars) !== 0) bars--;
-
-  const step = Math.max(1, Math.floor(totalMs / bars));
+  const bars = Math.min(LOGS_BARS_VIEW, totalMs);
+  const step = Math.max(1, Math.ceil(totalMs / bars));
   const offset = ((start.valueOf() % step) + step) % step;
 
   return { start, end, step, offset };

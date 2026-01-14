@@ -5,9 +5,9 @@ import { getCssVariable } from "../../../../utils/theme";
 import { useAppState } from "../../../../state/common/StateContext";
 import { MinMax, SetMinMax } from "../../../../types";
 import { LogHits } from "../../../../api/types";
-import getSeriesPaths from "../../../../utils/uplot/paths";
 import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getColorFromString } from "../../../../utils/color";
+import useBarPaths from "./useBarPaths";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -82,12 +82,14 @@ const useBarHitsOptions = ({
   timezone,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
+  const { barPaths, drawHoverBar, getHoverAbsIdxForBars } = useBarPaths();
 
   const [focusDataIdx, setFocusDataIdx] = useState(-1);
 
   const setCursor = (u: uPlot) => {
-    const dataIdx = u.cursor.idx ?? -1;
-    setFocusDataIdx(dataIdx);
+    const nextIdx = getHoverAbsIdxForBars(u);
+    setFocusDataIdx((prev) => (prev === nextIdx ? prev : nextIdx));
+    requestAnimationFrame(() => u.redraw());
   };
 
   const series: Series[] = useMemo(() => {
@@ -114,10 +116,11 @@ const useBarHitsOptions = ({
         show: true,
         stroke: color,
         fill: graphOptions.fill && !isOther ? `${color}80` : graphOptions.fill ? color : "",
-        paths: getSeriesPaths(graphOptions.graphStyle),
+        paths: barPaths,
+        points: { show: false },
       };
     });
-  }, [isDarkTheme, data, graphOptions]);
+  }, [isDarkTheme, data, graphOptions, logHits, barPaths]);
 
   const options: Options = {
     series,
@@ -125,12 +128,7 @@ const useBarHitsOptions = ({
     width: containerSize.width || (window.innerWidth / 2),
     height: containerSize.height || 200,
     cursor: {
-      points: {
-        width: (u, seriesIdx, size) => size / 4,
-        size: (u, seriesIdx) => (u.series?.[seriesIdx]?.points?.size || 1) * 1.5,
-        stroke: (u, seriesIdx) => `${series?.[seriesIdx]?.stroke || "#ffffff"}`,
-        fill: () => "#ffffff",
-      },
+      points: { width: 0, size: 0 },
     },
     scales: {
       x: {
@@ -143,6 +141,7 @@ const useBarHitsOptions = ({
     },
     hooks: {
       drawSeries: [],
+      draw: [drawHoverBar],
       ready: [onReadyChart],
       setCursor: [setCursor],
       setSelect: [setSelect(setPlotScale)],
