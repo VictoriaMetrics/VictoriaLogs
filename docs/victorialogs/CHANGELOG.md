@@ -21,6 +21,9 @@ according to the following docs:
 
 ## tip
 
+
+* FEATURE: [dashboards/internal](https://grafana.com/grafana/dashboards/24585): add Grafana dashboard for monitoring VictoriaLogs internal state. The source of the dashboard is available [here](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-internal.json).
+
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bars width calculation and visual misalignment relative to time axis. See [#900](https://github.com/VictoriaMetrics/VictoriaLogs/issues/900).
 
 ## [v1.43.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.43.1)
