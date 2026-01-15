@@ -149,6 +149,17 @@ func TestPipeMath(t *testing.T) {
 		},
 	})
 
+	f("math 5 % 0 as x", [][]Field{
+		{
+			{"foo", "bar"},
+		},
+	}, [][]Field{
+		{
+			{"foo", "bar"},
+			{"x", "NaN"},
+		},
+	})
+
 	f("math round(exp(a), 0.01), round(ln(a), 0.01), ceil(exp(a)), floor(exp(a))", [][]Field{
 		{
 			{"a", "v1"},
