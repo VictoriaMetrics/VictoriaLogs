@@ -2,7 +2,7 @@ import { LOGS_LIMIT_HITS } from "../../../constants/logs";
 import { LogHits, MetricResult } from "../../../api/types";
 import { buildMetricLabel, promValueToNumber } from "../../../utils/metric";
 
-type Props = {
+export type Props = {
   setError: (error: string) => void;
   setLogHits: (logHits: LogHits[]) => void;
 }
