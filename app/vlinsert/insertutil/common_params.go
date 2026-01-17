@@ -189,6 +189,8 @@ type LogMessageProcessor interface {
 }
 
 type logMessageProcessor struct {
+	protocolName string
+
 	mu            sync.Mutex
 	wg            sync.WaitGroup
 	stopCh        chan struct{}
@@ -197,9 +199,8 @@ type logMessageProcessor struct {
 	cp *CommonParams
 	lr *logstorage.LogRows
 
-	rowsIngestedTotal  *metrics.Counter
-	bytesIngestedTotal *metrics.Counter
-	flushDuration      *metrics.Summary
+	unflushedRows  int
+	unflushedBytes int
 }
 
 func (lmp *logMessageProcessor) initPeriodicFlush() {
@@ -233,9 +234,12 @@ func (lmp *logMessageProcessor) initPeriodicFlush() {
 // If streamFieldsLen >= 0, then the given number of the initial fields is used as log stream fields
 // instead of the pre-configured stream fields.
 func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Field, streamFieldsLen int) {
-	lmp.rowsIngestedTotal.Inc()
+	lmp.mu.Lock()
+	defer lmp.mu.Unlock()
+
+	lmp.unflushedRows++
 	n := logstorage.EstimatedJSONRowLen(fields)
-	lmp.bytesIngestedTotal.Add(n)
+	lmp.unflushedBytes += n
 
 	if len(fields) > *MaxFieldsPerLine {
 		line := logstorage.MarshalFieldsToJSON(nil, fields)
@@ -243,9 +247,6 @@ func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Fiel
 		rowsDroppedTotalTooManyFields.Inc()
 		return
 	}
-
-	lmp.mu.Lock()
-	defer lmp.mu.Unlock()
 
 	lmp.lr.MustAdd(lmp.cp.TenantID, timestamp, fields, streamFieldsLen)
 
@@ -269,9 +270,12 @@ type InsertRowProcessor interface {
 
 // AddInsertRow adds r to lmp.
 func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
-	lmp.rowsIngestedTotal.Inc()
+	lmp.mu.Lock()
+	defer lmp.mu.Unlock()
+
+	lmp.unflushedRows++
 	n := logstorage.EstimatedJSONRowLen(r.Fields)
-	lmp.bytesIngestedTotal.Add(n)
+	lmp.unflushedBytes += n
 
 	if len(r.Fields) > *MaxFieldsPerLine {
 		line := logstorage.MarshalFieldsToJSON(nil, r.Fields)
@@ -279,9 +283,6 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 		rowsDroppedTotalTooManyFields.Inc()
 		return
 	}
-
-	lmp.mu.Lock()
-	defer lmp.mu.Unlock()
 
 	lmp.lr.MustAddInsertRow(r)
 
@@ -303,7 +304,12 @@ func (lmp *logMessageProcessor) flushLocked() {
 	lmp.lastFlushTime = start
 	logRowsStorage.MustAddRows(lmp.lr)
 	lmp.lr.ResetKeepSettings()
-	lmp.flushDuration.UpdateDuration(start)
+
+	metrics.GetOrCreateSummary(fmt.Sprintf("vl_insert_flush_duration_seconds{type=%q}", lmp.protocolName)).UpdateDuration(start)
+	metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", lmp.protocolName)).Add(lmp.unflushedRows)
+	lmp.unflushedRows = 0
+	metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", lmp.protocolName)).Add(lmp.unflushedBytes)
+	lmp.unflushedBytes = 0
 }
 
 // MustClose flushes the remaining data to the underlying storage and closes lmp.
@@ -322,16 +328,11 @@ func (lmp *logMessageProcessor) MustClose() {
 // MustClose() must be called on the returned LogMessageProcessor when it is no longer needed.
 func (cp *CommonParams) NewLogMessageProcessor(protocolName string, isStreamMode bool) LogMessageProcessor {
 	lr := logstorage.GetLogRows(cp.StreamFields, cp.IgnoreFields, cp.DecolorizeFields, cp.ExtraFields, *defaultMsgValue)
-	rowsIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", protocolName))
-	bytesIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", protocolName))
-	flushDuration := metrics.GetOrCreateSummary(fmt.Sprintf("vl_insert_flush_duration_seconds{type=%q}", protocolName))
 	lmp := &logMessageProcessor{
+		protocolName: protocolName,
+
 		cp: cp,
 		lr: lr,
-
-		rowsIngestedTotal:  rowsIngestedTotal,
-		bytesIngestedTotal: bytesIngestedTotal,
-		flushDuration:      flushDuration,
 
 		stopCh: make(chan struct{}),
 	}
