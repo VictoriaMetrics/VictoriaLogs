@@ -1067,7 +1067,7 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 		// Atomically store the updated list of file-based parts on disk.
 		// This must be performed under partsLock in order to prevent from races
 		// when multiple concurrently running goroutines update the list.
-		if removedSmallParts > 0 || removedBigParts > 0 || pwNew != nil && dstPartType != partInmemory {
+		if removedSmallParts > 0 || removedBigParts > 0 || (pwNew != nil && dstPartType != partInmemory) {
 			smallPartNames := getPartNames(ddb.smallParts)
 			bigPartNames := getPartNames(ddb.bigParts)
 			partNames := append(smallPartNames, bigPartNames...)
