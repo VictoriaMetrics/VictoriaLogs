@@ -18,6 +18,8 @@ import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilte
 import { getDurationFromMilliseconds } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
+const HeaderSeparator = () => "|";
+
 interface Props {
   logHits: LogHits[];
   data: AlignedData;
@@ -36,6 +38,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
     graphStyle: GRAPH_STYLES.BAR,
     queryMode: GRAPH_QUERY_MODE.hits,
     stacked: false,
+    cumulative: false,
     fill: false,
     hideChart: false,
   });
@@ -76,9 +79,10 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
             options={[5, 10, 25, 50]}
             limit={topHits}
             onChange={setTopHits}
-          /> |
+          />
           {isHitsMode && (
             <>
+              <HeaderSeparator/>
               <SelectLimit
                 searchable
                 label="Group by"
@@ -89,13 +93,14 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
                 error={error ? String(error) : ""}
                 onOpenSelect={handleOpenFields}
                 onChange={setGroupFieldHits}
-              /> |
+              />
+              <HeaderSeparator/>
+              <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
             </>
           )}
-          <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
-          {durationMs !== undefined && (
+          {durationMs && (
             <>
-              |
+              <HeaderSeparator/>
               <p>Duration: <b>{getDurationFromMilliseconds(durationMs)}</b></p>
             </>
           )}
