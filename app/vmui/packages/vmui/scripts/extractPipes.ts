@@ -14,6 +14,7 @@ const PKG_ROOT = path.resolve(__dirname, "..");
 const DOCS_REL = path.join("docs", "victorialogs", "logsql.md");
 const OUTPUT_DIR_REL = path.join("src", "generated");
 const OUTPUT_FILE = "logsql.pipes.ts";
+const LOGSQL_DOCS_URL = "https://docs.victoriametrics.com/victorialogs/logsql/";
 
 /** @see {@link baseOutput} - keep in sync if fields change */
 type PipeEntry = {
@@ -44,7 +45,7 @@ function slugify(s: string): string {
     .replace(/#/g, "")                       // drop '#'
     .replace(/[`~!?()[\]{}'".,:*+]/g, "")
     .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^a-z0-9_]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
@@ -145,11 +146,14 @@ async function extractPipes() {
     // pipe function name
     const value = inferValueFromTitle(cleanTitle) ?? fallbackValueFromId(id);
 
+    const link = `${LOGSQL_DOCS_URL}#${id}`;
+    const descriptionTitle = `<h5><a href=${link} target="_blank" rel="noreferrer">${cleanTitle}</a></h5>`;
+
     entries.push({
       id,
       value,
       title: cleanTitle,
-      description: `<div class='vm-markdown'>${description}</div>`,
+      description: `<div class='vm-markdown'>${descriptionTitle}${description}</div>`,
     });
   }
 
