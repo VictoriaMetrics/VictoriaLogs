@@ -41,6 +41,23 @@ func BenchmarkProcessorKlog(b *testing.B) {
 	benchmarkProcessor(b, in)
 }
 
+func BenchmarkProcessorJSON(b *testing.B) {
+	in := []string{
+		`2025-12-15T10:34:25.637326000Z stderr F {"message":"Generated self-signed cert","file":"/tmp/apiserver.crt","key":"/tmp/apiserver.key","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.872911000Z stderr F {"message":"Adding GroupVersion metrics.k8s.io v1beta1 to ResourceManager","component":"handler","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977313000Z stderr F {"message":"Starting RequestHeaderAuthRequestController","controller":"requestheader","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977317000Z stderr F {"message":"Starting controller","name":"client-ca::kube-system::extension-apiserver-authentication::client-ca-file","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977332000Z stderr F {"message":"Waiting for caches to sync for RequestHeaderAuthRequestController","controller":"shared_informer","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977336000Z stderr F {"message":"Waiting for caches to sync","controller":"client-ca::kube-system::extension-apiserver-authentication::requestheader-client-ca-file","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977526000Z stderr F {"message":"Starting controller","name":"serving-cert::/tmp/apiserver.crt::/tmp/apiserver.key","component":"dynamic_serving","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977591000Z stderr F {"message":"Serving securely on [::]:10250","component":"secure_serving","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:25.977605000Z stderr F {"message":"Starting DynamicServingCertificateController","component":"tlsconfig","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:26.077533000Z stderr F {"message":"Caches are synced for RequestHeaderAuthRequestController","controller":"shared_informer","severity":"INFO","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+		`2025-12-15T10:34:26.948143000Z stderr F {"message":"Failed probe","probe":"metric-storage-ready","error":"no metrics to serve","severity":"ERROR","kubernetes.container_name":"test-container","kubernetes.pod_name":"test-pod","kubernetes.pod_namespace":"test-namespace"}`,
+	}
+	benchmarkProcessor(b, in)
+}
+
 func benchmarkProcessor(b *testing.B, logLines []string) {
 	totalSize := 0
 

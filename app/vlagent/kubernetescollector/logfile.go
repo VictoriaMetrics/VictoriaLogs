@@ -12,8 +12,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // The maximum log line size that VictoriaLogs can accept.
@@ -330,10 +328,4 @@ func symlinkExists(path string) bool {
 		logger.Panicf("FATAL: cannot get symlink info of %q: %s", path, err)
 	}
 	return true
-}
-
-func reportLogRowSizeExceeded(streamFields []logstorage.Field, size int) {
-	stream := logstorage.MarshalFieldsToJSON(nil, streamFields)
-	logger.Warnf("skipping log entry from stream %s: entry size %d bytes exceeds maximum allowed size of %d MiB",
-		stream, size, maxLogLineSize/1024/1024)
 }

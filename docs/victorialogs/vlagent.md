@@ -134,12 +134,14 @@ To set the default [tenant](http://localhost:1313/victorialogs/#multitenancy) ID
 pass `-kubernetesCollector.tenantID` command-line flag with a tenant ID in the format `accountID:projectID`.
 See also [multitenancy docs for vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
 
-`vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields for Kubernetes Pod logs:
+By default, `vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields for Kubernetes Pod logs:
+
 - `kubernetes.container_name`
 - `kubernetes.pod_name`
 - `kubernetes.pod_namespace`
 
 Use these fields for fast filtering and grouping of logs in VictoriaLogs via [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
+While it is recommended to keep the default stream fields, you can override them using the `-kubernetesCollector.streamFields` command-line flag.
 
 ### Filtering Kubernetes logs
 
