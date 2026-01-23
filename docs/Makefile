@@ -177,9 +177,9 @@ docs-update-vlogscli-flags:
 # The current Git repository is not touched.
 docs-update-flags:
 	# Note for MacOS users:
-	# You need to install gnu versions of sed and awk inorder fo inplace editing to work
+	# You need to install gnu versions of sed and awk in order for in-place editing to work
 	# Install using: brew install gnu-sed gawk
-	# Add tools to PATH see how in `brew info gnu-sed` and `brew info gawk
+	# Add tools to PATH see how in `brew info gnu-sed` and `brew info gawk`
 
 	git fetch enterprise
 	git fetch opensource
