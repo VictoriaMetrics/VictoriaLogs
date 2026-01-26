@@ -246,11 +246,12 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
   If the `partition_prefix` arg is missing then snapshots for all the active per-day partitions are created.
   The endpoint returns JSON-encoded array with paths to created snapshots. It is safe to make backups from
   the created snapshots according to [these instructions](https://docs.victoriametrics.com/victorialogs/#backup-and-restore).
-  Snapshots can be removed via `/internal/partition/snapshot/delete?path=<snapshot-path>`.
   It is recommended removing unneeded snapshots on a regular basis in order to free up storage space occupied by these snapshots.
+  See [how to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
 - `/internal/partition/snapshot/list` - returns JSON-encoded list of paths to per-day partition snapshots created via `/internal/partition/snapshot/create`.
 - `/internal/partition/snapshot/delete?path=<snapshot-path>` - deletes a snapshot created via `/internal/partition/snapshot/create`.
   The `<snapshot-path>` can be taken from the output of `/internal/partition/snapshot/list`.
+- `/internal/partition/snapshot/delete_stale?max_age=<d>` - deletes snapshots older than `<d>`. For example, `max_age=1d` deletes snapshots older than one day.
 
 These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
@@ -266,6 +267,18 @@ This scheme can be implemented with the following simple cron job, which must ru
 
 All the VictoriaLogs instances with NVMe and HDD disks can be queried simultaneously via `vlselect` component of [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/),
 since [single-node VictoriaLogs instances can be a part of cluster](https://docs.victoriametrics.com/victorialogs/cluster/#single-node-and-cluster-mode-duality).
+
+## How to remove snapshots
+
+Snapshots created via [`/internal/partition/snapshot/create`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle)
+can be removed in the following ways:
+
+- By calling `/internal/partition/snapshot/delete?path=<snapshot-path>` HTTP endpoint at `victoria-logs:9428`, where `<snapshot-path>` is the path to snapshot
+  returned by `/internal/partition/snapshot/create` or by `/internal/partition/snapshot/list`.
+- By calling `/internal/partition/snapshot/delete_stale?max_age=<d>` HTTP endpoint at `victoria-logs:9428`,
+  where `<d>` is the maximum age for the snapshot to keep. Older snapshots are deleted.
+  For example, `max_age=1d` drops snapshots older than one day. If `max_age` is missing, then the value from `-snapshotMaxAge` command-line flag is used.
+- By specifying the maximum age for the snapshot to keep via `-snapshotMaxAge` command-line flag. Then older snapshots are automatically deleted on a periodic basis.
 
 ## Capacity planning
 
@@ -404,7 +417,9 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 
    The `--delete` option is required in the command above in order to ensures that the backup contains the full copy of the original data without superfluous files.
 
-1. To remove the snapshot with `/internal/partition/snapshot/delete?path=<path-to-snapshot>` endpoint. It is important to remove unneeded snapshots in order to free up storage space.
+1. To remove the snapshot with `/internal/partition/snapshot/delete?path=<path-to-snapshot>` endpoint.
+   See also [other ways to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
+   It is important to remove unneeded snapshots in order to free up storage space.
 
 The following steps must be performed for restoring the partition data from backup:
 

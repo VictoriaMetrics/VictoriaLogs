@@ -89,6 +89,12 @@ type StorageConfig struct {
 	// Log entries with timestamps older than now-MaxBackfillAge are ignored.
 	MaxBackfillAge time.Duration
 
+	// SnapshotsMaxAge is the maximum age for the created partition snapshots.
+	//
+	// Snapshots are automatically dropped after that duration.
+	// See https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle
+	SnapshotsMaxAge time.Duration
+
 	// MinFreeDiskSpaceBytes is the minimum free disk space at storage path after which the storage stops accepting new data
 	// and enters read-only mode.
 	MinFreeDiskSpaceBytes int64
@@ -139,6 +145,11 @@ type Storage struct {
 
 	// maxBackfillAge is the maximum age of logs with historical timestamps to accept
 	maxBackfillAge time.Duration
+
+	// snapshotsMaxAge is the maximum age for the created partition snapshots.
+	//
+	// Older snapshots are automatically deleted. See https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle
+	snapshotsMaxAge time.Duration
 
 	// minFreeDiskSpaceBytes is the minimum free disk space at path after which the storage stops accepting new data
 	minFreeDiskSpaceBytes uint64
@@ -325,10 +336,17 @@ func (s *Storage) PartitionSnapshotList() []string {
 	ptws := s.getPartitions()
 	defer s.putPartitions(ptws)
 
+	snapshotPaths := getSnapshotPaths(ptws)
+	sort.Strings(snapshotPaths)
+
+	return snapshotPaths
+}
+
+func getSnapshotPaths(ptws []*partitionWrapper) []string {
 	var snapshotPaths []string
+
 	for _, ptw := range ptws {
-		ptPath := ptw.pt.path
-		snapshotsPath := filepath.Join(ptPath, snapshotsDirname)
+		snapshotsPath := filepath.Join(ptw.pt.path, snapshotsDirname)
 		if !fs.IsPathExist(snapshotsPath) {
 			continue
 		}
@@ -345,8 +363,6 @@ func (s *Storage) PartitionSnapshotList() []string {
 			snapshotPaths = append(snapshotPaths, snapshotPath)
 		}
 	}
-
-	sort.Strings(snapshotPaths)
 
 	return snapshotPaths
 }
@@ -381,6 +397,37 @@ func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	}
 
 	return ptw.pt.deleteSnapshot(snapshotName)
+}
+
+// MustDeleteStalePartitionSnapshots deletes snapshots older than maxAge.
+//
+// The list of paths to deleted snapshots is returned from this function.
+func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []string {
+	var deletedSnapshotPaths []string
+
+	currentTime := time.Now()
+
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
+
+	snapshotPaths := getSnapshotPaths(ptws)
+	for _, snapshotPath := range snapshotPaths {
+		fi, err := os.Stat(snapshotPath)
+		if err != nil {
+			logger.Warnf("skipping snapshot at %s since cannot access it: %s", snapshotPath, err)
+			continue
+		}
+
+		creationTime := fi.ModTime()
+		if currentTime.Sub(creationTime) > maxAge {
+			logger.Infof("deleting snapshot at %s because it became older than maxAge=%s (snapshot creation time: %s)", snapshotPath, maxAge, creationTime)
+			fs.MustRemoveDir(snapshotPath)
+			deletedSnapshotPaths = append(deletedSnapshotPaths, snapshotPath)
+			logger.Infof("deleted snapshot at %s", snapshotPath)
+		}
+	}
+
+	return deletedSnapshotPaths
 }
 
 // DeleteRunTask starts deletion of logs according to the given filter f for the given tenantIDs.
@@ -617,6 +664,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		flushInterval:          flushInterval,
 		futureRetention:        futureRetention,
 		maxBackfillAge:         maxBackfillAge,
+		snapshotsMaxAge:        cfg.SnapshotsMaxAge,
 		minFreeDiskSpaceBytes:  minFreeDiskSpaceBytes,
 		logIngestedRows:        cfg.LogIngestedRows,
 		flockF:                 flockF,
@@ -696,6 +744,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	s.runRetentionWatcher()
 	s.runMaxDiskSpaceUsageWatcher()
 	s.runDeleteTasksWatcher()
+	s.runSnapshotsMaxAgeWatcher()
 	return s
 }
 
@@ -728,6 +777,14 @@ func (s *Storage) runDeleteTasksWatcher() {
 	s.wg.Add(1)
 	go func() {
 		s.watchDeleteTasks()
+		s.wg.Done()
+	}()
+}
+
+func (s *Storage) runSnapshotsMaxAgeWatcher() {
+	s.wg.Add(1)
+	go func() {
+		s.watchSnapshotsMaxAge()
 		s.wg.Done()
 	}()
 }
@@ -857,6 +914,26 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func (s *Storage) watchSnapshotsMaxAge() {
+	if s.snapshotsMaxAge <= 0 {
+		return
+	}
+
+	d := timeutil.AddJitterToDuration(time.Minute)
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.stopCh:
+			return
+		case <-ticker.C:
+		}
+
+		s.MustDeleteStalePartitionSnapshots(s.snapshotsMaxAge)
 	}
 }
 

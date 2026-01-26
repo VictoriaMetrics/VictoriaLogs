@@ -40,6 +40,9 @@ var (
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#backfilling")
+	snapshotsMaxAge = flagutil.NewRetentionDuration("snapshotsMaxAge", "3d", "Snapshots are automatically deleted after the given duration if it is set to positive value. "+
+		"Make sure that the backup process has enough time for backing up the snapshot before its' deletion. "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
 	inmemoryDataFlushInterval = flag.Duration("inmemoryDataFlushInterval", 5*time.Second, "The interval for guaranteed saving of in-memory data to disk. "+
@@ -134,6 +137,7 @@ func initLocalStorage() {
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
 		MaxBackfillAge:         maxBackfillAge.Duration(),
+		SnapshotsMaxAge:        snapshotsMaxAge.Duration(),
 		LogNewStreams:          *logNewStreams,
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,
@@ -257,6 +261,8 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotList(w, r)
 	case "/internal/partition/snapshot/delete":
 		return processPartitionSnapshotDelete(w, r)
+	case "/internal/partition/snapshot/delete_stale":
+		return processPartitionSnapshotDeleteStale(w, r)
 	}
 	return false
 }
@@ -462,6 +468,42 @@ func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+	return true
+}
+
+func processPartitionSnapshotDeleteStale(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	maxAge := snapshotsMaxAge.Duration()
+	maxAgeStr := r.FormValue("max_age")
+	if maxAgeStr != "" {
+		var d flagutil.RetentionDuration
+		if err := d.Set(maxAgeStr); err != nil {
+			httpserver.Errorf(w, r, "cannot parse max_age=%q: %s", maxAgeStr, err)
+			return true
+		}
+		maxAge = d.Duration()
+	}
+	if maxAge <= 0 {
+		// Nothing to delete.
+		fmt.Fprintf(w, `[]`)
+		return true
+	}
+
+	deletedSnapshotPaths := localStorage.MustDeleteStalePartitionSnapshots(maxAge)
+	if deletedSnapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		deletedSnapshotPaths = []string{}
+	}
+
+	writeJSONResponse(w, deletedSnapshotPaths)
 	return true
 }
 

@@ -249,6 +249,9 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Whether to disable /select/* HTTP endpoints
   -select.disableCompression
      Whether to disable compression for select query responses received from -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
+  -snapshotsMaxAge value
+     Snapshots are automatically deleted after the given duration if it is set to positive value. Make sure that the backup process has enough time for backing up the snapshot before its' deletion. See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots
+     The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 3d)
   -storage.minFreeDiskSpaceBytes size
      The minimum free disk space at -storageDataPath after which the storage stops accepting new data
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 10000000)
