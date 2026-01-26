@@ -9,8 +9,9 @@ menu:
 tags:
   - logs
 aliases:
-  - /victorialogs/data-ingestion/Filebeat.html
   - /victorialogs/data-ingestion/filebeat.html
+  - /victorialogs/data-ingestion/Filebeat.html
+  - /VictoriaLogs/data-ingestion/Filebeat.html
 ---
 
 _Tested with filebeat [8.15.1+](https://www.elastic.co/guide/en/beats/libbeat/8.17/release-notes-8.15.1.html)._

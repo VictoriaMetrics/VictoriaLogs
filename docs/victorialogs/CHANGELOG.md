@@ -11,6 +11,7 @@ tags:
   - logs
 aliases:
 - /victorialogs/CHANGELOG.html
+- /VictoriaLogs/CHANGELOG.html
 ---
 
 The following `tip` changes can be tested by building VictoriaLogs components from the latest commit of [VictoriaLogs](https://github.com/VictoriaMetrics/VictoriaLogs/) repository

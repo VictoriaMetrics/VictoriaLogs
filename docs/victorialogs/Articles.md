@@ -7,6 +7,8 @@ menu:
     identifier: "victorialogs-articles"
     weight: 70
 tags: []
+aliases:
+- /VictoriaLogs/Articles.html
 ---
 
 ## Third-party articles and slides
