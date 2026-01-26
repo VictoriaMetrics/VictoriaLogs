@@ -295,19 +295,18 @@ func (s *Storage) PartitionList() []string {
 	return ptNames
 }
 
-// PartitionSnapshotCreate creates a snapshot for the partition with the given name
+// PartitionSnapshotCreate creates a snapshot for the partition with the given partitionName
 //
-// The snaphsot name must have YYYYMMDD format.
+// The snaphsot partitionName must have YYYYMMDD format.
 //
 // The function returns path to the created snapshot on success.
-func (s *Storage) PartitionSnapshotCreate(name string) (string, error) {
-	ptw := func() *partitionWrapper {
-		s.partitionsLock.Lock()
-		defer s.partitionsLock.Unlock()
+func (s *Storage) PartitionSnapshotCreate(partitionName string) (string, error) {
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
 
-		for _, ptw := range s.partitions {
-			if ptw.pt.name == name {
-				ptw.incRef()
+	ptw := func() *partitionWrapper {
+		for _, ptw := range ptws {
+			if ptw.pt.name == partitionName {
 				return ptw
 			}
 		}
@@ -315,23 +314,18 @@ func (s *Storage) PartitionSnapshotCreate(name string) (string, error) {
 	}()
 
 	if ptw == nil {
-		return "", fmt.Errorf("cannot create snapshot from partition %q, because it is missing", name)
+		return "", fmt.Errorf("cannot create snapshot from partition %q, because it is missing", partitionName)
 	}
 
 	snapshotPath := ptw.pt.mustCreateSnapshot()
-	ptw.decRef()
 
 	return snapshotPath, nil
 }
 
 // PartitionSnapshotList returns a list of paths to all the snapshots across active partitions.
 func (s *Storage) PartitionSnapshotList() []string {
-	s.partitionsLock.Lock()
-	ptws := append([]*partitionWrapper{}, s.partitions...)
-	for _, ptw := range ptws {
-		ptw.incRef()
-	}
-	s.partitionsLock.Unlock()
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
 
 	var snapshotPaths []string
 	for _, ptw := range ptws {
@@ -349,13 +343,9 @@ func (s *Storage) PartitionSnapshotList() []string {
 				continue
 			}
 
-			path := filepath.Join(snapshotsPath, name)
-			snapshotPaths = append(snapshotPaths, path)
+			snapshotPath := filepath.Join(snapshotsPath, name)
+			snapshotPaths = append(snapshotPaths, snapshotPath)
 		}
-	}
-
-	for _, ptw := range ptws {
-		ptw.decRef()
 	}
 
 	sort.Strings(snapshotPaths)
@@ -376,13 +366,12 @@ func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	}
 	partitionPath := filepath.Dir(snapshotDir)
 
-	ptw := func() *partitionWrapper {
-		s.partitionsLock.Lock()
-		defer s.partitionsLock.Unlock()
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
 
-		for _, ptw := range s.partitions {
-			if partitionPath == ptw.pt.path {
-				ptw.incRef()
+	ptw := func() *partitionWrapper {
+		for _, ptw := range ptws {
+			if ptw.pt.path == partitionPath {
 				return ptw
 			}
 		}
@@ -392,7 +381,6 @@ func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	if ptw == nil {
 		return fmt.Errorf("partition path %q cannot be found across active partitions", partitionPath)
 	}
-	defer ptw.decRef()
 
 	return ptw.pt.deleteSnapshot(snapshotName)
 }
@@ -1068,25 +1056,20 @@ func (s *Storage) MustClose() {
 //
 // Partitions are merged sequentially in order to reduce load on the system.
 func (s *Storage) MustForceMerge(partitionNamePrefix string) {
-	var ptws []*partitionWrapper
-
-	s.partitionsLock.Lock()
-	for _, ptw := range s.partitions {
-		if strings.HasPrefix(ptw.pt.name, partitionNamePrefix) {
-			ptw.incRef()
-			ptws = append(ptws, ptw)
-		}
-	}
-	s.partitionsLock.Unlock()
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
 
 	s.wg.Add(1)
 	defer s.wg.Done()
 
 	for _, ptw := range ptws {
+		if !strings.HasPrefix(ptw.pt.name, partitionNamePrefix) {
+			continue
+		}
+
 		logger.Infof("started force merge for partition %s", ptw.pt.name)
 		startTime := time.Now()
 		ptw.pt.mustForceMerge()
-		ptw.decRef()
 		logger.Infof("finished force merge for partition %s in %.3fs", ptw.pt.name, time.Since(startTime).Seconds())
 	}
 }
@@ -1294,6 +1277,15 @@ func (s *Storage) IsReadOnly() bool {
 //
 // This function is for debugging and testing purposes only, since it is slow.
 func (s *Storage) DebugFlush() {
+	ptws := s.getPartitions()
+	defer s.putPartitions(ptws)
+
+	for _, ptw := range ptws {
+		ptw.pt.debugFlush()
+	}
+}
+
+func (s *Storage) getPartitions() []*partitionWrapper {
 	s.partitionsLock.Lock()
 	ptws := append([]*partitionWrapper{}, s.partitions...)
 	for _, ptw := range ptws {
@@ -1301,8 +1293,11 @@ func (s *Storage) DebugFlush() {
 	}
 	s.partitionsLock.Unlock()
 
+	return ptws
+}
+
+func (s *Storage) putPartitions(ptws []*partitionWrapper) {
 	for _, ptw := range ptws {
-		ptw.pt.debugFlush()
 		ptw.decRef()
 	}
 }
