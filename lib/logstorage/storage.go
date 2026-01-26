@@ -295,31 +295,29 @@ func (s *Storage) PartitionList() []string {
 	return ptNames
 }
 
-// PartitionSnapshotCreate creates a snapshot for the partition with the given partitionName
+// PartitionSnapshotMustCreate creates snapshots for partitions with the given partitionPrefix
 //
-// The snaphsot partitionName must have YYYYMMDD format.
+// The partitionPrefix must match one of the following formats:
+// - YYYYMMDD - matches partitions for the given day
+// - YYYYMM - matches partitions for the given month
+// - YYYY - matches partitions for the given year
+// - an empty string - matches all the partitions
 //
-// The function returns path to the created snapshot on success.
-func (s *Storage) PartitionSnapshotCreate(partitionName string) (string, error) {
+// The function returns paths to created snapshots
+func (s *Storage) PartitionSnapshotMustCreate(partitionPrefix string) []string {
 	ptws := s.getPartitions()
 	defer s.putPartitions(ptws)
 
-	ptw := func() *partitionWrapper {
-		for _, ptw := range ptws {
-			if ptw.pt.name == partitionName {
-				return ptw
-			}
-		}
-		return nil
-	}()
+	var snapshotPaths []string
 
-	if ptw == nil {
-		return "", fmt.Errorf("cannot create snapshot from partition %q, because it is missing", partitionName)
+	for _, ptw := range ptws {
+		if strings.HasPrefix(ptw.pt.name, partitionPrefix) {
+			snapshotPath := ptw.pt.mustCreateSnapshot()
+			snapshotPaths = append(snapshotPaths, snapshotPath)
+		}
 	}
 
-	snapshotPath := ptw.pt.mustCreateSnapshot()
-
-	return snapshotPath, nil
+	return snapshotPaths
 }
 
 // PartitionSnapshotList returns a list of paths to all the snapshots across active partitions.
@@ -1052,10 +1050,10 @@ func (s *Storage) MustClose() {
 	s.path = ""
 }
 
-// MustForceMerge force-merges parts in s partitions with names starting from the given partitionNamePrefix.
+// MustForceMerge force-merges parts in s partitions with names starting from the given partitionPrefix.
 //
 // Partitions are merged sequentially in order to reduce load on the system.
-func (s *Storage) MustForceMerge(partitionNamePrefix string) {
+func (s *Storage) MustForceMerge(partitionPrefix string) {
 	ptws := s.getPartitions()
 	defer s.putPartitions(ptws)
 
@@ -1063,7 +1061,7 @@ func (s *Storage) MustForceMerge(partitionNamePrefix string) {
 	defer s.wg.Done()
 
 	for _, ptw := range ptws {
-		if !strings.HasPrefix(ptw.pt.name, partitionNamePrefix) {
+		if !strings.HasPrefix(ptw.pt.name, partitionPrefix) {
 			continue
 		}
 

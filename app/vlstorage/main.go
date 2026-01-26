@@ -295,14 +295,14 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	// Run force merge in background
-	partitionNamePrefix := r.FormValue("partition_prefix")
+	partitionPrefix := r.FormValue("partition_prefix")
 	go func() {
 		activeForceMerges.Inc()
 		defer activeForceMerges.Dec()
-		logger.Infof("forced merge for partition_prefix=%q has been started", partitionNamePrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been started", partitionPrefix)
 		startTime := time.Now()
-		localStorage.MustForceMerge(partitionNamePrefix)
-		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionNamePrefix, time.Since(startTime).Seconds())
+		localStorage.MustForceMerge(partitionPrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionPrefix, time.Since(startTime).Seconds())
 	}()
 	return true
 }
@@ -391,30 +391,32 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return true
 	}
 
-	name := r.FormValue("name")
-	if name == "" {
-		httpserver.Errorf(w, r, "missing `name` query arg")
-		return true
+	partitionPrefix := r.FormValue("partition_prefix")
+	if partitionPrefix == "" {
+		// Fall back to the deprecated argument.
+		partitionPrefix = r.FormValue("name")
 	}
 
-	snapshotPath, err := localStorage.PartitionSnapshotCreate(name)
-	if err != nil {
-		httpserver.Errorf(w, r, "%s", err)
-		return true
+	snapshotPaths := localStorage.PartitionSnapshotMustCreate(partitionPrefix)
+	if snapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		snapshotPaths = []string{}
 	}
 
 	// Verify whether the client already closed the connection.
 	// In this case it is better to drop the created snapshot, since the client isn't interested in it.
 	if err := r.Context().Err(); err != nil {
-		logger.Infof("deleting already created snapshot at %s because the client canceled the request", snapshotPath)
-		if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
-			httpserver.Errorf(w, r, "cannot delete already created snapshot: %s", err)
-			return true
+		for _, snapshotPath := range snapshotPaths {
+			logger.Infof("deleting already created snapshot at %s because the client canceled the request", snapshotPath)
+			if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+				logger.Warnf("cannot delete already created snapshot: %s", err)
+				continue
+			}
 		}
 		return true
 	}
 
-	writeJSONResponse(w, snapshotPath)
+	writeJSONResponse(w, snapshotPaths)
 	return true
 }
 
