@@ -277,8 +277,8 @@ can be removed in the following ways:
   returned by `/internal/partition/snapshot/create` or by `/internal/partition/snapshot/list`.
 - By calling `/internal/partition/snapshot/delete_stale?max_age=<d>` HTTP endpoint at `victoria-logs:9428`,
   where `<d>` is the maximum age for the snapshot to keep. Older snapshots are deleted.
-  For example, `max_age=1d` drops snapshots older than one day. If `max_age` is missing, then the value from `-snapshotMaxAge` command-line flag is used.
-- By specifying the maximum age for the snapshot to keep via `-snapshotMaxAge` command-line flag. Then older snapshots are automatically deleted on a periodic basis.
+  For example, `max_age=1d` drops snapshots older than one day. If `max_age` is missing, then the value from `-snapshotsMaxAge` command-line flag is used.
+- By specifying the maximum age for the snapshot to keep via `-snapshotsMaxAge` command-line flag. Then older snapshots are automatically deleted on a periodic basis.
 
 ## Capacity planning
 
