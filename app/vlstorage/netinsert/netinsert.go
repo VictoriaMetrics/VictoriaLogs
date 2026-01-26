@@ -103,11 +103,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 
 	sn.isReachable.Store(true)
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		sn.backgroundFlusher()
-	}()
+	s.wg.Go(sn.backgroundFlusher)
 
 	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_is_reachable{addr=%q}`, addr), func() float64 {
 		if sn.isReachable.Load() {
@@ -370,11 +366,7 @@ func (s *Storage) MustStop() {
 func (s *Storage) DebugFlush() {
 	var wg sync.WaitGroup
 	for _, sn := range s.sns {
-		wg.Add(1)
-		go func(sn *storageNode) {
-			defer wg.Done()
-			sn.debugFlush()
-		}(sn)
+		wg.Go(sn.debugFlush)
 	}
 	wg.Wait()
 }

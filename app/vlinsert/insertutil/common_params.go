@@ -206,10 +206,7 @@ type logMessageProcessor struct {
 func (lmp *logMessageProcessor) initPeriodicFlush() {
 	lmp.lastFlushTime = time.Now()
 
-	lmp.wg.Add(1)
-	go func() {
-		defer lmp.wg.Done()
-
+	lmp.wg.Go(func() {
 		d := timeutil.AddJitterToDuration(time.Second)
 		ticker := time.NewTicker(d)
 		defer ticker.Stop()
@@ -226,7 +223,7 @@ func (lmp *logMessageProcessor) initPeriodicFlush() {
 				lmp.mu.Unlock()
 			}
 		}
-	}()
+	})
 }
 
 // AddRow adds new log message to lmp with the given timestamp and fields.

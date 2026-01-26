@@ -688,7 +688,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	// when it opens many partitions.
 	var wg sync.WaitGroup
 	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
-	for i, de := range des {
+	for idx, de := range des {
 		fname := de.Name()
 
 		partitionDir := filepath.Join(partitionsPath, fname)
@@ -698,14 +698,8 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			continue
 		}
 
-		wg.Add(1)
 		concurrencyLimiterCh <- struct{}{}
-		go func(idx int) {
-			defer func() {
-				<-concurrencyLimiterCh
-				wg.Done()
-			}()
-
+		wg.Go(func() {
 			day, err := getPartitionDayFromName(fname)
 			if err != nil {
 				logger.Panicf("FATAL: cannot parse partition filename %q at %q: %s", fname, partitionsPath, err)
@@ -714,7 +708,9 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			partitionPath := filepath.Join(partitionsPath, fname)
 			pt := mustOpenPartition(s, partitionPath)
 			ptws[idx] = newPartitionWrapper(pt, day)
-		}(i)
+
+			<-concurrencyLimiterCh
+		})
 	}
 	wg.Wait()
 
@@ -755,38 +751,22 @@ func sortPartitions(ptws []*partitionWrapper) {
 }
 
 func (s *Storage) runRetentionWatcher() {
-	s.wg.Add(1)
-	go func() {
-		s.watchRetention()
-		s.wg.Done()
-	}()
+	s.wg.Go(s.watchRetention)
 }
 
 func (s *Storage) runMaxDiskSpaceUsageWatcher() {
 	if s.maxDiskSpaceUsageBytes <= 0 && s.maxDiskUsagePercent <= 0 {
 		return // nothing to watch
 	}
-	s.wg.Add(1)
-	go func() {
-		s.watchMaxDiskSpaceUsage()
-		s.wg.Done()
-	}()
+	s.wg.Go(s.watchMaxDiskSpaceUsage)
 }
 
 func (s *Storage) runDeleteTasksWatcher() {
-	s.wg.Add(1)
-	go func() {
-		s.watchDeleteTasks()
-		s.wg.Done()
-	}()
+	s.wg.Go(s.watchDeleteTasks)
 }
 
 func (s *Storage) runSnapshotsMaxAgeWatcher() {
-	s.wg.Add(1)
-	go func() {
-		s.watchSnapshotsMaxAge()
-		s.wg.Done()
-	}()
+	s.wg.Go(s.watchSnapshotsMaxAge)
 }
 
 func (s *Storage) watchRetention() {

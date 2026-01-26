@@ -146,10 +146,7 @@ func readCheckpoints(path string) ([]checkpoint, error) {
 // It complements the explicit sync performed on graceful stop,
 // ensuring regular persistence even when the process is killed.
 func (db *checkpointsDB) startPeriodicSyncCheckpoints() {
-	db.wg.Add(1)
-	go func() {
-		defer db.wg.Done()
-
+	db.wg.Go(func() {
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 
@@ -162,7 +159,7 @@ func (db *checkpointsDB) startPeriodicSyncCheckpoints() {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (db *checkpointsDB) stop() {

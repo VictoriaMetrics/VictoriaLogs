@@ -83,11 +83,9 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	fc.cleanupCheckpoints()
 
 	// Begin watching for new Pods and start reading their logs.
-	kc.wg.Add(1)
-	go func() {
-		defer kc.wg.Done()
+	kc.wg.Go(func() {
 		kc.watchForPodsUpdates(ctx, pl.Metadata.ResourceVersion)
-	}()
+	})
 
 	return kc, nil
 }

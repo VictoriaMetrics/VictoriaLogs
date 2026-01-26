@@ -83,13 +83,10 @@ func (fc *fileCollector) startRead(filepath string, commonFields []logstorage.Fi
 		return
 	}
 
-	fc.wg.Add(1)
-	go func() {
-		defer fc.wg.Done()
-
+	fc.wg.Go(func() {
 		lf := fc.openLogFile(filepath)
 		fc.process(lf, commonFields)
-	}()
+	})
 }
 
 func (fc *fileCollector) openLogFile(filepath string) *logFile {
