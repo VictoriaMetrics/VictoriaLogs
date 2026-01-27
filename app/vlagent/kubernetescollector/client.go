@@ -2,8 +2,6 @@ package kubernetescollector
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,14 +11,12 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 )
 
 type kubeAPIConfig struct {
-	Server        string
-	BearerToken   string
-	ClientCert    []byte
-	ClientCertKey []byte
-	GetCACert     func() (*x509.CertPool, error)
+	server string
+	ac     *promauth.Config
 }
 
 type kubeAPIClient struct {
@@ -31,34 +27,17 @@ type kubeAPIClient struct {
 }
 
 func newKubeAPIClient(cfg *kubeAPIConfig) (*kubeAPIClient, error) {
-	certPool, err := cfg.GetCACert()
-	if err != nil {
-		return nil, fmt.Errorf("cannot get CA certificate: %w", err)
-	}
-
-	var clientCerts []tls.Certificate
-	if len(cfg.ClientCert) != 0 {
-		cc, err := tls.X509KeyPair(cfg.ClientCert, cfg.ClientCertKey)
-		if err != nil {
-			return nil, fmt.Errorf("cannot load client certificate: %w", err)
-		}
-		clientCerts = append(clientCerts, cc)
-	}
-
 	tr := httputil.NewTransport(false, "vlagent_kubernetescollector")
 	tr.IdleConnTimeout = time.Minute
 	tr.TLSHandshakeTimeout = time.Second * 15
-	tr.TLSClientConfig.RootCAs = certPool
-	tr.TLSClientConfig.Certificates = clientCerts
 
-	// todo: ca cert can be updated, so we need to reload it periodically
 	c := &http.Client{
-		Transport: tr,
+		Transport: cfg.ac.NewRoundTripper(tr),
 	}
 
-	apiURL, err := url.Parse(cfg.Server)
+	apiURL, err := url.Parse(cfg.server)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse server URL %q: %w", cfg.Server, err)
+		return nil, fmt.Errorf("cannot parse server URL %q: %w", cfg.server, err)
 	}
 
 	return &kubeAPIClient{
@@ -98,7 +77,7 @@ func (c *kubeAPIClient) watchNodePods(ctx context.Context, nodeName, resourceVer
 	}
 
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/pods", args)
-	resp, err := c.c.Do(req)
+	resp, err := c.sendRequest(req)
 	if err != nil {
 		return podWatchStream{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
 	}
@@ -234,7 +213,7 @@ func (c *kubeAPIClient) getNodePods(ctx context.Context, nodeName string) (podLi
 	}
 
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/pods", args)
-	resp, err := c.c.Do(req)
+	resp, err := c.sendRequest(req)
 	if err != nil {
 		return podList{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
 	}
@@ -261,7 +240,7 @@ func (c *kubeAPIClient) getNodePods(ctx context.Context, nodeName string) (podLi
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-pod-v1-core
 func (c *kubeAPIClient) getPod(ctx context.Context, namespace, podName string) (pod, error) {
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/namespaces/"+namespace+"/pods/"+podName, nil)
-	resp, err := c.c.Do(req)
+	resp, err := c.sendRequest(req)
 	if err != nil {
 		return pod{}, fmt.Errorf("cannot do /pods/<podName> request: %w", err)
 	}
@@ -299,7 +278,7 @@ type node struct {
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#list-node-v1-core
 func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/nodes", nil)
-	resp, err := c.c.Do(req)
+	resp, err := c.sendRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
 	}
@@ -330,7 +309,7 @@ func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-node-v1-core
 func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (node, error) {
 	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/nodes/"+nodeName, nil)
-	resp, err := c.c.Do(req)
+	resp, err := c.sendRequest(req)
 	if err != nil {
 		return node{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
 	}
@@ -355,14 +334,23 @@ func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (nod
 func (c *kubeAPIClient) mustCreateRequest(ctx context.Context, method, urlPath string, args url.Values) *http.Request {
 	req, err := http.NewRequestWithContext(ctx, method, "/", nil)
 	if err != nil {
-		logger.Panicf("BUG: cannot create request: %w", err)
+		logger.Panicf("BUG: cannot create request: %s", err)
 	}
 	u := *c.apiURL
 	req.URL = &u
 	req.URL.Path = urlPath
 	req.URL.RawQuery = args.Encode()
-	if c.config.BearerToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.config.BearerToken)
-	}
 	return req
+}
+
+func (c *kubeAPIClient) sendRequest(req *http.Request) (*http.Response, error) {
+	if err := c.config.ac.SetHeaders(req, true); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
