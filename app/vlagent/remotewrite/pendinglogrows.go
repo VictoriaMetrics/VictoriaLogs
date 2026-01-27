@@ -44,11 +44,7 @@ func newPendingLogs(fq *persistentqueue.FastQueue) *pendingLogs {
 		stopCh: make(chan struct{}),
 	}
 
-	pl.periodicFlusherWG.Add(1)
-	go func() {
-		defer pl.periodicFlusherWG.Done()
-		pl.periodicFlusher()
-	}()
+	pl.periodicFlusherWG.Go(pl.periodicFlusher)
 
 	return pl
 }

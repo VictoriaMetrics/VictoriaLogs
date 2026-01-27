@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -36,14 +35,16 @@ func TestFileCollector(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
-		cpExpected := checkpoint{
-			Path:   logFilePath,
-			Inode:  inodeExpected,
-			Offset: int64(offsetExpected),
-		}
 		cpGot, ok := fc.checkpointsDB.get(logFilePath)
-		if !ok || !reflect.DeepEqual(cpGot, cpExpected) {
-			t.Fatalf("unexpected checkpoint; got: %+v;want: %+v", cpGot, cpExpected)
+		if !ok {
+			t.Fatalf("checkpoint for %q is missing", logFilePath)
+		}
+
+		if cpGot.Inode != inodeExpected {
+			t.Fatalf("unexpected inode in checkpoint; got %d; want %d", cpGot.Inode, inodeExpected)
+		}
+		if cpGot.Offset != int64(offsetExpected) {
+			t.Fatalf("unexpected offset in checkpoint; got %d; want %d", cpGot.Offset, offsetExpected)
 		}
 	}
 
@@ -93,14 +94,16 @@ func TestCommitPartialLines(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
-		cpExpected := checkpoint{
-			Path:   logFilePath,
-			Inode:  inodeExpected,
-			Offset: int64(offsetExpected),
-		}
 		cpGot, ok := fc.checkpointsDB.get(logFilePath)
-		if !ok || !reflect.DeepEqual(cpGot, cpExpected) {
-			t.Fatalf("unexpected checkpoint; got: %+v;want: %+v", cpGot, cpExpected)
+		if !ok {
+			t.Fatalf("checkpoint for %q is missing", logFilePath)
+		}
+
+		if cpGot.Inode != inodeExpected {
+			t.Fatalf("unexpected inode in checkpoint; got %d; want %d", cpGot.Inode, inodeExpected)
+		}
+		if cpGot.Offset != int64(offsetExpected) {
+			t.Fatalf("unexpected offset in checkpoint; got %d; want %d", cpGot.Offset, offsetExpected)
 		}
 	}
 
@@ -124,6 +127,83 @@ func TestCommitPartialLines(t *testing.T) {
 	resultsExpected = `{"_msg":"foo bar buz","_stream":"{}","_time":"2025-10-16T15:37:36.1Z"}`
 	offsetExpected = len("2025-10-16T15:37:36.1Z stderr P bar \n" + "2025-10-16T15:37:36.1Z stderr F buz\n")
 	f(readLinesExpected, resultsExpected, newInode, offsetExpected)
+}
+
+func TestRestoringFromFingerprint(t *testing.T) {
+	f := func(file1, file2 string, outExpected string) {
+		t.Helper()
+
+		checkpointsPath := filepath.Join(t.TempDir(), "checkpoints.json")
+		logFilePath, _ := createTestLogFile(t)
+
+		storage := newTestStorage()
+
+		for _, s := range []string{file1, file2} {
+			lfp := newLogFileProcessor(storage, nil)
+			pw := newProcessorWrapper(lfp, 1)
+			newProc := func(_ []logstorage.Field) processor {
+				return pw
+			}
+
+			f, err := os.Create(logFilePath)
+			if err != nil {
+				t.Fatalf("failed to create log file: %s", err)
+			}
+			writeToFile(t, f, s)
+			_ = f.Sync()
+			_ = f.Close()
+
+			fc := startFileCollector(checkpointsPath, nil, newProc)
+			fc.startRead(logFilePath, nil)
+			pw.wait()
+			fc.stop()
+		}
+
+		if err := storage.verify(outExpected); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	}
+
+	// The same fingerprints.
+	file1 := "2025-10-16T15:37:36.1Z stderr F foo\n"
+	file2 := file1 + "2025-10-16T15:37:36.2Z stderr F bar\n"
+	expected := `{"_msg":"foo","_stream":"{}","_time":"2025-10-16T15:37:36.1Z"}
+{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.2Z"}`
+	f(file1, file2, expected)
+
+	// The same fingerprints with empty lines.
+	file1 = "\n"
+	file2 = file1 + "\n"
+	expected = ``
+	f(file1, file2, expected)
+
+	// Different fingerprints.
+	file1 = "2025-10-16T15:37:36.3Z stderr F foo\n"
+	file2 = "2025-10-16T15:37:36.4Z stderr F bar\n"
+	expected = `{"_msg":"foo","_stream":"{}","_time":"2025-10-16T15:37:36.3Z"}
+{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.4Z"}`
+	f(file1, file2, expected)
+
+	// Different fingerprints with empty lines.
+	file1 = "2025-10-16T15:37:36.5Z stderr F foo\n"
+	file2 = "\n"
+	expected = `{"_msg":"foo","_stream":"{}","_time":"2025-10-16T15:37:36.5Z"}`
+	f(file1, file2, expected)
+
+	// Content length more than maxFingerprintDataLen.
+	file1 = "2025-10-16T15:37:36.6Z stderr F foo bar buz 01234567890123456789001234567890\n"
+	file2 = "2025-10-16T15:37:36.7Z stderr F bar\n"
+	expected = `{"_msg":"foo bar buz 01234567890123456789001234567890","_stream":"{}","_time":"2025-10-16T15:37:36.6Z"}
+{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.7Z"}`
+	f(file1, file2, expected)
+
+	// Content length exceeds maxLogLineSize.
+	file1 = "2025-10-16T15:37:36.1Z stderr F " + strings.Repeat("a", maxLogLineSize) + "\n" +
+		"2025-10-16T15:37:35.8Z stderr F foo\n"
+	file2 = "2025-10-16T15:37:36.9Z stderr F bar\n"
+	expected = `{"_msg":"foo","_stream":"{}","_time":"2025-10-16T15:37:35.8Z"}
+{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.9Z"}`
+	f(file1, file2, expected)
 }
 
 type processorWrapper struct {

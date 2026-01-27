@@ -11,6 +11,7 @@ tags:
 aliases:
   - /victorialogs/data-ingestion/logstash.html
   - /victorialogs/data-ingestion/Logstash.html
+  - /VictoriaLogs/data-ingestion/Logstash.html
 ---
 VictoriaLogs supports given below Logstash outputs:
 

@@ -21,6 +21,8 @@ import { LOGS_BAR_COUNTS } from "../../../constants/logs";
 
 const HeaderSeparator = () => "|";
 
+const HeaderSeparator = () => "|";
+
 interface Props {
   logHits: LogHits[];
   data: AlignedData;
@@ -39,6 +41,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
     graphStyle: GRAPH_STYLES.BAR,
     queryMode: GRAPH_QUERY_MODE.hits,
     stacked: false,
+    cumulative: false,
     fill: false,
     hideChart: false,
   });

@@ -9,8 +9,9 @@ menu:
 tags:
   - logs
 aliases:
-  - /victorialogs/data-ingestion/Promtail.html
   - /victorialogs/data-ingestion/promtail.html
+  - /victorialogs/data-ingestion/Promtail.html
+  - /VictoriaLogs/data-ingestion/Promtail.html
 ---
 [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/), [Grafana Agent](https://grafana.com/docs/agent/latest/)
 and [Grafana Alloy](https://grafana.com/docs/alloy/latest/) are default log collectors for Grafana Loki.

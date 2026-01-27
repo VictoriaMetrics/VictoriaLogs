@@ -10,6 +10,7 @@ tags:
    - logs
 aliases:
    - /victorialogs/data-ingestion/syslog.html
+   - /VictoriaLogs/data-ingestion/syslog.html
 ---
 
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can accept logs in [Syslog formats](https://en.wikipedia.org/wiki/Syslog) at the specified TCP, UDP or Unix socket addresses

@@ -29,6 +29,8 @@ type JSONParser struct {
 	// prefixBuf is used for holding the current key prefix
 	// when it is composed from multiple keys.
 	prefixBuf []byte
+
+	maxFieldNameLen int
 }
 
 func (p *JSONParser) reset() {
@@ -36,6 +38,9 @@ func (p *JSONParser) reset() {
 	p.Fields = p.Fields[:0]
 
 	p.buf = p.buf[:0]
+
+	p.prefixBuf = p.prefixBuf[:0]
+	p.maxFieldNameLen = 0
 }
 
 // GetJSONParser returns JSONParser ready to parse JSON lines.
@@ -83,11 +88,12 @@ func (p *JSONParser) parseLogMessage(msg []byte, maxFieldNameLen int) error {
 	if err != nil {
 		return err
 	}
-	p.Fields, p.buf, p.prefixBuf = appendLogFields(p.Fields, p.buf, p.prefixBuf, o, maxFieldNameLen)
+	p.maxFieldNameLen = maxFieldNameLen
+	p.appendLogFields(o)
 	return nil
 }
 
-func appendLogFields(dst []Field, dstBuf, prefixBuf []byte, o *fastjson.Object, maxFieldNameLen int) ([]Field, []byte, []byte) {
+func (p *JSONParser) appendLogFields(o *fastjson.Object) {
 	maxKeyLen := 0
 	o.Visit(func(k []byte, _ *fastjson.Value) {
 		if len(k) > maxKeyLen {
@@ -95,20 +101,21 @@ func appendLogFields(dst []Field, dstBuf, prefixBuf []byte, o *fastjson.Object, 
 		}
 	})
 
-	prefixLen := len(prefixBuf)
-	if prefixLen+maxKeyLen > maxFieldNameLen {
+	prefixLen := len(p.prefixBuf)
+	if prefixLen+maxKeyLen > p.maxFieldNameLen {
 		// Too long composite key. Convert o to string representation
 
-		if len(prefixBuf) > 0 && prefixBuf[len(prefixBuf)-1] == '.' {
+		if len(p.prefixBuf) > 0 && p.prefixBuf[len(p.prefixBuf)-1] == '.' {
 			// Drop trailing dot if needed
-			prefixBuf = prefixBuf[:len(prefixBuf)-1]
+			p.prefixBuf = p.prefixBuf[:len(p.prefixBuf)-1]
 		}
 
-		dstBufLen := len(dstBuf)
-		dstBuf = o.MarshalTo(dstBuf)
-		value := dstBuf[dstBufLen:]
-		dst, dstBuf = appendLogField(dst, dstBuf, prefixBuf, nil, value)
-		return dst, dstBuf, prefixBuf[:prefixLen]
+		bufLen := len(p.buf)
+		p.buf = o.MarshalTo(p.buf)
+		value := p.buf[bufLen:]
+		p.appendLogField(nil, value)
+		p.prefixBuf = p.prefixBuf[:prefixLen]
+		return
 	}
 
 	// Flatten JSON object o.
@@ -125,34 +132,33 @@ func appendLogFields(dst []Field, dstBuf, prefixBuf []byte, o *fastjson.Object, 
 				logger.Panicf("BUG: unexpected error: %s", err)
 			}
 
-			prefixBuf = append(prefixBuf, k...)
-			prefixBuf = append(prefixBuf, '.')
-			dst, dstBuf, prefixBuf = appendLogFields(dst, dstBuf, prefixBuf, o, maxFieldNameLen)
-			prefixBuf = prefixBuf[:prefixLen]
+			p.prefixBuf = append(p.prefixBuf, k...)
+			p.prefixBuf = append(p.prefixBuf, '.')
+			p.appendLogFields(o)
+			p.prefixBuf = p.prefixBuf[:prefixLen]
 		case fastjson.TypeArray, fastjson.TypeNumber, fastjson.TypeTrue, fastjson.TypeFalse:
 			// Convert JSON arrays, numbers, true and false values to their string representation
-			dstBufLen := len(dstBuf)
-			dstBuf = v.MarshalTo(dstBuf)
-			value := dstBuf[dstBufLen:]
-			dst, dstBuf = appendLogField(dst, dstBuf, prefixBuf, k, value)
+			bufLen := len(p.buf)
+			p.buf = v.MarshalTo(p.buf)
+			value := p.buf[bufLen:]
+			p.appendLogField(k, value)
 		case fastjson.TypeString:
 			// Decode JSON strings
-			dstBufLen := len(dstBuf)
-			dstBuf = append(dstBuf, v.GetStringBytes()...)
-			value := dstBuf[dstBufLen:]
-			dst, dstBuf = appendLogField(dst, dstBuf, prefixBuf, k, value)
+			bufLen := len(p.buf)
+			p.buf = append(p.buf, v.GetStringBytes()...)
+			value := p.buf[bufLen:]
+			p.appendLogField(k, value)
 		default:
 			logger.Panicf("BUG: unexpected JSON type: %s", t)
 		}
 	})
-	return dst, dstBuf, prefixBuf
 }
 
-func appendLogField(dst []Field, dstBuf, prefixBuf, k, value []byte) ([]Field, []byte) {
-	dstBufLen := len(dstBuf)
-	dstBuf = append(dstBuf, prefixBuf...)
-	dstBuf = append(dstBuf, k...)
-	name := dstBuf[dstBufLen:]
+func (p *JSONParser) appendLogField(k, value []byte) {
+	bufLen := len(p.buf)
+	p.buf = append(p.buf, p.prefixBuf...)
+	p.buf = append(p.buf, k...)
+	name := p.buf[bufLen:]
 
 	nameStr := bytesutil.ToUnsafeString(name)
 	if nameStr == "" {
@@ -160,9 +166,8 @@ func appendLogField(dst []Field, dstBuf, prefixBuf, k, value []byte) ([]Field, [
 	}
 	valueStr := bytesutil.ToUnsafeString(value)
 
-	dst = append(dst, Field{
+	p.Fields = append(p.Fields, Field{
 		Name:  nameStr,
 		Value: valueStr,
 	})
-	return dst, dstBuf
 }
