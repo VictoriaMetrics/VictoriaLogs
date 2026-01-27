@@ -1022,6 +1022,7 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	removedBigParts := 0
 
 	func() {
+		// Prevent from deadlock mentioned at https://github.com/VictoriaMetrics/VictoriaLogs/issues/1020#issuecomment-3763912067
 		ddb.partsLock.Lock()
 		defer ddb.partsLock.Unlock()
 
