@@ -25,7 +25,7 @@ URL=http://localhost:9428/insert/journald
 
 Substitute the `localhost:9428` address inside `endpoints` section with the real TCP address of VictoriaLogs.
 
-Port 9428 is not the default port associated with with `systemd-journal-upload` so on a system with SELinux in enforcing mode, it may be necessary to adjust the policy or assign the port, for example: `semanage port -a -t journal_remote_port_t -p tcp 9428`
+Port 9428 is not the default port associated with `systemd-journal-upload` so on a system with SELinux in enforcing mode, it may be necessary to adjust the policy or assign the port, for example: `semanage port -a -t journal_remote_port_t -p tcp 9428`
 
 ## Time field
 
@@ -75,6 +75,12 @@ This can be changed by passing the needed tenant in the format `AccountID:Projec
 For example, `-journald.tenantID=123:456` would store logs ingested via journald protocol into `(AccountID=123, ProjectID=456)` tenant.
 > [!NOTE]
 > Starting systemd-journal-upload v258 tenant information can be set using `AccountID` and `ProjectID` HTTP headers.
+
+## Capturing remote IP address
+
+VictoriaLogs can capture the remote IP address for incoming journald messages and automatically store it into the
+`remote_ip` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model). To enable this feature,
+use the `-journald.useRemoteIP=true` flag.
 
 See also:
 
