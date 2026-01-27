@@ -10,8 +10,9 @@ menu:
 tags:
   - logs
 aliases:
-- /victorialogs/FAQ.html
 - /victorialogs/faq.html
+- /victorialogs/FAQ.html
+- /VictoriaLogs/FAQ.html
 ---
 
 ## Is VictoriaLogs ready for production use?

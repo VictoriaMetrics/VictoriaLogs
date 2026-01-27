@@ -127,46 +127,38 @@ func MustInit() {
 	workersStopCh = make(chan struct{})
 
 	for argIdx, addr := range *listenAddrTCP {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runTCPListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	for argIdx, addr := range *listenAddrUDP {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runUDPListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	for argIdx, addr := range *listenAddrUnix {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runUnixListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	currentYear := time.Now().Year()
 	globalCurrentYear.Store(int64(currentYear))
-	workersWG.Add(1)
-	go func() {
+	workersWG.Go(func() {
 		ticker := time.NewTicker(time.Minute)
 		for {
 			select {
 			case <-workersStopCh:
 				ticker.Stop()
-				workersWG.Done()
 				return
 			case <-ticker.C:
 				currentYear := time.Now().Year()
 				globalCurrentYear.Store(int64(currentYear))
 			}
 		}
-	}()
+	})
 
 	if *syslogTimezone != "" {
 		tz, err := time.LoadLocation(*syslogTimezone)
@@ -334,10 +326,8 @@ func servePacketListener(ln net.PacketConn, cfg *configs) {
 	gomaxprocs := cgroup.AvailableCPUs()
 	var wg sync.WaitGroup
 	localAddr := ln.LocalAddr()
-	for i := 0; i < gomaxprocs; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range gomaxprocs {
+		wg.Go(func() {
 			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 			var bb bytesutil.ByteBuffer
 			bb.B = bytesutil.ResizeNoCopyNoOverallocate(bb.B, 64*1024)
@@ -370,7 +360,7 @@ func servePacketListener(ln net.PacketConn, cfg *configs) {
 					logger.Errorf("syslog: cannot process %s data from %s at %s: %s", cfg.typ, remoteAddr, localAddr, err)
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -403,8 +393,7 @@ func serveStreamListener(ln net.Listener, cfg *configs) {
 			break
 		}
 
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 
 			remoteAddr := c.RemoteAddr()
@@ -415,8 +404,7 @@ func serveStreamListener(ln net.Listener, cfg *configs) {
 
 			cm.Delete(c)
 			_ = c.Close()
-			wg.Done()
-		}()
+		})
 	}
 
 	cm.CloseAll(0)

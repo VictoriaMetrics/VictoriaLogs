@@ -11,6 +11,7 @@ tags:
 aliases:
   - /victorialogs/data-ingestion/fluentbit.html
   - /victorialogs/data-ingestion/Fluentbit.html
+  - /VictoriaLogs/data-ingestion/Fluentbit.html
 ---
 
 ## HTTP

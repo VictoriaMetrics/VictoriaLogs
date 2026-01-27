@@ -1039,15 +1039,12 @@ func (psp *pipeStatsProcessor) flush() error {
 
 	// Write the calculated stats in parallel to the next pipe.
 	var wg sync.WaitGroup
-	for i := range psms {
-		wg.Add(1)
-		go func(workerID uint) {
-			defer wg.Done()
-
-			psw := newPipeStatsWriter(psp, workerID)
+	for workerID := range psms {
+		wg.Go(func() {
+			psw := newPipeStatsWriter(psp, uint(workerID))
 			psw.writeShardData(psms[workerID])
 			psw.flush()
-		}(uint(i))
+		})
 	}
 	wg.Wait()
 
@@ -1207,13 +1204,10 @@ func (psp *pipeStatsProcessor) mergeShardsParallel() []*pipeStatsGroupMap {
 			continue
 		}
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			var a chunkedAllocator
 			shard.moveGroupMapToShards(&a)
-		}()
+		})
 	}
 	wg.Wait()
 	if needStop(psp.stopCh) {
@@ -1222,11 +1216,8 @@ func (psp *pipeStatsProcessor) mergeShardsParallel() []*pipeStatsGroupMap {
 
 	psms := shards[0].groupMapShards
 	shards = shards[1:]
-	for i := range psms {
-		wg.Add(1)
-		go func(cpuIdx int) {
-			defer wg.Done()
-
+	for cpuIdx := range psms {
+		wg.Go(func() {
 			var a chunkedAllocator
 			psm := &psms[cpuIdx].pipeStatsGroupMap
 			for _, shard := range shards {
@@ -1234,7 +1225,7 @@ func (psp *pipeStatsProcessor) mergeShardsParallel() []*pipeStatsGroupMap {
 				psm.mergeState(&a, src, psp.stopCh)
 				src.reset()
 			}
-		}(i)
+		})
 	}
 	wg.Wait()
 	if needStop(psp.stopCh) {

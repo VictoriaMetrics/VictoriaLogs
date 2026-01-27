@@ -10,8 +10,9 @@ menu:
 tags:
   - logs
 aliases:
-- /victorialogs/keyConcepts.html
 - /victorialogs/keyConcepts/
+- /victorialogs/keyConcepts.html
+- /VictoriaLogs/keyConcepts.html
 ---
 ## Data model
 
