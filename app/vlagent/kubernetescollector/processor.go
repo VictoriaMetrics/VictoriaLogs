@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/valyala/fastjson"
@@ -252,7 +253,9 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 		return timestamp, true
 	case 'I', 'W', 'E', 'F':
-		timestamp, fields, ok := tryParseKlog(p.Fields, bytesutil.ToUnsafeString(data))
+		ts := fasttime.UnixTimestamp()
+		current := time.Unix(int64(ts), 0).UTC()
+		timestamp, fields, ok := tryParseKlog(p.Fields, bytesutil.ToUnsafeString(data), current)
 		if !ok {
 			return 0, false
 		}
@@ -265,7 +268,7 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 // tryParseKlog parses the given string in Kubernetes Log format and returns the parsed fields.
 // See https://github.com/kubernetes/klog/
-func tryParseKlog(dst []logstorage.Field, src string) (int64, []logstorage.Field, bool) {
+func tryParseKlog(dst []logstorage.Field, src string, current time.Time) (int64, []logstorage.Field, bool) {
 	if len(src) < len("I0101 00:00:00.000000 1 p:1] m") {
 		return 0, nil, false
 	}
@@ -282,7 +285,11 @@ func tryParseKlog(dst []logstorage.Field, src string) (int64, []logstorage.Field
 		return 0, nil, false
 	}
 	src = src[len("0102 15:04:05.000000"):]
-	t = t.AddDate(time.Now().Year(), 0, 0)
+	t = t.AddDate(current.Year(), 0, 0)
+	if t.Add(-time.Hour * 24).After(current) {
+		// Adjust time to the previous year.
+		t = t.AddDate(-1, 0, 0)
+	}
 	timestamp := t.UnixNano()
 
 	// Remove trailing spaces.
