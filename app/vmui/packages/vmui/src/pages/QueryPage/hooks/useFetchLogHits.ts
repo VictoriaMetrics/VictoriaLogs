@@ -23,6 +23,7 @@ interface FetchHitsParams {
   extraParams?: URLSearchParams;
   field?: string;
   fieldsLimit?: number;
+  barsCount: number;
   queryMode?: GRAPH_QUERY_MODE
 }
 
@@ -54,8 +55,8 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     }
   }, [serverUrl]);
 
-  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field }: OptionsParams) => {
-    const { start, end, step, offset } = getHitsTimeParams(period);
+  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, barsCount }: OptionsParams) => {
+    const { start, end, step, offset } = getHitsTimeParams(period, barsCount);
 
     const params = new URLSearchParams({
       query: query.trim(),

@@ -17,6 +17,9 @@ import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilters";
 import { getDurationFromMilliseconds } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
+import { LOGS_BAR_COUNTS } from "../../../constants/logs";
+
+const HeaderSeparator = () => "|";
 
 const HeaderSeparator = () => "|";
 
@@ -49,7 +52,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
 
   const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimeState();
-  const { topHits, setTopHits, groupFieldHits, setGroupFieldHits } = useHitsChartConfig();
+  const { topHits, groupFieldHits, barsCount } = useHitsChartConfig();
   const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
 
   const fieldNamesOptions = useMemo(() => {
@@ -70,15 +73,22 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
       <div className="vm-bar-hits-chart-header">
         <div
           className={classNames({
-          "vm-bar-hits-chart-header-info": true,
-          "vm-bar-hits-chart-header-info_mobile": isMobile,
-        })}
+            "vm-bar-hits-chart-header-info": true,
+            "vm-bar-hits-chart-header-info_mobile": isMobile,
+          })}
         >
           <SelectLimit
             label="Top hits"
             options={[5, 10, 25, 50]}
-            limit={topHits}
-            onChange={setTopHits}
+            limit={topHits.value}
+            onChange={topHits.set}
+          />
+          <HeaderSeparator/>
+          <SelectLimit
+            label="Bars"
+            options={LOGS_BAR_COUNTS}
+            limit={barsCount.value}
+            onChange={barsCount.set}
           />
           {isHitsMode && (
             <>
@@ -86,13 +96,13 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
               <SelectLimit
                 searchable
                 label="Group by"
-                limit={groupFieldHits}
+                limit={groupFieldHits.value}
                 options={fieldNamesOptions}
                 textNoOptions={"No fields found"}
                 isLoading={loading}
                 error={error ? String(error) : ""}
                 onOpenSelect={handleOpenFields}
-                onChange={setGroupFieldHits}
+                onChange={groupFieldHits.set}
               />
               <HeaderSeparator/>
               <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
