@@ -11,9 +11,10 @@ tags:
   - logs
   - guide
 aliases:
-- /victorialogs/QuickStart.html
 - /victorialogs/quick-start.html
 - /victorialogs/quick-start/
+- /victorialogs/QuickStart.html
+- /VictoriaLogs/QuickStart.html
 ---
 It is recommended to read [README](https://docs.victoriametrics.com/victorialogs/)
 and [Key Concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/)

@@ -395,11 +395,9 @@ func (ptp *pipeTopkProcessor) flush() error {
 
 	var wg sync.WaitGroup
 	for _, shard := range shards {
-		wg.Add(1)
-		go func(shard *pipeTopkProcessorShard) {
-			defer wg.Done()
+		wg.Go(func() {
 			shard.sortRows(ptp.stopCh)
-		}(shard)
+		})
 	}
 	wg.Wait()
 

@@ -406,17 +406,14 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 	errs := make([]error, len(s.sns))
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			err := sn.runQuery(qctxLocal, func(db *logstorage.DataBlock) {
 				writeBlock(uint(nodeIdx), db)
 			})
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, qctx.AllowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -494,15 +491,12 @@ func (s *Storage) DeleteRunTask(ctx context.Context, taskID string, timestamp in
 	allowPartialResponse := false
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			err := sn.deleteRunTask(ctxWithCancel, taskID, timestamp, tenantIDs, f)
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -523,15 +517,12 @@ func (s *Storage) DeleteStopTask(ctx context.Context, taskID string) error {
 	allowPartialResponse := false
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			err := sn.deleteStopTask(ctxWithCancel, taskID)
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -551,16 +542,13 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	allowPartialResponse := false
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			tasks, err := sn.deleteActiveTasks(ctxWithCancel)
 			results[nodeIdx] = tasks
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -604,11 +592,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 	allowPartialResponse := false
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			tenantIDs, err := sn.getTenantIDs(ctxWithCancel, start, end)
 			results[nodeIdx] = tenantIDs
@@ -618,7 +603,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 				// Cancel the remaining parallel requests
 				cancel()
 			}
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -652,16 +637,13 @@ func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64,
 	errs := make([]error, len(s.sns))
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			vhs, err := callback(ctxWithCancel, sn)
 			results[nodeIdx] = vhs
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, qctx.AllowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
