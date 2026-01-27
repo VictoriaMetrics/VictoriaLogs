@@ -1377,11 +1377,18 @@ func TestParseQuery_Success(t *testing.T) {
 	// _stream_id filter with star
 	f(`_stream_id:in(*)`, `*`)
 
+	// quoted _stream_id
+	f(`"_stream_id":0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`)
+	f(`'_stream_id':in(*)`, `*`)
+
 	// _stream filters
 	f(`_stream:{}`, `{}`)
 	f(`_stream:{foo="bar", baz=~"x" OR or!="b", "x=},"="d}{"}`, `{foo="bar",baz=~"x" or "or"!="b","x=},"="d}{"}`)
 	f(`_stream:{or=a or ","="b"}`, `{"or"="a" or ","="b"}`)
 	f("_stream : { foo =  bar , }  ", `{foo="bar"}`)
+
+	// quoted _stream
+	f(`"_stream":{}`, `{}`)
 
 	// _stream filter without _stream prefix
 	f(`{}`, `{}`)
@@ -1442,6 +1449,9 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`_time:1h "offSet"`, `_time:1h "offSet"`) // "offset" is a search word, since it is quoted
 	f(`_time:1h (Offset)`, `_time:1h "Offset"`) // "offset" is a search word, since it is in parens
 	f(`_time:1h "and"`, `_time:1h "and"`)       // "and" is a search word, since it is quoted
+
+	// quoted _time
+	f(`"_time":1h`, `_time:1h`)
 
 	// multiple _time filters
 	f(`_time:1h _time:2025Z`, `_time:1h _time:2025Z`)
@@ -2329,6 +2339,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_stream_id:in(foo | bar)")
 	f("_stream_id:in(* | stats by (x) count() y)")
 
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_stream_id":=""`)
+
 	// invalid _stream filters
 	f("_stream:")
 	f("_stream:{")
@@ -2348,6 +2361,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_stream:foo")
 	f("_stream:(foo)")
 	f("_stream:[foo]")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_stream":=""`)
 
 	// invalid _stream filters without _stream: prefix
 	f("{")
@@ -2382,6 +2398,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_time:10m offset foobar")
 	f("_time:offset")
 	f("_time:offset foobar")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_time":foo`)
 
 	// invalid day_range filters
 	f("_time:day_range")
@@ -3359,30 +3378,6 @@ func TestQueryClone(t *testing.T) {
 	f("_time:5m error | fields foo, bar")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_any(q:w | fields abc)) as ccc")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_all(q:w | fields abc)) as ccc")
-}
-
-func TestQueryCloneStreamFieldFilter(t *testing.T) {
-	f := func(qStr string) {
-		t.Helper()
-
-		q, err := ParseQuery(qStr)
-		if err != nil {
-			t.Fatalf("cannot parse [%s]: %s", qStr, err)
-		}
-
-		resultExpected := q.String()
-
-		qCopy := q.Clone(q.GetTimestamp())
-		result := qCopy.String()
-		if result != resultExpected {
-			t.Fatalf("unexpected cloned query\ngot\n%s\nwant\n%s", result, resultExpected)
-		}
-	}
-
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
-	f(`_time:[2025-09-29T03:55:29.000000000Z,2025-09-29T06:55:29.999999999Z] "_stream":="" | sort by (_time) desc limit 500`)
-
-	f(`"_stream_id":=""`)
 }
 
 func TestQueryGetFilterTimeRange(t *testing.T) {

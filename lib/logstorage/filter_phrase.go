@@ -2,7 +2,6 @@ package logstorage
 
 import (
 	"bytes"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -316,10 +315,6 @@ func matchBloomFilterAllTokens(bs *blockSearch, ch *columnHeader, tokens []uint6
 func quoteFieldNameIfNeeded(s string) string {
 	if isMsgFieldName(s) {
 		return ""
-	}
-	if s == "_stream" || s == "_stream_id" {
-		// Always quote `_stream` and `_stream_id` when used as a plain field to avoid confusing it with the stream filter syntax.
-		return strconv.Quote(s) + ":"
 	}
 	return quoteTokenIfNeeded(s) + ":"
 }

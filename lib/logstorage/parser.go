@@ -2021,7 +2021,7 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	// Detect the filter.
 	switch {
 	case lex.isKeyword("{"):
-		return parseFilterStream(lex, fieldName)
+		return parseFilterStreamInternal(lex, fieldName)
 	case lex.isKeyword("*"):
 		return parseFilterStar(lex, fieldName)
 	case lex.isKeyword("("):
@@ -2087,19 +2087,7 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	case lex.isKeyword("_stream_id"):
 		return parseFilterStreamID(lex, fieldName)
 	case lex.isKeyword("_stream"):
-		if fieldName != "" {
-			return parseFilterPhrase(lex, fieldName)
-		}
-		lexState := lex.backupState()
-		lex.nextToken()
-
-		if !lex.isKeyword(":") {
-			lex.restoreState(lexState)
-			return parseFilterPhrase(lex, "")
-		}
-		lex.nextToken()
-
-		return parseFilterStream(lex, "_stream")
+		return parseFilterStream(lex, fieldName)
 	default:
 		return parseFilterPhrase(lex, fieldName)
 	}
@@ -2118,7 +2106,17 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 	if fieldName == "" && lex.isKeyword(":") {
 		// The phrase contains a field name for the filter
 		lex.nextToken()
-		return parseFilterGeneric(lex, phrase)
+
+		switch phrase {
+		case "_time":
+			return parseFilterTimeInternal(lex)
+		case "_stream_id":
+			return parseFilterStreamIDInternal(lex)
+		case "_stream":
+			return parseFilterStreamInternal(lex, "_stream")
+		default:
+			return parseFilterGeneric(lex, phrase)
+		}
 	}
 
 	// The phrase is either a search phrase or a search prefix.
@@ -2989,6 +2987,10 @@ func parseFilterTimeGeneric(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
+	return parseFilterTimeInternal(lex)
+}
+
+func parseFilterTimeInternal(lex *lexer) (filter, error) {
 	switch {
 	case lex.isKeyword("day_range"):
 		return parseFilterDayRange(lex)
@@ -3582,6 +3584,10 @@ func parseFilterStreamID(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
+	return parseFilterStreamIDInternal(lex)
+}
+
+func parseFilterStreamIDInternal(lex *lexer) (filter, error) {
 	if lex.isKeyword("in") {
 		return parseFilterStreamIDIn(lex)
 	}
@@ -3705,7 +3711,23 @@ func parseStreamID(lex *lexer) (streamID, error) {
 	return sid, nil
 }
 
-func parseFilterStream(lex *lexer, fieldName string) (*filterStream, error) {
+func parseFilterStream(lex *lexer, fieldName string) (filter, error) {
+	if fieldName != "" {
+		return parseFilterPhrase(lex, fieldName)
+	}
+	lexState := lex.backupState()
+	lex.nextToken()
+
+	if !lex.isKeyword(":") {
+		lex.restoreState(lexState)
+		return parseFilterPhrase(lex, "")
+	}
+	lex.nextToken()
+
+	return parseFilterStreamInternal(lex, "_stream")
+}
+
+func parseFilterStreamInternal(lex *lexer, fieldName string) (*filterStream, error) {
 	if fieldName != "" && fieldName != "_stream" {
 		return nil, fmt.Errorf("stream filter cannot be applied to %q field; it can be applied only to _stream field", fieldName)
 	}
