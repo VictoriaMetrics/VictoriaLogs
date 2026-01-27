@@ -330,8 +330,6 @@ func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64
 		for _, hs := range m {
 			start = min(start, slices.Min(hs.timestamps))
 		}
-	} else {
-		start -= start%step - offset
 	}
 
 	if end == math.MaxInt64 {
@@ -339,9 +337,9 @@ func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64
 		for _, hs := range m {
 			end = max(end, slices.Max(hs.timestamps))
 		}
-	} else {
-		end -= start%step - offset
 	}
+
+	start, end = alignStartEndToStep(start, end, step)
 
 	if start > end {
 		// nothing to do
@@ -1422,6 +1420,13 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		if !endOK {
 			end = math.MaxInt64
 		}
+
+		if stepStr := r.FormValue("step"); stepStr != "" {
+			if step, ok := logstorage.TryParseDuration(stepStr); ok {
+				start, end = alignStartEndToStep(start, end, step)
+			}
+		}
+
 		q.AddTimeFilter(start, end)
 	}
 
@@ -1473,6 +1478,39 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		hiddenFieldsFilters:  hiddenFieldsFilters,
 	}
 	return ca, nil
+}
+
+func alignStartEndToStep(start, end, step int64) (int64, int64) {
+	if step <= 0 {
+		return start, end
+	}
+
+	if start >= 0 {
+		start -= start % step
+	} else {
+		d := step + start%step
+		if start >= math.MinInt64+d {
+			start -= d
+		} else {
+			start = math.MinInt64
+		}
+	}
+
+	if end <= 0 {
+		end -= end % step
+	} else {
+		d := step - end%step
+		if end <= math.MaxInt64-d {
+			end += d
+		} else {
+			end = math.MaxInt64
+		}
+	}
+	if end > math.MinInt64 {
+		end--
+	}
+
+	return start, end
 }
 
 func timestampToString(nsecs int64) string {
