@@ -179,13 +179,13 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 		defer lf.close()
 
 		for pb.Next() {
-			// Reset state to re-read the file from the beginning.
-			lf.setOffset(0)
-
 			lf.readLines(stopCh, proc)
 			if lf.offset != totalBytes {
 				b.Fatalf("unexpected offset; got %d; want %d", lf.offset, totalBytes)
 			}
+
+			// Reset state to re-read the file from the beginning in the next iteration.
+			lf.setOffset(0)
 		}
 	})
 }
