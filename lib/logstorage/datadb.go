@@ -253,41 +253,25 @@ func (ddb *datadb) startInmemoryPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.inmemoryPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.inmemoryPartsMerger)
 }
 
 func (ddb *datadb) startSmallPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.smallPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.smallPartsMerger)
 }
 
 func (ddb *datadb) startBigPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.bigPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.bigPartsMerger)
 }
 
 func (ddb *datadb) startInmemoryPartsFlusher() {
-	ddb.wg.Add(1)
-	go func() {
-		ddb.inmemoryPartsFlusher()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.inmemoryPartsFlusher)
 }
 
 func (ddb *datadb) inmemoryPartsFlusher() {
@@ -324,16 +308,13 @@ func (ddb *datadb) mustMergePartsToFiles(pws []*partWrapper) {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		inmemoryPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-inmemoryPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			ddb.mustMergeParts(pwsChunk, true)
-		}(pwsToMerge)
+		wg.Go(func() {
+			ddb.mustMergeParts(pwsToMerge, true)
+			<-inmemoryPartsConcurrencyCh
+		})
+
 		pws = pwsRemaining
 	}
 	wg.Wait()
@@ -1513,16 +1494,13 @@ func (ddb *datadb) mustForceMergeAllParts() {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		bigPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-bigPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			ddb.mustMergeParts(pwsChunk, false)
-		}(pwsToMerge)
+		wg.Go(func() {
+			ddb.mustMergeParts(pwsToMerge, false)
+			<-bigPartsConcurrencyCh
+		})
+
 		pws = pwsRemaining
 	}
 	wg.Wait()

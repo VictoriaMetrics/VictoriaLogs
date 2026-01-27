@@ -83,11 +83,9 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	fc.cleanupCheckpoints()
 
 	// Begin watching for new Pods and start reading their logs.
-	kc.wg.Add(1)
-	go func() {
-		defer kc.wg.Done()
+	kc.wg.Go(func() {
 		kc.watchForPodsUpdates(ctx, pl.Metadata.ResourceVersion)
-	}()
+	})
 
 	return kc, nil
 }
@@ -215,10 +213,6 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 		startRead(pc, cs)
 	}
 }
-
-// streamFieldNames is a list of _stream fields.
-// Must be synced with getCommonFields.
-var streamFieldNames = []string{"kubernetes.container_name", "kubernetes.pod_name", "kubernetes.pod_namespace"}
 
 func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
 	var fs logstorage.Fields

@@ -71,12 +71,10 @@ func newJSONPrettifier(r io.ReadCloser, outputMode outputMode) *jsonPrettifier {
 		bw: bw,
 	}
 
-	jp.wg.Add(1)
-	go func() {
-		defer jp.wg.Done()
+	jp.wg.Go(func() {
 		err := jp.prettifyJSONLines()
 		jp.closePipesWithError(err)
-	}()
+	})
 
 	return jp
 }

@@ -1287,11 +1287,11 @@ func updateFilterWithTimeOffset(f filter, timeOffset int64) filter {
 			return &ftCopy, nil
 		case *filterDayRange:
 			ftCopy := *ft
-			ft.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		case *filterWeekRange:
 			ftCopy := *ft
-			ft.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		default:
 			logger.Panicf("BUG: unexpected filter passed to copyFunc: %T; [%s]", f, f)

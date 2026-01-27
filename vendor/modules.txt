@@ -1,4 +1,4 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v1.134.0 => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260119142925-34f242a6b861
+# github.com/VictoriaMetrics/VictoriaMetrics v1.134.0 => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260126232947-e35a9a366c8a
 ## explicit; go 1.25.6
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
@@ -135,4 +135,4 @@ golang.org/x/text/width
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260119142925-34f242a6b861
+# github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260126232947-e35a9a366c8a

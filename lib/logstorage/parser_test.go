@@ -565,6 +565,31 @@ func TestParseWeekRange(t *testing.T) {
 	f(`[Fri, Mon] offset -2h`, time.Friday, time.Monday, -2*nsecsPerHour)
 }
 
+func TestTimeOffsetUpdatesDayAndWeekRangeFilters(t *testing.T) {
+	f := func(qStr string, offsetExpected int64) {
+		t.Helper()
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		switch fr := q.f.(type) {
+		case *filterDayRange:
+			if fr.offset != offsetExpected {
+				t.Fatalf("unexpected offset for day_range; got %d; want %d", fr.offset, offsetExpected)
+			}
+		case *filterWeekRange:
+			if fr.offset != offsetExpected {
+				t.Fatalf("unexpected offset for week_range; got %d; want %d", fr.offset, offsetExpected)
+			}
+		default:
+			t.Fatalf("unexpected filter; got %T; want *filterDayRange or *filterWeekRange; filter: %s", q.f, q.f)
+		}
+	}
+
+	f("options(time_offset=1h) _time:day_range[08:00, 18:00) offset 2h", 3*int64(nsecsPerHour))
+	f("options(time_offset=1h) _time:week_range[Mon, Fri] offset 2h", 3*int64(nsecsPerHour))
+}
+
 func TestParseTimeDuration(t *testing.T) {
 	f := func(s string, durationExpected time.Duration) {
 		t.Helper()

@@ -233,11 +233,8 @@ func mergeSetsParallel(ms []map[string]struct{}, concurrency uint, stopCh <-chan
 
 	var wg sync.WaitGroup
 	msShards := make([][]map[string]struct{}, shardsLen)
-	for i := range msShards {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-
+	for idx := range msShards {
+		wg.Go(func() {
 			perCPU := make([]map[string]struct{}, cpusCount)
 			for i := range perCPU {
 				perCPU[i] = make(map[string]struct{})
@@ -253,16 +250,13 @@ func mergeSetsParallel(ms []map[string]struct{}, concurrency uint, stopCh <-chan
 			}
 
 			msShards[idx] = perCPU
-		}(i)
+		})
 	}
 	wg.Wait()
 
 	perCPUItems := make([][]string, cpusCount)
-	for i := range perCPUItems {
-		wg.Add(1)
-		go func(cpuIdx int) {
-			defer wg.Done()
-
+	for cpuIdx := range perCPUItems {
+		wg.Go(func() {
 			m := msShards[0][cpuIdx]
 			for _, perCPU := range msShards[1:] {
 				for s := range perCPU[cpuIdx] {
@@ -278,7 +272,7 @@ func mergeSetsParallel(ms []map[string]struct{}, concurrency uint, stopCh <-chan
 
 			items := setToSortedSlice(m)
 			perCPUItems[cpuIdx] = items
-		}(i)
+		})
 	}
 	wg.Wait()
 
