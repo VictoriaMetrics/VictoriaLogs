@@ -75,10 +75,10 @@ func (p *JSONParser) ParseLogMessage(msg []byte, preserveKeys []string) error {
 	return p.parseLogMessage(msg, preserveKeys, maxFieldNameSize)
 }
 
-// ParseLogMessage parses the given JSON log message msg into p.Fields.
+// parseLogMessage parses the given JSON log message msg into p.Fields.
 //
 // Items in nested objects are flattened with `k1.k2. ... .kN` key until the key matches one of the preserveKeys
-// or its' length exceeds maxFieldNameLen.
+// or its length exceeds maxFieldNameLen.
 //
 // The p.Fields remains valid until the next call to ParseLogMessage() or PutJSONParser().
 func (p *JSONParser) parseLogMessage(msg []byte, preserveKeys []string, maxFieldNameLen int) error {
