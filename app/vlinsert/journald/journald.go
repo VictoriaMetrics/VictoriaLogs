@@ -27,11 +27,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-const (
-	// See https://github.com/systemd/systemd/blob/main/src/libsystemd/sd-journal/journal-file.c#L1703
-	maxFieldNameLen = 64
-	remoteIPField   = "remote_ip"
-)
+// See https://github.com/systemd/systemd/blob/main/src/libsystemd/sd-journal/journal-file.c#L1703
+const maxFieldNameLen = 64
 
 var (
 	journaldStreamFields = flagutil.NewArrayString("journald.streamFields", "Comma-separated list of fields to use as log stream fields for logs ingested over journald protocol. "+
@@ -265,7 +262,7 @@ func readJournaldLogEntry(streamName string, lr *insertutil.LineReader, remoteIP
 					ts = time.Now().UnixNano()
 				}
 				if remoteIP != "" {
-					fb.addField(remoteIPField, remoteIP)
+					fb.addField("remote_ip", remoteIP)
 				}
 				lmp.AddRow(ts, fb.fields, -1)
 			}
@@ -400,7 +397,9 @@ func getRemoteIP(r *http.Request) string {
 
 	// handle reverse proxies
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		addr = strings.TrimSpace(strings.Split(addr, ",")[0])
+		if n := strings.IndexByte(xff, ','); n >= 0 {
+			addr = strings.TrimSpace(xff[:n])
+		}
 	}
 
 	// http server sets it to IP:port

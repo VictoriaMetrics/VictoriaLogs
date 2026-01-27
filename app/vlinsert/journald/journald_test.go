@@ -170,3 +170,34 @@ func TestPushJournald_Failure(t *testing.T) {
 	// too long binary encoded message
 	f("__CURSOR=s=e0afe8412a6a49d2bfcf66aa7927b588;i=1f06;b=f778b6e2f7584a77b991a2366612a7b5;m=300bdfd420;t=62526e1182354;x=930dc44b370963b7\n__REALTIME_TIMESTAMP=1729698775704404\nMESSAGE\n\x13\x00\x00\x00\x00\x00\x00\x00foo\nbar\n\n\nasdaasdakljlsfd")
 }
+
+func TestGetRemoteIP(t *testing.T) {
+	f := func(remoteAddr, xff, ipExpected string) {
+		t.Helper()
+
+		req, err := http.NewRequest("GET", "http://foo/", nil)
+		if err != nil {
+			t.Fatalf("cannot create request: %s", err)
+		}
+		req.RemoteAddr = remoteAddr
+		req.Header.Set("X-Forwared-For", xff)
+	}
+
+	// remoteAddr
+	f("1.2.3.4", "", "1.2.3.4")
+	f("1.2.3.4:443", "", "1.2.3.4")
+	f("[::1]", "", "::1")
+	f("[::1]:80", "", "::1")
+
+	// xff
+	f("", "1.2.3.4", "1.2.3.4")
+	f("", "1.2.3.4:443", "1.2.3.4")
+	f("", "[::1]", "::1")
+	f("", "[::1]:80", "::1")
+
+	// multiple xff
+	f("", "1.2.3.4,5.6.7.8", "1.2.3.4")
+	f("", " 1.2.3.4 , 5.6.7.8", "1.2.3.4")
+	f("", "[::1] , 5.6.7.8", "::1")
+	f("", "[::1]:80 , 5.6.7.8", "::1")
+}
