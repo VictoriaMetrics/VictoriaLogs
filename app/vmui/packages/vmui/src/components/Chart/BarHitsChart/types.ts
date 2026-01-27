@@ -14,6 +14,7 @@ export interface GraphOptions {
   graphStyle: GRAPH_STYLES;
   queryMode: GRAPH_QUERY_MODE;
   stacked: boolean;
+  cumulative: boolean;
   fill: boolean;
   hideChart: boolean;
 }

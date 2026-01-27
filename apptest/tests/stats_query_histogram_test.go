@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 func TestStatsQueryHistogram(t *testing.T) {
@@ -41,7 +42,7 @@ func TestStatsQueryHistogram(t *testing.T) {
 	}
 
 	// check histogram with by (...)
-	query = "* | stats by (x) histogram(size) as size"
+	query = "* | stats by (x) histogram(size) as size | sort by (x)"
 	responseExpected = `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"size_bucket","x":"a","vmrange":"2.783e+00...3.162e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"a","vmrange":"8.799e-01...1.000e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"b","vmrange":"1.896e+00...2.154e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"b","vmrange":"3.594e+00...4.084e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"b","vmrange":"4.642e+00...5.275e+00"},"value":[1735689600,"1"]}]}}`
 
 	queryOpts = apptest.StatsQueryOpts{

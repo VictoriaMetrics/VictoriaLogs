@@ -11,6 +11,7 @@ tags:
   - logs
 aliases:
 - /victorialogs/Roadmap.html
+- /VictoriaLogs/Roadmap.html
 ---
 
 The following functionality is planned in the future versions of VictoriaLogs:

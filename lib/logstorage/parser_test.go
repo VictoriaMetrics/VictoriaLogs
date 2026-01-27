@@ -496,12 +496,23 @@ func TestParseDayRange(t *testing.T) {
 		}
 	}
 
-	f("[00:00, 24:00]", 0, nsecsPerDay-1, 0)
-	f("[10:20, 24:00]", 10*nsecsPerHour+20*nsecsPerMinute, nsecsPerDay-1, 0)
-	f("(00:00, 24:00)", 1, nsecsPerDay-2, 0)
-	f("[08:00, 18:00)", 8*nsecsPerHour, 18*nsecsPerHour-1, 0)
+	f("[00:00, 24:00] offset 0h", 0, nsecsPerDay-1, 0)
+	f("[10:20, 24:00] offset 0h", 10*nsecsPerHour+20*nsecsPerMinute, nsecsPerDay-1, 0)
+	f("(00:00, 24:00) offset 0h", 1, nsecsPerDay-2, 0)
+	f("[08:00, 18:00) offset 0h", 8*nsecsPerHour, 18*nsecsPerHour-1, 0)
 	f("[08:00, 18:00) offset 2h", 8*nsecsPerHour, 18*nsecsPerHour-1, 2*nsecsPerHour)
 	f("[08:00, 18:00) offset -2h", 8*nsecsPerHour, 18*nsecsPerHour-1, -2*nsecsPerHour)
+
+	// start equals end
+	f("[00:00, 00:00] offset 0h", 0, 0, 0)
+	f("(00:00, 00:00] offset 0h", 1, 0, 0)
+	f("[00:00, 00:00) offset 0h", 0, nsecsPerDay-1, 0)
+	f("(00:00, 00:00) offset 0h", 1, nsecsPerDay-1, 0)
+
+	// start is bigger than end
+	f("[18:00, 08:00) offset 0h", 18*nsecsPerHour, 8*nsecsPerHour-1, 0)
+	f("[18:00, 08:00) offset 2h", 18*nsecsPerHour, 8*nsecsPerHour-1, 2*nsecsPerHour)
+	f("[18:00, 08:00) offset -2h", 18*nsecsPerHour, 8*nsecsPerHour-1, -2*nsecsPerHour)
 }
 
 func TestParseWeekRange(t *testing.T) {
@@ -529,17 +540,54 @@ func TestParseWeekRange(t *testing.T) {
 		}
 	}
 
-	f("[Sun, Sat]", time.Sunday, time.Saturday, 0)
-	f("(Sun, Sat]", time.Monday, time.Saturday, 0)
-	f("(Sun, Sat)", time.Monday, time.Friday, 0)
-	f("[Sun, Sat)", time.Sunday, time.Friday, 0)
+	f("[Sun, Sat] offset 0h", time.Sunday, time.Saturday, 0)
+	f("(Sun, Sat] offset 0h", time.Monday, time.Saturday, 0)
+	f("(Sun, Sat) offset 0h", time.Monday, time.Friday, 0)
+	f("[Sun, Sat) offset 0h", time.Sunday, time.Friday, 0)
 
-	f(`[Mon, Tue]`, time.Monday, time.Tuesday, 0)
-	f(`[Wed, Thu]`, time.Wednesday, time.Thursday, 0)
-	f(`[Fri, Sat]`, time.Friday, time.Saturday, 0)
+	f(`[Mon, Tue] offset 0h`, time.Monday, time.Tuesday, 0)
+	f(`[Wed, Thu] offset 0h`, time.Wednesday, time.Thursday, 0)
+	f(`[Fri, Sat] offset 0h`, time.Friday, time.Saturday, 0)
 
 	f(`[Mon, Fri] offset 2h`, time.Monday, time.Friday, 2*nsecsPerHour)
 	f(`[Mon, Fri] offset -2h`, time.Monday, time.Friday, -2*nsecsPerHour)
+
+	// start equals end
+	f(`[Mon, Mon] offset 0h`, time.Monday, time.Monday, 0)
+	f(`[Mon, Mon) offset 0h`, time.Monday, time.Sunday, 0)
+	f(`(Mon, Mon] offset 0h`, time.Tuesday, time.Monday, 0)
+	f(`(Mon, Mon) offset 0h`, time.Tuesday, time.Sunday, 0)
+	f(`(Sat, Sun) offset 0h`, time.Sunday, time.Saturday, 0)
+
+	// start is bigger than end
+	f(`[Fri, Mon] offset 0h`, time.Friday, time.Monday, 0)
+	f(`[Fri, Mon] offset 2h`, time.Friday, time.Monday, 2*nsecsPerHour)
+	f(`[Fri, Mon] offset -2h`, time.Friday, time.Monday, -2*nsecsPerHour)
+}
+
+func TestTimeOffsetUpdatesDayAndWeekRangeFilters(t *testing.T) {
+	f := func(qStr string, offsetExpected int64) {
+		t.Helper()
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		switch fr := q.f.(type) {
+		case *filterDayRange:
+			if fr.offset != offsetExpected {
+				t.Fatalf("unexpected offset for day_range; got %d; want %d", fr.offset, offsetExpected)
+			}
+		case *filterWeekRange:
+			if fr.offset != offsetExpected {
+				t.Fatalf("unexpected offset for week_range; got %d; want %d", fr.offset, offsetExpected)
+			}
+		default:
+			t.Fatalf("unexpected filter; got %T; want *filterDayRange or *filterWeekRange; filter: %s", q.f, q.f)
+		}
+	}
+
+	f("options(time_offset=1h) _time:day_range[08:00, 18:00) offset 2h", 3*int64(nsecsPerHour))
+	f("options(time_offset=1h) _time:week_range[Mon, Fri] offset 2h", 3*int64(nsecsPerHour))
 }
 
 func TestParseTimeDuration(t *testing.T) {
@@ -1329,11 +1377,18 @@ func TestParseQuery_Success(t *testing.T) {
 	// _stream_id filter with star
 	f(`_stream_id:in(*)`, `*`)
 
+	// quoted _stream_id
+	f(`"_stream_id":0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`)
+	f(`'_stream_id':in(*)`, `*`)
+
 	// _stream filters
 	f(`_stream:{}`, `{}`)
 	f(`_stream:{foo="bar", baz=~"x" OR or!="b", "x=},"="d}{"}`, `{foo="bar",baz=~"x" or "or"!="b","x=},"="d}{"}`)
 	f(`_stream:{or=a or ","="b"}`, `{"or"="a" or ","="b"}`)
 	f("_stream : { foo =  bar , }  ", `{foo="bar"}`)
+
+	// quoted _stream
+	f(`"_stream":{}`, `{}`)
 
 	// _stream filter without _stream prefix
 	f(`{}`, `{}`)
@@ -1394,6 +1449,9 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`_time:1h "offSet"`, `_time:1h "offSet"`) // "offset" is a search word, since it is quoted
 	f(`_time:1h (Offset)`, `_time:1h "Offset"`) // "offset" is a search word, since it is in parens
 	f(`_time:1h "and"`, `_time:1h "and"`)       // "and" is a search word, since it is quoted
+
+	// quoted _time
+	f(`"_time":1h`, `_time:1h`)
 
 	// multiple _time filters
 	f(`_time:1h _time:2025Z`, `_time:1h _time:2025Z`)
@@ -1469,10 +1527,16 @@ func TestParseQuery_Success(t *testing.T) {
 	f("len_range-foo:b", `"len_range-foo":b`)
 	f("pattern_match", `"pattern_match"`)
 	f("pattern_match_full", `"pattern_match_full"`)
+	f("pattern_match_prefix", `"pattern_match_prefix"`)
+	f("pattern_match_suffix", `"pattern_match_suffix"`)
 	f("pattern_match:a", `"pattern_match":a`)
 	f("pattern_match_full:a", `"pattern_match_full":a`)
+	f("pattern_match_prefix:a", `"pattern_match_prefix":a`)
+	f("pattern_match_suffix:a", `"pattern_match_suffix":a`)
 	f("a:pattern_match", `a:"pattern_match"`)
 	f("a:pattern_match_full", `a:"pattern_match_full"`)
+	f("a:pattern_match_prefix", `a:"pattern_match_prefix"`)
+	f("a:pattern_match_suffix", `a:"pattern_match_suffix"`)
 	f("range", `"range"`)
 	f("range:a", `"range":a`)
 	f("range-foo", `"range-foo"`)
@@ -1630,9 +1694,9 @@ func TestParseQuery_Success(t *testing.T) {
 
 	// pattern_match filter
 	f(`pattern_match("<N> foo <DATE>, bar")`, `pattern_match("<N> foo <DATE>, bar")`)
-
-	// pattern_match_full filter
 	f(`pattern_match_full("<N> foo <DATE>, bar")`, `pattern_match_full("<N> foo <DATE>, bar")`)
+	f(`pattern_match_prefix("<N> foo <DATE>, bar")`, `pattern_match_prefix("<N> foo <DATE>, bar")`)
+	f(`pattern_match_suffix("<N> foo <DATE>, bar")`, `pattern_match_suffix("<N> foo <DATE>, bar")`)
 
 	// range filter
 	f(`range(1.234, 5656.43454)`, `range(1.234, 5656.43454)`)
@@ -2275,6 +2339,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_stream_id:in(foo | bar)")
 	f("_stream_id:in(* | stats by (x) count() y)")
 
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_stream_id":=""`)
+
 	// invalid _stream filters
 	f("_stream:")
 	f("_stream:{")
@@ -2294,6 +2361,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_stream:foo")
 	f("_stream:(foo)")
 	f("_stream:[foo]")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_stream":=""`)
 
 	// invalid _stream filters without _stream: prefix
 	f("{")
@@ -2328,6 +2398,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_time:10m offset foobar")
 	f("_time:offset")
 	f("_time:offset foobar")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`"_time":foo`)
 
 	// invalid day_range filters
 	f("_time:day_range")
@@ -2490,9 +2563,17 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`pattern_match()`)
 	f(`pattern_match(`)
 
-	// invalid pattern_match_all
-	f(`pattern_match_all()`)
-	f(`pattern_match_all(`)
+	// invalid pattern_match_full
+	f(`pattern_match_full()`)
+	f(`pattern_match_full(`)
+
+	// invalid pattern_match_prefix
+	f(`pattern_match_prefix()`)
+	f(`pattern_match_prefix(`)
+
+	// invalid pattern_match_suffix
+	f(`pattern_match_suffix()`)
+	f(`pattern_match_suffix(`)
 
 	// invalid range
 	f(`range(`)

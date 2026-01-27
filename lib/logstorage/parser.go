@@ -1267,15 +1267,36 @@ func updateFilterWithTimeOffset(f filter, timeOffset int64) filter {
 	}
 
 	visitFunc := func(f filter) bool {
-		_, ok := f.(*filterTime)
-		return ok
+		switch f.(type) {
+		case *filterTime:
+			return true
+		case *filterDayRange:
+			return true
+		case *filterWeekRange:
+			return true
+		default:
+			return false
+		}
 	}
 	copyFunc := func(f filter) (filter, error) {
-		ft := f.(*filterTime)
-		ftCopy := *ft
-		ftCopy.minTimestamp = subNoOverflowInt64(ft.minTimestamp, timeOffset)
-		ftCopy.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, timeOffset)
-		return &ftCopy, nil
+		switch ft := f.(type) {
+		case *filterTime:
+			ftCopy := *ft
+			ftCopy.minTimestamp = subNoOverflowInt64(ft.minTimestamp, timeOffset)
+			ftCopy.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, timeOffset)
+			return &ftCopy, nil
+		case *filterDayRange:
+			ftCopy := *ft
+			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			return &ftCopy, nil
+		case *filterWeekRange:
+			ftCopy := *ft
+			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			return &ftCopy, nil
+		default:
+			logger.Panicf("BUG: unexpected filter passed to copyFunc: %T; [%s]", f, f)
+			return f, nil
+		}
 	}
 	f, err := copyFilter(f, visitFunc, copyFunc)
 	if err != nil {
@@ -2000,7 +2021,7 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	// Detect the filter.
 	switch {
 	case lex.isKeyword("{"):
-		return parseFilterStream(lex, fieldName)
+		return parseFilterStreamInternal(lex, fieldName)
 	case lex.isKeyword("*"):
 		return parseFilterStar(lex, fieldName)
 	case lex.isKeyword("("):
@@ -2044,9 +2065,13 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	case lex.isKeyword("lt_field"):
 		return parseFilterLtField(lex, fieldName)
 	case lex.isKeyword("pattern_match"):
-		return parseFilterPatternMatch(lex, fieldName)
+		return parseFilterPatternMatch(lex, fieldName, patternMatcherOptionAny)
 	case lex.isKeyword("pattern_match_full"):
-		return parseFilterPatternMatch(lex, fieldName)
+		return parseFilterPatternMatch(lex, fieldName, patternMatcherOptionFull)
+	case lex.isKeyword("pattern_match_prefix"):
+		return parseFilterPatternMatch(lex, fieldName, patternMatcherOptionPrefix)
+	case lex.isKeyword("pattern_match_suffix"):
+		return parseFilterPatternMatch(lex, fieldName, patternMatcherOptionSuffix)
 	case lex.isKeyword("range"):
 		return parseFilterRange(lex, fieldName)
 	case lex.isKeyword("re"):
@@ -2062,19 +2087,7 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	case lex.isKeyword("_stream_id"):
 		return parseFilterStreamID(lex, fieldName)
 	case lex.isKeyword("_stream"):
-		if fieldName != "" {
-			return parseFilterPhrase(lex, fieldName)
-		}
-		lexState := lex.backupState()
-		lex.nextToken()
-
-		if !lex.isKeyword(":") {
-			lex.restoreState(lexState)
-			return parseFilterPhrase(lex, "")
-		}
-		lex.nextToken()
-
-		return parseFilterStream(lex, "_stream")
+		return parseFilterStream(lex, fieldName)
 	default:
 		return parseFilterPhrase(lex, fieldName)
 	}
@@ -2093,7 +2106,17 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 	if fieldName == "" && lex.isKeyword(":") {
 		// The phrase contains a field name for the filter
 		lex.nextToken()
-		return parseFilterGeneric(lex, phrase)
+
+		switch phrase {
+		case "_time":
+			return parseFilterTimeInternal(lex)
+		case "_stream_id":
+			return parseFilterStreamIDInternal(lex)
+		case "_stream":
+			return parseFilterStreamInternal(lex, "_stream")
+		default:
+			return parseFilterGeneric(lex, phrase)
+		}
 	}
 
 	// The phrase is either a search phrase or a search prefix.
@@ -2250,7 +2273,7 @@ func parseFilterStringRange(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterValueType(lex *lexer, fieldName string) (filter, error) {
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
 		fv := &filterValueType{
 			fieldName: getCanonicalColumnName(fieldName),
 			valueType: arg,
@@ -2407,7 +2430,7 @@ func parseFilterSequence(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterEqField(lex *lexer, fieldName string) (filter, error) {
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
 		fe := &filterEqField{
 			fieldName:      getCanonicalColumnName(fieldName),
 			otherFieldName: arg,
@@ -2417,7 +2440,7 @@ func parseFilterEqField(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterLeField(lex *lexer, fieldName string) (filter, error) {
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
 		fe := &filterLeField{
 			fieldName:      getCanonicalColumnName(fieldName),
 			otherFieldName: arg,
@@ -2427,7 +2450,7 @@ func parseFilterLeField(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterLtField(lex *lexer, fieldName string) (filter, error) {
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
 		fe := &filterLeField{
 			fieldName:      getCanonicalColumnName(fieldName),
 			otherFieldName: arg,
@@ -2455,19 +2478,19 @@ func parseFilterExact(lex *lexer, fieldName string) (filter, error) {
 	})
 }
 
-func parseFilterPatternMatch(lex *lexer, fieldName string) (filter, error) {
-	isFull := lex.isKeyword("pattern_match_full")
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+func parseFilterPatternMatch(lex *lexer, fieldName string, pmo patternMatcherOption) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(funcName, arg string) (filter, error) {
 		fp := &filterPatternMatch{
 			fieldName: getCanonicalColumnName(fieldName),
-			pm:        newPatternMatcher(arg, isFull),
+			funcName:  funcName,
+			pm:        newPatternMatcher(arg, pmo),
 		}
 		return fp, nil
 	})
 }
 
 func parseFilterRegexp(lex *lexer, fieldName string) (filter, error) {
-	return parseFuncArg(lex, fieldName, func(arg string) (filter, error) {
+	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
 		return newFilterRegexp(fieldName, arg)
 	})
 }
@@ -2802,12 +2825,12 @@ func parseNumber(lex *lexer) (float64, string, error) {
 	return 0, s, fmt.Errorf("cannot parse %q as float64", s)
 }
 
-func parseFuncArg(lex *lexer, fieldName string, callback func(arg string) (filter, error)) (filter, error) {
+func parseFuncArg(lex *lexer, fieldName string, callback func(funcName, arg string) (filter, error)) (filter, error) {
 	return parseFuncArgs(lex, fieldName, func(funcName string, args []string) (filter, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unexpected number of args for %s(); got %d; want 1", funcName, len(args))
 		}
-		return callback(args[0])
+		return callback(funcName, args[0])
 	})
 }
 
@@ -2964,6 +2987,10 @@ func parseFilterTimeGeneric(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
+	return parseFilterTimeInternal(lex)
+}
+
+func parseFilterTimeInternal(lex *lexer) (filter, error) {
 	switch {
 	case lex.isKeyword("day_range"):
 		return parseFilterDayRange(lex)
@@ -3017,7 +3044,7 @@ func parseFilterDayRange(lex *lexer) (*filterDayRange, error) {
 		return nil, fmt.Errorf("missing ']' or ')' after day_range filter")
 	}
 
-	offset := int64(0)
+	offset := timeutil.GetLocalTimezoneOffsetNsecs()
 	offsetStr := ""
 	if lex.isKeyword("offset") {
 		lex.nextToken()
@@ -3031,9 +3058,15 @@ func parseFilterDayRange(lex *lexer) (*filterDayRange, error) {
 
 	if startBrace == "(" {
 		start++
+		if start > nsecsPerDay {
+			start = 0
+		}
 	}
 	if endBrace == ")" {
 		end--
+		if end < 0 {
+			end = nsecsPerDay - 1
+		}
 	}
 
 	fr := &filterDayRange{
@@ -3089,7 +3122,7 @@ func parseFilterWeekRange(lex *lexer) (*filterWeekRange, error) {
 		return nil, fmt.Errorf("missing ']' or ')' after week_range filter")
 	}
 
-	offset := int64(0)
+	offset := timeutil.GetLocalTimezoneOffsetNsecs()
 	offsetStr := ""
 	if lex.isKeyword("offset") {
 		lex.nextToken()
@@ -3103,9 +3136,15 @@ func parseFilterWeekRange(lex *lexer) (*filterWeekRange, error) {
 
 	if startBrace == "(" {
 		startDay++
+		if startDay > time.Saturday {
+			startDay = time.Sunday
+		}
 	}
 	if endBrace == ")" {
 		endDay--
+		if endDay < time.Sunday {
+			endDay = time.Saturday
+		}
 	}
 
 	fr := &filterWeekRange{
@@ -3545,6 +3584,10 @@ func parseFilterStreamID(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
+	return parseFilterStreamIDInternal(lex)
+}
+
+func parseFilterStreamIDInternal(lex *lexer) (filter, error) {
 	if lex.isKeyword("in") {
 		return parseFilterStreamIDIn(lex)
 	}
@@ -3668,7 +3711,23 @@ func parseStreamID(lex *lexer) (streamID, error) {
 	return sid, nil
 }
 
-func parseFilterStream(lex *lexer, fieldName string) (*filterStream, error) {
+func parseFilterStream(lex *lexer, fieldName string) (filter, error) {
+	if fieldName != "" {
+		return parseFilterPhrase(lex, fieldName)
+	}
+	lexState := lex.backupState()
+	lex.nextToken()
+
+	if !lex.isKeyword(":") {
+		lex.restoreState(lexState)
+		return parseFilterPhrase(lex, "")
+	}
+	lex.nextToken()
+
+	return parseFilterStreamInternal(lex, "_stream")
+}
+
+func parseFilterStreamInternal(lex *lexer, fieldName string) (*filterStream, error) {
 	if fieldName != "" && fieldName != "_stream" {
 		return nil, fmt.Errorf("stream filter cannot be applied to %q field; it can be applied only to _stream field", fieldName)
 	}
@@ -3705,6 +3764,13 @@ func parseDuration(lex *lexer) (int64, string, error) {
 		return 0, s, fmt.Errorf("cannot parse duration %q", s)
 	}
 	return d, s, nil
+}
+
+// TryParseDuration tries parsing duration at s and returns the duration in nanoseconds.
+//
+// If the duration cannot be parsed, false is returned.
+func TryParseDuration(s string) (int64, bool) {
+	return tryParseDuration(s)
 }
 
 func quoteStringTokenIfNeeded(s string) string {
@@ -3831,6 +3897,8 @@ var reservedKeywords = func() map[string]struct{} {
 		"lt_field",
 		"pattern_match",
 		"pattern_match_full",
+		"pattern_match_prefix",
+		"pattern_match_suffix",
 		"range",
 		"re",
 		"seq",

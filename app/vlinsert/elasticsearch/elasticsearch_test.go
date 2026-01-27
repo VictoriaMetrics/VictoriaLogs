@@ -20,7 +20,7 @@ func TestReadBulkRequest_Failure(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := bytes.NewBufferString(data)
-		rows, err := readBulkRequest("test", r, "", []string{"_time"}, []string{"_msg"}, tlp)
+		rows, err := readBulkRequest("test", r, "", []string{"_time"}, []string{"_msg"}, nil, tlp)
 		if err == nil {
 			t.Fatalf("expecting non-empty error")
 		}
@@ -38,7 +38,7 @@ foobar`)
 }
 
 func TestReadBulkRequest_Success(t *testing.T) {
-	f := func(data, encoding, timeField, msgField string, timestampsExpected []int64, resultExpected string) {
+	f := func(data, encoding, timeField, msgField string, preserveKeys []string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
 		timeFields := []string{"non_existing_foo", timeField, "non_existing_bar"}
@@ -47,7 +47,7 @@ func TestReadBulkRequest_Success(t *testing.T) {
 
 		// Read the request without compression
 		r := bytes.NewBufferString(data)
-		rows, err := readBulkRequest("test", r, "", timeFields, msgFields, tlp)
+		rows, err := readBulkRequest("test", r, "", timeFields, msgFields, preserveKeys, tlp)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -64,7 +64,7 @@ func TestReadBulkRequest_Success(t *testing.T) {
 			data = compressData(data, encoding)
 		}
 		r = bytes.NewBufferString(data)
-		rows, err = readBulkRequest("test", r, encoding, timeFields, msgFields, tlp)
+		rows, err = readBulkRequest("test", r, encoding, timeFields, msgFields, preserveKeys, tlp)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -77,9 +77,9 @@ func TestReadBulkRequest_Success(t *testing.T) {
 	}
 
 	// Verify an empty data
-	f("", "gzip", "_time", "_msg", nil, "")
-	f("\n", "gzip", "_time", "_msg", nil, "")
-	f("\n\n", "gzip", "_time", "_msg", nil, "")
+	f("", "gzip", "_time", "_msg", nil, nil, "")
+	f("\n", "gzip", "_time", "_msg", nil, nil, "")
+	f("\n\n", "gzip", "_time", "_msg", nil, nil, "")
 
 	// Verify non-empty data
 	data := `{"create":{"_index":"filebeat-8.8.0"}}
@@ -101,7 +101,18 @@ func TestReadBulkRequest_Success(t *testing.T) {
 {"_msg":"xyz","x":"y"}
 {"_msg":"qwe rty"}
 {"_msg":"qwe rty float"}`
-	f(data, "zstd", timeField, msgField, timestampsExpected, resultExpected)
+	f(data, "zstd", timeField, msgField, nil, timestampsExpected, resultExpected)
+
+	// Verify non-empty data with preserve keys
+	data = `{"create":{"_index":"filebeat-8.8.0"}}
+{"@timestamp":"2023-06-06T04:48:11.735Z","log":{"offset":71770,"file":{"path":"/var/log/auth.log"}},"message":"foobar"}
+`
+	timeField = "@timestamp"
+	msgField = "message"
+	preserveKeys := []string{"log.file"}
+	timestampsExpected = []int64{1686026891735000000}
+	resultExpected = `{"log.offset":"71770","log.file":"{\"path\":\"/var/log/auth.log\"}","_msg":"foobar"}`
+	f(data, "zstd", timeField, msgField, preserveKeys, timestampsExpected, resultExpected)
 }
 
 func compressData(s string, encoding string) string {

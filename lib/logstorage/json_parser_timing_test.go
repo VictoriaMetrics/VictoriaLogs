@@ -31,7 +31,7 @@ func BenchmarkJSONParserParseLogMessage(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		p := GetJSONParser()
 		for pb.Next() {
-			if err := p.ParseLogMessage(msg); err != nil {
+			if err := p.ParseLogMessage(msg, nil); err != nil {
 				panic(fmt.Errorf("unexpected error: %s", err))
 			}
 		}

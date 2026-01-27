@@ -118,8 +118,16 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
+	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
+	if err != nil {
+		errorsTotal.Inc()
+		logger.Errorf("cannot start reading journald request: %s", err)
+		return
+	}
+	defer writeconcurrencylimiter.PutReader(wcr)
+
 	encoding := r.Header.Get("Content-Encoding")
-	reader, err := protoparserutil.GetUncompressedReader(r.Body, encoding)
+	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
 		errorsTotal.Inc()
 		logger.Errorf("cannot decode journald request: %s", err)
@@ -161,14 +169,10 @@ var (
 )
 
 func processStreamInternal(streamName string, r io.Reader, remoteIP string, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
-	wcr := writeconcurrencylimiter.GetReader(r)
-	defer writeconcurrencylimiter.PutReader(wcr)
-
-	lr := insertutil.NewLineReader("journald", wcr)
+	lr := insertutil.NewLineReader("journald", r)
 
 	for {
 		err := readJournaldLogEntry(streamName, lr, remoteIP, lmp, cp)
-		wcr.DecConcurrency()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil

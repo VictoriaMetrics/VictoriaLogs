@@ -310,12 +310,10 @@ func (pup *pipeUniqProcessor) flush() error {
 
 	// Write the calculated stats in parallel to the next pipe.
 	var wg sync.WaitGroup
-	for i := range hms {
-		wg.Add(1)
-		go func(workerID uint) {
-			defer wg.Done()
-			pup.writeShardData(workerID, hms[workerID], resetHits)
-		}(uint(i))
+	for workerID := range hms {
+		wg.Go(func() {
+			pup.writeShardData(uint(workerID), hms[workerID], resetHits)
+		})
 	}
 	wg.Wait()
 

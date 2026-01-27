@@ -10,7 +10,7 @@ func TestJSONParserFailure(t *testing.T) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.ParseLogMessage([]byte(data))
+		err := p.ParseLogMessage([]byte(data), nil)
 		if err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
@@ -23,11 +23,11 @@ func TestJSONParserFailure(t *testing.T) {
 }
 
 func TestJSONParserSuccess(t *testing.T) {
-	f := func(data string, fieldsExpected []Field) {
+	f := func(data string, preserveKeys []string, fieldsExpected []Field) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.ParseLogMessage([]byte(data))
+		err := p.ParseLogMessage([]byte(data), preserveKeys)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -37,14 +37,14 @@ func TestJSONParserSuccess(t *testing.T) {
 		PutJSONParser(p)
 	}
 
-	f("{}", nil)
-	f(`{"foo":"bar"}`, []Field{
+	f("{}", nil, nil)
+	f(`{"foo":"bar"}`, nil, []Field{
 		{
 			Name:  "foo",
 			Value: "bar",
 		},
 	})
-	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []Field{
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, nil, []Field{
 		{
 			Name:  "foo.bar.x",
 			Value: "y",
@@ -70,6 +70,54 @@ func TestJSONParserSuccess(t *testing.T) {
 			Value: "false",
 		},
 	})
+
+	// preserve foo
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo"}, []Field{
+		{
+			Name:  "foo",
+			Value: `{"bar":{"x":"y","z":["foo"]}}`,
+		},
+		{
+			Name:  "a",
+			Value: "1",
+		},
+		{
+			Name:  "b",
+			Value: "true",
+		},
+		{
+			Name:  "c",
+			Value: "[1,2]",
+		},
+		{
+			Name:  "d",
+			Value: "false",
+		},
+	})
+
+	// preserve foo.bar
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo.bar"}, []Field{
+		{
+			Name:  "foo.bar",
+			Value: `{"x":"y","z":["foo"]}`,
+		},
+		{
+			Name:  "a",
+			Value: "1",
+		},
+		{
+			Name:  "b",
+			Value: "true",
+		},
+		{
+			Name:  "c",
+			Value: "[1,2]",
+		},
+		{
+			Name:  "d",
+			Value: "false",
+		},
+	})
 }
 
 func TestJSONParserTooLongFieldName(t *testing.T) {
@@ -77,7 +125,7 @@ func TestJSONParserTooLongFieldName(t *testing.T) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.parseLogMessage([]byte(data), maxFieldLen)
+		err := p.parseLogMessage([]byte(data), nil, maxFieldLen)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}

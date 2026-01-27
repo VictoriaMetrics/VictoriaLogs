@@ -40,6 +40,9 @@ var (
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#backfilling")
+	snapshotsMaxAge = flagutil.NewRetentionDuration("snapshotsMaxAge", "3d", "Snapshots are automatically deleted after the given duration if it is set to positive value. "+
+		"Make sure that the backup process has enough time for backing up the snapshot before its' deletion. "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
 	inmemoryDataFlushInterval = flag.Duration("inmemoryDataFlushInterval", 5*time.Second, "The interval for guaranteed saving of in-memory data to disk. "+
@@ -134,6 +137,7 @@ func initLocalStorage() {
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
 		MaxBackfillAge:         maxBackfillAge.Duration(),
+		SnapshotsMaxAge:        snapshotsMaxAge.Duration(),
 		LogNewStreams:          *logNewStreams,
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,
@@ -255,6 +259,10 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotCreate(w, r)
 	case "/internal/partition/snapshot/list":
 		return processPartitionSnapshotList(w, r)
+	case "/internal/partition/snapshot/delete":
+		return processPartitionSnapshotDelete(w, r)
+	case "/internal/partition/snapshot/delete_stale":
+		return processPartitionSnapshotDeleteStale(w, r)
 	}
 	return false
 }
@@ -293,14 +301,14 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	// Run force merge in background
-	partitionNamePrefix := r.FormValue("partition_prefix")
+	partitionPrefix := r.FormValue("partition_prefix")
 	go func() {
 		activeForceMerges.Inc()
 		defer activeForceMerges.Dec()
-		logger.Infof("forced merge for partition_prefix=%q has been started", partitionNamePrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been started", partitionPrefix)
 		startTime := time.Now()
-		localStorage.MustForceMerge(partitionNamePrefix)
-		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionNamePrefix, time.Since(startTime).Seconds())
+		localStorage.MustForceMerge(partitionPrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionPrefix, time.Since(startTime).Seconds())
 	}()
 	return true
 }
@@ -389,14 +397,32 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return true
 	}
 
-	name := r.FormValue("name")
-	snapshotPath, err := localStorage.PartitionSnapshotCreate(name)
-	if err != nil {
-		httpserver.Errorf(w, r, "%s", err)
+	partitionPrefix := r.FormValue("partition_prefix")
+	if partitionPrefix == "" {
+		// Fall back to the deprecated argument.
+		partitionPrefix = r.FormValue("name")
+	}
+
+	snapshotPaths := localStorage.PartitionSnapshotMustCreate(partitionPrefix)
+	if snapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		snapshotPaths = []string{}
+	}
+
+	// Verify whether the client already closed the connection.
+	// In this case it is better to drop the created snapshot, since the client isn't interested in it.
+	if err := r.Context().Err(); err != nil {
+		for _, snapshotPath := range snapshotPaths {
+			logger.Infof("deleting already created snapshot at %s because the client canceled the request", snapshotPath)
+			if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+				logger.Warnf("cannot delete already created snapshot: %s", err)
+				continue
+			}
+		}
 		return true
 	}
 
-	writeJSONResponse(w, snapshotPath)
+	writeJSONResponse(w, snapshotPaths)
 	return true
 }
 
@@ -417,6 +443,67 @@ func processPartitionSnapshotList(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	writeJSONResponse(w, snapshotPaths)
+	return true
+}
+
+func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	snapshotPath := r.FormValue("path")
+	if snapshotPath == "" {
+		httpserver.Errorf(w, r, "missing `path` query arg")
+		return true
+	}
+
+	if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return true
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return true
+}
+
+func processPartitionSnapshotDeleteStale(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	maxAge := snapshotsMaxAge.Duration()
+	maxAgeStr := r.FormValue("max_age")
+	if maxAgeStr != "" {
+		var d flagutil.RetentionDuration
+		if err := d.Set(maxAgeStr); err != nil {
+			httpserver.Errorf(w, r, "cannot parse max_age=%q: %s", maxAgeStr, err)
+			return true
+		}
+		maxAge = d.Duration()
+	}
+	if maxAge <= 0 {
+		// Nothing to delete.
+		fmt.Fprintf(w, `[]`)
+		return true
+	}
+
+	deletedSnapshotPaths := localStorage.MustDeleteStalePartitionSnapshots(maxAge)
+	if deletedSnapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		deletedSnapshotPaths = []string{}
+	}
+
+	writeJSONResponse(w, deletedSnapshotPaths)
 	return true
 }
 

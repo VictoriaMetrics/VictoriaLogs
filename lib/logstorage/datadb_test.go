@@ -22,15 +22,12 @@ func TestRowsBuffer(t *testing.T) {
 	const insertLoops = 30
 	var wg sync.WaitGroup
 	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			lr := newTestLogRows(1, rowsPerInsert, 1)
 			for i := 0; i < insertLoops; i++ {
 				rb.mustAddRows(lr)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 

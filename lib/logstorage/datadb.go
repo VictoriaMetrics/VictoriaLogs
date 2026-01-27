@@ -253,41 +253,25 @@ func (ddb *datadb) startInmemoryPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.inmemoryPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.inmemoryPartsMerger)
 }
 
 func (ddb *datadb) startSmallPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.smallPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.smallPartsMerger)
 }
 
 func (ddb *datadb) startBigPartsMergerLocked() {
 	if needStop(ddb.stopCh) {
 		return
 	}
-	ddb.wg.Add(1)
-	go func() {
-		ddb.bigPartsMerger()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.bigPartsMerger)
 }
 
 func (ddb *datadb) startInmemoryPartsFlusher() {
-	ddb.wg.Add(1)
-	go func() {
-		ddb.inmemoryPartsFlusher()
-		ddb.wg.Done()
-	}()
+	ddb.wg.Go(ddb.inmemoryPartsFlusher)
 }
 
 func (ddb *datadb) inmemoryPartsFlusher() {
@@ -324,16 +308,13 @@ func (ddb *datadb) mustMergePartsToFiles(pws []*partWrapper) {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		inmemoryPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-inmemoryPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			ddb.mustMergeParts(pwsChunk, true)
-		}(pwsToMerge)
+		wg.Go(func() {
+			ddb.mustMergeParts(pwsToMerge, true)
+			<-inmemoryPartsConcurrencyCh
+		})
+
 		pws = pwsRemaining
 	}
 	wg.Wait()
@@ -1040,39 +1021,41 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	removedSmallParts := 0
 	removedBigParts := 0
 
-	ddb.partsLock.Lock()
+	func() {
+		// Prevent from deadlock mentioned at https://github.com/VictoriaMetrics/VictoriaLogs/issues/1020#issuecomment-3763912067
+		ddb.partsLock.Lock()
+		defer ddb.partsLock.Unlock()
 
-	ddb.inmemoryParts, removedInmemoryParts = removeParts(ddb.inmemoryParts, partsToRemove)
-	ddb.smallParts, removedSmallParts = removeParts(ddb.smallParts, partsToRemove)
-	ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
+		ddb.inmemoryParts, removedInmemoryParts = removeParts(ddb.inmemoryParts, partsToRemove)
+		ddb.smallParts, removedSmallParts = removeParts(ddb.smallParts, partsToRemove)
+		ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
 
-	if pwNew != nil {
-		switch dstPartType {
-		case partInmemory:
-			ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
-			ddb.startInmemoryPartsMergerLocked()
-		case partSmall:
-			ddb.smallParts = append(ddb.smallParts, pwNew)
-			ddb.startSmallPartsMergerLocked()
-		case partBig:
-			ddb.bigParts = append(ddb.bigParts, pwNew)
-			ddb.startBigPartsMergerLocked()
-		default:
-			logger.Panicf("BUG: unknown partType=%d", dstPartType)
+		if pwNew != nil {
+			switch dstPartType {
+			case partInmemory:
+				ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
+				ddb.startInmemoryPartsMergerLocked()
+			case partSmall:
+				ddb.smallParts = append(ddb.smallParts, pwNew)
+				ddb.startSmallPartsMergerLocked()
+			case partBig:
+				ddb.bigParts = append(ddb.bigParts, pwNew)
+				ddb.startBigPartsMergerLocked()
+			default:
+				logger.Panicf("BUG: unknown partType=%d", dstPartType)
+			}
 		}
-	}
 
-	// Atomically store the updated list of file-based parts on disk.
-	// This must be performed under partsLock in order to prevent from races
-	// when multiple concurrently running goroutines update the list.
-	if removedSmallParts > 0 || removedBigParts > 0 || pwNew != nil && dstPartType != partInmemory {
-		smallPartNames := getPartNames(ddb.smallParts)
-		bigPartNames := getPartNames(ddb.bigParts)
-		partNames := append(smallPartNames, bigPartNames...)
-		mustWritePartNames(ddb.path, partNames)
-	}
-
-	ddb.partsLock.Unlock()
+		// Atomically store the updated list of file-based parts on disk.
+		// This must be performed under partsLock in order to prevent from races
+		// when multiple concurrently running goroutines update the list.
+		if removedSmallParts > 0 || removedBigParts > 0 || (pwNew != nil && dstPartType != partInmemory) {
+			smallPartNames := getPartNames(ddb.smallParts)
+			bigPartNames := getPartNames(ddb.bigParts)
+			partNames := append(smallPartNames, bigPartNames...)
+			mustWritePartNames(ddb.path, partNames)
+		}
+	}()
 
 	removedParts := removedInmemoryParts + removedSmallParts + removedBigParts
 	if removedParts != len(partsToRemove) {
@@ -1513,16 +1496,13 @@ func (ddb *datadb) mustForceMergeAllParts() {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		bigPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-bigPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			ddb.mustMergeParts(pwsChunk, false)
-		}(pwsToMerge)
+		wg.Go(func() {
+			ddb.mustMergeParts(pwsToMerge, false)
+			<-bigPartsConcurrencyCh
+		})
+
 		pws = pwsRemaining
 	}
 	wg.Wait()

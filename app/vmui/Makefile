@@ -7,7 +7,10 @@ vmui-run-npm-command: vmui-package-base-image
 		--mount type=bind,src="$(shell pwd)/docs",dst=/docs \
 		-w /build/packages/vmui \
 		--entrypoint=/bin/bash \
-		vmui-builder-image -c "npm install && $(NPM_COMMAND)"
+		vmui-builder-image -c "[ \"$$VMUI_SKIP_INSTALL\" = \"true\" ] || npm ci; $(NPM_COMMAND)"
+
+vmui-install:
+	NPM_COMMAND="true" $(MAKE) vmui-run-npm-command
 
 vmui-package-base-image:
 	docker build -t vmui-builder-image -f app/vmui/Dockerfile-build ./app/vmui
@@ -22,14 +25,11 @@ vmui-build:
 vmui-update: vmui-build
 	rm -rf app/vlselect/vmui/* && mv app/vmui/packages/vmui/build/* app/vlselect/vmui && rm -rf app/vlselect/vmui/dashboards
 
-vmui-install-dependencies:
-	NPM_COMMAND="npm ci" $(MAKE) vmui-run-npm-command
-
-vmui-lint: vmui-install-dependencies
+vmui-lint:
 	NPM_COMMAND="npm run lint" $(MAKE) vmui-run-npm-command
 
-vmui-typecheck: vmui-install-dependencies
+vmui-typecheck:
 	NPM_COMMAND="npm run typecheck" $(MAKE) vmui-run-npm-command
 
-vmui-test: vmui-install-dependencies
+vmui-test:
 	NPM_COMMAND="npm run test" $(MAKE) vmui-run-npm-command

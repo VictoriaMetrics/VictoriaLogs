@@ -10951,6 +10951,7 @@
         "type": "query"
       },
       {
+        "allValue": ".*",
         "current": {},
         "datasource": {
           "type": "prometheus",

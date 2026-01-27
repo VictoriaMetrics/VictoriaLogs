@@ -8,6 +8,7 @@ import Button from "../../../Main/Button/Button";
 import { TipIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
+import { useCallback } from "react";
 
 interface Props {
   isOverview?: boolean;
@@ -19,37 +20,45 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
+
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
+  const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
   const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
 
   const options: GraphOptions = useMemo(() => ({
     graphStyle: GRAPH_STYLES.BAR,
     queryMode,
     stacked,
+    cumulative,
     fill: true,
     hideChart,
-  }), [stacked, hideChart, queryMode]);
+  }), [stacked, cumulative, hideChart, queryMode]);
 
   const handleChangeMode = (val: boolean) => {
     const mode = val ? GRAPH_QUERY_MODE.stats : GRAPH_QUERY_MODE.hits;
     setQueryMode(mode);
-    val ? searchParams.set("graph_mode", mode) : searchParams.delete("graph_mode");
-    setSearchParams(searchParams);
+    handleChangeSearchParams("graph_mode", val, mode);
   };
 
   const handleChangeStacked = (val: boolean) => {
     setStacked(val);
-    val ? searchParams.set("stacked", "true") : searchParams.delete("stacked");
-    setSearchParams(searchParams);
+    handleChangeSearchParams("stacked", val);
   };
 
-  const toggleHideChart = () => {
-    setHideChart(prev => {
-      const newVal = !prev;
-      newVal ? searchParams.set("hide_chart", "true") : searchParams.delete("hide_chart");
-      setSearchParams(searchParams);
-      return newVal;
-    });
+  const handleChangeCumulative = (val: boolean) => {
+    setCumulative(val);
+    handleChangeSearchParams("cumulative", val);
+  };
+
+  const toggleHideChart = useCallback(() => {
+    const val = !hideChart;
+    setHideChart(val);
+    handleChangeSearchParams("hide_chart", val);
+  }, [hideChart]);
+
+  const handleChangeSearchParams = (key: string, shouldSet: boolean, paramValue?: string) => {
+    shouldSet ? searchParams.set(key, paramValue ?? String(shouldSet)) : searchParams.delete(key);
+    setSearchParams(searchParams);
   };
 
   useEffect(() => {
@@ -58,6 +67,13 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
 
   return (
     <div className="vm-bar-hits-options">
+      <div className="vm-bar-hits-options-item">
+        <Switch
+          label={"Cumulative"}
+          value={cumulative}
+          onChange={handleChangeCumulative}
+        />
+      </div>
       {!isOverview && (
         <div className="vm-bar-hits-options-item">
           <Switch

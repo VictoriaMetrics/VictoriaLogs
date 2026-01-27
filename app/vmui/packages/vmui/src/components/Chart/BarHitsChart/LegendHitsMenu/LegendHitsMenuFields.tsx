@@ -31,7 +31,9 @@ const stringToFilter = (string: string) => {
 
 const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => {
   const copyToClipboard = useCopyToClipboard();
-  const { groupFieldHits } = useHitsChartConfig();
+  const {
+    groupFieldHits: { value: groupFieldHits },
+  } = useHitsChartConfig();
 
   const handleCopy = (field: string) => async () => {
     await copyToClipboard(field, `${field} has been copied`);

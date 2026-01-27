@@ -10,6 +10,7 @@ tags:
    - logs
 aliases:
    - /victorialogs/data-ingestion/syslog.html
+   - /VictoriaLogs/data-ingestion/syslog.html
 ---
 
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can accept logs in [Syslog formats](https://en.wikipedia.org/wiki/Syslog) at the specified TCP, UDP or Unix socket addresses
@@ -60,7 +61,10 @@ from the received Syslog lines:
 The `[STRUCTURED-DATA]` is parsed into fields with the `SD-ID.param1`, `SD-ID.param2`, ..., `SD-ID.paramN` names and the corresponding values
 according to [the specification](https://datatracker.ietf.org/doc/html/rfc5424#section-6.3).
 
-By default local timezone is used when parsing timestamps in `rfc3164` lines. This can be changed to any desired timezone via `-syslog.timezone` command-line flag.
+By default local timezone at the VictoriaLogs server is used when parsing timestamps in `rfc3164` lines.
+See [how to control local timezone at VictoriaLogs server](https://docs.victoriametrics.com/victorialogs/#server-side-timezone).
+
+The timezone for logs insgested over syslog protocol can be changed also via `-syslog.timezone` command-line flag.
 See [the list of supported timezone identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). For example, the following command starts VictoriaLogs,
 which parses syslog timestamps in `rfc3164` using `Europe/Berlin` timezone:
 
@@ -273,7 +277,7 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 1. Put the following line to [rsyslog](https://www.rsyslog.com/) config (this config is usually located at `/etc/rsyslog.conf`):
 
    ```
-   *.* @@victoria-logs-server:29514
+   *.* @@victoria-logs-server:29514;RSYSLOG_SyslogProtocol23Format
    ```
 
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs. See [these docs](https://www.rsyslog.com/sending-messages-to-a-remote-syslog-server/)

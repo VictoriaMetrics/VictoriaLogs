@@ -12,6 +12,7 @@ tags:
   - guide
 aliases:
 - /victorialogs/cluster/
+- /victorialogs/cluster-victorialogs
 ---
 
 Cluster mode in VictoriaLogs provides horizontal scaling to many nodes when [single-node VictoriaLogs](https://docs.victoriametrics.com/victorialogs/)

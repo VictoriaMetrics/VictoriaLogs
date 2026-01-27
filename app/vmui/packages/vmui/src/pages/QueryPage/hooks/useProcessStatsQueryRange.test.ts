@@ -1,6 +1,6 @@
 // useProcessStatsQueryRange.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import useProcessStatsQueryRange, { ResponseMatrix } from "./useProcessStatsQueryRange";
+import useProcessStatsQueryRange, { type Props, ResponseMatrix } from "./useProcessStatsQueryRange";
 import { MetricResult } from "../../../api/types";
 
 // Helper: build N series, each with the same values
@@ -15,13 +15,13 @@ const makeSeries = (count: number, value: number): MetricResult[] =>
   }));
 
 describe("useProcessStatsQueryRange", () => {
-  let setLogHits: ReturnType<typeof vi.fn>;
-  let setError: ReturnType<typeof vi.fn>;
+  let setLogHits: Props["setLogHits"];
+  let setError: Props["setError"];
   let processStats: ReturnType<typeof useProcessStatsQueryRange>;
 
   beforeEach(() => {
-    setLogHits = vi.fn();
-    setError = vi.fn();
+    setLogHits = vi.fn<Props["setLogHits"]>();
+    setError = vi.fn<Props["setError"]>();
     processStats = useProcessStatsQueryRange({ setLogHits, setError });
   });
 

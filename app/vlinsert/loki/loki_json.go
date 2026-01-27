@@ -40,7 +40,7 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.cp.NewLogMessageProcessor("loki_json", false)
 		useDefaultStreamFields := len(cp.cp.StreamFields) == 0
-		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, useDefaultStreamFields, cp.parseMessage)
+		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, cp.cp.PreserveJSONKeys, useDefaultStreamFields, cp.parseMessage)
 		lmp.MustClose()
 		return err
 	})
@@ -63,7 +63,7 @@ var (
 	requestJSONDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="json"}`)
 )
 
-func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields, parseMessage bool) error {
+func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields, preserveKeys []string, useDefaultStreamFields, parseMessage bool) error {
 	p := parserPool.Get()
 	defer parserPool.Put(p)
 
@@ -164,7 +164,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			if err != nil {
 				return fmt.Errorf("unexpected log message type for %q; want string", lineA[1])
 			}
-			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg))
+			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg), preserveKeys)
 			if allowMsgRenaming {
 				logstorage.RenameField(fieldsTmp.Fields[commonFieldsLen:], msgFields, "_msg")
 			}
@@ -181,13 +181,13 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 	return nil
 }
 
-func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg string) bool {
+func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg string, preserveKeys []string) bool {
 	if msgParser == nil || len(msg) < 2 || msg[0] != '{' || msg[len(msg)-1] != '}' {
 		fs.Add("_msg", msg)
 		return false
 	}
 	if msgParser != nil && len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
-		if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg)); err == nil {
+		if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg), preserveKeys); err == nil {
 			fs.Fields = append(fs.Fields, msgParser.Fields...)
 			return true
 		}

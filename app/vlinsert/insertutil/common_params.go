@@ -34,6 +34,7 @@ type CommonParams struct {
 	StreamFields     []string
 	IgnoreFields     []string
 	DecolorizeFields []string
+	PreserveJSONKeys []string
 	ExtraFields      []logstorage.Field
 
 	// IsTimeFieldSet means whether the TimeFields is set **manually**.
@@ -55,15 +56,16 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 
 	var isTimeFieldSet bool
 	timeFields := []string{"_time"}
-	if tfs := httputil.GetArray(r, "_time_field", "VL-Time-Field"); len(tfs) > 0 {
+	if tfs := getArray(r, "_time_field", "VL-Time-Field"); len(tfs) > 0 {
 		isTimeFieldSet = true
 		timeFields = tfs
 	}
 
-	msgFields := httputil.GetArray(r, "_msg_field", "VL-Msg-Field")
-	streamFields := httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields")
-	ignoreFields := httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields")
-	decolorizeFields := httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	msgFields := getArray(r, "_msg_field", "VL-Msg-Field")
+	streamFields := getArray(r, "_stream_fields", "VL-Stream-Fields")
+	ignoreFields := getArray(r, "ignore_fields", "VL-Ignore-Fields")
+	decolorizeFields := getArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	preserveJSONKeys := getArray(r, "preserve_json_keys", "VL-Preserve-JSON-Keys")
 
 	extraFields, err := getExtraFields(r)
 	if err != nil {
@@ -91,6 +93,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 		StreamFields:     streamFields,
 		IgnoreFields:     ignoreFields,
 		DecolorizeFields: decolorizeFields,
+		PreserveJSONKeys: preserveJSONKeys,
 		ExtraFields:      extraFields,
 
 		IsTimeFieldSet:  isTimeFieldSet,
@@ -103,7 +106,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 }
 
 func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
-	efs := httputil.GetArray(r, "extra_fields", "VL-Extra-Fields")
+	efs := getArray(r, "extra_fields", "VL-Extra-Fields")
 	if len(efs) == 0 {
 		return nil, nil
 	}
@@ -120,6 +123,22 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 		}
 	}
 	return extraFields, nil
+}
+
+func getArray(r *http.Request, argKey, headerKey string) []string {
+	a := httputil.GetArray(r, argKey, headerKey)
+	return removeEmptyTokens(a)
+}
+
+func removeEmptyTokens(a []string) []string {
+	dst := a[:0]
+	for _, s := range a {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			dst = append(dst, s)
+		}
+	}
+	return dst
 }
 
 // GetCommonParamsForSyslog returns common params needed for parsing syslog messages and storing them to the given tenantID.
@@ -205,10 +224,7 @@ type logMessageProcessor struct {
 func (lmp *logMessageProcessor) initPeriodicFlush() {
 	lmp.lastFlushTime = time.Now()
 
-	lmp.wg.Add(1)
-	go func() {
-		defer lmp.wg.Done()
-
+	lmp.wg.Go(func() {
 		d := timeutil.AddJitterToDuration(time.Second)
 		ticker := time.NewTicker(d)
 		defer ticker.Stop()
@@ -225,7 +241,7 @@ func (lmp *logMessageProcessor) initPeriodicFlush() {
 				lmp.mu.Unlock()
 			}
 		}
-	}()
+	})
 }
 
 // AddRow adds new log message to lmp with the given timestamp and fields.

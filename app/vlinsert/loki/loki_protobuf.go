@@ -36,7 +36,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.cp.NewLogMessageProcessor("loki_protobuf", false)
 		useDefaultStreamFields := len(cp.cp.StreamFields) == 0
-		err := parseProtobufRequest(data, lmp, cp.cp.MsgFields, useDefaultStreamFields, cp.parseMessage)
+		err := parseProtobufRequest(data, lmp, cp.cp.MsgFields, cp.cp.PreserveJSONKeys, useDefaultStreamFields, cp.parseMessage)
 		lmp.MustClose()
 		return err
 	})
@@ -59,7 +59,7 @@ var (
 	requestProtobufDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="protobuf"}`)
 )
 
-func parseProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields, parseMessage bool) error {
+func parseProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields, preserveKeys []string, useDefaultStreamFields, parseMessage bool) error {
 	var msgParser *logstorage.JSONParser
 	if parseMessage {
 		msgParser = logstorage.GetJSONParser()
@@ -71,7 +71,7 @@ func parseProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFi
 			timestamp = time.Now().UnixNano()
 		}
 
-		allowMsgRenaming := addMsgField(fs, msgParser, line)
+		allowMsgRenaming := addMsgField(fs, msgParser, line, preserveKeys)
 		if allowMsgRenaming {
 			logstorage.RenameField(fs.Fields[streamFieldsLen:], msgFields, "_msg")
 		}

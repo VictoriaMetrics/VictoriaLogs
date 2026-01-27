@@ -10,6 +10,7 @@ tags:
   - logs
 aliases:
   - /victorialogs/data-ingestion/Journald.html
+  - /VictoriaLogs/data-ingestion/Journald.html
 ---
 On a client site which should already have journald please install additionally [systemd-journal-upload](https://www.freedesktop.org/software/systemd/man/latest/systemd-journal-upload.service.html) and edit `/etc/systemd/journal-upload.conf` and set `URL` to VictoriaLogs endpoint:
 

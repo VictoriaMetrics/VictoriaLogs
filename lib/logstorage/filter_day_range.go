@@ -124,7 +124,7 @@ func (fr *filterDayRange) matchTimestampValue(timestamp int64) bool {
 }
 
 func (fr *filterDayRange) dayRangeOffset(timestamp int64) int64 {
-	timestamp -= fr.offset
+	timestamp = subNoOverflowInt64(timestamp, -fr.offset)
 	return timestamp % nsecsPerDay
 }
 

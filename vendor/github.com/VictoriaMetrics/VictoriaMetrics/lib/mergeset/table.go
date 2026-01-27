@@ -58,7 +58,7 @@ func maxItemsPerCachedPart() uint64 {
 	// Production data shows that each item occupies ~4 bytes in the compressed part.
 	// It is expected no more than defaultPartsToMerge/2 parts exist
 	// in the OS page cache before they are merged into bigger part.
-	// Halft of the remaining RAM must be left for lib/storage parts,
+	// Half of the remaining RAM must be left for lib/storage parts,
 	// so the maxItems is calculated using the below code:
 	maxItems := uint64(mem) / (4 * defaultPartsToMerge)
 	if maxItems < 1e6 {
@@ -401,11 +401,7 @@ func (tb *Table) startInmemoryPartsMergerLocked() {
 		return
 	default:
 	}
-	tb.wg.Add(1)
-	go func() {
-		tb.inmemoryPartsMerger()
-		tb.wg.Done()
-	}()
+	tb.wg.Go(tb.inmemoryPartsMerger)
 }
 
 func (tb *Table) startFilePartsMergers() {
@@ -422,27 +418,15 @@ func (tb *Table) startFilePartsMergerLocked() {
 		return
 	default:
 	}
-	tb.wg.Add(1)
-	go func() {
-		tb.filePartsMerger()
-		tb.wg.Done()
-	}()
+	tb.wg.Go(tb.filePartsMerger)
 }
 
 func (tb *Table) startPendingItemsFlusher() {
-	tb.wg.Add(1)
-	go func() {
-		tb.pendingItemsFlusher()
-		tb.wg.Done()
-	}()
+	tb.wg.Go(tb.pendingItemsFlusher)
 }
 
 func (tb *Table) startInmemoryPartsFlusher() {
-	tb.wg.Add(1)
-	go func() {
-		tb.inmemoryPartsFlusher()
-		tb.wg.Done()
-	}()
+	tb.wg.Go(tb.inmemoryPartsFlusher)
 }
 
 func (tb *Table) startFlushCallbackWorker() {
@@ -450,8 +434,7 @@ func (tb *Table) startFlushCallbackWorker() {
 		return
 	}
 
-	tb.wg.Add(1)
-	go func() {
+	tb.wg.Go(func() {
 		// call flushCallback once per 10 seconds in order to improve the effectiveness of caches,
 		// which are reset by the flushCallback.
 		d := timeutil.AddJitterToDuration(time.Second * 10)
@@ -461,7 +444,6 @@ func (tb *Table) startFlushCallbackWorker() {
 			case <-tb.stopCh:
 				tc.Stop()
 				tb.flushCallback()
-				tb.wg.Done()
 				return
 			case <-tc.C:
 				if tb.needFlushCallbackCall.CompareAndSwap(true, false) {
@@ -469,7 +451,7 @@ func (tb *Table) startFlushCallbackWorker() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 var (
@@ -712,15 +694,10 @@ func (tb *Table) mergeInmemoryPartsToFiles(pws []*partWrapper) error {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		inmemoryPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-inmemoryPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			if err := tb.mergeParts(pwsChunk, nil, true); err != nil {
+		wg.Go(func() {
+			if err := tb.mergeParts(pwsToMerge, nil, true); err != nil {
 				// There is no need for errors.Is(err, errForciblyStopped) check here, since stopCh=nil is passed to mergeParts.
 				errGlobalLock.Lock()
 				if errGlobal == nil {
@@ -728,7 +705,9 @@ func (tb *Table) mergeInmemoryPartsToFiles(pws []*partWrapper) error {
 				}
 				errGlobalLock.Unlock()
 			}
-		}(pwsToMerge)
+
+			<-inmemoryPartsConcurrencyCh
+		})
 		pws = pwsRemaining
 	}
 	wg.Wait()
@@ -866,14 +845,12 @@ func (tb *Table) flushBlocksToInmemoryParts(ibs []*inmemoryBlock, isFinal bool) 
 		if n > len(ibs) {
 			n = len(ibs)
 		}
-		wg.Add(1)
 		inmemoryPartsConcurrencyCh <- struct{}{}
-		go func(ibsChunk []*inmemoryBlock) {
-			defer func() {
-				<-inmemoryPartsConcurrencyCh
-				wg.Done()
-			}()
 
+		ibsChunk := ibs[:n]
+		ibs = ibs[n:]
+
+		wg.Go(func() {
 			if pw := tb.createInmemoryPart(ibsChunk); pw != nil {
 				pwsLock.Lock()
 				pws = append(pws, pw)
@@ -883,8 +860,9 @@ func (tb *Table) flushBlocksToInmemoryParts(ibs []*inmemoryBlock, isFinal bool) 
 			for i := range ibsChunk {
 				ibsChunk[i] = nil
 			}
-		}(ibs[:n])
-		ibs = ibs[n:]
+
+			<-inmemoryPartsConcurrencyCh
+		})
 	}
 	wg.Wait()
 	putWaitGroup(wg)
@@ -961,20 +939,17 @@ func (tb *Table) mustMergeInmemoryParts(pws []*partWrapper) []*partWrapper {
 	wg := getWaitGroup()
 	for len(pws) > 0 {
 		pwsToMerge, pwsRemaining := getPartsForOptimalMerge(pws)
-		wg.Add(1)
 		inmemoryPartsConcurrencyCh <- struct{}{}
-		go func(pwsChunk []*partWrapper) {
-			defer func() {
-				<-inmemoryPartsConcurrencyCh
-				wg.Done()
-			}()
 
-			pw := tb.mustMergeInmemoryPartsFinal(pwsChunk)
+		wg.Go(func() {
+			pw := tb.mustMergeInmemoryPartsFinal(pwsToMerge)
 
 			pwsResultLock.Lock()
 			pwsResult = append(pwsResult, pw)
 			pwsResultLock.Unlock()
-		}(pwsToMerge)
+
+			<-inmemoryPartsConcurrencyCh
+		})
 		pws = pwsRemaining
 	}
 	wg.Wait()
@@ -1390,29 +1365,30 @@ func (tb *Table) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, dst
 	removedInmemoryParts := 0
 	removedFileParts := 0
 
-	tb.partsLock.Lock()
+	func() {
+		tb.partsLock.Lock()
+		defer tb.partsLock.Unlock()
 
-	tb.inmemoryParts, removedInmemoryParts = removeParts(tb.inmemoryParts, m)
-	tb.fileParts, removedFileParts = removeParts(tb.fileParts, m)
-	switch dstPartType {
-	case partInmemory:
-		tb.inmemoryParts = append(tb.inmemoryParts, pwNew)
-		tb.startInmemoryPartsMergerLocked()
-	case partFile:
-		tb.fileParts = append(tb.fileParts, pwNew)
-		tb.startFilePartsMergerLocked()
-	default:
-		logger.Panicf("BUG: unknown partType=%d", dstPartType)
-	}
+		tb.inmemoryParts, removedInmemoryParts = removeParts(tb.inmemoryParts, m)
+		tb.fileParts, removedFileParts = removeParts(tb.fileParts, m)
+		switch dstPartType {
+		case partInmemory:
+			tb.inmemoryParts = append(tb.inmemoryParts, pwNew)
+			tb.startInmemoryPartsMergerLocked()
+		case partFile:
+			tb.fileParts = append(tb.fileParts, pwNew)
+			tb.startFilePartsMergerLocked()
+		default:
+			logger.Panicf("BUG: unknown partType=%d", dstPartType)
+		}
 
-	// Atomically store the updated list of file-based parts on disk.
-	// This must be performed under partsLock in order to prevent from races
-	// when multiple concurrently running goroutines update the list.
-	if removedFileParts > 0 || dstPartType == partFile {
-		mustWritePartNames(tb.fileParts, tb.path)
-	}
-
-	tb.partsLock.Unlock()
+		// Atomically store the updated list of file-based parts on disk.
+		// This must be performed under partsLock in order to prevent from races
+		// when multiple concurrently running goroutines update the list.
+		if removedFileParts > 0 || dstPartType == partFile {
+			mustWritePartNames(tb.fileParts, tb.path)
+		}
+	}()
 
 	// Update inmemoryPartsLimitCh accordingly to the number of the remaining in-memory parts.
 	for i := 0; i < removedInmemoryParts; i++ {
@@ -1561,9 +1537,6 @@ func mustOpenParts(path string) []*partWrapper {
 // or a problem with the underlying file system (such as insufficient
 // permissions).
 func (tb *Table) MustCreateSnapshotAt(dstDir string) {
-	logger.Infof("creating Table snapshot of %q...", tb.path)
-	startTime := time.Now()
-
 	var err error
 	srcDir := tb.path
 	srcDir, err = filepath.Abs(srcDir)
@@ -1602,8 +1575,6 @@ func (tb *Table) MustCreateSnapshotAt(dstDir string) {
 	}
 
 	fs.MustSyncPathAndParentDir(dstDir)
-
-	logger.Infof("created Table snapshot of %q at %q in %.3f seconds", srcDir, dstDir, time.Since(startTime).Seconds())
 }
 
 func mustWritePartNames(pws []*partWrapper, dstDir string) {

@@ -178,12 +178,10 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 	// the time needed for sending the data to multiple remote storage systems.
 	var wg sync.WaitGroup
 	for _, rwctx := range rwctxs {
-		wg.Add(1)
-		go func(rwctx *remoteWriteCtx) {
-			defer wg.Done()
+		wg.Go(func() {
 			rwctx.push(lr)
 
-		}(rwctx)
+		})
 	}
 	wg.Wait()
 }
