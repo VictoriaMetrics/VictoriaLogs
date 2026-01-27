@@ -13,8 +13,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/cespare/xxhash/v2"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // The maximum log line size that VictoriaLogs can accept.
