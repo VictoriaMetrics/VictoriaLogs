@@ -10,6 +10,7 @@ tags:
   - logs
 aliases:
   - /victorialogs/data-ingestion/Telegraf.html
+  - /VictoriaLogs/data-ingestion/Telegraf.html
 ---
 VictoriaLogs supports given below Telegraf outputs:
 

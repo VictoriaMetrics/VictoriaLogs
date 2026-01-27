@@ -11,5 +11,6 @@ tags:
 aliases:
   - /victorialogs/data-ingestion/
   - /victorialogs/data-ingestion/index.html
+  - /VictoriaLogs/data-ingestion/
 ---
 {{% content "README.md" %}}

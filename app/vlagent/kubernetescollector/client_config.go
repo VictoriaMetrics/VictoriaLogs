@@ -1,13 +1,13 @@
 package kubernetescollector
 
 import (
-	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"gopkg.in/yaml.v2"
 )
 
@@ -36,26 +36,27 @@ func loadInClusterConfig() (*kubeAPIConfig, error) {
 		return nil, fmt.Errorf("KUBERNETES_SERVICE_HOST/KUBERNETES_SERVICE_PORT environment variables are not set")
 	}
 
-	token, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-	if err != nil {
-		return nil, fmt.Errorf("cannot read in-cluster token: %w", err)
+	const bearerTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	// Verify that vlagent is running in a Kubernetes cluster.
+	if _, err := os.Stat(bearerTokenFile); err != nil {
+		return nil, err
 	}
 
-	return &kubeAPIConfig{
-		Server:      "https://" + net.JoinHostPort(host, port),
-		BearerToken: string(token),
-		GetCACert: func() (*x509.CertPool, error) {
-			certs, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
-			if err != nil {
-				return nil, fmt.Errorf("cannot read root CA: %w", err)
-			}
-
-			roots := x509.NewCertPool()
-			if !roots.AppendCertsFromPEM(certs) {
-				return nil, fmt.Errorf("cannot parse PEM encoded certificates")
-			}
-			return roots, nil
+	opts := &promauth.Options{
+		BearerTokenFile: bearerTokenFile,
+		TLSConfig: &promauth.TLSConfig{
+			CAFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
 		},
+	}
+	ac, err := opts.NewConfig()
+	if err != nil {
+		return nil, fmt.Errorf("cannot initialize in-cluster auth config: %w", err)
+	}
+
+	server := "https://" + net.JoinHostPort(host, port)
+	return &kubeAPIConfig{
+		server: server,
+		ac:     ac,
 	}, nil
 }
 
@@ -136,7 +137,7 @@ func loadLocalConfig() (*kubeAPIConfig, error) {
 
 	rawConfig, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read %q: %w", configPath, err)
+		return nil, err
 	}
 
 	var cfg kubeConfig
@@ -154,64 +155,54 @@ func loadLocalConfig() (*kubeAPIConfig, error) {
 		return nil, fmt.Errorf("cannot find cluster %q in %q", cctx.Context.Cluster, configPath)
 	}
 
-	var ca []byte
+	tlsCfg := promauth.TLSConfig{}
+
 	if cl.Cluster.CertificateAuthority != "" {
-		ca, err = os.ReadFile(cl.Cluster.CertificateAuthority)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read cluster certificate authority: %w", err)
-		}
+		tlsCfg.CAFile = cl.Cluster.CertificateAuthority
 	} else if cl.Cluster.CertificateAuthorityData != "" {
-		ca, err = base64.StdEncoding.AppendDecode(nil, []byte(cl.Cluster.CertificateAuthorityData))
+		ca, err := base64.StdEncoding.DecodeString(cl.Cluster.CertificateAuthorityData)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode base64 encoded CA certificate data: %w", err)
+			return nil, fmt.Errorf("cannot decode base64 encoded CA certificate data from file %q: %w", configPath, err)
 		}
+		tlsCfg.CA = string(ca)
 	}
 
 	u, ok := cfg.findUser(cctx.Context.User)
 	if !ok {
-		return nil, fmt.Errorf("cannot find user %q in %q", cctx.Context.User, configPath)
+		return nil, fmt.Errorf("cannot find current user %q in %q", cctx.Context.User, configPath)
 	}
 
-	var clientCert []byte
 	if u.User.ClientCertificate != "" {
-		clientCert, err = os.ReadFile(u.User.ClientCertificate)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read client certificate from %q: %w", u.User.ClientCertificate, err)
-		}
+		tlsCfg.CertFile = u.User.ClientCertificate
 	} else if u.User.ClientCertificateData != "" {
-		clientCert, err = base64.StdEncoding.AppendDecode(nil, []byte(u.User.ClientCertificateData))
+		clientCert, err := base64.StdEncoding.DecodeString(u.User.ClientCertificateData)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode base64 encoded client certificate data: %w", err)
+			return nil, fmt.Errorf("cannot decode base64 encoded client certificate data from file %q: %w", configPath, err)
 		}
+		tlsCfg.Cert = string(clientCert)
 	}
 
-	var clientCertKey []byte
 	if u.User.ClientKey != "" {
-		clientCertKey, err = os.ReadFile(u.User.ClientKey)
-		if err != nil {
-			return nil, fmt.Errorf("cannot read client key from %q: %w", u.User.ClientKey, err)
-		}
+		tlsCfg.KeyFile = u.User.ClientKey
 	} else if u.User.ClientKeyData != "" {
-		clientCertKey, err = base64.StdEncoding.AppendDecode(nil, []byte(u.User.ClientKeyData))
+		clientCertKey, err := base64.StdEncoding.DecodeString(u.User.ClientKeyData)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode base64 encoded client certificate key data: %w", err)
+			return nil, fmt.Errorf("cannot decode base64 encoded client certificate key data from file %q: %w", configPath, err)
 		}
+		tlsCfg.Key = string(clientCertKey)
+	}
+
+	opts := &promauth.Options{
+		BearerToken: u.User.Token,
+		TLSConfig:   &tlsCfg,
+	}
+	ac, err := opts.NewConfig()
+	if err != nil {
+		return nil, fmt.Errorf("cannot initialize local auth config from file %q: %w", configPath, err)
 	}
 
 	return &kubeAPIConfig{
-		Server:        cl.Cluster.Server,
-		BearerToken:   u.User.Token,
-		ClientCert:    clientCert,
-		ClientCertKey: clientCertKey,
-		GetCACert: func() (*x509.CertPool, error) {
-			if len(ca) == 0 {
-				return nil, nil
-			}
-			roots := x509.NewCertPool()
-			if !roots.AppendCertsFromPEM(ca) {
-				return nil, fmt.Errorf("cannot parse root CA for %q cluster from %q for user %q; no certs fetched", cl, configPath, cctx.Context.User)
-			}
-			return roots, nil
-		},
+		server: cl.Cluster.Server,
+		ac:     ac,
 	}, nil
 }

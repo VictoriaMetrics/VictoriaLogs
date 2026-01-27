@@ -12,8 +12,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+	"github.com/cespare/xxhash/v2"
 )
 
 // The maximum log line size that VictoriaLogs can accept.
@@ -25,12 +24,25 @@ type logFile struct {
 	file *os.File
 
 	// inode tracks the inode of the underlying file.
+	// It is used to detect file rotations.
+	//
+	// It is unexpected for multiple log files in the same mount point to have the same inode while vlagent is running,
+	// because vlagent keeps the current file open until Kubernetes creates a new log file to handle rotation.
+	// See fingerprint to distinguish files with the same inode.
 	inode uint64
+
+	// fingerprint contains the file fingerprint.
+	// It helps distinguish files with the same inode,
+	// which can happen if an inode is reused while vlagent is down.
+	fingerprint uint64
+
 	// offset tracks the current read offset in the file.
 	offset int64
 
 	// commitInode tracks the inode of the last committed log entry.
 	commitInode uint64
+	// commitFingerprint contains the last committed fingerprint.
+	commitFingerprint uint64
 	// commitOffset tracks the offset of the last committed log entry.
 	commitOffset int64
 
@@ -47,7 +59,7 @@ func newLogFile(symlink string) *logFile {
 	}
 }
 
-func newLogFileFromFile(f *os.File, symlink string) (*logFile, error) {
+func newLogFileFromFile(f *os.File, fingerprint uint64, symlink string) (*logFile, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get file info of %q: %w", f.Name(), err)
@@ -55,9 +67,11 @@ func newLogFileFromFile(f *os.File, symlink string) (*logFile, error) {
 	inode := getInode(fi)
 
 	lf := newLogFile(symlink)
+	lf.file = f
 	lf.inode = inode
 	lf.commitInode = inode
-	lf.file = f
+	lf.fingerprint = fingerprint
+	lf.commitFingerprint = fingerprint
 
 	return lf, nil
 }
@@ -131,12 +145,7 @@ func (lf *logFile) processLines(data []byte, p processor) {
 	}
 
 	if len(tail) > 0 {
-		lf.offset += int64(len(tail) + len("\n"))
-
-		if p.tryAddLine(tail) {
-			lf.commitOffset = lf.offset
-			lf.commitInode = lf.inode
-		}
+		lf.addLine(p, tail)
 	}
 
 	// Process complete lines.
@@ -149,12 +158,7 @@ func (lf *logFile) processLines(data []byte, p processor) {
 		line := data[:n]
 		data = data[n+1:]
 
-		lf.offset += int64(len(line) + len("\n"))
-
-		if p.tryAddLine(line) {
-			lf.commitOffset = lf.offset
-			lf.commitInode = lf.inode
-		}
+		lf.addLine(p, line)
 	}
 
 	// Save the new incomplete line for the next read.
@@ -190,7 +194,12 @@ func (lf *logFile) tryCompleteTail(data []byte) ([]byte, []byte, bool) {
 		logger.Warnf("log line from file %q with size %d bytes exceeds maximum allowed size of %d MiB",
 			lf.path, lf.tailSize, maxLogLineSize/1024/1024)
 
+		if lf.offset == 0 {
+			// This is the first line of the current file.
+			lf.fingerprint = calcFingerprint(lf.tail.B)
+		}
 		lf.offset += int64(lf.tailSize + len("\n"))
+
 		lf.tailSize = 0
 		lf.tail.B = lf.tail.B[:0]
 
@@ -230,6 +239,37 @@ func (lf *logFile) setTail(tail []byte) {
 
 var tailByteBufferPool bytesutil.ByteBufferPool
 
+func (lf *logFile) addLine(p processor, line []byte) {
+	if lf.offset == 0 {
+		// This is the first line of the current file.
+		lf.fingerprint = calcFingerprint(line)
+	}
+	lf.offset += int64(len(line) + len("\n"))
+
+	if p.tryAddLine(line) {
+		lf.commitInode = lf.inode
+		lf.commitFingerprint = lf.fingerprint
+		lf.commitOffset = lf.offset
+	}
+}
+
+// maxFingerprintDataLen is the maximum length of the first line used to calculate the fingerprint.
+// 64 bytes is enough because Container Runtime log lines start with a timestamp with nanosecond precision,
+// so different files have unique prefixes.
+const maxFingerprintDataLen = 64
+
+func calcFingerprint(data []byte) uint64 {
+	if len(data) > maxFingerprintDataLen {
+		data = data[:maxFingerprintDataLen]
+	}
+	h := xxhash.Sum64(data)
+	if h == 0 {
+		// 0 hash is reserved to indicate no hash calculated.
+		h = 1
+	}
+	return h
+}
+
 type logFileStatus byte
 
 const (
@@ -265,8 +305,8 @@ func (lf *logFile) status() logFileStatus {
 }
 
 func (lf *logFile) setOffset(offset int64) {
-	if lf.file == nil {
-		return
+	if lf.fingerprint == 0 {
+		logger.Panicf("BUG: cannot set offset when no fingerprint is set")
 	}
 
 	lf.offset = offset
@@ -274,8 +314,9 @@ func (lf *logFile) setOffset(offset int64) {
 		logger.Panicf("FATAL: cannot seek to offset %d in file %q: %s", offset, lf.file.Name(), err)
 	}
 
-	lf.commitOffset = offset
 	lf.commitInode = lf.inode
+	lf.commitFingerprint = lf.fingerprint
+	lf.commitOffset = offset
 }
 
 func (lf *logFile) tryReopen() bool {
@@ -287,6 +328,7 @@ func (lf *logFile) tryReopen() bool {
 	lf.close()
 
 	lf.file = newFile
+	lf.fingerprint = 0
 	lf.inode = newInode
 	lf.offset = 0
 
@@ -304,9 +346,10 @@ func (lf *logFile) close() {
 
 func (lf *logFile) checkpoint() checkpoint {
 	return checkpoint{
-		Path:   lf.path,
-		Inode:  lf.commitInode,
-		Offset: lf.commitOffset,
+		Path:        lf.path,
+		Inode:       lf.commitInode,
+		Offset:      lf.commitOffset,
+		Fingerprint: lf.commitFingerprint,
 	}
 }
 
@@ -330,10 +373,4 @@ func symlinkExists(path string) bool {
 		logger.Panicf("FATAL: cannot get symlink info of %q: %s", path, err)
 	}
 	return true
-}
-
-func reportLogRowSizeExceeded(streamFields []logstorage.Field, size int) {
-	stream := logstorage.MarshalFieldsToJSON(nil, streamFields)
-	logger.Warnf("skipping log entry from stream %s: entry size %d bytes exceeds maximum allowed size of %d MiB",
-		stream, size, maxLogLineSize/1024/1024)
 }
