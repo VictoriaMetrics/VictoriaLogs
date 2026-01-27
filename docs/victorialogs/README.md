@@ -407,7 +407,7 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 
 1. To create a snapshot for the given per-day partition via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` HTTP endpoint
    (see [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) docs).
-   This endpoint returns a path to the created snapshot - `<path-to-snapshot>`.
+   This endpoint returns a JSON array with paths to created snapshots.
 
 1. To backup the created snapshot with [`rsync`](https://en.wikipedia.org/wiki/Rsync):
 
