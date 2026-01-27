@@ -9,8 +9,9 @@ menu:
 tags:
   - logs
 aliases:
-  - /victorialogs/data-ingestion/Vector.html
   - /victorialogs/data-ingestion/vector.html
+  - /victorialogs/data-ingestion/Vector.html
+  - /VictoriaLogs/data-ingestion/Vector.html
 ---
 
 VictoriaLogs can accept logs from [Vector](https://vector.dev/) via the following protocols:

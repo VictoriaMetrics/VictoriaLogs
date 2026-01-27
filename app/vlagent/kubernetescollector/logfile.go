@@ -376,9 +376,3 @@ func symlinkExists(path string) bool {
 	}
 	return true
 }
-
-func reportLogRowSizeExceeded(streamFields []logstorage.Field, size int) {
-	stream := logstorage.MarshalFieldsToJSON(nil, streamFields)
-	logger.Warnf("skipping log entry from stream %s: entry size %d bytes exceeds maximum allowed size of %d MiB",
-		stream, size, maxLogLineSize/1024/1024)
-}

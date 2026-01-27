@@ -651,10 +651,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	// spin up workers
 	var wg sync.WaitGroup
 	workCh := make(chan *partition, workersCount)
-	for i := 0; i < workersCount; i++ {
-		wg.Add(1)
-		go func(workerID uint) {
-			defer wg.Done()
+	for workerID := range workersCount {
+		wg.Go(func() {
 			for pt := range workCh {
 				if needStop(stopCh) {
 					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
@@ -663,7 +661,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 				tenantIDs := pt.idb.searchTenants()
 				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
 			}
-		}(uint(i))
+		})
 	}
 
 	// Select partitions according to the selected time range
@@ -1277,11 +1275,8 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 	// spin up workers
 	var wg sync.WaitGroup
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
-	for workerID := 0; workerID < workersCount; workerID++ {
-		wg.Add(1)
-		go func(workerID uint) {
-			defer wg.Done()
-
+	for workerID := range workersCount {
+		wg.Go(func() {
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
@@ -1303,7 +1298,7 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 						if sso.timeOffset != 0 {
 							bs.subTimeOffsetToTimestamps(sso.timeOffset)
 						}
-						writeBlock(workerID, &bs.br)
+						writeBlock(uint(workerID), &bs.br)
 					}
 					bsw.reset()
 
@@ -1319,7 +1314,7 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
 
-		}(uint(workerID))
+		})
 	}
 
 	// Select partitions according to the selected time range
@@ -1329,19 +1324,17 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 	// Schedule concurrent search across matching partitions.
 	psfs := make([]partitionSearchFinalizer, len(ptws))
 	var wgSearchers sync.WaitGroup
-	for i, ptw := range ptws {
+	for idx, ptw := range ptws {
 		partitionSearchConcurrencyLimitCh <- struct{}{}
-		wgSearchers.Add(1)
-		go func(idx int, pt *partition) {
+		wgSearchers.Go(func() {
 			qsLocal := &QueryStats{}
 
-			psfs[idx] = pt.search(sso, qsLocal, workCh, stopCh)
+			psfs[idx] = ptw.pt.search(sso, qsLocal, workCh, stopCh)
 
 			qs.UpdateAtomic(qsLocal)
 
-			wgSearchers.Done()
 			<-partitionSearchConcurrencyLimitCh
-		}(i, ptw.pt)
+		})
 	}
 	wgSearchers.Wait()
 
@@ -1550,11 +1543,8 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 	var wg sync.WaitGroup
 	workersCount := cgroup.AvailableCPUs()
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
-	for workerID := 0; workerID < workersCount; workerID++ {
-		wg.Add(1)
-		go func(workerID uint) {
-			defer wg.Done()
-
+	for range workersCount {
+		wg.Go(func() {
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
@@ -1580,7 +1570,7 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 			putBlockSearch(bs)
 			putBitmap(bm)
 
-		}(uint(workerID))
+		})
 	}
 
 	// execute the search

@@ -11,6 +11,7 @@ tags:
   - logs
 aliases:
 - /victorialogs/CHANGELOG.html
+- /VictoriaLogs/CHANGELOG.html
 ---
 
 The following `tip` changes can be tested by building VictoriaLogs components from the latest commit of [VictoriaLogs](https://github.com/VictoriaMetrics/VictoriaLogs/) repository
@@ -24,9 +25,13 @@ according to the following docs:
 * SECURITY: upgrade base docker image (Alpine) from 3.22.2 to 3.23.2. See [Alpine 3.23.2 release notes](https://www.alpinelinux.org/posts/Alpine-3.23.2-released.html).
 * SECURITY: upgrade Go builder from Go1.25.5 to Go1.25.6. See [the list of issues addressed in Go1.25.6](https://github.com/golang/go/issues?q=milestone%3AGo1.25.6%20label%3ACherryPickApproved).
 
-* FEATURE: add an ability to delete snapshots via `/internal/partition/snapshot/delete` endpoint. See [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) and [#828](https://github.com/VictoriaMetrics/VictoriaLogs/issues/828).
+* FEATURE: add an ability to delete snapshots via `/internal/partition/snapshot/delete` endpoint. See [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots) and [#828](https://github.com/VictoriaMetrics/VictoriaLogs/issues/828).
+* FEATURE: add an ability to delete stale snapshots via `/internal/partition/snapshot/delete_stale?max_age=<d>` endpoint. Snapshots older than `<d>` are automatically deleted. For example, `max_age=1d` removes snapshots older than one day. See [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
+* FEATURE: add an ability to automatically delete stale snapshots older than the value passed to `-snapshotsMaxAge` command-line flag. See [#829](https://github.com/VictoriaMetrics/VictoriaLogs/issues/829) and [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots). Thanks to @withlin for [the initial implementation](https://github.com/VictoriaMetrics/VictoriaLogs/pull/975).
+* FEATURE: add an ability to create snapshots for multiple per-day partitions matching the given `snapshot_prefix` passed to [`/internal/partition/snapshot/create`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle). For example, `/internal/partition/snapshot/create?partition_prefix=202601` creates snapshots for all the active per-day partitions for January 2026.
 * FEATURE: [dashboards/internal](https://grafana.com/grafana/dashboards/24585): add Grafana dashboard for monitoring VictoriaLogs internal state. The source of the dashboard is available [here](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-internal.json).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add `pattern_match_prefix()` and `pattern_match_suffx()` filters for matching the given pattern at the beginning or at the end of the log field value. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#pattern-match-filter) and [#762](https://github.com/VictoriaMetrics/VictoriaLogs/issues/762).
+* FEATURE: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): add an ability to change default [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields via `-kubernetesCollector.streamFields` command-line flag. See [#998](https://github.com/VictoriaMetrics/VictoriaLogs/issues/998).
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly apply time offset according to the docs for the [`day_range`](https://docs.victoriametrics.com/victorialogs/logsql/#day-range-filter) and [`week_range`](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) filters. Previously `offset 2h` was incorrectly translated into `-02:00` timezone offset instead of the expected `+02:00` timezone offset. See [#796](https://github.com/VictoriaMetrics/VictoriaLogs/issues/796).
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): use local time zone for the VictoriaLogs server when the [`day_range`](https://docs.victoriametrics.com/victorialogs/logsql/#day-range-filter) or [`week_range`](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) filter doesn't contain explicitly specified `offset ...` suffix. This aligns with the behaviour when the timezone information is missing in the [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter).

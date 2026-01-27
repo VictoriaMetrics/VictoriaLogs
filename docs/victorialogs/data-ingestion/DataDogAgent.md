@@ -12,6 +12,7 @@ tags:
 aliases:
   - /victorialogs/data-ingestion/datadog/
   - /victorialogs/data-ingestion/DataDogAgent.html
+  - /VictoriaLogs/data-ingestion/DataDogAgent.html
 ---
 
 Datadog Agent doesn't support custom path prefix, so for this reason it's required to use [VMAuth](https://docs.victoriametrics.com/victoriametrics/vmauth/) or any other

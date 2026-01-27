@@ -40,8 +40,9 @@ Bumping the limits may significantly improve build speed.
    after the commit, which adds the change.
 1. Run `make vmui-update` command to re-build static files for the [built-in Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
    and commit the changes to the VictoriaLogs repository.
-1. Run `PKG_TAG=v1.xx.y make docs-update-version` command to update version help tooltips
+1. Run `PKG_TAG=v1.xx.y make -f docs/Makefile docs-update-version` command to update version help tooltips
    according to [the contribution guide](https://docs.victoriametrics.com/victoriametrics/contributing/#pull-request-checklist).
+1. Run `make -f docs/Makefile docs-update-flags` command to update command-line flags in the documentation.
 1. Cut new version in [CHANGELOG.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/docs/victorialogs/CHANGELOG.md)
    and commit it. See example in this [commit](https://github.com/VictoriaMetrics/VictoriaMetrics/commit/b771152039d23b5ccd637a23ea748bc44a9511a7).
 1. Make sure you get all changes fetched `git fetch --all`.

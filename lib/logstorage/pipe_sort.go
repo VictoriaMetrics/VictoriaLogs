@@ -464,10 +464,7 @@ func (psp *pipeSortProcessor) flush() error {
 
 	var wg sync.WaitGroup
 	for _, shard := range shards {
-		wg.Add(1)
-		go func(shard *pipeSortProcessorShard) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			// TODO: interrupt long sorting when psp.stopCh is closed.
 
 			if sort.IsSorted(shard) {
@@ -476,7 +473,7 @@ func (psp *pipeSortProcessor) flush() error {
 				return
 			}
 			sort.Sort(shard)
-		}(shard)
+		})
 	}
 	wg.Wait()
 

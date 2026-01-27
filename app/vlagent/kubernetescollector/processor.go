@@ -32,6 +32,9 @@ var (
 		"See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field")
 	extraFields = flag.String("kubernetesCollector.extraFields", "", "Extra fields to add to each log line collected from Kubernetes pods in JSON format. "+
 		`For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'`)
+	streamFields = flagutil.NewArrayString("kubernetesCollector.streamFields", "Comma-separated list of fields to use as log stream fields for logs ingested from Kubernetes Pods. "+
+		"Default: kubernetes.container_name,kubernetes.pod_name,kubernetes.pod_namespace. "+
+		"See: https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields")
 
 	includePodLabels = flag.Bool("kubernetesCollector.includePodLabels", true, "Include Pod labels as additional fields in the log entries. "+
 		"Even this setting is disabled, Pod labels are available for filtering via -kubernetes.excludeFilter flag")
@@ -47,9 +50,6 @@ type logFileProcessor struct {
 	storage  insertutil.LogRowsStorage
 	lr       *logstorage.LogRows
 	tenantID logstorage.TenantID
-
-	// streamFieldsLen is the number of stream fields at the beginning of commonFields.
-	streamFieldsLen int
 
 	// commonFields are common fields for the given log file.
 	commonFields []logstorage.Field
@@ -83,36 +83,16 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 		commonFields = fields
 	}
 
-	// move stream fields to the beginning of commonFields
-
-	streamFields := make([]logstorage.Field, 0, len(commonFields))
-	for _, f := range commonFields {
-		if slices.Contains(streamFieldNames, f.Name) {
-			streamFields = append(streamFields, f)
-		}
-	}
-	streamFieldsLen := len(streamFields)
-
-	fields := streamFields
-	for _, f := range commonFields {
-		if !slices.Contains(streamFieldNames, f.Name) {
-			fields = append(fields, f)
-		}
-	}
-
-	tenantID := getTenantID()
-	extraFields := getExtraFields()
-
+	sfs := getStreamFields()
+	efs := getExtraFields()
 	const defaultMsgValue = "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field"
-	lr := logstorage.GetLogRows(nil, *ignoreFields, *decolorizeFields, extraFields, defaultMsgValue)
+	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, defaultMsgValue)
 
 	return &logFileProcessor{
-		storage:  storage,
-		lr:       lr,
-		tenantID: tenantID,
-
-		streamFieldsLen: streamFieldsLen,
-		commonFields:    fields,
+		storage:      storage,
+		lr:           lr,
+		tenantID:     getTenantID(),
+		commonFields: commonFields,
 	}
 }
 
@@ -189,7 +169,7 @@ func (lfp *logFileProcessor) joinPartialLines(criLine criLine) (int64, []byte, b
 	lfp.partialCRIContentSize += len(criLine.content)
 	if lfp.partialCRIContentSize > maxLogLineSize {
 		// Discard the too large log line.
-		reportLogRowSizeExceeded(lfp.commonFields[:lfp.streamFieldsLen], lfp.partialCRIContentSize)
+		reportLogRowSizeExceeded(lfp.commonFields, lfp.partialCRIContentSize)
 
 		lfp.partialCRIContent.Reset()
 		lfp.partialCRIContentSize = 0
@@ -237,7 +217,7 @@ func (lfp *logFileProcessor) addRow(timestamp int64, fields []logstorage.Field) 
 	lfp.fieldsBuf = append(lfp.fieldsBuf[:0], lfp.commonFields...)
 	lfp.fieldsBuf = append(lfp.fieldsBuf, fields...)
 
-	lfp.lr.MustAdd(lfp.tenantID, timestamp, lfp.fieldsBuf, lfp.streamFieldsLen)
+	lfp.lr.MustAdd(lfp.tenantID, timestamp, lfp.fieldsBuf, -1)
 	lfp.storage.MustAddRows(lfp.lr)
 	lfp.lr.ResetKeepSettings()
 }
@@ -581,6 +561,34 @@ func getTimeFields() []string {
 	return *timeField
 }
 
+// defaultStreamFields is a list of default _stream fields.
+// Must be synced with getCommonFields.
+var defaultStreamFields = []string{"kubernetes.container_name", "kubernetes.pod_name", "kubernetes.pod_namespace"}
+
+func getStreamFields() []string {
+	if len(*streamFields) == 0 {
+		return defaultStreamFields
+	}
+	return *streamFields
+}
+
 var partialCRIContentBufPool bytesutil.ByteBufferPool
 
 var criJSONParserPool fastjson.ParserPool
+
+func reportLogRowSizeExceeded(commonFields []logstorage.Field, size int) {
+	var pod, namespace string
+	for _, f := range commonFields {
+		if f.Name == "kubernetes.pod_namespace" {
+			namespace = f.Value
+		}
+		if f.Name == "kubernetes.pod_name" {
+			pod = f.Value
+		}
+		if pod != "" && namespace != "" {
+			break
+		}
+	}
+	logger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
+		pod, namespace, float64(size)/1024/1024, maxLogLineSize/1024/1024)
+}
