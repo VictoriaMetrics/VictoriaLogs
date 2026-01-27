@@ -37,7 +37,7 @@ services:
   #  VictoriaLogs instance, a single process responsible for
   #  storing logs and serving read queries.
   victorialogs:
-    image: victoriametrics/victoria-logs:v1.43.1
+    image: victoriametrics/victoria-logs:v1.44.0
     ports:
       - "9428:9428"
     command:

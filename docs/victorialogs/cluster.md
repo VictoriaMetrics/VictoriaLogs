@@ -352,8 +352,8 @@ If you want running VictoriaLogs cluster in Kubernetes, then please read [these 
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.43.1/victoria-logs-linux-amd64-v1.43.1.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.43.1.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.44.0/victoria-logs-linux-amd64-v1.44.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.44.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491` and stores the ingested logs in the `victoria-logs-data-1` directory:
