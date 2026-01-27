@@ -3361,6 +3361,22 @@ func TestQueryClone(t *testing.T) {
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_all(q:w | fields abc)) as ccc")
 }
 
+func TestQueryCloneStreamFieldFilter(t *testing.T) {
+	qStr := `_time:[2025-09-29T03:55:29.000000000Z,2025-09-29T06:55:29.999999999Z] "_stream":="" | sort by (_time) desc limit 500`
+
+	q, err := ParseQuery(qStr)
+	if err != nil {
+		t.Fatalf("cannot parse [%s]: %s", qStr, err)
+	}
+
+	qStrCanonical := q.String()
+
+	qCopy := q.Clone(q.GetTimestamp())
+	if got := qCopy.String(); got != qStrCanonical {
+		t.Fatalf("unexpected cloned query\n got\n%s\nwant\n%s", got, qStrCanonical)
+	}
+}
+
 func TestQueryGetFilterTimeRange(t *testing.T) {
 	f := func(qStr string, startExpected, endExpected int64) {
 		t.Helper()
