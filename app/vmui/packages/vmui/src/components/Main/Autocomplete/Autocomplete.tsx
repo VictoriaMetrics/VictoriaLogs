@@ -107,10 +107,6 @@ const Autocomplete: FC<AutocompleteProps> = ({
     setFocusOption({ index, type: FocusType.mouse });
   };
 
-  const handlerMouseLeave = () => {
-    setFocusOption({ index: -1 });
-  };
-
   const scrollToValue = () => {
     if (!wrapperEl.current || focusOption.type === FocusType.mouse) return;
     const target = wrapperEl.current.childNodes[focusOption.index] as HTMLElement;
@@ -208,7 +204,6 @@ const Autocomplete: FC<AutocompleteProps> = ({
             key={`${i}${option.value}`}
             onClick={createHandlerSelect(option)}
             onMouseEnter={createHandlerMouseEnter(i)}
-            onMouseLeave={handlerMouseLeave}
           >
             {selected?.includes(option.value) && <DoneIcon/>}
             <>{option.icon}</>
