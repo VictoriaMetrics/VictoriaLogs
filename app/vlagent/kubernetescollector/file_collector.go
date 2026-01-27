@@ -1,7 +1,9 @@
 package kubernetescollector
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -125,20 +127,55 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 		if !ok {
 			// Could not find the rotated file with matching inode.
 			// This means the file was rotated and potentially removed before we could process it.
-			logger.Warnf("log file %q was rotated before being fully read; "+
-				"this is expected when Pod logs rotate faster than the time vlagent was down; "+
-				"consider increasing --container-log-max-size in the kubelet", filepath)
+			logger.Warnf("skipping log file %q: rotated log file not found (inode=%d); "+
+				"some log lines may have been lost; "+
+				"this typically happens when Pod logs rotate faster than vlagent can process them during startup or downtime; "+
+				"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
+				filepath, cp.Inode)
 			return nil, false
 		}
 	}
 
-	logfile, err := newLogFileFromFile(f, cp.Path)
+	fp := getFileFingerprint(f)
+	if fp == 0 || cp.Fingerprint != 0 && cp.Fingerprint != fp {
+		logger.Warnf("skipping log file %q: file content changed unexpectedly (expected fingerprint=%d, got=%d); "+
+			"log file was likely rotated and truncated before vlagent could finish reading; "+
+			"some log lines may have been lost; "+
+			"this typically happens when Pod logs rotate faster than vlagent can process them during startup or downtime; "+
+			"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
+			filepath, cp.Fingerprint, fp)
+		return nil, false
+	}
+
+	logfile, err := newLogFileFromFile(f, fp, cp.Path)
 	if err != nil {
 		logger.Panicf("FATAL: cannot create log file: %s", err)
 	}
 	logfile.setOffset(cp.Offset)
 
 	return logfile, true
+}
+
+// getFileFingerprint returns a fingerprint of the file.
+// This function returns 0 if the file does not contain any valid log lines.
+func getFileFingerprint(f *os.File) uint64 {
+	buf := make([]byte, maxFingerprintDataLen)
+	n, err := f.ReadAt(buf, 0)
+	if err != nil && err != io.EOF {
+		logger.Panicf("FATAL: cannot read file %q: %s", f.Name(), err)
+	}
+
+	nl := bytes.IndexByte(buf[:n], '\n')
+	if nl < 0 && n < len(buf) {
+		// Line is not yet fully written - cannot calculate fingerprint.
+		return 0
+	}
+	if nl >= 0 {
+		buf = buf[:nl]
+	}
+
+	fp := calcFingerprint(buf)
+	return fp
 }
 
 func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {

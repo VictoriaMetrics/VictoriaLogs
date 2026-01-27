@@ -119,7 +119,7 @@ func TestParseKlog(t *testing.T) {
 
 		got := logstorage.MarshalFieldsToJSON(nil, fields)
 		if string(got) != fieldsExpected {
-			t.Fatalf("unexpected result; got:\n%s\nwant:\n%s", got, fieldsExpected)
+			t.Fatalf("unexpected result\ngot:\n%s\nwant:\n%s", got, fieldsExpected)
 		}
 
 		if timestamp != timestampExpected {
@@ -276,7 +276,7 @@ func (s *testStorage) verify(expected string) error {
 	got = removeRepeats(got)
 
 	if got != expected {
-		return fmt.Errorf("unexpected rows; got:\n%s\nwant:\n%s", got, expected)
+		return fmt.Errorf("unexpected rows\ngot:\n%s\nwant:\n%s", got, expected)
 	}
 	return nil
 }
