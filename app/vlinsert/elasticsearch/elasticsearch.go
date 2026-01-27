@@ -109,7 +109,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		lmp := cp.NewLogMessageProcessor("elasticsearch_bulk", true)
 		encoding := r.Header.Get("Content-Encoding")
 		streamName := fmt.Sprintf("remoteAddr=%s, requestURI=%q", httpserver.GetQuotedRemoteAddr(r), r.RequestURI)
-		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, lmp)
+		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
 		lmp.MustClose()
 		if err != nil {
 			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
@@ -138,7 +138,7 @@ var (
 	bulkRequestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}`)
 )
 
-func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) (int, error) {
+func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (int, error) {
 	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
 
 	wcr, err := writeconcurrencylimiter.GetReader(r)
@@ -157,7 +157,7 @@ func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields
 
 	n := 0
 	for {
-		hasMoreLines, err := readBulkLine(lr, timeFields, msgFields, lmp)
+		hasMoreLines, err := readBulkLine(lr, timeFields, msgFields, preserveKeys, lmp)
 		if err != nil || !hasMoreLines {
 			return n, err
 		}
@@ -165,7 +165,7 @@ func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields
 	}
 }
 
-func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) (bool, error) {
+func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (bool, error) {
 	var line []byte
 
 	// Read the command, must be "create" or "index"
@@ -198,7 +198,7 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 	p := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(p)
 
-	if err := p.ParseLogMessage(line); err != nil {
+	if err := p.ParseLogMessage(line, preserveKeys); err != nil {
 		const tailBytes = 128
 		lineTail := line
 		if len(lineTail) > tailBytes {

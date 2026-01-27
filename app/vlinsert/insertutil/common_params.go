@@ -34,6 +34,7 @@ type CommonParams struct {
 	StreamFields     []string
 	IgnoreFields     []string
 	DecolorizeFields []string
+	PreserveJSONKeys []string
 	ExtraFields      []logstorage.Field
 
 	// IsTimeFieldSet means whether the TimeFields is set **manually**.
@@ -64,6 +65,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	streamFields := httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields")
 	ignoreFields := httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields")
 	decolorizeFields := httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	preserveJSONKeys := httputil.GetArray(r, "preserve_json_keys", "VL-Preserve-JSON-Keys")
 
 	extraFields, err := getExtraFields(r)
 	if err != nil {
@@ -91,6 +93,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 		StreamFields:     streamFields,
 		IgnoreFields:     ignoreFields,
 		DecolorizeFields: decolorizeFields,
+		PreserveJSONKeys: preserveJSONKeys,
 		ExtraFields:      extraFields,
 
 		IsTimeFieldSet:  isTimeFieldSet,

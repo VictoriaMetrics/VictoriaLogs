@@ -3732,15 +3732,15 @@ of `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syn
 It overrides existing fields with names from the `k1`, ..., `kN` list. Other fields remain untouched.
 
 Nested JSON is unpacked according to the rules defined [here](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
-
-For example, the following query unpacks JSON fields from the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) across logs for the last 5 minutes:
+If values for some JSON keys must be preserved from flattening, then enumerate the needed keys in `preserve_keys (...)`.
+For example, the following query flattens all the JSON fields except `foo` and `bar` from the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+across logs for the last 5 minutes:
 
 ```logsql
-_time:5m | unpack_json from _msg
+_time:5m | unpack_json from _msg preserve_keys (foo, bar)
 ```
 
-The `from _msg` part can be omitted when JSON fields are unpacked from the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
-The following query is equivalent to the previous one:
+The `from _msg` part can be omitted when JSON fields are unpacked from the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
 ```logsql
 _time:5m | unpack_json

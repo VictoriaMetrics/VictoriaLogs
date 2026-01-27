@@ -30,7 +30,7 @@ func TestLogRows_WildcardIgnoreFields(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1
@@ -92,7 +92,7 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1
@@ -170,7 +170,7 @@ func TestLogRows_DefaultMsgValue(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1

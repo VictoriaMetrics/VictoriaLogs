@@ -230,7 +230,7 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 	switch data[0] {
 	case '{':
-		err := p.ParseLogMessage(data)
+		err := p.ParseLogMessage(data, nil)
 		if err != nil {
 			return 0, false
 		}
@@ -538,7 +538,7 @@ func initExtraFields() {
 	}
 
 	p := logstorage.GetJSONParser()
-	if err := p.ParseLogMessage([]byte(*extraFields)); err != nil {
+	if err := p.ParseLogMessage([]byte(*extraFields), nil); err != nil {
 		logger.Fatalf("cannot parse -kubernetesCollector.extraFields=%q: %s", *extraFields, err)
 	}
 

@@ -55,7 +55,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	lmp := cp.NewLogMessageProcessor("jsonline", true)
 	streamName := fmt.Sprintf("remoteAddr=%s, requestURI=%q", httpserver.GetQuotedRemoteAddr(r), r.RequestURI)
-	err = processStreamInternal(streamName, reader, cp.TimeFields, cp.MsgFields, lmp)
+	err = processStreamInternal(streamName, reader, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
 	lmp.MustClose()
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot process jsonline request; error: %s", err)
@@ -65,14 +65,14 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	requestDuration.UpdateDuration(startTime)
 }
 
-func processStreamInternal(streamName string, r io.Reader, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) error {
+func processStreamInternal(streamName string, r io.Reader, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) error {
 	lr := insertutil.NewLineReader(streamName, r)
 
 	n := 0
 	errors := 0
 	var lastError error
 	for {
-		ok, err := readLine(lr, timeFields, msgFields, lmp)
+		ok, err := readLine(lr, timeFields, msgFields, preserveKeys, lmp)
 		if err != nil {
 			lastError = err
 			errors++
@@ -93,7 +93,7 @@ func processStreamInternal(streamName string, r io.Reader, timeFields, msgFields
 	return nil
 }
 
-func readLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) (bool, error) {
+func readLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (bool, error) {
 	var line []byte
 	for len(line) == 0 {
 		if !lr.NextLine() {
@@ -106,7 +106,7 @@ func readLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp ins
 	p := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(p)
 
-	if err := p.ParseLogMessage(line); err != nil {
+	if err := p.ParseLogMessage(line, preserveKeys); err != nil {
 		return true, fmt.Errorf("%s; line contents: %q", err, line)
 	}
 	ts, err := insertutil.ExtractTimestampFromFields(timeFields, p.Fields)

@@ -262,6 +262,12 @@ All the [HTTP-based data ingestion protocols](https://docs.victoriametrics.com/v
   which must be added to all the ingested logs. The format of every `extra_fields` entry is `field_name=field_value`.
   If the log entry contains fields from the `extra_fields`, then they are overwritten by the values specified in `extra_fields`.
 
+- `preserve_json_keys` - an optional comma-separated list of JSON keys for values,
+  which mustn't be flattened according to [these rules](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+  For example, `preserve_json_keys=host.os` preserves `host.os` field value as `{"version":"1.2.3"}` string
+  for the input JSON `{"host":{"os":{"version":"1.2.3"}}}`. If the `preserve_json_keys` isn't set to `host.os`,
+  then the given JSON is parsed into `host.os.version` field with the `1.2.3` value.
+
 - `debug` - if this arg is set to `1`, then the ingested logs aren't stored in VictoriaLogs. Instead,
   the ingested data is logged by VictoriaLogs, so it can be investigated later.
 
@@ -311,6 +317,12 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 - `VL-Extra-Fields` - an optional comma-separated list of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model),
   which must be added to all the ingested logs. The format of every `extra_fields` entry is `field_name=field_value`.
   If the log entry contains fields from the `extra_fields`, then they are overwritten by the values specified in `extra_fields`.
+
+- `VL-Preserve-JSON-Keys` - an optional comma-separated list of JSON keys for values,
+  which mustn't be flattened according to [these rules](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+  For example, `VL-Preserve-JSON-Keys: host.os` preserves `host.os` field value as `{"version":"1.2.3"}` string
+  for the input JSON `{"host":{"os":{"version":"1.2.3"}}}`. If the `VL-Preserve-JSON-Keys` header isn't set to `host.os`,
+  then the given JSON is parsed into `host.os.version` field with the `1.2.3` value.
 
 - `VL-Debug` - if this parameter is set to `1`, then the ingested logs aren't stored in VictoriaLogs. Instead,
   the ingested data is logged by VictoriaLogs, so it can be investigated later.

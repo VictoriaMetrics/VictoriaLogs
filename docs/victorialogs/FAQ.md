@@ -217,6 +217,42 @@ The maximum number of fields per log entry is hardcoded and is unlikely to incre
 The limit can be set to the lower value during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 via `-insert.maxFieldsPerLine` command-line flag.
 
+The most frequent source of too big number of unique log fields is JSON logs with many unique keys. For example:
+
+```json
+{
+  "level":"info",
+  "_msg":"foo bar",
+  "items":{
+    "item-1":{...},
+    ...
+    "item-N":{...}
+  }
+}
+```
+
+This JSON contains many unique keys - `item-*`. They are flattened into the following keys according to [VictoriaLogs data model](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model):
+
+- "items.item-1"
+- ...
+- "items.item-N"
+
+Where `N` can be arbitrary large. Do not ingest such logs into VictoriaLogs.
+
+It is possible to instruct VictoriaLogs preserving the `items` field value without flattening it,
+by passing `preserve_json_keys=items` query arg to HTTP data ingestion endpoints, which accept JSON-encoded logs.
+This will result into a single `items` field with the following string value:
+
+```
+{
+  "item-1":{...},
+  ...
+  "item-N":{...}
+}
+```
+
+See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details.
+
 ## How to determine which log fields occupy the most of disk space?
 
 [Run](https://docs.victoriametrics.com/victorialogs/querying/) the following [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query

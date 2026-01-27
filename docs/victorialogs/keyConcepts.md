@@ -111,6 +111,9 @@ Unicode characters must be encoded with [UTF-8](https://en.wikipedia.org/wiki/UT
 }
 ```
 
+It is possible to preserve the original values for the given set of JSON keys by enumerating them in the `preserve_json_keys`
+query arg or `VL-Preserve-JSON-Keys` http request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
+
 VictoriaLogs automatically indexes all the fields in all the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs.
 This enables [full-text search](https://docs.victoriametrics.com/victorialogs/logsql/) across all the fields.
 
