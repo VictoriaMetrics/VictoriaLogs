@@ -3744,6 +3744,13 @@ func parseDuration(lex *lexer) (int64, string, error) {
 	return d, s, nil
 }
 
+// TryParseDuration tries parsing duration at s and returns the duration in nanoseconds.
+//
+// If the duration cannot be parsed, false is returned.
+func TryParseDuration(s string) (int64, bool) {
+	return tryParseDuration(s)
+}
+
 func quoteStringTokenIfNeeded(s string) string {
 	if !needQuoteStringToken(s) {
 		return s

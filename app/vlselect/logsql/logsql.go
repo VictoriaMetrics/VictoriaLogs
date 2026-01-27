@@ -224,9 +224,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if stepStr == "" {
 		stepStr = "1d"
 	}
-	step, err := timeutil.ParseDuration(stepStr)
-	if err != nil {
-		httpserver.Errorf(w, r, "cannot parse 'step' arg: %s", err)
+	step, ok := logstorage.TryParseDuration(stepStr)
+	if !ok {
+		httpserver.Errorf(w, r, "cannot parse 'step=%s' arg as duration", stepStr)
 		return
 	}
 	if step <= 0 {
@@ -239,9 +239,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	if offsetStr == "" {
 		offsetStr = "0s"
 	}
-	offset, err := timeutil.ParseDuration(offsetStr)
-	if err != nil {
-		httpserver.Errorf(w, r, "cannot parse 'offset' arg: %s", err)
+	offset, ok := logstorage.TryParseDuration(offsetStr)
+	if !ok {
+		httpserver.Errorf(w, r, "cannot parse 'offset=%s' arg as duration", offsetStr)
 		return
 	}
 
@@ -256,7 +256,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Add a pipe, which calculates hits over time with the given step and offset for the given fields.
-	ca.q.AddCountByTimePipe(int64(step), int64(offset), fields)
+	ca.q.AddCountByTimePipe(step, offset, fields)
 	start, end := ca.q.GetFilterTimeRange()
 
 	var mLock sync.Mutex
@@ -312,7 +312,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	m = getTopHitsSeries(m, fieldsLimit)
-	addMissingZeroHits(m, start, end, int64(step), int64(offset))
+	addMissingZeroHits(m, start, end, step, offset)
 
 	// Write response headers
 	h := w.Header()
@@ -678,31 +678,28 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	refreshIntervalMsecs, err := httputil.GetDuration(r, "refresh_interval", 1000)
+	refreshInterval, err := parseDuration(r, "refresh_interval", "1s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	refreshInterval := time.Millisecond * time.Duration(refreshIntervalMsecs)
 
-	startOffsetMsecs, err := httputil.GetDuration(r, "start_offset", 5*1000)
+	startOffset, err := parseDuration(r, "start_offset", "5s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	startOffset := startOffsetMsecs * 1e6
 
-	offsetMsecs, err := httputil.GetDuration(r, "offset", 5000)
+	offset, err := parseDuration(r, "offset", "5s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	offset := offsetMsecs * 1e6
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	tp := newTailProcessor(cancel)
 
-	ticker := time.NewTicker(refreshInterval)
+	ticker := time.NewTicker(time.Duration(refreshInterval))
 	defer ticker.Stop()
 
 	end := time.Now().UnixNano() - offset
@@ -877,9 +874,9 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	if stepStr == "" {
 		stepStr = "1d"
 	}
-	step, err := timeutil.ParseDuration(stepStr)
-	if err != nil {
-		err = fmt.Errorf("cannot parse 'step' arg: %s", err)
+	step, ok := logstorage.TryParseDuration(stepStr)
+	if !ok {
+		err = fmt.Errorf("cannot parse 'step=%s' arg as duration", stepStr)
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
@@ -889,7 +886,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(int64(step))
+	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1669,4 +1666,16 @@ func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
 		accessControlExposeHeaders[i] = http.CanonicalHeaderKey(v)
 	}
 	h.Set("Access-Control-Expose-Headers", strings.Join(accessControlExposeHeaders, ", "))
+}
+
+func parseDuration(r *http.Request, argName, defaultValue string) (int64, error) {
+	s := r.FormValue(argName)
+	if s == "" {
+		s = defaultValue
+	}
+	nsecs, ok := logstorage.TryParseDuration(s)
+	if !ok {
+		return 0, fmt.Errorf("cannot parse duration from the arg '%s=%s'", argName, s)
+	}
+	return nsecs, nil
 }
