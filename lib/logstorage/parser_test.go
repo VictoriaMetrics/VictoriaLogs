@@ -3362,19 +3362,27 @@ func TestQueryClone(t *testing.T) {
 }
 
 func TestQueryCloneStreamFieldFilter(t *testing.T) {
-	qStr := `_time:[2025-09-29T03:55:29.000000000Z,2025-09-29T06:55:29.999999999Z] "_stream":="" | sort by (_time) desc limit 500`
+	f := func(qStr string) {
+		t.Helper()
 
-	q, err := ParseQuery(qStr)
-	if err != nil {
-		t.Fatalf("cannot parse [%s]: %s", qStr, err)
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("cannot parse [%s]: %s", qStr, err)
+		}
+
+		resultExpected := q.String()
+
+		qCopy := q.Clone(q.GetTimestamp())
+		result := qCopy.String()
+		if result != resultExpected {
+			t.Fatalf("unexpected cloned query\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
 	}
 
-	qStrCanonical := q.String()
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
+	f(`_time:[2025-09-29T03:55:29.000000000Z,2025-09-29T06:55:29.999999999Z] "_stream":="" | sort by (_time) desc limit 500`)
 
-	qCopy := q.Clone(q.GetTimestamp())
-	if got := qCopy.String(); got != qStrCanonical {
-		t.Fatalf("unexpected cloned query\n got\n%s\nwant\n%s", got, qStrCanonical)
-	}
+	f(`"_stream_id":=""`)
 }
 
 func TestQueryGetFilterTimeRange(t *testing.T) {

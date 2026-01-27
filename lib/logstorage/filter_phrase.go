@@ -317,8 +317,8 @@ func quoteFieldNameIfNeeded(s string) string {
 	if isMsgFieldName(s) {
 		return ""
 	}
-	if s == "_stream" {
-		// Always quote `_stream` when used as a plain field to avoid confusing it with the stream filter syntax.
+	if s == "_stream" || s == "_stream_id" {
+		// Always quote `_stream` and `_stream_id` when used as a plain field to avoid confusing it with the stream filter syntax.
 		return strconv.Quote(s) + ":"
 	}
 	return quoteTokenIfNeeded(s) + ":"
