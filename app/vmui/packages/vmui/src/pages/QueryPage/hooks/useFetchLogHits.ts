@@ -56,12 +56,11 @@ export const useFetchLogHits = (defaultQuery = "*") => {
   }, [serverUrl]);
 
   const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, barsCount }: OptionsParams) => {
-    const { start, end, step, offset } = getHitsTimeParams(period, barsCount);
+    const { start, end, step } = getHitsTimeParams(period, barsCount);
 
     const params = new URLSearchParams({
       query: query.trim(),
       step: `${step}ms`,
-      offset: `${offset}ms`,
       start: start.toISOString(),
       end: end.toISOString(),
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,

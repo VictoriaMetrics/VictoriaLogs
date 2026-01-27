@@ -15,9 +15,8 @@ export const getHitsTimeParams = (period: TimeParams, bars: number) => {
   const totalMs = Math.max(1, end.diff(start, "ms"));
 
   const step = Math.max(1, Math.ceil(totalMs / bars));
-  const offset = ((start.valueOf() % step) + step) % step;
 
-  return { start, end, step, offset };
+  return { start, end, step };
 };
 
 export const convertToFieldFilter = (value: string, field = LOGS_GROUP_BY) => {

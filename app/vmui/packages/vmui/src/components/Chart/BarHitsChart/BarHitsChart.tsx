@@ -21,8 +21,6 @@ import { LOGS_BAR_COUNTS } from "../../../constants/logs";
 
 const HeaderSeparator = () => "|";
 
-const HeaderSeparator = () => "|";
-
 interface Props {
   logHits: LogHits[];
   data: AlignedData;
