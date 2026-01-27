@@ -105,16 +105,14 @@ func ignoreSignals(sigs ...os.Signal) func() {
 	signal.Notify(ch, sigs...)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			_, ok := <-ch
 			if !ok {
 				return
 			}
 		}
-	}()
+	})
 	return func() {
 		signal.Stop(ch)
 		close(ch)

@@ -908,7 +908,11 @@ func mathFuncMod(result []float64, args [][]float64) {
 		yInt := int64(y)
 		if float64(xInt) == x && float64(yInt) == y {
 			// Fast path - integer modulo
-			result[i] = float64(xInt % yInt)
+			if yInt == 0 {
+				result[i] = nan
+			} else {
+				result[i] = float64(xInt % yInt)
+			}
 		} else {
 			// Slow path - floating point modulo
 			result[i] = math.Mod(x, y)

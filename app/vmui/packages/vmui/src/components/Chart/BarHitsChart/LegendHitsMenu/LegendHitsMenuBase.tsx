@@ -14,7 +14,9 @@ interface Props {
 
 const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
   const copyToClipboard = useCopyToClipboard();
-  const { groupFieldHits } = useHitsChartConfig();
+  const {
+    groupFieldHits: { value: groupFieldHits },
+  } = useHitsChartConfig();
 
   const handleAddStreamToFilter = (operator: ExtraFilterOperator) => () => {
     onApplyFilter({

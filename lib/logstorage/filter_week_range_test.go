@@ -39,14 +39,14 @@ func TestFilterWeekRange(t *testing.T) {
 	ft = &filterWeekRange{
 		startDay: time.Monday,
 		endDay:   time.Monday,
-		offset:   3 * nsecsPerDay,
+		offset:   -3 * nsecsPerDay,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{3})
 
 	ft = &filterWeekRange{
 		startDay: time.Monday,
 		endDay:   time.Monday,
-		offset:   -2 * nsecsPerDay,
+		offset:   2 * nsecsPerDay,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{4})
 
@@ -66,14 +66,14 @@ func TestFilterWeekRange(t *testing.T) {
 	ft = &filterWeekRange{
 		startDay: time.Thursday,
 		endDay:   time.Thursday,
-		offset:   2 * nsecsPerHour,
+		offset:   -2 * nsecsPerHour,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
 	ft = &filterWeekRange{
 		startDay: time.Friday,
 		endDay:   time.Friday,
-		offset:   -1 * nsecsPerHour,
+		offset:   1 * nsecsPerHour,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 }

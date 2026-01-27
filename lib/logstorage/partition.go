@@ -238,14 +238,28 @@ func (pt *partition) mustCreateSnapshot() string {
 
 	fs.MustSyncPathAndParentDir(dstDir)
 
-	snapshotPath, err := filepath.Abs(dstDir)
-	if err != nil {
-		logger.Panicf("FATAL: cannot obtain absolute path to snapshot: %s", err)
-	}
-
 	logger.Infof("created a snapshot for partition %q at %q in %.3f seconds", pt.name, dstDir, time.Since(startTime).Seconds())
 
-	return snapshotPath
+	return dstDir
+}
+
+// deleteSnapshot removes the snapshot with the given snapshotName from the pt.
+func (pt *partition) deleteSnapshot(snapshotName string) error {
+	logger.Infof("deleting snapshot %q for partition %q", snapshotName, pt.name)
+
+	pt.snapshotLock.Lock()
+	defer pt.snapshotLock.Unlock()
+
+	snapshotPath := filepath.Join(pt.path, snapshotsDirname, snapshotName)
+	if !fs.IsPathExist(snapshotPath) {
+		return fmt.Errorf("snapshot %q doesn't exist at %q", snapshotName, pt.path)
+	}
+
+	fs.MustRemoveDir(snapshotPath)
+
+	logger.Infof("deleted snapshot %q for partition %q at %q", snapshotName, pt.name, snapshotPath)
+
+	return nil
 }
 
 func (pt *partition) updateStats(ps *PartitionStats) {

@@ -1,5 +1,5 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v1.132.0 => github.com/VictoriaMetrics/VictoriaMetrics v1.132.1-0.20251216144623-b6bc1860136e
-## explicit; go 1.25.5
+# github.com/VictoriaMetrics/VictoriaMetrics v1.134.0 => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260126232947-e35a9a366c8a
+## explicit; go 1.25.6
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/blockcache
@@ -76,7 +76,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/klauspost/compress v1.18.2
+# github.com/klauspost/compress v1.18.3
 ## explicit; go 1.23
 github.com/klauspost/compress
 github.com/klauspost/compress/flate
@@ -122,17 +122,17 @@ github.com/valyala/quicktemplate
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/internal
-# golang.org/x/sys v0.39.0
+# golang.org/x/sys v0.40.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.32.0
+# golang.org/x/text v0.33.0
 ## explicit; go 1.24.0
 golang.org/x/text/transform
 golang.org/x/text/width
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.132.1-0.20251216144623-b6bc1860136e
+# github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.134.1-0.20260126232947-e35a9a366c8a

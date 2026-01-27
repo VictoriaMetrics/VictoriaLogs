@@ -18,6 +18,7 @@ import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
+import { cumulativeMatrix } from "../../../../utils/uplot/cumulative";
 
 interface Props {
   logHits: LogHits[];
@@ -41,9 +42,15 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
   const { onReadyChart, isPanning } = useReadyChart(setPlotScale);
   useZoomChart({ uPlotInst, xRange, setPlotScale });
 
+  const transformedData = useMemo(() => {
+    if (graphOptions.cumulative) return cumulativeMatrix(_data);
+    return _data;
+  }, [graphOptions.cumulative, _data]);
+
   const { data, bands } = useMemo(() => {
-    return graphOptions.stacked ? stack(_data, () => false) : { data: _data, bands: [] };
-  }, [graphOptions, _data]);
+    if (graphOptions.stacked) return stack(transformedData, () => false);
+    return { data: transformedData, bands: [] };
+  }, [graphOptions.stacked, transformedData]);
 
   const { options, series, focusDataIdx } = useBarHitsOptions({
     data,
@@ -140,7 +147,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
         {!isMobile && (
           <BarHitsTooltip
             uPlotInst={uPlotInst}
-            data={_data}
+            data={transformedData}
             focusDataIdx={focusDataIdx}
           />
         )}

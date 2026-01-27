@@ -9,14 +9,14 @@ import (
 )
 
 func TestProcessStreamInternalSuccess(t *testing.T) {
-	f := func(data, timeField, msgField string, timestampsExpected []int64, resultExpected string) {
+	f := func(data, timeField, msgField string, preserveKeys []string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
 		timeFields := []string{timeField}
 		msgFields := []string{msgField}
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := bytes.NewBufferString(data)
-		if err := processStreamInternal("test", r, timeFields, msgFields, tlp); err != nil {
+		if err := processStreamInternal("test", r, timeFields, msgFields, preserveKeys, tlp); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
@@ -35,7 +35,15 @@ func TestProcessStreamInternalSuccess(t *testing.T) {
 	resultExpected := `{"log.offset":"71770","log.file.path":"/var/log/auth.log","_msg":"foobar"}
 {"_msg":"baz"}
 {"_msg":"xyz","x":"y"}`
-	f(data, timeField, msgField, timestampsExpected, resultExpected)
+	f(data, timeField, msgField, nil, timestampsExpected, resultExpected)
+
+	data = `{"@timestamp":"2023-06-06T04:48:11.735Z","log":{"offset":71770,"file":{"path":"/var/log/auth.log"}},"message":"foobar"}`
+	timeField = "@timestamp"
+	msgField = "message"
+	preserveKeys := []string{"log"}
+	timestampsExpected = []int64{1686026891735000000}
+	resultExpected = `{"log":"{\"offset\":71770,\"file\":{\"path\":\"/var/log/auth.log\"}}","_msg":"foobar"}`
+	f(data, timeField, msgField, preserveKeys, timestampsExpected, resultExpected)
 
 	// Non-existing msgField
 	data = `{"@timestamp":"2023-06-06T04:48:11.735Z","log":{"offset":71770,"file":{"path":"/var/log/auth.log"}},"message":"foobar"}
@@ -46,7 +54,7 @@ func TestProcessStreamInternalSuccess(t *testing.T) {
 	timestampsExpected = []int64{1686026891735000000, 1686023292735000000}
 	resultExpected = `{"log.offset":"71770","log.file.path":"/var/log/auth.log","message":"foobar"}
 {"message":"baz"}`
-	f(data, timeField, msgField, timestampsExpected, resultExpected)
+	f(data, timeField, msgField, nil, timestampsExpected, resultExpected)
 
 	// invalid lines among valid lines
 	data = `
@@ -63,7 +71,7 @@ asbsdf
 	timestampsExpected = []int64{1686026891735000000, 1686023292735000000}
 	resultExpected = `{"log.offset":"71770","log.file.path":"/var/log/auth.log","_msg":"foobar"}
 {"_msg":"baz"}`
-	f(data, timeField, msgField, timestampsExpected, resultExpected)
+	f(data, timeField, msgField, nil, timestampsExpected, resultExpected)
 }
 
 func TestProcessStreamInternalFailure(t *testing.T) {
@@ -72,7 +80,7 @@ func TestProcessStreamInternalFailure(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := strings.NewReader(data)
-		if err := processStreamInternal("test", r, []string{"time"}, nil, tlp); err == nil {
+		if err := processStreamInternal("test", r, []string{"time"}, nil, nil, tlp); err == nil {
 			t.Fatalf("expected error, got nil")
 		}
 

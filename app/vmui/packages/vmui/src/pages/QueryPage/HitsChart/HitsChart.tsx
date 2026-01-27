@@ -14,6 +14,7 @@ import { useSearchParams } from "react-router-dom";
 import { getHitsTimeParams } from "../../../utils/logs";
 import { ExtraFilter } from "../../OverviewPage/FiltersBar/types";
 import { toEpochSeconds } from "../../../utils/time";
+import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
 
 interface Props {
   query: string;
@@ -32,6 +33,10 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
   const [searchParams] = useSearchParams();
   const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
+  const {
+    barsCount: { value: barsCount },
+  } = useHitsChartConfig();
+
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
       const timestampValueMap = new Map();
@@ -45,7 +50,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
 
   const generateTimestamps = useCallback((date: dayjs.Dayjs) => {
     const result: number[] = [];
-    const { start, end, step } = getHitsTimeParams(period);
+    const { start, end, step } = getHitsTimeParams(period, barsCount);
     const stepsToFirstTimestamp = Math.ceil(start.diff(date, "milliseconds") / step);
     let firstTimestamp = date.add(stepsToFirstTimestamp * step, "milliseconds");
 
@@ -63,7 +68,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
     }
 
     return result;
-  }, [period]);
+  }, [period, barsCount]);
 
   const data = useMemo(() => {
     if (!logHits.length) return [[], []] as AlignedData;

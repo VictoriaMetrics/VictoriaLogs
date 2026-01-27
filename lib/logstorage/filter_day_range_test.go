@@ -37,14 +37,14 @@ func TestFilterDayRange(t *testing.T) {
 	ft = &filterDayRange{
 		start:  1,
 		end:    1,
-		offset: 8,
+		offset: -8,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1})
 
 	ft = &filterDayRange{
 		start:  10,
 		end:    10,
-		offset: -9,
+		offset: 9,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
@@ -88,14 +88,14 @@ func TestFilterDayRange(t *testing.T) {
 	ft = &filterDayRange{
 		start:  1,
 		end:    1,
-		offset: 10,
+		offset: -10,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
 	ft = &filterDayRange{
 		start:  0,
 		end:    1000,
-		offset: 10_000,
+		offset: -10_000,
 	}
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 

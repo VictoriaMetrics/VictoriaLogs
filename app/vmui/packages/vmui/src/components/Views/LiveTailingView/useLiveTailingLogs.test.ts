@@ -56,15 +56,18 @@ describe("useLiveTailingLogs", () => {
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://localhost:8080/select/logsql/tail",
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+
+    expect(url).toBe("http://localhost:8080/select/logsql/tail");
+    expect(init).toEqual(
       expect.objectContaining({
         method: "POST",
-        body: new URLSearchParams({
-          query: query.trim(),
-        }),
       })
     );
+
+    expect(init.body).toBeInstanceOf(URLSearchParams);
+    expect((init.body as URLSearchParams).get("query")).toBe(query.trim());
   });
 
   it("should pause and resume live tailing", () => {
@@ -125,7 +128,7 @@ describe("useLiveTailingLogs", () => {
     expect(result.current.logs).toHaveLength(0);
   });
 
-  it("should process high load of logs incoming at 100k logs per second", async () => {
+  it("should process high load of logs incoming at 100k logs per second", { timeout: 9000 }, async () => {
     const query = "*";
     const limit = 1000;
     const logCount = 10000; // High log rate
@@ -149,5 +152,5 @@ describe("useLiveTailingLogs", () => {
     expect(result.current.logs[0].log).toStrictEqual("log message 9200");
     expect(result.current.logs[799].log).toStrictEqual("log message 9999");
     expect(result.current.isLimitedLogsPerUpdate).toBeTruthy();
-  }, { timeout: 9000 });
+  });
 });

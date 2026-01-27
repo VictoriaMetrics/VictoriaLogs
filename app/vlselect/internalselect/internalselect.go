@@ -69,7 +69,7 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
-		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_request_errors_total{path=%q}`, path)).Inc()
+		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		// The return is skipped intentionally in order to track the duration of failed queries.
 	}

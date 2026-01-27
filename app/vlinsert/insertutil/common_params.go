@@ -34,6 +34,7 @@ type CommonParams struct {
 	StreamFields     []string
 	IgnoreFields     []string
 	DecolorizeFields []string
+	PreserveJSONKeys []string
 	ExtraFields      []logstorage.Field
 
 	// IsTimeFieldSet means whether the TimeFields is set **manually**.
@@ -64,6 +65,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	streamFields := removeEmptyTokens(httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields"))
 	ignoreFields := removeEmptyTokens(httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields"))
 	decolorizeFields := removeEmptyTokens(httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields"))
+  preserveJSONKeys := removeEmptyTokens(httputil.GetArray(r, "preserve_json_keys", "VL-Preserve-JSON-Keys"))
 
 	extraFields, err := getExtraFields(r)
 	if err != nil {
@@ -91,6 +93,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 		StreamFields:     streamFields,
 		IgnoreFields:     ignoreFields,
 		DecolorizeFields: decolorizeFields,
+		PreserveJSONKeys: preserveJSONKeys,
 		ExtraFields:      extraFields,
 
 		IsTimeFieldSet:  isTimeFieldSet,
@@ -223,10 +226,7 @@ type logMessageProcessor struct {
 func (lmp *logMessageProcessor) initPeriodicFlush() {
 	lmp.lastFlushTime = time.Now()
 
-	lmp.wg.Add(1)
-	go func() {
-		defer lmp.wg.Done()
-
+	lmp.wg.Go(func() {
 		d := timeutil.AddJitterToDuration(time.Second)
 		ticker := time.NewTicker(d)
 		defer ticker.Stop()
@@ -243,7 +243,7 @@ func (lmp *logMessageProcessor) initPeriodicFlush() {
 				lmp.mu.Unlock()
 			}
 		}
-	}()
+	})
 }
 
 // AddRow adds new log message to lmp with the given timestamp and fields.

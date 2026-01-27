@@ -11,7 +11,11 @@ const OverviewHits: FC = () => {
   const { period } = useTimeState();
   const query = "*";
 
-  const { topHits, groupFieldHits } = useHitsChartConfig();
+  const {
+    topHits: { value: topHits },
+    groupFieldHits: { value: groupFieldHits },
+    barsCount: { value: barsCount },
+  } = useHitsChartConfig();
 
   const { extraParams, addNewFilter } = useExtraFilters();
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits();
@@ -27,6 +31,7 @@ const OverviewHits: FC = () => {
       period,
       extraParams,
       query,
+      barsCount,
       field: groupFieldHits,
       fieldsLimit: topHits,
     });

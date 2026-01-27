@@ -38,9 +38,14 @@ const QueryPage: FC = () => {
   const { duration, relativeTime, period: periodState } = useTimeState();
   const timeDispatch = useTimeDispatch();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
-  const { topHits, groupFieldHits } = useHitsChartConfig();
+  const {
+    topHits: { value: topHits },
+    groupFieldHits: { value: groupFieldHits },
+    barsCount: { value: barsCount },
+  } = useHitsChartConfig();
   const prevTopHits = usePrevious(topHits);
   const prevGroupFieldHits = usePrevious(groupFieldHits);
+  const prevBarsCount = usePrevious(barsCount);
 
   const [searchParams] = useSearchParams();
 
@@ -92,7 +97,13 @@ const QueryPage: FC = () => {
     }
 
     if (flags.hits) {
-      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
+      await fetchLogHits({
+        period,
+        barsCount,
+        field: groupFieldHits,
+        fieldsLimit: topHits,
+        queryMode: graphQueryMode,
+      });
     }
   };
 
@@ -174,15 +185,23 @@ const QueryPage: FC = () => {
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
+    // TODO: refactor effect logic
     const topChanged = prevTopHits && (topHits !== prevTopHits);
+    const barsCountChanged = prevBarsCount && (barsCount !== prevBarsCount);
     const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
     const becameVisible = prevHideChart && !hideChart;
     const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
 
-    if (!(topChanged || groupChanged || becameVisible || queryModeChanged)) return;
+    if (!(topChanged || groupChanged || becameVisible || queryModeChanged || barsCountChanged)) return;
 
     dataLogHits.abortController.abort?.();
-    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits, queryMode: graphQueryMode });
+    fetchLogHits({
+      period,
+      barsCount,
+      field: groupFieldHits,
+      fieldsLimit: topHits,
+      queryMode: graphQueryMode,
+    });
   }, [
     hideChart,
     prevHideChart,
@@ -191,6 +210,8 @@ const QueryPage: FC = () => {
     prevGroupFieldHits,
     topHits,
     prevTopHits,
+    barsCount,
+    prevBarsCount,
     graphQueryMode,
     prevGraphMode,
     fetchLogHits,
