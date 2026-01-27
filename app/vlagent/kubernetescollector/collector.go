@@ -214,10 +214,6 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	}
 }
 
-// streamFieldNames is a list of _stream fields.
-// Must be synced with getCommonFields.
-var streamFieldNames = []string{"kubernetes.container_name", "kubernetes.pod_name", "kubernetes.pod_namespace"}
-
 func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
 	var fs logstorage.Fields
 
