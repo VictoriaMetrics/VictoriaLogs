@@ -1021,39 +1021,40 @@ func (ddb *datadb) swapSrcWithDstParts(pws []*partWrapper, pwNew *partWrapper, d
 	removedSmallParts := 0
 	removedBigParts := 0
 
-	ddb.partsLock.Lock()
+	func() {
+		ddb.partsLock.Lock()
+		defer ddb.partsLock.Unlock()
 
-	ddb.inmemoryParts, removedInmemoryParts = removeParts(ddb.inmemoryParts, partsToRemove)
-	ddb.smallParts, removedSmallParts = removeParts(ddb.smallParts, partsToRemove)
-	ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
+		ddb.inmemoryParts, removedInmemoryParts = removeParts(ddb.inmemoryParts, partsToRemove)
+		ddb.smallParts, removedSmallParts = removeParts(ddb.smallParts, partsToRemove)
+		ddb.bigParts, removedBigParts = removeParts(ddb.bigParts, partsToRemove)
 
-	if pwNew != nil {
-		switch dstPartType {
-		case partInmemory:
-			ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
-			ddb.startInmemoryPartsMergerLocked()
-		case partSmall:
-			ddb.smallParts = append(ddb.smallParts, pwNew)
-			ddb.startSmallPartsMergerLocked()
-		case partBig:
-			ddb.bigParts = append(ddb.bigParts, pwNew)
-			ddb.startBigPartsMergerLocked()
-		default:
-			logger.Panicf("BUG: unknown partType=%d", dstPartType)
+		if pwNew != nil {
+			switch dstPartType {
+			case partInmemory:
+				ddb.inmemoryParts = append(ddb.inmemoryParts, pwNew)
+				ddb.startInmemoryPartsMergerLocked()
+			case partSmall:
+				ddb.smallParts = append(ddb.smallParts, pwNew)
+				ddb.startSmallPartsMergerLocked()
+			case partBig:
+				ddb.bigParts = append(ddb.bigParts, pwNew)
+				ddb.startBigPartsMergerLocked()
+			default:
+				logger.Panicf("BUG: unknown partType=%d", dstPartType)
+			}
 		}
-	}
 
-	// Atomically store the updated list of file-based parts on disk.
-	// This must be performed under partsLock in order to prevent from races
-	// when multiple concurrently running goroutines update the list.
-	if removedSmallParts > 0 || removedBigParts > 0 || pwNew != nil && dstPartType != partInmemory {
-		smallPartNames := getPartNames(ddb.smallParts)
-		bigPartNames := getPartNames(ddb.bigParts)
-		partNames := append(smallPartNames, bigPartNames...)
-		mustWritePartNames(ddb.path, partNames)
-	}
-
-	ddb.partsLock.Unlock()
+		// Atomically store the updated list of file-based parts on disk.
+		// This must be performed under partsLock in order to prevent from races
+		// when multiple concurrently running goroutines update the list.
+		if removedSmallParts > 0 || removedBigParts > 0 || (pwNew != nil && dstPartType != partInmemory) {
+			smallPartNames := getPartNames(ddb.smallParts)
+			bigPartNames := getPartNames(ddb.bigParts)
+			partNames := append(smallPartNames, bigPartNames...)
+			mustWritePartNames(ddb.path, partNames)
+		}
+	}()
 
 	removedParts := removedInmemoryParts + removedSmallParts + removedBigParts
 	if removedParts != len(partsToRemove) {
