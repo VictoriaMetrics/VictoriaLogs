@@ -815,8 +815,8 @@ func addTimeFilter(f filter, start, end, offset int64) filter {
 	endStr := marshalTimestampRFC3339NanoPreciseString(nil, end)
 
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(start, offset),
-		maxTimestamp: subNoOverflowInt64(end, offset),
+		minTimestamp: SubInt64NoOverflow(start, offset),
+		maxTimestamp: SubInt64NoOverflow(end, offset),
 
 		stringRepr: fmt.Sprintf("[%s,%s]", startStr, endStr),
 	}
@@ -1282,16 +1282,16 @@ func updateFilterWithTimeOffset(f filter, timeOffset int64) filter {
 		switch ft := f.(type) {
 		case *filterTime:
 			ftCopy := *ft
-			ftCopy.minTimestamp = subNoOverflowInt64(ft.minTimestamp, timeOffset)
-			ftCopy.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, timeOffset)
+			ftCopy.minTimestamp = SubInt64NoOverflow(ft.minTimestamp, timeOffset)
+			ftCopy.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, timeOffset)
 			return &ftCopy, nil
 		case *filterDayRange:
 			ftCopy := *ft
-			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = SubInt64NoOverflow(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		case *filterWeekRange:
 			ftCopy := *ft
-			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = SubInt64NoOverflow(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		default:
 			logger.Panicf("BUG: unexpected filter passed to copyFunc: %T; [%s]", f, f)
@@ -3209,7 +3209,7 @@ func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse offset for _time filter []: %w", err)
 		}
-		ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
+		ft.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, offset)
 		ft.stringRepr = offsetStr
 		return ft, nil
 	}
@@ -3226,8 +3226,8 @@ func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse offset for _time filter [%s]: %w", ft, err)
 	}
-	ft.minTimestamp = subNoOverflowInt64(ft.minTimestamp, offset)
-	ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
+	ft.minTimestamp = SubInt64NoOverflow(ft.minTimestamp, offset)
+	ft.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, offset)
 	ft.stringRepr += " " + offsetStr
 	return ft, nil
 }
@@ -3357,7 +3357,7 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 	}
 	ft := &filterTime{
 		minTimestamp: math.MinInt64,
-		maxTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		maxTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 
 		stringRepr: prefix + s,
 	}
@@ -3406,7 +3406,7 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 		d--
 	}
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
@@ -3448,7 +3448,7 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 		d = -d
 	}
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
@@ -3976,17 +3976,24 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 	return qStr
 }
 
-func subNoOverflowInt64(a, b int64) int64 {
-	if a == math.MinInt64 || a == math.MaxInt64 {
-		// Assume that a is either +Inf or -Inf.
-		// Subtracting any number from Inf must result in Inf.
-		return a
-	}
+// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overlow int64.
+//
+// It clamps the result to the int64 value range.
+func SubInt64NoOverflow(a, b int64) int64 {
 	if b >= 0 {
+		if a == math.MaxInt64 {
+			// Subtracting any number from +Inf must result in +Inf.
+			return a
+		}
 		if a < math.MinInt64+b {
 			return math.MinInt64
 		}
 		return a - b
+	}
+
+	if a == math.MinInt64 {
+		// Adding any number to -Inf must result in -Inf.
+		return a
 	}
 	if a > math.MaxInt64+b {
 		return math.MaxInt64

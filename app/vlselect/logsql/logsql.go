@@ -339,7 +339,7 @@ func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64
 		}
 	}
 
-	start, end = alignStartEndToStep(start, end, step)
+	start, end = alignStartEndToStep(start, end, step, offset)
 
 	if start > end {
 		// nothing to do
@@ -1423,7 +1423,14 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 
 		if stepStr := r.FormValue("step"); stepStr != "" {
 			if step, ok := logstorage.TryParseDuration(stepStr); ok {
-				start, end = alignStartEndToStep(start, end, step)
+				offset := int64(0)
+				if offsetStr := r.FormValue("offset"); offsetStr != "" {
+					nsecs, ok := logstorage.TryParseDuration(offsetStr)
+					if ok {
+						offset = nsecs
+					}
+				}
+				start, end = alignStartEndToStep(start, end, step, offset)
 			}
 		}
 
@@ -1480,32 +1487,29 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 	return ca, nil
 }
 
-func alignStartEndToStep(start, end, step int64) (int64, int64) {
+func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 	if step <= 0 {
 		return start, end
 	}
 
+	start = logstorage.SubInt64NoOverflow(start, offset)
 	if start >= 0 {
 		start -= start % step
 	} else {
 		d := step + start%step
-		if start >= math.MinInt64+d {
-			start -= d
-		} else {
-			start = math.MinInt64
-		}
+		start = logstorage.SubInt64NoOverflow(start, d)
 	}
+	start = logstorage.SubInt64NoOverflow(start, -offset)
 
+	end = logstorage.SubInt64NoOverflow(end, offset)
 	if end <= 0 {
 		end -= end % step
 	} else {
 		d := step - end%step
-		if end <= math.MaxInt64-d {
-			end += d
-		} else {
-			end = math.MaxInt64
-		}
+		end = logstorage.SubInt64NoOverflow(end, -d)
 	}
+	end = logstorage.SubInt64NoOverflow(end, -offset)
+
 	if end > math.MinInt64 {
 		end--
 	}
