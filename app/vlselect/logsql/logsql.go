@@ -220,13 +220,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, ok := logstorage.TryParseDuration(stepStr)
-	if !ok {
-		httpserver.Errorf(w, r, "cannot parse 'step=%s' arg as duration", stepStr)
+	step, err := parseDuration(r, "step", "1d")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 	if step <= 0 {
@@ -235,13 +231,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain offset
-	offsetStr := r.FormValue("offset")
-	if offsetStr == "" {
-		offsetStr = "0s"
-	}
-	offset, ok := logstorage.TryParseDuration(offsetStr)
-	if !ok {
-		httpserver.Errorf(w, r, "cannot parse 'offset=%s' arg as duration", offsetStr)
+	offset, err := parseDuration(r, "offset", "0s")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 
@@ -868,13 +860,8 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, ok := logstorage.TryParseDuration(stepStr)
-	if !ok {
-		err = fmt.Errorf("cannot parse 'step=%s' arg as duration", stepStr)
+	step, err := parseDuration(r, "step", "1d")
+	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
