@@ -3,20 +3,18 @@ import Modal from "../Modal/Modal";
 import "./style.scss";
 import Tooltip from "../Tooltip/Tooltip";
 import keyList from "./constants/keyList";
-import { isMacOs } from "../../../utils/detect-device";
 import useBoolean from "../../../hooks/useBoolean";
 import useEventListener from "../../../hooks/useEventListener";
-import { ctrlKeyLabel } from "../../../utils/keyboard";
 
 const title = "Shortcut keys";
-const isMac = isMacOs();
-const keyOpenHelp = isMac ? `${ctrlKeyLabel} + /` : "F1";
+const keyOpenHelp = "F1";
 
 type Props = {
   children?: ReactNode
+  withHotkey?: boolean
 }
 
-const ShortcutKeys: FC<Props> = ({ children }) => {
+const ShortcutKeys: FC<Props> = ({ children, withHotkey = true }) => {
 
   const {
     value: openList,
@@ -25,12 +23,10 @@ const ShortcutKeys: FC<Props> = ({ children }) => {
   } = useBoolean(false);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const openOnMac = isMac && e.key === "/" && e.metaKey;
-    const openOnOther = !isMac && e.key === "F1" && !e.metaKey;
-    if (openOnMac || openOnOther) {
-      handleOpen();
-    }
-  }, [handleOpen]);
+    if (!withHotkey) return;
+    const openOnOther = e.key === "F1";
+    if (openOnOther) handleOpen();
+  }, [handleOpen, withHotkey]);
 
   useEventListener("keydown", handleKeyDown);
 

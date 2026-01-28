@@ -90,7 +90,7 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
           onChange={handleChangeStacked}
         />
       </div>
-      <ShortcutKeys>
+      <ShortcutKeys withHotkey={false}>
         <Button
           variant="text"
           color="gray"

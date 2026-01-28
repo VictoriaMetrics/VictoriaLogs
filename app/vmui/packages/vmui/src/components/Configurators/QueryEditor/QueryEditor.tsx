@@ -7,6 +7,10 @@ import { AutocompleteOptions } from "../../Main/Autocomplete/Autocomplete";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { useQueryState } from "../../../state/query/QueryStateContext";
 import debounce from "lodash.debounce";
+import { toggleLineComment } from "./LogsQL/utils";
+import { ctrlKeyLabel } from "../../../utils/keyboard";
+import Tooltip from "../../Main/Tooltip/Tooltip";
+import { QuestionIcon } from "../../Main/Icons";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
@@ -71,14 +75,16 @@ const QueryEditor: FC<QueryEditorProps> = ({
 
   const handleKeyDown = (e: TextFieldKeyboardEvent) => {
     const { key, ctrlKey, metaKey, shiftKey } = e;
+    const target = e.target as HTMLTextAreaElement;
 
-    const value = (e.target as HTMLTextAreaElement).value || "";
+    const value = target.value || "";
     const isMultiline = value.split("\n").length > 1;
 
     const ctrlMetaKey = ctrlKey || metaKey;
     const arrowUp = key === "ArrowUp";
     const arrowDown = key === "ArrowDown";
     const enter = key === "Enter";
+    const isSlash = key === "/";
 
     // prev value from history
     if (arrowUp && ctrlMetaKey) {
@@ -100,6 +106,21 @@ const QueryEditor: FC<QueryEditorProps> = ({
     if (enter && !shiftKey && (!isMultiline || ctrlMetaKey) && !openAutocomplete) {
       e.preventDefault();
       onEnter();
+    }
+
+    // comment code with #
+    if (ctrlMetaKey && isSlash) {
+      e.preventDefault();
+
+      const { selectionStart, selectionEnd } = target;
+      const {
+        value: nextText,
+        selectionStart: nextPosStart,
+        selectionEnd: nextPosEnd
+      } = toggleLineComment({ value, selectionStart, selectionEnd });
+
+      onChange(nextText);
+      setCaretPositionInput([nextPosStart, nextPosEnd]);
     }
   };
 
@@ -137,6 +158,25 @@ const QueryEditor: FC<QueryEditorProps> = ({
         disabled={disabled}
         inputmode={"search"}
         caretPosition={caretPositionInput}
+        endIcon={(
+          <Tooltip
+            title={
+              <div className="vm-query-editor-help-tooltip">
+                <p className="vm-query-editor-help-tooltip-item">
+                  <span>Shift + Enter</span> <span>insert a new line</span>
+                </p>
+                <p className="vm-query-editor-help-tooltip-item">
+                  <span>Ctrl + Enter</span> <span>execute query</span>
+                </p>
+                <p className="vm-query-editor-help-tooltip-item">
+                  <span>{ctrlKeyLabel} + /</span> <span>toggle line comment</span>
+                </p>
+              </div>
+            }
+          >
+            <QuestionIcon/>
+          </Tooltip>
+        )}
       />
       {autocomplete && AutocompleteEl && (
         <AutocompleteEl

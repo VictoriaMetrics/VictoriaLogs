@@ -46,16 +46,64 @@ const getDateQuery = (contextData: ContextData) => {
  * @returns {string} The generated query string.
  */
 export const generateQuery = (contextData: ContextData): string => {
-  let fieldQuery = "";
+  let fieldQuery = `${contextData.filterName}:${contextData.valueContext}*`;
   if (!contextData.filterName || !contextData.query || ["_msg", "_stream_id"].includes(contextData.filterName)) {
     fieldQuery = "*";
   } else if ("_stream" === contextData.filterName) {
     fieldQuery = getStreamFieldQuery(contextData.valueContext);
   } else if ("_time" === contextData.filterName) {
     fieldQuery = getDateQuery(contextData);
-  } else {
-    fieldQuery = `${contextData.filterName}:${contextData.valueContext}*`;
   }
 
   return contextData.queryBeforeIncompleteFilter ? `${contextData.queryBeforeIncompleteFilter}${contextData.separator ?? " "}${fieldQuery}` : fieldQuery;
+};
+
+type ToggleLineComment = {
+  value: string;
+  selectionStart?: number;
+  selectionEnd?: number;
+}
+
+type ToggleLineCommentResult = {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
+};
+
+export const toggleLineComment = ({
+  value,
+  selectionStart = 0,
+  selectionEnd = 0,
+}: ToggleLineComment): ToggleLineCommentResult => {
+  const idxEnd = value.indexOf("\n", selectionEnd);
+  const idxStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1));
+
+  const rangeStart = idxStart + 1;
+  const rangeEnd =  idxEnd === -1 ? value.length : idxEnd;
+
+  const block = value.slice(rangeStart, rangeEnd);
+  const lines = block.split("\n");
+
+  const allCommented = lines.length > 0 && lines.every(l => /^\s*#/.test(l));
+
+  const newLines = allCommented
+    // remove first # after leading whitespace
+    ? lines.map(l => l.replace(/^(\s*)#\s?/, "$1"))
+    // add # after leading whitespace
+    : lines.map(l => l.replace(/^(\s*)/, "$1# "));
+
+  const newBlock = newLines.join("\n");
+  const nextValue = value.slice(0, rangeStart) + newBlock + value.slice(rangeEnd);
+
+  const deltaStart = newLines[0].length - lines[0].length;
+  const nextPosStart = selectionStart + deltaStart;
+
+  const deltaEnd = newBlock.length - block.length;
+  const nextPosEnd = selectionStart === selectionEnd ? nextPosStart : selectionEnd + deltaEnd;
+
+  return {
+    value: nextValue,
+    selectionStart: nextPosStart,
+    selectionEnd: nextPosEnd,
+  };
 };
