@@ -220,7 +220,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain step
-	step, err := parseDuration(r, "step", "1d")
+	step, err := parseDuration(r, "step", "")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -249,7 +249,6 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	// Add a pipe, which calculates hits over time with the given step and offset for the given fields.
 	ca.q.AddCountByTimePipe(step, offset, fields)
-	start, end := ca.q.GetFilterTimeRange()
 
 	var mLock sync.Mutex
 	m := make(map[string]*hitsSeries)
@@ -304,7 +303,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	m = getTopHitsSeries(m, fieldsLimit)
-	addMissingZeroHits(m, start, end, step, offset)
+	addMissingZeroHits(m, ca.startAligned, ca.endAligned, step, offset)
 
 	// Write response headers
 	h := w.Header()
@@ -860,7 +859,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	// Obtain step
-	step, err := parseDuration(r, "step", "1d")
+	step, err := parseDuration(r, "step", "")
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1340,6 +1339,12 @@ type commonArgs struct {
 
 	// qs contains query execution statistics.
 	qs logstorage.QueryStats
+
+	// startAligned is the start of the selected time range aligned to the given step.
+	startAligned int64
+
+	// endAligned is the aligned end of the selected time range aligned to the given step.
+	endAligned int64
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
@@ -1431,6 +1436,16 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		q.AddTimeFilter(start, end)
 	}
 
+	// Initialize startAligned and endAligned
+	startAligned := int64(math.MinInt64)
+	if startOK {
+		startAligned = start
+	}
+	endAligned := int64(math.MaxInt64)
+	if endOK {
+		endAligned = end
+	}
+
 	// Parse optional extra_filters
 	for _, extraFiltersStr := range r.Form["extra_filters"] {
 		extraFilters, err := parseExtraFilters(extraFiltersStr)
@@ -1477,6 +1492,9 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 
 		allowPartialResponse: allowPartialResponse,
 		hiddenFieldsFilters:  hiddenFieldsFilters,
+
+		startAligned: startAligned,
+		endAligned:   endAligned,
 	}
 	return ca, nil
 }
