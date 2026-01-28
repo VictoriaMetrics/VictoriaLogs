@@ -23,8 +23,10 @@ according to the following docs:
 ## tip
 
 * FEATURE: [`/select/logsql/stats_query_range` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats): support optional `offset` query arg, which can contain timezone offset for the returned timestamps. This is needed for the consistency with the [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats).
+* FEATURE: [dashboard/single-node](https://grafana.com/grafana/dashboards/22084) and [dashboard/cluster](https://grafana.com/grafana/dashboards/23274): improve and fix dashboard descriptions, make them more compatible with the Prometheus datasource, and add a `cluster` variable for easier selection of components from the same cluster. See [#933](https://github.com/VictoriaMetrics/VictoriaLogs/pull/933).
 
 * BUGFIX: [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): properly apply `offset` arg. Previously it resulted in incorrect calculations for the returned timestamps.
+
 
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)
 
