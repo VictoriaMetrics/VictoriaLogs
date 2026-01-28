@@ -18,7 +18,7 @@ The following `tip` changes can be tested by building VictoriaLogs components fr
 according to the following docs:
 
 * [How to build VictoriaLogs from source code](https://docs.victoriametrics.com/victorialogs/quickstart/#building-from-source-code)
-* [How to build vlagent from source code](https://docs.victoriametrics.com/vlagent/#building-from-source-code)
+* [How to build vlagent from source code](https://docs.victoriametrics.com/victorialogs/vlagent/#building-from-source-code)
 
 ## tip
 
