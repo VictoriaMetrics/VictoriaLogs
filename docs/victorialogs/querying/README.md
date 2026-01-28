@@ -226,22 +226,24 @@ See also:
 
 ### Querying hits stats
 
-VictoriaLogs provides `/select/logsql/hits?query=<query>&start=<start>&end=<end>&step=<step>` HTTP endpoint, which returns the number
+VictoriaLogs provides `/select/logsql/hits?query=<query>&start=<start>&end=<end>&step=<step>&offset=<offset>` HTTP endpoint, which returns the number
 of matching log entries for the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)`
-time range grouped by `<step>` buckets. The returned results are sorted by time.
+time range grouped by `<step>` buckets with the given optional timezone `<offset>`. The returned results are sorted by time.
+
+The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned bucket can contain timestamp smaller than the `<start>`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` arg can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
 If `<step>` is missing, then it equals to `1d` (one day).
 
 For example, the following command returns per-hour number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) over logs for the last 3 hours:
 
 ```sh
-curl http://localhost:9428/select/logsql/hits -d 'query=error' -d 'start=3h' -d 'step=1h'
+curl http://localhost:9428/select/logsql/hits -d 'query=error' -d 'start=3h' -d 'end=now' -d 'step=1h'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -267,20 +269,11 @@ Below is an example JSON output returned from this endpoint:
 }
 ```
 
-Additionally, the `offset=<offset>` arg can be passed to `/select/logsql/hits` in order to group buckets according to the given timezone offset.
-The `<offset>` can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
-For example, the following command returns per-day number of logs with `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
-over the last week in New York time zone (`-4h`):
-
-```sh
-curl http://localhost:9428/select/logsql/hits -d 'query=error' -d 'start=1w' -d 'step=1d' -d 'offset=-4h'
-```
-
 Additionally, any number of `field=<field_name>` args can be passed to `/select/logsql/hits` for grouping hits buckets by the mentioned `<field_name>` fields.
 For example, the following query groups hits by `level` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) additionally to the provided `step`:
 
 ```sh
-curl http://localhost:9428/select/logsql/hits -d 'query=*' -d 'start=3h' -d 'step=1h' -d 'field=level'
+curl http://localhost:9428/select/logsql/hits -d 'query=*' -d 'start=3h' -d 'end=now' -d 'step=1h' -d 'field=level'
 ```
 
 The grouped fields are put inside `"fields"` object:
@@ -532,20 +525,24 @@ See also:
 
 ### Querying log range stats
 
-VictoriaLogs provides `/select/logsql/stats_query_range?query=<query>&start=<start>&end=<end>&step=<step>` HTTP endpoint, which returns log stats
-for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[start ... end)` time range with the given `step` interval.
+VictoriaLogs provides `/select/logsql/stats_query_range?query=<query>&start=<start>&end=<end>&step=<step>&offset=<offset>` HTTP endpoint, which returns log stats
+for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[start ... end)` time range with the given `step` interval
+and the given optional timezone offset specified in the `<offset>`.
 The stats is returned in the format compatible with [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries).
+
+The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned interval can be smaller than the `<start>`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` arg can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
 If `<step>` is missing, then it equals to `1d` (one day).
 
-Note: The `/select/logsql/stats_query_range` endpoint
-relies on `_time` field for time bucketing and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.
-In contrast, queries passed to [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) can include any pipes before the `| stats ...` pipe, including pipes that modify or remove the `_time` field.
+Note: The `/select/logsql/stats_query_range` endpoint relies on `_time` field for time bucketing
+and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.
+In contrast, queries passed to [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats)
+can include any pipes before the `| stats ...` pipe, including pipes that modify or remove the `_time` field.
 
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
 with labels from `by(...)` clause of the `| stats by(...)` pipe.
@@ -659,7 +656,7 @@ For example, the following command returns `_stream_id` values across logs with 
 for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/stream_ids -d 'query=error' -d 'start=5m'
+curl http://localhost:9428/select/logsql/stream_ids -d 'query=error' -d 'start=5m' -d 'end=now'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -722,7 +719,7 @@ For example, the following command returns streams across logs with the `error` 
 for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/streams -d 'query=error' -d 'start=5m'
+curl http://localhost:9428/select/logsql/streams -d 'query=error' -d 'start=5m' -d 'end=now'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -786,7 +783,7 @@ For example, the following command returns stream field names across logs with t
 for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/stream_field_names -d 'query=error' -d 'start=5m'
+curl http://localhost:9428/select/logsql/stream_field_names -d 'query=error' -d 'start=5m' -d 'end=now'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -846,7 +843,7 @@ For example, the following command returns values for the stream field `host` ac
 for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/stream_field_values -d 'query=error' -d 'start=5m' -d 'field=host'
+curl http://localhost:9428/select/logsql/stream_field_values -d 'query=error' -d 'start=5m' -d 'end=now' -d 'field=host'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -924,7 +921,7 @@ For example, the following command returns field names across logs with the `err
 for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/field_names -d 'query=error' -d 'start=5m'
+curl http://localhost:9428/select/logsql/field_names -d 'query=error' -d 'start=5m' -d 'end=now'
 ```
 
 Below is an example JSON output returned from this endpoint:
@@ -984,7 +981,7 @@ For example, the following command returns unique values for `host` [field](http
 across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) for the last 5 minutes:
 
 ```sh
-curl http://localhost:9428/select/logsql/field_values -d 'query=error' -d 'field=host' -d 'start=5m'
+curl http://localhost:9428/select/logsql/field_values -d 'query=error' -d 'field=host' -d 'start=5m' -d 'end=now'
 ```
 
 Below is an example JSON output returned from this endpoint:

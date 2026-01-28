@@ -1037,13 +1037,13 @@ func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
 //
 // The remaining fields are considered metrics.
 func (q *Query) GetStatsLabels() ([]string, error) {
-	return q.GetStatsLabelsAddGroupingByTime(0)
+	return q.GetStatsLabelsAddGroupingByTime(0, 0)
 }
 
 // GetStatsLabelsAddGroupingByTime returns stats labels from q for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints
 //
 // if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
-func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
+func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, error) {
 	idx := getLastPipeStatsIdx(q.pipes)
 	if idx < 0 {
 		return nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
@@ -1067,7 +1067,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
 	}
 
 	// add _time:step to by (...) list at stats pipes.
-	q.addByTimeFieldToStatsPipes(step)
+	q.addByTimeFieldToStatsPipes(step, offset)
 
 	// propagate the step into rate* funcs at stats pipes.
 	q.initStatsRateFuncs(step)
@@ -1730,10 +1730,10 @@ func (q *Query) initStatsRateFuncs(step int64) {
 	}
 }
 
-func (q *Query) addByTimeFieldToStatsPipes(step int64) {
+func (q *Query) addByTimeFieldToStatsPipes(step, offset int64) {
 	for _, p := range q.pipes {
 		if ps, ok := p.(*pipeStats); ok {
-			ps.addByTimeField(step)
+			ps.addByTimeField(step, offset)
 		}
 	}
 }

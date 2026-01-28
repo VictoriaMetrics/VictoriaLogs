@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [`/select/logsql/stats_query_range` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats): support optional `offset` query arg, which can contain timezone offset for the returned timestamps. This is needed for the consistency with the [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats).
+
 * BUGFIX: [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): properly apply `offset` arg. Previously it resulted in incorrect calculations for the returned timestamps.
 
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)

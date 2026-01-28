@@ -871,7 +871,14 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step)
+	// Obtain offset
+	offset, err := parseDuration(r, "offset", "0s")
+	if err != nil {
+		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
+	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1364,9 +1371,9 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 	if err != nil {
 		return nil, err
 	}
-	// Treat HTTP 'end' query arg as exclusive: [start, end)
-	// Convert to inclusive bound for internal filter by subtracting 1ns.
 	if endOK {
+		// Treat HTTP 'end' query arg as exclusive: [start, end)
+		// Convert to inclusive bound for internal filter by subtracting 1ns.
 		if end != math.MinInt64 {
 			end--
 		}
