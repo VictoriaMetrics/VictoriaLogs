@@ -23,22 +23,9 @@
   &-header {
     display: flex;
     flex-wrap: wrap;
-    align-content: center;
+    align-items: center;
     justify-content: space-between;
-    gap: $padding-small;
+    gap: $padding-global;
     padding: $padding-small $padding-small 0;
-
-    &-info {
-      display: flex;
-      align-items: center;
-      gap: $padding-small;
-      color: $color-text-secondary;
-      font-size: $font-size-small;
-      font-family: monospace;
-
-      &_mobile {
-        flex-wrap: wrap;
-      }
-    }
   }
 }
