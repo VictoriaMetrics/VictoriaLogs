@@ -182,18 +182,39 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 }
 
 func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg string, preserveKeys []string) bool {
-	if msgParser == nil || len(msg) < 2 || msg[0] != '{' || msg[len(msg)-1] != '}' {
+	if msgParser == nil || len(msg) < 2 || msg[0] != '{' {
 		fs.Add("_msg", msg)
 		return false
 	}
-	if msgParser != nil && len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
-		if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg), preserveKeys); err == nil {
-			fs.Fields = append(fs.Fields, msgParser.Fields...)
-			return true
+
+	msgTrimmed := msg
+	if msg[len(msg)-1] != '}' {
+		msgTrimmed = trimTrailingWhitespace(msg)
+		if len(msgTrimmed) < 2 || msgTrimmed[len(msgTrimmed)-1] != '}' {
+			fs.Add("_msg", msg)
+			return false
 		}
+	}
+
+	if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msgTrimmed), preserveKeys); err == nil {
+		fs.Fields = append(fs.Fields, msgParser.Fields...)
+		return true
 	}
 	fs.Add("_msg", msg)
 	return false
+}
+
+func trimTrailingWhitespace(s string) string {
+	i := len(s)
+	for i > 0 {
+		switch s[i-1] {
+		case ' ', '\n', '\r', '\t':
+			i--
+		default:
+			return s[:i]
+		}
+	}
+	return ""
 }
 
 func parseLokiTimestamp(s string) (int64, error) {
