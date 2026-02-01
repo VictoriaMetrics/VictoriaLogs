@@ -26,6 +26,7 @@ according to the following docs:
 * FEATURE: [dashboard/single-node](https://grafana.com/grafana/dashboards/22084) and [dashboard/cluster](https://grafana.com/grafana/dashboards/23274): improve and fix dashboard descriptions, make them more compatible with the Prometheus datasource, and add a `cluster` variable for easier selection of components from the same cluster. See [#933](https://github.com/VictoriaMetrics/VictoriaLogs/pull/933).
 
 * BUGFIX: [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): properly apply `offset` arg. Previously it resulted in incorrect calculations for the returned timestamps.
+* BUGFIX: [Loki data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/): properly parse JSON-encoded log fields inside Loki log message if it ends with whitespace chars such as `\n`. See [#1044](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1044).
 
 
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)
