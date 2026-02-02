@@ -26,6 +26,7 @@ according to the following docs:
 * FEATURE: [dashboard/single-node](https://grafana.com/grafana/dashboards/22084) and [dashboard/cluster](https://grafana.com/grafana/dashboards/23274): improve and fix dashboard descriptions, make them more compatible with the Prometheus datasource, and add a `cluster` variable for easier selection of components from the same cluster. See [#933](https://github.com/VictoriaMetrics/VictoriaLogs/pull/933).
 
 * BUGFIX: [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): properly apply `offset` arg. Previously it resulted in incorrect calculations for the returned timestamps.
+* BUGFIX: [dashboard/single-node](https://grafana.com/grafana/dashboards/22084): include `internalinsert` (`/internal/insert`) in `Logs ingestion rate` panels, so they work for data ingested via `vlagent` configured with `-remoteWrite.url=.../internal/insert`. See [#1053](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1053).
 
 
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)

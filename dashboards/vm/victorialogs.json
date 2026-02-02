@@ -1045,7 +1045,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(rate(vl_rows_ingested_total{job=~\"$job\", instance=~\"$instance\", type!=\"internalinsert\"}[$__rate_interval])) by (type)",
+          "expr": "sum(rate(vl_rows_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type)",
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
@@ -1059,7 +1059,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\", type!=\"internalinsert\"}[$__rate_interval])) by (type)",
+          "expr": "sum(rate(vl_bytes_ingested_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (type)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}} (bytes)",
