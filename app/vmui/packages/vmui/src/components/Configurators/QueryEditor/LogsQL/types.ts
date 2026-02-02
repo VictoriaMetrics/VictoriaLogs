@@ -2,19 +2,18 @@ export enum LogicalPartType {
   Filter = "Filter",
   Pipe = "Pipe",
   Operator = "Operator",
+  LineBreak = "LineBreak",
   FilterOrPipe = "FilterOrPipe",
 }
 
 export type LogicalPartPosition = [start: number, end: number];
-
-export type LogicalPartSeparator = " " | "|";
 
 export interface LogicalPart {
   id: number;
   value: string;
   type: LogicalPartType;
   position: LogicalPartPosition;
-  separator?: LogicalPartSeparator;
+  separator?: string;
 }
 
 export interface ContextData {
@@ -25,7 +24,7 @@ export interface ContextData {
   filterName?: string;
   query?: string;
   queryBeforeIncompleteFilter?: string;
-  separator?: LogicalPartSeparator;
+  separator?: string;
   operator?: ":" | ":!" | ":-" | ":=" | ":~" | ":<" | ":>" | ":<=" | ":>=";
 }
 

@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix autocomplete insertion to prevent overwriting remaining input and preserve newline characters. See [#917](https://github.com/VictoriaMetrics/VictoriaLogs/issues/917).
+
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)
 
 Released at 2026-01-27
