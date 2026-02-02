@@ -187,9 +187,12 @@ func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg st
 		return false
 	}
 
+	// Trailing whitespace in the JSON message shouldn't break automatic JSON parsing.
+	//
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1044
 	msgTrimmed := msg
 	if msg[len(msg)-1] != '}' {
-		msgTrimmed = trimTrailingWhitespace(msg)
+		msgTrimmed = trimTrailingJSONWhitespace(msg)
 		if len(msgTrimmed) < 2 || msgTrimmed[len(msgTrimmed)-1] != '}' {
 			fs.Add("_msg", msg)
 			return false
@@ -204,7 +207,7 @@ func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msg st
 	return false
 }
 
-func trimTrailingWhitespace(s string) string {
+func trimTrailingJSONWhitespace(s string) string {
 	i := len(s)
 	for i > 0 {
 		switch s[i-1] {
