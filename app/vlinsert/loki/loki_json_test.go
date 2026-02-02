@@ -199,9 +199,7 @@ func TestParseJSONRequest_ParseMessage(t *testing.T) {
 	]
 }`, []string{"a", "trace_id"}, []string{"x"}, []int64{1577836800000000001}, `{"x":"y","_msg":"111","parent_id":"abc","x":"{\"a\":123}"}`)
 
-	// Trailing whitespace in the JSON message shouldn't break automatic JSON parsing.
-	//
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1044
+	// with trailing whitespace in the JSON message
 	f(`{"streams":[{"stream":{"foo":"bar2"},"values":[["1577836800000000001","{\"bar\":\"baz\",\"_msg\":\"I am parsed\"}\n"]]}]}`,
 		nil, nil, []int64{1577836800000000001}, `{"foo":"bar2","bar":"baz","_msg":"I am parsed"}`)
 	f(`{"streams":[{"stream":{"foo":"bar2"},"values":[["1577836800000000001","{\"bar\":\"baz\",\"_msg\":\"I am parsed\"}\r\n\t  "]]}]}`,
