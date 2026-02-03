@@ -1190,7 +1190,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(rate(vl_http_requests_total{job=~\"$job\", instance=~\"$instance\", path!~\"^/internal/.*\"}[$__rate_interval])) by (path)",
+          "expr": "sum(rate(vl_http_requests_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (path)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1469,7 +1469,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "max(vl_http_request_duration_seconds{job=~\"$job\", instance=~\"$instance\", path!~\"^/internal/.*\", quantile=\"0.99\"}) by (path)",
+          "expr": "max(vl_http_request_duration_seconds{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}) by (path)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{path}}",
