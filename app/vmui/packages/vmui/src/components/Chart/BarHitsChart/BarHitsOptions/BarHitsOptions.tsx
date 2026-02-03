@@ -34,32 +34,35 @@ const BarHitsOptions: FC<Props> = ({ isOverview, onChange }) => {
     hideChart,
   }), [stacked, cumulative, hideChart, queryMode]);
 
-  const handleChangeMode = (val: boolean) => {
+  const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
+    const next = new URLSearchParams(searchParams);
+    shouldSet ? next.set(key, paramValue ?? String(shouldSet)) : next.delete(key);
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+
+  const handleChangeMode = useCallback((val: boolean) => {
     const mode = val ? GRAPH_QUERY_MODE.stats : GRAPH_QUERY_MODE.hits;
     setQueryMode(mode);
     handleChangeSearchParams("graph_mode", val, mode);
-  };
+  }, [setQueryMode, handleChangeSearchParams]);
 
-  const handleChangeStacked = (val: boolean) => {
+  const handleChangeStacked = useCallback((val: boolean) => {
     setStacked(val);
     handleChangeSearchParams("stacked", val);
-  };
+  }, [setStacked, handleChangeSearchParams]);
 
-  const handleChangeCumulative = (val: boolean) => {
+  const handleChangeCumulative = useCallback((val: boolean) => {
     setCumulative(val);
     handleChangeSearchParams("cumulative", val);
-  };
+  }, [setCumulative, handleChangeSearchParams]);
 
   const toggleHideChart = useCallback(() => {
-    const val = !hideChart;
-    setHideChart(val);
-    handleChangeSearchParams("hide_chart", val);
-  }, [hideChart]);
-
-  const handleChangeSearchParams = (key: string, shouldSet: boolean, paramValue?: string) => {
-    shouldSet ? searchParams.set(key, paramValue ?? String(shouldSet)) : searchParams.delete(key);
-    setSearchParams(searchParams);
-  };
+    setHideChart(prev => {
+      const nextVal = !prev;
+      handleChangeSearchParams("hide_chart", nextVal);
+      return nextVal;
+    });
+  }, [setHideChart, handleChangeSearchParams]);
 
   useEffect(() => {
     onChange(options);
