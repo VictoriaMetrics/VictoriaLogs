@@ -10,8 +10,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
 import useProcessStatsQueryRange from "./useProcessStatsQueryRange";
-
-
+import dayjs from "dayjs";
 
 type ResponseHits = {
   hits: LogHits[];
@@ -57,10 +56,12 @@ export const useFetchLogHits = (defaultQuery = "*") => {
 
   const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, barsCount }: OptionsParams) => {
     const { start, end, step } = getHitsTimeParams(period, barsCount);
+    const offsetMinutes = dayjs().tz().utcOffset();
 
     const params = new URLSearchParams({
       query: query.trim(),
       step: `${step}ms`,
+      offset: `${offsetMinutes}m`,
       start: start.toISOString(),
       end: end.toISOString(),
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
