@@ -229,6 +229,34 @@ For additional tips on writing LogsQL, refer to this [doc](https://docs.victoria
 
 ## Frequently Asked Questions
 
+### How to attach a sample log row to alerts?
+
+Sometimes it may be useful to attach a representative log line to the alert message (e.g. for Slack notifications without opening UI).
+Use [`row_any()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats) only inside `annotations` via the `query` template function.
+
+> Note: do not use these functions in `expr`, since the returned row can change between evaluations. vmalert identifies each alert instance by the full label set (excluding `__name__`), changing labels leads to alert flapping and resets the `for:` timer.
+
+Example with a stable `expr` and a sampled log message in `annotations`:
+
+```yaml
+groups:
+  - name: vlogs
+    type: vlogs
+    interval: 1m
+    rules:
+      - alert: ErrorsByPath
+        expr: '* | stats by (path) count() as errors | filter errors:>10'
+        for: 2m
+        annotations:
+          description: >-
+            path={{ $labels.path }} errors={{ $value }}
+            {{ $ms := query (printf "path:%q | stats count() as hits, row_any(_msg) as sample_msg | filter hits:>0" $labels.path) }}
+            {{ if gt (len $ms) 0 }}sample={{ label "sample_msg" (index $ms 0) }}{{ end }}
+```
+
+The same approach applies to [`row_max()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_max-stats) and [`row_min()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_min-stats).
+For example, use `row_max(duration, _msg)` in an annotation query if you want to attach the "slowest" log line in the evaluation window (the log entry with the maximum `duration`), and use `row_min(duration, _msg)` if you want to attach the "fastest" one (minimum `duration`).
+
 ### How to use [multitenancy](https://docs.victoriametrics.com/victorialogs/#multitenancy) in rules?
 
 vmalert doesn't support multi-tenancy for VictoriaLogs in the same way as it [supports it for VictoriaMetrics in the Enterprise version](https://docs.victoriametrics.com/victoriametrics/vmalert/#multitenancy).
