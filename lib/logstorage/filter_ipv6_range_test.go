@@ -223,6 +223,13 @@ func TestFilterIPv6Range(t *testing.T) {
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
 
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("::"),
+			maxValue:  mustParseIPv6("ffff::"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
+
 		// mismatch
 		fr = &filterIPv6Range{
 			fieldName: "foo",

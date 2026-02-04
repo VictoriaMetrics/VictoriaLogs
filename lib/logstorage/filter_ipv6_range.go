@@ -37,14 +37,29 @@ func (fr *filterIPv6Range) getMinMaxIPv4Values() (uint32, uint32, bool) {
 }
 
 func (fr *filterIPv6Range) initMinMaxIPv4Values() {
-	vMin, okMin := getIPv4ValueFrom16(fr.minValue)
-	vMax, okMax := getIPv4ValueFrom16(fr.maxValue)
+	minValue6 := fr.minValue
+	if ipv6Less(minValue6, minIPv6ForIPv4Value) {
+		minValue6 = minIPv6ForIPv4Value
+	}
+	minValue4, okMin := getIPv4ValueFrom16(minValue6)
+
+	maxValue6 := fr.maxValue
+	if ipv6Less(maxIPv6ForIPv4Value, maxValue6) {
+		maxValue6 = maxIPv6ForIPv4Value
+	}
+	maxValue4, okMax := getIPv4ValueFrom16(maxValue6)
+
 	if okMin && okMax {
-		fr.minIPv4Value = vMin
-		fr.maxIPv4Value = vMax
+		fr.minIPv4Value = minValue4
+		fr.maxIPv4Value = maxValue4
 		fr.isIPv4 = true
 	}
 }
+
+var (
+	minIPv6ForIPv4Value = [16]byte{10: 255, 11: 255}
+	maxIPv6ForIPv4Value = [16]byte{10: 255, 11: 255, 12: 255, 13: 255, 14: 255, 15: 255}
+)
 
 func getIPv4ValueFrom16(a [16]byte) (uint32, bool) {
 	addr := netip.AddrFrom16(a).Unmap()
