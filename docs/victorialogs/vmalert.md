@@ -122,7 +122,6 @@ groups:
           description: "Connection from address {{$labels.ip}} has {{$value}}% failed requests in the last 5 minutes"
 ```
 
-
 #### Recording rules
 
 Examples:
