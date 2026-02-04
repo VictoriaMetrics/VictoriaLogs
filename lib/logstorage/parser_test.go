@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"math"
+	"net"
 	"reflect"
 	"strings"
 	"testing"
@@ -1002,6 +1003,44 @@ func TestParseFilterIPv4Range(t *testing.T) {
 	f(`ipv4_range(1.2.3.34/0)`, `_msg`, 0, 0xffffffff)
 }
 
+func TestParseFilterIPv6Range(t *testing.T) {
+	f := func(s, fieldNameExpected, minIPExpected, maxIPExpected string) {
+		t.Helper()
+		q, err := ParseQuery(s)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		fr, ok := q.f.(*filterIPv6Range)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterIPv6Range; filter: %s", q.f, q.f)
+		}
+		if fr.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		}
+		minWant := net.ParseIP(minIPExpected).To16()
+		if minWant == nil {
+			t.Fatalf("invalid minIPExpected in test: %q", minIPExpected)
+		}
+		maxWant := net.ParseIP(maxIPExpected).To16()
+		if maxWant == nil {
+			t.Fatalf("invalid maxIPExpected in test: %q", maxIPExpected)
+		}
+		if !reflect.DeepEqual(fr.minValue[:], []byte(minWant)) {
+			t.Fatalf("unexpected minValue;\ngot\n%v\nwant\n%v", net.IP(fr.minValue[:]), net.IP(minWant))
+		}
+		if !reflect.DeepEqual(fr.maxValue[:], []byte(maxWant)) {
+			t.Fatalf("unexpected maxValue;\ngot\n%v\nwant\n%v", net.IP(fr.maxValue[:]), net.IP(maxWant))
+		}
+	}
+
+	// simple explicit bounds
+	f(`ipv6_range(::1, ::2)`, `_msg`, "::1", "::2")
+	f(`ip:ipv6_range("2001:db8::1", 2001:db8::2)`, `ip`, "2001:db8::1", "2001:db8::2")
+
+	// CIDR form
+	f(`ipv6_range("2001:db8::/126")`, `_msg`, "2001:db8::", "2001:db8::3")
+}
+
 func TestParseFilterStringRange(t *testing.T) {
 	f := func(s, fieldNameExpected, minValueExpected, maxValueExpected string) {
 		t.Helper()
@@ -1519,6 +1558,12 @@ func TestParseQuery_Success(t *testing.T) {
 	f("a:ipv4_range", `a:"ipv4_range"`)
 	f("a:ipv4_range-foo", `a:"ipv4_range-foo"`)
 	f("ipv4_range-foo:b", `"ipv4_range-foo":b`)
+	f("ipv6_range", `"ipv6_range"`)
+	f("ipv6_range:a", `"ipv6_range":a`)
+	f("ipv6_range-foo", `"ipv6_range-foo"`)
+	f("a:ipv6_range", `a:"ipv6_range"`)
+	f("a:ipv6_range-foo", `a:"ipv6_range-foo"`)
+	f("ipv6_range-foo:b", `"ipv6_range-foo":b`)
 	f("len_range", `"len_range"`)
 	f("len_range:a", `"len_range":a`)
 	f("len_range-foo", `"len_range-foo"`)
@@ -1682,6 +1727,9 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`ipv4_range(1.2.3.4)`, `ipv4_range(1.2.3.4, 1.2.3.4)`)
 	f(`ipv4_range(1.2.3.4/20)`, `ipv4_range(1.2.0.0, 1.2.15.255)`)
 	f(`ipv4_range(1.2.3.4,)`, `ipv4_range(1.2.3.4, 1.2.3.4)`)
+
+	// ipv6_range filter
+	f(`ipv6_range(::1, "::2")`, `ipv6_range(::1, ::2)`)
 
 	// len_range filter
 	f(`len_range(10, 20)`, `len_range(10, 20)`)

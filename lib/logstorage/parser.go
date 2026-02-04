@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -2058,6 +2059,8 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterIn(lex, fieldName)
 	case lex.isKeyword("ipv4_range"):
 		return parseFilterIPv4Range(lex, fieldName)
+	case lex.isKeyword("ipv6_range"):
+		return parseFilterIPv6Range(lex, fieldName)
 	case lex.isKeyword("le_field"):
 		return parseFilterLeField(lex, fieldName)
 	case lex.isKeyword("len_range"):
@@ -2316,6 +2319,40 @@ func parseFilterIPv4Range(lex *lexer, fieldName string) (filter, error) {
 	})
 }
 
+func parseFilterIPv6Range(lex *lexer, fieldName string) (filter, error) {
+	return parseFuncArgs(lex, fieldName, func(funcName string, args []string) (filter, error) {
+		if len(args) == 1 {
+			minValue, maxValue, ok := tryParseIPv6CIDR(args[0])
+			if !ok {
+				return nil, fmt.Errorf("cannot parse IPv6 address or IPv6 CIDR %q at %s()", args[0], funcName)
+			}
+			fr := &filterIPv6Range{
+				fieldName: getCanonicalColumnName(fieldName),
+				minValue:  minValue,
+				maxValue:  maxValue,
+			}
+			return fr, nil
+		}
+		if len(args) != 2 {
+			return nil, fmt.Errorf("unexpected number of args for %s(); got %d; want 2", funcName, len(args))
+		}
+		minValue, ok := tryParseIPv6(args[0])
+		if !ok {
+			return nil, fmt.Errorf("cannot parse lower bound ip %q in %s()", args[0], funcName)
+		}
+		maxValue, ok := tryParseIPv6(args[1])
+		if !ok {
+			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", args[1], funcName)
+		}
+		fr := &filterIPv6Range{
+			fieldName: getCanonicalColumnName(fieldName),
+			minValue:  minValue,
+			maxValue:  maxValue,
+		}
+		return fr, nil
+	})
+}
+
 func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
 	n := strings.IndexByte(s, '/')
 	if n < 0 {
@@ -2333,6 +2370,70 @@ func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
 	mask := uint32((1 << (32 - maskBits)) - 1)
 	minValue := ip &^ mask
 	maxValue := ip | mask
+	return minValue, maxValue, true
+}
+
+func tryParseIPv6(s string) ([16]byte, bool) {
+	// IPv6 string length must be between 2 and 45 characters.
+	// This quickly rejects obviously invalid strings before doing more expensive checks.
+	if len(s) < 2 || len(s) > 45 {
+		return [16]byte{}, false
+	}
+	// Fast path: IPv6 addresses must contain ':'.
+	// This quickly rejects plain IPv4 and other obvious non-IPv6 strings
+	// without calling netip.ParseAddr, which is relatively expensive.
+	if !strings.Contains(s, ":") {
+		return [16]byte{}, false
+	}
+	addr, err := netip.ParseAddr(s)
+	if err != nil || !addr.Is6() {
+		return [16]byte{}, false
+	}
+	return addr.As16(), true
+}
+
+func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
+	var zero [16]byte
+
+	n := strings.IndexByte(s, '/')
+	if n < 0 {
+		ip, ok := tryParseIPv6(s)
+		return ip, ip, ok
+	}
+
+	ip, ok := tryParseIPv6(s[:n])
+	if !ok {
+		return zero, zero, false
+	}
+	maskBits, ok := tryParseUint64(s[n+1:])
+	if !ok || maskBits > 128 {
+		return zero, zero, false
+	}
+
+	minValue := ip
+	maxValue := ip
+
+	if maskBits == 0 {
+		clear(minValue[:])
+		for i := range maxValue {
+			maxValue[i] = 0xff
+		}
+		return minValue, maxValue, true
+	}
+	byteIdx := int(maskBits) / 8
+	bitIdx := int(maskBits) % 8
+	if byteIdx < len(minValue) {
+		if bitIdx > 0 {
+			mask := byte(0xff) << (8 - bitIdx)
+			minValue[byteIdx] &= mask
+			maxValue[byteIdx] |= ^mask
+			byteIdx++
+		}
+		for i := byteIdx; i < len(minValue); i++ {
+			minValue[i] = 0
+			maxValue[i] = 0xff
+		}
+	}
 	return minValue, maxValue, true
 }
 
@@ -3892,6 +3993,7 @@ var reservedKeywords = func() map[string]struct{} {
 		"i",
 		"in",
 		"ipv4_range",
+		"ipv6_range",
 		"le_field",
 		"len_range",
 		"lt_field",
