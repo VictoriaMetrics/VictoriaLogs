@@ -29,6 +29,7 @@ according to the following docs:
 
 * BUGFIX: [`/select/logsql/hits` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): properly apply `offset` arg. Previously it resulted in incorrect calculations for the returned timestamps.
 * BUGFIX: [dashboard/single-node](https://grafana.com/grafana/dashboards/22084): include `internalinsert` (`/internal/insert`) in `Logs ingestion rate` panels, so they work for data ingested via `vlagent` configured with `-remoteWrite.url=.../internal/insert`. See [#1053](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1053).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix unexpected query expression reset to the previous value when clicking on "Hide chart" button. See [#1063](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1063).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix cumulative bar chart by carrying over previous value for nullish bars. This ensures that the cumulative bar chart doesn't decrease over time.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix missing first bar when it starts before the selected range but ends within it.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix redundant `/select/logsql/query_time_range` requests.
