@@ -38,8 +38,8 @@ $padding-small: 8px;
 
 
 /************* fonts *************/
-$font-family-global: system-ui;
-$font-family-monospace: monospace;
+$font-family-global: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+$font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
 $font-size-large: 18px;
 $font-size-medium: 16px;
 $font-size: 14px;

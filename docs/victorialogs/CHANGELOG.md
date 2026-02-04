@@ -33,6 +33,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix cumulative bar chart by carrying over previous value for nullish bars. This ensures that the cumulative bar chart doesn't decrease over time.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix missing first bar when it starts before the selected range but ends within it.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix redundant `/select/logsql/query_time_range` requests.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix responsive layout and styles.
 
 ## [v1.44.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.44.0)
 

@@ -139,17 +139,19 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
       {settingsRef.current && createPortal((
         <div className="vm-group-logs-header">
-          <div className="vm-query-page-body-header__log-info">
-            {isMobile ? "Logs" : "Total logs returned"}: <b>{logs.length}</b>
+          <div className="vm-bar-hits-stats">
+            {!isMobile && (
+              <>
+                <div className="vm-bar-hits-stats__item">Total logs returned: <b>{logs.length}</b></div>
+                <div className="vm-bar-hits-stats__item">Total groups: <b>{groupData.length}</b></div>
+              </>
+            )}
+            <SelectLimit
+              allowUnlimited
+              limit={rowsPerPage}
+              onChange={handleSetRowsPerPage}
+            />
           </div>
-          <div className="vm-query-page-body-header__log-info">
-            {isMobile ? "Groups" : "Total groups"}: <b>{groupData.length}</b>
-          </div>
-          <SelectLimit
-            allowUnlimited
-            limit={rowsPerPage}
-            onChange={handleSetRowsPerPage}
-          />
           <Tooltip title={expandAll ? "Collapse All" : "Expand All"}>
             <Button
               variant="text"

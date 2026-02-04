@@ -1,0 +1,20 @@
+@use "src/styles/variables" as *;
+
+.vm-bar-hits-stats {
+  display: flex;
+  align-items: center;
+  gap: $padding-small;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    background-color: $color-hover-black;
+    border-radius: $border-radius-small;
+    min-height: 24px;
+    color: $color-text-secondary;
+    font-size: $font-size-small;
+    gap: 4px;
+  }
+}

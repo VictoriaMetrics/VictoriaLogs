@@ -1,4 +1,5 @@
 import { DATE_TIME_FORMAT } from "./date";
+import { getIsMobile } from "../hooks/useDeviceDetect";
 
 export const LOGS_DEFAULT_LIMIT = 50;
 export const LOGS_CONFIRM_THRESHOLD = 1000;
@@ -8,7 +9,7 @@ export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 
 export const LOGS_LIMIT_HITS = 5;
 
-export const LOGS_BAR_COUNT_DEFAULT = 96;
+export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
 export const LOGS_BAR_COUNTS = [12, 24, 48, 96, 288, 720, 1440];
 
 // "Ungrouped" is a string that is used as a value for the "groupBy" parameter.
