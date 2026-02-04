@@ -7,10 +7,13 @@
   justify-content: center;
   font-size: $font-size-small;
   color: $color-text-secondary;
+  padding: 2px 4px 2px 8px;
+  border: $border-divider;
+  border-radius: $border-radius-small;
   cursor: pointer;
 
   &:hover {
-    color: $color-primary;
+    background-color: $color-hover-black;
   }
 }
 

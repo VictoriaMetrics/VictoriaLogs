@@ -89,7 +89,7 @@ func (pap *pipeTimeAddProcessor) writeBlock(workerID uint, br *blockResult) {
 		v := c.getValueAtRow(br, rowIdx)
 		ts, ok := TryParseTimestampRFC3339Nano(v)
 		if ok {
-			ts = subNoOverflowInt64(ts, pa.offset)
+			ts = SubInt64NoOverflow(ts, pa.offset)
 			bufLen := len(shard.buf)
 			shard.buf = marshalTimestampRFC3339NanoString(shard.buf, ts)
 			v = bytesutil.ToUnsafeString(shard.buf[bufLen:])

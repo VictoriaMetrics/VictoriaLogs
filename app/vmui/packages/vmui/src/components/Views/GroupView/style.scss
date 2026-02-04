@@ -25,6 +25,10 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         padding: $padding-small;
       }
     }
+
+    .vm-bar-hits-stats {
+      margin-right: $padding-small;
+    }
   }
 
   &-section {

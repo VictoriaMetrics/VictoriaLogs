@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"math"
+	"net"
 	"reflect"
 	"strings"
 	"testing"
@@ -1002,6 +1003,44 @@ func TestParseFilterIPv4Range(t *testing.T) {
 	f(`ipv4_range(1.2.3.34/0)`, `_msg`, 0, 0xffffffff)
 }
 
+func TestParseFilterIPv6Range(t *testing.T) {
+	f := func(s, fieldNameExpected, minIPExpected, maxIPExpected string) {
+		t.Helper()
+		q, err := ParseQuery(s)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		fr, ok := q.f.(*filterIPv6Range)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterIPv6Range; filter: %s", q.f, q.f)
+		}
+		if fr.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		}
+		minWant := net.ParseIP(minIPExpected).To16()
+		if minWant == nil {
+			t.Fatalf("invalid minIPExpected in test: %q", minIPExpected)
+		}
+		maxWant := net.ParseIP(maxIPExpected).To16()
+		if maxWant == nil {
+			t.Fatalf("invalid maxIPExpected in test: %q", maxIPExpected)
+		}
+		if !reflect.DeepEqual(fr.minValue[:], []byte(minWant)) {
+			t.Fatalf("unexpected minValue;\ngot\n%v\nwant\n%v", net.IP(fr.minValue[:]), net.IP(minWant))
+		}
+		if !reflect.DeepEqual(fr.maxValue[:], []byte(maxWant)) {
+			t.Fatalf("unexpected maxValue;\ngot\n%v\nwant\n%v", net.IP(fr.maxValue[:]), net.IP(maxWant))
+		}
+	}
+
+	// simple explicit bounds
+	f(`ipv6_range(::1, ::2)`, `_msg`, "::1", "::2")
+	f(`ip:ipv6_range("2001:db8::1", 2001:db8::2)`, `ip`, "2001:db8::1", "2001:db8::2")
+
+	// CIDR form
+	f(`ipv6_range("2001:db8::/126")`, `_msg`, "2001:db8::", "2001:db8::3")
+}
+
 func TestParseFilterStringRange(t *testing.T) {
 	f := func(s, fieldNameExpected, minValueExpected, maxValueExpected string) {
 		t.Helper()
@@ -1519,6 +1558,12 @@ func TestParseQuery_Success(t *testing.T) {
 	f("a:ipv4_range", `a:"ipv4_range"`)
 	f("a:ipv4_range-foo", `a:"ipv4_range-foo"`)
 	f("ipv4_range-foo:b", `"ipv4_range-foo":b`)
+	f("ipv6_range", `"ipv6_range"`)
+	f("ipv6_range:a", `"ipv6_range":a`)
+	f("ipv6_range-foo", `"ipv6_range-foo"`)
+	f("a:ipv6_range", `a:"ipv6_range"`)
+	f("a:ipv6_range-foo", `a:"ipv6_range-foo"`)
+	f("ipv6_range-foo:b", `"ipv6_range-foo":b`)
 	f("len_range", `"len_range"`)
 	f("len_range:a", `"len_range":a`)
 	f("len_range-foo", `"len_range-foo"`)
@@ -1682,6 +1727,9 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`ipv4_range(1.2.3.4)`, `ipv4_range(1.2.3.4, 1.2.3.4)`)
 	f(`ipv4_range(1.2.3.4/20)`, `ipv4_range(1.2.0.0, 1.2.15.255)`)
 	f(`ipv4_range(1.2.3.4,)`, `ipv4_range(1.2.3.4, 1.2.3.4)`)
+
+	// ipv6_range filter
+	f(`ipv6_range(::1, "::2")`, `ipv6_range(::1, ::2)`)
 
 	// len_range filter
 	f(`len_range(10, 20)`, `len_range(10, 20)`)
@@ -3693,14 +3741,14 @@ func TestQueryDropAllPipes(t *testing.T) {
 }
 
 func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
-	f := func(qStr string, step int64, fieldsExpected []string, qExpected string) {
+	f := func(qStr string, step, offset int64, fieldsExpected []string, qExpected string) {
 		t.Helper()
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsLabelsAddGroupingByTime(step)
+		fields, err := q.GetStatsLabelsAddGroupingByTime(step, offset)
 		if err != nil {
 			t.Fatalf("unexpected error in GetStatsLabelsAddGroupingByTime(): %s", err)
 		}
@@ -3715,84 +3763,86 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 		}
 	}
 
-	f(`* | count()`, nsecsPerHour, []string{"_time"}, `* | stats by (_time:3600000000000) count(*) as "count(*)"`)
-	f(`* | by (level) count() x`, nsecsPerDay, []string{"level", "_time"}, `* | stats by (level, _time:86400000000000) count(*) as x`)
-	f(`* | by (_time:1m) count() x`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as x`)
-	f(`* | by (_time:1m offset 30s,level) count() x, count_uniq(z) y`, nsecsPerDay, []string{"_time", "level"}, `* | stats by (_time:86400000000000, level) count(*) as x, count_uniq(z) as y`)
+	f(`* | count()`, nsecsPerHour, 0, []string{"_time"}, `* | stats by (_time:3600000000000) count(*) as "count(*)"`)
+	f(`* | count() x`, nsecsPerHour, 10*nsecsPerMinute, []string{"_time"}, `* | stats by (_time:3600000000000 offset 600000000000) count(*) as x`)
+	f(`* | count() x`, nsecsPerHour, -nsecsPerDay, []string{"_time"}, `* | stats by (_time:3600000000000 offset -86400000000000) count(*) as x`)
+	f(`* | by (level) count() x`, nsecsPerDay, 0, []string{"level", "_time"}, `* | stats by (level, _time:86400000000000) count(*) as x`)
+	f(`* | by (_time:1m) count() x`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as x`)
+	f(`* | by (_time:1m offset 30s,level) count() x, count_uniq(z) y`, nsecsPerDay, 0, []string{"_time", "level"}, `* | stats by (_time:86400000000000, level) count(*) as x, count_uniq(z) as y`)
 
 	// Verify allowed pipes after the stats pipe
-	f(`* | count() hits | x:y`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | filter x:y`)
-	f(`* | by (path) rate() rps | first 3 by (rps)`, nsecsPerDay, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | first 3 by (rps) partition by (_time)`)
-	f(`* | by (path) rate() rps | last 3 by (rps)`, nsecsPerDay, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | last 3 by (rps) partition by (_time)`)
-	f(`* | by (path) rate() rps | sort (rps) limit 3`, nsecsPerDay, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | sort by (rps) partition by (_time) limit 3`)
-	f(`* | count() hits | running_stats sum(hits) running_hits`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | running_stats sum(hits) as running_hits`)
-	f(`* | count() hits | running_stats sum(hits) running_hits | rm hits`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | running_stats sum(hits) as running_hits | delete hits`)
-	f(`* | count() hits | total_stats sum(hits) running_hits`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits`)
-	f(`* | count() hits | total_stats sum(hits) running_hits | rm hits`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits | delete hits`)
-	f(`* | count() hits | math hits+bar as baz`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | math (hits + bar) as baz`)
-	f(`* | count() hits | fields _time, hits, bar`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | fields _time, hits, bar`)
-	f(`* | count() hits | delete foo, bar`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | delete foo, bar`)
-	f(`* | count() hits | copy hits x, a b`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | copy hits as x, a as b`)
-	f(`* | count() hits | mv hits x, a b`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | rename hits as x, a as b`)
-	f(`* | count() hits | format "foo<hits>" as bar`, nsecsPerDay, []string{"_time", "bar"}, `* | stats by (_time:86400000000000) count(*) as hits | format "foo<hits>" as bar`)
-	f(`* | count() hits, row_any(_msg) msg_sample`, nsecsPerDay, []string{"_time", "msg_sample"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample`)
-	f(`* | count() hits, row_any(_msg) msg_sample | unpack_json from msg_sample fields (_msg) | rm msg_sample`, nsecsPerDay, []string{"_time", "_msg"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample | unpack_json from msg_sample fields (_msg) | delete msg_sample`)
+	f(`* | count() hits | x:y`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | filter x:y`)
+	f(`* | by (path) rate() rps | first 3 by (rps)`, nsecsPerDay, 0, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | first 3 by (rps) partition by (_time)`)
+	f(`* | by (path) rate() rps | last 3 by (rps)`, nsecsPerDay, 0, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | last 3 by (rps) partition by (_time)`)
+	f(`* | by (path) rate() rps | sort (rps) limit 3`, nsecsPerDay, 0, []string{"path", "_time"}, `* | stats by (path, _time:86400000000000) rate() as rps | sort by (rps) partition by (_time) limit 3`)
+	f(`* | count() hits | running_stats sum(hits) running_hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | running_stats sum(hits) as running_hits`)
+	f(`* | count() hits | running_stats sum(hits) running_hits | rm hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | running_stats sum(hits) as running_hits | delete hits`)
+	f(`* | count() hits | total_stats sum(hits) running_hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits`)
+	f(`* | count() hits | total_stats sum(hits) running_hits | rm hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits | delete hits`)
+	f(`* | count() hits | math hits+bar as baz`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | math (hits + bar) as baz`)
+	f(`* | count() hits | fields _time, hits, bar`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | fields _time, hits, bar`)
+	f(`* | count() hits | delete foo, bar`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | delete foo, bar`)
+	f(`* | count() hits | copy hits x, a b`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | copy hits as x, a as b`)
+	f(`* | count() hits | mv hits x, a b`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | rename hits as x, a as b`)
+	f(`* | count() hits | format "foo<hits>" as bar`, nsecsPerDay, 0, []string{"_time", "bar"}, `* | stats by (_time:86400000000000) count(*) as hits | format "foo<hits>" as bar`)
+	f(`* | count() hits, row_any(_msg) msg_sample`, nsecsPerDay, 0, []string{"_time", "msg_sample"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample`)
+	f(`* | count() hits, row_any(_msg) msg_sample | unpack_json from msg_sample fields (_msg) | rm msg_sample`, nsecsPerDay, 0, []string{"_time", "_msg"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample | unpack_json from msg_sample fields (_msg) | delete msg_sample`)
 
 	// multiple stats pipes and sort pipes
-	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, []string{"requests", "_time"}, `* | stats by (path, _time:86400000000000) count(*) as requests | stats by (requests, _time:86400000000000) count(*) as hits | first by (hits desc) partition by (_time)`)
+	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, 0, []string{"requests", "_time"}, `* | stats by (path, _time:86400000000000) count(*) as requests | stats by (requests, _time:86400000000000) count(*) as hits | first by (hits desc) partition by (_time)`)
 
 	// pipes, which do not drop or modify _time, are allowed in front of `stats` pipe
-	f("* | collapse_nums | count() x", nsecsPerDay, []string{"_time"}, `* | collapse_nums | stats by (_time:86400000000000) count(*) as x`)
-	f("* | copy foo bar | count() x", nsecsPerDay, []string{"_time"}, `* | copy foo as bar | stats by (_time:86400000000000) count(*) as x`)
-	f("*|decolorize|count()x", nsecsPerDay, []string{"_time"}, `* | decolorize | stats by (_time:86400000000000) count(*) as x`)
-	f("* | delete foo, bar | count() x", nsecsPerDay, []string{"_time"}, `* | delete foo, bar | stats by (_time:86400000000000) count(*) as x`)
-	f("* | drop_empty_fields | count() x", nsecsPerDay, []string{"_time"}, `* | drop_empty_fields | stats by (_time:86400000000000) count(*) as x`)
-	f("* | extract '<foo>bar<baz>' | count() x", nsecsPerDay, []string{"_time"}, `* | extract "<foo>bar<baz>" | stats by (_time:86400000000000) count(*) as x`)
-	f("* | extract_regexp 'foo(?P<bar>baz)' | count() x", nsecsPerDay, []string{"_time"}, `* | extract_regexp "foo(?P<bar>baz)" | stats by (_time:86400000000000) count(*) as x`)
-	f("* | fields _time, x | count() x", nsecsPerDay, []string{"_time"}, `* | fields _time, x | stats by (_time:86400000000000) count(*) as x`)
-	f("* | filter x:y | count() x", nsecsPerDay, []string{"_time"}, `x:y | stats by (_time:86400000000000) count(*) as x`)
-	f("* | format 'x<y>' | count()x", nsecsPerDay, []string{"_time"}, `* | format "x<y>" | stats by (_time:86400000000000) count(*) as x`)
-	f("* | hash(x) | count() x", nsecsPerDay, []string{"_time"}, `* | hash(x) | stats by (_time:86400000000000) count(*) as x`)
-	f("* | json_array_len (x) | count() x", nsecsPerDay, []string{"_time"}, `* | json_array_len(x) | stats by (_time:86400000000000) count(*) as x`)
-	f("* | len(x) | count() x", nsecsPerDay, []string{"_time"}, `* | len(x) | stats by (_time:86400000000000) count(*) as x`)
-	f("* | math x+y as z | count() x", nsecsPerDay, []string{"_time"}, `* | math (x + y) as z | stats by (_time:86400000000000) count(*) as x`)
-	f("* | pack_json | count() x", nsecsPerDay, []string{"_time"}, `* | pack_json | stats by (_time:86400000000000) count(*) as x`)
-	f("* | pack_logfmt | count() x", nsecsPerDay, []string{"_time"}, `* | pack_logfmt | stats by (_time:86400000000000) count(*) as x`)
-	f("* | rename foo bar | count() x", nsecsPerDay, []string{"_time"}, `* | rename foo as bar | stats by (_time:86400000000000) count(*) as x`)
-	f("* | replace ('foo', 'bar') | count() x", nsecsPerDay, []string{"_time"}, `* | replace (foo, bar) | stats by (_time:86400000000000) count(*) as x`)
-	f("* | replace_regexp ('foo', 'bar') | count() x", nsecsPerDay, []string{"_time"}, `* | replace_regexp (foo, bar) | stats by (_time:86400000000000) count(*) as x`)
-	f("* | split 'foo' | count() x", nsecsPerDay, []string{"_time"}, `* | split foo | stats by (_time:86400000000000) count(*) as x`)
-	f("* | time_add 1h | count() x", nsecsPerDay, []string{"_time"}, `* | time_add 1h | stats by (_time:86400000000000) count(*) as x`)
-	f("* | unpack_json x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_json from x | stats by (_time:86400000000000) count(*) as x`)
-	f("* | unpack_logfmt x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_logfmt from x | stats by (_time:86400000000000) count(*) as x`)
-	f("* | unpack_syslog x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_syslog from x | stats by (_time:86400000000000) count(*) as x`)
-	f("* | unpack_words x | count() x", nsecsPerDay, []string{"_time"}, `* | unpack_words from x | stats by (_time:86400000000000) count(*) as x`)
-	f("* | unroll by (x) | count() x", nsecsPerDay, []string{"_time"}, `* | unroll by (x) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | collapse_nums | count() x", nsecsPerDay, 0, []string{"_time"}, `* | collapse_nums | stats by (_time:86400000000000) count(*) as x`)
+	f("* | copy foo bar | count() x", nsecsPerDay, 0, []string{"_time"}, `* | copy foo as bar | stats by (_time:86400000000000) count(*) as x`)
+	f("*|decolorize|count()x", nsecsPerDay, 0, []string{"_time"}, `* | decolorize | stats by (_time:86400000000000) count(*) as x`)
+	f("* | delete foo, bar | count() x", nsecsPerDay, 0, []string{"_time"}, `* | delete foo, bar | stats by (_time:86400000000000) count(*) as x`)
+	f("* | drop_empty_fields | count() x", nsecsPerDay, 0, []string{"_time"}, `* | drop_empty_fields | stats by (_time:86400000000000) count(*) as x`)
+	f("* | extract '<foo>bar<baz>' | count() x", nsecsPerDay, 0, []string{"_time"}, `* | extract "<foo>bar<baz>" | stats by (_time:86400000000000) count(*) as x`)
+	f("* | extract_regexp 'foo(?P<bar>baz)' | count() x", nsecsPerDay, 0, []string{"_time"}, `* | extract_regexp "foo(?P<bar>baz)" | stats by (_time:86400000000000) count(*) as x`)
+	f("* | fields _time, x | count() x", nsecsPerDay, 0, []string{"_time"}, `* | fields _time, x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | filter x:y | count() x", nsecsPerDay, 0, []string{"_time"}, `x:y | stats by (_time:86400000000000) count(*) as x`)
+	f("* | format 'x<y>' | count()x", nsecsPerDay, 0, []string{"_time"}, `* | format "x<y>" | stats by (_time:86400000000000) count(*) as x`)
+	f("* | hash(x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | hash(x) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | json_array_len (x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | json_array_len(x) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | len(x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | len(x) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | math x+y as z | count() x", nsecsPerDay, 0, []string{"_time"}, `* | math (x + y) as z | stats by (_time:86400000000000) count(*) as x`)
+	f("* | pack_json | count() x", nsecsPerDay, 0, []string{"_time"}, `* | pack_json | stats by (_time:86400000000000) count(*) as x`)
+	f("* | pack_logfmt | count() x", nsecsPerDay, 0, []string{"_time"}, `* | pack_logfmt | stats by (_time:86400000000000) count(*) as x`)
+	f("* | rename foo bar | count() x", nsecsPerDay, 0, []string{"_time"}, `* | rename foo as bar | stats by (_time:86400000000000) count(*) as x`)
+	f("* | replace ('foo', 'bar') | count() x", nsecsPerDay, 0, []string{"_time"}, `* | replace (foo, bar) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | replace_regexp ('foo', 'bar') | count() x", nsecsPerDay, 0, []string{"_time"}, `* | replace_regexp (foo, bar) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | split 'foo' | count() x", nsecsPerDay, 0, []string{"_time"}, `* | split foo | stats by (_time:86400000000000) count(*) as x`)
+	f("* | time_add 1h | count() x", nsecsPerDay, 0, []string{"_time"}, `* | time_add 1h | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unpack_json x | count() x", nsecsPerDay, 0, []string{"_time"}, `* | unpack_json from x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unpack_logfmt x | count() x", nsecsPerDay, 0, []string{"_time"}, `* | unpack_logfmt from x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unpack_syslog x | count() x", nsecsPerDay, 0, []string{"_time"}, `* | unpack_syslog from x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unpack_words x | count() x", nsecsPerDay, 0, []string{"_time"}, `* | unpack_words from x | stats by (_time:86400000000000) count(*) as x`)
+	f("* | unroll by (x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | unroll by (x) | stats by (_time:86400000000000) count(*) as x`)
 
 	// Unusual cases, which override the original stats labels
 
-	f(`* | count() | running_stats sum(hits) _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | running_stats sum(hits) as _time`)
-	f(`* | by (x) count() | running_stats by (x) sum(hits) x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | running_stats by (x) sum(hits) as x`)
+	f(`* | count() | running_stats sum(hits) _time`, nsecsPerDay, 0, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | running_stats sum(hits) as _time`)
+	f(`* | by (x) count() | running_stats by (x) sum(hits) x`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | running_stats by (x) sum(hits) as x`)
 
-	f(`* | count() | total_stats sum(hits) _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | total_stats sum(hits) as _time`)
-	f(`* | by (x) count() | total_stats by (x) sum(hits) x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | total_stats by (x) sum(hits) as x`)
+	f(`* | count() | total_stats sum(hits) _time`, nsecsPerDay, 0, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | total_stats sum(hits) as _time`)
+	f(`* | by (x) count() | total_stats by (x) sum(hits) x`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | total_stats by (x) sum(hits) as x`)
 
-	f(`* | count() | math a+b _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | math (a + b) as _time`)
-	f(`* | by (x) count() | math a+b x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | math (a + b) as x`)
+	f(`* | count() | math a+b _time`, nsecsPerDay, 0, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | math (a + b) as _time`)
+	f(`* | by (x) count() | math a+b x`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | math (a + b) as x`)
 
-	f(`* | count() | rm _time`, nsecsPerDay, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | delete _time`)
-	f(`* | by (x) count() | rm x`, nsecsPerDay, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | delete x`)
+	f(`* | count() | rm _time`, nsecsPerDay, 0, []string{}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | delete _time`)
+	f(`* | by (x) count() | rm x`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | delete x`)
 
-	f(`* | count() | cp a _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | copy a as _time`)
-	f(`* | by (x) count() | cp a x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | copy a as x`)
+	f(`* | count() | cp a _time`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | copy a as _time`)
+	f(`* | by (x) count() | cp a x`, nsecsPerDay, 0, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | copy a as x`)
 
-	f(`* | count() | mv a _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | rename a as _time`)
-	f(`* | by (x) count() | mv a x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | rename a as x`)
+	f(`* | count() | mv a _time`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | rename a as _time`)
+	f(`* | by (x) count() | mv a x`, nsecsPerDay, 0, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | rename a as x`)
 
-	f(`* | count() | format "a" as _time`, nsecsPerDay, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | format a as _time`)
-	f(`* | by (x) count() | format "a" as x`, nsecsPerDay, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | format a as x`)
+	f(`* | count() | format "a" as _time`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as "count(*)" | format a as _time`)
+	f(`* | by (x) count() | format "a" as x`, nsecsPerDay, 0, []string{"x", "_time"}, `* | stats by (x, _time:86400000000000) count(*) as "count(*)" | format a as x`)
 
-	f(`* | stats by (host) count() total | rename host as server | fields host, total`, nsecsPerDay, []string{}, `* | stats by (host, _time:86400000000000) count(*) as total | rename host as server | fields host, total`)
+	f(`* | stats by (host) count() total | rename host as server | fields host, total`, nsecsPerDay, 0, []string{}, `* | stats by (host, _time:86400000000000) count(*) as total | rename host as server | fields host, total`)
 }
 
 func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
@@ -3803,7 +3853,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		fields, err := q.GetStatsLabelsAddGroupingByTime(nsecsPerHour)
+		fields, err := q.GetStatsLabelsAddGroupingByTime(nsecsPerHour, 0)
 		if err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
@@ -4201,4 +4251,117 @@ func TestAdjustEndTimestamp(t *testing.T) {
 	f("2025-08-13T17:05:00.500Z", 1755104700500999999)       // Millisecond precision
 	f("2025-08-13T17:05:00.123456Z", 1755104700123456999)    // Microsecond precision
 	f("2025-08-13T17:05:00.123456789Z", 1755104700123456789) // Nanosecond precision
+}
+
+func TestTryParseIPv4CIDR_Success(t *testing.T) {
+	f := func(s string, minValueExpected, maxValueExpected uint32) {
+		t.Helper()
+
+		minValue, maxValue, ok := tryParseIPv4CIDR(s)
+		if !ok {
+			t.Fatalf("cannot parse %s as ipv4 CIDR", s)
+		}
+		if minValue != minValueExpected {
+			t.Fatalf("unexpeccted minValue; got %d; want %d", minValue, minValueExpected)
+		}
+		if maxValue != maxValueExpected {
+			t.Fatalf("unexpected maxValue; got %d; want %d", maxValue, maxValueExpected)
+		}
+	}
+
+	// regular ipv4
+	f("1.2.3.4", 0x01020304, 0x01020304)
+
+	// mask
+	f("1.2.3.4/0", 0, 0xffffffff)
+	f("1.2.3.4/32", 0x01020304, 0x01020304)
+	f("1.2.3.4/24", 0x01020300, 0x010203ff)
+	f("1.2.3.4/23", 0x01020200, 0x010203ff)
+	f("1.2.3.4/25", 0x01020300, 0x0102037f)
+}
+
+func TestTryParseIPv4CIDR_Failure(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		_, _, ok := tryParseIPv4CIDR(s)
+		if ok {
+			t.Fatalf("expecting error when parsing invalid ipv4 %q", s)
+		}
+	}
+
+	// invalid addr
+	f("")
+	f("foo")
+	f("1")
+	f("1.2.3.")
+
+	// invalid mask
+	f("1.2.3.4/")
+	f("1.2.3.4/foo")
+	f("1.2.3.4/-3")
+
+	// Too big mask
+	f("1.2.3.4/33")
+}
+
+func TestTryParseIPv6CIDR_Success(t *testing.T) {
+	f := func(s string, minValueExpected, maxValueExpected [16]byte) {
+		t.Helper()
+
+		minValue, maxValue, ok := tryParseIPv6CIDR(s)
+		if !ok {
+			t.Fatalf("cannot parse %s as ipv6 CIDR", s)
+		}
+		if minValue != minValueExpected {
+			t.Fatalf("unexpected minValue for %q; got %d; want %d", s, minValue, minValueExpected)
+		}
+		if maxValue != maxValueExpected {
+			t.Fatalf("unexpected maxValue for %q; got %d; want %d", s, maxValue, maxValueExpected)
+		}
+	}
+
+	// regular ipv4
+	f("1.2.3.4", [16]byte{10: 255, 11: 255, 12: 1, 13: 2, 14: 3, 15: 4}, [16]byte{10: 255, 11: 255, 12: 1, 13: 2, 14: 3, 15: 4})
+	f("127.0.0.1", [16]byte{10: 255, 11: 255, 12: 127, 15: 1}, [16]byte{10: 255, 11: 255, 12: 127, 15: 1})
+
+	// regular ipv6
+	f("::1", [16]byte{15: 1}, [16]byte{15: 1})
+
+	// mask
+	f("::1/0", [16]byte{}, [16]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255})
+	f("::1/128", [16]byte{15: 1}, [16]byte{15: 1})
+	f("::4/127", [16]byte{15: 4}, [16]byte{15: 5})
+	f("::1/120", [16]byte{}, [16]byte{15: 255})
+	f("::1/120", [16]byte{}, [16]byte{15: 255})
+	f("127.0.0.1/100", [16]byte{10: 255, 11: 255, 12: 112}, [16]byte{10: 255, 11: 255, 12: 127, 13: 255, 14: 255, 15: 255})
+}
+
+func TestTryParseIPv6CIDR_Failure(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		_, _, ok := tryParseIPv6CIDR(s)
+		if ok {
+			t.Fatalf("expecting error when parsing invalid ipv6 %q", s)
+		}
+	}
+
+	// invalid addr
+	f("")
+	f("foo")
+	f("1")
+	f("1.2.3.")
+	f("foo:bar")
+	f("1:2")
+
+	// invalid mask
+	f("1.2.3.4/")
+	f("1.2.3.4/foo")
+	f("1.2.3.4/-3")
+	f("::1/")
+	f("::1/xx")
+
+	// Too big mask
+	f("::1/129")
 }

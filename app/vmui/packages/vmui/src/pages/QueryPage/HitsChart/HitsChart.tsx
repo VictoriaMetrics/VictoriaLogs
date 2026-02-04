@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo } from "preact/compat";
+import { FC, useMemo } from "preact/compat";
 import "./style.scss";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import classNames from "classnames";
@@ -11,10 +11,8 @@ import Alert from "../../../components/Main/Alert/Alert";
 import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
-import { getHitsTimeParams } from "../../../utils/logs";
 import { ExtraFilter } from "../../OverviewPage/FiltersBar/types";
 import { toEpochSeconds } from "../../../utils/time";
-import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
 
 interface Props {
   query: string;
@@ -33,10 +31,6 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
   const [searchParams] = useSearchParams();
   const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
-  const {
-    barsCount: { value: barsCount },
-  } = useHitsChartConfig();
-
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
       const timestampValueMap = new Map();
@@ -48,31 +42,16 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
     });
   };
 
-  const generateTimestamps = useCallback((date: dayjs.Dayjs) => {
-    const result: number[] = [];
-    const { start, end, step } = getHitsTimeParams(period, barsCount);
-    const stepsToFirstTimestamp = Math.ceil(start.diff(date, "milliseconds") / step);
-    let firstTimestamp = date.add(stepsToFirstTimestamp * step, "milliseconds");
-
-    // If the first timestamp is before 'start', set it to 'start'
-    if (firstTimestamp.isBefore(start)) {
-      firstTimestamp = start.clone();
-    }
-
-    // Calculate the total number of steps from 'firstTimestamp' to 'end'
-    const totalSteps = Math.floor(end.diff(firstTimestamp, "milliseconds") / step);
-
-    for (let i = 0; i <= totalSteps; i++) {
-      const t = firstTimestamp.add(i * step, "milliseconds");
-      result.push(toEpochSeconds(t));
-    }
-
-    return result;
-  }, [period, barsCount]);
+  const generateTimestamps = (logHits: LogHits[]) => {
+    const ts = logHits.map(h => h.timestamps).flat();
+    const tsUniq = Array.from(new Set(ts));
+    const tsNumber = tsUniq.map(t => toEpochSeconds(dayjs(t)));
+    return tsNumber.sort((a, b) => a - b);
+  };
 
   const data = useMemo(() => {
     if (!logHits.length) return [[], []] as AlignedData;
-    const xAxis = generateTimestamps(dayjs(logHits[0].timestamps[0]));
+    const xAxis = generateTimestamps(logHits);
     const yAxes = getYAxes(logHits, xAxis);
     return [xAxis, ...yAxes] as AlignedData;
   }, [logHits]);

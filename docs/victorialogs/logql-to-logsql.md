@@ -115,7 +115,8 @@ See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#logical-f
 ## IP filter
 
 Loki provides the ability to filter logs by IP and IP ranges according to [these docs](https://grafana.com/docs/loki/latest/query/ip/).
-These filters can be substituted with [`ipv4_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter) at VictoriaLogs.
+These filters can be substituted with [`ipv4_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter) and
+[`ipv6_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv6-range-filter) at VictoriaLogs.
 
 ## JSON parser
 

@@ -28,18 +28,10 @@
       justify-content: flex-end;
 
       &_mobile {
-        display: inline-flex;
-        justify-content: flex-start;
+        width: 100%;
+        padding-block: calc($padding-small / 2);
+        border-bottom: $border-divider;
       }
-    }
-
-    &__log-info {
-      flex-grow: 1;
-      text-align: right;
-      padding-right: $padding-large;
-      color: $color-text-secondary;
-      font-size: $font-size-small;
-      white-space: nowrap;
     }
 
     &__tabs {

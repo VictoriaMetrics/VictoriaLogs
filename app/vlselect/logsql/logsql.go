@@ -220,13 +220,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, ok := logstorage.TryParseDuration(stepStr)
-	if !ok {
-		httpserver.Errorf(w, r, "cannot parse 'step=%s' arg as duration", stepStr)
+	step, err := parseDuration(r, "step", "")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 	if step <= 0 {
@@ -235,13 +231,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain offset
-	offsetStr := r.FormValue("offset")
-	if offsetStr == "" {
-		offsetStr = "0s"
-	}
-	offset, ok := logstorage.TryParseDuration(offsetStr)
-	if !ok {
-		httpserver.Errorf(w, r, "cannot parse 'offset=%s' arg as duration", offsetStr)
+	offset, err := parseDuration(r, "offset", "0s")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 
@@ -257,7 +249,6 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	// Add a pipe, which calculates hits over time with the given step and offset for the given fields.
 	ca.q.AddCountByTimePipe(step, offset, fields)
-	start, end := ca.q.GetFilterTimeRange()
 
 	var mLock sync.Mutex
 	m := make(map[string]*hitsSeries)
@@ -312,7 +303,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	m = getTopHitsSeries(m, fieldsLimit)
-	addMissingZeroHits(m, start, end, step, offset)
+	addMissingZeroHits(m, ca.startAligned, ca.endAligned, step, offset)
 
 	// Write response headers
 	h := w.Header()
@@ -339,7 +330,7 @@ func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64
 		}
 	}
 
-	start, end = alignStartEndToStep(start, end, step)
+	start, end = alignStartEndToStep(start, end, step, offset)
 
 	if start > end {
 		// nothing to do
@@ -868,13 +859,8 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, ok := logstorage.TryParseDuration(stepStr)
-	if !ok {
-		err = fmt.Errorf("cannot parse 'step=%s' arg as duration", stepStr)
+	step, err := parseDuration(r, "step", "")
+	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
@@ -884,7 +870,14 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step)
+	// Obtain offset
+	offset, err := parseDuration(r, "offset", "0s")
+	if err != nil {
+		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
+	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1346,6 +1339,12 @@ type commonArgs struct {
 
 	// qs contains query execution statistics.
 	qs logstorage.QueryStats
+
+	// startAligned is the start of the selected time range aligned to the given step.
+	startAligned int64
+
+	// endAligned is the aligned end of the selected time range aligned to the given step.
+	endAligned int64
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
@@ -1377,9 +1376,9 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 	if err != nil {
 		return nil, err
 	}
-	// Treat HTTP 'end' query arg as exclusive: [start, end)
-	// Convert to inclusive bound for internal filter by subtracting 1ns.
 	if endOK {
+		// Treat HTTP 'end' query arg as exclusive: [start, end)
+		// Convert to inclusive bound for internal filter by subtracting 1ns.
 		if end != math.MinInt64 {
 			end--
 		}
@@ -1423,11 +1422,28 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 
 		if stepStr := r.FormValue("step"); stepStr != "" {
 			if step, ok := logstorage.TryParseDuration(stepStr); ok {
-				start, end = alignStartEndToStep(start, end, step)
+				offset := int64(0)
+				if offsetStr := r.FormValue("offset"); offsetStr != "" {
+					nsecs, ok := logstorage.TryParseDuration(offsetStr)
+					if ok {
+						offset = nsecs
+					}
+				}
+				start, end = alignStartEndToStep(start, end, step, offset)
 			}
 		}
 
 		q.AddTimeFilter(start, end)
+	}
+
+	// Initialize startAligned and endAligned
+	startAligned := int64(math.MinInt64)
+	if startOK {
+		startAligned = start
+	}
+	endAligned := int64(math.MaxInt64)
+	if endOK {
+		endAligned = end
 	}
 
 	// Parse optional extra_filters
@@ -1476,36 +1492,36 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 
 		allowPartialResponse: allowPartialResponse,
 		hiddenFieldsFilters:  hiddenFieldsFilters,
+
+		startAligned: startAligned,
+		endAligned:   endAligned,
 	}
 	return ca, nil
 }
 
-func alignStartEndToStep(start, end, step int64) (int64, int64) {
+func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 	if step <= 0 {
 		return start, end
 	}
 
+	start = logstorage.SubInt64NoOverflow(start, offset)
 	if start >= 0 {
 		start -= start % step
 	} else {
 		d := step + start%step
-		if start >= math.MinInt64+d {
-			start -= d
-		} else {
-			start = math.MinInt64
-		}
+		start = logstorage.SubInt64NoOverflow(start, d)
 	}
+	start = logstorage.SubInt64NoOverflow(start, -offset)
 
+	end = logstorage.SubInt64NoOverflow(end, offset)
 	if end <= 0 {
 		end -= end % step
 	} else {
 		d := step - end%step
-		if end <= math.MaxInt64-d {
-			end += d
-		} else {
-			end = math.MaxInt64
-		}
+		end = logstorage.SubInt64NoOverflow(end, -d)
 	}
+	end = logstorage.SubInt64NoOverflow(end, -offset)
+
 	if end > math.MinInt64 {
 		end--
 	}
