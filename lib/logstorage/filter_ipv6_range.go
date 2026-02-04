@@ -3,9 +3,12 @@ package logstorage
 import (
 	"fmt"
 	"net/netip"
+	"sync"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 // filterIPv6Range matches the given ipv6 range [minValue..maxValue].
@@ -15,12 +18,41 @@ type filterIPv6Range struct {
 	fieldName string
 	minValue  [16]byte
 	maxValue  [16]byte
+
+	minMaxIPv4ValuesOnce sync.Once
+	minIPv4Value         uint32
+	maxIPv4Value         uint32
+	isIPv4               bool
 }
 
 func (fr *filterIPv6Range) String() string {
 	minValue := netip.AddrFrom16(fr.minValue).String()
 	maxValue := netip.AddrFrom16(fr.maxValue).String()
 	return fmt.Sprintf("%sipv6_range(%s, %s)", quoteFieldNameIfNeeded(fr.fieldName), minValue, maxValue)
+}
+
+func (fr *filterIPv6Range) getMinMaxIPv4Values() (uint32, uint32, bool) {
+	fr.minMaxIPv4ValuesOnce.Do(fr.initMinMaxIPv4Values)
+	return fr.minIPv4Value, fr.maxIPv4Value, fr.isIPv4
+}
+
+func (fr *filterIPv6Range) initMinMaxIPv4Values() {
+	vMin, okMin := getIPv4ValueFrom16(fr.minValue)
+	vMax, okMax := getIPv4ValueFrom16(fr.maxValue)
+	if okMin && okMax {
+		fr.minIPv4Value = vMin
+		fr.maxIPv4Value = vMax
+		fr.isIPv4 = true
+	}
+}
+
+func getIPv4ValueFrom16(a [16]byte) (uint32, bool) {
+	addr := netip.AddrFrom16(a).Unmap()
+	if !addr.Is4() {
+		return 0, false
+	}
+	ip4 := addr.As4()
+	return encoding.UnmarshalUint32(ip4[:]), true
 }
 
 func (fr *filterIPv6Range) updateNeededFields(pf *prefixfilter.Filter) {
@@ -89,7 +121,16 @@ func (fr *filterIPv6Range) applyToBlockResult(br *blockResult, bm *bitmap) {
 	case valueTypeFloat64:
 		bm.resetBits()
 	case valueTypeIPv4:
-		bm.resetBits()
+		minValue4, maxValue4, ok := fr.getMinMaxIPv4Values()
+		if !ok {
+			bm.resetBits()
+		} else {
+			valuesEncoded := c.getValuesEncoded(br)
+			bm.forEachSetBit(func(idx int) bool {
+				ip := unmarshalIPv4(valuesEncoded[idx])
+				return ip >= minValue4 && ip <= maxValue4
+			})
+		}
 	case valueTypeTimestampISO8601:
 		bm.resetBits()
 	default:
@@ -141,7 +182,12 @@ func (fr *filterIPv6Range) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	case valueTypeFloat64:
 		bm.resetBits()
 	case valueTypeIPv4:
-		bm.resetBits()
+		minValue4, maxValue4, ok := fr.getMinMaxIPv4Values()
+		if !ok {
+			bm.resetBits()
+		} else {
+			matchIPv4ByRange(bs, ch, bm, minValue4, maxValue4)
+		}
 	case valueTypeTimestampISO8601:
 		bm.resetBits()
 	default:

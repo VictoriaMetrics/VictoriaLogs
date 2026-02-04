@@ -1,7 +1,7 @@
 package logstorage
 
 import (
-	"net"
+	"fmt"
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
@@ -12,17 +12,8 @@ func TestMatchIPv6Range(t *testing.T) {
 
 	f := func(s, minValue, maxValue string, resultExpected bool) {
 		t.Helper()
-		parseIP := func(s string) [16]byte {
-			ip := net.ParseIP(s).To16()
-			if ip == nil {
-				t.Fatalf("cannot parse IPv6 address %q in test", s)
-			}
-			var a [16]byte
-			copy(a[:], ip)
-			return a
-		}
-		minIP := parseIP(minValue)
-		maxIP := parseIP(maxValue)
+		minIP := mustParseIPv6(minValue)
+		maxIP := mustParseIPv6(maxValue)
 		result := matchIPv6Range(s, minIP, maxIP)
 		if result != resultExpected {
 			t.Fatalf("unexpected result; got %v; want %v", result, resultExpected)
@@ -47,16 +38,6 @@ func TestMatchIPv6Range(t *testing.T) {
 func TestFilterIPv6Range(t *testing.T) {
 	t.Parallel()
 
-	parseIP := func(s string) [16]byte {
-		ip := net.ParseIP(s).To16()
-		if ip == nil {
-			t.Fatalf("cannot parse IPv6 address %q in test", s)
-		}
-		var a [16]byte
-		copy(a[:], ip)
-		return a
-	}
-
 	t.Run("const-column", func(t *testing.T) {
 		columns := []column{
 			{
@@ -72,37 +53,37 @@ func TestFilterIPv6Range(t *testing.T) {
 		// match
 		fr := &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::0"),
-			maxValue:  parseIP("::2"),
+			minValue:  mustParseIPv6("::0"),
+			maxValue:  mustParseIPv6("::2"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::1"),
-			maxValue:  parseIP("::1"),
+			minValue:  mustParseIPv6("::1"),
+			maxValue:  mustParseIPv6("::1"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		// mismatch
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::2"),
-			maxValue:  parseIP("::3"),
+			minValue:  mustParseIPv6("::2"),
+			maxValue:  mustParseIPv6("::3"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
 		fr = &filterIPv6Range{
 			fieldName: "non-existing-column",
-			minValue:  parseIP("::0"),
-			maxValue:  parseIP("::ffff"),
+			minValue:  mustParseIPv6("::0"),
+			maxValue:  mustParseIPv6("::ffff"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::2"),
-			maxValue:  parseIP("::0"),
+			minValue:  mustParseIPv6("::2"),
+			maxValue:  mustParseIPv6("::0"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
@@ -119,7 +100,7 @@ func TestFilterIPv6Range(t *testing.T) {
 					"10.4",
 					"foo ::1",
 					"::1 bar",
-					"::1",
+					"0.0.0.2",
 				},
 			},
 		}
@@ -127,23 +108,37 @@ func TestFilterIPv6Range(t *testing.T) {
 		// match
 		fr := &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::0"),
-			maxValue:  parseIP("::2"),
+			minValue:  mustParseIPv6("::0"),
+			maxValue:  mustParseIPv6("::2"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{1})
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("::0"),
+			maxValue:  mustParseIPv6("fff::2"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 7})
 
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("2001:db8::"),
-			maxValue:  parseIP("2001:db8::ffff"),
+			minValue:  mustParseIPv6("0.0.0.0"),
+			maxValue:  mustParseIPv6("0.0.0.2"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{7})
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("2001:db8::"),
+			maxValue:  mustParseIPv6("2001:db8::ffff"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{3})
 
 		// mismatch
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::3"),
-			maxValue:  parseIP("::4"),
+			minValue:  mustParseIPv6("::3"),
+			maxValue:  mustParseIPv6("::4"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
@@ -171,27 +166,101 @@ func TestFilterIPv6Range(t *testing.T) {
 		// match
 		fr := &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::0"),
-			maxValue:  parseIP("::2"),
+			minValue:  mustParseIPv6("::0"),
+			maxValue:  mustParseIPv6("::2"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{2})
 
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("2001:db8::"),
-			maxValue:  parseIP("2001:db8::ffff"),
+			minValue:  mustParseIPv6("2001:db8::"),
+			maxValue:  mustParseIPv6("2001:db8::ffff"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{10})
 
 		// mismatch
 		fr = &filterIPv6Range{
 			fieldName: "foo",
-			minValue:  parseIP("::3"),
-			maxValue:  parseIP("::4"),
+			minValue:  mustParseIPv6("::3"),
+			maxValue:  mustParseIPv6("::4"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", nil)
+	})
+
+	t.Run("ipv4", func(t *testing.T) {
+		columns := []column{
+			{
+				name: "foo",
+				values: []string{
+					"1.2.3.4",
+					"0.0.0.0",
+					"127.0.0.1",
+					"254.255.255.255",
+					"127.0.0.1",
+					"127.0.0.1",
+					"127.0.4.2",
+					"127.0.0.1",
+					"12.0.127.6",
+					"55.55.12.55",
+					"66.66.66.66",
+					"7.7.7.7",
+				},
+			},
+		}
+
+		// match
+		fr := &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("0.0.0.0"),
+			maxValue:  mustParseIPv6("8.0.0.0"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("::ffff:0:0"),
+			maxValue:  mustParseIPv6("::ffff:800:0"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
+
+		// mismatch
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("128.0.0.0"),
+			maxValue:  mustParseIPv6("144.0.0.0"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", nil)
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("255.0.0.0"),
+			maxValue:  mustParseIPv6("255.255.255.255"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", nil)
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("8.0.0.0"),
+			maxValue:  mustParseIPv6("0.0.0.0"),
+		}
+		testFilterMatchForColumns(t, columns, fr, "foo", nil)
+
+		fr = &filterIPv6Range{
+			fieldName: "foo",
+			minValue:  mustParseIPv6("2001:db8::"),
+			maxValue:  mustParseIPv6("2001:db8::ffff"),
 		}
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
 	// Remove the remaining data files for the test
 	fs.MustRemoveDir(t.Name())
+}
+
+func mustParseIPv6(s string) [16]byte {
+	a, ok := tryParseIPv6(s)
+	if !ok {
+		panic(fmt.Errorf("cannot parse ipv6 address %q", s))
+	}
+	return a
 }

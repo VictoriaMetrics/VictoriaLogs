@@ -4252,3 +4252,116 @@ func TestAdjustEndTimestamp(t *testing.T) {
 	f("2025-08-13T17:05:00.123456Z", 1755104700123456999)    // Microsecond precision
 	f("2025-08-13T17:05:00.123456789Z", 1755104700123456789) // Nanosecond precision
 }
+
+func TestTryParseIPv4CIDR_Success(t *testing.T) {
+	f := func(s string, minValueExpected, maxValueExpected uint32) {
+		t.Helper()
+
+		minValue, maxValue, ok := tryParseIPv4CIDR(s)
+		if !ok {
+			t.Fatalf("cannot parse %s as ipv4 CIDR", s)
+		}
+		if minValue != minValueExpected {
+			t.Fatalf("unexpeccted minValue; got %d; want %d", minValue, minValueExpected)
+		}
+		if maxValue != maxValueExpected {
+			t.Fatalf("unexpected maxValue; got %d; want %d", maxValue, maxValueExpected)
+		}
+	}
+
+	// regular ipv4
+	f("1.2.3.4", 0x01020304, 0x01020304)
+
+	// mask
+	f("1.2.3.4/0", 0, 0xffffffff)
+	f("1.2.3.4/32", 0x01020304, 0x01020304)
+	f("1.2.3.4/24", 0x01020300, 0x010203ff)
+	f("1.2.3.4/23", 0x01020200, 0x010203ff)
+	f("1.2.3.4/25", 0x01020300, 0x0102037f)
+}
+
+func TestTryParseIPv4CIDR_Failure(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		_, _, ok := tryParseIPv4CIDR(s)
+		if ok {
+			t.Fatalf("expecting error when parsing invalid ipv4 %q", s)
+		}
+	}
+
+	// invalid addr
+	f("")
+	f("foo")
+	f("1")
+	f("1.2.3.")
+
+	// invalid mask
+	f("1.2.3.4/")
+	f("1.2.3.4/foo")
+	f("1.2.3.4/-3")
+
+	// Too big mask
+	f("1.2.3.4/33")
+}
+
+func TestTryParseIPv6CIDR_Success(t *testing.T) {
+	f := func(s string, minValueExpected, maxValueExpected [16]byte) {
+		t.Helper()
+
+		minValue, maxValue, ok := tryParseIPv6CIDR(s)
+		if !ok {
+			t.Fatalf("cannot parse %s as ipv6 CIDR", s)
+		}
+		if minValue != minValueExpected {
+			t.Fatalf("unexpected minValue for %q; got %d; want %d", s, minValue, minValueExpected)
+		}
+		if maxValue != maxValueExpected {
+			t.Fatalf("unexpected maxValue for %q; got %d; want %d", s, maxValue, maxValueExpected)
+		}
+	}
+
+	// regular ipv4
+	f("1.2.3.4", [16]byte{10: 255, 11: 255, 12: 1, 13: 2, 14: 3, 15: 4}, [16]byte{10: 255, 11: 255, 12: 1, 13: 2, 14: 3, 15: 4})
+	f("127.0.0.1", [16]byte{10: 255, 11: 255, 12: 127, 15: 1}, [16]byte{10: 255, 11: 255, 12: 127, 15: 1})
+
+	// regular ipv6
+	f("::1", [16]byte{15: 1}, [16]byte{15: 1})
+
+	// mask
+	f("::1/0", [16]byte{}, [16]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255})
+	f("::1/128", [16]byte{15: 1}, [16]byte{15: 1})
+	f("::4/127", [16]byte{15: 4}, [16]byte{15: 5})
+	f("::1/120", [16]byte{}, [16]byte{15: 255})
+	f("::1/120", [16]byte{}, [16]byte{15: 255})
+	f("127.0.0.1/100", [16]byte{10: 255, 11: 255, 12: 112}, [16]byte{10: 255, 11: 255, 12: 127, 13: 255, 14: 255, 15: 255})
+}
+
+func TestTryParseIPv6CIDR_Failure(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		_, _, ok := tryParseIPv6CIDR(s)
+		if ok {
+			t.Fatalf("expecting error when parsing invalid ipv6 %q", s)
+		}
+	}
+
+	// invalid addr
+	f("")
+	f("foo")
+	f("1")
+	f("1.2.3.")
+	f("foo:bar")
+	f("1:2")
+
+	// invalid mask
+	f("1.2.3.4/")
+	f("1.2.3.4/foo")
+	f("1.2.3.4/-3")
+	f("::1/")
+	f("::1/xx")
+
+	// Too big mask
+	f("::1/129")
+}

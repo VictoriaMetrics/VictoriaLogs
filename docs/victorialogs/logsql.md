@@ -1396,7 +1396,7 @@ If you need to filter log message by some field containing only [IPv4](https://e
 then the `ipv4_range()` filter can be used. For example, the following query matches log entries with `user.ip` address in the range `[127.0.0.0 - 127.255.255.255]`:
 
 ```logsql
-user.ip:ipv4_range(127.0.0.0, 127.255.255.255)
+user.ip:ipv4_range('127.0.0.0', '127.255.255.255')
 ```
 
 The `ipv4_range()` accepts also IPv4 subnetworks in [CIDR notation](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation).
@@ -1423,7 +1423,8 @@ Hints:
 - If you need to search for [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) containing the given `X.Y.Z.Q` IPv4 address,
   then `"X.Y.Z.Q"` query can be used. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter) for details.
 - If you need to search for [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) containing
-  at least a single IPv4 address out of the given list, then `"ip1" OR "ip2" ... OR "ipN"` query can be used. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for details.
+  at least a single IPv4 address out of the given list, then `"ip1" OR "ip2" ... OR "ipN"` query can be used.
+  See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for details.
 - If you need to find log entries with the `ip` field in multiple ranges, then use `ip:(ipv4_range(range1) OR ipv4_range(range2) ... OR ipv4_range(rangeN))` query.
   See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter) for details.
 
@@ -1435,9 +1436,7 @@ Performance tips:
 
 See also:
 
-- [Range filter](https://docs.victoriametrics.com/victorialogs/logsql/#range-filter)
-- [String range filter](https://docs.victoriametrics.com/victorialogs/logsql/#string-range-filter)
-- [Length range filter](https://docs.victoriametrics.com/victorialogs/logsql/#length-range-filter)
+- [IPv6 range filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv6-range-filter)
 - [Logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter)
 
 ### IPv6 range filter
@@ -1448,7 +1447,7 @@ but it works with [IPv6](https://en.wikipedia.org/wiki/IPv6) addresses.
 For example, the following query matches log entries with `user.ipv6` address in the range `[2001:db8:: - 2001:db8::ffff]`:
 
 ```logsql
-user.ipv6:ipv6_range(2001:db8::, 2001:db8::ffff)
+user.ipv6:ipv6_range('2001:db8::', '2001:db8::ffff')
 ```
 
 The `ipv6_range()` accepts also IPv6 subnetworks in [CIDR notation](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation).
@@ -1493,10 +1492,7 @@ For example, the `user.name:string_range(C, E)` would match `user.name` fields, 
 
 See also:
 
-- [Range comparison filter](https://docs.victoriametrics.com/victorialogs/logsql/#range-comparison-filter)
-- [Range filter](https://docs.victoriametrics.com/victorialogs/logsql/#range-filter)
 - [IPv4 range filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter)
-- [Length range filter](https://docs.victoriametrics.com/victorialogs/logsql/#length-range-filter)
 - [Logical filter](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter)
 
 ### Length range filter

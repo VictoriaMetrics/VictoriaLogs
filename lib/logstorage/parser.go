@@ -2373,20 +2373,17 @@ func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
 	return minValue, maxValue, true
 }
 
+// tryParseIPv6 tries parsing s as ipv6 address.
+//
+// It also returns ipv4 wrapped into ipv6 if s contains ipv4 address.
 func tryParseIPv6(s string) ([16]byte, bool) {
-	// IPv6 string length must be between 2 and 45 characters.
+	// IPv6 and IPv4 string length must be between 2 and 45 characters.
 	// This quickly rejects obviously invalid strings before doing more expensive checks.
 	if len(s) < 2 || len(s) > 45 {
 		return [16]byte{}, false
 	}
-	// Fast path: IPv6 addresses must contain ':'.
-	// This quickly rejects plain IPv4 and other obvious non-IPv6 strings
-	// without calling netip.ParseAddr, which is relatively expensive.
-	if !strings.Contains(s, ":") {
-		return [16]byte{}, false
-	}
 	addr, err := netip.ParseAddr(s)
-	if err != nil || !addr.Is6() {
+	if err != nil {
 		return [16]byte{}, false
 	}
 	return addr.As16(), true
@@ -2413,26 +2410,18 @@ func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
 	minValue := ip
 	maxValue := ip
 
-	if maskBits == 0 {
-		clear(minValue[:])
-		for i := range maxValue {
-			maxValue[i] = 0xff
-		}
-		return minValue, maxValue, true
+	byteIdx := maskBits / 8
+	bitIdx := maskBits % 8
+	if bitIdx > 0 {
+		mask := byte(0xff) << (8 - bitIdx)
+		minValue[byteIdx] &= mask
+		maxValue[byteIdx] |= ^mask
+		byteIdx++
 	}
-	byteIdx := int(maskBits) / 8
-	bitIdx := int(maskBits) % 8
-	if byteIdx < len(minValue) {
-		if bitIdx > 0 {
-			mask := byte(0xff) << (8 - bitIdx)
-			minValue[byteIdx] &= mask
-			maxValue[byteIdx] |= ^mask
-			byteIdx++
-		}
-		for i := byteIdx; i < len(minValue); i++ {
-			minValue[i] = 0
-			maxValue[i] = 0xff
-		}
+	for byteIdx < uint64(len(minValue)) {
+		minValue[byteIdx] = 0
+		maxValue[byteIdx] = 0xff
+		byteIdx++
 	}
 	return minValue, maxValue, true
 }
