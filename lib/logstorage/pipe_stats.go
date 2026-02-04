@@ -269,32 +269,36 @@ func (ps *pipeStats) visitSubqueries(visitFunc func(q *Query)) {
 	}
 }
 
-func (ps *pipeStats) addByTimeField(step int64) {
+func (ps *pipeStats) addByTimeField(step, offset int64) {
 	if step <= 0 {
 		return
 	}
 
 	// add step to byFields
-	stepStr := fmt.Sprintf("%d", step)
+	bf := &byStatsField{
+		name:          "_time",
+		bucketSizeStr: fmt.Sprintf("%d", step),
+		bucketSize:    float64(step),
+	}
+	if offset != 0 {
+		bf.bucketOffsetStr = fmt.Sprintf("%d", offset)
+		bf.bucketOffset = float64(offset)
+	}
+
 	dstFields := make([]*byStatsField, 0, len(ps.byFields)+1)
 	hasByTime := false
 	for _, f := range ps.byFields {
 		if f.name == "_time" {
-			f = &byStatsField{
-				name:          "_time",
-				bucketSizeStr: stepStr,
-				bucketSize:    float64(step),
+			if hasByTime {
+				continue
 			}
+			f = bf
 			hasByTime = true
 		}
 		dstFields = append(dstFields, f)
 	}
 	if !hasByTime {
-		dstFields = append(dstFields, &byStatsField{
-			name:          "_time",
-			bucketSizeStr: stepStr,
-			bucketSize:    float64(step),
-		})
+		dstFields = append(dstFields, bf)
 	}
 	ps.byFields = dstFields
 }

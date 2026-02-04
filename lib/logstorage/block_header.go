@@ -988,8 +988,8 @@ func (th *timestampsHeader) copyFrom(src *timestampsHeader) {
 
 func (th *timestampsHeader) subTimeOffset(timeOffset int64) {
 	if timeOffset != 0 {
-		th.minTimestamp = subNoOverflowInt64(th.minTimestamp, timeOffset)
-		th.maxTimestamp = subNoOverflowInt64(th.maxTimestamp, timeOffset)
+		th.minTimestamp = SubInt64NoOverflow(th.minTimestamp, timeOffset)
+		th.maxTimestamp = SubInt64NoOverflow(th.maxTimestamp, timeOffset)
 	}
 }
 

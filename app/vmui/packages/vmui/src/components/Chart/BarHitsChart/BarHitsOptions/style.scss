@@ -3,10 +3,43 @@
 .vm-bar-hits-options {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: flex-end;
+  flex-grow: 1;
+  flex-wrap: wrap;
+  gap: $padding-small;
   z-index: 2;
 
-  &-item {
-    padding: 0 $padding-global;
+  &_selections {
+    flex-grow: 1;
+    justify-content: flex-start;
+  }
+
+  &_mobile {
+    gap: 0;
+
+    .vm-select-limits-button {
+      height: 100%;
+    }
+
+    .vm-bar-hits-options-item {
+      width: 100%;
+      padding: $padding-global 0;
+      border-bottom: $border-divider;
+    }
+
+    .vm-bar-hits-options_selections {
+      width: 100%;
+      gap: 0;
+    }
+
+    .vm-bar-hits-options_selections > .vm-bar-hits-options-item {
+      padding: 0;
+    }
+
+    .vm-select-limits-button {
+      padding: $padding-global 0;
+      justify-content: flex-start;
+      border: none;
+    }
   }
 }

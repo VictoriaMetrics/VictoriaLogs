@@ -347,7 +347,7 @@ The following topics for are covered below:
 - How to ingest logs into the cluster.
 - How to query the ingested logs.
 
-If you want running VictoriaLogs cluster in Kubernetes, then please read [these docs](https://docs.victoriametrics.com/helm/victorialogs-cluster/).
+If you want running VictoriaLogs cluster in Kubernetes, then please read [these docs](https://docs.victoriametrics.com/helm/victoria-logs-cluster/).
 
 Download and unpack the latest VictoriaLogs release:
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
@@ -815,8 +816,8 @@ func addTimeFilter(f filter, start, end, offset int64) filter {
 	endStr := marshalTimestampRFC3339NanoPreciseString(nil, end)
 
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(start, offset),
-		maxTimestamp: subNoOverflowInt64(end, offset),
+		minTimestamp: SubInt64NoOverflow(start, offset),
+		maxTimestamp: SubInt64NoOverflow(end, offset),
 
 		stringRepr: fmt.Sprintf("[%s,%s]", startStr, endStr),
 	}
@@ -1037,13 +1038,13 @@ func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
 //
 // The remaining fields are considered metrics.
 func (q *Query) GetStatsLabels() ([]string, error) {
-	return q.GetStatsLabelsAddGroupingByTime(0)
+	return q.GetStatsLabelsAddGroupingByTime(0, 0)
 }
 
 // GetStatsLabelsAddGroupingByTime returns stats labels from q for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints
 //
 // if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
-func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
+func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, error) {
 	idx := getLastPipeStatsIdx(q.pipes)
 	if idx < 0 {
 		return nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
@@ -1067,7 +1068,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step int64) ([]string, error) {
 	}
 
 	// add _time:step to by (...) list at stats pipes.
-	q.addByTimeFieldToStatsPipes(step)
+	q.addByTimeFieldToStatsPipes(step, offset)
 
 	// propagate the step into rate* funcs at stats pipes.
 	q.initStatsRateFuncs(step)
@@ -1282,16 +1283,16 @@ func updateFilterWithTimeOffset(f filter, timeOffset int64) filter {
 		switch ft := f.(type) {
 		case *filterTime:
 			ftCopy := *ft
-			ftCopy.minTimestamp = subNoOverflowInt64(ft.minTimestamp, timeOffset)
-			ftCopy.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, timeOffset)
+			ftCopy.minTimestamp = SubInt64NoOverflow(ft.minTimestamp, timeOffset)
+			ftCopy.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, timeOffset)
 			return &ftCopy, nil
 		case *filterDayRange:
 			ftCopy := *ft
-			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = SubInt64NoOverflow(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		case *filterWeekRange:
 			ftCopy := *ft
-			ftCopy.offset = subNoOverflowInt64(ft.offset, -timeOffset)
+			ftCopy.offset = SubInt64NoOverflow(ft.offset, -timeOffset)
 			return &ftCopy, nil
 		default:
 			logger.Panicf("BUG: unexpected filter passed to copyFunc: %T; [%s]", f, f)
@@ -1730,10 +1731,10 @@ func (q *Query) initStatsRateFuncs(step int64) {
 	}
 }
 
-func (q *Query) addByTimeFieldToStatsPipes(step int64) {
+func (q *Query) addByTimeFieldToStatsPipes(step, offset int64) {
 	for _, p := range q.pipes {
 		if ps, ok := p.(*pipeStats); ok {
-			ps.addByTimeField(step)
+			ps.addByTimeField(step, offset)
 		}
 	}
 }
@@ -2058,6 +2059,8 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterIn(lex, fieldName)
 	case lex.isKeyword("ipv4_range"):
 		return parseFilterIPv4Range(lex, fieldName)
+	case lex.isKeyword("ipv6_range"):
+		return parseFilterIPv6Range(lex, fieldName)
 	case lex.isKeyword("le_field"):
 		return parseFilterLeField(lex, fieldName)
 	case lex.isKeyword("len_range"):
@@ -2316,6 +2319,40 @@ func parseFilterIPv4Range(lex *lexer, fieldName string) (filter, error) {
 	})
 }
 
+func parseFilterIPv6Range(lex *lexer, fieldName string) (filter, error) {
+	return parseFuncArgs(lex, fieldName, func(funcName string, args []string) (filter, error) {
+		if len(args) == 1 {
+			minValue, maxValue, ok := tryParseIPv6CIDR(args[0])
+			if !ok {
+				return nil, fmt.Errorf("cannot parse IPv6 address or IPv6 CIDR %q at %s()", args[0], funcName)
+			}
+			fr := &filterIPv6Range{
+				fieldName: getCanonicalColumnName(fieldName),
+				minValue:  minValue,
+				maxValue:  maxValue,
+			}
+			return fr, nil
+		}
+		if len(args) != 2 {
+			return nil, fmt.Errorf("unexpected number of args for %s(); got %d; want 2", funcName, len(args))
+		}
+		minValue, ok := tryParseIPv6(args[0])
+		if !ok {
+			return nil, fmt.Errorf("cannot parse lower bound ip %q in %s()", args[0], funcName)
+		}
+		maxValue, ok := tryParseIPv6(args[1])
+		if !ok {
+			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", args[1], funcName)
+		}
+		fr := &filterIPv6Range{
+			fieldName: getCanonicalColumnName(fieldName),
+			minValue:  minValue,
+			maxValue:  maxValue,
+		}
+		return fr, nil
+	})
+}
+
 func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
 	n := strings.IndexByte(s, '/')
 	if n < 0 {
@@ -2333,6 +2370,59 @@ func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
 	mask := uint32((1 << (32 - maskBits)) - 1)
 	minValue := ip &^ mask
 	maxValue := ip | mask
+	return minValue, maxValue, true
+}
+
+// tryParseIPv6 tries parsing s as ipv6 address.
+//
+// It also returns ipv4 wrapped into ipv6 if s contains ipv4 address.
+func tryParseIPv6(s string) ([16]byte, bool) {
+	// IPv6 and IPv4 string length must be between 2 and 45 characters.
+	// This quickly rejects obviously invalid strings before doing more expensive checks.
+	if len(s) < 2 || len(s) > 45 {
+		return [16]byte{}, false
+	}
+	addr, err := netip.ParseAddr(s)
+	if err != nil {
+		return [16]byte{}, false
+	}
+	return addr.As16(), true
+}
+
+func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
+	var zero [16]byte
+
+	n := strings.IndexByte(s, '/')
+	if n < 0 {
+		ip, ok := tryParseIPv6(s)
+		return ip, ip, ok
+	}
+
+	ip, ok := tryParseIPv6(s[:n])
+	if !ok {
+		return zero, zero, false
+	}
+	maskBits, ok := tryParseUint64(s[n+1:])
+	if !ok || maskBits > 128 {
+		return zero, zero, false
+	}
+
+	minValue := ip
+	maxValue := ip
+
+	byteIdx := maskBits / 8
+	bitIdx := maskBits % 8
+	if bitIdx > 0 {
+		mask := byte(0xff) << (8 - bitIdx)
+		minValue[byteIdx] &= mask
+		maxValue[byteIdx] |= ^mask
+		byteIdx++
+	}
+	for byteIdx < uint64(len(minValue)) {
+		minValue[byteIdx] = 0
+		maxValue[byteIdx] = 0xff
+		byteIdx++
+	}
 	return minValue, maxValue, true
 }
 
@@ -3209,7 +3299,7 @@ func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse offset for _time filter []: %w", err)
 		}
-		ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
+		ft.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, offset)
 		ft.stringRepr = offsetStr
 		return ft, nil
 	}
@@ -3226,8 +3316,8 @@ func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse offset for _time filter [%s]: %w", ft, err)
 	}
-	ft.minTimestamp = subNoOverflowInt64(ft.minTimestamp, offset)
-	ft.maxTimestamp = subNoOverflowInt64(ft.maxTimestamp, offset)
+	ft.minTimestamp = SubInt64NoOverflow(ft.minTimestamp, offset)
+	ft.maxTimestamp = SubInt64NoOverflow(ft.maxTimestamp, offset)
 	ft.stringRepr += " " + offsetStr
 	return ft, nil
 }
@@ -3357,7 +3447,7 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 	}
 	ft := &filterTime{
 		minTimestamp: math.MinInt64,
-		maxTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		maxTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 
 		stringRepr: prefix + s,
 	}
@@ -3406,7 +3496,7 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 		d--
 	}
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
@@ -3448,7 +3538,7 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 		d = -d
 	}
 	ft := &filterTime{
-		minTimestamp: subNoOverflowInt64(lex.currentTimestamp, d),
+		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
 		maxTimestamp: lex.currentTimestamp,
 
 		stringRepr: prefix + s,
@@ -3892,6 +3982,7 @@ var reservedKeywords = func() map[string]struct{} {
 		"i",
 		"in",
 		"ipv4_range",
+		"ipv6_range",
 		"le_field",
 		"len_range",
 		"lt_field",
@@ -3976,17 +4067,24 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 	return qStr
 }
 
-func subNoOverflowInt64(a, b int64) int64 {
-	if a == math.MinInt64 || a == math.MaxInt64 {
-		// Assume that a is either +Inf or -Inf.
-		// Subtracting any number from Inf must result in Inf.
-		return a
-	}
+// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overlow int64.
+//
+// It clamps the result to the int64 value range.
+func SubInt64NoOverflow(a, b int64) int64 {
 	if b >= 0 {
+		if a == math.MaxInt64 {
+			// Subtracting any number from +Inf must result in +Inf.
+			return a
+		}
 		if a < math.MinInt64+b {
 			return math.MinInt64
 		}
 		return a - b
+	}
+
+	if a == math.MinInt64 {
+		// Adding any number to -Inf must result in -Inf.
+		return a
 	}
 	if a > math.MaxInt64+b {
 		return math.MaxInt64

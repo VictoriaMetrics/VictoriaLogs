@@ -3,7 +3,7 @@ import Autocomplete, { AutocompleteOptions } from "../../../Main/Autocomplete/Au
 import { AUTOCOMPLETE_LIMITS } from "../../../../constants/queryAutocomplete";
 import { QueryEditorAutocompleteProps } from "../QueryEditor";
 import { getContextData, splitLogicalParts } from "./parser";
-import { ContextType, LogicalPart, LogicalPartType } from "./types";
+import { ContextType, LogicalPart } from "./types";
 import { useFetchLogsQLOptions } from "./useFetchLogsQLOptions";
 import { pipeList } from "./pipes";
 
@@ -65,8 +65,7 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
   const getUpdatedValue = (insertValue: string, logicalParts: LogicalPart[], id?: number) => {
     return logicalParts.reduce((acc, part) => {
       const value = part.id === id ? insertValue : part.value;
-      const separator = part.separator === "|" ? " | " : " ";
-      return `${acc}${separator}${value}`;
+      return `${acc}${part.separator}${value}`;
     }, "").trim();
   };
 
@@ -80,7 +79,10 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
       modifiedInsert = `${contextData?.filterName || ""}${contextData?.operator || ":"}${insertWithQuotes}`;
     }
 
-    return modifiedInsert;
+    const indentStart = value.match(/^[ \t]+/)?.[0] ?? "";
+    const indentEnd = value.match(/[ \t]+$/)?.[0] ?? "";
+
+    return `${indentStart}${modifiedInsert}${indentEnd}`;
   };
 
   const handleSelect = useCallback((insert: string, item: AutocompleteOptions) => {
@@ -93,13 +95,8 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
 
     const insertValue = getModifyInsert(insert, contextType, value, item.type);
     const newValue = getUpdatedValue(insertValue, logicalParts, id);
-    const logicalPart = logicalParts.find(p => p.id === id);
-    const getPositionCorrection = () => {
-      if (logicalPart?.type === LogicalPartType.FilterOrPipe) return 1;
-      if (item.type === ContextType.PipeName) return 1;
-      return 0;
-    };
-    const updatedPosition = (position[0] || 1) + insertValue.length + getPositionCorrection();
+
+    const updatedPosition = (position[0] || 1) + insertValue.trim().length;
 
     onSelect(newValue, updatedPosition);
   }, [contextData, logicalParts]);

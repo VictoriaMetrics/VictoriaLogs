@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from "preact/compat";
+import { FC, useMemo, useState } from "preact/compat";
 import "./style.scss";
 import "uplot/dist/uPlot.min.css";
 import { AlignedData } from "uplot";
@@ -10,16 +10,7 @@ import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
 import { ExtraFilter } from "../../../pages/OverviewPage/FiltersBar/types";
-import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
-import { useHitsChartConfig } from "../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
-import { useFetchFieldNames } from "../../../pages/OverviewPage/hooks/useFetchFieldNames";
-import { useTimeState } from "../../../state/time/TimeStateContext";
-import { useExtraFilters } from "../../../pages/OverviewPage/hooks/useExtraFilters";
-import { getDurationFromMilliseconds } from "../../../utils/time";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
-import { LOGS_BAR_COUNTS } from "../../../constants/logs";
-
-const HeaderSeparator = () => "|";
+import BarHitsStats from "./BarHitsStats/BarHitsStats";
 
 interface Props {
   logHits: LogHits[];
@@ -33,8 +24,6 @@ interface Props {
 }
 
 const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs, isOverview }) => {
-  const { isMobile } = useDeviceDetect();
-
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
     queryMode: GRAPH_QUERY_MODE.hits,
@@ -45,21 +34,7 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
   });
 
   const isHitsMode = graphOptions.queryMode === GRAPH_QUERY_MODE.hits;
-
   const totalHits = useMemo(() => calculateTotalHits(logHits), [logHits]);
-
-  const { extraParams } = useExtraFilters();
-  const { period: { start, end } } = useTimeState();
-  const { topHits, groupFieldHits, barsCount } = useHitsChartConfig();
-  const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
-
-  const fieldNamesOptions = useMemo(() => {
-    return fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
-  }, [fieldNames]);
-
-  const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, showAllFields: true, query });
-  }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   return (
     <div
@@ -69,51 +44,14 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
       })}
     >
       <div className="vm-bar-hits-chart-header">
-        <div
-          className={classNames({
-            "vm-bar-hits-chart-header-info": true,
-            "vm-bar-hits-chart-header-info_mobile": isMobile,
-          })}
-        >
-          <SelectLimit
-            label="Top hits"
-            options={[5, 10, 25, 50]}
-            limit={topHits.value}
-            onChange={topHits.set}
-          />
-          <HeaderSeparator/>
-          <SelectLimit
-            label="Bars"
-            options={LOGS_BAR_COUNTS}
-            limit={barsCount.value}
-            onChange={barsCount.set}
-          />
-          {isHitsMode && (
-            <>
-              <HeaderSeparator/>
-              <SelectLimit
-                searchable
-                label="Group by"
-                limit={groupFieldHits.value}
-                options={fieldNamesOptions}
-                textNoOptions={"No fields found"}
-                isLoading={loading}
-                error={error ? String(error) : ""}
-                onOpenSelect={handleOpenFields}
-                onChange={groupFieldHits.set}
-              />
-              <HeaderSeparator/>
-              <p>Total: <b>{totalHits.toLocaleString("en-US")}</b> hits</p>
-            </>
-          )}
-          {durationMs && (
-            <>
-              <HeaderSeparator/>
-              <p>Duration: <b>{getDurationFromMilliseconds(durationMs)}</b></p>
-            </>
-          )}
-        </div>
+        <BarHitsStats
+          totalHits={totalHits}
+          isHitsMode={isHitsMode}
+          durationMs={durationMs}
+        />
         <BarHitsOptions
+          query={query}
+          isHitsMode={isHitsMode}
           isOverview={isOverview}
           onChange={setGraphOptions}
         />
