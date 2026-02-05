@@ -23,6 +23,7 @@ according to the following docs:
 ## tip
 
 * SECURITY: upgrade Go builder from Go1.25.6 to Go1.25.7. See [the list of issues addressed in Go1.25.7](https://github.com/golang/go/issues?q=milestone%3AGo1.25.7%20label%3ACherryPickApproved).
+* SECURITY: upgrade base docker image (Alpine) from 3.23.2 to 3.23.3. See [Alpine 3.23.3 release notes](https://www.alpinelinux.org/posts/Alpine-3.20.9-3.21.6-3.22.3-3.23.3-released.html).
 
 * FEATURE: [dashboards/single-node](https://grafana.com/grafana/dashboards/22084), [dashboards/cluster](https://grafana.com/grafana/dashboards/23274): add clickable source code links to the `VictoriaLogs internal logging` panel in `Overview`. Users can use it to navigate directly to the source code location that generated those logs, making debugging and code exploration easier. See [#1074](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1074).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`ipv6_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv6-range-filter) for filtering logs by IPv6 address fields and CIDR ranges. This is an IPv6 counterpart to the existing [`ipv4_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter) and allows efficient matching over stored IPv6 addresses. See [#84](https://github.com/VictoriaMetrics/VictoriaLogs/issues/84). Thanks to @caicancai for the [implementation](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1049).
