@@ -208,8 +208,6 @@ type LogMessageProcessor interface {
 }
 
 type logMessageProcessor struct {
-	protocolName string
-
 	mu            sync.Mutex
 	wg            sync.WaitGroup
 	stopCh        chan struct{}
@@ -217,6 +215,10 @@ type logMessageProcessor struct {
 
 	cp *CommonParams
 	lr *logstorage.LogRows
+
+	rowsIngestedTotal  *metrics.Counter
+	bytesIngestedTotal *metrics.Counter
+	flushDuration      *metrics.Summary
 
 	unflushedRows  int
 	unflushedBytes int
@@ -321,10 +323,11 @@ func (lmp *logMessageProcessor) flushLocked() {
 	logRowsStorage.MustAddRows(lmp.lr)
 	lmp.lr.ResetKeepSettings()
 
-	metrics.GetOrCreateSummary(fmt.Sprintf("vl_insert_flush_duration_seconds{type=%q}", lmp.protocolName)).UpdateDuration(start)
-	metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", lmp.protocolName)).Add(lmp.unflushedRows)
+	lmp.flushDuration.UpdateDuration(start)
+	lmp.rowsIngestedTotal.Add(lmp.unflushedRows)
+	lmp.bytesIngestedTotal.Add(lmp.unflushedBytes)
+
 	lmp.unflushedRows = 0
-	metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", lmp.protocolName)).Add(lmp.unflushedBytes)
 	lmp.unflushedBytes = 0
 }
 
@@ -344,11 +347,18 @@ func (lmp *logMessageProcessor) MustClose() {
 // MustClose() must be called on the returned LogMessageProcessor when it is no longer needed.
 func (cp *CommonParams) NewLogMessageProcessor(protocolName string, isStreamMode bool) LogMessageProcessor {
 	lr := logstorage.GetLogRows(cp.StreamFields, cp.IgnoreFields, cp.DecolorizeFields, cp.ExtraFields, *defaultMsgValue)
-	lmp := &logMessageProcessor{
-		protocolName: protocolName,
 
+	rowsIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", protocolName))
+	bytesIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", protocolName))
+	flushDuration := metrics.GetOrCreateSummary(fmt.Sprintf("vl_insert_flush_duration_seconds{type=%q}", protocolName))
+
+	lmp := &logMessageProcessor{
 		cp: cp,
 		lr: lr,
+
+		rowsIngestedTotal:  rowsIngestedTotal,
+		bytesIngestedTotal: bytesIngestedTotal,
+		flushDuration:      flushDuration,
 
 		stopCh: make(chan struct{}),
 	}
