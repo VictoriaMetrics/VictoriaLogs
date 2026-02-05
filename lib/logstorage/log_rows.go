@@ -296,7 +296,7 @@ func (lr *LogRows) ResetKeepSettings() {
 
 // NeedFlush returns true if lr contains too much data, so it must be flushed to the storage.
 func (lr *LogRows) NeedFlush() bool {
-	return len(lr.a.b) > (maxUncompressedBlockSize/8)*7
+	return len(lr.a.b) > (maxUncompressedBlockSize/8)*7 || len(lr.rows) > maxUncompressedBlockSize/100
 }
 
 // MustAddInsertRow adds r to lr.
