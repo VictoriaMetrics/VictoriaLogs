@@ -1829,6 +1829,13 @@
               "mode": "off"
             }
           },
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "Source Code",
+              "url": "https://l2s.victoriametrics.com/?app_version=${__field.labels.app_version}&location=${__field.labels.location}"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1931,7 +1938,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(increase(vm_log_messages_total{job=~\"$job_cluster\", instance=~\"$instance\", level!=\"info\"}[$__rate_interval])) by (job, level, location)",
+          "expr": "sum(increase(vm_log_messages_total{job=~\"$job_cluster\", instance=~\"$instance\", level!=\"info\"}[$__rate_interval])) by (job, level, app_version, location)",
           "interval": "5m",
           "legendFormat": "{{job}} - {{level}}: {{location}}",
           "range": true,
