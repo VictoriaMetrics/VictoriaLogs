@@ -175,7 +175,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
       {!isMobile && (
         <>
           <Controls/>
-          <ShortcutKeys>
+          <ShortcutKeys withHotkey={false}>
             <Button
               variant="text"
               color="gray"
