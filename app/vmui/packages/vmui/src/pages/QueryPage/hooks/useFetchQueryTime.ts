@@ -4,6 +4,7 @@ import { useTenant } from "../../../hooks/useTenant";
 import { useAppState } from "../../../state/common/StateContext";
 import dayjs from "dayjs";
 import { getDurationFromPeriod, getTimeperiodForDuration } from "../../../utils/time";
+import { getOverrideValue } from "../../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 
 type ResponseTimeRange = {
   start: string;
@@ -15,6 +16,9 @@ interface ServerTimeParams extends TimeParams {
   hasTimeFilter: boolean;
 }
 
+const hasTimeFilter = (expr?: string) => {
+  return !!expr && expr.includes("_time");
+};
 
 export const useFetchQueryTime = (defaultQuery?: string) => {
   const { serverUrl } = useAppState();
@@ -28,6 +32,11 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
     period: TimeParams,
     query?: string
   }): Promise<ServerTimeParams | undefined> => {
+    if (!getOverrideValue() || !hasTimeFilter(query)) {
+      // No need to fetch, as time filter override is disabled or query has no _time filter
+      return;
+    }
+
     const params = new URLSearchParams({
       query: query || defaultQuery || "",
       start: period.start.toString(),

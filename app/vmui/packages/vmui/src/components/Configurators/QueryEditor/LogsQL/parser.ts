@@ -4,21 +4,23 @@ import { pipeList } from "./pipes";
 const BUILDER_OPERATORS = ["AND", "OR", "NOT"];
 const PIPE_NAMES = pipeList.map(p => p.value);
 
+const QUOTE_CHARS = ["'", "\"", "`"];
+const OPENING_BRACKETS = ["(", "[", "{"];
+const CLOSING_BRACKETS = [")", "]", "}"];
+const BRACKETS = [...OPENING_BRACKETS, ...CLOSING_BRACKETS];
+
 export const splitLogicalParts = (expr: string) => {
   // Replace spaces around the colon (:) with just the colon, removing the spaces
   const input = expr; //.replace(/\s*:\s*/g, ":");
+  const { isBalancedQuotes, unclosedQuoteIndex } = hasBalancedQuotes(input);
+
   const parts: LogicalPart[] = [];
   let currentPart = "";
-  let separator: undefined | " " | "|" = undefined;
+  let separator: string = "";
   let isPipePart = false;
 
-  const quotes = ["'", "\"", "`"];
   let insideQuotes = false;
   let expectedQuote = "";
-
-  const openBrackets = ["(", "[", "{"];
-  const closeBrackets = [")", "]", "}"];
-  const brackets = [...openBrackets, ...closeBrackets];
   let insideBrackets = 0;
 
   let startIndex = 0;
@@ -26,27 +28,39 @@ export const splitLogicalParts = (expr: string) => {
   for (let i = 0; i < input.length; i++) {
     const char = input[i];
 
-    // Check if the current character is a quote
-    if (quotes.includes(char)) {
-      const isClosedQuote: boolean = insideQuotes && (char === expectedQuote);
-      insideQuotes = !isClosedQuote;
-      expectedQuote = isClosedQuote ? "" : char;
+    if (!isBalancedQuotes && i >= unclosedQuoteIndex!) {
+      insideQuotes = false;
     }
 
-    // Check if the current character is a bracket
-    if (!insideQuotes && brackets.includes(char)) {
-      const dir = openBrackets.includes(char) ? 1 : -1;
-      insideBrackets += dir;
+    // Quotes: only open when not inside, only close when matches expectedQuote
+    if (QUOTE_CHARS.includes(char) && !isEscaped(input, i)) {
+      if (!insideQuotes) {
+        insideQuotes = true;
+        expectedQuote = char;
+      } else if (char === expectedQuote) {
+        insideQuotes = false;
+        expectedQuote = "";
+      }
+      // else: ignore other quote types inside a quoted string
+    }
+
+    // Brackets (optionally protect from negative)
+    if (!insideQuotes && BRACKETS.includes(char)) {
+      const dir = OPENING_BRACKETS.includes(char) ? 1 : -1;
+      insideBrackets = Math.max(0, insideBrackets + dir);
     }
 
     // Check if the current character is a pipe
-    if ((!insideQuotes && !insideBrackets && char === "|")) {
-      isPipePart = true;
+    if (!insideQuotes && insideBrackets === 0 && char === "|") {
+      // push current part with current isPipePart (NOT forced true)
       const countStartSpaces = currentPart.match(/^ */)?.[0].length || 0;
       const countEndSpaces = currentPart.match(/ *$/)?.[0].length || 0;
-      pushPart(currentPart, true, [startIndex + countStartSpaces, i - countEndSpaces - 1], parts, separator);
+
+      pushPart(currentPart, isPipePart, [startIndex + countStartSpaces, i - countEndSpaces - 1], parts, separator);
+
       currentPart = "";
       separator = "|";
+      isPipePart = true;
       startIndex = i + 1;
       continue;
     }
@@ -56,8 +70,8 @@ export const splitLogicalParts = (expr: string) => {
       const nextStr = input.slice(i).replace(/^\s*/, "");
       const prevStr = input.slice(0, i).replace(/\s*$/, "");
       if (!nextStr.startsWith(":") && !prevStr.endsWith(":")) {
-        pushPart(currentPart, false, [startIndex, i - 1], parts, separator);
-        separator = " ";
+        pushPart(currentPart + char, false, [startIndex, i], parts, separator);
+
         currentPart = "";
         startIndex = i + 1;
         continue;
@@ -73,12 +87,15 @@ export const splitLogicalParts = (expr: string) => {
   return parts;
 };
 
-const pushPart = (currentPart: string, isPipePart: boolean, position: LogicalPartPosition, parts: LogicalPart[], separator: LogicalPart["separator"]) => {
-  const trimmedPart = currentPart.trim();
-  if (!trimmedPart) return;
-  const isOperator = BUILDER_OPERATORS.includes(trimmedPart.toUpperCase());
+const pushPart = (currentPart: string, isPipePart: boolean, position: LogicalPartPosition, parts: LogicalPart[], separator: string) => {
+  if (!currentPart.trim().length) return;
+  const isOperator = BUILDER_OPERATORS.includes(currentPart.toUpperCase());
   const pipesTypes = [LogicalPartType.Pipe, LogicalPartType.FilterOrPipe];
   const isPreviousPartPipe = parts.length > 0 && pipesTypes.includes(parts[parts.length - 1].type);
+
+  const lineBreakRegex = /(?:\r?\n[ \t]*)+$/;
+  const lineBreakMatch = currentPart.match(lineBreakRegex)?.[0] ?? "";
+  const hasLineBreak = lineBreakMatch.length > 0;
 
   const getType = () => {
     if (isPreviousPartPipe) return LogicalPartType.FilterOrPipe;
@@ -89,11 +106,21 @@ const pushPart = (currentPart: string, isPipePart: boolean, position: LogicalPar
 
   parts.push({
     id: parts.length,
-    value: trimmedPart,
+    value: currentPart.replace(lineBreakRegex, ""),
     position,
     type: getType(),
     separator,
   });
+
+  if (hasLineBreak) {
+    parts.push({
+      id: parts.length,
+      value: lineBreakMatch,
+      position,
+      type: LogicalPartType.LineBreak,
+      separator: "",
+    });
+  }
 };
 
 export const getContextData = (part: LogicalPart, cursorPos: number): ContextData => {
@@ -194,4 +221,37 @@ const handleFilterOrPipeType = (
   } else {
     metaData.contextType = ContextType.FilterOrPipeName;
   }
+};
+
+const isEscaped = (s: string, i: number) => {
+  let bs = 0;
+  for (let j = i - 1; j >= 0 && s[j] === "\\"; j--) bs++;
+  return bs % 2 === 1;
+};
+
+export const hasBalancedQuotes = (s: string) => {
+  let inQuote: (typeof QUOTE_CHARS)[number] | null = null;
+  let openedAt: number | null = null;
+
+  for (let i = 0; i < s.length; i++) {
+    const char = s[i];
+
+    if (QUOTE_CHARS.includes(char) && !isEscaped(s, i)) {
+      if (inQuote === null) {
+        inQuote = char as (typeof QUOTE_CHARS)[number];
+        openedAt = i;
+        continue;
+      }
+
+      if (char === inQuote) {
+        inQuote = null;
+        openedAt = null;
+      }
+    }
+  }
+
+  return {
+    isBalancedQuotes: inQuote === null,
+    unclosedQuoteIndex: openedAt,
+  };
 };

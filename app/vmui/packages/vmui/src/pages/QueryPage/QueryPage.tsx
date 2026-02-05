@@ -24,7 +24,6 @@ import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
 import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
 import { useFetchQueryTime } from "./hooks/useFetchQueryTime";
-import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 import { GRAPH_QUERY_MODE } from "../../components/Chart/BarHitsChart/types";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
@@ -124,9 +123,7 @@ const QueryPage: FC = () => {
     setQueryError("");
 
     const uiPeriod = getPeriod();
-    const apiPeriod = getOverrideValue()
-      ? await fetchQueryTime({ query, period: uiPeriod })
-      : undefined;
+    const apiPeriod = await fetchQueryTime({ query, period: uiPeriod });
 
     const newPeriod = apiPeriod ?? uiPeriod;
 
@@ -155,6 +152,8 @@ const QueryPage: FC = () => {
     updateHistory();
   };
 
+  const debouncedHandleRunQuery = useDebounceCallback(handleRunQuery, 300);
+
   const handleApplyFilter = (val: ExtraFilter) => {
     setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
     setIsUpdatingQuery(true);
@@ -165,7 +164,7 @@ const QueryPage: FC = () => {
       abortController.abort?.();
       dataLogHits.abortController.abort?.();
     } else {
-      handleRunQuery();
+      debouncedHandleRunQuery();
     }
   };
 
@@ -175,12 +174,13 @@ const QueryPage: FC = () => {
       setSkipNextPeriodEffect(false);
       return;
     }
-    handleRunQuery();
+    setPeriod(getPeriod());
+    debouncedHandleRunQuery();
   }, [periodState]);
 
   useEffect(() => {
     if (!isUpdatingQuery) return;
-    handleRunQuery();
+    debouncedHandleRunQuery();
     setIsUpdatingQuery(false);
   }, [query, isUpdatingQuery]);
 
