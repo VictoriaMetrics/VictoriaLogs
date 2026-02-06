@@ -877,7 +877,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
+	labelFields, metricFields, err := ca.q.GetStatsLabelsAndMetricFieldsAddGroupingByTime(step, offset)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -885,17 +885,34 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 
 	m := make(map[string]*statsSeries)
 	var mLock sync.Mutex
+	metricOrder := make(map[string]int)
+	for i, name := range metricFields {
+		metricOrder[name] = i
+	}
 
 	addPoint := func(name string, labels []logstorage.Field, p statsPoint) {
 		dst := append([]byte{}, name...)
 		dst = logstorage.MarshalFieldsToJSON(dst, labels)
 		key := string(dst)
 
+		order, ok := metricOrder[name]
+		if !ok {
+			// Keep histogram() buckets grouped with the parent metric order.
+			if before, cutOk := strings.CutSuffix(name, "_bucket"); cutOk {
+				baseName := before
+				order, ok = metricOrder[baseName]
+			}
+		}
+		if !ok {
+			order = len(metricOrder)
+		}
+
 		mLock.Lock()
 		ss := m[key]
 		if ss == nil {
 			ss = &statsSeries{
 				key:    key,
+				order:  order,
 				Name:   name,
 				Labels: labels,
 			}
@@ -996,6 +1013,9 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		rows = append(rows, ss)
 	}
 	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].order != rows[j].order {
+			return rows[i].order < rows[j].order
+		}
 		return rows[i].key < rows[j].key
 	})
 
@@ -1011,6 +1031,8 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 
 type statsSeries struct {
 	key string
+	// order preserves metric result order as defined by the query.
+	order int
 
 	Name   string
 	Labels []logstorage.Field

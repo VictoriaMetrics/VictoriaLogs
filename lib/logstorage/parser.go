@@ -1045,9 +1045,18 @@ func (q *Query) GetStatsLabels() ([]string, error) {
 //
 // if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
 func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, error) {
+	labelFields, _, err := q.GetStatsLabelsAndMetricFieldsAddGroupingByTime(step, offset)
+	return labelFields, err
+}
+
+// GetStatsLabelsAndMetricFieldsAddGroupingByTime returns stats labels and metric fields from q
+// for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints.
+//
+// if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
+func (q *Query) GetStatsLabelsAndMetricFieldsAddGroupingByTime(step, offset int64) ([]string, []string, error) {
 	idx := getLastPipeStatsIdx(q.pipes)
 	if idx < 0 {
-		return nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
+		return nil, nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
 	}
 	ps := q.pipes[idx].(*pipeStats)
 
@@ -1062,7 +1071,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 				continue
 			}
 			if !p.canReturnLastNResults() {
-				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
+				return nil, nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
 			}
 		}
 	}
@@ -1078,6 +1087,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 
 	labelFields := make([]string, 0, len(ps.byFields))
 	metricFields := make(map[string]struct{}, len(ps.funcs))
+	metricFieldsOrdered := make([]string, 0, len(ps.funcs))
 
 	addToLabelFields := func(f string) {
 		if !slices.Contains(labelFields, f) {
@@ -1089,6 +1099,9 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 	addToMetricFields := func(f string) {
 		if idx := slices.Index(labelFields, f); idx >= 0 {
 			labelFields = append(labelFields[:idx], labelFields[idx+1:]...)
+		}
+		if _, ok := metricFields[f]; !ok {
+			metricFieldsOrdered = append(metricFieldsOrdered, f)
 		}
 		metricFields[f] = struct{}{}
 	}
@@ -1120,7 +1133,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 		case *pipeRunningStats:
 			// `| running_stats ...` pipe must contain the same labelFields as the preceding `stats` pipe.
 			if !hasNeededFieldsExceptTime(t.byFields, labelFields) {
-				return nil, fmt.Errorf("the %q must contain the same list of fields as `stats` pipe in the query [%s]", t, q)
+				return nil, nil, fmt.Errorf("the %q must contain the same list of fields as `stats` pipe in the query [%s]", t, q)
 			}
 			for _, f := range t.funcs {
 				addToMetricFields(f.resultName)
@@ -1213,24 +1226,34 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 		case *pipeUnpackJSON:
 			// Assume that `| unpack_json ... fields (...)` pipe generates an additional by(...) labels from fields(...)
 			if len(t.fieldFilters) == 0 {
-				return nil, fmt.Errorf("missing fields(...) after %q in the query [%s]", t, q)
+				return nil, nil, fmt.Errorf("missing fields(...) after %q in the query [%s]", t, q)
 			}
 			for _, f := range t.fieldFilters {
 				if prefixfilter.IsWildcardFilter(f) {
-					return nil, fmt.Errorf("fields(...) at %q cannot contain wildcard filter; got %s; query [%s]", t, f, q)
+					return nil, nil, fmt.Errorf("fields(...) at %q cannot contain wildcard filter; got %s; query [%s]", t, f, q)
 				}
 				addToLabelFields(f)
 			}
 		default:
-			return nil, fmt.Errorf("the %q pipe cannot be put after %q pipe in the query [%s]", p, ps, q)
+			return nil, nil, fmt.Errorf("the %q pipe cannot be put after %q pipe in the query [%s]", p, ps, q)
 		}
 	}
 
 	if len(metricFields) == 0 {
-		return nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
+		return nil, nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
 	}
 
-	return labelFields, nil
+	resultMetricFields := make([]string, 0, len(metricFields))
+	for _, f := range metricFieldsOrdered {
+		if _, ok := metricFields[f]; ok {
+			resultMetricFields = append(resultMetricFields, f)
+		}
+	}
+	if len(resultMetricFields) == 0 {
+		return nil, nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
+	}
+
+	return labelFields, resultMetricFields, nil
 }
 
 func hasNeededFieldsExceptTime(fields, neededFields []string) bool {

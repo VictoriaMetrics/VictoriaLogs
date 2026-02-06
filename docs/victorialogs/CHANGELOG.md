@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [`/select/logsql/stats_query_range` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats): preserve metric order in responses so it is consistent with [`/select/logsql/stats_query` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats). See [#1011](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1011).
+
 ## [v1.45.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.45.0)
 
 Released at 2026-02-05

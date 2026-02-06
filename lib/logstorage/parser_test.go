@@ -139,6 +139,31 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	})
 }
 
+func TestQueryGetStatsLabelsAndMetricFieldsOrder(t *testing.T) {
+	q, err := ParseQueryAtTimestamp(`* | stats count() sessions, sum(source.bytes) source.bytes, sum(destination.bytes) destination.bytes`, 0)
+	if err != nil {
+		t.Fatalf("cannot parse query: %s", err)
+	}
+
+	_, metricFields, err := q.GetStatsLabelsAndMetricFieldsAddGroupingByTime(0, 0)
+	if err != nil {
+		t.Fatalf("cannot get metric fields: %s", err)
+	}
+
+	metricFieldsExpected := []string{"sessions", "source.bytes", "destination.bytes"}
+	if !reflect.DeepEqual(metricFields, metricFieldsExpected) {
+		t.Fatalf("unexpected metric fields order\ngot\n%q\nwant\n%q", metricFields, metricFieldsExpected)
+	}
+
+	_, metricFields, err = q.GetStatsLabelsAndMetricFieldsAddGroupingByTime(1e9, 0)
+	if err != nil {
+		t.Fatalf("cannot get metric fields for step=1s: %s", err)
+	}
+	if !reflect.DeepEqual(metricFields, metricFieldsExpected) {
+		t.Fatalf("unexpected metric fields order for step=1s\ngot\n%q\nwant\n%q", metricFields, metricFieldsExpected)
+	}
+}
+
 func TestLexer(t *testing.T) {
 	f := func(s string, tokensExpected []string) {
 		t.Helper()
