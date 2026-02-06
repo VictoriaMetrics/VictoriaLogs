@@ -228,3 +228,61 @@ func (t *hashTokenizer) tokenizeString(dst []uint64, s string) []uint64 {
 	}
 	return dst
 }
+
+func (t *hashTokenizer) tokenizeStringOld(dst []uint64, s string) []uint64 {
+	if !isASCII(s) {
+		// Slow path - s contains unicode chars
+		return t.tokenizeStringUnicode(dst, s)
+	}
+
+	// Fast path for ASCII s
+	i := 0
+	for i < len(s) {
+		// Search for the next token.
+		start := len(s)
+		for i < len(s) {
+			if !isTokenChar(s[i]) {
+				i++
+				continue
+			}
+			start = i
+			i++
+			break
+		}
+		// Search for the end of the token.
+		end := len(s)
+		for i < len(s) {
+			if isTokenChar(s[i]) {
+				i++
+				continue
+			}
+			end = i
+			i++
+			break
+		}
+		if end <= start {
+			break
+		}
+
+		// Register the token.
+		token := s[start:end]
+		if h, ok := t.addToken(token); ok {
+			dst = append(dst, h)
+		}
+	}
+	return dst
+}
+
+func tokenizeHashesOld(dst []uint64, a []string) []uint64 {
+	t := getHashTokenizer()
+	for i, s := range a {
+		if i > 0 && s == a[i-1] {
+			// This string has been already tokenized
+			continue
+		}
+		dst = t.tokenizeStringOld(dst, s)
+	}
+	putHashTokenizer(t)
+
+	return dst
+}
