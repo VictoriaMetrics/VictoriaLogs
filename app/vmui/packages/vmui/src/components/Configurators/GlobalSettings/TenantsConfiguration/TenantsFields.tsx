@@ -62,7 +62,7 @@ const TenantsFields: FC<Props> = ({ accountId, projectId, onChange }) => {
             variant="text"
             color="primary"
           >
-            Read more
+            Multitenancy docs
           </Button>
         </a>
         <Button

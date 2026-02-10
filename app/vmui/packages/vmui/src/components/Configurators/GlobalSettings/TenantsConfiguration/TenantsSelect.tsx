@@ -71,7 +71,7 @@ const TenantsSelect: FC<Props> = ({ accountIds, tenantId, onChange }) => {
             variant="text"
             color="primary"
           >
-            Read more
+            Multitenancy docs
           </Button>
         </a>
       </div>
