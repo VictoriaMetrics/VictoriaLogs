@@ -38,13 +38,13 @@ var (
 		"See: https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields")
 
 	includePodLabels = flag.Bool("kubernetesCollector.includePodLabels", true, "Include Pod labels as additional fields in the log entries. "+
-		"Even this setting is disabled, Pod labels are available for filtering via -kubernetes.excludeFilter flag")
+		"Even this setting is disabled, Pod labels are available for filtering via -kubernetesCollector.excludeFilter flag")
 	includePodAnnotations = flag.Bool("kubernetesCollector.includePodAnnotations", false, "Include Pod annotations as additional fields in the log entries. "+
-		"Even this setting is disabled, Pod annotations are available for filtering via -kubernetes.excludeFilter flag")
+		"Even this setting is disabled, Pod annotations are available for filtering via -kubernetesCollector.excludeFilter flag")
 	includeNodeLabels = flag.Bool("kubernetesCollector.includeNodeLabels", false, "Include Node labels as additional fields in the log entries. "+
-		"Even this setting is disabled, Node labels are available for filtering via -kubernetes.excludeFilter flag")
+		"Even this setting is disabled, Node labels are available for filtering via -kubernetesCollector.excludeFilter flag")
 	includeNodeAnnotations = flag.Bool("kubernetesCollector.includeNodeAnnotations", false, "Include Node annotations as additional fields in the log entries. "+
-		"Even this setting is disabled, Node annotations are available for filtering via -kubernetes.excludeFilter flag")
+		"Even this setting is disabled, Node annotations are available for filtering via -kubernetesCollector.excludeFilter flag")
 )
 
 type logFileProcessor struct {

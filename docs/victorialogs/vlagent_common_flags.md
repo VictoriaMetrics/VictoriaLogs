@@ -133,13 +133,13 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -kubernetesCollector.includeNodeAnnotations
-     Include Node annotations as additional fields in the log entries. Even this setting is disabled, Node annotations are available for filtering via -kubernetes.excludeFilter flag
+     Include Node annotations as additional fields in the log entries. Even this setting is disabled, Node annotations are available for filtering via -kubernetesCollector.excludeFilter flag
   -kubernetesCollector.includeNodeLabels
-     Include Node labels as additional fields in the log entries. Even this setting is disabled, Node labels are available for filtering via -kubernetes.excludeFilter flag
+     Include Node labels as additional fields in the log entries. Even this setting is disabled, Node labels are available for filtering via -kubernetesCollector.excludeFilter flag
   -kubernetesCollector.includePodAnnotations
-     Include Pod annotations as additional fields in the log entries. Even this setting is disabled, Pod annotations are available for filtering via -kubernetes.excludeFilter flag
+     Include Pod annotations as additional fields in the log entries. Even this setting is disabled, Pod annotations are available for filtering via -kubernetesCollector.excludeFilter flag
   -kubernetesCollector.includePodLabels
-     Include Pod labels as additional fields in the log entries. Even this setting is disabled, Pod labels are available for filtering via -kubernetes.excludeFilter flag (default true)
+     Include Pod labels as additional fields in the log entries. Even this setting is disabled, Pod labels are available for filtering via -kubernetesCollector.excludeFilter flag (default true)
   -kubernetesCollector.logsPath string
      Path to the directory with Kubernetes container logs (usually /var/log/containers). This should point to the kubelet-managed directory containing symlinks to pod logs. vlagent must have read access to this directory and to the target log files, typically located under /var/log/pods and /var/lib on the host (default "/var/log/containers")
   -kubernetesCollector.msgField array

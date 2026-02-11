@@ -62,7 +62,7 @@ func Init(tmpDataPath string) {
 	if *excludeFilter != "" {
 		excludeF, err = logstorage.ParseFilter(*excludeFilter)
 		if err != nil {
-			logger.Fatalf("cannot parse LogsQL -kubernetesContainer.excludeFilter=%q: %s", *excludeFilter, err)
+			logger.Fatalf("cannot parse LogsQL -kubernetesCollector.excludeFilter=%q: %s", *excludeFilter, err)
 		}
 	}
 
