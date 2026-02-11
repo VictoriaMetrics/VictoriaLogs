@@ -45,6 +45,7 @@ var (
 		"Even this setting is disabled, Node labels are available for filtering via -kubernetes.excludeFilter flag")
 	includeNodeAnnotations = flag.Bool("kubernetesCollector.includeNodeAnnotations", false, "Include Node annotations as additional fields in the log entries. "+
 		"Even this setting is disabled, Node annotations are available for filtering via -kubernetes.excludeFilter flag")
+	skipMalformedLines = flag.Bool("kubernetesCollector.skipMalformedLines", false, "Skip malformed log lines that cannot be parsed according to the expected format.")
 )
 
 type logFileProcessor struct {
@@ -110,7 +111,12 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 
 		criLine, err := parseCRILineJSON(parser, logLine)
 		if err != nil {
-			logger.Panicf("FATAL: cannot parse 'json-file' log content: %s; content: %q", err, logLine)
+			if *skipMalformedLines {
+				logger.Warnf("skipping malformed log line that cannot be parsed according to the expected 'json-file' log content format: %s; content: %q", err, logLine)
+				return true
+			} else {
+				logger.Panicf("FATAL: cannot parse 'json-file' log content: %s; content: %q", err, logLine)
+			}
 		}
 
 		lfp.addLineInternal(criLine.timestamp, criLine.content)
@@ -120,7 +126,12 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 
 	criLine, err := parseCRILine(logLine)
 	if err != nil {
-		logger.Panicf("FATAL: cannot parse Container Runtime Interface log line: %s; content: %q", err, logLine)
+		if *skipMalformedLines {
+			logger.Warnf("skipping malformed log line that cannot be parsed according to the expected CRI format: %s; content: %q", err, logLine)
+			return true
+		} else {
+			logger.Panicf("FATAL: cannot parse Container Runtime Interface log line: %s; content: %q", err, logLine)
+		}
 	}
 
 	timestamp, content, ok := lfp.joinPartialLines(criLine)

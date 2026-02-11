@@ -211,6 +211,98 @@ func TestParseKlogFailure(t *testing.T) {
 	f(`I1215 07:34:12.324309       1 configmap_cafile_content.go:202] "Starting controller" name="client-`)
 }
 
+func TestSkipMalformedLines(t *testing.T) {
+	// Save original flag value and restore it after test
+	origSkipMalformedLines := *skipMalformedLines
+	defer func() {
+		*skipMalformedLines = origSkipMalformedLines
+	}()
+
+	// Enable skipMalformedLines flag
+	*skipMalformedLines = true
+
+	f := func(in []string, resultsExpected []string) {
+		t.Helper()
+
+		storage := newTestStorage()
+		proc := newLogFileProcessor(storage, nil)
+
+		for _, s := range in {
+			proc.tryAddLine([]byte(s))
+		}
+
+		expected := strings.Join(resultsExpected, "\n")
+		if err := storage.verify(expected); err != nil {
+			t.Fatalf("unexpected result: %s", err)
+		}
+	}
+
+	// Malformed CRI line - invalid timestamp
+	in := []string{
+		`invalid-timestamp stderr F foo bar`,
+		`2025-10-16T15:37:36.330062387Z stderr F valid line`,
+	}
+	expectedContents := []string{`{"_msg":"valid line","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z"}`}
+	f(in, expectedContents)
+
+	// Malformed CRI line - missing stream
+	in = []string{
+		`2025-10-16T15:37:36Z F foo bar`,
+		`2025-10-16T15:37:36.330062387Z stderr F valid line`,
+	}
+	expectedContents = []string{`{"_msg":"valid line","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z"}`}
+	f(in, expectedContents)
+
+	// Malformed CRI line - missing tag
+	in = []string{
+		`2025-10-16T15:37:36Z stderr foo bar`,
+		`2025-10-16T15:37:36.330062387Z stderr F valid line`,
+	}
+	expectedContents = []string{`{"_msg":"valid line","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z"}`}
+	f(in, expectedContents)
+
+	// Malformed JSON line
+	in = []string{
+		`{"log":"foo","stream":"stderr","time":"invalid-time"}`,
+		`{"log":"bar","stream":"stderr","time":"2025-10-16T15:37:36.330062387Z"}`,
+	}
+	expectedContents = []string{`{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z"}`}
+	f(in, expectedContents)
+
+	// Malformed JSON - incomplete JSON
+	in = []string{
+		`{"log":"foo","stream":"stderr"`,
+		`{"log":"bar","stream":"stderr","time":"2025-10-16T15:37:36.330062387Z"}`,
+	}
+	expectedContents = []string{`{"_msg":"bar","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z"}`}
+	f(in, expectedContents)
+
+	// Mix of malformed and valid lines
+	in = []string{
+		`malformed line 1`,
+		`2025-10-16T15:37:36.1Z stderr F first valid`,
+		`another malformed line`,
+		`2025-10-16T15:37:36.2Z stderr F second valid`,
+		`{"incomplete json`,
+		`2025-10-16T15:37:36.3Z stderr F third valid`,
+	}
+	expectedContents = []string{
+		`{"_msg":"first valid","_stream":"{}","_time":"2025-10-16T15:37:36.1Z"}`,
+		`{"_msg":"second valid","_stream":"{}","_time":"2025-10-16T15:37:36.2Z"}`,
+		`{"_msg":"third valid","_stream":"{}","_time":"2025-10-16T15:37:36.3Z"}`,
+	}
+	f(in, expectedContents)
+
+	// All malformed lines - should result in empty output
+	in = []string{
+		`malformed line 1`,
+		`malformed line 2`,
+		`malformed line 3`,
+	}
+	expectedContents = []string{}
+	f(in, expectedContents)
+}
+
 func TestParseCRILine(t *testing.T) {
 	f := func(line string, timestampExpected int64, partialExpected bool, contentExpected string) {
 		t.Helper()
