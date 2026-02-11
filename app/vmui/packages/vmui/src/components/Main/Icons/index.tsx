@@ -674,3 +674,12 @@ export const ListAllIcon = () => (
     ></path>
   </svg>
 );
+
+export const TreeIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M22 11V3h-7v3H9V3H2v8h7v-2h2v10h4v2h7v-8h-7v2h-2V8h2v3z"></path>
+  </svg>
+);

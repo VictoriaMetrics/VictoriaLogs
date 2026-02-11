@@ -4,7 +4,7 @@
 
 $font-size-logs: var(--font-size-logs, $font-size-small);
 
-$actions-buttons: 2;
+$actions-buttons: 3;
 $actions-width: calc(($actions-buttons * 30px) + 10px);
 
 .vm-group-logs {
@@ -236,6 +236,12 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
           text-align: center;
         }
 
+        &_tree {
+          display: block;
+          padding-top: 2px;
+          padding-bottom: $padding-small;
+        }
+
         /* styles for markdown */
         p, pre, code {
           white-space: pre-wrap;
@@ -431,5 +437,153 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         }
       }
     }
+  }
+}
+
+.vm-tree-field {
+  font-family: $font-family-monospace;
+  font-size: $font-size-logs;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 0 -8px;
+
+  &__line {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    padding: 1px 0;
+    white-space: pre;
+  }
+
+  &__indent {
+    display: inline-block;
+    width: 0;
+    overflow: visible;
+    white-space: pre;
+  }
+
+  &__toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-family: $font-family-monospace;
+    font-size: $font-size-logs;
+    color: var(--color-primary);
+    min-width: 24px;
+    text-align: center;
+    font-weight: 600;
+
+    &:hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  &__key {
+    color: #991b1b; // red-800 - distinct red for keys
+    font-weight: 500;
+    font-family: $font-family-monospace;
+  }
+
+  &__separator {
+    color: var(--color-text-secondary);
+    margin-right: 2px;
+  }
+
+  &__expander {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  &__value {
+    color: var(--color-text);
+    word-break: break-word;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &-string {
+      color: #059669; // emerald-600 - professional green for strings
+    }
+
+    &-number {
+      color: #2563eb; // blue-600 - professional blue for numbers
+    }
+
+    &-boolean {
+      color: #7c3aed; // violet-600 - distinct purple for booleans
+    }
+
+    &-null {
+      color: var(--color-text-secondary);
+      font-style: italic;
+      opacity: 0.8;
+    }
+  }
+
+  // Dark mode adjustments for better contrast
+  .vm-group-logs-row-content_dark & {
+    &__key {
+      color: #fca5a5; // red-300 - lighter red for dark mode
+    }
+
+    &__value {
+      &-string {
+        color: #34d399; // emerald-400 - lighter green for dark mode
+      }
+
+      &-number {
+        color: #60a5fa; // blue-400 - lighter blue for dark mode
+      }
+
+      &-boolean {
+        color: #a78bfa; // violet-400 - lighter purple for dark mode
+      }
+    }
+  }
+
+  &__children {
+    margin-top: 0;
+
+    &_root {
+      display: flex;
+      flex-direction: column;
+      margin-left: 0;
+    }
+  }
+
+  &__root-toggle {
+    position: absolute;
+    left: -32px;
+    top: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-family: $font-family-monospace;
+    font-size: $font-size-logs;
+    color: var(--color-primary);
+    min-width: 28px;
+    text-align: left;
+    font-weight: 600;
+    line-height: 1.3;
+
+    &:hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  &_system {
+    .vm-tree-field__key {
+      color: var(--color-text-secondary);
+      font-family: $font-family-monospace;
+      font-style: normal;
+    }
+  }
+
+  &_root {
+    margin-left: 32px;
+    position: relative;
   }
 }
