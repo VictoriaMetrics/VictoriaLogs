@@ -244,9 +244,17 @@ func (lf *logFile) addLine(p processor, line []byte) {
 		// This is the first line of the current file.
 		lf.fingerprint = calcFingerprint(line)
 	}
-	lf.offset += int64(len(line) + len("\n"))
 
-	if p.tryAddLine(line) {
+	ok, err := p.tryAddLine(line)
+	if err != nil {
+		// Do not use lf.path here, since the file could be opened using findRenamedFile;
+		// in this case lf.path will point to a rotated file.
+		filePath := lf.file.Name()
+		actualPath := tryResolveSymlink(filePath)
+		logger.Panicf("FATAL: cannot process line from file %q (inode %d) with offset %d: %s", actualPath, lf.inode, lf.offset, err)
+	}
+	lf.offset += int64(len(line) + len("\n"))
+	if ok {
 		lf.commitInode = lf.inode
 		lf.commitFingerprint = lf.fingerprint
 		lf.commitOffset = lf.offset

@@ -28,7 +28,7 @@ type processor interface {
 	//
 	// Note: when a log file is rotated, no checkpoint will be written until tryAddLine returns true,
 	// ensuring log entries spanning multiple files are handled correctly.
-	tryAddLine(line []byte) bool
+	tryAddLine(line []byte) (bool, error)
 
 	// mustClose releases all resources associated with the processor and ensures proper cleanup of internal states.
 	// It must be called after the target log file is deleted or vlagent is shutting down.

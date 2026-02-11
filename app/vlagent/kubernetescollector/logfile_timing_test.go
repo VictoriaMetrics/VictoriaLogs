@@ -56,8 +56,8 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 
 type noopLogFileHandler struct{}
 
-func (noopLogFileHandler) tryAddLine(_ []byte) bool {
-	return true
+func (noopLogFileHandler) tryAddLine(_ []byte) (bool, error) {
+	return true, nil
 }
 
 func (noopLogFileHandler) mustClose() {}

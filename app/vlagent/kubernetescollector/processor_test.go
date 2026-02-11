@@ -17,7 +17,9 @@ func TestProcessor(t *testing.T) {
 		proc := newLogFileProcessor(storage, nil)
 
 		for _, s := range in {
-			proc.tryAddLine([]byte(s))
+			if _, err := proc.tryAddLine([]byte(s)); err != nil {
+				t.Fatalf("cannot process line: %s", err)
+			}
 		}
 
 		expected := strings.Join(resultsExpected, "\n")

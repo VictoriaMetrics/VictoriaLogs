@@ -76,7 +76,9 @@ func benchmarkProcessor(b *testing.B, logLines []string) {
 		for pb.Next() {
 			proc := newLogFileProcessor(storage, commonFields)
 			for _, line := range rawLines {
-				proc.tryAddLine(line)
+				if _, err := proc.tryAddLine(line); err != nil {
+					b.Fatalf("cannot process line: %s", err)
+				}
 			}
 			proc.mustClose()
 		}
