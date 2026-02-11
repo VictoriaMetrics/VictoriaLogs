@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           cache: false
-          go-version: stable
+          go-version-file: 'go.mod'
 
       - name: Cache Go artifacts
         uses: actions/cache@v5
