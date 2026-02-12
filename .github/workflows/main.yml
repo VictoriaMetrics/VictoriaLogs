@@ -46,7 +46,7 @@ jobs:
             ~/go/bin
             ~/go/pkg/mod
           key: go-artifacts-${{ runner.os }}-check-all-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
-          restore-keys: go-artifacts-${{ runner.os }}-check-all-
+          restore-keys: go-artifacts-${{ runner.os }}-check-all-${{ steps.go.outputs.go-version }}-
 
       - name: Run check-all
         run: |
@@ -84,7 +84,7 @@ jobs:
             ~/go/bin
             ~/go/pkg/mod
           key: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
-          restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-
+          restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-
 
       - name: Run tests
         run: GOGC=10 make ${{ matrix.scenario}}
@@ -118,7 +118,7 @@ jobs:
             ~/go/bin
             ~/go/pkg/mod
           key: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
-          restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-
+          restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-
 
       - name: Run integration tests
         run: make integration-test
