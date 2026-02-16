@@ -1,0 +1,53 @@
+@use "src/styles/variables" as *;
+
+.vm-table-cell {
+  padding: calc($padding-small / 2) $padding-small;
+  border-bottom: $border-divider;
+  vertical-align: top;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 200ms ease;
+  width: fit-content;
+
+  &_empty {
+    padding: 0;
+    width: auto;
+    pointer-events: none;
+  }
+
+  &_right {
+    text-align: right;
+  }
+
+  &_number {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  &_no-padding {
+    padding: 0;
+  }
+
+  &_actions {
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+  }
+
+  &_wrapped,
+  &_wrapped &__content {
+    white-space: normal;
+  }
+
+  &_full {
+    width: 100%;
+  }
+
+  &__content {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 30vw;
+  }
+}

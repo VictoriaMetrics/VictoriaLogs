@@ -168,11 +168,12 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   return (
     <div
       className={classNames({
-      "vm-bar-hits-options": true,
-      "vm-bar-hits-options_mobile": isMobile,
-    })}
+        "vm-bar-hits-options": true,
+        "vm-bar-hits-options_mobile": isMobile,
+        "vm-bar-hits-options_hidden": hideChart,
+      })}
     >
-      {!isMobile && (
+      {!isMobile && !hideChart && (
         <>
           <Controls/>
           <ShortcutKeys withHotkey={false}>
@@ -184,14 +185,22 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           </ShortcutKeys>
         </>
       )}
+      {hideChart && (
+        <div className="vm-bar-hits-options__hidden-info">
+          Hits chart is hidden. Data updates are paused.
+        </div>
+      )}
+
       <Tooltip title={hideChart ? "Show chart and resume hits updates" : "Hide chart and pause hits updates"}>
         <Button
           variant="text"
           color="primary"
-          startIcon={hideChart ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+          startIcon={hideChart ? <VisibilityIcon/> : <VisibilityOffIcon/>}
           onClick={toggleHideChart}
           ariaLabel="settings"
-        />
+        >
+          {hideChart ? "Show chart" : ""}
+        </Button>
       </Tooltip>
 
       {isMobile && (

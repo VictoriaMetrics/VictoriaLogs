@@ -10,10 +10,6 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-
-    &_hidden {
-      min-height: 90px;
-    }
   }
 
   &_panning {
@@ -26,6 +22,6 @@
     align-items: center;
     justify-content: space-between;
     gap: $padding-global;
-    padding: $padding-small $padding-small 0;
+    padding: $padding-small;
   }
 }

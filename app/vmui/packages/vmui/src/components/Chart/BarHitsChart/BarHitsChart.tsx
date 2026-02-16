@@ -3,7 +3,6 @@ import "./style.scss";
 import "uplot/dist/uPlot.min.css";
 import { AlignedData } from "uplot";
 import { TimeParams } from "../../../types";
-import classNames from "classnames";
 import { LogHits } from "../../../api/types";
 import { GRAPH_QUERY_MODE, GRAPH_STYLES, GraphOptions } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
@@ -23,7 +22,16 @@ interface Props {
   onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPeriod, onApplyFilter, durationMs, isOverview }) => {
+const BarHitsChart: FC<Props> = ({
+  logHits,
+  data: _data,
+  query,
+  period,
+  setPeriod,
+  onApplyFilter,
+  durationMs,
+  isOverview
+}) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
     queryMode: GRAPH_QUERY_MODE.hits,
@@ -37,18 +45,16 @@ const BarHitsChart: FC<Props> = ({ logHits, data: _data, query, period, setPerio
   const totalHits = useMemo(() => calculateTotalHits(logHits), [logHits]);
 
   return (
-    <div
-      className={classNames({
-        "vm-bar-hits-chart__wrapper": true,
-        "vm-bar-hits-chart__wrapper_hidden": graphOptions.hideChart
-      })}
-    >
+    <div className="vm-bar-hits-chart__wrapper">
       <div className="vm-bar-hits-chart-header">
-        <BarHitsStats
-          totalHits={totalHits}
-          isHitsMode={isHitsMode}
-          durationMs={durationMs}
-        />
+        {!graphOptions.hideChart && (
+          <BarHitsStats
+            totalHits={totalHits}
+            isHitsMode={isHitsMode}
+            durationMs={durationMs}
+          />
+        )}
+
         <BarHitsOptions
           query={query}
           isHitsMode={isHitsMode}

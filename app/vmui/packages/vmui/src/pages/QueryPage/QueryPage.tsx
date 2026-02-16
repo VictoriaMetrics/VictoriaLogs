@@ -185,6 +185,7 @@ const QueryPage: FC = () => {
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
+    if (hideChart) return;
     // TODO: refactor effect logic
     const topChanged = prevTopHits && (topHits !== prevTopHits);
     const barsCountChanged = prevBarsCount && (barsCount !== prevBarsCount);

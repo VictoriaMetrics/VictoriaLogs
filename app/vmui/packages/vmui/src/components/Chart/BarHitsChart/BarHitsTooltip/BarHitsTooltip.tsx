@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import classNames from "classnames";
 import { sortLogHits } from "../../../../utils/logs";
+import { formatNumber } from "../../../../utils/number";
 import "./style.scss";
 
 interface Props {
@@ -147,7 +148,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
             />
             <p className="vm-bar-hits-tooltip-item">
               <span className="vm-bar-hits-tooltip-item__label">{item.label}</span>
-              <span>{item.value && item.value.toLocaleString("en-US")}</span>
+              <span>{item.value && formatNumber(item.value)}</span>
             </p>
           </div>
         ))}
@@ -158,7 +159,7 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
           <span/>
           <p className="vm-bar-hits-tooltip-item">
             <span className="vm-bar-hits-tooltip-item__label">Total</span>
-            <span>{tooltipData.total.toLocaleString("en-US")}</span>
+            <span>{formatNumber(tooltipData.total)}</span>
           </p>
         </div>
       )}

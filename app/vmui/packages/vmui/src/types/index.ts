@@ -184,4 +184,4 @@ export interface GroupLogsType {
   total: number
 }
 
-export type Order = "asc" | "desc";
+export type OrderDir = "asc" | "desc";
