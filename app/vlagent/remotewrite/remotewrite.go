@@ -22,13 +22,16 @@ import (
 )
 
 var (
-	remoteWriteURLs = flagutil.NewArrayString("remoteWrite.url", "Remote storage URL to write data to. It must support VictoriaLogs native protocol. "+
+	remoteWriteURLs = flagutil.NewArrayString("remoteWrite.url", "Remote storage URL to write data to. "+
 		"Example url: http://<victorialogs-host>:9428/insert/native. "+
-		"Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.")
+		"Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems. "+
+		"See also -remoteWrite.maxDiskUsagePerURL and -remoteWrite.protocol")
 	maxPendingBytesPerURL = flagutil.NewArrayBytes("remoteWrite.maxDiskUsagePerURL", 0, "The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath "+
 		"for each -remoteWrite.url. When buffer size reaches the configured maximum, then old data is dropped when adding new data to the buffer. "+
 		"Buffered data is stored in ~500MB chunks. It is recommended to set the value for this flag to a multiple of the block size 500MB. "+
 		"Disk usage is unlimited if the value is set to 0")
+	protocol = flagutil.NewArrayString("remoteWrite.protocol", "The protocol to use for sending data to -remoteWrite.url. "+
+		"Available protocols: native, jsonline. Default is native")
 
 	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . "+
 		"if this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
@@ -196,10 +199,22 @@ type remoteWriteCtx struct {
 }
 
 func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks int, sanitizedURL, tmpDataPath string) *remoteWriteCtx {
-	// protocol version is required by victoria-logs
-	q := remoteWriteURL.Query()
-	q.Set("version", netinsert.ProtocolVersion)
-	remoteWriteURL.RawQuery = q.Encode()
+	var native bool
+	switch s := protocol.GetOptionalArg(argIdx); s {
+	case "", "native":
+		native = true
+	case "jsonline":
+		native = false
+	default:
+		logger.Fatalf("unsupported protocol %q", s)
+	}
+
+	// Protocol version is required by VictoriaLogs
+	if native {
+		q := remoteWriteURL.Query()
+		q.Set("version", netinsert.ProtocolVersion)
+		remoteWriteURL.RawQuery = q.Encode()
+	}
 
 	// strip query params, otherwise changing params resets pq
 	pqURL := *remoteWriteURL
@@ -246,7 +261,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	}
 	pls := make([]*pendingLogs, plsLen)
 	for i := range pls {
-		pls[i] = newPendingLogs(fq)
+		pls[i] = newPendingLogs(fq, native)
 	}
 
 	rwctx := &remoteWriteCtx{

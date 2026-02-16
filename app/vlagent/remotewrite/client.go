@@ -307,14 +307,14 @@ func (c *client) newRequest(url string, body []byte) (*http.Request, error) {
 	if err != nil {
 		logger.Panicf("BUG: unexpected error from http.NewRequest(%q): %s", url, err)
 	}
-	err = c.authCfg.SetHeaders(req, true)
-	if err != nil {
-		return nil, err
-	}
 	h := req.Header
 	h.Set("User-Agent", "vlagent")
 	h.Set("Content-Encoding", "zstd")
 	h.Set("Content-Type", "application/octet-stream")
+	err = c.authCfg.SetHeaders(req, true)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }

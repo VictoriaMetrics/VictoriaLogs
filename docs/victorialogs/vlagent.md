@@ -22,6 +22,7 @@ aliases:
 - `vlagent` can accept logs from popular log collectors in the same way as VictoriaLogs does. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It accepts logs over HTTP-based protocols at the TCP port `9429` by default. The port can be changed via `-httpListenAddr` command-line flag.
 - `vlagent` can replicate collected logs among multiple VictoriaLogs instances - see [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability).
+- `vlagent` can send logs to any destination that supports JSON logs separated by newlines. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#change-the-remote-write-protocol).
 - `vlagent` works smoothly in environments with unstable connections to VictoriaLogs instances. If the remote storage is unavailable, the collected logs
   are buffered at the directory specified via `-remoteWrite.tmpDataPath` command-line flag. The buffered logs are sent to remote storage as soon as the connection
   to the remote storage is repaired. The maximum disk usage for the buffer can be limited with `-remoteWrite.maxDiskUsagePerURL` command-line flag.
@@ -191,6 +192,119 @@ You can control which metadata fields are attached to every log entry using the 
 
 Note that vlagent does not update node or pod labels during runtime. 
 Therefore, if node/pod metadata changes, you must restart vlagent to apply those changes.
+
+## Change the remote write protocol
+
+By default, `vlagent` sends logs using the `native` protocol, which is supported by all VictoriaLogs components.
+
+To send logs in `jsonline` format, set `-remoteWrite.protocol=jsonline`.
+This can be useful when sending logs to external systems (for example, Vector, Fluent Bit, ClickHouse) that accept logs 
+over HTTP in `jsonline` format with `zstd` compression.
+
+Note that `vlagent` flattens nested JSON objects into top-level fields using dot-separated names, according to the [VictoriaLogs data model](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+
+To configure a protocol per remote destination, specify multiple `-remoteWrite.url` and `-remoteWrite.protocol` flags.
+Position matches the flags: the first `-remoteWrite.protocol` applies to the first `-remoteWrite.url`, 
+the second applies to the second URL, and so on:
+
+```sh
+./vlagent -remoteWrite.url http://vlinsert:9428/insert/native \
+  -remoteWrite.protocol native \
+  -remoteWrite.url http://vector:8080 \
+  -remoteWrite.protocol jsonline
+```
+
+### Sending logs to Fluent Bit
+
+To send logs to Fluent Bit, use the following configuration as a reference:
+
+```yaml
+pipeline:
+  inputs:
+    - name: http
+      port: 8080
+  outputs:
+    - name: stdout
+```
+
+This starts Fluent Bit listening on port `8080` and forwarding received logs to the `stdout` output.
+
+Then start `vlagent`:
+
+```sh
+# Fluent Bit requires Content-Type header to be set to application/json
+./vlagent -remoteWrite.url http://vlinsert:9428/insert/native \
+  -remoteWrite.protocol native \
+  -remoteWrite.url http://fluent-bit:8080 \
+  -remoteWrite.protocol jsonline \
+  -remoteWrite.headers 'Content-Type: application/json'
+```
+
+### Sending logs to Vector
+
+To send logs to Vector, use the following configuration as a reference:
+
+```yaml
+sources:
+  my_http_server:
+    type: http_server
+    address: 0.0.0.0:8080
+    codec: json
+transforms:
+  # Merge raw log content into the root object
+  parser:
+    type: remap
+    inputs:
+      - my_http_server
+    source: |
+      log_content = object!(parse_json!(.message))
+      del(.message)
+      . = merge(., log_content)
+sinks:
+  console:
+    type: console
+    encoding:
+      codec: json
+    inputs:
+      - parser
+```
+
+This starts Vector listening on port `8080` and forwarding logs to the `console` sink.
+
+Then start `vlagent`:
+
+```sh
+./vlagent -remoteWrite.url http://vlinsert:9428/insert/native \
+  -remoteWrite.protocol native \
+  -remoteWrite.url http://vector:8080 \
+  -remoteWrite.protocol jsonline
+```
+
+### Sending logs to ClickHouse
+
+To send logs to ClickHouse via the `jsonline` protocol, include the ClickHouse `query` HTTP parameter in `-remoteWrite.url`.
+The value of `query` must be a URL-encoded `INSERT` statement.
+
+Choose the `INSERT ... FORMAT ...` clause based on your table schema:
+
+* **Table with a single `JSON` column:** use the query `INSERT INTO my_schema.my_table FORMAT JSONAsObject`.
+* **Table with a single `String` column:** use the query `INSERT INTO my_schema.my_table FORMAT JSONAsString`.
+* **Table with multiple fields** (each JSON field maps to a ClickHouse column): use the query `INSERT INTO my_schema.my_table FORMAT JSONEachRow`.
+  Note that if fields are missing from the JSON, ClickHouse will use default values for those fields.
+
+The following command configures `vlagent` to send logs to VictoriaLogs using the internal `native` protocol, 
+and to ClickHouse table `default.logs` (a single `JSON` column) using the `jsonline` protocol:
+
+```sh
+./vlagent -remoteWrite.url http://vlinsert:9428/insert/native \
+  -remoteWrite.protocol native \
+  -remoteWrite.basicAuth.username secret \
+  -remoteWrite.basicAuth.password secret \
+  -remoteWrite.url "http://clickhouse:8123?query=INSERT%20INTO%20default.logs%20FORMAT%20JSONAsObject" \
+  -remoteWrite.protocol jsonline \
+  -remoteWrite.basicAuth.username secret \
+  -remoteWrite.basicAuth.password secret
+```
 
 ## Monitoring
 

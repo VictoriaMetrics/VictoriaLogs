@@ -692,6 +692,11 @@ func (r *InsertRow) Marshal(dst []byte) []byte {
 	return dst
 }
 
+// AppendJSON appends marshaled r to dst in JSON format and returns the result.
+func (r *InsertRow) AppendJSON(dst []byte) []byte {
+	return MarshalFieldsToJSON(dst, r.Fields)
+}
+
 // UnmarshalInplace unmarshals r from src and returns the remaining tail.
 //
 // The r is valid until src contents isn't changed.

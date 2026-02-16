@@ -26,6 +26,7 @@ according to the following docs:
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): sort response fields by their name unless the query ends with a pipe, which preserves the order of the returned fields such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) and [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). Previously the order of the returned fields was undefined. See [#1011](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1011).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve group view readability with zebra rows. See [#1058](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1058).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
+* FEATURE: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): add an ability to send logs using `jsonline` protocol. This is useful for sending logs to other systems (for example, Vector, Fluent Bit, ClickHouse). See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#change-the-remote-write-protocol) for more details.
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
 

@@ -30,6 +30,9 @@ type pendingLogs struct {
 	// The queue to send blocks to.
 	fq *persistentqueue.FastQueue
 
+	// native indicates whether the remote storage supports native protocol.
+	native bool
+
 	// mu protects wr
 	mu sync.Mutex
 	wr writeRequest
@@ -38,9 +41,10 @@ type pendingLogs struct {
 	periodicFlusherWG sync.WaitGroup
 }
 
-func newPendingLogs(fq *persistentqueue.FastQueue) *pendingLogs {
+func newPendingLogs(fq *persistentqueue.FastQueue, native bool) *pendingLogs {
 	pl := &pendingLogs{
 		fq:     fq,
+		native: native,
 		stopCh: make(chan struct{}),
 	}
 
@@ -57,16 +61,25 @@ func (pl *pendingLogs) add(lr *logstorage.LogRows) {
 
 func (pl *pendingLogs) addLogRow(r *logstorage.InsertRow) {
 	bb := bbPool.Get()
-	bb.B = r.Marshal(bb.B)
+	defer bbPool.Put(bb)
+
+	if pl.native {
+		bb.B = r.Marshal(bb.B)
+	} else {
+		bb.B = r.AppendJSON(bb.B)
+	}
 
 	pl.mu.Lock()
+	defer pl.mu.Unlock()
+
+	if !pl.native && len(pl.wr.pendingData.B) > 0 {
+		pl.wr.pendingData.B = append(pl.wr.pendingData.B, '\n')
+	}
 	_, _ = pl.wr.pendingData.Write(bb.B)
 	pl.wr.pendingLogRowsCount++
 	if len(pl.wr.pendingData.B) > maxUnpackedBlockSize.IntN() {
 		pl.mustFlushLocked()
 	}
-	pl.mu.Unlock()
-	bbPool.Put(bb)
 }
 
 func (pl *pendingLogs) mustFlushLocked() {
