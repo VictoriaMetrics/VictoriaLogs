@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { useCallback, useMemo } from "preact/compat";
-import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../../constants/logs";
+import { LOGS_BAR_COUNT_DEFAULT, LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../../constants/logs";
 
 enum  HITS_PARAMS {
   TOP = "top_hits",
@@ -21,7 +21,7 @@ export const useHitsChartConfig = () => {
     return Number.isFinite(n) && n > 0 ? n : LOGS_BAR_COUNT_DEFAULT;
   }, [searchParams]);
 
-  const groupFieldHits = searchParams.get(HITS_PARAMS.GROUP) || LOGS_GROUP_BY;
+  const groupFieldHits = searchParams.get(HITS_PARAMS.GROUP) || WITHOUT_GROUPING;
 
   const setValue = useCallback((param: HITS_PARAMS, newValue?: string | number) => {
     setSearchParams(prev => {

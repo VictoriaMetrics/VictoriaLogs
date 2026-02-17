@@ -6,7 +6,7 @@ import useEventListener from "../../../hooks/useEventListener";
 import Popper from "../../Main/Popper/Popper";
 import useBoolean from "../../../hooks/useBoolean";
 import GroupLogsHeaderItem from "./GroupLogsHeaderItem";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
+import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
@@ -78,7 +78,7 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
       ref={containerRef}
     >
       <span className="vm-group-logs-section-keys__title">
-        {groupBy === WITHOUT_GROUPING ? WITHOUT_GROUPING : <>{index + 1}. Group by <code>{groupBy}</code>:</>}
+        {index + 1}. Group by <code>{groupBy}</code>
       </span>
       {pairs.map((pair, i) => (
         <GroupLogsHeaderItem

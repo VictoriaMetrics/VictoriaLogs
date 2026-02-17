@@ -14,7 +14,7 @@ import classNames from "classnames";
 import Modal from "../../../Main/Modal/Modal";
 import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
-import { LOGS_BAR_COUNTS } from "../../../../constants/logs";
+import { LOGS_BAR_COUNTS, WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../../pages/OverviewPage/hooks/useExtraFilters";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
@@ -60,11 +60,12 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }), [stacked, cumulative, hideChart, queryMode]);
 
   const fieldNamesOptions = useMemo(() => {
-    return fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
+    const fields = fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
+    return [WITHOUT_GROUPING, ...fields];
   }, [fieldNames]);
 
   const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, showAllFields: true, query });
+    fetchFieldNames({ start, end, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
@@ -101,7 +102,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     onChange(options);
   }, [options]);
 
-  const Controls = () => (
+  const controls = (
     <>
       <div className="vm-bar-hits-options vm-bar-hits-options_selections">
         <div className="vm-bar-hits-options-item">
@@ -174,7 +175,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     >
       {!isMobile && (
         <>
-          <Controls/>
+          {controls}
           <ShortcutKeys withHotkey={false}>
             <Button
               variant="text"
@@ -213,7 +214,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             })}
           >
             <div className="vm-bar-hits-options vm-bar-hits-options_mobile">
-              <Controls/>
+              {controls}
             </div>
           </Modal>
         </>

@@ -35,6 +35,10 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
     border-bottom: $border-divider;
     padding-bottom: $padding-small;
 
+    &__ungrouped {
+      padding-top: $padding-small;
+    }
+
     &-keys {
       position: relative;
       display: flex;
