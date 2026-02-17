@@ -23,6 +23,10 @@
   overscroll-behavior: none;
   font-size: $font-size-small;
 
+  &_mobile {
+    width: 100vw;
+  }
+
   &-header {
     position: sticky;
     top: 0;

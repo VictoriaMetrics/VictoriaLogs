@@ -9,6 +9,8 @@ import { Size, useResizeObserver } from "../../../hooks/useResizeObserver";
 import { TableSettingsProps } from "./TableSettings";
 import TableSettingsColumns from "./TableSettingsColumns";
 import { getFromStorage, saveToStorage } from "../../../utils/storage";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
+import classNames from "classnames";
 
 interface Props extends TableSettingsProps {
   title: string;
@@ -32,6 +34,7 @@ const TableSettingsDrawer: FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isMobile } = useDeviceDetect();
 
   const [containerWidth, setContainerWidth] = useState(getDefaultWidth());
 
@@ -67,8 +70,8 @@ const TableSettingsDrawer: FC<Props> = ({
   return (
     <div className="vm-table-settings-wrapper">
       <div
-        className="vm-table-settings"
-        style={containerWidth ? { width: `${containerWidth}px` } : undefined}
+        className={classNames("vm-table-settings", { "vm-table-settings_mobile": isMobile })}
+        style={containerWidth && !isMobile ? { width: `${containerWidth}px` } : undefined}
         ref={containerRef}
       >
         <div className="vm-table-settings-header">
