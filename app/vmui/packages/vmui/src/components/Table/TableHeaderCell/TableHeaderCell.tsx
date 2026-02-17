@@ -64,7 +64,7 @@ const TableHeaderCell = <T extends object>({
       const nextDir: OrderDir = isSorted ? (isDesc ? "asc" : "desc") : "asc";
       sort.onChange(column.key, nextDir);
     }
-  }, [column, sort, isSorted, isDesc, isDragging]);
+  }, [column, sort, isSorted, isDesc]);
 
   const handleResize = useCallback((width: number) => {
     onChangePref(column.key, "width", width);

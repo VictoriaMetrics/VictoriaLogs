@@ -30,7 +30,7 @@ const TableCell = <T extends object>({
         className="vm-table-cell__content"
         style={width ? { width: `${width}px`, maxWidth: "none" } : undefined}
       >
-        {column.render ? column.render(row, rowIdx) : row[column.key] || "-"}
+        {column.render ? column.render(row, rowIdx) : row[column.key] ?? "-"}
       </div>
     </td>
   );
