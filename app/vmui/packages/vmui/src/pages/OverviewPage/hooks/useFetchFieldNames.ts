@@ -9,7 +9,8 @@ interface FetchOptions {
   end: number;
   query?: string;
   extraParams?: URLSearchParams;
-  showAllFields?: boolean;
+  skipNoiseFields?: boolean;
+  skipStreamFields?: boolean;
 }
 
 const NOISE_FIELDS = ["_msg", "_time"];
@@ -25,10 +26,13 @@ export const useFetchFieldNames = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string>("");
 
-  const setterFieldNames = (values: LogsFiledValues[], showAllFields?: boolean) => {
-    const filteredFieldNames = showAllFields
+  const setterFieldNames = (values: LogsFiledValues[],  skipNoiseFields = true, skipStreamFields = false) => {
+    const noiseFields = skipNoiseFields ? NOISE_FIELDS : [];
+    const streamFields = skipStreamFields ? STREAM_FIELDS : [];
+    const skipFields = noiseFields.concat(streamFields);
+    const filteredFieldNames = !skipFields.length
       ? values
-      : values.filter(v => !NOISE_FIELDS.concat(STREAM_FIELDS).includes(v.value));
+      : values.filter(v => !skipFields.includes(v.value));
     setFieldNames(filteredFieldNames);
   };
 
@@ -53,7 +57,7 @@ export const useFetchFieldNames = () => {
       const cacheKey = queryParams + JSON.stringify(tenant);
 
       if (fieldNamesParamsKey === cacheKey) {
-        setterFieldNames(fieldNamesState, options.showAllFields);
+        setterFieldNames(fieldNamesState, options.skipNoiseFields, options.skipStreamFields);
         setLoading(false);
         return;
       }
@@ -74,7 +78,7 @@ export const useFetchFieldNames = () => {
       }
 
       const data: { values: LogsFiledValues[] } = await response.json();
-      setterFieldNames(data.values, options.showAllFields);
+      setterFieldNames(data.values, options.skipNoiseFields, options.skipStreamFields);
       dispatch({
         type: "SET_FIELD_NAMES",
         payload: { rows: data.values, key: cacheKey }
