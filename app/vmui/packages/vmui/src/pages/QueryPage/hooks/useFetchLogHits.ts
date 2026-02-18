@@ -3,7 +3,7 @@ import { getLogHitsUrl, getStatsQueryRangeUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
 import { getHitsTimeParams } from "../../../utils/logs";
-import { LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../constants/logs";
+import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../constants/logs";
 import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
@@ -65,8 +65,11 @@ export const useFetchLogHits = (defaultQuery = "*") => {
       start: start.toISOString(),
       end: end.toISOString(),
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
-      field: field || LOGS_GROUP_BY,
     });
+
+    if (field && field !== WITHOUT_GROUPING) {
+      params.set("field", field);
+    }
 
     const body = new URLSearchParams([
       ...params,

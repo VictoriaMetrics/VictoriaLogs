@@ -241,7 +241,7 @@ func matchIPv6Range(s string, minValue, maxValue [16]byte) bool {
 }
 
 func ipv6Less(a, b [16]byte) bool {
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		if a[i] < b[i] {
 			return true
 		}

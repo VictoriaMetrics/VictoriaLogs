@@ -9,7 +9,7 @@ import (
 func TestArena(t *testing.T) {
 	values := []string{"foo", "bar", "", "adsfjkljsdfdsf", "dsfsopq", "io234"}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		a := getArena()
 		if n := len(a.b); n != 0 {
 			t.Fatalf("unexpected non-zero length of empty arena: %d", n)
@@ -65,7 +65,7 @@ func TestArena(t *testing.T) {
 		// verify that the allocated slices didn't change
 		for j, v := range bs {
 			b := make([]byte, j)
-			for k := 0; k < j; k++ {
+			for k := range j {
 				b[k] = byte(k)
 			}
 			if v != string(b) {

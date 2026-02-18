@@ -304,7 +304,7 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 	// verify r.StreamTagsCanonical
 	st := GetStreamTags()
 	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
-	tail, err := st.UnmarshalCanonical(streamTagsCanonical)
+	tail, err := st.UnmarshalCanonicalInplace(streamTagsCanonical)
 	if err != nil {
 		line := MarshalFieldsToJSON(nil, r.Fields)
 		logger.Warnf("cannot unmarshal streamTagsCanonical: %w; skipping the log entry; log entry: %s", err, line)

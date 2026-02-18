@@ -12,4 +12,7 @@ marked.use({
       token.text = token.raw ?? token.text ?? "";
     }
   },
+  tokenizer: {
+    code() { return undefined; }
+  }
 });

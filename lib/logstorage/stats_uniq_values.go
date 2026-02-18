@@ -179,7 +179,7 @@ func (sup *statsUniqValuesProcessor) importState(src []byte, stopCh <-chan struc
 
 	m := make(map[string]struct{}, itemsLen)
 	stateSize := 0
-	for i := uint64(0); i < itemsLen; i++ {
+	for range itemsLen {
 		v, n := encoding.UnmarshalBytes(src)
 		if n <= 0 {
 			return 0, fmt.Errorf("cannot unmarshal item")

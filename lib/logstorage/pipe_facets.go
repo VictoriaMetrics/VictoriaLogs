@@ -226,7 +226,7 @@ func (shard *pipeFacetsProcessorShard) updateFacetsForColumn(br *blockResult, c 
 			shard.updateStateInt64(fhs, n)
 		}
 	default:
-		for i := 0; i < br.rowsLen; i++ {
+		for i := range br.rowsLen {
 			v := c.getValueAtRow(br, i)
 			shard.updateStateGeneric(fhs, v, 1)
 		}

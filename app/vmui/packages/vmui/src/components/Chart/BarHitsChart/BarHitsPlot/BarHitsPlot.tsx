@@ -81,6 +81,10 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     }).sort(sortLogHits("total"));
   }, [logHits, totalHits, series]);
 
+  const isSingleOtherSeries = useMemo(() => {
+    return legendDetails.length === 1 && legendDetails.every(l => l.isOther);
+  }, [legendDetails]);
+
   useEffect(() => {
     if (!uPlotInst) return;
 
@@ -152,11 +156,13 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
           />
         )}
       </div>
-      {uPlotInst && <BarHitsLegend
-        uPlotInst={uPlotInst}
-        onApplyFilter={onApplyFilter}
-        legendDetails={legendDetails}
-      />}
+      {uPlotInst && !isSingleOtherSeries && (
+        <BarHitsLegend
+          uPlotInst={uPlotInst}
+          onApplyFilter={onApplyFilter}
+          legendDetails={legendDetails}
+        />
+      )}
     </>
   );
 };

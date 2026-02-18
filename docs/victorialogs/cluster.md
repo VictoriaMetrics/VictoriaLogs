@@ -131,50 +131,8 @@ while queries return full responses from the remaining AZ. When the AZ becomes a
 can be used for querying full responses. This HA scheme can be built with the help of [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
 for data replication and buffering, and [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for data querying:
 
-```mermaid
-flowchart TB
-  subgraph haSolution["HA Solution"]
-    direction TB
-
-    subgraph ingestion["Ingestion Layer"]
-      direction TB
-      LS["Log Sources<br/>(Applications)"]
-      VLAGENT["Log Collector<br/>• Buffering<br/>• Replication<br/>• Delivery Guarantees"]
-      LS --> VLAGENT
-    end
-
-    subgraph storage["Storage Layer"]
-      direction TB
-
-      subgraph zoneA["Zone A"]
-        VLA["VictoriaLogs Cluster A"]
-      end
-
-      subgraph zoneB["Zone B"]
-        VLB["VictoriaLogs Cluster B"]
-      end
-
-      VLAGENT -->|"Replicate logs to<br/>Zone A cluster"| VLA
-      VLAGENT -->|"Replicate logs to<br/>Zone B cluster"| VLB
-    end
-
-    subgraph query["Query Layer"]
-      direction TB
-      LB["Load Balancer<br/>(vmauth)<br/>• Health Checks<br/>• Failover<br/>• Query Distribution"]
-      QC["Query Clients<br/>(Grafana, API)"]
-      VLA -->|"Serve queries from<br/>Zone A cluster"| LB
-      VLB -->|"Serve queries from<br/>Zone B cluster"| LB
-      LB --> QC
-    end
-  end
-
-style VLAGENT fill:#9bc7e4
-style VLA fill:#ae9be4
-style VLB fill:#ae9be4
-style LB fill:#9bc7e4
-style QC fill:#9fe49b
-style LS fill:#9fe49b
-```
+![cluster-ha.webp](cluster-ha.webp)
+{width="600"}
 
 - [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) receives and replicates logs to two VictoriaLogs clusters.
   If one cluster becomes unavailable, the log shipper continues sending logs to the remaining healthy cluster. It also buffers logs that cannot be delivered to the unavailable cluster.

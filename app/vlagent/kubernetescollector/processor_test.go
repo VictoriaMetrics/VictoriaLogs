@@ -256,7 +256,7 @@ func newTestStorage() *testStorage {
 
 // MustAddRows implements insertutil.LogRowsStorage interface
 func (s *testStorage) MustAddRows(lr *logstorage.LogRows) {
-	for i := 0; i < lr.RowsCount(); i++ {
+	for i := range lr.RowsCount() {
 		logRow := lr.GetRowString(i)
 		s.logRows = append(s.logRows, logRow)
 	}

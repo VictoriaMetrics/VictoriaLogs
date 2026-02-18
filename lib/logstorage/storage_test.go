@@ -15,7 +15,7 @@ func TestStorageLifecycle(t *testing.T) {
 
 	path := t.Name()
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		cfg := &StorageConfig{}
 		s := MustOpenStorage(path, cfg)
 		s.MustClose()
@@ -33,7 +33,7 @@ func TestStorageMustAddRows(t *testing.T) {
 
 	// Try adding the same entry multiple times.
 	totalRowsCount := uint64(0)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		lr := newTestLogRows(1, 1, 0)
 		lr.timestamps[0] = time.Now().UTC().UnixNano()
 		totalRowsCount += uint64(len(lr.timestamps))
@@ -349,8 +349,8 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 	const streamsPerTenant = 5
 	const rowsPerDayPerStream = 100
 
-	for rowID := 0; rowID < rowsPerDayPerStream; rowID++ {
-		for streamID := 0; streamID < streamsPerTenant; streamID++ {
+	for rowID := range rowsPerDayPerStream {
+		for streamID := range streamsPerTenant {
 			fields = append(fields[:0], Field{
 				Name:  "host",
 				Value: fmt.Sprintf("host-%d", streamID),
@@ -359,7 +359,7 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 				Value: fmt.Sprintf("app-%d", 200+streamID),
 			})
 			for _, tenantID := range tenantIDs {
-				for dayID := int64(0); dayID < days; dayID++ {
+				for dayID := range int64(days) {
 					fields = append(fields, Field{
 						Name:  "_msg",
 						Value: fmt.Sprintf("value #%d at the day %d for the tenantID=%s and streamID=%d", rowID, dayID, tenantID, streamID),

@@ -315,7 +315,7 @@ func (shard *pipeMathProcessorShard) executeExpr(me *mathExpr, br *blockResult) 
 
 	if me.isConst {
 		r := shard.rs[rIdx]
-		for i := 0; i < br.rowsLen; i++ {
+		for i := range br.rowsLen {
 			r[i] = me.constValue
 		}
 		return

@@ -616,20 +616,11 @@ func mustCreateStorage(path string) {
 //
 // MustClose must be called on the returned Storage when it is no longer needed.
 func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
-	flushInterval := cfg.FlushInterval
-	if flushInterval < time.Second {
-		flushInterval = time.Second
-	}
+	flushInterval := max(cfg.FlushInterval, time.Second)
 
-	retention := cfg.Retention
-	if retention < 24*time.Hour {
-		retention = 24 * time.Hour
-	}
+	retention := max(cfg.Retention, 24*time.Hour)
 
-	futureRetention := cfg.FutureRetention
-	if futureRetention < 24*time.Hour {
-		futureRetention = 24 * time.Hour
-	}
+	futureRetention := max(cfg.FutureRetention, 24*time.Hour)
 
 	maxBackfillAge := cfg.MaxBackfillAge
 	if maxBackfillAge <= 0 || maxBackfillAge > retention {

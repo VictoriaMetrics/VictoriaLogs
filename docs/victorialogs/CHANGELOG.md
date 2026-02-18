@@ -25,7 +25,10 @@ according to the following docs:
 * FEATURE: upgrade Go builder from Go1.25.7 to Go1.26.0. See [Go 1.26 release notes](https://go.dev/doc/go1.26).
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): sort response fields by their name unless the query ends with a pipe, which preserves the order of the returned fields such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) and [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). Previously the order of the returned fields was undefined. See [#1011](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1011).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add support for resizing and reordering columns in Table View. See [#76](https://github.com/VictoriaMetrics/VictoriaLogs/issues/76).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve group view readability with zebra rows. See [#1058](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1058).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix timestamp rendering according to the selected timezone. See [#63](https://github.com/VictoriaMetrics/VictoriaLogs/issues/63).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix copy action to copy only selected columns instead of the full log entry.
 

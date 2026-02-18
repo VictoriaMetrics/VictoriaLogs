@@ -50,7 +50,7 @@ func main() {
 	go func() {
 		for {
 			<-limitTicker.C
-			for i := 0; i < limitItems; i++ {
+			for range limitItems {
 				limiter <- struct{}{}
 			}
 		}
