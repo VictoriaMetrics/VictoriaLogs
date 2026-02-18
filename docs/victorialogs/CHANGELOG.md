@@ -26,6 +26,7 @@ according to the following docs:
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): sort response fields by their name unless the query ends with a pipe, which preserves the order of the returned fields such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) and [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). Previously the order of the returned fields was undefined. See [#1011](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1011).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve group view readability with zebra rows. See [#1058](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1058).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): change group-by toggle behavior to clear grouping instead of resetting it to `_stream`. See [#1059](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1059).
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
 
