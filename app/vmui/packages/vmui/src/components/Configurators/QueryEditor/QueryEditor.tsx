@@ -10,7 +10,7 @@ import debounce from "lodash.debounce";
 import { toggleLineComment } from "./LogsQL/utils";
 import { ctrlKeyLabel } from "../../../utils/keyboard";
 import Tooltip from "../../Main/Tooltip/Tooltip";
-import { QuestionIcon } from "../../Main/Icons";
+import { KeyboardIcon } from "../../Main/Icons";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
@@ -166,15 +166,21 @@ const QueryEditor: FC<QueryEditorProps> = ({
                   <span>Shift + Enter</span> <span>insert a new line</span>
                 </p>
                 <p className="vm-query-editor-help-tooltip-item">
-                  <span>Ctrl + Enter</span> <span>execute query</span>
+                  <span>{ctrlKeyLabel} + Enter</span> <span>execute query</span>
                 </p>
                 <p className="vm-query-editor-help-tooltip-item">
                   <span>{ctrlKeyLabel} + /</span> <span>toggle line comment</span>
                 </p>
+                <p className="vm-query-editor-help-tooltip-item">
+                  <span>{ctrlKeyLabel} + ↑</span> <span>previous query</span>
+                </p>
+                <p className="vm-query-editor-help-tooltip-item">
+                  <span>{ctrlKeyLabel} + ↓</span> <span>next query</span>
+                </p>
               </div>
             }
           >
-            <QuestionIcon/>
+            <KeyboardIcon/>
           </Tooltip>
         )}
       />

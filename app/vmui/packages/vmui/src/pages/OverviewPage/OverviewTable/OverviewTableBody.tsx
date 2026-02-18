@@ -1,12 +1,15 @@
 import { FC, ReactNode } from "preact/compat";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import Alert from "../../../components/Main/Alert/Alert";
-import Table, { Column } from "../../../components/Table/Table";
+import Table from "../../../components/Table/Table";
 import Pagination from "../../../components/Main/Pagination/Pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { LogsFiledValues } from "../../../api/types";
+import { useTableLogsPaginate } from "../../../components/Views/TableView/hooks/useTableLogsPaginate";
+import { type Column } from "../../../components/Table/types";
 
 export type OverviewTableProps = {
+  tableId: string;
   rows: LogsFiledValues[]
   columns: Column<LogsFiledValues>[]
   isLoading: boolean;
@@ -23,6 +26,7 @@ interface Props extends  OverviewTableProps {
 }
 
 const OverviewTableBody: FC<Props> = ({
+  tableId,
   rows,
   columns,
   isLoading,
@@ -35,25 +39,11 @@ const OverviewTableBody: FC<Props> = ({
   actionsRender
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const [page, setPage] = useState(1);
-  const paginationOffset = useMemo(() => {
-    const startIndex = (page - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    return { startIndex, endIndex };
-  }, [page, rowsPerPage]);
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    if (containerRef.current) {
-      const y = containerRef.current.getBoundingClientRect().top + window.scrollY - 50;
-      if (y < window.scrollY) window.scrollTo({ top: y });
-    }
-  };
+  const { page, offset, onChangePage } = useTableLogsPaginate({ rowsPerPage, containerRef });
 
   useEffect(() => {
-    setPage(1);
-  }, [rows, rowsPerPage]);
+    onChangePage(1);
+  }, [rows]);
 
   return (
     <div className="vm-top-fields-body">
@@ -73,13 +63,13 @@ const OverviewTableBody: FC<Props> = ({
             ref={containerRef}
           >
             <Table
+              tableId={tableId}
               rows={rows}
               columns={columns}
-              defaultOrderBy={"hits"}
-              defaultOrderDir={"desc"}
+              defaultOrder={{ key: "hits", dir: "desc" }}
               isActiveRow={detectActiveRow}
               onClickRow={onClickRow}
-              paginationOffset={paginationOffset}
+              paginationOffset={offset}
               actionsRender={actionsRender}
             />
           </div>
@@ -87,7 +77,7 @@ const OverviewTableBody: FC<Props> = ({
             currentPage={page}
             totalItems={rows.length}
             itemsPerPage={rowsPerPage}
-            onPageChange={handlePageChange}
+            onPageChange={onChangePage}
           />
         </>
       )}

@@ -1,7 +1,7 @@
 import { FC, RefObject, useRef, createPortal } from "preact/compat";
 import Button from "../../Main/Button/Button";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
-import { DeleteIcon, PauseIcon, PlayCircleOutlineIcon, SettingsIcon } from "../../Main/Icons";
+import { DeleteIcon, PauseIcon, PlayCircleOutlineIcon, TuneIcon } from "../../Main/Icons";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import Modal from "../../Main/Modal/Modal";
 import Switch from "../../Main/Switch/Switch";
@@ -82,7 +82,7 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
             ref={settingButtonRef}
             variant="text"
             onClick={openSettings}
-            startIcon={<SettingsIcon/>}
+            startIcon={<TuneIcon/>}
             ariaLabel={"Settings"}
           />
         </Tooltip>

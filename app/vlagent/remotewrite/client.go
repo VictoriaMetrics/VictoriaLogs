@@ -154,7 +154,7 @@ func (c *client) init(argIdx, concurrency int, sanitizedURL string) {
 	metrics.GetOrCreateGauge(fmt.Sprintf(`vlagent_remotewrite_queues{url=%q}`, c.sanitizedURL), func() float64 {
 		return float64(*queues)
 	})
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		c.wg.Go(c.runWorker)
 	}
 	logger.Infof("initialized client for -remoteWrite.url=%q", c.sanitizedURL)

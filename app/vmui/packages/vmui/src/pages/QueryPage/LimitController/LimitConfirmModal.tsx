@@ -5,6 +5,7 @@ import LogsLimitInput from "./LogsLimitInput";
 import "./style.scss";
 import Checkbox from "../../../components/Main/Checkbox/Checkbox";
 import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
+import { formatNumber } from "../../../utils/number";
 
 type Props = {
   isOpen: boolean;
@@ -29,7 +30,7 @@ const LimitConfirmModal: FC<Props> = ({
   onConfirm,
   onCancel
 }) => {
-  const limitText = !initialLimit ? "an unlimited number of" : initialLimit.toLocaleString("en-US");
+  const limitText = !initialLimit ? "an unlimited number of" : formatNumber(initialLimit);
   const [error, setError] = useState(false);
 
   useEffect(() => () => onCancel(), [onCancel]);

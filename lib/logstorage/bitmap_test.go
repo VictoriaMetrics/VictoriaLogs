@@ -5,7 +5,7 @@ import (
 )
 
 func TestBitmap(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		bitsLen := i
 
 		bm := getBitmap(i)
@@ -106,7 +106,7 @@ func TestBitmap(t *testing.T) {
 		}
 
 		// Set bits via setBit() call
-		for i := 0; i < bitsLen; i++ {
+		for i := range bitsLen {
 			if n := bm.onesCount(); n != i {
 				t.Fatalf("unexpected number of ones set; got %d; want %d", n, i)
 			}

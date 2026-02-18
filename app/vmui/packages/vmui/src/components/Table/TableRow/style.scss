@@ -1,0 +1,32 @@
+@use "src/styles/variables" as *;
+
+.vm-table-row {
+  background-color: $color-background-block;
+  transition: background-color 200ms ease;
+
+  &:hover:not(&_header) {
+    background-color: $color-hover-black;
+  }
+
+  &_header {
+    position: relative;
+    z-index: 2;
+  }
+
+  &_clickable {
+    cursor: pointer;
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+  }
+
+  &_active {
+    background-color: rgba($color-dodger-blue, 0.2);
+    transition: background-color 200ms ease;
+
+    &:hover {
+      background-color: rgba($color-dodger-blue, 0.3) !important;
+    }
+  }
+}

@@ -610,7 +610,7 @@ func (idb *indexdb) loadStreamIDsFromCache(tenantIDs []TenantID, sf *StreamFilte
 	}
 	src := data[nSize:]
 	streamIDs := make([]streamID, n)
-	for i := uint64(0); i < n; i++ {
+	for i := range n {
 		tail, err := streamIDs[i].unmarshal(src)
 		if err != nil {
 			logger.Panicf("BUG: unexpected error when unmarshaling streamID #%d: %s", i, err)
@@ -627,7 +627,7 @@ func (idb *indexdb) storeStreamIDsToCache(tenantIDs []TenantID, sf *StreamFilter
 	// marshal streamIDs
 	var b []byte
 	b = encoding.MarshalVarUint64(b, uint64(len(streamIDs)))
-	for i := 0; i < len(streamIDs); i++ {
+	for i := range streamIDs {
 		b = streamIDs[i].marshal(b)
 	}
 
@@ -965,7 +965,7 @@ func (sp *tagToStreamIDsRowParser) ParseStreamIDs() {
 	sp.StreamIDs = slicesutil.SetLength(sp.StreamIDs, n)
 	streamIDs := sp.StreamIDs
 	_ = streamIDs[n-1]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		var err error
 		tail, err = streamIDs[i].unmarshal(tail)
 		if err != nil {

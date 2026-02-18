@@ -2,6 +2,7 @@ import { FC, useCallback, useState } from "preact/compat";
 import TextField from "../../../components/Main/TextField/TextField";
 import { useEffect } from "react";
 import { LOGS_MAX_LIMIT } from "../../../constants/logs";
+import { formatNumber } from "../../../utils/number";
 
 type Props = {
   limit: number;
@@ -24,7 +25,7 @@ const LogsLimitInput: FC<Props> = ({ limit, onChangeLimit, onPressEnter, onError
     } else if (number > LOGS_MAX_LIMIT) {
       return {
         isValid: false,
-        errorMsg: `Max limit is ${LOGS_MAX_LIMIT.toLocaleString("en-US")}`
+        errorMsg: `Max limit is ${formatNumber(LOGS_MAX_LIMIT)}`
       };
     }
 

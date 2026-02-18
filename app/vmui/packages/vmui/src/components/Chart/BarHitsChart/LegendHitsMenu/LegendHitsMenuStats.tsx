@@ -1,12 +1,13 @@
 import { FC } from "preact/compat";
 import { LegendLogHits } from "../../../../api/types";
+import { formatNumber } from "../../../../utils/number";
 
 interface Props {
   legend: LegendLogHits;
 }
 
 const LegendHitsMenuStats: FC<Props> = ({ legend }) => {
-  const totalFormatted = legend.total.toLocaleString("en-US");
+  const totalFormatted = formatNumber(legend.total);
   const percentage = Math.round((legend.total / legend.totalHits) * 100);
 
   return (

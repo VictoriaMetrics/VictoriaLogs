@@ -40,10 +40,10 @@ func getJSONBody(streams, rows, labels int) []byte {
 	now := time.Now().UnixNano()
 	valuePrefix := fmt.Sprintf(`["%d","value_`, now)
 
-	for i := 0; i < streams; i++ {
+	for i := range streams {
 		body = append(body, `{"stream":{`...)
 
-		for j := 0; j < labels; j++ {
+		for j := range labels {
 			body = append(body, `"label_`...)
 			body = strconv.AppendInt(body, int64(j), 10)
 			body = append(body, `":"value_`...)
@@ -56,7 +56,7 @@ func getJSONBody(streams, rows, labels int) []byte {
 		}
 		body = append(body, `}, "values":[`...)
 
-		for j := 0; j < rows; j++ {
+		for j := range rows {
 			body = append(body, valuePrefix...)
 			body = strconv.AppendInt(body, int64(j), 10)
 			body = append(body, `"]`...)

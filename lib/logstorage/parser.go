@@ -211,12 +211,7 @@ var mathStopCompoundTokens = []string{
 
 func (lex *lexer) isPrevRawToken(tokens []string) bool {
 	prevTokenLower := strings.ToLower(lex.prevRawToken)
-	for _, token := range tokens {
-		if token == prevTokenLower {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tokens, prevTokenLower)
 }
 
 func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
@@ -240,12 +235,7 @@ func (lex *lexer) isKeywordAny(keywords []string) bool {
 		return false
 	}
 	tokenLower := strings.ToLower(lex.token)
-	for _, kw := range keywords {
-		if kw == tokenLower {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keywords, tokenLower)
 }
 
 func (lex *lexer) context() string {
@@ -1071,7 +1061,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 	// do not modify or delete the `_time` field, since it is required for bucketing by step.
 	// For instant stats (step == 0), allow such pipes for broader query flexibility.
 	if step > 0 {
-		for i := 0; i < idx; i++ {
+		for i := range idx {
 			p := q.pipes[i]
 			if _, ok := p.(*pipeStats); ok {
 				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
@@ -1484,7 +1474,7 @@ func optimizeOffsetLimitPipesInternal(pipes []pipe) []pipe {
 	// Replace '| offset X | limit Y' with '| limit X+Y | offset X'.
 	// This reduces the number of rows processed by remote storage.
 	// See: https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
-	for i := 0; i < len(pipes)-1; i++ {
+	for i := range len(pipes) - 1 {
 		po, ok := pipes[i].(*pipeOffset)
 		if !ok {
 			continue
@@ -3065,7 +3055,7 @@ func startsWithYear(s string) bool {
 	if len(s) < 4 {
 		return false
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		c := s[i]
 		if c < '0' || c > '9' {
 			return false
@@ -3651,7 +3641,7 @@ func isAllDigits(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] < '0' || s[i] > '9' {
 			return false
 		}

@@ -102,6 +102,7 @@ const TopFieldNames: FC = () => {
 
   return (
     <OverviewTable
+      tableId="table-overview-field-names"
       enableSearch
       title="Field names"
       rows={rows}

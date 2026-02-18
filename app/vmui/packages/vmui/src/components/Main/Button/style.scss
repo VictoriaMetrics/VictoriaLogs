@@ -40,6 +40,7 @@ $button-radius: 6px;
   &_small {
     padding: 4px 10px;
     line-height: 14px;
+    border-radius: $border-radius-small;
 
     svg {
       width: 14px;

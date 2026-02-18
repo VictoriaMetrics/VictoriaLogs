@@ -608,7 +608,7 @@ func (shard *pipeStatsProcessorShard) writeBlockDefault(br *blockResult) {
 	// The slowest path - group by multiple columns with different values across rows.
 	var psg *pipeStatsGroup
 	keyBuf := shard.keyBuf[:0]
-	for i := 0; i < br.rowsLen; i++ {
+	for i := range br.rowsLen {
 		// Verify whether the key for 'by (...)' fields equals the previous key
 		sameValue := i > 0
 		for _, values := range columnValues {
@@ -664,7 +664,7 @@ func (shard *pipeStatsProcessorShard) writeBlockLocal(br *blockResult) {
 		return
 	}
 	if len(byFields) == 1 {
-		for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+		for rowIdx := range br.rowsLen {
 			v := byFieldValues[0][rowIdx]
 			psg := shard.getPipeStatsGroupGeneric(v)
 			stateSize, err := psg.importStateFromRow(columnValues, rowIdx, stopCh)
@@ -682,7 +682,7 @@ func (shard *pipeStatsProcessorShard) writeBlockLocal(br *blockResult) {
 	}
 
 	keyBuf := shard.keyBuf
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+	for rowIdx := range br.rowsLen {
 		keyBuf = keyBuf[:0]
 		for _, values := range byFieldValues {
 			keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(values[rowIdx]))
@@ -725,7 +725,7 @@ func (shard *pipeStatsProcessorShard) updateStatsSingleColumn(br *blockResult, b
 		}
 
 		var psg *pipeStatsGroup
-		for i := 0; i < br.rowsLen; i++ {
+		for i := range br.rowsLen {
 			if i <= 0 || values[i-1] != values[i] {
 				psg = shard.getPipeStatsGroupGeneric(values[i])
 			}
@@ -796,7 +796,7 @@ func (shard *pipeStatsProcessorShard) updateStatsSingleColumn(br *blockResult, b
 	values := c.getValues(br)
 
 	var psg *pipeStatsGroup
-	for i := 0; i < br.rowsLen; i++ {
+	for i := range br.rowsLen {
 		if i <= 0 || values[i-1] != values[i] {
 			psg = shard.getPipeStatsGroupGeneric(values[i])
 		}

@@ -15,7 +15,7 @@ func TestCalculateRetryDuration(t *testing.T) {
 	f := func(retryAfterDuration, retryDuration time.Duration, n int, expectMinDuration time.Duration) {
 		t.Helper()
 
-		for i := 0; i < n; i++ {
+		for range n {
 			retryDuration = getRetryDuration(retryAfterDuration, retryDuration, time.Minute)
 		}
 
@@ -90,10 +90,7 @@ func TestParseRetryAfterHeader(t *testing.T) {
 
 // helper calculate the max possible time duration calculated by timeutil.AddJitterToDuration.
 func helper(d time.Duration) time.Duration {
-	dv := d / 10
-	if dv > 10*time.Second {
-		dv = 10 * time.Second
-	}
+	dv := min(d/10, 10*time.Second)
 
 	return d + dv
 }

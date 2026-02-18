@@ -2,26 +2,26 @@ module github.com/VictoriaMetrics/VictoriaLogs
 
 go 1.26.0
 
-replace github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.135.1-0.20260211165242-3a3c2084d38f
+replace github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.136.1-0.20260218193952-0b8205ef46d9
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.135.0
-	github.com/VictoriaMetrics/easyproto v1.1.3
-	github.com/VictoriaMetrics/metrics v1.40.2
+	github.com/VictoriaMetrics/easyproto v1.2.0
+	github.com/VictoriaMetrics/metrics v1.41.2
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
 	github.com/klauspost/compress v1.18.4
 	github.com/mattn/go-isatty v0.0.20
-	github.com/valyala/fastjson v1.6.7
+	github.com/valyala/fastjson v1.6.8
 	github.com/valyala/fastrand v1.1.0
 	github.com/valyala/quicktemplate v1.8.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
-	github.com/VictoriaMetrics/metricsql v0.84.9 // indirect
+	github.com/VictoriaMetrics/metricsql v0.85.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/valyala/gozstd v1.24.0 // indirect

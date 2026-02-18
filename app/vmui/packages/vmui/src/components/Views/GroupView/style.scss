@@ -100,6 +100,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         border-radius: $border-radius-medium;
         transition: background-color 0.3s ease-in, transform 0.1s ease-in, opacity 0.3s ease-in;
         white-space: nowrap;
+        cursor: pointer;
 
         &_hide {
           order: 2;

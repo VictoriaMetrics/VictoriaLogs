@@ -1,0 +1,18 @@
+@use "src/styles/variables" as *;
+
+.vm-table-sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  transform: scale(0);
+  transition: transform .2s ease-in;
+
+  &_sorted {
+    transform: scale(1);
+  }
+
+  &_desc {
+    transform: scale(-1);
+  }
+}
