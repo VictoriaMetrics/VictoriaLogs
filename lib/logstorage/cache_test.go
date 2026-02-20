@@ -7,7 +7,7 @@ import (
 
 func TestCache(t *testing.T) {
 	m := make(map[string]int)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		k := fmt.Sprintf("key_%d", i)
 		m[k] = i
 	}

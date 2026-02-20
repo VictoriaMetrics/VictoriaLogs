@@ -271,19 +271,19 @@ func newTestLogRows(streams, rowsPerStream int, seed int64) *LogRows {
 	lr := GetLogRows(streamTags, nil, nil, nil, "")
 	rng := rand.New(rand.NewSource(seed))
 	var fields []Field
-	for i := 0; i < streams; i++ {
+	for i := range streams {
 		tenantID := TenantID{
 			AccountID: rng.Uint32(),
 			ProjectID: rng.Uint32(),
 		}
-		for j := 0; j < rowsPerStream; j++ {
+		for j := range rowsPerStream {
 			// Add stream tags
 			fields = append(fields[:0], Field{
 				Name:  "some-stream-tag",
 				Value: fmt.Sprintf("some-stream-value-%d", i),
 			})
 			// Add the remaining tags
-			for k := 0; k < 5; k++ {
+			for k := range 5 {
 				if rng.Float64() < 0.5 {
 					fields = append(fields, Field{
 						Name:  fmt.Sprintf("field_%d", k),
@@ -382,19 +382,19 @@ func newTestLogRowsUniqTags(streams, rowsPerStream, uniqFieldsPerRow int) *LogRo
 	}
 	lr := GetLogRows(streamTags, nil, nil, nil, "")
 	var fields []Field
-	for i := 0; i < streams; i++ {
+	for i := range streams {
 		tenantID := TenantID{
 			AccountID: 0,
 			ProjectID: 0,
 		}
-		for j := 0; j < rowsPerStream; j++ {
+		for j := range rowsPerStream {
 			// Add stream tags
 			fields = append(fields[:0], Field{
 				Name:  "some-stream-tag",
 				Value: fmt.Sprintf("some-stream-value-%d", i),
 			})
 			// Add the remaining unique tags
-			for k := 0; k < uniqFieldsPerRow; k++ {
+			for k := range uniqFieldsPerRow {
 				fields = append(fields, Field{
 					Name:  fmt.Sprintf("field_%d_%d_%d", i, j, k),
 					Value: fmt.Sprintf("value_%d_%d_%d", i, j, k),

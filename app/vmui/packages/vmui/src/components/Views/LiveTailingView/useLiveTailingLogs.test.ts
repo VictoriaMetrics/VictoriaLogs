@@ -128,7 +128,9 @@ describe("useLiveTailingLogs", () => {
     expect(result.current.logs).toHaveLength(0);
   });
 
-  it("should process high load of logs incoming at 100k logs per second", { timeout: 9000 }, async () => {
+  it("should process high load of logs incoming at 100k logs per second", async () => {
+    vi.useFakeTimers();
+
     const query = "*";
     const limit = 1000;
     const logCount = 10000; // High log rate
@@ -142,8 +144,7 @@ describe("useLiveTailingLogs", () => {
       expect(started).toBe(true);
     });
 
-    // Wait for logs to process
-    await new Promise((resolve) => setTimeout(resolve, 7000));
+    await vi.advanceTimersByTimeAsync(7000);
 
     // Verify logs are limited and processed correctly
     expect(result.current.logs.length).toBeLessThanOrEqual(limit);
@@ -152,5 +153,7 @@ describe("useLiveTailingLogs", () => {
     expect(result.current.logs[0].log).toStrictEqual("log message 9200");
     expect(result.current.logs[799].log).toStrictEqual("log message 9999");
     expect(result.current.isLimitedLogsPerUpdate).toBeTruthy();
+
+    vi.useRealTimers();
   });
 });

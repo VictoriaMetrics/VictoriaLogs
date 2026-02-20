@@ -102,6 +102,7 @@ const TopStreamNames: FC = () => {
 
   return (
     <OverviewTable
+      tableId="table-overview-stream-names"
       enableSearch
       title="Stream field names"
       rows={rows}

@@ -1,90 +1,180 @@
 @use "src/styles/variables" as *;
 
+@mixin nowrap {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vm-table-settings-wrapper {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background-color: $color-background-body;
+  box-shadow: $box-shadow-popper;
+  z-index: 99;
+}
+
 .vm-table-settings {
-  &-modal {
-    .vm-modal-content-body {
-      min-width: clamp(300px, 600px, 90vw);
-      padding: 0;
+  height: 100%;
+  width: clamp(300px, 30vw, 100vw);
+  overflow-y: auto;
+  overscroll-behavior: none;
+  font-size: $font-size-small;
+
+  &_mobile {
+    width: 100vw;
+  }
+
+  &-header {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: bold;
+    padding: $padding-small $padding-global;
+    background-color: $color-background-body;
+    border-bottom: $border-divider;
+    z-index: 2;
+  }
+
+  &-section {
+    padding: $padding-small;
+    display: grid;
+
+    &:last-child {
+      padding-top: 0;
+      border-bottom: none;
     }
 
-    &-section {
-      padding-block: $padding-global;
-      border-top: $border-divider;
+    &-search {
+      display: flex;
+      align-items: center;
+      gap: $padding-small;
+      padding-inline: $padding-global;
 
-      &:first-child {
-        padding-top: 0;
-        border-top: none;
+      &-help-tooltip {
+        &-item {
+          display: grid;
+          grid-template-columns: 80px 1fr;
+          padding: 4px 0;
+          border-bottom: $border-divider;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          span:last-child {
+            text-align: right;
+          }
+        }
       }
+    }
+
+    &-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: $padding-small;
+      padding: $padding-small $padding-global;
+      min-height: 40px;
+      background-color: $color-hover-black;
+      border-radius: $border-radius-medium;
+      @include nowrap;
 
       &__title {
-        padding-inline: $padding-global;
-        font-size: $font-size;
         font-weight: bold;
-        margin-bottom: $padding-global;
+        color: $color-text-secondary;
+        @include nowrap;
+      }
+
+      &__actions {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: $padding-small;
       }
     }
 
-    &-columns {
-      &__search {
-        padding-inline: $padding-global;
-      }
+    &-list {
+      table-layout: auto;
+      width: 100%;
+      border-collapse: collapse;
+      margin-block: 2px;
 
-      &-list {
-        display: flex;
-        flex-direction: column;
-        max-height: 250px;
-        min-height: 250px;
-        overflow: auto;
-        margin-bottom: $padding-global;
+      &-cell {
+        vertical-align: middle;
+        padding-inline: calc($padding-global / 2);
+        padding-block: 2px;
+        height: 30px;
+        box-sizing: content-box;
 
-        @media(max-width: 500px) {
-          width: 100vw;
+        &_stats,
+        &_drag-handle,
+        &_checkbox {
+          width: 1%;
         }
 
-        &__item {
-          width: 100%;
-          font-size: $font-size;
-          border-radius: $border-radius-small;
-
-          &>div {
-            padding: $padding-small $padding-global;
-          }
-
-          &_all {
-            font-weight: bold;
-          }
-
-          &:hover,
-          &_focus {
-            background-color: $color-hover-black;
-          }
-
-          &_custom {
-            .vm-checkbox__label:after {
-              width: 100%;
-              content: "(custom column, will be removed if unchecked)";
-              padding: 0 $padding-small;
-              text-align: right;
-              font-style: italic;
-              color: $color-text-secondary;
-            }
-          }
+        &_title {
+          width: fit-content;
+          max-width: 0;
+          @include nowrap;
         }
-      }
 
-      &-no-found {
-        display: flex;
-        flex-direction: column;
-        min-width: 100%;
-        min-height: 250px;
-        align-items: center;
-        justify-content: center;
-        gap: $padding-global;
-
-        &__info {
-          text-align: center;
-          font-style: italic;
+        &_stats {
           color: $color-text-secondary;
+          padding-right: $padding-global;
+          text-align: right;
+          font-variant-numeric: tabular-nums;
+        }
+
+        &:first-child {
+          padding-left: $padding-global;
+          border-radius: $border-radius-medium 0 0 $border-radius-medium;
+        }
+
+        &:last-child {
+          padding-right: $padding-global;
+          border-radius: 0 $border-radius-medium $border-radius-medium 0;
+        }
+      }
+
+      &-row {
+        position: relative;
+        background-color: $color-background-body;
+        cursor: pointer;
+        will-change: transform;
+        transition: transform 50ms linear;
+
+        &_static {
+          cursor: default;
+        }
+
+        &:hover:not(&_static) {
+          background-color: $color-hover-black;
+        }
+
+        &_dropping {
+          transition: none;
+        }
+
+        &_dragging,
+        &_focus {
+          position: relative;
+          outline: 2px solid $color-dodger-blue;
+          outline-offset: -2px;
+          z-index: 2;
+        }
+      }
+
+      button.vm-grab-handle {
+        cursor: grab;
+
+        &:active {
+          cursor: grabbing;
         }
       }
     }

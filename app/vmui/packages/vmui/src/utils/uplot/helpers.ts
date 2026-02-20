@@ -1,4 +1,5 @@
 import uPlot from "uplot";
+import { formatNumber } from "../number";
 
 export const formatTicks = (u: uPlot, ticks: number[], unit = ""): string[] => {
   const min = ticks[0];
@@ -23,7 +24,7 @@ export const formatPrettyNumber = (
   if (isNaN(range) || range == 0) {
     // Return the constant number as is if the range isn't set of it is too small.
     if (Math.abs(n) >= 1000) {
-      return n.toLocaleString("en-US");
+      return formatNumber(n);
     }
     return n.toString();
   }
@@ -32,7 +33,7 @@ export const formatPrettyNumber = (
   // since the remaining digits are usually a white noise.
   let digits = 3 + Math.floor(1 + Math.log10(Math.max(Math.abs(min), Math.abs(max))) - Math.log10(range));
   if (isNaN(digits) || digits > 20) digits = 20;
-  return n.toLocaleString("en-US", {
+  return formatNumber(n, {
     minimumSignificantDigits: 1,
     maximumSignificantDigits: digits,
   });

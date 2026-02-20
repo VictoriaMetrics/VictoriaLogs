@@ -8,14 +8,14 @@ interface CheckboxProps {
   color?: "primary" | "secondary" | "error"
   disabled?: boolean
   label?: string
-  onChange: (value: boolean) => void
+  onChange?: (value: boolean) => void
 }
 
 const Checkbox: FC<CheckboxProps> = ({
   checked = false, disabled = false, label, color = "secondary", onChange
 }) => {
   const toggleCheckbox = () => {
-    if (disabled) return;
+    if (disabled || !onChange) return;
     onChange(!checked);
   };
 

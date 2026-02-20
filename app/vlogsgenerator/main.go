@@ -232,48 +232,48 @@ var runID = toUUID(rand.Uint64(), rand.Uint64())
 func generateLogsAtTimestamp(bw *bufio.Writer, workerID int, ts int64, firstStreamID, activeStreams int) {
 	streamID := firstStreamID
 	timeStr := toRFC3339(ts)
-	for i := 0; i < activeStreams; i++ {
+	for range activeStreams {
 		ip := toIPv4(rand.Uint32())
 		uuid := toUUID(rand.Uint64(), rand.Uint64())
 		fmt.Fprintf(bw, `{"_time":"%s","_msg":"message for the stream %d and worker %d; ip=%s; uuid=%s; u64=%d","host":"host_%d","worker_id":"%d"`,
 			timeStr, streamID, workerID, ip, uuid, rand.Uint64(), streamID, workerID)
 		fmt.Fprintf(bw, `,"run_id":"%s"`, runID)
-		for j := 0; j < *constFieldsPerLog; j++ {
+		for j := range *constFieldsPerLog {
 			fmt.Fprintf(bw, `,"const_%d":"some value %d %d"`, j, j, streamID)
 		}
-		for j := 0; j < *varFieldsPerLog; j++ {
+		for j := range *varFieldsPerLog {
 			fmt.Fprintf(bw, `,"var_%d":"some value %d %d"`, j, j, rand.Uint64())
 		}
-		for j := 0; j < *dictFieldsPerLog; j++ {
+		for j := range *dictFieldsPerLog {
 			fmt.Fprintf(bw, `,"dict_%d":"%s"`, j, dictValues[rand.Intn(len(dictValues))])
 		}
-		for j := 0; j < *u8FieldsPerLog; j++ {
+		for j := range *u8FieldsPerLog {
 			fmt.Fprintf(bw, `,"u8_%d":"%d"`, j, uint8(rand.Uint32()))
 		}
-		for j := 0; j < *u16FieldsPerLog; j++ {
+		for j := range *u16FieldsPerLog {
 			fmt.Fprintf(bw, `,"u16_%d":"%d"`, j, uint16(rand.Uint32()))
 		}
-		for j := 0; j < *u32FieldsPerLog; j++ {
+		for j := range *u32FieldsPerLog {
 			fmt.Fprintf(bw, `,"u32_%d":"%d"`, j, rand.Uint32())
 		}
-		for j := 0; j < *u64FieldsPerLog; j++ {
+		for j := range *u64FieldsPerLog {
 			fmt.Fprintf(bw, `,"u64_%d":"%d"`, j, rand.Uint64())
 		}
-		for j := 0; j < *i64FieldsPerLog; j++ {
+		for j := range *i64FieldsPerLog {
 			fmt.Fprintf(bw, `,"i64_%d":"%d"`, j, int64(rand.Uint64()))
 		}
-		for j := 0; j < *floatFieldsPerLog; j++ {
+		for j := range *floatFieldsPerLog {
 			fmt.Fprintf(bw, `,"float_%d":"%v"`, j, math.Round(10_000*rand.Float64())/1000)
 		}
-		for j := 0; j < *ipFieldsPerLog; j++ {
+		for j := range *ipFieldsPerLog {
 			ip := toIPv4(rand.Uint32())
 			fmt.Fprintf(bw, `,"ip_%d":"%s"`, j, ip)
 		}
-		for j := 0; j < *timestampFieldsPerLog; j++ {
+		for j := range *timestampFieldsPerLog {
 			timestamp := toISO8601(int64(rand.Uint64()))
 			fmt.Fprintf(bw, `,"timestamp_%d":"%s"`, j, timestamp)
 		}
-		for j := 0; j < *jsonFieldsPerLog; j++ {
+		for j := range *jsonFieldsPerLog {
 			fmt.Fprintf(bw, `,"json_%d":"{\"foo\":\"bar_%d\",\"baz\":{\"a\":[\"x\",\"y\"]},\"f3\":NaN,\"f4\":%d}"`, j, rand.Intn(10), rand.Intn(100))
 		}
 		fmt.Fprintf(bw, "}\n")

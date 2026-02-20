@@ -324,7 +324,7 @@ func unmarshalColumnHeadersRefsInplace(dst []columnHeaderRef, src []byte) ([]col
 	}
 	src = src[nSize:]
 
-	for i := uint64(0); i < n; i++ {
+	for i := range n {
 		columnNameID, nSize := encoding.UnmarshalVarUint64(src)
 		if nSize <= 0 {
 			return dst, srcOrig, fmt.Errorf("cannot unmarshal column name ID number %d out of %d", i, n)

@@ -116,15 +116,6 @@ export const ArrowDownIcon = () => (
   </svg>
 );
 
-export const ArrowLeftIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="M11.67 3.87 9.9 2.1 0 12l9.9 9.9 1.77-1.77L3.54 12z"></path>
-  </svg>
-);
-
 export const ArrowDropDownIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -196,15 +187,6 @@ export const PlayCircleOutlineIcon = () => (
     <path
       d="m10 16.5 6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
     ></path>
-  </svg>
-);
-
-export const ChartIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="m3.5 18.49 6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"></path>
   </svg>
 );
 
@@ -286,7 +268,9 @@ export const DragIcon = () => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"></path>
+    <path
+      d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2m-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2"
+    ></path>
   </svg>
 );
 
@@ -553,12 +537,7 @@ export const ScrollToTopIcon = () => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path
-      d="M8 12l4-4 4 4m-4-4v12"
-      strokeWidth="2"
-      stroke="currentColor"
-      fill="none"
-    />
+    <path d="M11 6.83 9.41 8.41 8 7l4-4 4 4-1.41 1.41L13 6.83V21h-2z"></path>
   </svg>
 );
 
@@ -603,34 +582,32 @@ export const OpenNewIcon = () => (
   </svg>
 );
 
-export const PlusIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
-  </svg>
-);
-
-export const EditIcon = () => (
+export const WrapTextIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
   >
     <path
-      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"
+      d="M15 6L3 6V8L15 8C17.21 8 19 9.79 19 12C19 14.21 17.21 16 15 16H10.83L12.42 14.41L11 13L7 17L11 21L12.41 19.59L10.83 18H15C18.31 18 21 15.31 21 12C21 8.69 18.31 6 15 6Z"
     ></path>
   </svg>
 );
 
-export const EditOffIcon = () => (
+export const UnwrapTextIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path
-      d="m12.126 8.125 1.937-1.937 3.747 3.747-1.937 1.938zM20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L20.71 7a1 1 0 0 0 0-1.37M2 5l6.63 6.63L3 17.25V21h3.75l5.63-5.62L18 21l2-2L4 3z"
-    ></path>
+    <path d="M11.59 7.41 15.17 11H1v2h14.17l-3.59 3.59L13 18l6-6-6-6zM20 6v12h2V6z"></path>
+  </svg>
+);
+
+export const WidthIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M6.99 11V8L3 12L6.99 16V13H17.01V16L21 12L17.01 8V11H6.99Z"></path>
   </svg>
 );
 

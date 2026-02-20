@@ -39,8 +39,8 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	// Create indexdb entries
 	const jobsCount = 7
 	const instancesCount = 5
-	for i := 0; i < jobsCount; i++ {
-		for j := 0; j < instancesCount; j++ {
+	for i := range jobsCount {
+		for j := range instancesCount {
 			sid, streamTagsCanonical := getStreamIDForTags(map[string]string{
 				"job":      fmt.Sprintf("job-%d", i),
 				"instance": fmt.Sprintf("instance-%d", j),
@@ -57,7 +57,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 			expectedStreamIDs = []streamID{}
 		}
 		sortStreamIDs(expectedStreamIDs)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf)
 			if !reflect.DeepEqual(streamIDs, expectedStreamIDs) {
 				t.Fatalf("unexpected streamIDs on iteration %d; got %v; want %v", i, streamIDs, expectedStreamIDs)
@@ -71,7 +71,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 			ProjectID: 2,
 		}
 		sf := mustNewTestStreamFilter(`{job="job-0",instance="instance-0"}`)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf)
 			if len(streamIDs) > 0 {
 				t.Fatalf("unexpected non-empty streamIDs on iteration %d: %d", i, len(streamIDs))
@@ -131,7 +131,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 
 	// match-job
 	var streamIDs []streamID
-	for i := 0; i < instancesCount; i++ {
+	for i := range instancesCount {
 		sid, _ := getStreamIDForTags(map[string]string{
 			"instance": fmt.Sprintf("instance-%d", i),
 			"job":      "job-0",
@@ -142,7 +142,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 
 	// match-instance
 	streamIDs = nil
-	for i := 0; i < jobsCount; i++ {
+	for i := range jobsCount {
 		sid, _ := getStreamIDForTags(map[string]string{
 			"instance": "instance-1",
 			"job":      fmt.Sprintf("job-%d", i),
@@ -179,13 +179,13 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 
 	// match-negative-re
 	var instanceIDs []int
-	for i := 0; i < instancesCount; i++ {
+	for i := range instancesCount {
 		if i != 0 && i != 1 {
 			instanceIDs = append(instanceIDs, i)
 		}
 	}
 	var jobIDs []int
-	for i := 0; i < jobsCount; i++ {
+	for i := range jobsCount {
 		if i > 2 {
 			jobIDs = append(jobIDs, i)
 		}
@@ -204,13 +204,13 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 
 	// match-negative-re-empty-match
 	instanceIDs = nil
-	for i := 0; i < instancesCount; i++ {
+	for i := range instancesCount {
 		if i != 0 && i != 1 {
 			instanceIDs = append(instanceIDs, i)
 		}
 	}
 	jobIDs = nil
-	for i := 0; i < jobsCount; i++ {
+	for i := range jobsCount {
 		if i > 2 {
 			jobIDs = append(jobIDs, i)
 		}
@@ -230,7 +230,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	// match-negative-job
 	instanceIDs = []int{2}
 	jobIDs = nil
-	for i := 0; i < jobsCount; i++ {
+	for i := range jobsCount {
 		if i != 1 {
 			jobIDs = append(jobIDs, i)
 		}
@@ -299,8 +299,8 @@ func TestGetTenantsIDs(t *testing.T) {
 	// Create indexdb entries
 	const jobsCount = 7
 	const instancesCount = 5
-	for i := 0; i < jobsCount; i++ {
-		for j := 0; j < instancesCount; j++ {
+	for i := range jobsCount {
+		for j := range instancesCount {
 			sids, streamTagsCanonical := getStreamIDForTags(map[string]string{
 				"job":      fmt.Sprintf("job-%d", i),
 				"instance": fmt.Sprintf("instance-%d", j),

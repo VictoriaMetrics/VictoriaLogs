@@ -1,0 +1,50 @@
+@use "src/styles/variables" as *;
+
+$resizer-width: 4px;
+$hit-area: calc($resizer-width + 16px);
+
+.vm-drag-resize-handle {
+  position: absolute;
+  top: 0;
+  right: calc($hit-area / -2);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: $hit-area;
+  max-width: $hit-area;
+  min-height: 100%;
+  cursor: col-resize;
+  will-change: transform;
+  z-index: 10;
+
+  &_revert {
+    right: auto;
+    left: calc($hit-area / -2);
+  }
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: auto;
+    right: auto;
+    width: $resizer-width;
+    height: 100%;
+    transition: background-color 200ms ease;
+  }
+
+  &_resizing:after,
+  &:hover:after {
+    background-color: rgba($color-dodger-blue, 0.4);
+  }
+}
+
+.vm-drag-resize-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 9999;
+}

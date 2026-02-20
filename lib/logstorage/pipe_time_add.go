@@ -89,7 +89,7 @@ func (pap *pipeTimeAddProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.rc.name = pa.field
 
 	c := br.getColumnByName(pa.field)
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+	for rowIdx := range br.rowsLen {
 		v := c.getValueAtRow(br, rowIdx)
 		ts, ok := TryParseTimestampRFC3339Nano(v)
 		if ok {

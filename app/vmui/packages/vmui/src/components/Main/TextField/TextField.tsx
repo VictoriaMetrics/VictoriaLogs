@@ -172,6 +172,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
       {type === "textarea"
         ? (
           <textarea
+            name={label || placeholder}
             className={inputClasses}
             disabled={disabled}
             ref={setTextareaRefs}
@@ -190,6 +191,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
         )
         : (
           <input
+            name={label || placeholder}
             className={inputClasses}
             disabled={disabled}
             ref={setInputRefs}

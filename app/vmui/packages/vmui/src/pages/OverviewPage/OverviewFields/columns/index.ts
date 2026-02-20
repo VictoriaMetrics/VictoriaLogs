@@ -1,4 +1,4 @@
-import { Column } from "../../../../components/Table/Table";
+import { type Column } from "../../../../components/Table/types";
 import { LogsFiledValues } from "../../../../api/types";
 import { getFieldCol, getHitsCol, getPercentCol } from "./utils";
 

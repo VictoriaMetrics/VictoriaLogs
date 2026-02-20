@@ -15,9 +15,9 @@ func TestPartitionLifecycle(t *testing.T) {
 	var ddbStats DatadbStats
 
 	s := newTestStorage()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mustCreatePartition(path)
-		for j := 0; j < 2; j++ {
+		for range 2 {
 			pt := mustOpenPartition(s, path)
 			ddbStats.reset()
 			pt.ddb.updateStats(&ddbStats)
@@ -62,7 +62,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 
 	// Try adding the same entry at a time.
 	totalRowsCount := uint64(0)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		lr := newTestLogRows(1, 1, 0)
 		totalRowsCount += uint64(len(lr.timestamps))
 		pt.mustAddRows(lr)
@@ -76,7 +76,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 	}
 
 	// Try adding different entry at a time.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		lr := newTestLogRows(1, 1, int64(i))
 		totalRowsCount += uint64(len(lr.timestamps))
 		pt.mustAddRows(lr)
@@ -105,7 +105,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 	}
 
 	// Try adding entries for multiple streams at a time
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		lr := newTestLogRows(3, 7, 0)
 		totalRowsCount += uint64(len(lr.timestamps))
 		pt.mustAddRows(lr)
@@ -152,9 +152,9 @@ func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	const workersCount = 3
 	var totalRowsCount atomic.Uint64
 	doneCh := make(chan struct{}, workersCount)
-	for i := 0; i < cap(doneCh); i++ {
+	for range cap(doneCh) {
 		go func() {
-			for j := 0; j < 7; j++ {
+			for j := range 7 {
 				lr := newTestLogRows(5, 10, int64(j))
 				pt.mustAddRows(lr)
 				totalRowsCount.Add(uint64(len(lr.timestamps)))
@@ -164,7 +164,7 @@ func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	}
 	timer := timerpool.Get(time.Second)
 	defer timerpool.Put(timer)
-	for i := 0; i < cap(doneCh); i++ {
+	for range cap(doneCh) {
 		select {
 		case <-doneCh:
 		case <-timer.C:

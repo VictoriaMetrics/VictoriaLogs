@@ -114,7 +114,7 @@ func (st *StreamTags) UnmarshalCanonicalInplace(src []byte) ([]byte, error) {
 		return srcOrig, fmt.Errorf("cannot unmarshal tags len")
 	}
 	src = src[nSize:]
-	for i := uint64(0); i < n; i++ {
+	for range n {
 		name, nSize := encoding.UnmarshalBytes(src)
 		if nSize <= 0 {
 			return srcOrig, fmt.Errorf("cannot unmarshal tag name")

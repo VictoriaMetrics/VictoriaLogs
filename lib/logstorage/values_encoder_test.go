@@ -810,7 +810,7 @@ func TestMarshalUint8String(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		resultExpected := strconv.Itoa(i)
 		f(uint8(i), resultExpected)
 	}
