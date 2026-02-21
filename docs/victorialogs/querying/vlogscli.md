@@ -32,7 +32,7 @@ tar xzf vlutils-linux-amd64-v1.45.0.tar.gz
 
 ## Configuration
 
-By default `vlogscli` sends queries to [`http://localhost:8429/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs).
+By default `vlogscli` sends queries to [`http://localhost:9428/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs).
 The url to query can be changed via `-datasource.url` command-line flag. For example, the following command instructs
 `vlogscli` sending queries to `https://victoria-logs.some-domain.com/select/logsql/query`:
 
