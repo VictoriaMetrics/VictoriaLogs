@@ -2,10 +2,12 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState, JSX, RefObject }
 import classNames from "classnames";
 import Popper from "../Popper/Popper";
 import "./style.scss";
-import { DoneIcon, RefreshIcon } from "../Icons";
+import { RefreshIcon } from "../Icons";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
 import useEventListener from "../../../hooks/useEventListener";
+import AutocompleteDetailsPanel from "./AutocompleteDetailsPanel/AutocompleteDetailsPanel";
+import AutocompleteList from "./AutocompleteList/AutocompleteList";
 
 export interface AutocompleteOptions {
   value: string;
@@ -25,8 +27,8 @@ interface AutocompleteProps {
   selected?: string[]
   label?: string
   disabledFullScreen?: boolean
-  offset?: {top: number, left: number}
-  maxDisplayResults?: {limit: number, message?: string}
+  offset?: { top: number, left: number }
+  maxDisplayResults?: { limit: number, message?: string }
   loading?: boolean;
   onSelect: (val: string, item: AutocompleteOptions) => void
   onOpenAutocomplete?: (val: boolean) => void
@@ -34,7 +36,12 @@ interface AutocompleteProps {
   onChangeWrapperRef?: (elementRef: RefObject<HTMLElement>) => void
 }
 
-enum FocusType {
+export type AutocompleteFocusOption = {
+  index: number,
+  type?: FocusType
+}
+
+export enum FocusType {
   mouse,
   keyboard
 }
@@ -59,11 +66,12 @@ const Autocomplete: FC<AutocompleteProps> = ({
   onChangeWrapperRef
 }) => {
   const { isMobile } = useDeviceDetect();
-  const wrapperEl = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const [focusOption, setFocusOption] = useState<{index: number, type?: FocusType}>({ index: -1 });
+  const [focusOption, setFocusOption] = useState<AutocompleteFocusOption>({ index: -1 });
   const [showMessage, setShowMessage] = useState("");
   const [totalFound, setTotalFound] = useState(0);
+  const warningMessage = `Shown ${maxDisplayResults?.limit} results out of ${totalFound}. ${showMessage}`;
 
   const {
     value: openAutocomplete,
@@ -95,23 +103,7 @@ const Autocomplete: FC<AutocompleteProps> = ({
 
   const displayNoOptionsText = useMemo(() => {
     return noOptionsText && !foundOptions.length;
-  }, [noOptionsText,foundOptions]);
-
-  const createHandlerSelect = (item: AutocompleteOptions) => () => {
-    if (disabled) return;
-    onSelect(item.value, item);
-    if (!selected) handleCloseAutocomplete();
-  };
-
-  const createHandlerMouseEnter = (index: number) => () => {
-    setFocusOption({ index, type: FocusType.mouse });
-  };
-
-  const scrollToValue = () => {
-    if (!wrapperEl.current || focusOption.type === FocusType.mouse) return;
-    const target = wrapperEl.current.childNodes[focusOption.index] as HTMLElement;
-    if (target?.scrollIntoView) target.scrollIntoView({ block: "center" });
-  };
+  }, [noOptionsText, foundOptions]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const { key, ctrlKey, metaKey, shiftKey } = e;
@@ -121,7 +113,7 @@ const Autocomplete: FC<AutocompleteProps> = ({
     if (key === "ArrowUp" && !modifiers && hasOptions) {
       e.preventDefault();
       setFocusOption(({ index }) => ({
-        index:  index <= 0 ? 0 : index - 1,
+        index: index <= 0 ? 0 : index - 1,
         type: FocusType.keyboard
       }));
     }
@@ -152,8 +144,6 @@ const Autocomplete: FC<AutocompleteProps> = ({
 
   useEventListener("keydown", handleKeyDown);
 
-  useEffect(scrollToValue, [focusOption, foundOptions]);
-
   useEffect(() => {
     setFocusOption({ index: -1 });
   }, [foundOptions]);
@@ -167,8 +157,8 @@ const Autocomplete: FC<AutocompleteProps> = ({
   }, [foundOptions, hideFoundedOptions]);
 
   useEffect(() => {
-    onChangeWrapperRef && onChangeWrapperRef(wrapperEl);
-  }, [wrapperEl]);
+    onChangeWrapperRef && onChangeWrapperRef(wrapperRef);
+  }, [wrapperRef]);
 
   return (
     <Popper
@@ -181,58 +171,29 @@ const Autocomplete: FC<AutocompleteProps> = ({
       disabledFullScreen={disabledFullScreen}
       offset={offset}
     >
-      <div className={classNames({
-        "vm-autocomplete-container": true,
-        "vm-autocomplete-container_mobile": isMobile && !disabledFullScreen,
-      })}>
-        <div className="vm-autocomplete-container__list">
-          <div
-            className={classNames({
-              "vm-autocomplete": true,
-              "vm-autocomplete_mobile": isMobile && !disabledFullScreen,
-            })}
-            ref={wrapperEl}
-          >
-            {loading && <div className="vm-autocomplete__loader"><RefreshIcon/><span>Loading...</span></div>}
-            {displayNoOptionsText && <div className="vm-autocomplete__no-options">{noOptionsText}</div>}
-            {!hideFoundedOptions && foundOptions.map((option, i) =>
-              <div
-                className={classNames({
-                  "vm-list-item": true,
-                  "vm-list-item_mobile": isMobile,
-                  "vm-list-item_active": i === focusOption.index,
-                  "vm-list-item_multiselect": selected,
-                  "vm-list-item_multiselect_selected": selected?.includes(option.value),
-                  "vm-list-item_with-icon":  option.icon,
-                })}
-                id={`$autocomplete$${option.value}`}
-                key={`${i}${option.value}`}
-                onClick={createHandlerSelect(option)}
-                onMouseEnter={createHandlerMouseEnter(i)}
-              >
-                {selected?.includes(option.value) && <DoneIcon/>}
-                <>{option.icon}</>
-                <span>{option.value}</span>
-              </div>
-            )}
-          </div>
-          {showMessage && (
-            <div className="vm-autocomplete-message">
-              Shown {maxDisplayResults?.limit} results out of {totalFound}. {showMessage}
-            </div>
-          )}
+      <div
+        ref={wrapperRef}
+        className={classNames({
+          "vm-autocomplete": true,
+          "vm-autocomplete_mobile": isMobile,
+        })}
+      >
+        <div className="vm-autocomplete-base-panel">
+          {loading && <div className="vm-autocomplete__loader"><RefreshIcon/><span>Loading...</span></div>}
+          {displayNoOptionsText && <div className="vm-autocomplete__no-options">{noOptionsText}</div>}
+          <AutocompleteList
+            options={foundOptions}
+            focusOption={focusOption}
+            selectedOptions={selected}
+            hideOptions={hideFoundedOptions}
+            disabled={disabled}
+            onSelect={onSelect}
+            onFocus={setFocusOption}
+            onClose={handleCloseAutocomplete}
+          />
+          {showMessage && <div className="vm-autocomplete__warning">{warningMessage}</div>}
         </div>
-        {foundOptions[focusOption.index]?.description && (
-          <div className="vm-autocomplete-info">
-            <div className="vm-autocomplete-info__type">
-              {foundOptions[focusOption.index].type}
-            </div>
-            <div
-              className="vm-autocomplete-info__description"
-              dangerouslySetInnerHTML={{ __html: foundOptions[focusOption.index].description || "" }}
-            />
-          </div>
-        )}
+        <AutocompleteDetailsPanel option={foundOptions[focusOption.index]}/>
       </div>
     </Popper>
   );

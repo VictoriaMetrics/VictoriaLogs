@@ -1,0 +1,13 @@
+@use "src/styles/variables" as *;
+
+.vm-autocomplete-list {
+  position: relative;
+  min-width: 200px;
+  max-height: 300px;
+  overflow: auto;
+  overscroll-behavior: none;
+
+  &_mobile {
+    width: 100vw;
+  }
+}

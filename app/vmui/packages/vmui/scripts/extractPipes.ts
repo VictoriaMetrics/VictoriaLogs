@@ -147,7 +147,7 @@ async function extractPipes() {
     const value = inferValueFromTitle(cleanTitle) ?? fallbackValueFromId(id);
 
     const link = `${LOGSQL_DOCS_URL}#${id}`;
-    const descriptionTitle = `<h5><a href=${link} target="_blank" rel="noreferrer">${cleanTitle}</a></h5>`;
+    const descriptionTitle = `<h4><a href=${link} target="_blank" rel="noreferrer">${cleanTitle}</a></h4>`;
 
     entries.push({
       id,

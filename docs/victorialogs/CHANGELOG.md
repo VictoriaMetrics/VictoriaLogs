@@ -22,6 +22,10 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix autocomplete popper positioning. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix select dropdown width. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
+
+
 ## [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0)
 
 Released at 2026-02-23

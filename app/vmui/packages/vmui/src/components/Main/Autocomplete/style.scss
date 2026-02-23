@@ -1,43 +1,18 @@
 @use "src/styles/variables" as *;
 
-.vm-autocomplete-container {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-
-  &_mobile {
-    flex-direction: column;
-
-    .vm-autocomplete-info {
-      border-left: none;
-      border-top: $border-divider;
-      min-width: unset;
-      max-width: unset;
-      width: 100%;
-    }
-  }
-
-  &__list {
-    display: flex;
-    flex-direction: column;
-    min-width: 200px;
-  }
-}
-
 .vm-autocomplete {
-  position: relative;
-  max-height: 300px;
-  overflow: auto;
-  overscroll-behavior: none;
+  display: flex;
+  align-items: stretch;
 
-  &_mobile {
-    max-height: calc(($vh * 100) - 70px);
+  &-base-panel {
+    flex-grow: 1;
   }
 
   &__no-options {
     padding: $padding-global;
     text-align: center;
-    color: $color-text-disabled;
+    color: $color-text-secondary;
+    font-style: italic;
   }
 
   &__loader {
@@ -52,11 +27,11 @@
     pointer-events: none;
 
     svg {
-      animation: half-circle-spinner-animation 1s infinite linear, vm-fade 0.5s ease-in;
+      animation: vm-spinner-animation 1s infinite linear;
     }
   }
 
-  &-message {
+  &__warning {
     position: relative;
     padding: $padding-global;
     background-color: $color-background-block;
@@ -75,32 +50,13 @@
       opacity: 0.1;
     }
   }
+}
 
-  &-info {
-    padding: $padding-global;
-    background-color: $color-background-block;
-    border-left: $border-divider;
-    min-width: 450px;
-    max-width: 500px;
-    overflow-wrap: anywhere;
-
-    &__type {
-      color: $color-text-secondary;
-      margin-bottom: $padding-small;
-    }
-
-    &__description {
-      line-height: 130%;
-      max-height: 260px;
-      overflow: auto;
-
-      p {
-        margin: $padding-global 0;
-
-        &:last-child {
-          margin: 0;
-        }
-      }
-    }
+@keyframes vm-spinner-animation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }

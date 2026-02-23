@@ -1,6 +1,5 @@
 import {
   FC,
-  MouseEvent as ReactMouseEvent,
   ReactNode,
   useEffect,
   useMemo,
@@ -18,6 +17,7 @@ import Button from "../Button/Button";
 import { CloseIcon } from "../Icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import useEventListener from "../../../hooks/useEventListener";
+import { Size, useResizeObserver } from "../../../hooks/useResizeObserver";
 
 interface PopperProps {
   children: ReactNode
@@ -26,7 +26,6 @@ interface PopperProps {
   buttonRef: RefObject<HTMLElement>
   placement?: "bottom-right" | "bottom-left" | "top-left" | "top-right" | "fixed"
   placementPosition?: { top: number, left: number } | null
-  animation?: string
   offset?: { top: number, left: number }
   clickOutside?: boolean,
   fullWidth?: boolean
@@ -52,10 +51,107 @@ const Popper: FC<PopperProps> = ({
   const { isMobile } = useDeviceDetect();
   const navigate = useNavigate();
   const location = useLocation();
-  const [popperSize, setPopperSize] = useState({ width: 0, height: 0 });
+  const [popperSize, setPopperSize] = useState<Size>({ width: 0, height: 0 });
   const [isOpen, setIsOpen] = useState(false);
 
   const popperRef = useRef<HTMLDivElement>(null);
+
+  const popperStyle = useMemo(() => {
+    const buttonEl = buttonRef.current;
+
+    if (!buttonEl || !open) return {};
+
+    const buttonPos = buttonEl.getBoundingClientRect();
+
+    const position = {
+      top: 0,
+      left: 0,
+      width: "auto",
+    };
+
+    const needAlignRight = placement === "bottom-right" || placement === "top-right";
+    const needAlignTop = placement === "top-left" || placement === "top-right";
+
+    const popperWidth = popperSize.width || 0;
+    const popperHeight = popperSize.height || 0;
+
+    const offsetTop = offset.top || 0;
+    const offsetLeft = offset.left || 0;
+
+    const { innerWidth, innerHeight } = window;
+
+    const maxLeft = Math.max(innerWidth - popperWidth, 0);
+    const maxTop = Math.max(innerHeight - popperHeight, 0);
+
+    position.top = buttonPos.top + buttonPos.height + offsetTop;
+    position.left = buttonPos.left + offsetLeft;
+
+    if (needAlignTop) position.top = buttonPos.top - popperHeight - offsetTop;
+    if (needAlignRight) position.left = buttonPos.right - popperWidth - offsetLeft;
+    if (fullWidth) position.width = `${buttonPos.width}px`;
+
+    if (placement === "fixed" && placementPosition) {
+      const clampedTop = Math.max(placementPosition.top + offsetTop, 0);
+      const clampedLeft = Math.max(placementPosition.left + offsetLeft, 0);
+
+      position.top = Math.min(clampedTop, maxTop);
+      position.left = Math.min(clampedLeft, maxLeft);
+
+      return position;
+    }
+
+    const isOverflowBottom = position.top + popperHeight > innerHeight;
+    const isOverflowTop = position.top < 0;
+    const isOverflowRight = position.left + popperWidth > innerWidth;
+    const isOverflowLeft = position.left < 0;
+
+    if (isOverflowBottom) position.top = buttonPos.top - popperHeight - offsetTop;
+    if (isOverflowTop) position.top = buttonPos.top + buttonPos.height + offsetTop;
+    if (isOverflowRight) position.left = maxLeft;
+    if (isOverflowLeft) position.left = buttonPos.left + offsetLeft;
+
+    position.top = Math.min(Math.max(position.top, 0), maxTop);
+    position.left = Math.min(Math.max(position.left, 0), maxLeft);
+
+    return position;
+  }, [
+    buttonRef,
+    open,
+    placement,
+    placementPosition,
+    offset.top,
+    offset.left,
+    fullWidth,
+    popperSize.width,
+    popperSize.height,
+  ]);
+
+  const handleClickClose = (e: MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    onClose();
+  };
+
+  const handleClickOutside = () => {
+    if (!clickOutside) return;
+    handleClose();
+  };
+
+  const handlePopstate = useCallback(() => {
+    if (isOpen && isMobile && !disabledFullScreen) {
+      navigate(location, { replace: true });
+      onClose();
+    }
+  }, [isOpen, isMobile, disabledFullScreen, location, onClose]);
+
+  useEventListener("scroll", handleClose);
+  useEventListener("popstate", handlePopstate);
+  useResizeObserver({ ref: popperRef, onResize: setPopperSize });
+  useClickOutside(popperRef, handleClickOutside, buttonRef);
 
   useEffect(() => {
     setIsOpen(open);
@@ -71,97 +167,8 @@ const Popper: FC<PopperProps> = ({
   }, [open]);
 
   useEffect(() => {
-    setPopperSize({
-      width: popperRef?.current?.clientWidth || 0,
-      height: popperRef?.current?.clientHeight || 0
-    });
     setIsOpen(false);
   }, [popperRef]);
-
-  const popperStyle = useMemo(() => {
-    const buttonEl = buttonRef.current;
-
-    if (!buttonEl || !isOpen) return {};
-
-    const buttonPos = buttonEl.getBoundingClientRect();
-
-    const position = {
-      top: 0,
-      left: 0,
-      width: "auto"
-    };
-
-    const needAlignRight = placement === "bottom-right" || placement === "top-right";
-    const needAlignTop = placement?.includes("top");
-
-    const offsetTop = offset?.top || 0;
-    const offsetLeft = offset?.left || 0;
-
-    position.left = position.left = buttonPos.left + offsetLeft;
-    position.top = buttonPos.height + buttonPos.top + offsetTop;
-
-    if (needAlignRight) position.left = buttonPos.right - popperSize.width;
-    if (needAlignTop) position.top = buttonPos.top - popperSize.height - offsetTop;
-
-    if (placement === "fixed" && placementPosition) {
-      position.top = Math.max(placementPosition.top + offset.top, 0);
-      position.left = Math.max(placementPosition.left + offset.left, 0);
-      return position;
-    }
-
-    const { innerWidth, innerHeight } = window;
-
-    const isOverflowBottom = (position.top + popperSize.height) > innerHeight;
-    const isOverflowTop = (position.top) < 0;
-    const isOverflowRight = (position.left + popperSize.width) > innerWidth;
-    const isOverflowLeft = (position.left) < 0;
-
-    if (isOverflowBottom) position.top = buttonPos.top - popperSize.height - offsetTop;
-    if (isOverflowTop) position.top = buttonPos.height + buttonPos.top + offsetTop;
-    if (isOverflowRight) position.left = buttonPos.right - popperSize.width - offsetLeft;
-    if (isOverflowLeft) position.left = buttonPos.left + offsetLeft;
-
-    if (fullWidth) position.width = `${buttonPos.width}px`;
-    if (position.top < 0) position.top = 0;
-    if (position.left < 0) position.left = 0;
-
-    return position;
-  }, [buttonRef, placement, isOpen, children, fullWidth]);
-
-  const handleClickClose = (e: ReactMouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onClose();
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-    onClose();
-  };
-
-  const handleClickOutside = () => {
-    if (!clickOutside) return;
-    handleClose();
-  };
-
-  useEffect(() => {
-    if (!popperRef.current || !isOpen || (isMobile && !disabledFullScreen)) return;
-    const { right, width } = popperRef.current.getBoundingClientRect();
-    if (right > window.innerWidth) {
-      const left = window.innerWidth - width;
-      popperRef.current.style.left = `${left}px`;
-    }
-  }, [isOpen, popperRef, placementPosition]);
-
-  const handlePopstate = useCallback(() => {
-    if (isOpen && isMobile && !disabledFullScreen) {
-      navigate(location, { replace: true });
-      onClose();
-    }
-  }, [isOpen, isMobile, disabledFullScreen, location, onClose]);
-
-  useEventListener("scroll", handleClose);
-  useEventListener("popstate", handlePopstate);
-  useClickOutside(popperRef, handleClickOutside, buttonRef);
 
   return (
     <>
