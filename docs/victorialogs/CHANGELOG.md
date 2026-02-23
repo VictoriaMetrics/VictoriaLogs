@@ -30,6 +30,7 @@ according to the following docs:
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): change group-by toggle behavior to clear grouping instead of resetting it to `_stream`. See [#1059](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1059).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add stream fields chips to the Log context modal. See [#1065](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1065).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an `Interval` selector instead of `Bars` for the logs hits chart. See [#1054](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1054).
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix timestamp rendering according to the selected timezone. See [#63](https://github.com/VictoriaMetrics/VictoriaLogs/issues/63).

@@ -184,13 +184,16 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         display: flex;
         align-items: center;
         justify-content: center;
-        width: $font-size;
-        height: $font-size;
         transform: rotate(-90deg);
         transition: transform 0.2s ease-out;
 
         &_open {
           transform: rotate(0deg);
+        }
+
+        svg {
+          width: $font-size;
+          height: $font-size;
         }
       }
 

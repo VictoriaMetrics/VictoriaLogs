@@ -40,11 +40,11 @@ const QueryPage: FC = () => {
   const {
     topHits: { value: topHits },
     groupFieldHits: { value: groupFieldHits },
-    barsCount: { value: barsCount },
+    step: { value: step },
   } = useHitsChartConfig();
   const prevTopHits = usePrevious(topHits);
   const prevGroupFieldHits = usePrevious(groupFieldHits);
-  const prevBarsCount = usePrevious(barsCount);
+  const prevStep = usePrevious(step);
 
   const [searchParams] = useSearchParams();
 
@@ -98,7 +98,7 @@ const QueryPage: FC = () => {
     if (flags.hits) {
       await fetchLogHits({
         period,
-        barsCount,
+        step,
         field: groupFieldHits,
         fieldsLimit: topHits,
         queryMode: graphQueryMode,
@@ -188,17 +188,17 @@ const QueryPage: FC = () => {
     if (hideChart) return;
     // TODO: refactor effect logic
     const topChanged = prevTopHits && (topHits !== prevTopHits);
-    const barsCountChanged = prevBarsCount && (barsCount !== prevBarsCount);
+    const stepChanged = prevStep && (step !== prevStep);
     const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
     const becameVisible = prevHideChart && !hideChart;
     const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
 
-    if (!(topChanged || groupChanged || becameVisible || queryModeChanged || barsCountChanged)) return;
+    if (!(topChanged || groupChanged || becameVisible || queryModeChanged || stepChanged)) return;
 
     dataLogHits.abortController.abort?.();
     fetchLogHits({
       period,
-      barsCount,
+      step,
       field: groupFieldHits,
       fieldsLimit: topHits,
       queryMode: graphQueryMode,
@@ -211,8 +211,8 @@ const QueryPage: FC = () => {
     prevGroupFieldHits,
     topHits,
     prevTopHits,
-    barsCount,
-    prevBarsCount,
+    step,
+    prevStep,
     graphQueryMode,
     prevGraphMode,
     fetchLogHits,

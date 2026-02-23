@@ -22,7 +22,7 @@ interface FetchHitsParams {
   extraParams?: URLSearchParams;
   field?: string;
   fieldsLimit?: number;
-  barsCount: number;
+  step: string | null;
   queryMode?: GRAPH_QUERY_MODE
 }
 
@@ -54,13 +54,13 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     }
   }, [serverUrl]);
 
-  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, barsCount }: OptionsParams) => {
-    const { start, end, step } = getHitsTimeParams(period, barsCount);
+  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
+    const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
     const offsetMinutes = dayjs().tz().utcOffset();
 
     const params = new URLSearchParams({
       query: query.trim(),
-      step: `${step}ms`,
+      step: step || `${fallbackStepMs}ms`,
       offset: `${offsetMinutes}m`,
       start: start.toISOString(),
       end: end.toISOString(),
@@ -107,6 +107,10 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
+
+    if (!params.step) {
+      console.warn("Missing step; using fallback interval", params.period);
+    }
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));

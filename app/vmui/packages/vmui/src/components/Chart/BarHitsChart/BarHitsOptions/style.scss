@@ -20,10 +20,15 @@
   &_selections {
     flex-grow: 1;
     justify-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: $padding-small;
   }
 
   &-item {
-    padding-right: $padding-global;
+    &_switch {
+      padding-right: $padding-global;
+    }
   }
 
   &_mobile {

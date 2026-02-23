@@ -21,12 +21,12 @@ const BarHitsStats: FC<Props> = ({ totalHits, isHitsMode, durationMs }) => {
     <div className="vm-bar-hits-stats">
       {isHitsMode && (
         <p className="vm-bar-hits-stats__item">
-          Total: <b>{totalHitsFormat}</b> hits
+          Total: <b>{totalHitsFormat}</b>
         </p>
       )}
       {durationFormat && (
       <p className="vm-bar-hits-stats__item">
-        Duration: <b>{durationFormat}</b>
+        Query time: <b>{durationFormat}</b>
       </p>
       )}
     </div>

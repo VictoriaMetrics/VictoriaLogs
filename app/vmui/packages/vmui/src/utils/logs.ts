@@ -1,6 +1,6 @@
 import { TimeParams } from "../types";
 import dayjs from "dayjs";
-import { LOGS_GROUP_BY } from "../constants/logs";
+import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../components/Chart/BarHitsChart/hooks/useBarHitsOptions";
 
@@ -77,12 +77,12 @@ export const getAllStreamKeys = (data: Array<Record<string, unknown>>): string[]
   return [...keys];
 };
 
-export const getHitsTimeParams = (period: TimeParams, bars: number) => {
+export const getHitsTimeParams = (period: TimeParams) => {
   const start = dayjs(period.start * 1000);
   const end = dayjs(period.end * 1000);
   const totalMs = Math.max(1, end.diff(start, "ms"));
 
-  const step = Math.max(1, Math.ceil(totalMs / bars));
+  const step = Math.max(1, Math.ceil(totalMs / LOGS_BAR_COUNT_DEFAULT));
 
   return { start, end, step };
 };
