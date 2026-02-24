@@ -24,6 +24,7 @@ according to the following docs:
 
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`json_array_contains` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains-filter) for matching fields containing JSON arrays by the presence of the given value in the array. This is useful for JSON-encoded logs containing fields such as `tags=["prod","canary"]`. Thanks to @caicancai for [the pull request #1080](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1080).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): allow using `total_stats by (...)` with fields that are a subset of labels produced by the preceding `stats` pipe in [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats). See [#1088](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1088).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an `Interval` selector instead of `Bars` for the logs hits chart. See [#1054](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1054).
 
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix autocomplete popper positioning. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix select dropdown width. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
@@ -40,7 +41,6 @@ Released at 2026-02-23
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): change group-by toggle behavior to clear grouping instead of resetting it to `_stream`. See [#1059](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1059).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add stream fields chips to the Log context modal. See [#1065](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1065).
-* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an `Interval` selector instead of `Bars` for the logs hits chart. See [#1054](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1054).
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): prevent from `cannot parse already verified regexp` panic when special regexp is passed to [regexp filter](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter). See [#1112](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1112).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
