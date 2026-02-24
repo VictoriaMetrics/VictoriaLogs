@@ -3944,7 +3944,7 @@ func TestQueryGetStatsLabels_Success(t *testing.T) {
 
 	// math pipe is allowed after stats
 	f(`foo | stats by (x) count() total, count() if (error) errors | math errors / total`, []string{"x"})
-	f(`foo | stats by (x, y) count() hits | total_stats by (x) sum(hits) total`, []string{"x", "y"})
+	f(`foo | stats by (x, y) count() hits | total_stats by (x) sum(hits) total | math hits / total`, []string{"x", "y"})
 
 	// derive math results
 	f(`foo | stats count() x | math x / 10 as y | rm x`, []string{})
