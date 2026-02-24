@@ -3,11 +3,11 @@
 # The alerts below are just recommendations and may require some updates
 # and threshold calibration according to every specific setup.
 groups:
-  - name: vm-health
+  - name: vl-health
     # note the `job` filter and update accordingly to your setup
     rules:
       - alert: TooManyRestarts
-        expr: changes(process_start_time_seconds{job=~".*(victoriametrics|vmselect|vminsert|vmstorage|vmagent|vmalert|vmsingle|vmalertmanager|vmauth|victorialogs|vlstorage|vlselect|vlinsert).*"}[15m]) > 2
+        expr: changes(process_start_time_seconds{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[15m]) > 2
         labels:
           severity: critical
         annotations:
@@ -17,7 +17,7 @@ groups:
             It might be crashlooping.
 
       - alert: ServiceDown
-        expr: up{job=~".*(victoriametrics|vmselect|vminsert|vmstorage|vmagent|vmalert|vmsingle|vmalertmanager|vmauth|victorialogs|vlstorage|vlselect|vlinsert).*"} == 0
+        expr: up{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"} == 0
         for: 2m
         labels:
           severity: critical
@@ -26,7 +26,7 @@ groups:
           description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes."
 
       - alert: ProcessNearFDLimits
-        expr: (process_max_fds - process_open_fds) < 100
+        expr: (process_max_fds{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"} - process_open_fds{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}) < 100
         for: 5m
         labels:
           severity: critical
@@ -37,7 +37,7 @@ groups:
             Consider to increase the limit as fast as possible.
 
       - alert: TooHighMemoryUsage
-        expr: (min_over_time(process_resident_memory_anon_bytes[10m]) / vm_available_memory_bytes) > 0.8
+        expr: (min_over_time(process_resident_memory_anon_bytes{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[10m]) / vm_available_memory_bytes{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}) > 0.8
         for: 5m
         labels:
           severity: critical
@@ -48,7 +48,7 @@ groups:
             Consider to either increase available memory or decrease the load on the process.
 
       - alert: TooHighCPUUsage
-        expr: rate(process_cpu_seconds_total[5m]) / process_cpu_cores_available > 0.9
+        expr: rate(process_cpu_seconds_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m]) / process_cpu_cores_available{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"} > 0.9
         for: 5m
         labels:
           severity: critical
@@ -59,7 +59,7 @@ groups:
             Consider to either increase available CPU resources or decrease the load on the process.
 
       - alert: TooHighGoroutineSchedulingLatency
-        expr: histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket[5m])) by (le, job, instance)) > 0.1
+        expr: histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m])) by (le, job, instance)) > 0.1
         for: 15m
         labels:
           severity: critical
@@ -71,7 +71,7 @@ groups:
             the service could work unreliably with delays in processing.
 
       - alert: TooManyLogs
-        expr: sum(increase(vm_log_messages_total{level="error"}[5m])) without (app_version, location) > 0
+        expr: sum(increase(vm_log_messages_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*", level="error"}[5m])) without (app_version, location) > 0
         for: 15m
         labels:
           severity: warning
@@ -81,20 +81,8 @@ groups:
             Logging rate for job \"{{ $labels.job }}\" ({{ $labels.instance }}) is {{ $value }} for last 15m.
             Worth to check logs for specific error messages.
 
-      - alert: TooManyTSIDMisses
-        expr: rate(vm_missing_tsids_for_metric_id_total[5m]) > 0
-        for: 10m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Too many TSID misses for job \"{{ $labels.job }}\" ({{ $labels.instance }})"
-          description: | 
-            The rate of TSID misses during query lookups is too high for \"{{ $labels.job }}\" ({{ $labels.instance }}).
-            Make sure you're running VictoriaMetrics of v1.85.3 or higher.
-            Related issue https://github.com/VictoriaMetrics/VictoriaMetrics/issues/3502
-
       - alert: ConcurrentInsertsHitTheLimit
-        expr: avg_over_time(vm_concurrent_insert_current[1m]) >= vm_concurrent_insert_capacity
+        expr: avg_over_time(vm_concurrent_insert_current{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m]) >= vm_concurrent_insert_capacity{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}
         for: 15m
         labels:
           severity: warning
@@ -107,20 +95,8 @@ groups:
             making write attempts. If vmagent's or vminsert's CPU usage and network saturation are at normal level, then 
             it might be worth adjusting `-maxConcurrentInserts` cmd-line flag.
 
-      - alert: IndexDBRecordsDrop
-        expr: increase(vm_indexdb_items_dropped_total[5m]) > 0
-        labels:
-          severity: critical
-        annotations:
-          summary: "IndexDB skipped registering items during data ingestion with reason={{ $labels.reason }}."
-          description: | 
-            VictoriaMetrics could skip registering new timeseries during ingestion if they fail the validation process. 
-            For example, `reason=too_long_item` means that time series cannot exceed 64KB. Please, reduce the number 
-            of labels or label values for such series. Or enforce these limits via `-maxLabelsPerTimeseries` and 
-            `-maxLabelValueLen` command-line flags.
-
       - alert: RowsRejectedOnIngestion
-        expr: rate(vm_rows_ignored_total[5m]) > 0
+        expr: rate(vl_rows_dropped_total[5m]) > 0
         for: 15m
         labels:
           severity: warning
@@ -130,7 +106,7 @@ groups:
             following reason: \"{{ $labels.reason }}\""
 
       - alert: TooHighQueryLoad
-        expr: increase(vm_concurrent_select_limit_timeout_total[5m]) > 0
+        expr: increase(vl_concurrent_select_limit_timeout_total[5m]) > 0
         for: 15m
         labels:
           severity: warning

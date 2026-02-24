@@ -1,5 +1,5 @@
 import { getNanoTimestamp } from "../../utils/time";
-import { Order } from "../../types";
+import { OrderDir } from "../../types";
 
 const dateColumns = ["date", "timestamp", "time"];
 
@@ -41,13 +41,7 @@ export function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   return 0;
 }
 
-export function getComparator<Key extends (string | number | symbol)>(
-  order: Order,
-  orderBy: Key,
-): (
-  a: { [key in Key]: number | string },
-  b: { [key in Key]: number | string },
-) => number {
+export function getComparator<T, K extends keyof T>(order: OrderDir, orderBy: K): (a: T, b: T) => number {
   return order === "desc"
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy);

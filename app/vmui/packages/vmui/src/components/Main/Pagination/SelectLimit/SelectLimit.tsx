@@ -15,6 +15,7 @@ interface SelectLimitProps<T extends string | number> {
   label?: string;
   options?: T[];
   allowUnlimited?: boolean;
+  emptyValueLabel?: string;
   isLoading?: boolean;
   error?: string;
   searchable?: boolean;
@@ -32,6 +33,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
     label,
     options,
     allowUnlimited,
+    emptyValueLabel,
     isLoading,
     error,
     searchable,
@@ -73,6 +75,12 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
     handleClose();
   };
 
+  const defaultLabel = isMobile ? "Rows" : "Rows per page";
+  const displayLabel = label || defaultLabel;
+
+  const defaultValue = limit || emptyValueLabel || "All";
+  const displayValue = renderOptionLabel ? renderOptionLabel(limit, true) : defaultValue;
+
   return (
     <>
       <div
@@ -81,7 +89,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
         ref={buttonRef}
       >
         <div>
-          {label || (isMobile ? "Rows" : "Rows per page")}: <b>{renderOptionLabel ? renderOptionLabel(limit, true) : limit || "All"}</b>
+          {displayLabel}: <b>{displayValue}</b>
         </div>
         <ArrowDropDownIcon/>
       </div>

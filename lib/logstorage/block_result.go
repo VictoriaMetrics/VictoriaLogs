@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1952,12 +1953,7 @@ func areSameWildcardColumns(cs []*blockResultColumn, columnFilters []string) boo
 }
 
 func hasWildcardFilters(columnFilters []string) bool {
-	for _, f := range columnFilters {
-		if prefixfilter.IsWildcardFilter(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(columnFilters, prefixfilter.IsWildcardFilter)
 }
 
 func getMatchingColumns(br *blockResult, filters []string) *matchingColumns {

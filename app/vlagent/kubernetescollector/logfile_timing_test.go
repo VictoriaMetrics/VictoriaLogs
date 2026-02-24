@@ -25,7 +25,7 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 	logFilePath := filepath.Join(b.TempDir(), "test.log")
 	line := strings.Repeat("a", lineLen)
 	var lines []string
-	for i := 0; i < count; i++ {
+	for range count {
 		lines = append(lines, line)
 	}
 	writeLinesToFile(b, logFilePath, lines...)

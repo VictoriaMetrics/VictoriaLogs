@@ -44,7 +44,7 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 	for i := range streams {
 		b = b[:0]
 		b = append(b, '{')
-		for j := 0; j < labelsCount; j++ {
+		for j := range labelsCount {
 			b = append(b, "label_"...)
 			b = strconv.AppendInt(b, int64(j), 10)
 			b = append(b, `="value_`...)
@@ -59,7 +59,7 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 
 		var rowsBuf []byte
 		entriesLen := len(entries)
-		for j := 0; j < rowsCount; j++ {
+		for j := range rowsCount {
 			rowsBufLen := len(rowsBuf)
 			rowsBuf = append(rowsBuf, "value_"...)
 			rowsBuf = strconv.AppendInt(rowsBuf, int64(j), 10)

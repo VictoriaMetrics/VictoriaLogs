@@ -21,10 +21,10 @@ func TestRowsBuffer(t *testing.T) {
 	const rowsPerInsert = 200
 	const insertLoops = 30
 	var wg sync.WaitGroup
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		wg.Go(func() {
 			lr := newTestLogRows(1, rowsPerInsert, 1)
-			for i := 0; i < insertLoops; i++ {
+			for range insertLoops {
 				rb.mustAddRows(lr)
 			}
 		})
@@ -47,7 +47,7 @@ func TestAppendPartsToMergeManyParts(t *testing.T) {
 	var sizes []uint64
 	maxOutSize := uint64(0)
 	r := rand.New(rand.NewSource(1))
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		n := uint64(uint32(r.NormFloat64() * 1e9))
 		n++
 		maxOutSize += n

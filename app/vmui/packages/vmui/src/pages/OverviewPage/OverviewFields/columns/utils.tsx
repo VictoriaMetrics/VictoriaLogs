@@ -1,24 +1,35 @@
-import { Column } from "../../../../components/Table/Table";
+import { type Column } from "../../../../components/Table/types";
 import { LogsFiledValues } from "../../../../api/types";
+import { formatNumber } from "../../../../utils/number";
+
+const options = {
+  sortable: true,
+  draggable: false,
+  resizable: false,
+  menuEnabled: false
+};
 
 export const getFieldCol = (title: string): Column<LogsFiledValues> => ({
   title,
-  className: "vm-top-fields__cell-name",
+  options,
+  classNameHeader: "vm-table-cell_full",
   key: "value" as keyof LogsFiledValues,
 });
 
 export const getHitsCol = () => ({
   title: "Hits",
-  isNum: true,
-  className: "vm-top-fields__cell-value",
+  options,
+  className: "vm-table-cell_number",
+  classNameHeader: "vm-table-cell-header_number",
   key: "hits" as keyof LogsFiledValues,
-  render: (n: LogsFiledValues) => Number(n.hits).toLocaleString("en-US")
+  render: (n: LogsFiledValues) => formatNumber(n.hits),
 });
 
 export const getPercentCol = (title: string) => ({
   title,
-  isNum: true,
-  className: "vm-top-fields__cell-percent",
+  options,
+  className: "vm-table-cell_number",
+  classNameHeader: "vm-table-cell-header_number",
   key: "percent" as keyof LogsFiledValues,
   render: (n: LogsFiledValues) => {
     const p = n.percent ?? 0;

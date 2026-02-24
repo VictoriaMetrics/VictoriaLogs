@@ -92,7 +92,8 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   ```
 
 - By adding [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter). The time range for the query can be specified via optional
-  `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats). The `end` arg is exclusive; HTTP time ranges use `[start, end)`.
+  `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
+  The `end` arg is exclusive; HTTP time ranges use `[start, end)`.
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting

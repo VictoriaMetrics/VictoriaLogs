@@ -157,7 +157,7 @@ func (shard *pipeUniqProcessorShard) writeBlock(br *blockResult) bool {
 	shard.columnValues = columnValues
 
 	keyBuf := shard.keyBuf
-	for i := 0; i < br.rowsLen; i++ {
+	for i := range br.rowsLen {
 		seenValue := true
 		for _, values := range columnValues {
 			if needHits || i == 0 || values[i-1] != values[i] {

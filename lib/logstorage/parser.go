@@ -211,12 +211,7 @@ var mathStopCompoundTokens = []string{
 
 func (lex *lexer) isPrevRawToken(tokens []string) bool {
 	prevTokenLower := strings.ToLower(lex.prevRawToken)
-	for _, token := range tokens {
-		if token == prevTokenLower {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(tokens, prevTokenLower)
 }
 
 func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
@@ -240,12 +235,7 @@ func (lex *lexer) isKeywordAny(keywords []string) bool {
 		return false
 	}
 	tokenLower := strings.ToLower(lex.token)
-	for _, kw := range keywords {
-		if kw == tokenLower {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keywords, tokenLower)
 }
 
 func (lex *lexer) context() string {
@@ -1071,7 +1061,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 	// do not modify or delete the `_time` field, since it is required for bucketing by step.
 	// For instant stats (step == 0), allow such pipes for broader query flexibility.
 	if step > 0 {
-		for i := 0; i < idx; i++ {
+		for i := range idx {
 			p := q.pipes[i]
 			if _, ok := p.(*pipeStats); ok {
 				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
@@ -1498,7 +1488,7 @@ func optimizeOffsetLimitPipesInternal(pipes []pipe) []pipe {
 	// Replace '| offset X | limit Y' with '| limit X+Y | offset X'.
 	// This reduces the number of rows processed by remote storage.
 	// See: https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
-	for i := 0; i < len(pipes)-1; i++ {
+	for i := range len(pipes) - 1 {
 		po, ok := pipes[i].(*pipeOffset)
 		if !ok {
 			continue
@@ -2384,16 +2374,16 @@ func parseFilterIPv6Range(lex *lexer, fieldName string) (filter, error) {
 }
 
 func tryParseIPv4CIDR(s string) (uint32, uint32, bool) {
-	n := strings.IndexByte(s, '/')
-	if n < 0 {
+	before, after, ok := strings.Cut(s, "/")
+	if !ok {
 		n, ok := tryParseIPv4(s)
 		return n, n, ok
 	}
-	ip, ok := tryParseIPv4(s[:n])
+	ip, ok := tryParseIPv4(before)
 	if !ok {
 		return 0, 0, false
 	}
-	maskBits, ok := tryParseUint64(s[n+1:])
+	maskBits, ok := tryParseUint64(after)
 	if !ok || maskBits > 32 {
 		return 0, 0, false
 	}
@@ -2422,17 +2412,17 @@ func tryParseIPv6(s string) ([16]byte, bool) {
 func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
 	var zero [16]byte
 
-	n := strings.IndexByte(s, '/')
-	if n < 0 {
+	before, after, ok := strings.Cut(s, "/")
+	if !ok {
 		ip, ok := tryParseIPv6(s)
 		return ip, ip, ok
 	}
 
-	ip, ok := tryParseIPv6(s[:n])
+	ip, ok := tryParseIPv6(before)
 	if !ok {
 		return zero, zero, false
 	}
-	maskBits, ok := tryParseUint64(s[n+1:])
+	maskBits, ok := tryParseUint64(after)
 	if !ok || maskBits > 128 {
 		return zero, zero, false
 	}
@@ -3079,7 +3069,7 @@ func startsWithYear(s string) bool {
 	if len(s) < 4 {
 		return false
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		c := s[i]
 		if c < '0' || c > '9' {
 			return false
@@ -3616,13 +3606,13 @@ func adjustEndTimestamp(t int64, tStr string) int64 {
 	}
 
 	if len(tStr) <= len("YYYY") || tStr[len("YYYY")] != '-' {
-		n := strings.IndexByte(tStr, '.')
-		if n < 0 || !isAllDigits(tStr[:n]) || !isAllDigits(tStr[n+1:]) {
+		before, after, ok := strings.Cut(tStr, ".")
+		if !ok || !isAllDigits(before) || !isAllDigits(after) {
 			// Unknown tStr format
 			return tEnd.UnixNano()
 		}
 		// Fractional seconds unix timestamp format.
-		switch len(tStr[n+1:]) {
+		switch len(after) {
 		case 3:
 			tEnd = tStart.Add(time.Millisecond)
 		case 6:
@@ -3665,7 +3655,7 @@ func isAllDigits(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] < '0' || s[i] > '9' {
 			return false
 		}

@@ -267,7 +267,7 @@ func canBeTreatedAsNum(s string) bool {
 }
 
 func hasHexChars(s string) bool {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if isHexChar(s[i]) {
 			return true
 		}

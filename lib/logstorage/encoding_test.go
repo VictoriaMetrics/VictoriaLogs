@@ -97,7 +97,7 @@ Apr 28 13:48:01 localhost kernel: [36020.499859] CPU2: Package temperature/speed
 
 	// Generate more than 256 strings
 	lines = ""
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		lines += fmt.Sprintf("line %d\n", i)
 	}
 	f(lines, 766)

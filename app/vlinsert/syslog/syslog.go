@@ -246,16 +246,16 @@ func runUnixPacketListener(laddr *net.UnixAddr, cfg *configs) {
 
 func getUnixSocketNetworkAndPath(addr string) *net.UnixAddr {
 	// An optional network such as unix or unixgram can be specified in front of addr and followed by ':'
-	n := strings.IndexByte(addr, ':')
-	if n < 0 {
+	before, after, ok := strings.Cut(addr, ":")
+	if !ok {
 		return &net.UnixAddr{
 			Net:  "unix",
 			Name: addr,
 		}
 	}
 	return &net.UnixAddr{
-		Net:  addr[:n],
-		Name: addr[n+1:],
+		Net:  before,
+		Name: after,
 	}
 }
 

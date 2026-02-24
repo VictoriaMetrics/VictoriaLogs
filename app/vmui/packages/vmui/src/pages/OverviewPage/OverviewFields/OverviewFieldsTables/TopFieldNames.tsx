@@ -66,7 +66,7 @@ const TopFieldNames: FC = () => {
   };
 
   useEffect(() => {
-    fetchFieldNames({ start, end, extraParams });
+    fetchFieldNames({ start, end, extraParams, skipStreamFields: true });
   }, [start, end, extraParams.toString(), fetchFieldNames]);
 
   const TableAction = (row: LogsFiledValues) => {
@@ -102,6 +102,7 @@ const TopFieldNames: FC = () => {
 
   return (
     <OverviewTable
+      tableId="table-overview-field-names"
       enableSearch
       title="Field names"
       rows={rows}

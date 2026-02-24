@@ -92,11 +92,11 @@ func setDefaultFlags(flags []string, defaultFlags map[string]string) []string {
 		if !strings.HasPrefix(f, "-") {
 			panic(fmt.Sprintf("BUG: flag must start with '-'; got %q", f))
 		}
-		n := strings.IndexByte(f, '=')
-		if n < 0 {
+		before, _, ok := strings.Cut(f, "=")
+		if !ok {
 			panic(fmt.Sprintf("BUG: cannot find '=' in the flag %q", f))
 		}
-		flagName := f[:n]
+		flagName := before
 		flagNames = append(flagNames, flagName)
 	}
 

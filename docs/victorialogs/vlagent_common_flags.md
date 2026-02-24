@@ -42,10 +42,12 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Auth key for /flags endpoint. It must be passed via authKey query arg. It overrides -httpAuth.*
      Flag value can be read from the given file when using -flagsAuthKey=file:///abs/path/to/file or -flagsAuthKey=file://./relative/path/to/file.
      Flag value can be read from the given http/https url when using -flagsAuthKey=http://host/path or -flagsAuthKey=https://host/path
+  -fs.disableMincore
+     Whether to disable the mincore() syscall for checking mmap()ed files. By default, mincore() is used to detect whether mmap()ed file pages are resident in memory. Disabling mincore() may be needed on older ZFS filesystems (below 2.1.5), since it may trigger ZFS bug. See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10327 for details.
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
-     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 16x CPU cores, default capped at 256)
+     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 256)
   -http.connTimeout duration
      Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
   -http.disableCORS
@@ -116,6 +118,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      TenantID for logs ingested via the Journald endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy (default "0:0")
   -journald.timeField string
      Field to use as a log timestamp for logs ingested via journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#time-field (default "__REALTIME_TIMESTAMP")
+  -journald.useRemoteIP
+     Whether to add the remote IP address as the remote_ip log field for ingested journald messages.
   -kubernetesCollector
      Whether to enable collecting logs from Kubernetes
   -kubernetesCollector.checkpointsPath string
@@ -125,7 +129,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -kubernetesCollector.excludeFilter string
-     Optional LogsQL filter for excluding container logs. The filter is applied to container metadata fields (e.g., kubernetes.namespace_name, kubernetes.container_name) before reading the log files. This significantly reduces CPU and I/O usage by skipping logs from unwanted containers. See https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs
+     Optional LogsQL filter for excluding container logs. The filter is applied to container metadata fields (e.g., kubernetes.pod_namespace, kubernetes.container_name) before reading the log files. This significantly reduces CPU and I/O usage by skipping logs from unwanted containers. See https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs
   -kubernetesCollector.extraFields string
      Extra fields to add to each log line collected from Kubernetes pods in JSON format. For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'
   -kubernetesCollector.ignoreFields array
@@ -144,6 +148,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Path to the directory with Kubernetes container logs (usually /var/log/containers). This should point to the kubelet-managed directory containing symlinks to pod logs. vlagent must have read access to this directory and to the target log files, typically located under /var/log/pods and /var/lib on the host (default "/var/log/containers")
   -kubernetesCollector.msgField array
      Fields that may contain the _msg field. Default: message,msg,log. See https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -kubernetesCollector.streamFields array
+     Comma-separated list of fields to use as log stream fields for logs ingested from Kubernetes Pods. Default: kubernetes.container_name,kubernetes.pod_name,kubernetes.pod_namespace. See: https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -kubernetesCollector.tenantID string
@@ -176,7 +184,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      The maximum size in bytes of a single Loki request
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
   -maxConcurrentInserts int
-     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 2x CPU cores)
+     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 32)
   -memory.allowedBytes size
      Allowed size of system memory VictoriaMetrics caches may occupy. This option overrides -memory.allowedPercent if set to a non-zero value. Too low a value may increase the cache miss rate usually resulting in higher CPU and disk IO usage. Too high a value may evict too much data from the OS page cache resulting in higher disk IO usage
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
@@ -236,6 +244,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.flushInterval duration
      Interval for flushing the data to remote storage. This option takes effect only when less than 2MB of data per second are pushed to -remoteWrite.url (default 1s)
+  -remoteWrite.format array
+     The data format to use for sending data to the corresponding -remoteWrite.url. Available formats: native, jsonline. Default is native. See https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.headers array
      Optional HTTP headers to send with each request to the corresponding -remoteWrite.url. For example, -remoteWrite.headers='My-Auth:foobar' would send 'My-Auth: foobar' HTTP header with every request to the corresponding -remoteWrite.url. Multiple headers must be delimited by '^^': -remoteWrite.headers='header1:value1^^header2:value2'
      Supports an array of values separated by comma or specified via multiple flags.
@@ -277,7 +289,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.queues int
-     The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues isn't enough for sending high volume of collected data to remote storage. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage (default 2x CPU cores)
+     The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues isn't enough for sending high volume of collected data to remote storage. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage (default 32)
   -remoteWrite.rateLimit array
      Optional rate limit in bytes per second for data sent to the corresponding -remoteWrite.url. By default, the rate limit is disabled. It can be useful for limiting load on remote storage when big amounts of buffered data  (default 0)
      Supports array of values separated by comma or specified via multiple flags.
@@ -323,7 +335,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -remoteWrite.tmpDataPath string
      Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . if this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; see also -remoteWrite.maxDiskUsagePerURL
   -remoteWrite.url array
-     Remote storage URL to write data to. It must support VictoriaLogs native protocol. Example url: http://<victorialogs-host>:9428/insert/native. Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems.
+     Remote storage URL to write data to. Example url: http://<victorialogs-host>:9428/insert/native. Pass multiple -remoteWrite.url options in order to replicate the collected data to multiple remote storage systems. See also -remoteWrite.maxDiskUsagePerURL and -remoteWrite.format
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -secret.flags array
@@ -417,7 +429,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -syslog.timezone string
      Timezone to use when parsing timestamps in RFC3164 syslog messages. Timezone must be a valid IANA Time Zone. For example: America/New_York, Europe/Berlin, Etc/GMT+3 . See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/ (default "Local")
   -syslog.tls array
-     Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
+     Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See also -syslog.mtls. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to false.
   -syslog.tlsCertFile array

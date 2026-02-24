@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -162,12 +163,7 @@ func (p *JSONParser) shouldPreserveKeyPrefix() bool {
 	// Drop trailing dot
 	key = key[:len(key)-1]
 
-	for _, preserveKey := range p.preserveKeys {
-		if key == preserveKey {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.preserveKeys, key)
 }
 
 func (p *JSONParser) appendPreservedLogField(o *fastjson.Object) {

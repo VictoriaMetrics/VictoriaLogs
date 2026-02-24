@@ -36,14 +36,14 @@ func benchmarkPushProtobufRequest(b *testing.B, streams, rows, labels int) {
 
 func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	attrValues := []*anyValue{
-		{StringValue: ptrTo("string-attribute")},
-		{BoolValue: ptrTo(true)},
-		{IntValue: ptrTo[int64](12345)},
-		{DoubleValue: ptrTo(3.14)},
+		{StringValue: new("string-attribute")},
+		{BoolValue: new(true)},
+		{IntValue: new(int64(12345))},
+		{DoubleValue: new(3.14)},
 		{
 			ArrayValue: &arrayValue{
 				Values: []*anyValue{
-					{StringValue: ptrTo("abc")},
+					{StringValue: new("abc")},
 				},
 			},
 		},
@@ -53,7 +53,7 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 					{
 						Key: "foobarbaz",
 						Value: &anyValue{
-							StringValue: ptrTo("xyzqwe"),
+							StringValue: new("xyzqwe"),
 						},
 					},
 				},
@@ -62,25 +62,25 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	}
 
 	attrs := make([]*keyValue, attributesCount)
-	for j := 0; j < attributesCount; j++ {
+	for j := range attributesCount {
 		attrs[j] = &keyValue{
 			Key:   fmt.Sprintf("key-%d", j),
 			Value: attrValues[j%len(attrValues)],
 		}
 	}
 	entries := make([]logRecord, rowsCount)
-	for j := 0; j < rowsCount; j++ {
+	for j := range rowsCount {
 		entries[j] = logRecord{
 			TimeUnixNano:         12345678910,
 			ObservedTimeUnixNano: 12345678910,
 			Body: anyValue{
-				StringValue: ptrTo("12345678910"),
+				StringValue: new("12345678910"),
 			},
 		}
 	}
 	scopes := make([]scopeLogs, scopesCount)
 
-	for j := 0; j < scopesCount; j++ {
+	for j := range scopesCount {
 		scopes[j] = scopeLogs{
 			Scope: &instrumentationScope{
 				Name:    "abc",
@@ -89,7 +89,7 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 					{
 						Key: "qwe",
 						Value: &anyValue{
-							StringValue: ptrTo("ierweo"),
+							StringValue: new("ierweo"),
 						},
 					},
 				},
@@ -110,8 +110,4 @@ func getProtobufBody(scopesCount, rowsCount, attributesCount int) []byte {
 	}
 
 	return pr.marshalProtobuf(nil)
-}
-
-func ptrTo[T any](s T) *T {
-	return &s
 }

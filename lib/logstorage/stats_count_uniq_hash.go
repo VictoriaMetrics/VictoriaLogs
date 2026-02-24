@@ -173,7 +173,7 @@ func (sup *statsCountUniqHashProcessor) updateStatsForAllRows(sf statsFunc, br *
 	sup.columnValues = columnValues
 
 	keyBuf := sup.keyBuf[:0]
-	for i := 0; i < br.rowsLen; i++ {
+	for i := range br.rowsLen {
 		seenKey := true
 		for _, values := range columnValues {
 			if i == 0 || values[i-1] != values[i] {

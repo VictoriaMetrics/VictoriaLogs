@@ -1,6 +1,6 @@
 import { FC, useMemo, useState } from "preact/compat";
 import useBoolean from "../../../../hooks/useBoolean";
-import { RestartIcon, SettingsIcon } from "../../../Main/Icons";
+import { RestartIcon, TuneIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
 import Modal from "../../../Main/Modal/Modal";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
@@ -140,7 +140,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
         <Tooltip title={tooltipContent()}>
           <Button
             variant="text"
-            startIcon={<SettingsIcon/>}
+            startIcon={<TuneIcon/>}
             onClick={toggleOpen}
             ariaLabel={title}
           />

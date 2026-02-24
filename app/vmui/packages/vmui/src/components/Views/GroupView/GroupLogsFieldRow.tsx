@@ -4,7 +4,7 @@ import Button from "../../Main/Button/Button";
 import { CopyIcon, StorageIcon, VisibilityIcon } from "../../Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import { useSearchParams } from "react-router-dom";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
 import classNames from "classnames";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
@@ -27,6 +27,7 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
 
   const isSelectedField = displayFields.includes(field);
   const isGroupByField = groupBy === field;
+  const tooltipTitle = isGroupByField ? "Clear grouping" : "Group by this field";
 
   const handleCopy = useCallback(async () => {
     if (copied) return;
@@ -46,8 +47,11 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
   };
 
   const handleSelectGroupBy = () => {
-    isGroupByField ? searchParams.delete(LOGS_URL_PARAMS.GROUP_BY) : searchParams.set(LOGS_URL_PARAMS.GROUP_BY, field);
-    setSearchParams(searchParams);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set(LOGS_URL_PARAMS.GROUP_BY, isGroupByField ? WITHOUT_GROUPING : field);
+      return newParams;
+    });
   };
 
   useEffect(() => {
@@ -88,7 +92,7 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
             />
           </Tooltip>
           {!hideGroupButton && (
-            <Tooltip title={isGroupByField ? "Ungroup this field" : "Group by this field"}>
+            <Tooltip title={tooltipTitle}>
               <Button
                 className="vm-group-logs-row-fields-item-controls__button"
                 variant="text"
@@ -96,7 +100,7 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
                 size="small"
                 startIcon={<StorageIcon/>}
                 onClick={handleSelectGroupBy}
-                ariaLabel={isGroupByField ? "Ungroup this field" : "Group by this field"}
+                ariaLabel={tooltipTitle}
               />
             </Tooltip>
           )}

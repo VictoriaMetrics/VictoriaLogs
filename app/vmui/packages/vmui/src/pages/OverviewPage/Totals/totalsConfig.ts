@@ -1,3 +1,5 @@
+import { formatNumber } from "../../../utils/number";
+
 export type TotalsConfig = {
   title: string;
   description: string;
@@ -7,29 +9,27 @@ export type TotalsConfig = {
   formatter?: (value: number) => string;
 }
 
-const defaultFormatNumber = (n: number) => n.toLocaleString("en-US");
-
 export const explorerTotals: TotalsConfig[] = [
   {
     title: "Total logs",
     description: "Total number of selected logs on the selected time range",
     alias: "totalLogs",
     stats: "count()",
-    formatter: defaultFormatNumber,
+    formatter: formatNumber,
   },
   {
     title: "Logs/sec (avg)",
     description: "Average logs per second on the selected time range",
     alias: "logsPerSec",
     stats: "rate()",
-    formatter: defaultFormatNumber,
+    formatter: formatNumber,
   },
   {
     title: "Unique log streams",
     description: "The number of log streams on the selected time range",
     alias: "uniqueStreams",
     stats: "count_uniq(_stream_id)",
-    formatter: (n: number) => `${defaultFormatNumber(n)}`,
+    formatter: (n: number) => `${formatNumber(n)}`,
   },
 ].map(t => ({
   ...t,

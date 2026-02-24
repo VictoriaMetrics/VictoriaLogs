@@ -1,0 +1,11 @@
+@use "src/styles/variables" as *;
+
+.vm-table {
+  width: 100%;
+  max-width: none;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: $color-background-block;
+  font-variant-numeric: lining-nums tabular-nums;
+}

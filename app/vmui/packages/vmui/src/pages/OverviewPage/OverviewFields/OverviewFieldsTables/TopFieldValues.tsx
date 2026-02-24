@@ -44,9 +44,10 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const { totalLogs } = useOverviewState();
   const copyToClipboard = useCopyToClipboard();
 
-  const selectedKey = scope === "field" ? fieldFilter : streamFieldFilter;
-  const selectedValue = scope === "field" ? fieldValueFilters : streamFieldValueFilters;
-  const setterFilter = scope === "field" ? toggleFieldValueFilter : toggleStreamFieldValueFilter;
+  const isFieldScope = scope === "field";
+  const selectedKey = isFieldScope ? fieldFilter : streamFieldFilter;
+  const selectedValue = isFieldScope ? fieldValueFilters : streamFieldValueFilters;
+  const setterFilter = isFieldScope ? toggleFieldValueFilter : toggleStreamFieldValueFilter;
 
   const [mode, setMode] = useState(MODE_KEYS[0]);
   const [limit, setLimit] = useState(10);
@@ -63,7 +64,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   }, [selectedKey, logs, totalLogs]);
 
   const isEmptyList = (!isLoading && !error && (rows.length === 0)) || !selectedKey;
-  const emptyText = selectedKey ? "No values found" : `Select ${scope === "field" ? "field" : "stream field"} name to see values`;
+  const emptyText = selectedKey ? "No values found" : `Select ${isFieldScope ? "field" : "stream field"} name to see values`;
 
   const handleAddFilter = (row: LogsFiledValues, operator: ExtraFilterOperator) => {
     addNewFilter({ field: selectedKey, value: row.value, operator });
@@ -162,10 +163,11 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
 
   return (
     <OverviewTable
+      tableId={isFieldScope ? "table-overview-field-values" : "table-overview-stream-field-values"}
       enableSearch
       title={<>Field values: <b>`{selectedKey}`</b></>}
       rows={rows}
-      columns={scope === "field" ? fieldValuesCol : streamFieldValuesCol}
+      columns={isFieldScope ? fieldValuesCol : streamFieldValuesCol}
       isLoading={isLoading}
       error={error}
       isEmptyList={isEmptyList}

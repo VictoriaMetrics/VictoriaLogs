@@ -25,7 +25,7 @@ func MustStartVlcluster(t *testing.T, instance string, storageFlags []string, cl
 	// Start storage nodes
 	storageNodeAddrs := make([]string, 3)
 	storageNodes := make([]*Vlsingle, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		storageName := fmt.Sprintf("%s-storage-%d", instance, i)
 		storageNodes[i] = MustStartVlsingle(t, storageName, storageFlags, cli)
 		storageNodeAddrs[i] = storageNodes[i].node.httpListenAddr

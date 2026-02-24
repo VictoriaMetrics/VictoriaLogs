@@ -65,28 +65,8 @@ Enumerate all the `vlselect` instances in the cluster under the `url_prefix` con
 
 The diagram below illustrates this architecture in the clustered version of VictoriaLogs:
 
-```mermaid
-flowchart BT
-    subgraph Remote2["VictoriaLogs 2"]
-        direction BT
-        vlselect-az2["vlselect"]
-        vlselect-az2 --> vlstorage2-1["vlstorage 1"]
-        vlselect-az2 --> vlstorage2-2["vlstorage 2"]
-    end
-    subgraph Remote1["VictoriaLogs 1"]
-        direction BT
-        vlselect-az1["vlselect"]
-        vlselect-az1 --> vlstorage1-1["vlstorage 1"]
-        vlselect-az1 --> vlstorage1-2["vlstorage 2"]
-    end
-
-    vmui -->|Basic auth| vmauth
-    Grafana -->|Bearer auth| vmauth
-    curl -->|mTLS| vmauth
-
-    vmauth --> vlselect-az1
-    vmauth --> vlselect-az2
-```
+![security-and-lb-search-auth.webp](security-and-lb-search-auth.webp)
+{width="600"}
 
 Update the connection settings in all clients (like Grafana) after configuring the `vmauth` in order
 to match the selected authentication method and the `vmauth` endpoint.
@@ -424,21 +404,8 @@ users:
 
 Below is a diagram of this architecture for the clustered version of VictoriaLogs:
 
-```mermaid
-flowchart BT
-    subgraph Remote2["VictoriaLogs cluster"]
-        direction BT
-        vlinsert-az1["vlinsert"]
-        vlinsert-az1 --> vlstorage2-1["vlstorage 1"]
-        vlinsert-az1 --> vlstorage2-2["vlstorage 2"]
-    end
-
-    vector -->|Basic auth<br> /my-account/kubernetes-logs| vmauth
-    vlagent -->|Bearer auth<br>/my-account/mobile-logs| vmauth
-    filebeat -->|mTLS<br>/my-account/frontend-logs| vmauth
-
-    vmauth -->|AccountID: X<br>ProjectID: Y| vlinsert-az1
-```
+![security-and-lb-tenants.webp](security-and-lb-tenants.webp)
+{width="600"}
 
 ### Tenant-based proxying of data ingestion requests
 

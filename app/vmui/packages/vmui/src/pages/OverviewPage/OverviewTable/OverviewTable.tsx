@@ -14,6 +14,7 @@ interface Props extends OverviewTableProps {
 }
 
 const OverviewTable: FC<Props> = ({
+  tableId,
   title,
   rows,
   enableSearch,
@@ -59,6 +60,7 @@ const OverviewTable: FC<Props> = ({
 
       <OverviewTableBody
         {...props}
+        tableId={tableId}
         rows={filteredRows}
         rowsPerPage={rowsPerPage}
       />

@@ -6,12 +6,29 @@
   justify-content: flex-end;
   flex-grow: 1;
   flex-wrap: wrap;
-  gap: $padding-small;
   z-index: 2;
+
+  &__hidden-info {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-size-small;
+    color: $color-text-secondary;
+  }
 
   &_selections {
     flex-grow: 1;
     justify-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: $padding-small;
+  }
+
+  &-item {
+    &_switch {
+      padding-right: $padding-global;
+    }
   }
 
   &_mobile {
