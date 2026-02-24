@@ -1,5 +1,5 @@
 import { FC, useMemo, ComponentType } from "preact/compat";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import router from "../../router";
 import { getAppModeEnable, getAppModeParams } from "../../utils/app-mode";
 import { LogoLogsIcon } from "../../components/Main/Icons";
@@ -16,7 +16,7 @@ import useWindowSize from "../../hooks/useWindowSize";
 export interface HeaderProps {
   controlsComponent: ComponentType<ControlsProps>
 }
-const Logo = () => <LogoLogsIcon/>;
+const Logo = () => <NavLink to={router.home}><LogoLogsIcon/></NavLink>;
 
 const Header: FC<HeaderProps> = ({ controlsComponent }) => {
   const { isMobile } = useDeviceDetect();
@@ -43,7 +43,12 @@ const Header: FC<HeaderProps> = ({ controlsComponent }) => {
 
   const navigate = useNavigate();
 
-  const onClickLogo = () => {
+  const onClickLogo = (e: MouseEvent) => {
+    const { ctrlKey, metaKey } = e;
+    const ctrlMetaKey = ctrlKey || metaKey;
+    if (ctrlMetaKey) return; // open in new tab
+
+    e.preventDefault();
     navigate({ pathname: router.home });
     window.location.reload();
   };

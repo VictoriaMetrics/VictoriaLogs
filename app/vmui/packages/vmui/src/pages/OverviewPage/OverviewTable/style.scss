@@ -71,15 +71,6 @@
     }
   }
 
-  &__cell-name {
-    width: 100%;
-  }
-
-  &__cell-percent,
-  &__cell-value {
-    padding-right: 32px;
-  }
-
   &-option {
     display: flex;
     flex-direction: column;

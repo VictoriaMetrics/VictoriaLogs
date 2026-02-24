@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Logs } from "../../api/types";
-import { useEffect, useState } from "preact/compat";
+import { useEffect, useMemo, useState } from "preact/compat";
 import { useFetchStreamContext } from "./hooks/useFetchStreamContext";
 import GroupLogsItem from "../../components/Views/GroupView/GroupLogsItem";
 import LineLoader from "../../components/Main/LineLoader/LineLoader";
@@ -14,6 +14,8 @@ import router from "../../router";
 import classNames from "classnames";
 import "./style.scss";
 import { OpenNewIcon } from "../../components/Main/Icons";
+import { getStreamPairs } from "../../utils/logs";
+import GroupLogsHeaderItem from "../../components/Views/GroupView/GroupLogsHeaderItem";
 
 interface Props {
   log: Logs;
@@ -37,6 +39,11 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
     resetContextLogs,
     abortController
   } = useFetchStreamContext();
+
+  const streamFields = useMemo(() => {
+    const stream = logsBefore[0]?._stream || logsAfter[0]?._stream || log._stream || "";
+    return getStreamPairs(stream);
+  }, [logsBefore, logsAfter, log._stream]);
 
   const handleLoadMoreAfter = () => {
     const target = logsAfter[0];
@@ -66,6 +73,17 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
     };
   }, []);
 
+  const streamPairs = (
+    <div className="vm-steam-context-header-streams">
+      {streamFields.map(streamPair => (
+        <GroupLogsHeaderItem
+          key={streamPair}
+          pair={streamPair}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div
       className={classNames({
@@ -76,16 +94,11 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
       {isLoading && <LineLoader/>}
       {error && <Alert variant="error">{error}</Alert>}
 
-      <div className="vm-steam-context-header">
+      <div className={classNames("vm-steam-context-header", { "vm-steam-context-header_page": !isModal })}>
         {!isModal && (
-          <div className="vm-steam-context-header-title">
-            <h1 className="vm-modal-content-header__title">Log context</h1>
-            <p className="vm-steam-context-header-title__info">
-              <span>_stream_id: {log._stream_id}</span>
-              <span>_time: {log._time}</span>
-            </p>
-          </div>
+          <h1 className="vm-modal-content-header__title vm-steam-context-header-title">Log context</h1>
         )}
+        {streamPairs}
         {isModal && (
           <div className="vm-steam-context-header__link">
             <Link

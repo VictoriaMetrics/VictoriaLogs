@@ -34,7 +34,7 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 
 		ts := time.Now().UnixNano()
 		var timestampsExpected []int64
-		for i := 0; i < rowsExpected; i++ {
+		for range rowsExpected {
 			timestampsExpected = append(timestampsExpected, ts)
 		}
 		lmp := &insertutil.TestLogMessageProcessor{}

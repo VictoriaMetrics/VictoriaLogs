@@ -3806,6 +3806,8 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | count() hits | running_stats sum(hits) running_hits | rm hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | running_stats sum(hits) as running_hits | delete hits`)
 	f(`* | count() hits | total_stats sum(hits) running_hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits`)
 	f(`* | count() hits | total_stats sum(hits) running_hits | rm hits`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | total_stats sum(hits) as running_hits | delete hits`)
+	f(`* | by (x) count() hits | total_stats by (_time) sum(hits) total`, nsecsPerDay, 0, []string{"_time", "x"}, `* | stats by (_time:86400000000000, x) count(*) as hits | total_stats by (_time) sum(hits) as total`)
+	f(`* | by (x,y) count() hits | total_stats by (x) sum(hits) total`, nsecsPerDay, 0, []string{"_time", "x", "y"}, `* | stats by (_time:86400000000000, x, y) count(*) as hits | total_stats by (x) sum(hits) as total`)
 	f(`* | count() hits | math hits+bar as baz`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | math (hits + bar) as baz`)
 	f(`* | count() hits | fields _time, hits, bar`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | fields _time, hits, bar`)
 	f(`* | count() hits | delete foo, bar`, nsecsPerDay, 0, []string{"_time"}, `* | stats by (_time:86400000000000) count(*) as hits | delete foo, bar`)
@@ -3895,7 +3897,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | count() | running_stats by (x) sum(a) b`)
 	f(`* | by (x) count() | running_stats sum(a) b`)
 	f(`* | count() | total_stats by (x) sum(a) b`)
-	f(`* | by (x) count() | total_stats sum(a) b`)
+	f(`* | by (x) count() | total_stats by (y) sum(a) b`)
 	f(`* | count() | fields a,b`)
 	f(`* | by (x) count() y | unpack_json from y`)
 	f(`* | by (x) count() y | unpack_json from y fields(z*)`)
@@ -3969,6 +3971,7 @@ func TestQueryGetStatsLabels_Success(t *testing.T) {
 
 	// math pipe is allowed after stats
 	f(`foo | stats by (x) count() total, count() if (error) errors | math errors / total`, []string{"x"})
+	f(`foo | stats by (x, y) count() hits | total_stats by (x) sum(hits) total | math hits / total`, []string{"x", "y"})
 
 	// derive math results
 	f(`foo | stats count() x | math x / 10 as y | rm x`, []string{})
@@ -4071,6 +4074,7 @@ func TestQueryGetStatsLabels_Failure(t *testing.T) {
 	f(`foo | count() | field_values abc`)
 	f(`foo | by (x) count() | fields a, b`)
 	f(`foo | by (x) count() | fields a*, b`)
+	f(`foo | by (x) count() hits | total_stats by (y) sum(hits) total`)
 	f(`foo | count() | pack_json`)
 	f(`foo | count() | pack_logfmt`)
 	f(`foo | count() | query_stats`)

@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -140,9 +141,7 @@ func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRow
 	for i := range neededRows {
 		neededTimestamps[i] = neededRows[i].timestamp
 	}
-	sort.Slice(neededTimestamps, func(i, j int) bool {
-		return neededTimestamps[i] < neededTimestamps[j]
-	})
+	slices.Sort(neededTimestamps)
 
 	trs, stateSize, err := pcp.getTimeRangesForStreamRowss(streamID, neededTimestamps, stateSizeBudget)
 	if err != nil {

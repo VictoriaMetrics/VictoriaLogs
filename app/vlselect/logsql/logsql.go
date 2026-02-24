@@ -257,7 +257,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		columns = columns[1 : len(columns)-1]
 
 		bb := blockResultPool.Get()
-		for i := 0; i < rowsCount; i++ {
+		for i := range rowsCount {
 			timestampNsec, ok := logstorage.TryParseTimestampRFC3339Nano(timestampValues[i])
 			if !ok {
 				logger.Panicf("BUG: cannot parse timestamp=%q", timestampValues[i])
@@ -913,7 +913,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
-		for i := 0; i < rowsCount; i++ {
+		for i := range rowsCount {
 			// Do not move q.GetTimestamp() outside writeBlock, since ts
 			// must be initialized to query timestamp for every processed log row.
 			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8312
@@ -1053,7 +1053,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
-		for i := 0; i < rowsCount; i++ {
+		for i := range rowsCount {
 			labels := make([]logstorage.Field, 0, len(labelFields))
 			for j, c := range columns {
 				if slices.Contains(labelFields, c.Name) {
@@ -1215,7 +1215,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		columns := db.GetColumns(needSortFields)
 
 		bw := bwShards.Get(workerID)
-		for i := 0; i < rowsCount; i++ {
+		for i := range rowsCount {
 			WriteJSONRow(bw, columns, i)
 			if len(bw.buf) > 16*1024 {
 				bw.FlushIgnoreErrors()

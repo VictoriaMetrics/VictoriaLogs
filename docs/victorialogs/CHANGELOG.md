@@ -23,8 +23,30 @@ according to the following docs:
 ## tip
 
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`array_contains` filter](https://docs.victoriametrics.com/victorialogs/logsql/#array_contains-filter) for matching fields containing JSON arrays by the presence of the given value in the array. This is useful for JSON-encoded logs containing fields such as `tags=["prod","canary"]`.
+* FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): allow using `total_stats by (...)` with fields that are a subset of labels produced by the preceding `stats` pipe in [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats). See [#1088](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1088).
+
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix autocomplete popper positioning. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix select dropdown width. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
+
+## [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0)
+
+Released at 2026-02-23
+
 * FEATURE: upgrade Go builder from Go1.25.7 to Go1.26.0. See [Go 1.26 release notes](https://go.dev/doc/go1.26).
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): sort response fields by their name unless the query ends with a pipe, which preserves the order of the returned fields such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) and [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). Previously the order of the returned fields was undefined. See [#1011](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1011).
+* FEATURE: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): add an ability to send logs to remote storage in [`jsonline` format](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api). This is useful for sending logs to other systems (for example, Vector, Fluent Bit, ClickHouse). See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format) for more details.
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add support for resizing and reordering columns in Table View. See [#76](https://github.com/VictoriaMetrics/VictoriaLogs/issues/76) and [#714](https://github.com/VictoriaMetrics/VictoriaLogs/issues/714).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve group view readability with zebra rows. See [#1058](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1058).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add `none` option for hit chart grouping and set it as the default. See [#1086](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1086).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): change group-by toggle behavior to clear grouping instead of resetting it to `_stream`. See [#1059](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1059).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add stream fields chips to the Log context modal. See [#1065](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1065).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an `Interval` selector instead of `Bars` for the logs hits chart. See [#1054](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1054).
+
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): prevent from `cannot parse already verified regexp` panic when special regexp is passed to [regexp filter](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter). See [#1112](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1112).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix timestamp rendering according to the selected timezone. See [#63](https://github.com/VictoriaMetrics/VictoriaLogs/issues/63).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix copy action to copy only selected columns instead of the full log entry.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix auto-suggest popup description panel changing when moving the mouse from a hovered item to the description. The description panel is now displayed to the right of the options list, so navigating to it no longer triggers hover events on other list items. See [#1117](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1117).
 
 ## [v1.45.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.45.0)
 

@@ -40,17 +40,17 @@ func TestStorageRunQuery(t *testing.T) {
 		"job",
 		"instance",
 	}
-	for i := 0; i < tenantsCount; i++ {
+	for i := range tenantsCount {
 		tenantID := TenantID{
 			AccountID: uint32(i),
 			ProjectID: uint32(10*i + 1),
 		}
 		allTenantIDs = append(allTenantIDs, tenantID)
-		for j := 0; j < streamsPerTenant; j++ {
+		for j := range streamsPerTenant {
 			streamIDValue := fmt.Sprintf("stream_id=%d", j)
-			for k := 0; k < blocksPerStream; k++ {
+			for k := range blocksPerStream {
 				lr := GetLogRows(streamTags, nil, nil, nil, "")
-				for m := 0; m < rowsPerBlock; m++ {
+				for m := range rowsPerBlock {
 					timestamp := baseTimestamp + int64(m)*1e9 + int64(k)
 					// Append stream fields
 					fields = append(fields[:0], Field{
@@ -122,7 +122,7 @@ func TestStorageRunQuery(t *testing.T) {
 	})
 	t.Run("matching-tenant-id", func(t *testing.T) {
 		q := mustParseQuery(`tenant.id:*`)
-		for i := 0; i < tenantsCount; i++ {
+		for i := range tenantsCount {
 			tenantID := TenantID{
 				AccountID: uint32(i),
 				ProjectID: uint32(10*i + 1),
@@ -195,7 +195,7 @@ func TestStorageRunQuery(t *testing.T) {
 		mustRunQuery(t, allTenantIDs, q, writeBlock)
 	})
 	t.Run("matching-stream-id", func(t *testing.T) {
-		for i := 0; i < streamsPerTenant; i++ {
+		for i := range streamsPerTenant {
 			q := mustParseQuery(fmt.Sprintf(`log _stream:{job="foobar",instance="host-%d:234"} AND stream-id:*`, i))
 			tenantID := TenantID{
 				AccountID: 1,
@@ -337,7 +337,7 @@ func TestStorageRunQuery(t *testing.T) {
 				panic(fmt.Errorf("unexpected number of columns; got %d; want 4", len(columns)))
 			}
 
-			for i := 0; i < rowsCount; i++ {
+			for i := range rowsCount {
 				timestamp := int64(0)
 				hits := ""
 				for _, c := range columns {
@@ -638,7 +638,7 @@ func TestStorageRunQuery(t *testing.T) {
 				return
 			}
 
-			for i := 0; i < len(columns[0].Values); i++ {
+			for i := range len(columns[0].Values) {
 				row := make([]Field, len(columns))
 				for j, bc := range columns {
 					row[j] = Field{
@@ -1027,16 +1027,16 @@ func TestStorageSearch(t *testing.T) {
 		"job",
 		"instance",
 	}
-	for i := 0; i < tenantsCount; i++ {
+	for i := range tenantsCount {
 		tenantID := TenantID{
 			AccountID: uint32(i),
 			ProjectID: uint32(10*i + 1),
 		}
 		allTenantIDs = append(allTenantIDs, tenantID)
-		for j := 0; j < streamsPerTenant; j++ {
-			for k := 0; k < blocksPerStream; k++ {
+		for j := range streamsPerTenant {
+			for k := range blocksPerStream {
 				lr := GetLogRows(streamTags, nil, nil, nil, "")
-				for m := 0; m < rowsPerBlock; m++ {
+				for m := range rowsPerBlock {
 					timestamp := baseTimestamp + int64(m)*1e9 + int64(k)
 					// Append stream fields
 					fields = append(fields[:0], Field{
@@ -1129,7 +1129,7 @@ func TestStorageSearch(t *testing.T) {
 		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("matching-tenant-id", func(t *testing.T) {
-		for i := 0; i < tenantsCount; i++ {
+		for i := range tenantsCount {
 			tenantID := TenantID{
 				AccountID: uint32(i),
 				ProjectID: uint32(10*i + 1),
@@ -1181,7 +1181,7 @@ func TestStorageSearch(t *testing.T) {
 		s.searchParallel(workersCount, sso, qs, nil, processBlock)
 	})
 	t.Run("matching-stream-id", func(t *testing.T) {
-		for i := 0; i < streamsPerTenant; i++ {
+		for i := range streamsPerTenant {
 			sf := mustNewTestStreamFilter(fmt.Sprintf(`{job="foobar",instance="host-%d:234"}`, i))
 			tenantID := TenantID{
 				AccountID: 1,
@@ -1528,8 +1528,8 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 	const streamsPerTenant = 5
 	const rowsPerDayPerStream = 100
 
-	for rowID := 0; rowID < rowsPerDayPerStream; rowID++ {
-		for streamID := 0; streamID < streamsPerTenant; streamID++ {
+	for rowID := range rowsPerDayPerStream {
+		for streamID := range streamsPerTenant {
 			fields = append(fields[:0], Field{
 				Name:  "host",
 				Value: fmt.Sprintf("host-%d", streamID),
@@ -1538,7 +1538,7 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 				Value: fmt.Sprintf("app-%d", 200+streamID),
 			})
 			for _, tenantID := range tenantIDs {
-				for dayID := int64(0); dayID < days; dayID++ {
+				for dayID := range int64(days) {
 					fields = append(fields, Field{
 						Name:  "_msg",
 						Value: fmt.Sprintf("value #%d at the day %d for the tenantID=%s and streamID=%d", rowID, dayID, tenantID, streamID),

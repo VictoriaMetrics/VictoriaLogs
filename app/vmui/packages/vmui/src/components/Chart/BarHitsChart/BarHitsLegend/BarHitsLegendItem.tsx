@@ -3,7 +3,7 @@ import classNames from "classnames";
 import { Series } from "uplot";
 import { LegendLogHits } from "../../../../api/types";
 import { getStreamPairs } from "../../../../utils/logs";
-import { formatNumberShort } from "../../../../utils/math";
+import { formatNumberShort } from "../../../../utils/number";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
 import LegendHitsMenu from "../LegendHitsMenu/LegendHitsMenu";

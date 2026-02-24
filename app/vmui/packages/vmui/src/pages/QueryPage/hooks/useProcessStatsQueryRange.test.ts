@@ -1,4 +1,3 @@
-// useProcessStatsQueryRange.test.ts
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import useProcessStatsQueryRange, { type Props, ResponseMatrix } from "./useProcessStatsQueryRange";
 import { MetricResult } from "../../../api/types";

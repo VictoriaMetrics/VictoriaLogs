@@ -10,10 +10,8 @@ export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 export const LOGS_LIMIT_HITS = 5;
 
 export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
-export const LOGS_BAR_COUNTS = [12, 24, 48, 96, 288, 720, 1440];
 
-// "Ungrouped" is a string that is used as a value for the "groupBy" parameter.
-export const WITHOUT_GROUPING = "Ungrouped";
+export const WITHOUT_GROUPING = "none";
 
 // Default values for the logs configurators.
 export const LOGS_GROUP_BY = "_stream";
@@ -29,9 +27,13 @@ export const LOGS_URL_PARAMS = {
   COMPACT_GROUP_HEADER: "compactGroupHeader",
   DATE_FORMAT: "dateFormat",
   ROWS_PER_PAGE: "rows_per_page",
+  COLUMNS: "columns",
 };
 
 // Maximum values for the logs autocomplete.
 export const MAX_QUERY_FIELDS = 1;
 export const MAX_QUERIES_HISTORY = 25;
 
+// Default fields for the table.
+export const DEFAULT_COMMON_FIELDS = ["_time", "_msg" ];
+export const DEFAULT_STREAM_FIELDS = ["_stream"];

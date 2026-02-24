@@ -148,7 +148,7 @@ func (pp *testPipeProcessor) writeBlock(_ uint, br *blockResult) {
 		columnValues = append(columnValues, values)
 	}
 
-	for i := 0; i < br.rowsLen; i++ {
+	for i := range br.rowsLen {
 		row := make([]Field, len(columnValues))
 		for j, values := range columnValues {
 			r := &row[j]

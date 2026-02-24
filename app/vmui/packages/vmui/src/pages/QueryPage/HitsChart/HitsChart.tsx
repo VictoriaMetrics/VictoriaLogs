@@ -62,9 +62,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
     const noData = data.every(d => d.length === 0);
     const noTimestamps = data[0].length === 0;
     const noValues = data[1].length === 0;
-    if (hideChart) {
-      return "Chart hidden. Hits updates paused.";
-    } else if (noData) {
+    if (noData) {
       return "No logs volume available\nNo volume information available for the current queries and time range.";
     } else if (noTimestamps) {
       return "No timestamp information available for the current queries and time range.";
@@ -86,13 +84,13 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
       })}
     >
       {isLoading && <LineLoader/>}
-      {!error && noDataMessage && (
+      {!error && noDataMessage && !hideChart && (
         <div className="vm-query-page-chart__empty">
           <Alert variant="info">{noDataMessage}</Alert>
         </div>
       )}
 
-      {error && noDataMessage && (
+      {error && noDataMessage && !hideChart && (
         <div className="vm-query-page-chart__empty">
           <Alert variant="error"><pre>{error}</pre></Alert>
         </div>

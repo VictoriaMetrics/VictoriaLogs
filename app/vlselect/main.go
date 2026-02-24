@@ -111,7 +111,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 
 	if strings.HasPrefix(path, "/internal/delete/") {
 		if !*enableInternalDelete {
-			httpserver.Errorf(w, r, "requests to /internal/delete/*` are disabled; pass -internaldelete.enable command-line flag for enabling them; "+
+			httpserver.Errorf(w, r, "requests to /internal/delete/* are disabled; pass -internaldelete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 			return true
 		}

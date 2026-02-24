@@ -22,6 +22,7 @@ aliases:
 - `vlagent` can accept logs from popular log collectors in the same way as VictoriaLogs does. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It accepts logs over HTTP-based protocols at the TCP port `9429` by default. The port can be changed via `-httpListenAddr` command-line flag.
 - `vlagent` can replicate collected logs among multiple VictoriaLogs instances - see [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability).
+- `vlagent` can send logs to any destination that supports JSON logs separated by newlines. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format).
 - `vlagent` works smoothly in environments with unstable connections to VictoriaLogs instances. If the remote storage is unavailable, the collected logs
   are buffered at the directory specified via `-remoteWrite.tmpDataPath` command-line flag. The buffered logs are sent to remote storage as soon as the connection
   to the remote storage is repaired. The maximum disk usage for the buffer can be limited with `-remoteWrite.maxDiskUsagePerURL` command-line flag.
@@ -130,7 +131,7 @@ for all the collected logs before sending them to `-remoteWrite.url`:
 ./vlagent -kubernetesCollector.extraFields='{"env":"dev","cluster":"staging"}' ...
 ```
 
-To set the default [tenant](http://localhost:1313/victorialogs/#multitenancy) ID for logs collected from Kubernetes Pods, 
+To set the default [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) ID for logs collected from Kubernetes Pods,
 pass `-kubernetesCollector.tenantID` command-line flag with a tenant ID in the format `accountID:projectID`.
 See also [multitenancy docs for vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
 
@@ -145,7 +146,7 @@ While it is recommended to keep the default stream fields, you can override them
 
 ### Filtering Kubernetes logs
 
-vlagent allows filtering Kubernetes container logs based on metadata fields. 
+`vlagent` allows filtering Kubernetes container logs based on metadata fields.
 It is applied before reading the log files, which saves CPU and I/O resources by skipping unwanted data.
 
 Supported metadata fields:
@@ -157,7 +158,7 @@ Supported metadata fields:
 - `kubernetes.pod_ip` - IP address assigned to the pod.
 - `kubernetes.container_id` - ID of the container in the runtime.
 - `kubernetes.pod_labels.*` - any Pod label (e.g., `kubernetes.pod_labels.app`).
-- `kubernetes.pod_annotations.*` - any Pod annotation (e.g., `kubernetes.pod_annotation.logging.vlagent.io/exclude`).
+- `kubernetes.pod_annotations.*` - any Pod annotation (e.g., `kubernetes.pod_annotations.logging.vlagent.io/exclude`).
 - `kubernetes.node_labels.*` - any Node label (e.g., `kubernetes.io/arch`).
 - `kubernetes.node_annotations.*` - any Node annotation (e.g., `disk-type.gke.io/pd-ssd`).
 
@@ -173,15 +174,15 @@ Example usage:
 
 ```sh
 ./vlagent -remoteWrite.url=http://victoria-logs:9428/insert/native -kubernetesCollector \
-  -kubernetesCollector.excludeFilter='kubernetes.pod_annotation.logging.vlagent.io/exclude:=true or kubernetes.pod_namespace:in(test, logging)'
+  -kubernetesCollector.excludeFilter='kubernetes.pod_annotations.logging.vlagent.io/exclude:=true or kubernetes.pod_namespace:in(test, logging)'
 ```
 
-This command starts vlagent with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true` 
+This command starts `vlagent` with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true`
 and skips all logs from the `test` and `logging` namespaces.
 
 ### Kubernetes metadata configuration
 
-vlagent automatically enriches collected logs with Kubernetes metadata. 
+`vlagent` automatically enriches collected logs with Kubernetes metadata.
 You can control which metadata fields are attached to every log entry using the following flags:
 
 * `-kubernetesCollector.includePodLabels` (default: `true`) - attach Pod labels to every log entry.
@@ -189,8 +190,110 @@ You can control which metadata fields are attached to every log entry using the 
 * `-kubernetesCollector.includeNodeLabels` (default: `false`) - attach Node labels to every log entry.
 * `-kubernetesCollector.includeNodeAnnotations` (default: `false`) - attach Node annotations to every log entry.
 
-Note that vlagent does not update node or pod labels during runtime. 
-Therefore, if node/pod metadata changes, you must restart vlagent to apply those changes.
+Note that `vlagent` does not update node or pod labels during runtime.
+Therefore, if node/pod metadata changes, you must restart `vlagent` to apply those changes.
+
+## remote write format
+
+By default, `vlagent` sends logs to the `-remoteWrite.url` with `native` protocol, which is supported by all VictoriaLogs components.
+
+It is possible to send logs to the `-remoteWrite.url` in [`jsonline` format](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api)
+by setting `-remoteWrite.format=jsonline` for the corresponding `-remoteWrite.url`. This can be useful when sending logs to external systems
+(for example, Vector, Fluent Bit, ClickHouse) that accept logs over HTTP in `jsonline` format with `zstd` compression.
+
+Note that `vlagent` flattens nested JSON objects using dot-separated names, according to the [VictoriaLogs data model](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+
+To configure a format per remote destination, specify multiple `-remoteWrite.url` and `-remoteWrite.format` flags.
+Position matches the flags: the first `-remoteWrite.format` applies to the first `-remoteWrite.url`,
+the second one applies to the second URL, and so on:
+
+```sh
+./vlagent -remoteWrite.url=http://vlinsert:9428/insert/native \
+  -remoteWrite.format=native \
+  -remoteWrite.url=http://vector:8080 \
+  -remoteWrite.format=jsonline
+```
+
+### Sending logs to Fluent Bit
+
+To send logs to Fluent Bit, use the following configuration as a reference:
+
+```yaml
+pipeline:
+  inputs:
+    - name: http
+      port: 8080
+  outputs:
+    - name: stdout
+```
+
+This starts Fluent Bit listening on port `8080` and forwarding received logs to the `stdout` output.
+
+Then start `vlagent`:
+
+```sh
+# Fluent Bit requires Content-Type header to be set to application/json
+./vlagent -remoteWrite.url=http://fluent-bit:8080 -remoteWrite.format=jsonline \
+  -remoteWrite.headers='Content-Type: application/json'
+```
+
+### Sending logs to Vector
+
+To send logs to Vector, use the following configuration as a reference:
+
+```yaml
+sources:
+  my_http_server:
+    type: http_server
+    address: 0.0.0.0:8080
+    codec: json
+transforms:
+  # Merge raw log content into the root object
+  parser:
+    type: remap
+    inputs:
+      - my_http_server
+    source: |
+      log_content = object!(parse_json!(.message))
+      del(.message)
+      . = merge(., log_content)
+sinks:
+  console:
+    type: console
+    encoding:
+      codec: json
+    inputs:
+      - parser
+```
+
+This starts Vector listening on port `8080` and forwarding logs to the `console` sink.
+
+Then start `vlagent`:
+
+```sh
+./vlagent -remoteWrite.url=http://vector:8080 -remoteWrite.format=jsonline
+```
+
+### Sending logs to ClickHouse
+
+To send logs to ClickHouse via the `jsonline` protocol, include the ClickHouse `query` HTTP parameter in `-remoteWrite.url`.
+The value of `query` must be a URL-encoded `INSERT` statement.
+
+Choose the `INSERT ... FORMAT ...` clause based on your table schema:
+
+* **Table with a single `JSON` column:** use the query `INSERT INTO my_schema.my_table FORMAT JSONAsObject`.
+* **Table with a single `String` column:** use the query `INSERT INTO my_schema.my_table FORMAT JSONAsString`.
+* **Table with multiple fields** (each JSON field maps to a ClickHouse column): use the query `INSERT INTO my_schema.my_table FORMAT JSONEachRow`.
+  Note that if fields are missing from the JSON, ClickHouse will use default values for those fields.
+
+The following command configures `vlagent` to send logs to ClickHouse table `default.logs` (a single `JSON` column) using the `jsonline` protocol:
+
+```sh
+./vlagent -remoteWrite.url="http://clickhouse:8123?query=INSERT%20INTO%20default.logs%20FORMAT%20JSONAsObject" \
+  -remoteWrite.format=jsonline \
+  -remoteWrite.basicAuth.username=secret \
+  -remoteWrite.basicAuth.password=secret
+```
 
 ## Monitoring
 
@@ -213,7 +316,7 @@ via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via 
 
 - `/insert/native`. This endpoint expects `AccountID` and `ProjectID` headers with the tenant ID to write logs to
   according to [these docs](https://docs.victoriametrics.com/victorialogs/#multitenancy).
-  These headers can be specified via `-remoteWrite.headers` command-line at `vlagent` side.
+  These headers can be specified via `-remoteWrite.headers` command-line flag at `vlagent` side.
   For example, the following command stores logs into `(AccountID=12, ProjectID=34)` tenant:
 
   ```sh
@@ -276,7 +379,7 @@ It is safe to share the collected profiles from a security point of view, since 
 
 ## Building from source code
 
-Follow these steps to build vlagent from source code:
+Follow these steps to build `vlagent` from source code:
 
 - Check out the VictoriaLogs source code:
 
@@ -291,7 +394,7 @@ Follow these steps to build vlagent from source code:
   git checkout <commit-hash-here>
   ```
 
-- Build vlagent (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
+- Build `vlagent` (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
 
   ```sh
   make vlagent
@@ -303,14 +406,14 @@ Follow these steps to build vlagent from source code:
   bin/vlagent -remoteWrite.url=...
   ```
 
-An alternative approach is to build vlagent inside a Docker builder container. This approach doesn't require Go to be installed,
+An alternative approach is to build `vlagent` inside a Docker builder container. This approach doesn't require Go to be installed,
 but it does require Docker on your computer. See [how to install Docker](https://docs.docker.com/engine/install/):
 
 ```sh
 make vlagent-prod
 ```
 
-This will build the `victoria-logs-prod` executable inside the `bin` folder.
+This will build the `vlagent-prod` executable inside the `bin` folder.
 
 ## Advanced usage
 

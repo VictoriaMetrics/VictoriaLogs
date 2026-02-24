@@ -131,7 +131,7 @@ func (pjp *pipeJoinProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	}
 
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+	for rowIdx := range br.rowsLen {
 		clear(byValues)
 		for j := range cs {
 			if cIdx := byValuesIdxs[j]; cIdx >= 0 {

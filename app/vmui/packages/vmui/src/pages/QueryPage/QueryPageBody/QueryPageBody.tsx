@@ -23,7 +23,6 @@ import LiveTailingView from "../../../components/Views/LiveTailingView/LiveTaili
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
-import Alert from "../../../components/Main/Alert/Alert";
 import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
 
 interface Props {
@@ -120,23 +119,28 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
             <Button
               variant="text"
               color="primary"
-              startIcon={hideLogs ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+              startIcon={hideLogs ? <VisibilityIcon/> : <VisibilityOffIcon/>}
               onClick={toggleHideLogs}
               ariaLabel="settings"
-            />
+            >
+              {hideLogs ? "Show Logs" : ""}
+            </Button>
           </Tooltip>
         </div>
       </div>
 
       <div
         className={classNames({
-          "vm-query-page-body__table": true,
-          "vm-query-page-body__table_hide": hideLogs,
-          "vm-query-page-body__table_mobile": isMobile,
+          "vm-query-page-body__content": true,
+          "vm-query-page-body__content_hide": hideLogs,
+          "vm-query-page-body__content_mobile": isMobile,
+          "vm-query-page-body__content_table": activeTab === DisplayType.table,
         })}
       >
         {hideLogs && (
-          <Alert variant="info">Logs are hidden. Updates paused.</Alert>
+          <div className="vm-query-page-body__hiden-info">
+            Logs view is hidden. Data updates are paused.
+          </div>
         )}
 
         {!hideLogs && ActiveTabComponent &&

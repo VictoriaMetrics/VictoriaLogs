@@ -14,11 +14,13 @@ import classNames from "classnames";
 import Modal from "../../../Main/Modal/Modal";
 import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
-import { LOGS_BAR_COUNTS } from "../../../../constants/logs";
+import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../../pages/OverviewPage/hooks/useExtraFilters";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
+import { humanizeSeconds } from "../../../../utils/time";
+import { generateIntervalsMs } from "../../../../utils/intervals";
 
 interface Props {
   query?: string;
@@ -37,7 +39,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { topHits, groupFieldHits, barsCount } = useHitsChartConfig();
+  const { topHits, groupFieldHits, step } = useHitsChartConfig();
 
   const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimeState();
@@ -45,6 +47,9 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
+
+  const hasGroupField = groupFieldHits.value !== WITHOUT_GROUPING;
+  const isGroupsLimitVisible = (isHitsMode && hasGroupField) || isStatsMode;
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
@@ -59,12 +64,20 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     hideChart,
   }), [stacked, cumulative, hideChart, queryMode]);
 
+  const intervals = useMemo(() => {
+    const msIntervals = generateIntervalsMs(start, end);
+    return msIntervals.map(ms => humanizeSeconds(ms / 1000));
+  }, [start, end]);
+
+  const defaultStep = intervals[Math.floor(intervals.length / 2)];
+
   const fieldNamesOptions = useMemo(() => {
-    return fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
+    const fields = fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
+    return [WITHOUT_GROUPING, ...fields];
   }, [fieldNames]);
 
   const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, showAllFields: true, query });
+    fetchFieldNames({ start, end, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
@@ -101,23 +114,30 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     onChange(options);
   }, [options]);
 
-  const Controls = () => (
+  useEffect(() => {
+    const isAllowed = (v: string | null) => !!v && intervals.includes(v);
+    const shouldReset = (v: string | null) => !isAllowed(v) && v !== defaultStep;
+
+    if (!shouldReset(step.value)) return;
+
+    const t = setTimeout(() => {
+      if (shouldReset(step.value)) step.set(defaultStep);
+    }, 200);
+
+    return () => clearTimeout(t);
+  }, [intervals, defaultStep, step.value]);
+
+  const controls = (
     <>
       <div className="vm-bar-hits-options vm-bar-hits-options_selections">
         <div className="vm-bar-hits-options-item">
           <SelectLimit
-            label="Top hits"
-            options={[5, 10, 25, 50]}
-            limit={topHits.value}
-            onChange={topHits.set}
-          />
-        </div>
-        <div className="vm-bar-hits-options-item">
-          <SelectLimit
-            label="Bars"
-            options={LOGS_BAR_COUNTS}
-            limit={barsCount.value}
-            onChange={barsCount.set}
+            label="Interval"
+            options={intervals}
+            allowUnlimited={false}
+            emptyValueLabel="-"
+            limit={step.value || defaultStep}
+            onChange={step.set}
           />
         </div>
         {isHitsMode && (
@@ -137,9 +157,19 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             </div>
           </>
         )}
+        {isGroupsLimitVisible && (
+          <div className="vm-bar-hits-options-item">
+            <SelectLimit
+              label="Groups limit"
+              options={[5, 10, 25, 50]}
+              limit={topHits.value}
+              onChange={topHits.set}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="vm-bar-hits-options-item">
+      <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
         <Switch
           label={"Cumulative"}
           value={cumulative}
@@ -147,7 +177,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
         />
       </div>
       {!isOverview && (
-        <div className="vm-bar-hits-options-item">
+        <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
           <Switch
             label="Stats view"
             value={isStatsMode}
@@ -155,7 +185,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           />
         </div>
       )}
-      <div className="vm-bar-hits-options-item">
+      <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
         <Switch
           label={"Stacked"}
           value={stacked}
@@ -168,13 +198,14 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   return (
     <div
       className={classNames({
-      "vm-bar-hits-options": true,
-      "vm-bar-hits-options_mobile": isMobile,
-    })}
+        "vm-bar-hits-options": true,
+        "vm-bar-hits-options_mobile": isMobile,
+      "vm-bar-hits-options_hidden": hideChart,
+      })}
     >
-      {!isMobile && (
+      {!isMobile && !hideChart && (
         <>
-          <Controls/>
+          {controls}
           <ShortcutKeys withHotkey={false}>
             <Button
               variant="text"
@@ -184,14 +215,22 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           </ShortcutKeys>
         </>
       )}
+      {hideChart && (
+        <div className="vm-bar-hits-options__hidden-info">
+          Hits chart is hidden. Data updates are paused.
+        </div>
+      )}
+
       <Tooltip title={hideChart ? "Show chart and resume hits updates" : "Hide chart and pause hits updates"}>
         <Button
           variant="text"
           color="primary"
-          startIcon={hideChart ? <VisibilityOffIcon/> : <VisibilityIcon/>}
+          startIcon={hideChart ? <VisibilityIcon/> : <VisibilityOffIcon/>}
           onClick={toggleHideChart}
           ariaLabel="settings"
-        />
+        >
+          {hideChart ? "Show chart" : ""}
+        </Button>
       </Tooltip>
 
       {isMobile && (
@@ -213,7 +252,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             })}
           >
             <div className="vm-bar-hits-options vm-bar-hits-options_mobile">
-              <Controls/>
+              {controls}
             </div>
           </Modal>
         </>

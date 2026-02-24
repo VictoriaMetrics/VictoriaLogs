@@ -154,7 +154,7 @@ func (c *client) init(argIdx, concurrency int, sanitizedURL string) {
 	metrics.GetOrCreateGauge(fmt.Sprintf(`vlagent_remotewrite_queues{url=%q}`, c.sanitizedURL), func() float64 {
 		return float64(*queues)
 	})
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		c.wg.Go(c.runWorker)
 	}
 	logger.Infof("initialized client for -remoteWrite.url=%q", c.sanitizedURL)
@@ -307,14 +307,14 @@ func (c *client) newRequest(url string, body []byte) (*http.Request, error) {
 	if err != nil {
 		logger.Panicf("BUG: unexpected error from http.NewRequest(%q): %s", url, err)
 	}
-	err = c.authCfg.SetHeaders(req, true)
-	if err != nil {
-		return nil, err
-	}
 	h := req.Header
 	h.Set("User-Agent", "vlagent")
 	h.Set("Content-Encoding", "zstd")
 	h.Set("Content-Type", "application/octet-stream")
+	err = c.authCfg.SetHeaders(req, true)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }

@@ -3,7 +3,7 @@ import { getLogHitsUrl, getStatsQueryRangeUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
 import { getHitsTimeParams } from "../../../utils/logs";
-import { LOGS_GROUP_BY, LOGS_LIMIT_HITS } from "../../../constants/logs";
+import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../constants/logs";
 import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
@@ -22,7 +22,7 @@ interface FetchHitsParams {
   extraParams?: URLSearchParams;
   field?: string;
   fieldsLimit?: number;
-  barsCount: number;
+  step: string | null;
   queryMode?: GRAPH_QUERY_MODE
 }
 
@@ -54,19 +54,22 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     }
   }, [serverUrl]);
 
-  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, barsCount }: OptionsParams) => {
-    const { start, end, step } = getHitsTimeParams(period, barsCount);
+  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
+    const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
     const offsetMinutes = dayjs().tz().utcOffset();
 
     const params = new URLSearchParams({
       query: query.trim(),
-      step: `${step}ms`,
+      step: step || `${fallbackStepMs}ms`,
       offset: `${offsetMinutes}m`,
       start: start.toISOString(),
       end: end.toISOString(),
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
-      field: field || LOGS_GROUP_BY,
     });
+
+    if (field && field !== WITHOUT_GROUPING) {
+      params.set("field", field);
+    }
 
     const body = new URLSearchParams([
       ...params,
@@ -104,6 +107,10 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
+
+    if (!params.step) {
+      console.warn("Missing step; using fallback interval", params.period);
+    }
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));

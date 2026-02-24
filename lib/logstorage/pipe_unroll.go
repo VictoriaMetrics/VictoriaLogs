@@ -130,7 +130,7 @@ func (pup *pipeUnrollProcessor) writeBlock(workerID uint, br *blockResult) {
 	}
 
 	fields := shard.fields
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+	for rowIdx := range br.rowsLen {
 		if needStop(pup.stopCh) {
 			return
 		}
@@ -184,7 +184,7 @@ func (shard *pipeUnrollProcessorShard) writeUnrolledFields(fieldNames []string, 
 
 	// write unrolled values to the next pipe.
 	fields := shard.fields
-	for unrollIdx := 0; unrollIdx < rows; unrollIdx++ {
+	for unrollIdx := range rows {
 		fields = fields[:0]
 		for i, values := range unrolledValues {
 			v := ""

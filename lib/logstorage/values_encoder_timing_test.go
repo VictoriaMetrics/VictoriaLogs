@@ -143,7 +143,7 @@ func BenchmarkMarshalUint8String(b *testing.B) {
 		var buf []byte
 		n := 0
 		for pb.Next() {
-			for i := 0; i < 256; i++ {
+			for i := range 256 {
 				buf = marshalUint8String(buf[:0], uint8(i))
 				n += len(buf)
 			}

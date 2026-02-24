@@ -110,6 +110,11 @@ func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
 func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()) {
 	t.Helper()
 
+	// Take the current counter value before calling send(), since it may be updated
+	// concurrently with the request execution. See TestVlagentRemoteWriteReplication
+	// flakiness in CI when the counter is read after send().
+	rowsPushed := app.remoteWriteRowsPushed(t)
+
 	send()
 
 	const (
@@ -117,7 +122,7 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 		period  = 100 * time.Millisecond
 	)
 	// take in account data replication
-	wantRowsSentCount := app.remoteWriteRowsPushed(t) + numRecordsToSend*app.remoteStoragesCount
+	wantRowsSentCount := rowsPushed + numRecordsToSend*app.remoteStoragesCount
 	for range retries {
 		if app.remoteWriteRowsPushed(t) >= wantRowsSentCount {
 			return

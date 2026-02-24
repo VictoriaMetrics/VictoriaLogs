@@ -16,14 +16,14 @@ func TestStreamRowsTracker(t *testing.T) {
 		// generate stream hashes
 		streamHashes := make([]uint64, streamsCount)
 		for i := range streamHashes {
-			streamHashes[i] = xxhash.Sum64([]byte(fmt.Sprintf("stream %d.", i)))
+			streamHashes[i] = xxhash.Sum64(fmt.Appendf(nil, "stream %d.", i))
 		}
 
 		srt := newStreamRowsTracker(nodesCount)
 
 		rng := rand.New(rand.NewSource(0))
 		rowsPerNode := make([]uint64, nodesCount)
-		for i := 0; i < rowsCount; i++ {
+		for range rowsCount {
 			streamIdx := rng.Intn(streamsCount)
 			h := streamHashes[streamIdx]
 			nodeIdx := srt.getNodeIdx(h)

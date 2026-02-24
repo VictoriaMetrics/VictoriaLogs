@@ -1,0 +1,79 @@
+@use "src/styles/variables" as *;
+
+.vm-table-cell-header {
+  position: relative;
+  text-align: left;
+  overflow-wrap: normal;
+  background-color: $color-background-block;
+  height: 36px;
+  vertical-align: middle;
+  color: $color-text-secondary;
+
+  &_sortable {
+    cursor: pointer;
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+  }
+
+  &_dropping {
+    transition: none;
+  }
+
+  &_draggable {
+    cursor: grab;
+  }
+
+  &_dragging {
+    position: relative;
+    outline: 2px solid $color-dodger-blue;
+    outline-offset: -2px;
+    z-index: 2;
+    cursor: grabbing;
+  }
+
+  &_insert {
+    &:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      height: 100%;
+      background-color: $color-dodger-blue;
+    }
+
+    &_left:after {
+      left: 0;
+    }
+
+    &_right:after {
+      right: 0;
+    }
+  }
+
+  &_number, &_right {
+    .vm-table-cell-header__title {
+      text-align: right;
+    }
+
+    .vm-table-cell-header-content {
+      justify-content: flex-end;
+    }
+  }
+
+  &__title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &-content {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    gap: $padding-small;
+  }
+}

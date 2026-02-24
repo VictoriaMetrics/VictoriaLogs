@@ -304,7 +304,7 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 	// verify r.StreamTagsCanonical
 	st := GetStreamTags()
 	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
-	tail, err := st.UnmarshalCanonical(streamTagsCanonical)
+	tail, err := st.UnmarshalCanonicalInplace(streamTagsCanonical)
 	if err != nil {
 		line := MarshalFieldsToJSON(nil, r.Fields)
 		logger.Warnf("cannot unmarshal streamTagsCanonical: %w; skipping the log entry; log entry: %s", err, line)
@@ -690,6 +690,11 @@ func (r *InsertRow) Marshal(dst []byte) []byte {
 		dst = field.marshal(dst, true)
 	}
 	return dst
+}
+
+// AppendJSON appends marshaled r to dst in JSON format and returns the result.
+func (r *InsertRow) AppendJSON(dst []byte) []byte {
+	return MarshalFieldsToJSON(dst, r.Fields)
 }
 
 // UnmarshalInplace unmarshals r from src and returns the remaining tail.

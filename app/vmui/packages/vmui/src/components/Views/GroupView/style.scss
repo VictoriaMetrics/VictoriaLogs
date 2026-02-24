@@ -5,7 +5,7 @@
 $font-size-logs: var(--font-size-logs, $font-size-small);
 
 $actions-buttons: 2;
-$actions-width: calc(($actions-buttons*30px) + 10px);
+$actions-width: calc(($actions-buttons * 30px) + 10px);
 
 .vm-group-logs {
   margin-top: calc(-1 * $padding-medium);
@@ -34,6 +34,10 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
   &-section {
     border-bottom: $border-divider;
     padding-bottom: $padding-small;
+
+    &__ungrouped {
+      padding-top: $padding-small;
+    }
 
     &-keys {
       position: relative;
@@ -96,6 +100,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         border-radius: $border-radius-medium;
         transition: background-color 0.3s ease-in, transform 0.1s ease-in, opacity 0.3s ease-in;
         white-space: nowrap;
+        cursor: pointer;
 
         &_hide {
           order: 2;
@@ -132,19 +137,25 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
     &-rows {
       font-size: $font-size-logs;
       font-variant-numeric: tabular-nums;
-      line-height: 1.3;
+      line-height: 1.2;
     }
   }
 
   &-row {
     position: relative;
+    margin-block: 1px;
 
     &:hover {
       z-index: 2;
     }
 
+    &:nth-child(even) > &-content {
+      background-color: $color-hover-black;
+    }
+
     &-content {
       display: flex;
+      border-radius: $border-radius-medium;
       padding: 2px $actions-width 2px 2px;
       cursor: pointer;
 
@@ -160,19 +171,19 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
       &_interactive {
         contain: layout;
-        will-change: background-color;
+        outline: 0 solid rgba($color-dodger-blue, 0.5);
+        outline-offset: -2px;
+        will-change: outline-width;
       }
 
-      &_interactive:hover {
-        background-color: $color-hover-black;
+      &_interactive:hover:not(&_active) {
+        outline-width: 2px;
       }
 
       &__arrow {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: $font-size;
         transform: rotate(-90deg);
         transition: transform 0.2s ease-out;
 
@@ -180,9 +191,9 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
           transform: rotate(0deg);
         }
 
-
         svg {
-          width: 16px;
+          width: $font-size;
+          height: $font-size;
         }
       }
 
@@ -243,7 +254,6 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
         p {
           font-family: $font-family-global;
-          line-height: 1.4;
         }
 
         pre {
@@ -297,7 +307,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         align-items: center;
         align-self: flex-start;
         border-radius: $border-radius-small;
-        padding: calc($padding-small/2);
+        padding: calc($padding-small / 2);
         visibility: hidden;
         border: $border-divider;
         background-color: $color-background-body;
@@ -308,7 +318,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         top: 0;
         border-color: transparent;
         background: transparent;
-        visibility:  visible;
+        visibility: visible;
       }
 
       &_interactive:hover &__actions {
