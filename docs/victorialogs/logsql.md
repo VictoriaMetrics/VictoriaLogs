@@ -278,7 +278,7 @@ The list of LogsQL filters:
   all the provided [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) / phrases
 - [`contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter) - matches logs with [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) containing
   at least one of the provided [words](https://docs.victoriametrics.com/victorialogs/logsql/#word) / phrases
-- [`json_array_contains` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains-filter) - matches logs with a JSON array stored in the given field containing the given value
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter) - matches logs with a JSON array stored in the given field containing the given value
 - [Case-insensitive filter](https://docs.victoriametrics.com/victorialogs/logsql/#case-insensitive-filter) - matches logs with the given case-insensitive word, phrase or prefix
 - [`contains_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_common_case-filter) - matches logs with log fields containing the given words and phrases with cases according to the given pattern
 - [`equals_common_case` filter](https://docs.victoriametrics.com/victorialogs/logsql/#equals_common_case-filter) - matches logs with log fields equal to the given words and phrases with cases according to the given pattern
@@ -1088,19 +1088,21 @@ See also:
 - [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 - [`in` filter](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter)
 - [`contains_all` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_all-filter)
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
 
-### json_array_contains filter
+### json_array_contains_any filter
 
-Sometimes log fields contain JSON arrays, e.g. `tags=["prod","canary"]`. This is common for JSON-encoded logs, where some keys may have an array value.
-LogsQL provides `json_array_contains(value)` filter for matching such fields by the presence of the given value in the array.
+[Log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) may contain JSON arrays. For example, `tags=["prod","canary"]`.
+This is common for JSON-encoded logs. LogsQL provides `json_array_contains_any("v1",...,"vN")` filter for matching such fields by the presence of the given `v1`, ..., `v1`
+values in the JSON array.
 
 For example, the following query selects logs, which have the `prod` value inside the JSON array stored at `tags` field:
 
 ```logsql
-tags:json_array_contains(prod)
+tags:json_array_contains_any("prod")
 ```
 
-The `json_array_contains` filter supports the following value types in the JSON array:
+The `json_array_contains_any` filter supports the following value types in the JSON array:
 
 - JSON strings (exact match)
 - JSON numbers (matched by their string representation, e.g. `123`)
@@ -1109,19 +1111,10 @@ The `json_array_contains` filter supports the following value types in the JSON 
 
 Nested arrays and objects are ignored by this filter.
 
-Performance tips:
-
-- Prefer storing arrays as native JSON arrays at data ingestion time (e.g. `tags:["a","b"]`) instead of storing a JSON-encoded string (e.g. `tags:"[\"a\",\"b\"]"`), so the resulting stored field value is a valid JSON array.
-- If the searched value contains special chars (such as double quotes), then put it into quotes according to [string literals docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals). For example:
-
-```logsql
-tags:json_array_contains('a"b')
-```
-
 See also:
 
 - [Exact filter](https://docs.victoriametrics.com/victorialogs/logsql/#exact-filter)
-- [Multi-exact filter](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 
 ### Subquery filter
 
@@ -3871,7 +3864,7 @@ See also:
 - [`extract` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe)
 - [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
-- [`json_array_contains` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains-filter)
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
 
 #### Conditional unpack_json
 
@@ -4141,11 +4134,10 @@ the unrolled array items into separate fields for further processing.
 
 See also:
 
+- [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter)
 - [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 - [`extract` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe)
-- [`uniq_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
-- [`values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#values-stats)
 
 #### Conditional unroll
 

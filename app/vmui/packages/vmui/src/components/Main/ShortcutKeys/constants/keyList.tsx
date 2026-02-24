@@ -57,6 +57,10 @@ const keyList = [
       {
         keys: <>{ctrlMeta} + <code>click</code> on legend item</>,
         description: "Show only this series or show all series"
+      },
+      {
+        keys: <><code>Click</code> on bar</>,
+        description: "Set the time range to the selected bar"
       }
     ]
   },

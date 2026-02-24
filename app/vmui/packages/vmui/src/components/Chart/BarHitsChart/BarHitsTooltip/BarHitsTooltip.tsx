@@ -169,6 +169,10 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
           {tooltipData.timestamp}
         </div>
       </div>
+
+      <div className="vm-bar-hits-tooltip-tips">
+        Click a bar to set the time range
+      </div>
     </div>
   );
 };

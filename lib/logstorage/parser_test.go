@@ -1096,31 +1096,32 @@ func TestParseFilterValueType(t *testing.T) {
 	f(`z:value_type("string")`, "z", "string")
 }
 
-func TestParseFilterJSONArrayContains(t *testing.T) {
-	f := func(s, fieldNameExpected, valueExpected string) {
+func TestParseFilterJSONArrayContainsAny(t *testing.T) {
+	f := func(s, fieldNameExpected string, valuesExpected []string) {
 		t.Helper()
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fa, ok := q.f.(*filterJSONArrayContains)
+		fa, ok := q.f.(*filterJSONArrayContainsAny)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterJSONArrayContains; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterJSONArrayContainsAny; filter: %s", q.f, q.f)
 		}
 		if fa.fieldName != fieldNameExpected {
 			t.Fatalf("unexpected fieldName; got %q; want %q", fa.fieldName, fieldNameExpected)
 		}
-		if fa.value != valueExpected {
-			t.Fatalf("unexpected value; got %q; want %q", fa.value, valueExpected)
+		if !reflect.DeepEqual(fa.values, valuesExpected) {
+			t.Fatalf("unexpected values; got %q; want %q", fa.values, valuesExpected)
 		}
 	}
 
-	f(`json_array_contains(foo)`, "_msg", "foo")
-	f(`foo:json_array_contains(bar)`, "foo", "bar")
-	f(`json_array_contains("")`, "_msg", "")
-	f("foo:json_array_contains(\"a\\\"b\")", "foo", "a\"b")
-	f("foo:json_array_contains(\"a\\nb\")", "foo", "a\nb")
-	f("foo:json_array_contains(\"a\\u0062\")", "foo", "ab")
+	f(`json_array_contains_any()`, "_msg", nil)
+	f(`json_array_contains_any(foo)`, "_msg", []string{"foo"})
+	f(`foo:json_array_contains_any(bar)`, "foo", []string{"bar"})
+	f(`json_array_contains_any("","a","b")`, "_msg", []string{"", "a", "b"})
+	f(`foo:json_array_contains_any("a\"b")`, "foo", []string{`a"b`})
+	f("foo:json_array_contains_any(\"a\\nb\")", "foo", []string{"a\nb"})
+	f(`foo:json_array_contains_any("a\u0062")`, "foo", []string{"ab"})
 }
 
 func TestParseFilterRegexp(t *testing.T) {
@@ -1694,9 +1695,11 @@ func TestParseQuery_Success(t *testing.T) {
 	f("i('foo bar'*)", `i("foo bar"*)`)
 	f(`foo:i(foo:bar-baz/aa+bb)`, `foo:i("foo:bar-baz/aa+bb")`)
 
-	// json_array_contains filter
-	f(`json_array_contains("foo")`, `json_array_contains(foo)`)
-	f(`json_array_contains('foo"')`, `json_array_contains("foo\"")`)
+	// json_array_contains_any filter
+	f(`json_array_contains_any()`, `json_array_contains_any()`)
+	f(`abc:json_array_contains_any(foo, bar)`, `abc:json_array_contains_any(foo,bar)`)
+	f(`json_array_contains_any("foo")`, `json_array_contains_any(foo)`)
+	f(`json_array_contains_any('foo"')`, `json_array_contains_any("foo\"")`)
 
 	// in filter with values
 	f(`in()`, `in()`)
@@ -2569,11 +2572,9 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`i("foo`)
 	f(`i(foo bar)`)
 
-	// invalid json_array_contains
-	f(`json_array_contains(`)
-	f(`json_array_contains()`)
-	f(`json_array_contains(foo, bar)`)
-	f(`json_array_contains(foo bar)`)
+	// invalid json_array_contains_any
+	f(`json_array_contains_any(`)
+	f(`json_array_contains_any(foo bar)`)
 
 	// invalid in
 	f(`in(`)

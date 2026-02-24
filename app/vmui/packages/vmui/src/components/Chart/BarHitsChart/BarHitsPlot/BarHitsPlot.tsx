@@ -61,7 +61,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     onReadyChart,
     setPlotScale,
     graphOptions,
-    timezone
+    timezone,
+    setPeriod
   });
 
   const legendDetails: LegendLogHits[] = useMemo(() => {

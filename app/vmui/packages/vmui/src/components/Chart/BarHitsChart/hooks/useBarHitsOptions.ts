@@ -8,6 +8,7 @@ import { LogHits } from "../../../../api/types";
 import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getColorFromString } from "../../../../utils/color";
 import useBarPaths from "./useBarPaths";
+import useBarClickHooks from "./useBarClickHooks";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -34,6 +35,7 @@ interface UseGetBarHitsOptionsArgs {
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
   timezone: string;
+  setPeriod: (period: { from: Date, to: Date }) => void;
 }
 
 export const OTHER_HITS_LABEL = "other fields";
@@ -80,9 +82,14 @@ const useBarHitsOptions = ({
   setPlotScale,
   graphOptions,
   timezone,
+  setPeriod,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
   const { barPaths, drawHoverBar, getHoverAbsIdxForBars } = useBarPaths();
+  const barClickHooks = useBarClickHooks({
+    getHoverAbsIdxForBars,
+    onBarClick: setPeriod,
+  });
 
   const [focusDataIdx, setFocusDataIdx] = useState(-1);
 
@@ -142,10 +149,10 @@ const useBarHitsOptions = ({
     hooks: {
       drawSeries: [],
       draw: [drawHoverBar],
-      ready: [onReadyChart],
+      ready: [onReadyChart, barClickHooks.ready],
       setCursor: [setCursor],
       setSelect: [setSelect(setPlotScale)],
-      destroy: [handleDestroy],
+      destroy: [handleDestroy, barClickHooks.destroy],
     },
     legend: { show: false },
     axes: getAxes([{}, { scale: "y" }]),

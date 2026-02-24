@@ -163,10 +163,10 @@ Loki users sometimes encode arrays into JSON and then try checking whether the a
 This is often done with regexp or substring matching (e.g. `tags=~".*prod.*"`), which may produce false positives and is usually slow.
 
 If a VictoriaLogs field contains a valid JSON array (for example, `tags=["prod","canary"]`), then it can be filtered with the
-[`json_array_contains` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains-filter). For example:
+[`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter). For example:
 
 ```logsql
-tags:json_array_contains("prod")
+tags:json_array_contains_any("prod")
 ```
 
 See also [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe), which can be used for extracting JSON values into separate fields when needed.
