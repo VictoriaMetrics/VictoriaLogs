@@ -30,6 +30,12 @@ $chart-tooltip-y: -1 * ($padding-global + $chart-tooltip-half-icon);
   &__date {
     white-space: nowrap;
   }
+
+  &-tips {
+    font-size: $font-size-small;
+    text-transform: lowercase;
+    font-style: italic;
+  }
 }
 
 .vm-chart-tooltip {

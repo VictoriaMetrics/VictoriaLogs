@@ -72,8 +72,8 @@ const Popper: FC<PopperProps> = ({
     const needAlignRight = placement === "bottom-right" || placement === "top-right";
     const needAlignTop = placement === "top-left" || placement === "top-right";
 
-    const popperWidth = popperSize.width || 0;
-    const popperHeight = popperSize.height || 0;
+    const popperWidth = popperSize.width || popperRef.current?.offsetWidth || 0;
+    const popperHeight = popperSize.height || popperRef.current?.offsetHeight || 0;
 
     const offsetTop = offset.top || 0;
     const offsetLeft = offset.left || 0;
