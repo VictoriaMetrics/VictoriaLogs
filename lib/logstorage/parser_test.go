@@ -3461,6 +3461,10 @@ func TestQueryClone(t *testing.T) {
 
 	f("*")
 	f("error")
+	f(`"."`)
+	f(`foo:"."`)
+	f(`~"."`)
+	f(`seq(".")`)
 	f("_time:5m error | fields foo, bar")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_any(q:w | fields abc)) as ccc")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_all(q:w | fields abc)) as ccc")

@@ -44,6 +44,7 @@ Released at 2026-02-23
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): change group-by toggle behavior to clear grouping instead of resetting it to `_stream`. See [#1059](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1059).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add stream fields chips to the Log context modal. See [#1065](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1065).
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix panic for valid query `_msg:~"."` in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/). See [#1132](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1132).
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): prevent from `cannot parse already verified regexp` panic when special regexp is passed to [regexp filter](https://docs.victoriametrics.com/victorialogs/logsql/#regexp-filter). See [#1112](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1112).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix markdown parsing for log lines starting with tabs in group view.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix timestamp rendering according to the selected timezone. See [#63](https://github.com/VictoriaMetrics/VictoriaLogs/issues/63).

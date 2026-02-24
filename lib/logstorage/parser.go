@@ -3948,6 +3948,10 @@ func isNumberPrefix(s string) bool {
 }
 
 func needQuoteToken(s string) bool {
+	if s == "." {
+		return true
+	}
+
 	sLower := strings.ToLower(s)
 	if _, ok := reservedKeywords[sLower]; ok {
 		return true
