@@ -99,6 +99,7 @@ publish-via-docker:
 		) \
 		-o type=image \
 		--provenance=false \
+		--sbom=true \
 		-f app/$(APP_NAME)/multiarch/Dockerfile \
 		--push \
 		bin
