@@ -29,7 +29,7 @@ VictoriaLogs integrates with [Bindplane](https://docs.bindplane.com/) via the [B
 
 ![Bindplane Configurations page for creating a new configuration](bindplane-configurations.webp)
 
-Your integration will be complete and ready to send and receive data.
+After that Bindplane will start sending logs to VictoriaLogs, and you can query them with LogsQL.
 
 ![VictoriaLogs pipelines or log view showing data received from Bindplane](bindplane-pipelines.webp)
 
