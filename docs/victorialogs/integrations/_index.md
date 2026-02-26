@@ -12,6 +12,7 @@ VictoriaLogs integrates with many popular monitoring solutions as remote storage
 
 * [Grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/)
 * [Perses](https://docs.victoriametrics.com/victorialogs/integrations/perses/)
+* [Bindplane](https://docs.victoriametrics.com/victorialogs/integrations/bindplane/)
 
 If you think that community will benefit from new integrations, open a [feature request on GitHub](https://github.com/VictoriaMetrics/VictoriaLogs/issues).
 
