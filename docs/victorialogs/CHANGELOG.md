@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* BUGFIX: update Docker image repo and docs labels from `VictoriaMetrics` to `VictoriaLogs`.
+* BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
