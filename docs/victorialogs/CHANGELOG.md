@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* FEATURE: publish SPDX SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/SECURITY.md).
+* FEATURE: publish [SPDX](https://spdx.dev/) SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/SECURITY.md), [#1102](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1102).
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
