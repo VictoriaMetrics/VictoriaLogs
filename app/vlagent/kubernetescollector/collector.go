@@ -28,6 +28,10 @@ type kubernetesCollector struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	// excludeFilter specifies criteria for excluding containers from processing, matched against common metadata fields.
+	// See getCommonFields for available fields.
+	excludeFilter *logstorage.Filter
+
 	// logsPath is the path to the directory containing Kubernetes container logs.
 	// This is typically /var/log/containers in standard Kubernetes deployments,
 	// but may vary depending on the vlagent mount configuration.
@@ -55,18 +59,19 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	}
 
 	kc := &kubernetesCollector{
-		client:      client,
-		currentNode: currentNode,
-		ctx:         ctx,
-		cancel:      cancel,
-		logsPath:    logsPath,
+		client:        client,
+		currentNode:   currentNode,
+		ctx:           ctx,
+		cancel:        cancel,
+		excludeFilter: excludeFilter,
+		logsPath:      logsPath,
 	}
 
 	storage := &remotewrite.Storage{}
 	newProcessor := func(commonFields []logstorage.Field) processor {
 		return newLogFileProcessor(storage, commonFields)
 	}
-	fc := startFileCollector(checkpointsPath, excludeFilter, newProcessor)
+	fc := startFileCollector(checkpointsPath, newProcessor)
 	kc.fileCollector = fc
 
 	pl, err := client.getNodePods(ctx, currentNodeName)
@@ -195,6 +200,10 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	startRead := func(pc podContainer, cs containerStatus) {
 		commonFields := getCommonFields(kc.currentNode, pod, cs)
+		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
+			// Filter matches - skip this container.
+			return
+		}
 
 		filePath := kc.getLogFilePath(pod, pc, cs)
 
