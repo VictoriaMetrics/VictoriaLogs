@@ -23,6 +23,11 @@ according to the following docs:
 ## tip
 
 * FEATURE: publish SPDX SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/SECURITY.md).
+
+## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
+
+Released at 2026-02-25
+
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter) for matching fields containing JSON arrays by the presence of the given values in the array. This is useful for JSON-encoded logs containing fields such as `tags=["prod","canary"]`. See [#853](https://github.com/VictoriaMetrics/VictoriaLogs/issues/853). Thanks to @caicancai for [the pull request #1080](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1080).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`first`](https://docs.victoriametrics.com/victorialogs/logsql/#first-total_stats) and [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-total_stats) functions to [`total_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe). This can be used for analysis of a sequence of events. See [#932](https://github.com/VictoriaMetrics/VictoriaLogs/issues/932).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`any`](https://docs.victoriametrics.com/victorialogs/logsql/#any-stats), [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats) and [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats) functions to [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
@@ -31,6 +36,7 @@ according to the following docs:
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add ability to set the time range by clicking on a graph bar. See [#1057](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1057).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add minimum drag threshold for graph zoom selection. See [#1057](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1057).
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix panic for valid query `_msg:~"."` in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/). See [#1132](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1132).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix autocomplete popper positioning. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix select dropdown width. The regression has been introduced in [v1.46.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.46.0).
 
