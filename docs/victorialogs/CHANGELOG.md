@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: update Docker image repo and docs labels from `VictoriaMetrics` to `VictoriaLogs`.
+
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
 Released at 2026-02-25
