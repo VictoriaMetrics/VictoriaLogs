@@ -98,6 +98,9 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 	bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
 	defer bt.stop()
 
+	// errGone is returned when the current resourceVersion is no longer valid.
+	var errGone = errors.New("gone")
+
 	errorFired := false
 
 	handleEvent := func(event watchEvent) error {
@@ -134,7 +137,7 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 			if errorMessage.Code == http.StatusGone && resourceVersion != "" {
 				// The resourceVersion is no longer valid, see: https://kubernetes.io/docs/reference/using-api/api-concepts/#410-gone-responses
 				resourceVersion = ""
-				return nil
+				return errGone
 			}
 
 			return fmt.Errorf("unexpected error message: %q", event.Object)
@@ -167,6 +170,9 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 			if ctx.Err() != nil {
 				return
 			}
+			if errors.Is(err, errGone) {
+				continue
+			}
 
 			isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
 			if isEOF && time.Since(lastEOF) > time.Minute {
@@ -174,7 +180,6 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 				// This is expected to happen from time to time.
 				// Ignore EOF errors happening not more often than once per minute.
 				lastEOF = time.Now()
-				logger.Errorf("ignoring EOF error from Kubernetes API: %s", err)
 				continue
 			}
 
