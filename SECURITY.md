@@ -14,7 +14,7 @@ for more details.
 
 ## Software Bill of Materials (SBOM)
 
-Every container image published to `docker.io` and
+Every container{{% available_from "#" %}} image published to `docker.io` and
 `quay.io` includes an SPDX SBOM attestation generated
 by BuildKit during `docker buildx build`.
 
