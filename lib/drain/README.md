@@ -1,7 +1,8 @@
 Forked from https://github.com/faceair/drain.
 
 The following changes were made to adapt the library for use in VictoriaLogs:
-
+- **Performance**
+  - Refactored the code to use v2 of the simplelru package which includes performance improvements and leverages Go generics.
 - **Parallel Processing Support**:
   - Added `TrainWithHits(content string, hits uint64)` to support training with pre-aggregated counts.
   - Added `Merge(other *Drain)` to allow merging multiple Drain trees, enabling parallel processing across multiple pipeline shards.
