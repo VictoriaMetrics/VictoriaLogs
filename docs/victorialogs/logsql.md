@@ -1752,6 +1752,7 @@ LogsQL supports the following pipes:
 - [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) calculates various stats over the selected logs.
 - [`stream_context`](https://docs.victoriametrics.com/victorialogs/logsql/#stream_context-pipe) allows selecting surrounding logs before and after the matching logs
   for each [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+- [`template`](https://docs.victoriametrics.com/victorialogs/logsql/#template-pipe) extracts templates from logs with the Drain algorithm.
 - [`time_add`](https://docs.victoriametrics.com/victorialogs/logsql/#time_add-pipe) adds the given duration to the given field containing [RFC3339 time](https://www.rfc-editor.org/rfc/rfc3339).
 - [`top`](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe) returns top `N` field sets with the maximum number of matching logs.
 - [`total_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe) performs total (global) stats calculations over the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -2639,6 +2640,34 @@ See also:
 - [`sample` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sample-pipe)
 - [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe)
 - [`offset` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#offset-pipe)
+- [`template` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#template-pipe)
+
+### template pipe
+
+`<q> | template` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) automatically extracts log templates from the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+returned by the `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) using the [Drain algorithm](https://jiemingzhu.github.io/pub/pjhe_icws2017.pdf).
+
+The `template` pipe performs the following actions:
+1. It normalizes log messages by replacing decimal and hexadecimal numbers, IP addresses, UUIDs, dates, and times with placeholders. This is similar to applying the [`collapse_nums prettify` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe).
+2. It trains the Drain model on the normalized logs.
+3. It returns the discovered log templates by writing them into the processed field.
+
+The `template` pipe has the following syntax:
+`| template [at field] [with hits] [limit N]`
+
+- `at field` - the name of the log field to extract templates from. If omitted, it defaults to the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+- `with hits` - if specified, the output contains an additional `hits` field with the number of log rows matching each template.
+- `limit N` - limits the number of returned templates to `N`. By default, all discovered templates are returned.
+
+For example, the following query returns the most frequently seen templates across log messages for the last hour, along with the number of hits for each template. The templates are stored in the `_msg` field:
+
+```logsql
+_time:1h | template with hits
+```
+
+See also:
+
+- [`collapse_nums` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe)
 
 ### math pipe
 
