@@ -25,7 +25,7 @@ func TestFileCollector(t *testing.T) {
 			return pw
 		}
 
-		fc := startFileCollector(checkpointsPath, nil, newProc)
+		fc := startFileCollector(checkpointsPath, newProc)
 
 		fc.startRead(logFilePath, nil)
 		pw.wait()
@@ -84,7 +84,7 @@ func TestCommitPartialLines(t *testing.T) {
 			return pw
 		}
 
-		fc := startFileCollector(checkpointsPath, nil, newProc)
+		fc := startFileCollector(checkpointsPath, newProc)
 		fc.startRead(logFilePath, nil)
 
 		pw.wait()
@@ -153,7 +153,7 @@ func TestRestoringFromFingerprint(t *testing.T) {
 			_ = f.Sync()
 			_ = f.Close()
 
-			fc := startFileCollector(checkpointsPath, nil, newProc)
+			fc := startFileCollector(checkpointsPath, newProc)
 			fc.startRead(logFilePath, nil)
 			pw.wait()
 			fc.stop()

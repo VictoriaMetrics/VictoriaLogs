@@ -4622,7 +4622,7 @@ with the minimum value at the `minField`.
 For example, the following query returns the `url` value from the log entry with the minimum [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) per each `host`:
 
 ```logsql
-_time:5m | stats by (host) field_max(_time, url) as first_url
+_time:5m | stats by (host) field_min(_time, url) as first_url
 ```
 
 See also:
