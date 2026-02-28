@@ -43,16 +43,7 @@ func (pt *pipeTemplate) String() string {
 }
 
 func (pt *pipeTemplate) splitToRemoteAndLocal(timestamp int64) (pipe, []pipe) {
-	// Important - The Drain algorithm requires pre-processing of
-	// logs by replacing IP addresses, UUIDs, numbers etc. We use
-	// the collapse_nums pipe with the prettify argument to achieve this purpose.
-	// Since collapse_nums is stateless, it can run on the local shard.
-	// On the other hand, Drain requires a global view of the logs and must run
-	// on the remote shard.
-	fieldQuoted := quoteTokenIfNeeded(pt.field)
-	pStr := fmt.Sprintf("collapse_nums prettify at %s", fieldQuoted)
-	pRemote := mustParsePipe(pStr, timestamp)
-	return pRemote, []pipe{pt}
+	return nil, []pipe{pt}
 }
 
 func (pt *pipeTemplate) canLiveTail() bool {
@@ -228,32 +219,6 @@ func (ptp *pipeTemplateProcessor) flush() error {
 	}
 
 	clusters := d.Clusters()
-	// clusterHits := make(map[int]uint64)
-	// for _, hm := range hms {
-	// 	for n, pHits := range hm.u64 {
-	// 		v := fmt.Sprintf("%d", n)
-	// 		v = ptp.collapseAndPrettify(&aTmp, v)
-	// 		c := d.Match(v)
-	// 		if c != nil {
-	// 			clusterHits[c.ID()] += *pHits
-	// 		}
-	// 	}
-	// 	for n, pHits := range hm.negative64 {
-	// 		v := fmt.Sprintf("%d", int64(n))
-	// 		v = ptp.collapseAndPrettify(&aTmp, v)
-	// 		c := d.Match(v)
-	// 		if c != nil {
-	// 			clusterHits[c.ID()] += *pHits
-	// 		}
-	// 	}
-	// 	for k, pHits := range hm.strings {
-	// 		v := ptp.collapseAndPrettify(&aTmp, k)
-	// 		c := d.Match(v)
-	// 		if c != nil {
-	// 			clusterHits[c.ID()] += *pHits
-	// 		}
-	// 	}
-	// }
 
 	// Sort clusters by hits descending
 	sort.Slice(clusters, func(i, j int) bool {
