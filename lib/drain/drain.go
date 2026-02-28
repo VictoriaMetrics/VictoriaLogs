@@ -102,7 +102,7 @@ func DefaultConfig() *Config {
 		SimTh:           0.4,
 		MaxChildren:     100,
 		ParamString:     "<*>",
-		MaxClusters:     10000,
+		MaxClusters:     1000,
 	}
 }
 
