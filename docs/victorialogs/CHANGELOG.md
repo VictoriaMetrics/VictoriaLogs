@@ -24,6 +24,7 @@ according to the following docs:
 
 * BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 * BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): fix spurious `cannot parse WatchEvent json response: EOF` errors in logs. These errors were harmless but could cause confusion when monitoring application health.
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly reject invalid `_stream_id:in` filters without parentheses and prevent panic for `_stream_id:in`. See [#1136](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1136).
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
