@@ -3728,9 +3728,16 @@ func parseFilterStreamIDIn(lex *lexer) (filter, error) {
 	if !lex.isKeyword("in") {
 		return nil, fmt.Errorf("unexpected token %q; expecting 'in'", lex.token)
 	}
+	lexState := lex.backupState()
+	lex.nextToken()
+	if !lex.isKeyword("(") {
+		lex.restoreState(lexState)
+		return nil, fmt.Errorf("cannot parse in()")
+	}
+	lex.restoreState(lexState)
 
 	// Try parsing in(arg1, ..., argN) at first
-	lexState := lex.backupState()
+	lexState = lex.backupState()
 	fs, err := parseFuncArgsPossibleWildcard(lex, "_stream_id", func(args []string) (filter, error) {
 		streamIDs := make([]streamID, len(args))
 		for i, arg := range args {
