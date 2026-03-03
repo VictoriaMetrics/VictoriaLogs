@@ -28,6 +28,10 @@ type kubernetesCollector struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	// excludeFilter specifies criteria for excluding containers from processing, matched against common metadata fields.
+	// See getCommonFields for available fields.
+	excludeFilter *logstorage.Filter
+
 	// logsPath is the path to the directory containing Kubernetes container logs.
 	// This is typically /var/log/containers in standard Kubernetes deployments,
 	// but may vary depending on the vlagent mount configuration.
@@ -55,18 +59,19 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	}
 
 	kc := &kubernetesCollector{
-		client:      client,
-		currentNode: currentNode,
-		ctx:         ctx,
-		cancel:      cancel,
-		logsPath:    logsPath,
+		client:        client,
+		currentNode:   currentNode,
+		ctx:           ctx,
+		cancel:        cancel,
+		excludeFilter: excludeFilter,
+		logsPath:      logsPath,
 	}
 
 	storage := &remotewrite.Storage{}
 	newProcessor := func(commonFields []logstorage.Field) processor {
 		return newLogFileProcessor(storage, commonFields)
 	}
-	fc := startFileCollector(checkpointsPath, excludeFilter, newProcessor)
+	fc := startFileCollector(checkpointsPath, newProcessor)
 	kc.fileCollector = fc
 
 	pl, err := client.getNodePods(ctx, currentNodeName)
@@ -97,6 +102,9 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 	bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
 	defer bt.stop()
+
+	// errGone is returned when the current resourceVersion is no longer valid.
+	var errGone = errors.New("gone")
 
 	errorFired := false
 
@@ -134,7 +142,7 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 			if errorMessage.Code == http.StatusGone && resourceVersion != "" {
 				// The resourceVersion is no longer valid, see: https://kubernetes.io/docs/reference/using-api/api-concepts/#410-gone-responses
 				resourceVersion = ""
-				return nil
+				return errGone
 			}
 
 			return fmt.Errorf("unexpected error message: %q", event.Object)
@@ -167,6 +175,9 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 			if ctx.Err() != nil {
 				return
 			}
+			if errors.Is(err, errGone) {
+				continue
+			}
 
 			isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
 			if isEOF && time.Since(lastEOF) > time.Minute {
@@ -189,6 +200,10 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	startRead := func(pc podContainer, cs containerStatus) {
 		commonFields := getCommonFields(kc.currentNode, pod, cs)
+		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
+			// Filter matches - skip this container.
+			return
+		}
 
 		filePath := kc.getLogFilePath(pod, pc, cs)
 

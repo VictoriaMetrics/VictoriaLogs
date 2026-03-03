@@ -39,13 +39,6 @@ type fileCollector struct {
 	logFiles     map[string]struct{}
 	logFilesLock sync.Mutex
 
-	// excludeFilter defines the criteria for excluding log files from processing.
-	// It matches against common metadata fields associated with the log source,
-	// such as 'kubernetes.container_name', 'kubernetes.pod_node_name', or 'kubernetes.pod_namespace'.
-	//
-	// See getCommonFields for the full list of available metadata fields.
-	excludeFilter *logstorage.Filter
-
 	newProcessor func(commonFields []logstorage.Field) processor
 
 	checkpointsDB *checkpointsDB
@@ -60,7 +53,7 @@ type fileCollector struct {
 // The fileCollector maintains a checkpoint file that serves as persistent state storage.
 // This allows resuming log reading from the exact position where it was interrupted
 // when vlagent is restarted, preventing duplication.
-func startFileCollector(checkpointsPath string, excludeFilter *logstorage.Filter, newProcessor func(commonFields []logstorage.Field) processor) *fileCollector {
+func startFileCollector(checkpointsPath string, newProcessor func(commonFields []logstorage.Field) processor) *fileCollector {
 	checkpointsDB, err := startCheckpointsDB(checkpointsPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot start checkpoints DB: %s", err)
@@ -68,7 +61,6 @@ func startFileCollector(checkpointsPath string, excludeFilter *logstorage.Filter
 
 	return &fileCollector{
 		logFiles:      make(map[string]struct{}),
-		excludeFilter: excludeFilter,
 		newProcessor:  newProcessor,
 		checkpointsDB: checkpointsDB,
 		stopCh:        make(chan struct{}),
@@ -180,12 +172,6 @@ func getFileFingerprint(f *os.File) uint64 {
 
 func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 	defer lf.close()
-
-	if fc.excludeFilter != nil && fc.excludeFilter.MatchRow(commonFields) {
-		// Filter matches - skip this file.
-		fc.forgetFile(lf.path)
-		return
-	}
 
 	bt := newBackoffTimer(time.Millisecond*100, time.Second*10)
 	defer bt.stop()

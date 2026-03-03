@@ -1574,12 +1574,12 @@ func TestParseQuery_Success(t *testing.T) {
 	f("i-foo", `"i-foo"`)
 	f("a:i-foo", `a:"i-foo"`)
 	f("i-foo:b", `"i-foo":b`)
-	f("in", `"in"`)
-	f("in:a", `"in":a`)
-	f("in-foo", `"in-foo"`)
-	f("a:in", `a:"in"`)
-	f("a:in-foo", `a:"in-foo"`)
-	f("in-foo:b", `"in-foo":b`)
+	f(`"in"`, `"in"`)
+	f(`"in":a`, `"in":a`)
+	f("`in-foo`", `"in-foo"`)
+	f("a:`in`", `a:"in"`)
+	f("a:`in-foo`", `a:"in-foo"`)
+	f("`in-foo`:b", `"in-foo":b`)
 	f("ipv4_range", `"ipv4_range"`)
 	f("ipv4_range:a", `"ipv4_range":a`)
 	f("ipv4_range-foo", `"ipv4_range-foo"`)
@@ -2435,6 +2435,11 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_stream_id:in(foo | bar)")
 	f("_stream_id:in(* | stats by (x) count() y)")
 
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1136
+	f("_stream_id:in")
+	f("_stream_id:in(")
+	f("_stream_id:in(foo")
+
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/717
 	f(`"_stream_id":=""`)
 
@@ -2591,6 +2596,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`json_array_contains_any(foo bar)`)
 
 	// invalid in
+	f(`in`)
+	f(`a:in`)
 	f(`in(`)
 	f(`in(,)`)
 	f(`in(f, b c)`)
@@ -2607,6 +2614,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`in(x | fields a,b)`)
 
 	// invalid contains_any
+	f(`contains_any`)
+	f(`a:contains_any`)
 	f(`contains_any(`)
 	f(`contains_any(,)`)
 	f(`contains_any(f, b c)`)
@@ -2623,6 +2632,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`contains_any(x | fields a,b)`)
 
 	// invalid contains_all
+	f(`contains_all`)
+	f(`a:contains_all`)
 	f(`contains_all(`)
 	f(`contains_all(,)`)
 	f(`contains_all(f, b c)`)

@@ -2216,10 +2216,8 @@ func parseAnyCaseFilter(lex *lexer, fieldName string) (filter, error) {
 func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg string, isPrefiFilter bool) (filter, error)) (filter, error) {
 	lexState := lex.backupState()
 
-	funcName, err := lex.nextCompoundToken()
-	if err != nil {
-		return nil, err
-	}
+	funcName := lex.token
+	lex.nextToken()
 
 	if !lex.isKeyword("(") {
 		lex.restoreState(lexState)
@@ -2863,10 +2861,8 @@ func tryParseFilterLTString(lex *lexer, fieldName, op string, includeMaxValue bo
 func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
 	lexState := lex.backupState()
 
-	funcName, err := lex.nextCompoundToken()
-	if err != nil {
-		return nil, err
-	}
+	funcName := lex.token
+	lex.nextToken()
 
 	// Parse minValue
 	includeMinValue := false
@@ -2959,10 +2955,8 @@ func parseFuncArg(lex *lexer, fieldName string, callback func(funcName, arg stri
 func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, args []string) (filter, error)) (filter, error) {
 	lexState := lex.backupState()
 
-	funcName, err := lex.nextCompoundToken()
-	if err != nil {
-		return nil, err
-	}
+	funcName := lex.token
+	lex.nextToken()
 
 	if !lex.isKeyword("(") {
 		lex.restoreState(lexState)
@@ -2978,16 +2972,11 @@ func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, 
 }
 
 func parseFuncArgsPossibleWildcard(lex *lexer, fieldName string, callback func(args []string) (filter, error)) (filter, error) {
-	lexState := lex.backupState()
-
-	funcName, err := lex.nextCompoundToken()
-	if err != nil {
-		return nil, err
-	}
+	funcName := lex.token
+	lex.nextToken()
 
 	if !lex.isKeyword("(") {
-		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
 	}
 
 	args, isWildcard, err := parseArgsInParensPossibleWildcard(lex)

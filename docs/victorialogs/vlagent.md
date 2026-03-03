@@ -180,6 +180,41 @@ Example usage:
 This command starts `vlagent` with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true`
 and skips all logs from the `test` and `logging` namespaces.
 
+### Excluding vlagent's own logs
+
+When `vlagent` runs as a log collector, it collects its own logs by default.
+
+To exclude the current `vlagent` Pod from collection, use the [exclude filter](https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs)
+with the `HOSTNAME` environment variable, which Kubernetes sets to the Pod name automatically:
+
+```sh
+./vlagent-prod -kubernetesCollector \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native \
+  -envflag.enable \
+  -kubernetesCollector.excludeFilter='kubernetes.pod_name:=%{HOSTNAME}'
+```
+
+`-envflag.enable` instructs vlagent to expand `%{VAR}` placeholders in flag values from the process environment,
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables).
+
+Make sure the `HOSTNAME` environment variable is set in the container - Kubernetes sets it automatically.
+If this environment variable is not set, set it explicitly:
+
+```yaml
+containers:
+  - name: vlagent
+    # ...
+    args:
+      - -kubernetesCollector
+      - -remoteWrite.url=http://victoria-logs:9428/insert/native
+      - -kubernetesCollector.excludeFilter=kubernetes.pod_name:=%{HOSTNAME}
+    env:
+      - name: HOSTNAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+```
+
 ### Kubernetes metadata configuration
 
 `vlagent` automatically enriches collected logs with Kubernetes metadata.
@@ -192,6 +227,118 @@ You can control which metadata fields are attached to every log entry using the 
 
 Note that `vlagent` does not update node or pod labels during runtime.
 Therefore, if node/pod metadata changes, you must restart `vlagent` to apply those changes.
+
+## Security and TLS
+
+By default, `vlagent` communicates with remote storage over plain HTTP.
+To enable TLS and authentication, follow the instructions below.
+
+### TLS for remote write
+
+To send logs to VictoriaLogs over HTTPS, simply use `https://` in `-remoteWrite.url`.
+Additional flags control certificate verification:
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=https://victoria-logs-host:9428/insert/native \
+  -remoteWrite.tlsCAFile=/etc/ssl/certs/ca.crt \
+  -remoteWrite.tlsCertFile=/etc/vlagent/client.crt \
+  -remoteWrite.tlsKeyFile=/etc/vlagent/client.key
+```
+
+Flag reference:
+
+- `-remoteWrite.tlsCAFile` - path to the CA certificate for verifying the remote server's certificate.
+- `-remoteWrite.tlsCertFile` - path to the client certificate for mutual TLS (mTLS).
+- `-remoteWrite.tlsKeyFile` - path to the private key for the client certificate.
+- `-remoteWrite.tlsInsecureSkipVerify` - disables server certificate verification. **Do not use in production.**
+
+Each flag can be specified individually per `-remoteWrite.url` (position-matched, same as `-remoteWrite.format`):
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=https://victoria-logs-primary:9428/insert/native \
+  -remoteWrite.tlsCAFile=/etc/ssl/certs/ca.crt \
+  -remoteWrite.url=https://victoria-logs-replica:9428/insert/native \
+  -remoteWrite.tlsCAFile=/etc/ssl/certs/ca-replica.crt
+```
+
+### TLS for the HTTP listener
+
+To secure the port that `vlagent` itself listens on (default `9429`) - for example,
+when log collectors send logs to `vlagent` over the network - pass the following flags:
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=https://victoria-logs-host:9428/insert/native \
+  -tls \
+  -tlsCertFile=/etc/vlagent/server.crt \
+  -tlsKeyFile=/etc/vlagent/server.key
+```
+
+It is recommended using [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) in front of `vlagent`
+as TLS termination proxy according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy).
+
+### Basic authentication
+
+`vlagent` supports HTTP Basic Auth both for incoming requests and for outgoing remote write connections.
+
+**Incoming requests** (protecting `vlagent`'s own HTTP listener):
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native \
+  -httpAuth.username=ingest \
+  -httpAuth.password=secret
+```
+
+**Outgoing remote write** (authenticating against VictoriaLogs or another destination):
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native \
+  -remoteWrite.basicAuth.username=vlagent \
+  -remoteWrite.basicAuth.password=secret
+```
+
+Passwords can also be read from a file to avoid exposing them in the process list:
+
+```sh
+-remoteWrite.basicAuth.passwordFile=/etc/vlagent/remote-password.txt
+```
+
+The provided password is automatically reloaded when the file changes.
+
+It is recommended to use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for authentication and authorization
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#basic-auth-proxy).
+
+### Bearer token authentication
+
+```sh
+./vlagent-prod \
+  -remoteWrite.url=https://victoria-logs:9428/insert/native \
+  -remoteWrite.bearerToken=secret
+```
+
+Or from a file:
+
+```sh
+-remoteWrite.bearerTokenFile=/etc/vlagent/token.txt
+```
+
+The provided Bearer token is automatically reloaded when the file changes.
+
+It is recommended to use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for authentication and authorization
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#bearer-token-auth-proxy).
+
+### Security recommendations for Kubernetes
+
+- Store TLS certificates and auth credentials in [Kubernetes Secrets](https://kubernetes.io/docs/concepts/configuration/secret/),
+  not in ConfigMaps or environment variables.
+- Mount secrets as files and reference them via `*File` flags (`-remoteWrite.bearerTokenFile`, `-remoteWrite.basicAuth.passwordFile`, etc.)
+  rather than passing values directly as flag arguments.
+- Use `-remoteWrite.showURL=false` (the default) to prevent sensitive URL parameters such as tokens or passwords
+  from appearing in logs and on the debug endpoints like `/metrics` and `/debug/pprof/*`
 
 ## remote write format
 
@@ -304,7 +451,7 @@ so that the exported metrics may be analyzed later.
 See [the description of the most important metrics exposed by `vlagent`](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/).
 
 Use [the official Grafana dashboard for `vlagent` state overview](https://grafana.com/grafana/dashboards/24513).
-Graphs on this dashboard contain useful hints — hover the `i` icon at the top left corner of each graph in order to read them.
+Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
 
 We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)

@@ -32,6 +32,7 @@ Kubernetes Deployment and Production:
 
 Integration and Data Collection:
 
+* [GDPR-compliant website analytics with nginx, VictoriaLogs and Grafana](https://ayedo.de/posts/dsgvo-konforme-website-analytics-mit-nginx-victorialogs-und-grafana/)
 * [Vector.dev: introduction, AWS S3 logs, and integration with VictoriaLogs](https://itnext.io/vector-dev-introduction-aws-s3-logs-and-integration-with-victorialogs-d3585d7d9218)
 * [Using Vector and VictoriaLogs for Collect Switch Syslog](https://blog.vitalvas.com/post/2024/12/02/using-vector-and-victorialogs-for-collect-switch-syslog/)
 * [How to Extend Percona Monitoring and Management to Add Logging Functionality](https://www.percona.com/blog/how-to-extend-percona-monitoring-and-management-to-add-logging-functionality/)

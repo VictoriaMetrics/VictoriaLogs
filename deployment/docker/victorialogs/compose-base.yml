@@ -51,7 +51,7 @@ services:
       replicas: 1
 
   vlagent:
-    image: victoriametrics/vlagent:v1.41.0
+    image: victoriametrics/vlagent:v1.47.0
     volumes:
       - vlagent:/vlagent
     command:
