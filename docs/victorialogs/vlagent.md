@@ -180,6 +180,41 @@ Example usage:
 This command starts `vlagent` with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true`
 and skips all logs from the `test` and `logging` namespaces.
 
+### Excluding vlagent's own logs
+
+When `vlagent` runs as a log collector, it collects its own logs by default.
+
+To exclude the current `vlagent` Pod from collection, use the [exclude filter](https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs)
+with the `HOSTNAME` environment variable, which Kubernetes sets to the Pod name automatically:
+
+```sh
+./vlagent-prod -kubernetesCollector \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native \
+  -envflag.enable \
+  -kubernetesCollector.excludeFilter='kubernetes.pod_name:=%{HOSTNAME}'
+```
+
+`-envflag.enable` instructs vlagent to expand `%{VAR}` placeholders in flag values from the process environment,
+according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables).
+
+Make sure the `HOSTNAME` environment variable is set in the container - Kubernetes sets it automatically.
+If this environment variable is not set, set it explicitly:
+
+```yaml
+containers:
+  - name: vlagent
+    # ...
+    args:
+      - -kubernetesCollector
+      - -remoteWrite.url=http://victoria-logs:9428/insert/native
+      - -kubernetesCollector.excludeFilter=kubernetes.pod_name:=%{HOSTNAME}
+    env:
+      - name: HOSTNAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+```
+
 ### Kubernetes metadata configuration
 
 `vlagent` automatically enriches collected logs with Kubernetes metadata.
