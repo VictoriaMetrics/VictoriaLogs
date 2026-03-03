@@ -4455,3 +4455,561 @@ func TestTryParseIPv6CIDR_Failure(t *testing.T) {
 	// Too big mask
 	f("::1/129")
 }
+
+func FuzzParseQuery(f *testing.F) {
+	seeds := []string{
+		// Empty and wildcard
+		"",
+		"*",
+		// Word and phrase searches
+		"error",
+		"cannot open file",
+		`"cannot open"`,
+		"err*",
+		"_msg:err*",
+		"level:error",
+		`level:"error"`,
+		`level:""`,
+		`_msg:""`,
+		// Logical operators
+		"error AND warning",
+		"error OR warning",
+		"NOT error",
+		"!error",
+		"-error",
+		"error AND NOT warning",
+		"(error OR warning) AND host:myhost",
+		"foo OR bar AND baz",
+		"foo bar or baz xyz",
+		"!(foo or bar)",
+		`!(foo bar or baz and not aa*)`,
+		"(foo or bar) (baz or xyz)",
+		"NOT NOT NOT error",
+		"NOT NOT NOT NOT NOT NOT error",
+		"* AND *",
+		"* OR *",
+		// Fields filters
+		// Relative durations
+		"_time:5m",
+		"_time:1h",
+		"_time:1d",
+		"_time:1w",
+		"_time:2d3h5.5m3s45ms",
+		// Comparisons with relative duration
+		"_time:<5m",
+		"_time:>5m",
+		"_time:=2d",
+		"_time:<=2d",
+		"_time:>=2d",
+		// Relative duration with offset
+		"_time:1h offset 30m",
+		"_time:1d offset 1h",
+		"_time:offset 1d",
+		"_time:offset -1.5d",
+		// now keyword
+		"_time:now",
+		"_time:>now",
+		"_time:>=now",
+		"_time:<=now",
+		"_time:<now",
+		// Absolute timestamps
+		"_time:2024",
+		"_time:2024Z",
+		"_time:2023-01-01",
+		"_time:2023-01-01Z",
+		"_time:2023-01-01T00:00:00Z",
+		"_time:2023-01-02T04:05:06.789Z",
+		"_time:2023-01-02T04:05:06.789-02:30",
+		"_time:2024-01-02T10:20:40+03:30",
+		// Comparisons with absolute timestamps
+		"_time:=2023-01-02T04:05:06.789+02:30",
+		"_time:<2023-01-02T04:05:06.789+02:30",
+		"_time:>2023-01-02T04:05:06.789+02:30",
+		// Ranges with relative endpoints
+		"_time:[-5m,now)",
+		"_time:(now-1h,now-5m34s5ms]",
+		// Ranges with absolute endpoints
+		"_time:[2023, 2023-01)",
+		"_time:[2023-01-02, 2023-02-03T04)",
+		"_time:[2023-01-02T04:05, 2023-02-03T04:05:06)",
+		"_time:[2023-01-02T04:05:06Z, 2023-02-03T04:05:06.234Z)",
+		"_time:[2023-01-02T04:05:06+02:30, 2023-02-03T04:05:06.234-02:45)",
+		"_time:[1234567890, 1400000000]",
+		"_time:[2023-01-01, 2023-06-01]",
+		"_time:[2023-01-01Z, 2023-06-01Z)",
+		// Ranges with offset
+		"_time:[2023-01-05, 2023-01-06] OFFset 5m",
+		"_time:(2023-01-05, 2023-01-06) OFFset 5m",
+		// Day and week sub-ranges
+		"_time:day_range[08:00, 20:30)",
+		"_time:day_range(08:00, 20:30)",
+		"_time:day_range[08:00, 20:30]",
+		"_time:day_range[08:00, 20:30] offset 2.5h",
+		"_time:day_range[08:00, 20:30] offset -2.5h",
+		"_time:week_range[Mon, Fri]",
+		"_time:week_range(Monday, Friday] offset 2.5h",
+		"_time:week_range[monday, friday) offset -2.5h",
+		"_time:week_range(mon, fri]",
+		// Combined day and week sub-ranges with outer time range
+		"_time:4w _time:week_range[Mon, Fri] _time:day_range[08:00, 18:00)",
+		// Stream filter
+		"_stream:{}",
+		`_stream:{foo="bar"}`,
+		`_stream:{foo="bar", baz=~"x"}`,
+		`{app="myapp"}`,
+		`{app="myapp", host="host123"}`,
+		`{app=~"my.*"}`,
+		`{app!="badapp"}`,
+		// Regex
+		`re(".")`,
+		`re(foo)`,
+		`re("foo.+|bar.*")`,
+		`~".*"`,
+		`~".+"`,
+		`foo:~"~foo~ba/ba>z"`,
+		"_msg:~error.*",
+		`level:~"(error|warn)"`,
+		// range filter
+		"response_size:range[1KB, 10MiB]",
+		"response_size:range[10, inf]",
+		"duration:range[100ns, 1y2w2.5m3s5ms]",
+		"duration:range[1, 100]",
+		"status:range[200, 299]",
+		">=10",
+		"<=10",
+		"foo:>10.43",
+		"foo:>=10.43",
+		"foo:<10.43",
+		"foo:<=10.43",
+		"status:>500",
+		"status:<200",
+		// len_range filter
+		"foo:len_range(2, 20)",
+		"foo:len_range(0, 10)",
+		"_msg:len_range(1, inf)",
+		// IP filter
+		"ipv4_range(1.2.3.4, 5.6.7.8)",
+		"ipv4_range(1.2.3.4/20)",
+		"ipv4_range(1.2.3.4/0)",
+		"ip:ipv4_range(1.2.3.0, 1.2.3.255)",
+		"ip:ipv4_range(192.168.0.0/24)",
+		"ipv6_range(::1, ::2)",
+		"ipv6_range(2001:db8::/126)",
+		// string_range filter
+		"string_range(foo, bar)",
+		`foo:string_range("foo,bar", "baz) !")`,
+		">foo",
+		"x:>=foo",
+		"x:<foo",
+		`<="123.456.789"`,
+		// exact filter
+		"exact(foo)",
+		"exact(foo*)",
+		"exact('foo bar),|baz')",
+		"exact('foo bar),|baz'*)",
+		`="foo/bar"`,
+		`="foo=bar"`,
+		`!="b<=a>z"`,
+		`="=foo"`,
+		`=">=bar"`,
+		`x:="=a<b"*`,
+		// case-insensitive filter
+		`i("")`,
+		"i(foo)",
+		"i(*)",
+		"i(foo*)",
+		`abc-de.fg:i(foo-bar+baz)`,
+		// seq filter
+		"seq()",
+		"foo:seq(foo)",
+		`_msg:seq("foo bar,baz")`,
+		`seq(foo,bar-baz.aa/bb+,"c,)d")`,
+		// in filter
+		"in()",
+		"foo:in(foo)",
+		`in("foo bar,baz")`,
+		`ip:in(1.2.3.4, 5.6.7.8, 9.10.11.12)`,
+		`foo-bar:in(foo,bar-baz.aa,"bb","c,)d")`,
+		"in(*)",
+		"contains_any()",
+		"foo:contains_any(foo)",
+		"contains_all()",
+		"foo:contains_all(foo)",
+		"contains_common_case(foo)",
+		`contains_common_case(foo, 'bar,baz')`,
+		"equals_common_case(foo)",
+		// subqueries
+		"in(x|fields foo)",
+		"a:in(* | fields bar)",
+		"foo:in(bar | filter baz | sort (a) | offset 10 | limit 20 | keep x)",
+		// Field comparison filter
+		"eq_field(foo)",
+		"le_field(foo)",
+		"lt_field(foo)",
+		`"a":eq_field('b')`,
+		"-eq_field(a)",
+		"a:!eq_field(b)",
+		// value_type filter
+		"value_type(foo)",
+		`foo:value_type('dict')`,
+		`z:value_type("string")`,
+		// pattern_match filter
+		`pattern_match("<N> foo <DATE>, bar")`,
+		`pattern_match_full("<N> foo <DATE>, bar")`,
+		`pattern_match_prefix("<N> foo <DATE>, bar")`,
+		`pattern_match_suffix("foo <IP>")`,
+		// Complex logical queries
+		"foo or bar:in(baz)",
+		"foo or bar:contains_any(baz)",
+		"foo or bar:contains_all(baz)",
+		`_time:[-1h, now] _stream:{job="foo",env=~"prod|staging"} level:(error or warn*) and not "connection reset by peer"`,
+		`(_time:(2023-04-20, now] or _time:[-10m, -1m]) and (_stream:{job="a"} or _stream:{instance!="b"}) and (err* or ip:(ipv4_range(1.2.3.0, 1.2.3.255) and not 1.2.3.4))`,
+		"(((())))",
+		"((error))",
+		// fields pipe
+		"* | fields *",
+		"* | fields bar",
+		`foo | FIELDS bar,Baz  , "a,b|c"`,
+		"* | keep foo, bar",
+		// filter pipe
+		"* | filter error ip:12.3.4.5 or warn",
+		"* | where level:error",
+		"foo | stats by (host) count() logs | filter logs:>50 | sort by (logs desc) | limit 10",
+		// sort pipe
+		"foo | sort",
+		"foo | sort desc",
+		"foo | sort by()",
+		"foo | sort bY (foo)",
+		"foo | sORt bY (_time, _stream DEsc, host)",
+		"foo | sort bY (foo desc, bar,) desc",
+		"foo | sort limit 10",
+		"foo | sort offset 20 limit 10",
+		"foo | sort desc offset 20 limit 10",
+		"foo | sort by (foo desc, bar) desc limit 10 OFFSET 30",
+		`foo | SORT BY (foo desc, bar) limit 10 PARTItion (abc, def) oFFset 30 rank abc`,
+		"error | sort by (_time)",
+		"error | sort by (_time) desc",
+		// first pipe
+		"* | first",
+		"* | first rank as x",
+		"* | first by (x,y)",
+		"* | first 10 by (foo)",
+		"* | first 10 by (foo) rank bar",
+		"* | first 10 by (foo) partition (a,b) rank bar",
+		"* | last",
+		"* | last 10 by (foo)",
+		"* | last 10 by (foo) partition (a,b) rank bar",
+		// top pipe
+		"* | top by (x)",
+		"* | top 5 by (x)",
+		"* | top by (x, y)",
+		"* | top by (x) rank as foo",
+		"* | top by (x) hits as abc",
+		// uniq pipe
+		"* | uniq foo",
+		"* | uniq foo,bar",
+		"* | uniq by(f1,f2)",
+		"* | uniq by(f1,f2) limit 10",
+		// limit pipe
+		"error | limit 10",
+		"foo | limit",
+		"foo | head",
+		"foo | HEAD 1_123_432",
+		"foo | head 10K",
+		"foo | limit 100 | limit 10 | limit 234",
+		"foo | skip 10",
+		"foo | offset 10",
+		"foo | offset 10 | offset 100",
+		"* | offset 0",
+		"* | offset 0 limit 10",
+		"* | offset 10 limit 30",
+		"* | limit 10 offset 20",
+		"* | skip 100 | head 20 | skip 10",
+		// copy pipe
+		"* | copy foo as bar",
+		"* | cp foo bar",
+		"* | COPY foo as bar, x y | Copy a as b",
+		"* | rename foo as bar",
+		"* | mv foo bar",
+		"* | RENAME foo AS bar, x y | Rename a as b",
+		"* | delete foo",
+		"* | del foo",
+		"* | rm foo",
+		"* | DROP foo",
+		"* | DELETE foo, bar",
+		// len pipe
+		"* | len(x)",
+		"* | len(x) as _msg",
+		"* | len(x) y",
+		"* | hash(x)",
+		"* | hash(x) y",
+		// extract pipe
+		`* | extract "foo<bar>baz"`,
+		`* | extract "foo<bar>baz" from x`,
+		`* | extract if (a:b) 'foo<bar>baz' from x`,
+		`_time:5m | extract "user=<user>, id=<id>"`,
+		// extract_regexp pipe
+		`* | extract_regexp "foo(?P<bar>.*)"`,
+		`* | extract_regexp "foo(?P<bar>.*)" from x`,
+		`* | extract_regexp if (x:y) "foo(?P<bar>.*)" from baz`,
+		`* | extract_regexp "foo(?P<bar>.*)" skip_empty_results`,
+		// unpack_json pipe
+		"* | unpack_json",
+		"* | unpack_json result_prefix y",
+		"* | unpack_json from x",
+		"* | unpack_json from x result_prefix y",
+		`_time:5m | unpack_json fields (user, level)`,
+		"* | json_array_len x",
+		"* | json_array_len x y",
+		// unpack_logfmt pipe
+		"* | unpack_logfmt",
+		"* | unpack_logfmt result_prefix y",
+		"* | unpack_logfmt from x",
+		"* | unpack_logfmt from x result_prefix y",
+		// unpack_syslog pipe
+		"* | unpack_syslog",
+		"* | unpack_syslog from x",
+		"* | unpack_syslog result_prefix abc",
+		"* | unpack_syslog offset 6h30m",
+		// unpack_words pipe
+		"* | unpack_words",
+		"* | unpack_words x y",
+		// split pipe
+		`* | split ","`,
+		`* | split "," from x`,
+		`* | split "," from x as y`,
+		// pack_json pipe
+		"* | pack_json",
+		"* | pack_json as x",
+		"* | pack_json fields (a, b) as x",
+		// pack_logfmt pipe
+		"* | pack_logfmt",
+		"* | pack_logfmt as x",
+		"* | pack_logfmt fields (a, b) as x",
+		// format pipe
+		`* | format "foo<bar>"`,
+		`* | format "<foo>bar<baz>" as x skip_empty_results`,
+		`* | format if (x:y) "bar<baz><xyz>bac" keep_original_fields`,
+		// replace pipe
+		`* | replace (foo, bar)`,
+		`* | replace (" ", "") at x`,
+		`* | replace if (x:y) ("-", ":") at a`,
+		`* | replace (" ", "") at x limit 10`,
+		// replace_regexp pipe
+		`* | replace_regexp (foo, bar)`,
+		`* | replace_regexp ("foo[^ ]+bar|baz", "bar${1}x$0")`,
+		`* | replace_regexp ("[_/]", "-") at foo limit 100`,
+		// math pipe
+		"* | math round(x / 1000) as y",
+		"* | eval b+1 as a",
+		"_time:1d | stats max(_time) as max_t | math round((now() - max_t) / 1s) as age",
+		// stats pipe
+		"* | count() rows",
+		"* | sum(x) y",
+		"* | max(x) y",
+		"* | min(x) y",
+		"* | avg(x) y",
+		"* | median(x) y",
+		"* | count_uniq(x) y",
+		"* | count_empty(x) y",
+		"* | uniq_values(x) y",
+		"* | histogram(x) y",
+		"* | quantile(0.5, x) y",
+		"* | stats rate() as x",
+		"* | stats rate_sum(a) as x",
+		"* | stats sum_len(a) as x",
+		"* | stats values(a) as x",
+		"* | stats json_values(a) as x",
+		"* | stats row_any(a) as x",
+		"* | stats row_min(foo, bar) as x",
+		"* | stats row_max(foo, bar) as x",
+		// stats pipe with grouping
+		"* | stats by (foo, b.a/r) count(*) XYz",
+		"* | stats count(foo*,bar) x",
+		"* | stats by(x, y) count_uniq(foo,bar) LiMit 10 As baz",
+		"* | stats by (x, y) count(*) foo, count_uniq(a, b) bar",
+		"* | stats by(_time : 1d, response_size:1_000KiB) count() as bar",
+		"*|stats by(client_ip:/24, server_ip:/16) count() foo",
+		"* | stats by(_time: 1d offset 2h) count() as foo",
+		"* | stats by (_time:nanosecond) count() foo",
+		"* | stats by (_time:minute) count() foo",
+		"* | stats by (_time:hour) count() foo",
+		"* | stats by (_time:day) count() foo",
+		"* | stats by (_time:week) count() foo",
+		"* | stats by (_time:month) count() foo",
+		"* | stats by (_time:year offset 6.5h) count() foo",
+		"_time:5m | stats count() as total",
+		"_time:5m | stats count() by (level)",
+		"_time:5m | stats count() by (host, level)",
+		"_time:5m error | stats by (level) count() rows",
+		// Conditional stats
+		"* | stats count() if (foo bar) rows",
+		"* | stats count() if () rows",
+		"* | stats count(x) if (error ip:in(_time:1d | fields ip)) rows",
+		// running_stats pipe
+		"* | running_stats count() x",
+		"* | running_stats by (x, y) sum(qwe) as b, min(x)",
+		"* | total_stats count() x",
+		"* | total_stats by (x, y) sum(qwe) as b, min(x)",
+		// join pipe
+		"* | join by (x) (foo:bar)",
+		"* | join on (x, y) (foo:bar)",
+		`* | join by (x) ({foo=bar} {baz=x})`,
+		"* | union(foo)",
+		"* | union(foo | union(bar baz | count() x))",
+		`{instance=~"host-1.+"} | union ({instance=~"host-2.+"})`,
+		"* | union (options(ignore_global_time_filter=true) bar)",
+		// stream_context pipe
+		`"message 3 at block 1" | stream_context before 0`,
+		`"message 3 at block 1" | stream_context before 1 after 1`,
+		`"message 4" | stream_context before 1000 after 1000`,
+		// sample pipe
+		"* | sample 10",
+		"* | collapse_nums",
+		"* | collapse_nums at x",
+		"* | collapse_nums if (x:y) at foo",
+		"* | query_stats",
+		"* | count() x | query_stats",
+		// facets pipe
+		"* | facets",
+		"* | facets 12",
+		"* | facets 12 max_values_per_field 20_000",
+		"foo | field_names as x",
+		"foo | field_names",
+		"* | field_values x",
+		"foo | block_stats",
+		"foo | blocks_count as x",
+		// decolorize pipe
+		"* | decolorize",
+		"* | decolorize foo",
+		// drop_empty_fields pipe
+		"* | drop_empty_fields",
+		// unroll pipe
+		"* | unroll by (foo)",
+		"* | unroll by (foo, bar)",
+		"* | unroll if (x:y) by (foo, bar)",
+		// time_add pipe
+		"* | time_add 1h",
+		"* | time_add -1d at abc",
+		"* | time_add 1h at foo",
+		// generate_sequence pipe
+		"* | generate_sequence 1",
+		"* | generate_sequence 123456789",
+		// set_stream_fields pipe
+		"* | set_stream_fields foo",
+		"* | set_stream_fields foo, bar",
+		// options
+		"options(time_offset=1h) *",
+		"options(time_offset = -1.5h) _time:2024Z",
+		"options(ignore_global_time_filter=true) *",
+		"options(allow_partial_response=true) * | count() x",
+		"options(concurrency=10) foo | count() c",
+		"options(parallel_readers=4) *",
+		"options(time_offset=1h) id:in(_time:2025Z | keep id)",
+		// Complex combined queries
+		"error | fields _time, _msg, level",
+		`* | extract "host-<host>:" from instance | uniq (host) with hits | sort by (host)`,
+		"* | fields foo, bar | limit 100 | stats by(foo,bar) count(baz) as qwert",
+		"* | sort by (x) limit 30",
+		"* | sort by (x) offset 10 limit 30",
+		"* | sort by (x) limit 30 limit 20",
+
+		// Incomplete time filters
+		"_time:",
+		"_time:offset",
+		"_time:day_range[]",
+		"_time:week_range[]",
+		"_time:[]",
+		"_time:[,]",
+		"_time:abc",
+		// Incomplete or malformed filters
+		"exact()",
+		"in(",
+		"seq(",
+		"re(",
+		"ipv6_range()",
+		"ip:ipv4_range()",
+		"ip:ipv4_range(999.999.999.999)",
+		"range[]",
+		"options()",
+		"options(unknown_option=1) *",
+		// Incomplete pipes
+		"* | join",
+		"* | union",
+		"* | first by",
+		"* | sort by",
+		"* | stats by",
+		"* | extract",
+		"* | unpack_json from",
+		"* | copy",
+		"* | rename",
+		"* | split",
+		"* | stream_context",
+		"* | running_stats",
+		"* | total_stats",
+		"|fields x",
+		"| limit 10",
+		"error |",
+		"error | | limit",
+		"foo||bar",
+		// Structural errors
+		"(",
+		")",
+		"{",
+		"}",
+		`{app=}`,
+		`{="value"}`,
+		`"unclosed string`,
+		"`unclosed backtick",
+		// Operator-only inputs
+		"AND",
+		"OR",
+		"NOT",
+		"|",
+		"AND OR NOT",
+		// Invalid UTF-8
+		"\x00",
+		"\xff\xfe",
+		"\x00\x01\x02\x03",
+		string([]byte{0xc0, 0x80}),
+	}
+
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, query string) {
+		errsCh := make(chan error)
+		go func() {
+			defer close(errsCh)
+
+			q1, err := ParseQuery(query)
+			if err != nil {
+				// It is expected that some queries will fail to parse.
+				return
+			}
+			s1 := q1.String()
+
+			q2, err := ParseQuery(s1)
+			if err != nil {
+				errsCh <- fmt.Errorf("cannot round-trip parse query %q (original query %q): %s", s1, query, err)
+				return
+			}
+			s2 := q2.String()
+
+			if s1 != s2 {
+				errsCh <- fmt.Errorf("query %q does not round-trip: %q != %q", query, s1, s2)
+				return
+			}
+		}()
+
+		select {
+		case err := <-errsCh:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("query %q timed out", query)
+		}
+	})
+}
