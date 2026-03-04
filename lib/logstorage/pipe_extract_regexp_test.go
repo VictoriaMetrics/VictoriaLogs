@@ -305,7 +305,7 @@ func TestPipeExtractRegexpUpdateNeededFields(t *testing.T) {
 	f("extract_regexp '(?P<foo>.*)' from x", "*", "f1,f2", "*", "f1,f2,foo")
 	f("extract_regexp '(?P<foo>.*)' from x keep_original_fields", "*", "f1,f2", "*", "f1,f2")
 	f("extract_regexp '(?P<foo>.*)' from x skip_empty_results", "*", "f1,f2", "*", "f1,f2")
-	f("extract_regexp if (f1:x) '(?P<foo>.*)' from x", "*", "f1,f2", "*", "f2,foo")
+	f("extract_regexp if (f1:x) '(?P<foo>.*)' from x", "*", "f1,f2", "*", "f2")
 	f("extract_regexp if (f1:x) '(?P<foo>.*)' from x keep_original_fields", "*", "f1,f2", "*", "f2")
 	f("extract_regexp if (f1:x) '(?P<foo>.*)' from x skip_empty_results", "*", "f1,f2", "*", "f2")
 	f("extract_regexp if (foo:bar f1:x) '(?P<foo>.*)' from x", "*", "f1,f2", "*", "f2")
@@ -314,16 +314,16 @@ func TestPipeExtractRegexpUpdateNeededFields(t *testing.T) {
 	f("extract_regexp '(?P<foo>.*)' from x", "*", "f2,x", "*", "f2,foo")
 	f("extract_regexp '(?P<foo>.*)' from x keep_original_fields", "*", "f2,x", "*", "f2")
 	f("extract_regexp '(?P<foo>.*)' from x skip_empty_results", "*", "f2,x", "*", "f2")
-	f("extract_regexp if (f1:abc) '(?P<foo>.*)' from x", "*", "f2,x", "*", "f2,foo")
-	f("extract_regexp if (f2:abc) '(?P<foo>.*)' from x", "*", "f2,x", "*", "foo")
+	f("extract_regexp if (f1:abc) '(?P<foo>.*)' from x", "*", "f2,x", "*", "f2")
+	f("extract_regexp if (f2:abc) '(?P<foo>.*)' from x", "*", "f2,x", "*", "")
 
 	// unneeded fields intersect with output fields
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo", "*", "bar,f2,foo")
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo,x", "*", "bar,f2,foo")
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x keep_original_fields", "*", "f2,foo", "*", "f2,foo")
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x skip_empty_results", "*", "f2,foo", "*", "f2,foo")
-	f("extract_regexp if (f1:abc) '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo", "*", "bar,f2,foo")
-	f("extract_regexp if (f2:abc foo:w) '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo", "*", "bar")
+	f("extract_regexp if (f1:abc) '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo", "*", "f2,foo")
+	f("extract_regexp if (f2:abc foo:w) '(?P<foo>.*)x(?P<bar>.*)' from x", "*", "f2,foo", "*", "")
 	f("extract_regexp if (f2:abc foo:w) '(?P<foo>.*)x(?P<bar>.*)' from x keep_original_fields", "*", "f2,foo", "*", "")
 	f("extract_regexp if (f2:abc foo:w) '(?P<foo>.*)x(?P<bar>.*)' from x skip_empty_results", "*", "f2,foo", "*", "")
 
@@ -352,7 +352,7 @@ func TestPipeExtractRegexpUpdateNeededFields(t *testing.T) {
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x", "f2,foo", "", "f2,x", "")
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x keep_original_fields", "f2,foo", "", "foo,f2,x", "")
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x skip_empty_results", "f2,foo", "", "foo,f2,x", "")
-	f("extract_regexp if (a:b) '(?P<foo>.*)x(?P<bar>.*)' from x", "f2,foo", "", "a,f2,x", "")
+	f("extract_regexp if (a:b) '(?P<foo>.*)x(?P<bar>.*)' from x", "f2,foo", "", "a,f2,foo,x", "")
 
 	// needed fields intersect with pattern and output fields
 	f("extract_regexp '(?P<foo>.*)x(?P<bar>.*)' from x", "f2,foo,x,y", "", "f2,x,y", "")
