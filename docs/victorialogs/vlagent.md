@@ -96,53 +96,53 @@ See [replication and high availability docs](https://docs.victoriametrics.com/vi
 `vlagent` also requires access to the `/var/log/containers` and `/var/log/pods` directories on the Kubernetes node.
 For Kubernetes in Docker (in case you run `vlagent` using tools like minikube or kind), you may need to mount `/var/lib` directory.
 
-`vlagent` uses checkpoints to persist its state across restarts.
-Default location for checkpoints is `vlagent-kubernetes-checkpoints.json`, which is relative to `-tmpDataPath`.
-You can specify a different location for checkpoints with `-kubernetesCollector.checkpointsPath` command-line flag.
-Make sure that this file is available for `vlagent` across restarts.
-Use [`hostPath`](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) volume
-so the checkpoint file stays on the node disk and is reused across Pod restarts.
+### Checkpoints
 
-`vlagent` automatically parses JSON logs from Kubernetes Pod logs and treats the following fields
-as [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) field:
-- `message`
-- `msg`
-- `log`
+`vlagent` uses checkpoints to persist its reading state across restarts, so logs are not re-sent after a Pod restart.
+Default checkpoint location is `vlagent-kubernetes-checkpoints.json`, relative to `-tmpDataPath`.
+Use a [`hostPath`](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) volume so the checkpoint file
+stays on the node disk and survives Pod restarts.
+A different location can be specified via `-kubernetesCollector.checkpointsPath` command-line flag.
 
-You can change the default list of `_msg` fields by passing `-kubernetesCollector.msgField` command-line flag with comma-separated list of field names.
+### Log message and timestamp fields
 
-`vlagent` extracts timestamp from the log line and uses it as
-[`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field, using the following fields:
-- `time`
-- `timestamp`
-- `ts`
+`vlagent` automatically parses JSON logs and maps well-known fields to
+[`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and
+[`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 
-You can change the default list of `_time` fields by passing `-kubernetesCollector.timeField` command-line flag with comma-separated list of field names.
-If none of the specified fields are present in the log line, then `vlagent` uses timestamp when the log line was written by Container Runtime.
-Usually, this timestamp is close to the actual time when the log line was written, but it may differ slightly, normally less than a millisecond.
+Default `_msg` fields (first match wins): `message`, `msg`, `log`.  
+Override with `-kubernetesCollector.msgField=field1,field2`.
 
-To ignore fields from Kubernetes Pod logs, pass `-kubernetesCollector.ignoreFields` command-line flag with a list of field names to ignore.
-You can also configure `vlagent` to add additional fields to all the collected logs,
-using `-kubernetesCollector.extraFields` command-line flag, which accepts a JSON object with additional fields.
-For example, the following command instructs `vlagent` to add `env=dev` and `cluster=staging` [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
-for all the collected logs before sending them to `-remoteWrite.url`:
+Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.  
+Override with `-kubernetesCollector.timeField=field1,field2`.
+
+If none of the `_time` fields are present, `vlagent` uses the timestamp written by the container runtime.
+This is usually accurate to within a millisecond.
+
+### Stream fields
+
+By default, `vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields:
+
+`kubernetes.container_name`, `kubernetes.pod_name`, `kubernetes.pod_namespace`.
+
+These fields enable fast filtering and grouping via [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
+Override with `-kubernetesCollector.streamFields` if needed, though the defaults are recommended for most use cases.
+
+### Extra fields and ignoring fields
+
+To attach additional fields to all collected logs:
 
 ```sh
 ./vlagent -kubernetesCollector.extraFields='{"env":"dev","cluster":"staging"}' ...
 ```
 
-To set the default [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) ID for logs collected from Kubernetes Pods,
-pass `-kubernetesCollector.tenantID` command-line flag with a tenant ID in the format `accountID:projectID`.
+To drop specific fields from logs before sending them:
+
+```sh
+./vlagent -kubernetesCollector.ignoreFields=field1,field2 ...
+```
+
 See also [multitenancy docs for vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy).
-
-By default, `vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields for Kubernetes Pod logs:
-
-- `kubernetes.container_name`
-- `kubernetes.pod_name`
-- `kubernetes.pod_namespace`
-
-Use these fields for fast filtering and grouping of logs in VictoriaLogs via [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
-While it is recommended to keep the default stream fields, you can override them using the `-kubernetesCollector.streamFields` command-line flag.
 
 ### Filtering Kubernetes logs
 
