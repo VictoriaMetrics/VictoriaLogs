@@ -76,7 +76,8 @@ as described in [Replication and high availability](https://docs.victoriametrics
 ## Kubernetes Collector Configuration
 
 In most cases, you don't need to configure `vlagent` manually.
-Use [`victoria-logs-collector`](https://docs.victoriametrics.com/helm/victoria-logs-collector/#quick-start) Helm chart instead.
+Use the [`victoria-logs-collector`](https://docs.victoriametrics.com/helm/victoria-logs-collector/#quick-start) Helm chart instead.
+If you prefer to manage Kubernetes manifests directly, see [how to deploy without Helm](https://docs.victoriametrics.com/victorialogs/vlagent/#deploy-on-kubernetes-without-helm).
 
 `vlagent` must run on Kubernetes nodes in [DaemonSet mode](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
 Pass `-kubernetesCollector` command-line flag to `vlagent` in order to start discovering and collecting logs from all the containers
@@ -91,10 +92,6 @@ Here is the minimal configuration for `vlagent` to collect logs on the current K
 
 `vlagent` can send the copies of the collected logs into multiple destinations.
 See [replication and high availability docs](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability) for details.
-
-`vlagent` requires access to Kubernetes API server to watch and get pods (the `watch` and `get` verbs on the `pods` resource) and to get nodes (the `get` verb on the `nodes` resource).
-`vlagent` also requires access to the `/var/log/containers` and `/var/log/pods` directories on the Kubernetes node.
-For Kubernetes in Docker (in case you run `vlagent` using tools like minikube or kind), you may need to mount `/var/lib` directory.
 
 `vlagent` uses checkpoints to persist its state across restarts.
 Default location for checkpoints is `vlagent-kubernetes-checkpoints.json`, which is relative to `-tmpDataPath`.
@@ -165,9 +162,9 @@ Supported metadata fields:
 To enable filtering, use the `-kubernetesCollector.excludeFilter` command-line flag with any [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
 Note that [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) are not supported in filter expressions.
 
-Note that even if Pod/Node labels and annotations are excluded from logs via `-kubernetesCollector.ignoreFields` 
+Note that even if Pod/Node labels and annotations are excluded from logs via `-kubernetesCollector.ignoreFields`
 or `-kubernetesCollector.includePodLabels` (the same for Node labels and annotations) flags,
-they are still available for filtering via `-kubernetesCollector.excludeFilter` flag. 
+they are still available for filtering via `-kubernetesCollector.excludeFilter` flag.
 You don't need to include this information in logs just to be able to filter by it.
 
 Example usage:
@@ -227,6 +224,109 @@ You can control which metadata fields are attached to every log entry using the 
 
 Note that `vlagent` does not update node or pod labels during runtime.
 Therefore, if node/pod metadata changes, you must restart `vlagent` to apply those changes.
+
+### Deploy on Kubernetes without Helm
+
+If you prefer to deploy `vlagent` manually without [the Helm chart](https://docs.victoriametrics.com/helm/victoria-logs-collector/),
+use the following manifests.
+
+**RBAC**:
+
+`vlagent` requires access to the Kubernetes API to watch Pods, get Nodes, and list Namespaces:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vlagent
+  namespace: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vlagent
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vlagent
+subjects:
+  - kind: ServiceAccount
+    name: vlagent
+    namespace: monitoring
+roleRef:
+  kind: ClusterRole
+  name: vlagent
+  apiGroup: rbac.authorization.k8s.io
+```
+
+**DaemonSet**:
+
+`vlagent` must run as a DaemonSet so that each Node collects its own container logs:
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vlagent
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vlagent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vlagent
+    spec:
+      serviceAccountName: vlagent
+      containers:
+        - name: vlagent
+          image: victoriametrics/vlagent:v1.47.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 9429
+              protocol: TCP
+          args:
+            - --kubernetesCollector
+            - --loggerFormat=json
+            - --remoteWrite.url=http://victoria-logs:9428/insert/native
+            - --tmpDataPath=/var/lib/vlagent
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: vlagent-data
+              mountPath: /var/lib/vlagent
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: vlagent-data
+          hostPath:
+            path: /var/lib/vlagent
+            type: DirectoryOrCreate
+```
+
+The `vlagent-data` volume uses `hostPath` so that the checkpoint file and the on-disk buffer survive Pod restarts on the same node.
+
+> **Note**: for Kubernetes in Docker (minikube, kind): mount `/var/lib` as a read-only hostPath volume,
+> since container runtime data lives there.
+> In this case `/var/log/pods` and `/var/log/containers` will contain symlinks - do not remove these mounts.
+
+See also: [How to exclude vlagent's own logs from collection](https://docs.victoriametrics.com/victorialogs/vlagent/#excluding-vlagents-own-logs).
 
 ## Security and TLS
 
