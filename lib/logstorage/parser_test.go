@@ -2649,6 +2649,16 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`contains_all(x | limit 10)`)
 	f(`contains_all(x | fields a,b)`)
 
+	// prevent stack overflow on too deep nested filters and nested subqueries
+	s := strings.Repeat("(", maxNestedDepth+1) + "a" + strings.Repeat(")", maxNestedDepth+1)
+	f(s)
+
+	q := "* | fields x"
+	for i := 0; i < maxNestedDepth+1; i++ {
+		q = "x:in(" + q + ") | fields x"
+	}
+	f(q)
+
 	// invalid ipv4_range
 	f(`ipv4_range(`)
 	f(`ipv4_range(foo,bar)`)

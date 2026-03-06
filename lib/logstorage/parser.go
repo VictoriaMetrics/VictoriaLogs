@@ -48,7 +48,12 @@ type lexer struct {
 
 	// opts is a stack of options for nested parsed queries
 	optss []*queryOptions
+
+	// nestedDepth prevents stack overflow on deeply nested parenthesized filters and subqueries.
+	nestedDepth int
 }
+
+const maxNestedDepth = 1000
 
 type lexerState struct {
 	lex lexer
@@ -75,6 +80,19 @@ func (lex *lexer) pushQueryOptions(opts *queryOptions) {
 
 func (lex *lexer) popQueryOptions() {
 	lex.optss = lex.optss[:len(lex.optss)-1]
+}
+
+func (lex *lexer) incNestedDepth() error {
+	lex.nestedDepth++
+	if lex.nestedDepth > maxNestedDepth {
+		// The parser descends recursively through nested groups, so reject pathological depth early.
+		return fmt.Errorf("too deep query nesting; it mustn't exceed %d", maxNestedDepth)
+	}
+	return nil
+}
+
+func (lex *lexer) decNestedDepth() {
+	lex.nestedDepth--
 }
 
 func (lex *lexer) getQueryOptions() *queryOptions {
@@ -1829,6 +1847,10 @@ func parseQueryInParens(lex *lexer) (*Query, error) {
 	if !lex.isKeyword("(") {
 		return nil, fmt.Errorf("missing '('")
 	}
+	if err := lex.incNestedDepth(); err != nil {
+		return nil, err
+	}
+	defer lex.decNestedDepth()
 	lex.nextToken()
 
 	q, err := parseQuery(lex)
@@ -2212,6 +2234,10 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterParens(lex *lexer, fieldName string) (filter, error) {
+	if err := lex.incNestedDepth(); err != nil {
+		return nil, err
+	}
+	defer lex.decNestedDepth()
 	lex.nextToken()
 
 	f, err := parseFilterOr(lex, fieldName)

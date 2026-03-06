@@ -28,6 +28,7 @@ according to the following docs:
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-running_stats) function at the [`running_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe). This can be used for comparing sequential log field values. See [#932](https://github.com/VictoriaMetrics/VictoriaLogs/issues/932).
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix panic when executing the query `_stream_id:in`. See [#1136](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1136).
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): prevent stack overflow on too deep nested queries.
 * BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 * BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): fix spurious `cannot parse WatchEvent json response: EOF` errors in logs. These errors were harmless but could cause confusion when monitoring application health.
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): preserve existing target field values for `extract if (...)` and `extract_regexp if (...)` when the `if (...)` condition doesn't match. See [#1153](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1153).
