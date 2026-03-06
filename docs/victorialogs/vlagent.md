@@ -158,17 +158,19 @@ Supported metadata fields:
 - `kubernetes.pod_ip` - IP address assigned to the pod.
 - `kubernetes.container_id` - ID of the container in the runtime.
 - `kubernetes.pod_labels.*` - any Pod label (e.g., `kubernetes.pod_labels.app`).
-- `kubernetes.pod_annotations.*` - any Pod annotation (e.g., `kubernetes.pod_annotations.logging.vlagent.io/exclude`).
-- `kubernetes.node_labels.*` - any Node label (e.g., `kubernetes.io/arch`).
-- `kubernetes.node_annotations.*` - any Node annotation (e.g., `disk-type.gke.io/pd-ssd`).
+- `kubernetes.pod_annotations.*` - any Pod annotation (e.g., `kubernetes.pod_annotations.victoriametrics.com/vlagent/exclude`).
+- `kubernetes.node_labels.*` - any Node label (e.g., `kubernetes.node_labels.kubernetes.io/arch`).
+- `kubernetes.node_annotations.*` - any Node annotation (e.g., `kubernetes.node_annotations.disk-type`).
+- `kubernetes.namespace_labels.*` - any Namespace label (e.g., `kubernetes.namespace_labels.team`).
+- `kubernetes.namespace_annotations.*` - any Namespace annotation (e.g., `kubernetes.namespace_annotations.victoriametrics.com/vlagent/exclude`).
 
 To enable filtering, use the `-kubernetesCollector.excludeFilter` command-line flag with any [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
 Note that [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) are not supported in filter expressions.
 
-Note that even if Pod/Node labels and annotations are excluded from logs via `-kubernetesCollector.ignoreFields` 
-or `-kubernetesCollector.includePodLabels` (the same for Node labels and annotations) flags,
-they are still available for filtering via `-kubernetesCollector.excludeFilter` flag. 
-You don't need to include this information in logs just to be able to filter by it.
+Note that labels and annotations excluded from logs via `-kubernetesCollector.ignoreFields` or
+`-kubernetesCollector.includePodLabels=false` (and similar flags for Node/Namespace) are still available for
+filtering via `-kubernetesCollector.excludeFilter`.  
+You don't need to include metadata fields in logs just to filter by them.
 
 Example usage:
 

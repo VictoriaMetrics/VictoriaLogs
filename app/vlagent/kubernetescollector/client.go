@@ -263,6 +263,27 @@ func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (nod
 	return n, err
 }
 
+// namespaceList represents a Kubernetes NamespaceList object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#namespacelist-v1-core
+type namespaceList struct {
+	Items []namespace `json:"items"`
+}
+
+// namespace represents a Kubernetes Namespace object.
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#namespace-v1-core
+type namespace struct {
+	Metadata objectMeta `json:"metadata"`
+}
+
+// getNamespaces retrieves the list of namespaces in the Kubernetes cluster.
+//
+// See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#list-all-namespaces-cronjob-v1-batch
+func (c *kubeAPIClient) getNamespaces(ctx context.Context) (namespaceList, error) {
+	var nl namespaceList
+	err := c.readResourceGeneric(ctx, "/api/v1/namespaces", nil, &nl)
+	return nl, err
+}
+
 func (c *kubeAPIClient) readResourceGeneric(ctx context.Context, urlPath string, args url.Values, dst any) error {
 	req := c.mustCreateRequest(ctx, http.MethodGet, urlPath, args)
 	resp, err := c.sendRequest(req)

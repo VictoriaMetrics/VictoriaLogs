@@ -24,6 +24,8 @@ type kubernetesCollector struct {
 
 	currentNode node
 
+	namespaces map[string]namespace
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -198,8 +200,10 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 }
 
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
+	ns := kc.mustGetNamespace(pod.Metadata.Namespace)
+
 	startRead := func(pc podContainer, cs containerStatus) {
-		commonFields := getCommonFields(kc.currentNode, pod, cs)
+		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
 		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
 			// Filter matches - skip this container.
 			return
@@ -229,7 +233,7 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	}
 }
 
-func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
+func getCommonFields(n node, ns namespace, p pod, cs containerStatus) []logstorage.Field {
 	var fs logstorage.Fields
 
 	// Fields should match vector.dev kubernetes_source for easy migration.
@@ -258,6 +262,15 @@ func getCommonFields(n node, p pod, cs containerStatus) []logstorage.Field {
 		fs.Add(fieldName, v)
 	}
 
+	for k, v := range ns.Metadata.Labels {
+		fieldName := "kubernetes.namespace_labels." + k
+		fs.Add(fieldName, v)
+	}
+	for k, v := range ns.Metadata.Annotations {
+		fieldName := "kubernetes.namespace_annotations." + k
+		fs.Add(fieldName, v)
+	}
+
 	return fs.Fields
 }
 
@@ -277,6 +290,34 @@ func (kc *kubernetesCollector) getLogFilePath(p pod, pc podContainer, cs contain
 	filename := p.Metadata.Name + "_" + p.Metadata.Namespace + "_" + pc.Name + "-" + cid + ".log"
 	logfilePath := path.Join(kc.logsPath, filename)
 	return logfilePath
+}
+
+func (kc *kubernetesCollector) mustGetNamespace(nsName string) namespace {
+	ns, ok := kc.namespaces[nsName]
+	if ok {
+		// Fast path: the namespace is already cached.
+		return ns
+	}
+
+	// Slow path: the namespace is not cached.
+	kc.mustUpdateNamespaces()
+	ns, ok = kc.namespaces[nsName]
+	if !ok {
+		logger.Panicf("FATAL: namespace %q is not found in the list of namespaces returned by Kubernetes API", nsName)
+	}
+	return ns
+}
+
+func (kc *kubernetesCollector) mustUpdateNamespaces() {
+	nl, err := kc.client.getNamespaces(kc.ctx)
+	if err != nil {
+		logger.Panicf("FATAL: cannot get namespaces from Kubernetes API: %s", err)
+	}
+
+	kc.namespaces = make(map[string]namespace, len(nl.Items))
+	for _, ns := range nl.Items {
+		kc.namespaces[ns.Metadata.Name] = ns
+	}
 }
 
 func (kc *kubernetesCollector) stop() {
