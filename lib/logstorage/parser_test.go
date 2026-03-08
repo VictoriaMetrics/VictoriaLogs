@@ -3351,29 +3351,29 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | format if (f1:x) "foo" as s1 | rm f2`, `*`, `f2`)
 
 	f(`* | extract "<f1>x<f2>" from s1`, `*`, `f1,f2`)
-	f(`* | extract if (f3:foo) "<f1>x<f2>" from s1`, `*`, `f1,f2`)
-	f(`* | extract if (f1:foo) "<f1>x<f2>" from s1`, `*`, `f2`)
+	f(`* | extract if (f3:foo) "<f1>x<f2>" from s1`, `*`, ``)
+	f(`* | extract if (f1:foo) "<f1>x<f2>" from s1`, `*`, ``)
 	f(`* | extract "<f1>x<f2>" from s1 | fields foo`, `foo`, ``)
 	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo`, `foo`, ``)
 	f(`* | extract "<f1>x<f2>" from s1| fields foo,s1`, `foo,s1`, ``)
 	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo,s1`, `foo,s1`, ``)
 	f(`* | extract "<f1>x<f2>" from s1 | fields foo,f1`, `foo,s1`, ``)
-	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo,f1`, `foo,s1,x`, ``)
+	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo,f1`, `f1,foo,s1,x`, ``)
 	f(`* | extract "<f1>x<f2>" from s1 | fields foo,f1,f2`, `foo,s1`, ``)
-	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo,f1,f2`, `foo,s1,x`, ``)
+	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | fields foo,f1,f2`, `f1,f2,foo,s1,x`, ``)
 	f(`* | extract "<f1>x<f2>" from s1 | rm foo`, `*`, `f1,f2,foo`)
-	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo`, `*`, `f1,f2,foo`)
+	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo`, `*`, `foo`)
 	f(`* | extract "<f1>x<f2>" from s1 | rm foo,s1`, `*`, `f1,f2,foo`)
-	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo,s1`, `*`, `f1,f2,foo`)
+	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo,s1`, `*`, `foo`)
 	f(`* | extract "<f1>x<f2>" from s1 | rm foo,f1`, `*`, `f1,f2,foo`)
-	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo,f1`, `*`, `f1,f2,foo`)
+	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo,f1`, `*`, `f1,foo`)
 	f(`* | extract "<f1>x<f2>" from s1 | rm foo,f1,f2`, `*`, `f1,f2,foo`)
 	f(`* | extract if (x:bar) "<f1>x<f2>" from s1 | rm foo,f1,f2`, `*`, `f1,f2,foo`)
 
 	f(`* | extract "x<s1>y" from s1 `, `*`, ``)
 	f(`* | extract if (x:foo) "x<s1>y" from s1`, `*`, ``)
 	f(`* | extract if (s1:foo) "x<s1>y" from s1`, `*`, ``)
-	f(`* | extract if (s1:foo) "x<f1>y" from s1`, `*`, `f1`)
+	f(`* | extract if (s1:foo) "x<f1>y" from s1`, `*`, ``)
 
 	f(`* | extract "x<s1>y" from s1 | fields s2`, `s2`, ``)
 	f(`* | extract "x<s1>y" from s1 | fields s1`, `s1`, ``)
@@ -3390,8 +3390,8 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | extract if (x:foo) "x<s1>y" from s1 | rm s2`, `*`, `s2`)
 	f(`* | extract if (s1:foo) "x<s1>y" from s1 | rm s1`, `*`, `s1`)
 	f(`* | extract if (s1:foo) "x<s1>y" from s1 | rm s2`, `*`, `s2`)
-	f(`* | extract if (s1:foo) "x<f1>y" from s1 | rm s1`, `*`, `f1`)
-	f(`* | extract if (s1:foo) "x<f1>y" from s1 | rm s2`, `*`, `f1,s2`)
+	f(`* | extract if (s1:foo) "x<f1>y" from s1 | rm s1`, `*`, ``)
+	f(`* | extract if (s1:foo) "x<f1>y" from s1 | rm s2`, `*`, `s2`)
 
 	f(`* | unpack_json`, `*`, ``)
 	f(`* | unpack_json from s1`, `*`, ``)
@@ -4454,4 +4454,94 @@ func TestTryParseIPv6CIDR_Failure(t *testing.T) {
 
 	// Too big mask
 	f("::1/129")
+}
+
+func TestQueryGetFixedFields_Success(t *testing.T) {
+	f := func(qStr string, resultExpected []string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		result, err := q.GetFixedFields()
+		if err != nil {
+			t.Fatalf("unexpected error in GetFixedFields(): %s", err)
+		}
+		if !reflect.DeepEqual(result, resultExpected) {
+			t.Fatalf("unexpected result\ngot\n%q\nwant\n%q", result, resultExpected)
+		}
+	}
+
+	f("* | fields foo", []string{"foo"})
+	f("* | fields a, b, cd", []string{"a", "b", "cd"})
+	f("* | fields a, b, cd | sort by (x, a)", []string{"x", "a", "b", "cd"})
+
+	f("* | count(), sum(x) as y", []string{"count(*)", "y"})
+	f("* | stats by (a, b) count(), sum(x) as y", []string{"a", "b", "count(*)", "y"})
+	f("* | stats by (a, b) count(), sum(x) as y | sort by (c desc)", []string{"c", "a", "b", "count(*)", "y"})
+	f("* | stats by (a, b) count(), sum(x) as y | offset 5", []string{"a", "b", "count(*)", "y"})
+	f("* | stats by (a, b) count(), sum(x) as y | limit 10", []string{"a", "b", "count(*)", "y"})
+	f("* | stats by (a, b) count(), sum(x) as y | limit 10 | offset 5", []string{"a", "b", "count(*)", "y"})
+
+	f("* | fields a, b | sort (a) | sort (c,b)", []string{"c", "b", "a"})
+
+}
+
+func TestQueryGetFixedFields_Failure(t *testing.T) {
+	f := func(qStr string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		if _, err := q.GetFixedFields(); err == nil {
+			t.Fatalf("expecting non-nil error for the query [%s]", qStr)
+		}
+	}
+
+	// missing fields or stats pipes
+	f("*")
+	f("* | limit 10")
+	f("* | offset 10")
+	f("* | sort by (_time desc)")
+	f("* | block_stats")
+}
+
+func TestQueryIsFixedOutputFieldsOrder(t *testing.T) {
+	f := func(qStr string, resultExpected bool) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		result := q.IsFixedOutputFieldsOrder()
+		if result != resultExpected {
+			t.Fatalf("unexpected result; got %v; want %v", result, resultExpected)
+		}
+	}
+
+	f("*", false)
+	f("* | sort by (_time)", false)
+	f("* | fields x | union (*)", false)
+	f("* | fields x | union (* | count())", true)
+	f("* | fields x | join by (a) (*)", false)
+	f("* | fields x | join by (a) (* | count())", true)
+
+	f("* | fields x, y", true)
+	f("* | fields x, y | sort by (a)", true)
+	f("* | fields x, y | limit 10", true)
+	f("* | count()", true)
+	f("* | stats by (x,y) sum(y), count() a", true)
+	f("* | stats by (x,y) sum(y), count() a | sort (z,y desc)", true)
+	f("* | block_stats", true)
+	f("* | query_stats", true)
+	f("* | field_names", true)
+	f("* | field_values x", true)
+	f("* | top x", true)
 }

@@ -212,53 +212,18 @@ func (c *kubeAPIClient) getNodePods(ctx context.Context, nodeName string) (podLi
 		},
 	}
 
-	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/pods", args)
-	resp, err := c.sendRequest(req)
-	if err != nil {
-		return podList{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		payload, err := io.ReadAll(resp.Body)
-		if err != nil {
-			payload = []byte(err.Error())
-		}
-		_ = resp.Body.Close()
-		return podList{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
-	}
-
 	var pl podList
-	if err := json.NewDecoder(resp.Body).Decode(&pl); err != nil {
-		return podList{}, fmt.Errorf("cannot decode response body: %w", err)
-	}
-	return pl, nil
+	err := c.readResourceGeneric(ctx, "/api/v1/pods", args, &pl)
+	return pl, err
 }
 
 // getPod returns the pod with the given namespace and name.
 //
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-pod-v1-core
 func (c *kubeAPIClient) getPod(ctx context.Context, namespace, podName string) (pod, error) {
-	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/namespaces/"+namespace+"/pods/"+podName, nil)
-	resp, err := c.sendRequest(req)
-	if err != nil {
-		return pod{}, fmt.Errorf("cannot do /pods/<podName> request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		payload, err := io.ReadAll(resp.Body)
-		if err != nil {
-			payload = []byte(err.Error())
-		}
-		return pod{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
-	}
-
 	var p pod
-	if err := json.NewDecoder(resp.Body).Decode(&p); err != nil {
-		return pod{}, fmt.Errorf("cannot decode response body: %w", err)
-	}
-	return p, nil
+	err := c.readResourceGeneric(ctx, "/api/v1/namespaces/"+namespace+"/pods/"+podName, nil, &p)
+	return p, err
 }
 
 // nodeList represents a Kubernetes NodeList object.
@@ -277,24 +242,9 @@ type node struct {
 //
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#list-node-v1-core
 func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
-	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/nodes", nil)
-	resp, err := c.sendRequest(req)
-	if err != nil {
-		return nil, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		payload, err := io.ReadAll(resp.Body)
-		if err != nil {
-			payload = []byte(err.Error())
-		}
-		return nil, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
-	}
-
-	var nl nodeList
-	if err := json.NewDecoder(resp.Body).Decode(&nl); err != nil {
-		return nil, fmt.Errorf("cannot decode response body: %w", err)
+	nl := nodeList{}
+	if err := c.readResourceGeneric(ctx, "/api/v1/nodes", nil, &nl); err != nil {
+		return nil, err
 	}
 
 	var nodes []string
@@ -308,10 +258,16 @@ func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
 //
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-node-v1-core
 func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (node, error) {
-	req := c.mustCreateRequest(ctx, http.MethodGet, "/api/v1/nodes/"+nodeName, nil)
+	var n node
+	err := c.readResourceGeneric(ctx, "/api/v1/nodes/"+nodeName, nil, &n)
+	return n, err
+}
+
+func (c *kubeAPIClient) readResourceGeneric(ctx context.Context, urlPath string, args url.Values, dst any) error {
+	req := c.mustCreateRequest(ctx, http.MethodGet, urlPath, args)
 	resp, err := c.sendRequest(req)
 	if err != nil {
-		return node{}, fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
+		return fmt.Errorf("cannot do %q GET request: %w", req.URL.String(), err)
 	}
 	defer resp.Body.Close()
 
@@ -320,15 +276,13 @@ func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (nod
 		if err != nil {
 			payload = []byte(err.Error())
 		}
-		return node{}, fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
+		return fmt.Errorf("unexpected status code %d from %q; response: %q", resp.StatusCode, req.URL.String(), payload)
 	}
 
-	var n node
-	if err := json.NewDecoder(resp.Body).Decode(&n); err != nil {
-		return node{}, fmt.Errorf("cannot decode response body: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(&dst); err != nil {
+		return fmt.Errorf("cannot decode response body: %w", err)
 	}
-
-	return n, nil
+	return nil
 }
 
 func (c *kubeAPIClient) mustCreateRequest(ctx context.Context, method, urlPath string, args url.Values) *http.Request {

@@ -133,20 +133,27 @@ func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, o
 	app.node.cli.Post(t, dstURL, "application/octet-stream", data)
 }
 
-// LogsQLQuery is a test helper function that performs
-// PromQL/MetricsQL range query by sending a HTTP POST request to
-// /select/logsql/query endpoint.
+// LogsQLQuery sends HTTP POST request to /select/logsql/query endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOpts) *LogsQLQueryResponse {
+	t.Helper()
+
+	res, _ := app.LogsQLQueryPlain(t, query, opts)
+	return NewLogsQLQueryResponse(t, res)
+}
+
+// LogsQLQuery sends HTTP POST request to /select/logsql/query endpoint and returns the plain response with status code.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
+func (app *Vlsingle) LogsQLQueryPlain(t *testing.T, query string, opts QueryOpts) (string, int) {
 	t.Helper()
 
 	values := opts.asURLValues()
 	values.Add("query", query)
 
 	url := fmt.Sprintf("http://%s/select/logsql/query", app.node.httpListenAddr)
-	res, _ := app.node.cli.PostForm(t, url, values)
-	return NewLogsQLQueryResponse(t, res)
+	return app.node.cli.PostForm(t, url, values)
 }
 
 // StatsQueryRaw is a test helper function that performs

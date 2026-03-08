@@ -18,6 +18,7 @@ type QueryOpts struct {
 	End          string
 	Limit        string
 	ExtraFilters []string
+	Format       string
 }
 
 func (qos *QueryOpts) asURLValues() url.Values {
@@ -27,6 +28,7 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	addNonEmpty(uv, "end", qos.End)
 	addNonEmpty(uv, "limit", qos.Limit)
 	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	addNonEmpty(uv, "format", qos.Format)
 	return uv
 }
 

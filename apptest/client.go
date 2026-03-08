@@ -32,36 +32,31 @@ func (c *Client) CloseConnections() {
 	c.httpCli.CloseIdleConnections()
 }
 
-// Get sends a HTTP GET request, returns
-// the response body and status code to the caller.
+// Get sends a HTTP GET request, returns the response body and status code to the caller.
 func (c *Client) Get(t *testing.T, url string) (string, int) {
 	t.Helper()
 	return c.do(t, http.MethodGet, url, "", nil)
 }
 
-// Post sends a HTTP POST request, returns
-// the response body and status code to the caller.
+// Post sends a HTTP POST request, returns the response body and status code to the caller.
 func (c *Client) Post(t *testing.T, url, contentType string, data []byte) (string, int) {
 	t.Helper()
 	return c.do(t, http.MethodPost, url, contentType, data)
 }
 
-// PostForm sends a HTTP POST request containing the POST-form data, returns
-// the response body and status code to the caller.
+// PostForm sends a HTTP POST request containing the POST-form data, returns the response body and status code to the caller.
 func (c *Client) PostForm(t *testing.T, url string, data url.Values) (string, int) {
 	t.Helper()
 	return c.Post(t, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
 }
 
-// Delete sends a HTTP DELETE request and returns the response body and status code
-// to the caller.
+// Delete sends a HTTP DELETE request and returns the response body and status code to the caller.
 func (c *Client) Delete(t *testing.T, url string) (string, int) {
 	t.Helper()
 	return c.do(t, http.MethodDelete, url, "", nil)
 }
 
-// do prepares a HTTP request, sends it to the server, receives the response
-// from the server, returns the response body and status code to the caller.
+// do prepares a HTTP request, sends it to the server, receives the response from the server, returns the response body and status code to the caller.
 func (c *Client) do(t *testing.T, method, url, contentType string, data []byte) (string, int) {
 	t.Helper()
 

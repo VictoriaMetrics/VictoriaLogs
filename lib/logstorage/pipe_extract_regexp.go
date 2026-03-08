@@ -95,7 +95,7 @@ func (pe *pipeExtractRegexp) updateNeededFields(pf *prefixfilter.Filter) {
 		}
 		if pfOrig.MatchString(f) {
 			needFromField = true
-			if !pe.keepOriginalFields && !pe.skipEmptyResults {
+			if shouldDenyOverwrittenField(pe.iff, pe.keepOriginalFields, pe.skipEmptyResults) {
 				pf.AddDenyFilter(f)
 			}
 		}

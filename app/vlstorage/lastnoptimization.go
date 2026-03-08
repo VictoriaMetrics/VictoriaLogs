@@ -168,16 +168,30 @@ func getLogRowsFromDataBlock(db *logstorage.DataBlock) ([]logRow, error) {
 	columns := db.GetColumns(false)
 
 	columnNames := make([]string, len(columns))
+	var timestampsColumn logstorage.BlockColumn
 	for i, c := range columns {
+		if c.Name == "_time" {
+			timestampsColumn = c
+		}
 		columnNames[i] = strings.Clone(c.Name)
 	}
 
 	lrs := make([]logRow, 0, len(timestamps))
-	fieldsBuf := make([]logstorage.Field, 0, len(columnNames)*len(timestamps))
+	fieldsBuf := make([]logstorage.Field, 0, len(columns)*len(timestamps))
 
 	for i, timestamp := range timestamps {
 		fieldsBufLen := len(fieldsBuf)
+
+		// The _time column must go first, since the query results are sorted by _time.
+		fieldsBuf = append(fieldsBuf, logstorage.Field{
+			Name:  "_time",
+			Value: timestampsColumn.Values[i],
+		})
+
 		for j, c := range columns {
+			if c.Name == "_time" {
+				continue
+			}
 			fieldsBuf = append(fieldsBuf, logstorage.Field{
 				Name:  columnNames[j],
 				Value: strings.Clone(c.Values[i]),

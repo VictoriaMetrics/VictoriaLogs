@@ -88,7 +88,7 @@ func (pe *pipeExtract) updateNeededFields(pf *prefixfilter.Filter) {
 		}
 		if pfOrig.MatchString(step.field) {
 			needFromField = true
-			if !pe.keepOriginalFields && !pe.skipEmptyResults {
+			if shouldDenyOverwrittenField(pe.iff, pe.keepOriginalFields, pe.skipEmptyResults) {
 				pf.AddDenyFilter(step.field)
 			}
 		}

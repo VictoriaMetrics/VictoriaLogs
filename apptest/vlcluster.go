@@ -100,9 +100,7 @@ func (app *Vlcluster) JSONLineWrite(t *testing.T, records []string, opts IngestO
 	}
 }
 
-// LogsQLQuery is a test helper function that performs
-// PromQL/MetricsQL range query by sending a HTTP POST request to
-// /select/logsql/query endpoint.
+// LogsQLQuery is a test helper function that performs query by sending a HTTP POST request to /select/logsql/query endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 func (app *Vlcluster) LogsQLQuery(t *testing.T, query string, opts QueryOpts) *LogsQLQueryResponse {

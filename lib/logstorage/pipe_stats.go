@@ -32,6 +32,20 @@ type pipeStats struct {
 	mode pipeStatsMode
 }
 
+func (ps *pipeStats) resultFields() []string {
+	fieldNames := make([]string, 0, len(ps.byFields)+len(ps.funcs))
+
+	for _, bf := range ps.byFields {
+		fieldNames = append(fieldNames, bf.name)
+	}
+
+	for _, sf := range ps.funcs {
+		fieldNames = append(fieldNames, sf.resultName)
+	}
+
+	return fieldNames
+}
+
 type pipeStatsMode int
 
 func (psm pipeStatsMode) needExportState() bool {

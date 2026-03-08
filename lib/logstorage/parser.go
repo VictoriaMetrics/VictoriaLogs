@@ -758,12 +758,60 @@ func (q *Query) IsFixedOutputFieldsOrder() bool {
 		if p.isFixedOutputFieldsOrder() {
 			return true
 		}
-		if pu, ok := p.(*pipeUnion); ok && !pu.q.IsFixedOutputFieldsOrder() {
-			return false
+
+		switch t := p.(type) {
+		case *pipeUnion:
+			if !t.q.IsFixedOutputFieldsOrder() {
+				return false
+			}
+		case *pipeJoin:
+			if !t.q.IsFixedOutputFieldsOrder() {
+				return false
+			}
 		}
 	}
 
 	return false
+}
+
+// GetFixedFields returns a set of fixed fields returned by the given query q.
+func (q *Query) GetFixedFields() ([]string, error) {
+	fields, pipeIdx, err := getFixedFields(q.pipes)
+	if err != nil {
+		return nil, err
+	}
+
+	// fix the order of fields if sort pipe is present
+	pipes := q.pipes[pipeIdx+1:]
+	for _, p := range pipes {
+		if ps, ok := p.(*pipeSort); ok {
+			fields = ps.adjustResultFieldsOrder(fields)
+		}
+	}
+
+	return fields, nil
+}
+
+func getFixedFields(pipes []pipe) ([]string, int, error) {
+	for i := len(pipes) - 1; i >= 0; i-- {
+		p := pipes[i]
+		switch t := p.(type) {
+		case *pipeSort, *pipeLimit, *pipeOffset:
+			// these pipes do not change the fixed fields, so they are allowed after `fields` and `stats`
+		case *pipeFields:
+			fields, ok := t.resultFields()
+			if !ok {
+				return nil, -1, fmt.Errorf("the `fields` pipe cannot contain wildcards; pipe: %q", p)
+			}
+			return fields, i, nil
+		case *pipeStats:
+			fields := t.resultFields()
+			return fields, i, nil
+		default:
+			return nil, -1, fmt.Errorf("missing `fields` or `stats` pipe after %q", p)
+		}
+	}
+	return nil, -1, fmt.Errorf("missing `fields` or `stats` pipes in the query")
 }
 
 func getFilterTimeRange(f filter) (int64, int64) {

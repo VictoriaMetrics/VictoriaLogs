@@ -73,7 +73,7 @@ func (pf *pipeFormat) updateNeededFields(f *prefixfilter.Filter) {
 
 	if pf.iff != nil {
 		f.AddAllowFilters(pf.iff.allowFilters)
-	} else if !pf.keepOriginalFields && !pf.skipEmptyResults {
+	} else if shouldDenyOverwrittenField(pf.iff, pf.keepOriginalFields, pf.skipEmptyResults) {
 		f.AddDenyFilter(pf.resultField)
 	}
 	for _, step := range pf.steps {

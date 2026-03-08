@@ -23,12 +23,14 @@ according to the following docs:
 ## tip
 
 * FEATURE: publish [SPDX](https://spdx.dev/) SBOM attestations for container images on `docker.io` and `quay.io`. See [SECURITY.md](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/SECURITY.md), [#1102](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1102).
+* FEATURE: [`/select/logsql/query` endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs): support returning query results in CSV format when `format=csv` query arg is passed to this endpoint according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs-in-csv-format). This functionality is going to be used for downloading query results as CSV files in the [built-in web UI for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/#web-ui). See [#1143](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1143).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add support for `offset` modifier to [`first`](https://docs.victoriametrics.com/victorialogs/logsql/#first-total_stats) and [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-total_stats) functions at the [`total_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe).
 * FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-running_stats) function at the [`running_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe). This can be used for comparing sequential log field values. See [#932](https://github.com/VictoriaMetrics/VictoriaLogs/issues/932).
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix panic when executing the query `_stream_id:in`. See [#1136](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1136).
 * BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 * BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): fix spurious `cannot parse WatchEvent json response: EOF` errors in logs. These errors were harmless but could cause confusion when monitoring application health.
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): preserve existing target field values for `extract if (...)` and `extract_regexp if (...)` when the `if (...)` condition doesn't match. See [#1153](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1153).
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 

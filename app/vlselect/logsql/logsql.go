@@ -26,6 +26,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastjson"
+	"github.com/valyala/quicktemplate"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
@@ -1171,20 +1172,11 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	sw := &syncWriter{
-		w: w,
+	format := r.FormValue("format")
+	if format != "" && format != "csv" {
+		httpserver.Errorf(w, r, "unexpected format=%q; expecting 'csv' or ''", format)
+		return
 	}
-
-	var bwShards atomicutil.Slice[bufferedWriter]
-	bwShards.Init = func(shard *bufferedWriter) {
-		shard.sw = sw
-	}
-	defer func() {
-		shards := bwShards.All()
-		for _, shard := range shards {
-			shard.FlushIgnoreErrors()
-		}
-	}()
 
 	if limit > 0 {
 		// Add '| sort by (_time) desc | offset <offset> | limit <limit>' to the end of the query.
@@ -1195,16 +1187,59 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}
 
+	sw := &syncWriter{
+		w: w,
+	}
+
+	var bwShards atomicutil.Slice[bytesutil.ByteBuffer]
+	defer func() {
+		shards := bwShards.All()
+		for _, shard := range shards {
+			if len(shard.B) > 0 {
+				_, _ = sw.Write(shard.B)
+			}
+		}
+	}()
+
+	var csvHeader []byte
+	if format == "csv" {
+		fields, err := ca.q.GetFixedFields()
+		if err != nil {
+			httpserver.Errorf(w, r, "%s", err)
+			return
+		}
+		csvHeader = appendCSVLine(nil, fields)
+	}
+
 	startTime := time.Now()
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
 
-		h.Set("Content-Type", "application/stream+json")
+		if format == "csv" {
+			h.Set("Content-Type", "text/csv")
+		} else {
+			h.Set("Content-Type", "application/stream+json")
+		}
 		ca.writeResponseHeaders(h, startTime)
+
+		if format == "csv" {
+			_, _ = sw.Write(csvHeader)
+		}
 	})
 
+	var appendRow func(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte
+
 	needSortFields := !ca.q.IsFixedOutputFieldsOrder()
+	if format == "csv" {
+		if needSortFields {
+			logger.Panicf("BUG: neetSortFields must be false for format=csv")
+		}
+		appendRow = appendCSVRow
+	} else {
+		appendRow = appendJSONRow
+	}
+
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
 		writeResponseHeadersOnce()
 		rowsCount := db.RowsCount()
@@ -1216,9 +1251,10 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 		bw := bwShards.Get(workerID)
 		for i := range rowsCount {
-			WriteJSONRow(bw, columns, i)
-			if len(bw.buf) > 16*1024 {
-				bw.FlushIgnoreErrors()
+			bw.B = appendRow(bw.B, columns, i)
+			if len(bw.B) > 16*1024 {
+				_, _ = sw.Write(bw.B)
+				bw.B = bw.B[:0]
 			}
 		}
 	}
@@ -1234,6 +1270,48 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// This call is needed for the case when the response didn't return any results.
 	writeResponseHeadersOnce()
+}
+
+func appendCSVRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte {
+	for i := range columns {
+		v := columns[i].Values[rowIdx]
+		dst = appendCSVField(dst, v)
+		if i+1 < len(columns) {
+			dst = append(dst, ',')
+		}
+	}
+	dst = append(dst, '\n')
+	return dst
+}
+
+func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte {
+	dstLen := len(dst)
+	dst = append(dst, '{')
+	for i := range columns {
+		c := &columns[i]
+
+		name := c.Name
+		value := c.Values[rowIdx]
+		if value == "" {
+			// skip empty fields, since they equal to non-existing fields
+			// according to VictoriaLogs data model.
+			// See https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
+			continue
+		}
+
+		dst = quicktemplate.AppendJSONString(dst, name, true)
+		dst = append(dst, ':')
+		dst = quicktemplate.AppendJSONString(dst, value, true)
+		dst = append(dst, ',')
+	}
+	if len(dst)-dstLen == 1 {
+		// skip empty row.
+		return dst[:dstLen]
+	}
+
+	// Replace the trailing comma with closing braces
+	dst = append(dst[:len(dst)-1], "}\n"...)
+	return dst
 }
 
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
@@ -1309,24 +1387,6 @@ func (sw *syncWriter) Write(p []byte) (int, error) {
 	n, err := sw.w.Write(p)
 	sw.mu.Unlock()
 	return n, err
-}
-
-type bufferedWriter struct {
-	buf []byte
-	sw  *syncWriter
-}
-
-func (bw *bufferedWriter) Write(p []byte) (int, error) {
-	bw.buf = append(bw.buf, p...)
-
-	// Do not send bw.buf to bw.sw here, since the data at bw.buf may be incomplete (it must end with '\n')
-
-	return len(p), nil
-}
-
-func (bw *bufferedWriter) FlushIgnoreErrors() {
-	_, _ = bw.sw.Write(bw.buf)
-	bw.buf = bw.buf[:0]
 }
 
 type commonArgs struct {
