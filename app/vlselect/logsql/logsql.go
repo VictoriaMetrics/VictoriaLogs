@@ -39,6 +39,8 @@ var (
 	allowPartialResponseFlag = flag.Bool("search.allowPartialResponse", false, "Whether to allow returning partial responses when some of vlstorage nodes "+
 		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
+
+	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum query length in bytes, which can be passed to /select/* endpoints")
 )
 
 // ProcessQueryTimeRangeRequest handles /select/logsql/query_time_range request.
@@ -1472,6 +1474,9 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 
 	// Parse query
 	qStr := r.FormValue("query")
+	if len(qStr) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the query length cannot exceed -search.maxQueryLen=%d bytes; the current query length is %d bytes", maxQueryLen.IntN(), len(qStr))
+	}
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
