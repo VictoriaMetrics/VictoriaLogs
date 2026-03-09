@@ -36,6 +36,7 @@ according to the following docs:
 * BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 * BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): fix spurious `cannot parse WatchEvent json response: EOF` errors in logs. These errors were harmless but could cause confusion when monitoring application health.
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): preserve existing target field values for `extract if (...)` and `extract_regexp if (...)` when the `if (...)` condition doesn't match. See [#1153](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1153).
+* BUGFIX: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): include missing `_time` field for outgoing logs when using [jsonline format](https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format). Previously, `vlagent` omitted the `_time` field when sending logs to remote storage in this format.
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
