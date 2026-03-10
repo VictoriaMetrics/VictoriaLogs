@@ -45,6 +45,7 @@ const OverviewHits: FC = () => {
         {...dataLogHits}
         query={query}
         period={period}
+        step={step}
         onApplyFilter={addNewFilter}
       />
     </div>

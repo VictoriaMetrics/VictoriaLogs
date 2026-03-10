@@ -253,6 +253,7 @@ const QueryPage: FC = () => {
           {...dataLogHits}
           query={query}
           period={period}
+          step={step}
           onApplyFilter={handleApplyFilter}
         />
       )}

@@ -3,7 +3,6 @@ import "./style.scss";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import classNames from "classnames";
 import { LogHits } from "../../../api/types";
-import dayjs from "dayjs";
 import { useTimeDispatch } from "../../../state/time/TimeStateContext";
 import { AlignedData } from "uplot";
 import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
@@ -12,20 +11,22 @@ import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { ExtraFilter } from "../../OverviewPage/FiltersBar/types";
-import { toEpochSeconds } from "../../../utils/time";
+import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
+import { useCallback } from "react";
 
 interface Props {
   query: string;
   logHits: LogHits[];
   durationMs?: number;
   period: TimeParams;
+  step: string | null;
   error?: string;
   isLoading: boolean;
   isOverview?: boolean;
   onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoading, isOverview, onApplyFilter }) => {
+const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, onApplyFilter }) => {
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
@@ -42,19 +43,41 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, error, isLoa
     });
   };
 
-  const generateTimestamps = (logHits: LogHits[]) => {
+  const fillTimestamps = useCallback((timestamps: number[]) => {
+    if (!step || !timestamps.length) return timestamps;
+
+    const stepSec = getSecondsFromDuration(step);
+    const minTime = period.start;
+    const maxTime = period.end;
+    const anchorUnix = timestamps[0];
+
+    const result: number[] = [anchorUnix];
+
+    for (let unix = anchorUnix - stepSec; unix >= minTime; unix -= stepSec) {
+      result.unshift(unix);
+    }
+
+    for (let unix = anchorUnix + stepSec; unix <= maxTime; unix += stepSec) {
+      result.push(unix);
+    }
+
+    return result;
+  }, [step, period.start, period.end]);
+
+  const generateTimestamps = useCallback((logHits: LogHits[]) => {
     const ts = logHits.map(h => h.timestamps).flat();
     const tsUniq = Array.from(new Set(ts));
-    const tsNumber = tsUniq.map(t => toEpochSeconds(dayjs(t)));
-    return tsNumber.sort((a, b) => a - b);
-  };
+    const tsUnix = tsUniq.map(t => toEpochSeconds(t));
+    const tsSorted = tsUnix.sort((a, b) => a - b);
+    return fillTimestamps(tsSorted);
+  }, [fillTimestamps]);
 
   const data = useMemo(() => {
     if (!logHits.length) return [[], []] as AlignedData;
     const xAxis = generateTimestamps(logHits);
     const yAxes = getYAxes(logHits, xAxis);
     return [xAxis, ...yAxes] as AlignedData;
-  }, [logHits]);
+  }, [logHits, generateTimestamps]);
 
   const noDataMessage: string = useMemo(() => {
     if (isLoading) return "";

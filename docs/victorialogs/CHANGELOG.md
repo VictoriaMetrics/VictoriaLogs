@@ -36,6 +36,7 @@ according to the following docs:
 * BUGFIX: fix VictoriaLogs Docker OCI labels `org.opencontainers.image.source` and `org.opencontainers.image.documentation`: point them to VictoriaLogs repo/docs instead of VictoriaMetrics.
 * BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): fix spurious `cannot parse WatchEvent json response: EOF` errors in logs. These errors were harmless but could cause confusion when monitoring application health.
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): preserve existing target field values for `extract if (...)` and `extract_regexp if (...)` when the `if (...)` condition doesn't match. See [#1153](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1153).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix incorrect bar width in the Hits graph in Stats view mode. See [#1149](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1149).
 
 ## [v1.47.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.47.0)
 
