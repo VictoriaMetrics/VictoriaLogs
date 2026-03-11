@@ -1,7 +1,6 @@
 @use "src/styles/variables" as *;
-@use 'sass:meta';
-
-$button-radius: 6px;
+@use "sass:meta";
+@use "sass:map";
 
 .vm-button {
   display: inline-flex;
@@ -11,11 +10,10 @@ $button-radius: 6px;
   padding: 6px 14px;
   font-size: $font-size-small;
   font-weight: normal;
-  text-transform: capitalize;
   color: $color-white;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: $button-radius;
+  border-radius: $border-radius-button;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -135,6 +133,10 @@ $button-radius: 6px;
     white: $color-white
   );
 
+  $outlined-border-overrides: (
+    gray: $border-divider-color,
+  );
+
   @each $name, $color in $button-colors {
     @if $name == white {
       @include contained-button($name, $color, $color-black);
@@ -142,7 +144,11 @@ $button-radius: 6px;
       @include text-button($name, $color-white);
     } @else {
       @include contained-button($name, $color, $color-white);
-      @include outlined-button($name, $color, $color);
+      $border-color: $color;
+      @if map.has-key($outlined-border-overrides, $name) {
+        $border-color: map.get($outlined-border-overrides, $name);
+      }
+      @include outlined-button($name, $border-color, $color);
       @include text-button($name, $color);
     }
   }

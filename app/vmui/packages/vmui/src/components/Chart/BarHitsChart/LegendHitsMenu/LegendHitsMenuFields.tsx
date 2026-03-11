@@ -4,7 +4,7 @@ import { CopyIcon, FilterIcon, FilterOffIcon } from "../../../Main/Icons";
 import { convertToFieldFilter } from "../../../../utils/logs";
 import { LegendLogHitsMenu } from "../../../../api/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
-import { ExtraFilter, ExtraFilterOperator } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter, ExtraFilterOperator } from "../../../ExtraFilters/types";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 interface Props {
@@ -41,7 +41,7 @@ const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => 
   };
 
   const handleAddToFilter = (field: string, operator: ExtraFilterOperator) => () => {
-    onApplyFilter({ ...stringToFilter(field), operator });
+    onApplyFilter({ ...stringToFilter(field), operator, isStream: groupFieldHits === "_stream" });
     onClose();
   };
 

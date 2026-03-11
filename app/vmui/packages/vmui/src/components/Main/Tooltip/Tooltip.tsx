@@ -7,6 +7,7 @@ interface TooltipProps {
   title: ReactNode
   offset?: {top?: number, left?: number}
   open?: boolean
+  disabled?: boolean
   placement?: "bottom-right" | "bottom-left" | "top-left" | "top-right" | "top-center" | "bottom-center"
 }
 
@@ -14,6 +15,7 @@ const Tooltip: FC<TooltipProps> = ({
   children,
   title,
   open,
+  disabled = false,
   placement = "bottom-center",
   offset = { top: 6, left: 0 }
 }) => {
@@ -108,6 +110,8 @@ const Tooltip: FC<TooltipProps> = ({
       nodeEl.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [buttonRef]);
+
+  if (disabled) return children;
 
   return (
     <>

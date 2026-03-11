@@ -1,0 +1,35 @@
+@use "src/styles/variables" as *;
+@use "sass:color";
+
+$padding-smaller: calc($padding-small / 2);
+
+.vm-filter-sidebar-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-block: $padding-smaller;
+  padding-inline: $padding-small;
+  gap: $padding-small;
+  min-height: 28px;
+  border-radius: $border-radius-small;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $color-hover-black;
+  }
+
+  &_empty {
+    color: $color-text-secondary;
+  }
+
+  &__title {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__hits {
+    color: $color-text-secondary;
+  }
+}

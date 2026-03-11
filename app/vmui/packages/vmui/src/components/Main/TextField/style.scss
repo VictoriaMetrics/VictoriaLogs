@@ -20,7 +20,7 @@
     padding: $padding-small $padding-global;
     border: $border-divider;
     background-color: transparent;
-    font-size: $font-size;
+    font-size: inherit;
     line-height: 18px;
     grid-area: 1 / 1 / 2 / 2;
     overflow: hidden;
@@ -88,7 +88,7 @@
 
   &__input {
     display: block;
-    border-radius: $border-radius-small;
+    border-radius: $border-radius-medium;
     transition: border 200ms ease;
     resize: none;
     overflow: hidden;
@@ -148,7 +148,7 @@
     justify-content: center;
     max-width: 15px;
     top: 0;
-    left: $padding-small;
+    left: $padding-global;
     height: 36px;
     position: absolute;
     color: $color-text-secondary;
@@ -156,7 +156,7 @@
 
   &__icon-end {
     left: auto;
-    right: $padding-small;
+    right: $padding-global;
   }
 
   &__controls-info {

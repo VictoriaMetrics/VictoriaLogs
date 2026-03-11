@@ -1,16 +1,19 @@
 @use "src/styles/variables" as *;
 
+$input-limit-width: 200px;
+
 .vm-query-page-header {
   display: grid;
   align-items: center;
-  gap: $padding-global;
+  gap: $padding-small;
 
   &-top {
     display: grid;
-    grid-template-columns: 8fr 2fr;
+    grid-template-columns: minmax(200px, 1fr) minmax(auto, $input-limit-width);
     align-items: flex-start;
     justify-content: center;
-    gap: $padding-global;
+    gap: $padding-small;
+    margin-bottom: -6px;
   }
 
   &-bottom {
@@ -18,19 +21,14 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: $padding-global;
+    gap: $padding-small;
 
     &-contols {
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      flex-grow: 1;
-    }
-
-    &-buttons {
-      display: grid;
-      grid-template-columns: auto 1fr;
       gap: $padding-small;
+      flex-grow: 1;
     }
 
     &-execute {
@@ -52,11 +50,6 @@
       align-items: center;
       justify-content: center;
       flex-wrap: wrap;
-      gap: $padding-small $padding-global;
-
-      a {
-        color: $color-text-secondary;
-      }
     }
   }
 }

@@ -8,9 +8,7 @@ import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { useQueryState } from "../../../state/query/QueryStateContext";
 import debounce from "lodash.debounce";
 import { toggleLineComment } from "./LogsQL/utils";
-import { ctrlKeyLabel } from "../../../utils/keyboard";
-import Tooltip from "../../Main/Tooltip/Tooltip";
-import { KeyboardIcon } from "../../Main/Icons";
+import QueryEditorHotkeysTip from "./QueryEditorHotkeysTip";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
@@ -64,8 +62,8 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const debouncedSetShowAutocomplete = useRef(debounce(setShowAutocomplete, 500)).current;
 
-  if (stats?.executionTimeMsec !== undefined) {
-    label = `${label} (${stats.executionTimeMsec || 0}ms)`;
+  if (stats?.executionTimeMs !== undefined) {
+    label = `${label} (${stats.executionTimeMs || 0}ms)`;
   }
 
   const handleSelect = (val: string, caretPosition: number) => {
@@ -158,31 +156,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
         disabled={disabled}
         inputmode={"search"}
         caretPosition={caretPositionInput}
-        endIcon={(
-          <Tooltip
-            title={
-              <div className="vm-query-editor-help-tooltip">
-                <p className="vm-query-editor-help-tooltip-item">
-                  <span>Shift + Enter</span> <span>insert a new line</span>
-                </p>
-                <p className="vm-query-editor-help-tooltip-item">
-                  <span>{ctrlKeyLabel} + Enter</span> <span>execute query</span>
-                </p>
-                <p className="vm-query-editor-help-tooltip-item">
-                  <span>{ctrlKeyLabel} + /</span> <span>toggle line comment</span>
-                </p>
-                <p className="vm-query-editor-help-tooltip-item">
-                  <span>{ctrlKeyLabel} + ↑</span> <span>previous query</span>
-                </p>
-                <p className="vm-query-editor-help-tooltip-item">
-                  <span>{ctrlKeyLabel} + ↓</span> <span>next query</span>
-                </p>
-              </div>
-            }
-          >
-            <KeyboardIcon/>
-          </Tooltip>
-        )}
+        endIcon={<QueryEditorHotkeysTip/>}
       />
       {autocomplete && AutocompleteEl && (
         <AutocompleteEl

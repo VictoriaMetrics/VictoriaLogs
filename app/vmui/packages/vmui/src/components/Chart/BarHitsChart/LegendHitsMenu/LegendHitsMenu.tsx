@@ -7,7 +7,7 @@ import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import LegendHitsMenuFields from "./LegendHitsMenuFields";
 import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
-import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter } from "../../../ExtraFilters/types";
 
 const otherDescription = `Aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
 

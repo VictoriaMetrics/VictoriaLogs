@@ -348,3 +348,62 @@ func TestInsertRow_MarshalUnmarshal(t *testing.T) {
 		t.Fatalf("unexpected tail left after unmarshaling InsertRow; len(tail)=%d; tail=%X", len(tail), tail)
 	}
 }
+
+func TestInsertRow_MarshalJSON(t *testing.T) {
+	f := func(ts int64, fields []Field, expected string) {
+		t.Helper()
+
+		r := InsertRow{
+			Timestamp: ts,
+			Fields:    fields,
+		}
+		got := r.AppendJSON(nil)
+
+		if string(got) != expected {
+			t.Fatalf("unexpected result\ngot\n%q\nwant\n%q", got, expected)
+		}
+	}
+
+	// empty fields
+	f(0, nil, `{"_time":"1970-01-01T00:00:00Z"}`)
+
+	// non-empty fields
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: "y",
+		},
+		{
+			Name:  "qwe",
+			Value: "rty",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","x":"y","qwe":"rty"}`)
+
+	// empty values
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: "",
+		},
+		{
+			Name:  "qwe",
+			Value: "",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z"}`)
+
+	// empty field name
+	f(123456789, []Field{
+		{
+			Name:  "",
+			Value: "y",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","_msg":"y"}`)
+
+	// escape quotes
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: `"y"`,
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","x":"\"y\""}`)
+}

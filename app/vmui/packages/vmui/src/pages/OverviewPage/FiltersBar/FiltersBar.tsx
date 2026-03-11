@@ -1,6 +1,6 @@
 import { FC } from "preact/compat";
 import { DeleteIcon } from "../../../components/Main/Icons";
-import { useExtraFilters } from "../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import FiltersBarItem from "./FiltersBarItem/FiltersBarItem";
 import Button from "../../../components/Main/Button/Button";
 import "./style.scss";

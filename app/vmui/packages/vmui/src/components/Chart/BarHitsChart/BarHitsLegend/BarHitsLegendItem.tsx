@@ -7,7 +7,7 @@ import { formatNumberShort } from "../../../../utils/number";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
 import LegendHitsMenu from "../LegendHitsMenu/LegendHitsMenu";
-import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter } from "../../../ExtraFilters/types";
 import { useCallback } from "react";
 import useLegendHitsVisibilityMenu from "./hooks/useLegendHitsVisibilityMenu";
 

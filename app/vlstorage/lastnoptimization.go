@@ -185,7 +185,7 @@ func getLogRowsFromDataBlock(db *logstorage.DataBlock) ([]logRow, error) {
 		// The _time column must go first, since the query results are sorted by _time.
 		fieldsBuf = append(fieldsBuf, logstorage.Field{
 			Name:  "_time",
-			Value: timestampsColumn.Values[i],
+			Value: strings.Clone(timestampsColumn.Values[i]),
 		})
 
 		for j, c := range columns {

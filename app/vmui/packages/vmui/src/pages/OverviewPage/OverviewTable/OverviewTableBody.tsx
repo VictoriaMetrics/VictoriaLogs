@@ -4,21 +4,21 @@ import Alert from "../../../components/Main/Alert/Alert";
 import Table from "../../../components/Table/Table";
 import Pagination from "../../../components/Main/Pagination/Pagination";
 import { useEffect, useRef } from "react";
-import { LogsFiledValues } from "../../../api/types";
+import { LogsFieldValues } from "../../../api/types";
 import { useTableLogsPaginate } from "../../../components/Views/TableView/hooks/useTableLogsPaginate";
 import { type Column } from "../../../components/Table/types";
 
 export type OverviewTableProps = {
   tableId: string;
-  rows: LogsFiledValues[]
-  columns: Column<LogsFiledValues>[]
+  rows: LogsFieldValues[]
+  columns: Column<LogsFieldValues>[]
   isLoading: boolean;
   error?: string | Error;
   isEmptyList?: boolean;
   emptyListText?: string;
-  onClickRow?: (row: LogsFiledValues, e: MouseEvent) => void;
-  detectActiveRow?: (row: LogsFiledValues) => boolean;
-  actionsRender?: (row: LogsFiledValues) => ReactNode;
+  onClickRow?: (row: LogsFieldValues, e: MouseEvent) => void;
+  detectActiveRow?: (row: LogsFieldValues) => boolean;
+  actionsRender?: (row: LogsFieldValues) => ReactNode;
 }
 
 interface Props extends  OverviewTableProps {

@@ -607,7 +607,59 @@ export const WidthIcon = () => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path d="M6.99 11V8L3 12L6.99 16V13H17.01V16L21 12L17.01 8V11H6.99Z"></path>
+    <path
+      d="M19 16V13L23 13V11H19V8L15 12L19 16ZM5 8V11H1V13H5V16L9 12L5 8ZM11 20H13L13 4H11L11 20Z"
+    />
   </svg>
 );
 
+export const SortIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M3 18h6v-2H3zM3 6v2h18V6zm0 7h12v-2H3z"></path>
+  </svg>
+);
+
+export const FilterListIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M10 18h4v-2h-4zM3 6v2h18V6zm3 7h12v-2H6z"></path>
+  </svg>
+);
+
+export const AutocompleteIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="m20 7 .94-2.06L23 4l-2.06-.94L20 1l-.94 2.06L17 4l2.06.94zM8.5 7l.94-2.06L11.5 4l-2.06-.94L8.5 1l-.94 2.06L5.5 4l2.06.94zM20 12.5l-.94 2.06-2.06.94 2.06.94.94 2.06.94-2.06L23 15.5l-2.06-.94zm-2.29-3.38-2.83-2.83c-.2-.19-.45-.29-.71-.29s-.51.1-.71.29L2.29 17.46c-.39.39-.39 1.02 0 1.41l2.83 2.83c.2.2.45.3.71.3s.51-.1.71-.29l11.17-11.17c.39-.39.39-1.03 0-1.42m-3.54-.7 1.41 1.41L14.41 11 13 9.59zM5.83 19.59l-1.41-1.41L11.59 11 13 12.41z"
+    ></path>
+  </svg>
+);
+
+export const MinusIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M2.62207 11C2.62207 10.4477 3.06979 10 3.62207 10H20.3784C20.9306 10 21.3784 10.4477 21.3784 11V13C21.3784 13.5523 20.9306 14 20.3784 14H3.62207C3.06979 14 2.62207 13.5523 2.62207 13V11Z"
+    />
+  </svg>
+);
+
+export const BoltIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66s.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21"
+    ></path>
+  </svg>
+);

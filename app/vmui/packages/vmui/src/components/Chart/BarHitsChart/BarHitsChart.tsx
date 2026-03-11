@@ -8,7 +8,7 @@ import { GRAPH_QUERY_MODE, GRAPH_STYLES, GraphOptions } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
-import { ExtraFilter } from "../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter } from "../../ExtraFilters/types";
 import BarHitsStats from "./BarHitsStats/BarHitsStats";
 
 interface Props {

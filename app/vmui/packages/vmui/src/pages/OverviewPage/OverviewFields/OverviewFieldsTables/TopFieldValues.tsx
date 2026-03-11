@@ -1,11 +1,11 @@
 import { FC, useEffect, useMemo } from "preact/compat";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useState } from "react";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
-import { LogsFiledValues } from "../../../../api/types";
-import { ExtraFilterOperator } from "../../FiltersBar/types";
+import { LogsFieldValues } from "../../../../api/types";
+import { ExtraFilterOperator } from "../../../../components/ExtraFilters/types";
 import { fieldValuesCol, streamFieldValuesCol } from "../columns";
 import OverviewTable from "../../OverviewTable/OverviewTable";
 import "../../OverviewTable/style.scss";
@@ -52,7 +52,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const [mode, setMode] = useState(MODE_KEYS[0]);
   const [limit, setLimit] = useState(10);
 
-  const rows: LogsFiledValues[] = useMemo(() => {
+  const rows: LogsFieldValues[] = useMemo(() => {
     return logs.map(l => {
       const hits = Number(l.hits) || 0;
       return {
@@ -66,20 +66,20 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const isEmptyList = (!isLoading && !error && (rows.length === 0)) || !selectedKey;
   const emptyText = selectedKey ? "No values found" : `Select ${isFieldScope ? "field" : "stream field"} name to see values`;
 
-  const handleAddFilter = (row: LogsFiledValues, operator: ExtraFilterOperator) => {
+  const handleAddFilter = (row: LogsFieldValues, operator: ExtraFilterOperator) => {
     addNewFilter({ field: selectedKey, value: row.value, operator });
   };
 
-  const selectFieldValue = (row: LogsFiledValues) => {
+  const selectFieldValue = (row: LogsFieldValues) => {
     setterFilter(row.value);
   };
 
-  const handleCopy = async (row: LogsFiledValues) => {
+  const handleCopy = async (row: LogsFieldValues) => {
     const copyValue = `${selectedKey}:${row.value}`;
     await copyToClipboard(copyValue, `\`${copyValue}\` has been copied`);
   };
 
-  const handleClickRow = (row: LogsFiledValues, e: MouseEvent) => {
+  const handleClickRow = (row: LogsFieldValues, e: MouseEvent) => {
     const { ctrlKey, metaKey, altKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
 
@@ -92,7 +92,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
     }
   };
 
-  const detectActiveRow = (row: LogsFiledValues) => {
+  const detectActiveRow = (row: LogsFieldValues) => {
     return selectedValue.includes(row.value);
   };
 
@@ -104,7 +104,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
     return () => abortController.abort();
   }, [period, extraParams.toString(), selectedKey, limit, mode]);
 
-  const TableAction = (row: LogsFiledValues) => {
+  const TableAction = (row: LogsFieldValues) => {
     const menu = [
       [{
         label: selectedValue.includes(row.value) ? "Unfocus" : "Focus",

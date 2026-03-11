@@ -59,7 +59,7 @@ const LogsLimitInput: FC<Props> = ({ limit, onChangeLimit, onPressEnter, onError
 
   return (
     <TextField
-      label="Log limits"
+      label="Limit"
       type="number"
       value={limitInput}
       error={errorLimit}

@@ -1,0 +1,96 @@
+@use "src/styles/variables" as *;
+@use "sass:color";
+
+$padding-smaller: calc($padding-small / 2);
+$icon-width: 14px;
+
+.vm-filter-sidebar-field {
+  position: relative;
+  height: 100%;
+  border-radius: $border-radius-medium;
+  border: $border-divider-width $border-divider-style transparent;
+  font-size: $font-size-small;
+  overflow: hidden;
+
+  &_open {
+    border-color: $border-divider-color;
+  }
+
+  &_open > &-header {
+    background-color: $color-hover-black;
+  }
+
+  &-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding-inline: 0 $padding-small;
+    cursor: pointer;
+    transition: background-color 200ms ease-in;
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+  }
+
+  &__checkbox {
+    padding: $padding-small;
+
+    transition: background-color 200ms ease-in;
+
+    &:hover {
+      background-color: $color-hover-black;
+    }
+  }
+
+  &-label {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &__title {
+      line-height: 2;
+    }
+
+    &__hits {
+      color: $color-text-secondary;
+    }
+  }
+
+  &__badge {
+    position: relative;
+    margin-right: $padding-small;
+    padding: $padding-smaller $padding-small;
+    border-radius: $border-radius-small;
+    color: $color-text-secondary;
+    background-color: $color-hover-black;
+    overflow: hidden;
+  }
+
+  &__arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 200ms ease;
+    color: $color-text-secondary;
+    transform: rotate(90deg);
+
+    svg {
+      width: $icon-width;
+    }
+
+    &_open {
+      transform: rotate(0);
+    }
+  }
+
+  &-values {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: $padding-smaller;
+  }
+}

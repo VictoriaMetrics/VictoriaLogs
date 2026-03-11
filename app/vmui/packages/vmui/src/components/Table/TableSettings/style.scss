@@ -41,19 +41,18 @@
   }
 
   &-section {
-    padding: $padding-small;
+    padding-inline: $padding-small;
+    padding-top: $padding-small;
     display: grid;
 
     &:last-child {
-      padding-top: 0;
-      border-bottom: none;
+      padding-bottom: $padding-small;
     }
 
     &-search {
       display: flex;
       align-items: center;
       gap: $padding-small;
-      padding-inline: $padding-global;
 
       &-help-tooltip {
         &-item {
@@ -131,8 +130,11 @@
           font-variant-numeric: tabular-nums;
         }
 
-        &:first-child {
+        &:first-child:not(&__icon) {
           padding-left: $padding-global;
+        }
+
+        &:first-child {
           border-radius: $border-radius-medium 0 0 $border-radius-medium;
         }
 

@@ -1,19 +1,20 @@
 import { FC, useEffect } from "preact/compat";
-import { InfoIcon, PlayIcon, SpinnerIcon, WikiIcon } from "../../../components/Main/Icons";
+import { CodeIcon, PlayIcon, SpinnerIcon, WikiIcon } from "../../../components/Main/Icons";
 import "./style.scss";
-import classNames from "classnames";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
 import LogsLimitInput from "../LimitController/LogsLimitInput";
-import LogsQueryEditorAutocomplete from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
+import LogsQueryEditorAutocomplete
+  from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
-import Switch from "../../../components/Main/Switch/Switch";
 import QueryHistory from "../../../components/QueryHistory/QueryHistory";
 import useBoolean from "../../../hooks/useBoolean";
 import { useQuickAutocomplete } from "../../../hooks/useQuickAutocomplete";
-import { AUTOCOMPLETE_QUICK_KEY } from "../../../components/Main/ShortcutKeys/constants/keyList";
-import Tooltip from "../../../components/Main/Tooltip/Tooltip";
+import FilterSidebarToggle from "../../../components/FilterSidebar/FilterSidebarToggle";
+import AutocompleteToggle from "../../../components/Configurators/QueryEditor/AutocompleteToggle";
+import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersReset";
+import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 
 interface Props {
   query: string;
@@ -42,10 +43,6 @@ const QueryPageHeader: FC<Props> = ({
   const setQuickAutocomplete = useQuickAutocomplete();
 
   const { value: awaitQuery, setValue: setAwaitQuery } = useBoolean(false);
-
-  const onChangeAutocomplete = () => {
-    queryDispatch({ type: "TOGGLE_AUTOCOMPLETE" });
-  };
 
   const handleHistoryChange = (step: number) => {
     const { values, index } = queryHistory[0];
@@ -82,13 +79,7 @@ const QueryPageHeader: FC<Props> = ({
   };
 
   return (
-    <div
-      className={classNames({
-        "vm-query-page-header": true,
-        "vm-block": true,
-        "vm-block_mobile": isMobile,
-      })}
-    >
+    <>
       <div className="vm-query-page-header-top">
         <QueryEditor
           value={query}
@@ -98,11 +89,9 @@ const QueryPageHeader: FC<Props> = ({
           onArrowDown={createHandlerArrow(1)}
           onEnter={onRun}
           onChange={onChangeHandle}
-          label={"Log query"}
+          label={"Query"}
           error={error}
-          stats={{
-            executionTimeMsec: queryDurationMs,
-          }}
+          stats={{ executionTimeMs: queryDurationMs }}
         />
         <LogsLimitInput
           limit={limit}
@@ -112,58 +101,61 @@ const QueryPageHeader: FC<Props> = ({
       </div>
       <div className="vm-query-page-header-bottom">
         <div className="vm-query-page-header-bottom-contols">
-          <Tooltip title={<>Quick tip: {AUTOCOMPLETE_QUICK_KEY}</>}>
-            <Switch
-              label={"Autocomplete"}
-              value={autocomplete}
-              onChange={onChangeAutocomplete}
-            />
-          </Tooltip>
+          <FilterSidebarToggle/>
+          <ExtraFiltersReset/>
+          <ExtraFiltersCopy/>
         </div>
         {!isMobile && (
           <div className="vm-query-page-header-bottom-helpful">
             <a
-              className="vm-link vm-link_with-icon"
               target="_blank"
               href="https://docs.victoriametrics.com/victorialogs/logsql/"
               rel="help noreferrer"
             >
-              <InfoIcon/>
-              Query language docs
+              <Button
+                variant="text"
+                color="gray"
+                startIcon={<CodeIcon/>}
+              >
+                LogsQL
+              </Button>
             </a>
             <a
-              className="vm-link vm-link_with-icon"
               target="_blank"
               href="https://docs.victoriametrics.com/victorialogs/"
               rel="help noreferrer"
             >
-              <WikiIcon/>
-              Documentation
+              <Button
+                variant="text"
+                color="gray"
+                startIcon={<WikiIcon/>}
+              >
+                Docs
+              </Button>
             </a>
           </div>
         )}
-        <div className="vm-query-page-header-bottom-buttons">
-          <QueryHistory
-            handleSelectQuery={handleSelectHistory}
-            historyKey={"LOGS_QUERY_HISTORY"}
-          />
-          <div className="vm-query-page-header-bottom-execute">
-            <Button
-              startIcon={isLoading ? <SpinnerIcon/> : <PlayIcon/>}
-              onClick={onRun}
-              fullWidth
-            >
-              <div>
-                <span className="vm-query-page-header-bottom-execute__text">
-                  {isLoading ? "Cancel Query" : "Execute Query"}
-                </span>
-                <span className="vm-query-page-header-bottom-execute__text_hidden">Execute Query</span>
-              </div>
-            </Button>
-          </div>
+        <AutocompleteToggle/>
+        <QueryHistory
+          handleSelectQuery={handleSelectHistory}
+          historyKey={"LOGS_QUERY_HISTORY"}
+        />
+        <div className="vm-query-page-header-bottom-execute">
+          <Button
+            startIcon={isLoading ? <SpinnerIcon/> : <PlayIcon/>}
+            onClick={onRun}
+            fullWidth
+          >
+            <div>
+              <span className="vm-query-page-header-bottom-execute__text">
+                {isLoading ? "Cancel" : "Execute"}
+              </span>
+              <span className="vm-query-page-header-bottom-execute__text_hidden">Execute</span>
+            </div>
+          </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

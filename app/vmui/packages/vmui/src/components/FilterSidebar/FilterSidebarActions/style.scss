@@ -1,0 +1,8 @@
+@use "src/styles/variables" as *;
+
+.vm-filter-sidebar-actions {
+  flex-grow: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}

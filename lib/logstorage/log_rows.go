@@ -709,7 +709,24 @@ func (r *InsertRow) Marshal(dst []byte) []byte {
 
 // AppendJSON appends marshaled r to dst in JSON format and returns the result.
 func (r *InsertRow) AppendJSON(dst []byte) []byte {
-	return MarshalFieldsToJSON(dst, r.Fields)
+	fields := r.Fields
+	fields = SkipLeadingFieldsWithoutValues(fields)
+
+	dst = append(dst, `{"_time":"`...)
+	dst = marshalTimestampRFC3339NanoString(dst, r.Timestamp)
+	dst = append(dst, '"')
+
+	for i := range fields {
+		f := &fields[i]
+		if f.Value == "" {
+			// Skip fields without values
+			continue
+		}
+		dst = append(dst, ',')
+		dst = f.marshalToJSON(dst)
+	}
+	dst = append(dst, '}')
+	return dst
 }
 
 // UnmarshalInplace unmarshals r from src and returns the remaining tail.

@@ -2,7 +2,7 @@ import { explorerTotals } from "../totalsConfig";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
 import { useEffect, useState } from "preact/compat";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { getPreviousRange } from "../../../../utils/time";
 import { Logs } from "../../../../api/types";
 import { TimeParams } from "../../../../types";

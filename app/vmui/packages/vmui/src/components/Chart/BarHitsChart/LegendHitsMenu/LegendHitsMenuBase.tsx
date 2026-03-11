@@ -3,7 +3,7 @@ import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon } from "../../../Main/Icons";
 import { LegendLogHits, LegendLogHitsMenu } from "../../../../api/types";
-import { ExtraFilter, ExtraFilterOperator } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter, ExtraFilterOperator } from "../../../ExtraFilters/types";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 interface Props {

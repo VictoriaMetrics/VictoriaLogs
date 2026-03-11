@@ -50,6 +50,16 @@ func (c *Client) PostForm(t *testing.T, url string, data url.Values) (string, in
 	return c.Post(t, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
 }
 
+// PostFormSuccess sends a HTTP POST request containing the POST-form data and returns the response body.
+func (c *Client) PostFormSuccess(t *testing.T, url string, data url.Values) string {
+	t.Helper()
+	res, statusCode := c.Post(t, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
+	if statusCode != 200 {
+		t.Fatalf("unexpected response status code for url=%s; got %d; want 200; response\n%s", url, statusCode, res)
+	}
+	return res
+}
+
 // Delete sends a HTTP DELETE request and returns the response body and status code to the caller.
 func (c *Client) Delete(t *testing.T, url string) (string, int) {
 	t.Helper()

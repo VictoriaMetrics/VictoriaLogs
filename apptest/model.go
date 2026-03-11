@@ -32,6 +32,101 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	return uv
 }
 
+// FieldNamesOpts contains params used for query VictoriaLogs via /select/logsql/field_names
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names
+type FieldNamesOpts struct {
+	Start       string
+	End         string
+	IgnorePipes string
+}
+
+func (fos *FieldNamesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// FieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/field_values
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values
+type FieldValuesOpts struct {
+	Start       string
+	End         string
+	Field       string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *FieldValuesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "field", fos.Field)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamFieldNamesOpts contains params used for query VictoriaLogs via /select/logsql/stream_field_names
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names
+type StreamFieldNamesOpts struct {
+	Start       string
+	End         string
+	IgnorePipes string
+}
+
+func (fos *StreamFieldNamesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamFieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/field_values
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values
+type StreamFieldValuesOpts struct {
+	Start       string
+	End         string
+	Field       string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *StreamFieldValuesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "field", fos.Field)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamsOpts contains params used for query VictoriaLogs via /select/logsql/streams
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-streams
+type StreamsOpts struct {
+	Start       string
+	End         string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *StreamsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
 // FacetsOpts contains params used for querying VictoriaLogs via /select/logsql/facets
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-facets
@@ -43,6 +138,7 @@ type FacetsOpts struct {
 	MaxValueLen       string
 	KeepConstFields   string
 	ExtraFilters      []string
+	IgnorePipes       string
 }
 
 func (fos *FacetsOpts) asURLValues() url.Values {
@@ -54,6 +150,7 @@ func (fos *FacetsOpts) asURLValues() url.Values {
 	addNonEmpty(uv, "max_value_len", fos.MaxValueLen)
 	addNonEmpty(uv, "keep_const_fields", fos.KeepConstFields)
 	addNonEmpty(uv, "extra_filters", fos.ExtraFilters...)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
 	return uv
 }
 

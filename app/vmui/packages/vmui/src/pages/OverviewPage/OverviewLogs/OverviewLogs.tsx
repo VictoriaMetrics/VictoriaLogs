@@ -1,11 +1,11 @@
 import { FC, useEffect, useMemo } from "preact/compat";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
-import { filterToExpr, useExtraFilters } from "../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useFieldFilter, useStreamFieldFilter } from "../hooks/useFieldFilter";
 import QueryPageBody from "../../QueryPage/QueryPageBody/QueryPageBody";
 import Alert from "../../../components/Main/Alert/Alert";
-import { ExtraFilterOperator } from "../FiltersBar/types";
+import { ExtraFilterOperator } from "../../../components/ExtraFilters/types";
 import { useState } from "react";
 import SelectLimit from "../../../components/Main/Pagination/SelectLimit/SelectLimit";
 import "./style.scss";
@@ -14,12 +14,13 @@ import Button from "../../../components/Main/Button/Button";
 import { CopyIcon, DoneIcon, OpenNewIcon } from "../../../components/Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
-import { escapeDoubleQuotes } from "../../../utils/regexp";
+import { escapeForLogsQLString } from "../../../utils/regexp";
+import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 
 const operator = ExtraFilterOperator.Equals;
 
 const getQueryFromArray = (field: string, values: string[]) => {
-  const escapeValues = values.map(v => `"${escapeDoubleQuotes(v)}"`);
+  const escapeValues = values.map(v => `"${escapeForLogsQLString(v)}"`);
   return `${field}:in(\n${escapeValues.join(",\n")}\n)`;
 };
 

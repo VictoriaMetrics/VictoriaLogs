@@ -6,6 +6,7 @@ import { getContextData, splitLogicalParts } from "./parser";
 import { ContextType, LogicalPart } from "./types";
 import { useFetchLogsQLOptions } from "./useFetchLogsQLOptions";
 import { pipeList } from "./pipes";
+import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 
 const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
   value,
@@ -44,7 +45,8 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
     };
   }, [logicalParts, caretPosition, value]);
 
-  const { fieldNames, fieldValues, loading } = useFetchLogsQLOptions(contextData);
+  const { extraParams } = useExtraFilters();
+  const { fieldNames, fieldValues, loading } = useFetchLogsQLOptions(contextData, extraParams);
 
   const options = useMemo(() => {
     switch (contextData?.contextType) {

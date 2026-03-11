@@ -1,5 +1,5 @@
 @use "src/styles/variables" as *;
-@use 'sass:color';
+@use "sass:color";
 
 .vm-stream-context-page {
   position: relative;
@@ -98,6 +98,6 @@
   }
 
   &_modal &-header {
-    top: 51px
+    top: 41px
   }
 }

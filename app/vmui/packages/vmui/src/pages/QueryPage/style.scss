@@ -2,7 +2,19 @@
 
 .vm-query-page {
   display: grid;
-  grid-template-rows: auto 1fr;
-  align-items: flex-start;
+  grid-template-columns: 1fr;
+  min-height: 100%;
   gap: $padding-medium;
+  justify-content: flex-start;
+
+  &_with-sidebar {
+    grid-template-columns: auto 1fr;
+  }
+
+  &-content {
+    display: flex;
+    flex-direction: column;
+    gap: $padding-medium;
+    min-width: 0;
+  }
 }

@@ -103,7 +103,7 @@ const Calendar: FC<DatePickerProps> = ({
             size="small"
             onClick={handleToday}
           >
-            show today
+            Show today
           </Button>
         </div>
       )}

@@ -3,7 +3,7 @@ export const escapeRegexp = (s: string) => {
   return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
 };
 
-export const escapeDoubleQuotes = (s: string) => {
+export const escapeForLogsQLString = (s: string) => {
   return JSON.stringify(s).slice(1,-1);
 };
 

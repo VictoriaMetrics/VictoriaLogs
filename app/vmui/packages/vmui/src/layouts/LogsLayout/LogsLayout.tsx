@@ -11,11 +11,13 @@ import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
 import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
 import { migrateStorageToPrefixedKeys } from "../../utils/storage";
+import { useAppState } from "../../state/common/StateContext";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
   const { isMobile } = useDeviceDetect();
   const { pathname } = useLocation();
+  const { isDarkTheme } = useAppState();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {
@@ -36,9 +38,15 @@ const LogsLayout: FC = () => {
     }
   }, []);
 
-  return <section className="vm-container">
+  return <section
+    className={classNames({
+    "vm-container": true,
+    "vm-container_dark": isDarkTheme
+  })}
+  >
     <Header controlsComponent={ControlsLogsLayout}/>
     <div
+      id="vm-body"
       className={classNames({
         "vm-container-body": true,
         "vm-container-body_mobile": isMobile,

@@ -6,14 +6,14 @@ import { AutocompleteOptions } from "../../../Main/Autocomplete/Autocomplete";
 import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { AUTOCOMPLETE_LIMITS } from "../../../../constants/queryAutocomplete";
-import { LogsFiledValues } from "../../../../api/types";
+import { LogsFieldValues } from "../../../../api/types";
 import { useLogsDispatch, useLogsState } from "../../../../state/logsPanel/LogsStateContext";
 import { useTenant } from "../../../../hooks/useTenant";
 import { generateQuery } from "./utils";
 
 type FetchDataArgs = {
   urlSuffix: string;
-  setter: (value: LogsFiledValues[]) => void;
+  setter: (value: LogsFieldValues[]) => void;
   params?: URLSearchParams;
 }
 
@@ -27,7 +27,7 @@ const icons = {
   [ContextType.FilterOrPipeName]: <FunctionIcon/>
 };
 
-export const useFetchLogsQLOptions = (contextData?: ContextData) => {
+export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: URLSearchParams) => {
   const { serverUrl } = useAppState();
   const { period: { start, end } } = useTimeState();
   const { autocompleteCache } = useLogsState();
@@ -41,19 +41,20 @@ export const useFetchLogsQLOptions = (contextData?: ContextData) => {
 
   const abortControllerRef = useRef(new AbortController());
 
-  const getQueryParams = useCallback((params?: Record<string, string>) => {
+  const getQueryParams = useCallback((params?: Record<string, string>, extra?: URLSearchParams) => {
     const startDay = dayjs(start * 1000).startOf("day").valueOf() / 1000;
     const endDay = dayjs(end * 1000).endOf("day").valueOf() / 1000;
-
-    return new URLSearchParams({
+    const base = new URLSearchParams({
       ...(params || {}),
       limit: `${AUTOCOMPLETE_LIMITS.queryLimit}`,
       start: `${startDay}`,
       end: `${endDay}`
     });
+
+    return extra?.size ? new URLSearchParams([...base, ...extra]) : base;
   }, [start, end]);
 
-  const processData = (values: LogsFiledValues[], type: ContextType): AutocompleteOptions[] => {
+  const processData = (values: LogsFieldValues[], type: ContextType): AutocompleteOptions[] => {
     return values.map(v => ({
       value: v.value,
       type: `${type}`,
@@ -87,7 +88,7 @@ export const useFetchLogsQLOptions = (contextData?: ContextData) => {
 
       if (response.ok) {
         const data = await response.json();
-        const value = (data?.values || []) as LogsFiledValues[];
+        const value = (data?.values || []) as LogsFieldValues[];
         setter(value || []);
         dispatch({ type: "SET_AUTOCOMPLETE_CACHE", payload: { key, value } });
       }
@@ -111,18 +112,18 @@ export const useFetchLogsQLOptions = (contextData?: ContextData) => {
 
     setFieldNames([]);
 
-    const setter = (filterNames: LogsFiledValues[]) => {
+    const setter = (filterNames: LogsFieldValues[]) => {
       setFieldNames(processData(filterNames, ContextType.FilterName));
     };
 
-    fetchData({
+    void fetchData({
       urlSuffix: "field_names",
       setter: setter,
-      params: getQueryParams({ query: contextData?.queryBeforeIncompleteFilter || "*" })
+      params: getQueryParams({ query: contextData?.queryBeforeIncompleteFilter || "*" }, extraParams),
     });
 
     return () => abortControllerRef.current?.abort();
-  }, [serverUrl, contextData]);
+  }, [serverUrl, contextData, getQueryParams, extraParams?.toString()]);
 
   // fetch field values
   useEffect(() => {
@@ -133,18 +134,18 @@ export const useFetchLogsQLOptions = (contextData?: ContextData) => {
 
     setFieldValues([]);
 
-    const setter = (filterValues: LogsFiledValues[]) => {
+    const setter = (filterValues: LogsFieldValues[]) => {
       setFieldValues(processData(filterValues, ContextType.FilterValue));
     };
 
-    fetchData({
+    void fetchData({
       urlSuffix: "field_values",
       setter: setter,
-      params: getQueryParams({ query: generateQuery(contextData), field: contextData.filterName })
+      params: getQueryParams({ query: generateQuery(contextData), field: contextData.filterName }, extraParams),
     });
 
     return () => abortControllerRef.current?.abort();
-  }, [serverUrl, contextData]);
+  }, [serverUrl, contextData, getQueryParams, extraParams?.toString()]);
 
   return {
     fieldNames,

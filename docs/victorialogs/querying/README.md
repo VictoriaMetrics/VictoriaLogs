@@ -344,6 +344,8 @@ Optional `fields_limit=N` query arg can be passed to `/select/logsql/hits` for l
 If more than `N` unique `"fields"` groups is found, then top `N` `"fields"` groups with the maximum number of `"total"` hits are returned.
 The remaining hits are returned in `"fields": {}` group.
 
+Pass `ignore_pipes=1` query arg to `/select/logsql/hits` in order to ignore pipes from the `query` while obtaining hits to return.
+
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns hits stats
 for `(AccountID=12, ProjectID=34)` tenant:
@@ -420,6 +422,8 @@ Below is an example response:
 ```
 
 The `hits` value shows the number of logs with the given `field_name=field_value` pair.
+
+Pass `ignore_pipes=1` query arg to `/select/logsql/facets` in order to ignore pipes from the `query` while obtaining facets to return.
 
 The number of values per each log field can be controlled via `limit` query arg. For example, the following command returns up to 3 most frequent values
 per each log field seen in the logs over the last hour:
@@ -706,6 +710,8 @@ The `/select/logsql/stream_ids` endpoint supports optional `limit=N` query arg, 
 The endpoint returns arbitrary subset of `_stream_id` values if their number exceeds `N`, so `limit=N` cannot be used for pagination over big number of `_stream_id` values.
 When the `limit` is reached, `hits` are zeroed, since they cannot be calculated reliably.
 
+Pass `ignore_pipes=1` query arg to `/select/logsql/stream_ids` in order to ignore pipes from the `query` while obtaining log stream ids to return.
+
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns `_stream_id` stats
 for `(AccountID=12, ProjectID=34)` tenant:
@@ -769,6 +775,8 @@ The `/select/logsql/streams` endpoint supports optional `limit=N` query arg, whi
 The endpoint returns arbitrary subset of streams if their number exceeds `N`, so `limit=N` cannot be used for pagination over big number of streams.
 When the `limit` is reached, `hits` are zeroed, since they cannot be calculated reliably.
 
+Pass `ignore_pipes=1` query arg to `/select/logsql/streams` in order to ignore pipes from the `query` while obtaining log streams to return.
+
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns stream stats
 for `(AccountID=12, ProjectID=34)` tenant:
@@ -829,6 +837,8 @@ Below is an example JSON output returned from this endpoint:
 }
 ```
 
+Pass `ignore_pipes=1` query arg to `/select/logsql/stream_field_names` in order to ignore pipes from the `query` while obtaining the field names to return.
+
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns stream field names stats
 for `(AccountID=12, ProjectID=34)` tenant:
@@ -887,6 +897,8 @@ Below is an example JSON output returned from this endpoint:
 
 The `/select/logsql/stream_field_values` endpoint supports optional `limit=N` query arg, which allows limiting the number of returned values to `N` with the biggest number of hits.
 If the `limit` is exceeded, then a random set of values is returned with zeroed `hits`.
+
+Pass `ignore_pipes=1` query arg to `/select/logsql/stream_field_values` in order to ignore pipes from the `query` while obtaining the values to return for the given `field`.
 
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns stream field values stats
@@ -967,6 +979,8 @@ Below is an example JSON output returned from this endpoint:
 }
 ```
 
+Pass `ignore_pipes=1` query arg to `/select/logsql/field_names` in order to ignore pipes from the `query` while obtaining the field names to return.
+
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns field names stats
 for `(AccountID=12, ProjectID=34)` tenant:
@@ -1030,6 +1044,8 @@ Below is an example JSON output returned from this endpoint:
 The `/select/logsql/field_values` endpoint supports optional `limit=N` query arg, which allows limiting the number of returned values to `N`.
 The endpoint returns arbitrary subset of values if their number exceeds `N`, so `limit=N` cannot be used for pagination over big number of field values.
 When the `limit` is reached, `hits` are zeroed, since they cannot be calculated reliably.
+
+Pass `ignore_pipes=1` query arg to `/select/logsql/field_values` in order to ignore pipes from the `query` while obtaining the values to return for the given `field`.
 
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query returns field values stats

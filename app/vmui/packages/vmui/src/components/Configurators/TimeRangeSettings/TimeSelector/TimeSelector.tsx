@@ -216,7 +216,7 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
             startIcon={<AlarmIcon />}
             onClick={onSwitchToNow}
           >
-            switch to now
+            Switch to now
           </Button>
           <div className="vm-time-selector-left__controls">
             <Button

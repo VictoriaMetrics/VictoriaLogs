@@ -1,6 +1,6 @@
 import { useState, useCallback } from "preact/hooks";
 import { useAppState } from "../../../state/common/StateContext";
-import { LogsFiledValues } from "../../../api/types";
+import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
 
@@ -22,11 +22,11 @@ export const useFetchFieldNames = () => {
   const dispatch = useOverviewDispatch();
   const tenant = useTenant();
 
-  const [fieldNames, setFieldNames] = useState<LogsFiledValues[]>([]);
+  const [fieldNames, setFieldNames] = useState<LogsFieldValues[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string>("");
 
-  const setterFieldNames = (values: LogsFiledValues[],  skipNoiseFields = true, skipStreamFields = false) => {
+  const setterFieldNames = (values: LogsFieldValues[], skipNoiseFields = true, skipStreamFields = false) => {
     const noiseFields = skipNoiseFields ? NOISE_FIELDS : [];
     const streamFields = skipStreamFields ? STREAM_FIELDS : [];
     const skipFields = noiseFields.concat(streamFields);
@@ -77,7 +77,7 @@ export const useFetchFieldNames = () => {
         return;
       }
 
-      const data: { values: LogsFiledValues[] } = await response.json();
+      const data: { values: LogsFieldValues[] } = await response.json();
       setterFieldNames(data.values, options.skipNoiseFields, options.skipStreamFields);
       dispatch({
         type: "SET_FIELD_NAMES",

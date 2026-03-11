@@ -14,12 +14,19 @@ func TestVlsingleQueryCSVResponse(t *testing.T) {
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 
-	f := func(ingestRecords []string, query, responseExpected string) {
+	ingestRecords := []string{
+		`{"_msg":"case 1\",2","_time": "2025-06-05T14:30:19.088007Z", "host": {"name": "foobar","os": {"version": "1.2.3"}}}`,
+		`{"_msg":"case 2","_time": "2025-06-06T14:30:19.088007Z", "tags": ["foo", "bar"], "offset": 12345, "is_error": false}`,
+		`{"_msg":"stats_pipe","_time": "2025-06-05T14:30:19.088007Z", "host": {"name": "foobar","os": {"version": "1.2.3"}}}`,
+		`{"_msg":"stats_pipe","_time": "2025-06-06T14:30:19.088007Z", "tags": ["foo", "bar"], "offset": 12345, "is_error": false}`,
+	}
+	sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	f := func(query, responseExpected string) {
 		t.Helper()
 
-		sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
-		sut.ForceFlush(t)
-		response, statusCode := sut.LogsQLQueryPlain(t, query, apptest.QueryOpts{
+		response, statusCode := sut.LogsQLQueryRaw(t, query, apptest.QueryOpts{
 			Format: "csv",
 		})
 		if statusCode != 200 {
@@ -31,26 +38,18 @@ func TestVlsingleQueryCSVResponse(t *testing.T) {
 	}
 
 	// query ending with fields pipe
-	ingestRecords := []string{
-		`{"_msg":"case 1\",2","_time": "2025-06-05T14:30:19.088007Z", "host": {"name": "foobar","os": {"version": "1.2.3"}}}`,
-		`{"_msg":"case 2","_time": "2025-06-06T14:30:19.088007Z", "tags": ["foo", "bar"], "offset": 12345, "is_error": false}`,
-	}
-	query := "* | sort by (_time) | fields _time, _msg, host.name, is_error"
+	query := "case | sort by (_time) | fields _time, _msg, host.name, is_error"
 	responseExpected := `_time,_msg,host.name,is_error
 2025-06-05T14:30:19.088007Z,"case 1"",2",foobar,
 2025-06-06T14:30:19.088007Z,case 2,,false
 `
-	f(ingestRecords, query, responseExpected)
+	f(query, responseExpected)
 
 	// query ending with stats pipe
-	ingestRecords = []string{
-		`{"_msg":"stats_pipe","_time": "2025-06-05T14:30:19.088007Z", "host": {"name": "foobar","os": {"version": "1.2.3"}}}`,
-		`{"_msg":"stats_pipe","_time": "2025-06-06T14:30:19.088007Z", "tags": ["foo", "bar"], "offset": 12345, "is_error": false}`,
-	}
 	query = "stats_pipe | stats by (host.name) sum(offset) as sum_offset, count() | sort by (sum_offset)"
 	responseExpected = `sum_offset,host.name,count(*)
 12345,,1
 NaN,foobar,1
 `
-	f(ingestRecords, query, responseExpected)
+	f(query, responseExpected)
 }

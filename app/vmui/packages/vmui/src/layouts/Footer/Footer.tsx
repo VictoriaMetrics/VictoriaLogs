@@ -16,7 +16,10 @@ const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
   const copyrightYears = `2019-${new Date().getFullYear()}`;
   const { version } = useGetVersion();
 
-  return <footer className="vm-footer">
+  return <footer
+    id="vm-footer"
+    className="vm-footer"
+  >
     <a
       className="vm-link vm-footer__website"
       target="_blank"

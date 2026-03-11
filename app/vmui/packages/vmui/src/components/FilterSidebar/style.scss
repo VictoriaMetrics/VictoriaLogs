@@ -1,0 +1,55 @@
+@use "src/styles/variables" as *;
+
+.vm-filter-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc($padding-small / 2);
+  width: clamp(300px, 26vw, 380px);
+  max-width: 50vw;
+  height: 100dvh;
+  padding: $padding-small;
+  border-radius: $border-radius-medium;
+  background-color: $color-background-block;
+  box-shadow: $box-shadow-popper;
+  font-size: $font-size-small;
+  z-index: 99;
+
+  &_hidden {
+    position: absolute;
+    left: -100vw;
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  &_mobile {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  &_mobile &-list {
+    margin-right: 0;
+  }
+
+  &-header {
+    padding-block: 0;
+    padding-inline: $padding-global $padding-small;
+  }
+
+  &-list {
+    display: grid;
+    grid-auto-rows: min-content;
+    overscroll-behavior: none;
+    height: 100%;
+    overflow: auto;
+    gap: 2px;
+    margin-right: -$padding-small;
+    scrollbar-gutter: stable;
+  }
+}
