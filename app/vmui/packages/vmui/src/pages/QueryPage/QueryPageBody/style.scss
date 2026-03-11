@@ -13,7 +13,7 @@
 
     @media (max-width:1000px) {
       display: block;
-      top: 51px;
+      top: 52px;
     }
 
     &_mobile {
@@ -36,7 +36,7 @@
 
     &__tabs {
       &_mobile {
-        border-bottom: var(--border-divider);
+        border-bottom: $border-divider;
       }
     }
   }
@@ -53,19 +53,13 @@
   &__content {
     font-size: $font-size-small;
     padding-top: $padding-medium;
-    width: calc(100vw - ($padding-medium * 4) - var(--scrollbar-width));
-    overflow: auto;
+    overflow: scroll;
 
-    &_table {
+    &_table:not(&_hide) {
       padding-top: 0;
     }
 
-    @media (max-width: 768px) {
-      width: calc(100vw - ($padding-medium * 2) - var(--scrollbar-width));
-    }
-
     &_mobile {
-      width: calc(100vw - ($padding-global * 2) - var(--scrollbar-width));
       padding-top: $padding-large;
     }
   }

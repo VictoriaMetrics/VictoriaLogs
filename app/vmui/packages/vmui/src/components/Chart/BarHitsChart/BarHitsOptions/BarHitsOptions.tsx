@@ -16,7 +16,7 @@ import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
 import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
-import { useExtraFilters } from "../../../../pages/OverviewPage/hooks/useExtraFilters";
+import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
 import { humanizeSeconds } from "../../../../utils/time";

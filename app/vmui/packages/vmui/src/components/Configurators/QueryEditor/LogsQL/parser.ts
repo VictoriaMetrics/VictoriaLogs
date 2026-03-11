@@ -255,3 +255,52 @@ export const hasBalancedQuotes = (s: string) => {
     unclosedQuoteIndex: openedAt,
   };
 };
+
+export const stripPipes = (expr: string): string => {
+  const input = expr;
+
+  let insideQuotes = false;
+  let expectedQuote = "";
+  const bracketStack: string[] = [];
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+
+    if (QUOTE_CHARS.includes(char) && !isEscaped(input, i)) {
+      if (!insideQuotes) {
+        insideQuotes = true;
+        expectedQuote = char;
+      } else if (char === expectedQuote) {
+        insideQuotes = false;
+        expectedQuote = "";
+      }
+      continue;
+    }
+
+    if (insideQuotes) {
+      continue;
+    }
+
+    if (OPENING_BRACKETS.includes(char)) {
+      bracketStack.push(char);
+      continue;
+    }
+
+    if (CLOSING_BRACKETS.includes(char)) {
+      const lastOpening = bracketStack[bracketStack.length - 1];
+      const lastOpeningIndex = OPENING_BRACKETS.indexOf(lastOpening);
+
+      if (lastOpeningIndex !== -1 && CLOSING_BRACKETS[lastOpeningIndex] === char) {
+        bracketStack.pop();
+      }
+
+      continue;
+    }
+
+    if (bracketStack.length === 0 && char === "|" && !isEscaped(input, i)) {
+      return input.slice(0, i).trimEnd();
+    }
+  }
+
+  return input;
+};

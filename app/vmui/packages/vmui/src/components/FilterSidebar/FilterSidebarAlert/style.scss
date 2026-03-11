@@ -1,0 +1,65 @@
+@use "src/styles/variables" as *;
+
+.vm-filter-sidebar-alert {
+  position: relative;
+  display: grid;
+  gap: $padding-small;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  padding: $padding-global;
+  font-size: $font-size-small;
+
+  &:before,
+  &:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: $border-radius-medium;
+  }
+
+  &:after {
+    opacity: 0.04;
+  }
+
+  &:before {
+    opacity: 0.4;
+    transform: translate(-1px, -1px);
+  }
+
+  &__title {
+    font-weight: 500;
+  }
+
+  &__message {
+    grid-column: 1/span 2;
+    line-height: 1.3;
+    color: $color-text-secondary;
+  }
+
+  @mixin variant-alert($name, $color: $color-white) {
+    &_#{"" + $name} &__icon {
+      color: $color;
+    }
+
+    &_#{"" + $name}:after {
+      background-color: $color;
+    }
+
+    &_#{"" + $name}::before {
+      border: 1px solid $color;
+    }
+  }
+
+  $alert-colors: (
+    info: $color-info,
+    warning: $color-warning,
+    error: $color-error,
+  );
+
+  @each $name, $color in $alert-colors {
+    @include variant-alert($name, $color);
+  }
+}

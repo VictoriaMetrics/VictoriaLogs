@@ -11,7 +11,7 @@ import Alert from "../../../components/Main/Alert/Alert";
 import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
-import { ExtraFilter } from "../../OverviewPage/FiltersBar/types";
+import { ExtraFilter } from "../../../components/ExtraFilters/types";
 import { toEpochSeconds } from "../../../utils/time";
 
 interface Props {

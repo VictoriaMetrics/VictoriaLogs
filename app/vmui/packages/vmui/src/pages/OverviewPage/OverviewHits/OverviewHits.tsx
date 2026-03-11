@@ -3,7 +3,7 @@ import { useFetchLogHits } from "../../QueryPage/hooks/useFetchLogHits";
 import HitsChart from "../../QueryPage/HitsChart/HitsChart";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useSearchParams } from "react-router-dom";
-import { useExtraFilters } from "../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "../../QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 const OverviewHits: FC = () => {

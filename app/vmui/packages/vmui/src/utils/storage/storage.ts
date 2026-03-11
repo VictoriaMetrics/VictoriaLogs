@@ -32,5 +32,8 @@ export const getFromStorage = (key: StorageKeys, withPrefix = true): undefined |
 
 export const removeFromStorage = (keys: StorageKeys[], withPrefix = true): void => {
   const storageKeys = withPrefix ? keys.map(toPrefixedKey) : keys;
-  storageKeys.forEach(k => window.localStorage.removeItem(k));
+  storageKeys.forEach(k => {
+    window.localStorage.removeItem(k);
+    window.dispatchEvent(new StorageEvent("storage", { key: k }));
+  });
 };

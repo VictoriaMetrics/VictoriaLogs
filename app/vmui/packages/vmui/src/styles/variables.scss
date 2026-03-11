@@ -47,11 +47,15 @@ $font-size-small: 12px;
 
 
 /************* border *************/
-$border-divider: var(--border-divider);
+$border-divider-width: var(--border-width);
+$border-divider-style: var(--border-style);
+$border-divider-color: var(--border-color);
+$border-divider: $border-divider-width $border-divider-style $border-divider-color;
 
 
 /************* border-radius *************/
 $border-radius-small: 4px;
+$border-radius-button: 6px;
 $border-radius-medium: 8px;
 $border-radius-large: 16px;
 

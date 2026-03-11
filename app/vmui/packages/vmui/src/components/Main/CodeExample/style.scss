@@ -5,8 +5,9 @@
   display: block;
   padding: $padding-global;
   white-space: pre-wrap;
-  border-radius: $border-radius-small;
-  background-color: rgba($color-black, 0.05);
+  border-radius: $border-radius-medium;
+  background-color: $color-hover-black;
+  color: $color-text;
   overflow: auto;
 
   &__copy {

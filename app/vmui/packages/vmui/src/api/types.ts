@@ -18,7 +18,7 @@ export interface InstantMetricResult extends MetricBase {
 
 export interface QueryStats {
   seriesFetched?: string;
-  executionTimeMsec?: number;
+  executionTimeMs?: number;
   resultLength?: number;
   isPartial?: boolean;
 }
@@ -55,14 +55,8 @@ export interface LegendLogHitsMenu {
   handler?: () => void;
 }
 
-export interface LogsFiledValues {
+export interface LogsFieldValues {
   value: string;
   hits: number;
   percent?: number;
 }
-
-export type CardinalityMetricsRow = {
-  distinct: number;
-  coverage: number;
-  ratio: number;
-};

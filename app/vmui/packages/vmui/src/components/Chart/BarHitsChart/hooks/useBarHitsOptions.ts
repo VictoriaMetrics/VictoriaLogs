@@ -9,6 +9,7 @@ import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getColorFromString } from "../../../../utils/color";
 import useBarPaths from "./useBarPaths";
 import useBarClickHooks from "./useBarClickHooks";
+import { Size } from "../../../../hooks/useResizeObserver";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -30,7 +31,7 @@ interface UseGetBarHitsOptionsArgs {
   logHits: LogHits[];
   xRange: MinMax;
   bands?: Band[];
-  containerSize: { width: number, height: number };
+  containerSize: Size;
   setPlotScale: SetMinMax;
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;

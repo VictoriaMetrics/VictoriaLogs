@@ -1,6 +1,6 @@
 @use "src/styles/variables" as *;
 @use "src/components/Main/Modal/style" as *;
-@use 'sass:color';
+@use "sass:color";
 
 $font-size-logs: var(--font-size-logs, $font-size-small);
 
@@ -155,7 +155,8 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
 
     &-content {
       display: flex;
-      border-radius: $border-radius-medium;
+      align-items: flex-start;
+      border-radius: $border-radius-small;
       padding: 2px $actions-width 2px 2px;
       cursor: pointer;
 

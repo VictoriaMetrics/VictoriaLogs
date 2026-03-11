@@ -1,23 +1,23 @@
 import { getFromStorage, saveToStorage } from "../../utils/storage";
-import { LogsFiledValues } from "../../api/types";
+import { LogsFieldValues } from "../../api/types";
 import { AUTOCOMPLETE_LIMITS } from "../../constants/queryAutocomplete";
 
 export interface LogsState {
   markdownParsing: boolean;
   ansiParsing: boolean;
-  autocompleteCache: Map<string, LogsFiledValues[]>;
+  autocompleteCache: Map<string, LogsFieldValues[]>;
 }
 
 export type LogsAction =
   | { type: "SET_MARKDOWN_PARSING", payload: boolean }
   | { type: "SET_ANSI_PARSING", payload: boolean }
-  | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: string, value: LogsFiledValues[] } }
+  | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: string, value: LogsFieldValues[] } }
 
 
 export const initialLogsState: LogsState = {
   markdownParsing: getFromStorage("LOGS_MARKDOWN") === "true",
   ansiParsing: getFromStorage("LOGS_ANSI") === "true",
-  autocompleteCache: new Map<string, LogsFiledValues[]>(),
+  autocompleteCache: new Map<string, LogsFieldValues[]>(),
 };
 
 export function reducer(state: LogsState, action: LogsAction): LogsState {

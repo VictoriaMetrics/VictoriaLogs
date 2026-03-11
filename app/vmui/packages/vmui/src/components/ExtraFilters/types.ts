@@ -9,4 +9,5 @@ export interface ExtraFilter {
   field: string;
   operator: ExtraFilterOperator;
   value: string;
+  isStream?: boolean;
 }

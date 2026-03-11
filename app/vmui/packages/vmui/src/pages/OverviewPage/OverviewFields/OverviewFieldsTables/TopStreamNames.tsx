@@ -1,14 +1,14 @@
 import { FC, useEffect, useMemo } from "preact/compat";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
-import { LogsFiledValues } from "../../../../api/types";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
+import { LogsFieldValues } from "../../../../api/types";
 import { useStreamFieldFilter } from "../../hooks/useFieldFilter";
 import { useFetchStreamFieldNames } from "../../hooks/useFetchStreamNames";
 import { streamFieldNamesCol } from "../columns";
 import "../../OverviewTable/style.scss";
 import OverviewTable from "../../OverviewTable/OverviewTable";
 import { useOverviewState } from "../../../../state/overview/OverviewStateContext";
-import { ExtraFilterOperator } from "../../FiltersBar/types";
+import { ExtraFilterOperator } from "../../../../components/ExtraFilters/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
@@ -31,24 +31,24 @@ const TopStreamNames: FC = () => {
 
   const isEmptyList = !loading && !error && streamFieldNames.length === 0;
 
-  const handleAddExcludeFilter = (row: LogsFiledValues) => {
+  const handleAddExcludeFilter = (row: LogsFieldValues) => {
     addNewFilter({ field: row.value, value: "*", operator: ExtraFilterOperator.NotEquals });
   };
 
-  const handleAddIncludeFilter = (row: LogsFiledValues) => {
+  const handleAddIncludeFilter = (row: LogsFieldValues) => {
     addNewFilter({ field: row.value, value: "*", operator: ExtraFilterOperator.Equals });
   };
 
-  const selectField = (row: LogsFiledValues) => {
+  const selectField = (row: LogsFieldValues) => {
     setStreamFieldFilter(row.value);
   };
 
-  const handleCopy = async (row: LogsFiledValues) => {
+  const handleCopy = async (row: LogsFieldValues) => {
     const copyValue = row.value;
     await copyToClipboard(copyValue, `\`${copyValue}\` has been copied`);
   };
 
-  const handleClickRow = (row: LogsFiledValues, e: MouseEvent) => {
+  const handleClickRow = (row: LogsFieldValues, e: MouseEvent) => {
     const { ctrlKey, metaKey, altKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
 
@@ -61,7 +61,7 @@ const TopStreamNames: FC = () => {
     }
   };
 
-  const detectActiveRow = (row: LogsFiledValues) => {
+  const detectActiveRow = (row: LogsFieldValues) => {
     return row.value === streamFieldFilter;
   };
 
@@ -69,7 +69,7 @@ const TopStreamNames: FC = () => {
     fetchStreamFieldNames({ start, end, extraParams });
   }, [start, end, extraParams.toString(), fetchStreamFieldNames]);
 
-  const TableAction = (row: LogsFiledValues) => {
+  const TableAction = (row: LogsFieldValues) => {
     const menu = [
       [{
         label: streamFieldFilter === row.value ? "Unfocus" : "Focus",

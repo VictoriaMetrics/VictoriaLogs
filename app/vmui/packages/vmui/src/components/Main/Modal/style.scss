@@ -48,7 +48,7 @@ $padding-modal: $padding-medium;
   &-content {
     background: $color-background-block;
     box-shadow: 0 0 24px rgba($color-black, 0.07);
-    border-radius: $border-radius-small;
+    border-radius: $border-radius-medium;
     max-height: calc($vh * 90);
     overflow: auto;
 
@@ -60,16 +60,15 @@ $padding-modal: $padding-medium;
       gap: $padding-small;
       align-items: center;
       justify-content: space-between;
-      background-color: $color-background-block;
-      padding: $padding-global $padding-modal;
-      border-radius: $border-radius-small $border-radius-small 0 0;
+      background-color: $color-hover-black;
+      padding: $padding-small $padding-modal;
+      border-radius: $border-radius-medium $border-radius-medium 0 0;
       color: $color-text;
       border-bottom: $border-divider;
-      min-height: 51px;
       z-index: 3;
 
       &__title {
-        font-weight: bold;
+        font-weight: 500;
         user-select: none;
         overflow: hidden;
         text-overflow: ellipsis;

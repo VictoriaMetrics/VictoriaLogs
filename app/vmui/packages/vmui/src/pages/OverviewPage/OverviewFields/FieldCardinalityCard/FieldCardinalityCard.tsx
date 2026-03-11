@@ -2,7 +2,7 @@ import { FC, useMemo } from "preact/compat";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useEffect } from "react";
 import "./style.scss";
 import LineLoader from "../../../../components/Main/LineLoader/LineLoader";
