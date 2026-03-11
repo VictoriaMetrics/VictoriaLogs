@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): fix mismatched timestamps when the `_time` field is used without being defined in [`VL-Time-Field`](https://docs.victoriametrics.com/victorialogs/data-ingestion/) or [`_time_field`](https://docs.victoriametrics.com/victorialogs/data-ingestion/) parameter. Previously, VictoriaLogs could store and return timestamps that didn't match the actual log time in such cases.
+
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)
 
 Released at 2026-03-11

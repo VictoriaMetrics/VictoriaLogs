@@ -481,6 +481,10 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 			// Skip fields without values
 			continue
 		}
+		if f.Name == "_time" {
+			// Values for the _time field are stored in lr.timestamps
+			continue
+		}
 
 		var prevField *Field
 		if prevRow != nil && i < len(prevRow) {
