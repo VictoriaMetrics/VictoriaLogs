@@ -17,7 +17,7 @@ const OverviewHits: FC = () => {
     step: { value: step },
   } = useHitsChartConfig();
 
-  const { extraParams, addNewFilter } = useExtraFilters();
+  const { extraParams } = useExtraFilters();
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits();
 
   const hideChart = useMemo(() => {
@@ -46,7 +46,6 @@ const OverviewHits: FC = () => {
         query={query}
         period={period}
         step={step}
-        onApplyFilter={addNewFilter}
       />
     </div>
   );

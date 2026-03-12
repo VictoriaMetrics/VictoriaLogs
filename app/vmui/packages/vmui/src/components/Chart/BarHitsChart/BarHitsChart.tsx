@@ -8,7 +8,6 @@ import { GRAPH_QUERY_MODE, GRAPH_STYLES, GraphOptions } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
-import { ExtraFilter } from "../../ExtraFilters/types";
 import BarHitsStats from "./BarHitsStats/BarHitsStats";
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
   durationMs?: number
   isOverview?: boolean;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
-  onApplyFilter: (value: ExtraFilter) => void;
 }
 
 const BarHitsChart: FC<Props> = ({
@@ -28,7 +26,6 @@ const BarHitsChart: FC<Props> = ({
   query,
   period,
   setPeriod,
-  onApplyFilter,
   durationMs,
   isOverview
 }) => {
@@ -69,7 +66,6 @@ const BarHitsChart: FC<Props> = ({
           data={_data}
           period={period}
           setPeriod={setPeriod}
-          onApplyFilter={onApplyFilter}
           graphOptions={graphOptions}
         />
       )}

@@ -15,7 +15,6 @@ import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { ExtraFilter } from "../../../ExtraFilters/types";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import { cumulativeMatrix } from "../../../../utils/uplot/cumulative";
 import { Size, useResizeObserver } from "../../../../hooks/useResizeObserver";
@@ -26,11 +25,10 @@ interface Props {
   data: AlignedData;
   period: TimeParams;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
-  onApplyFilter: (value: ExtraFilter) => void;
   graphOptions: GraphOptions;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod }: Props) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
@@ -167,7 +165,6 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
       {uPlotInst && !isSingleOtherSeries && (
         <BarHitsLegend
           uPlotInst={uPlotInst}
-          onApplyFilter={onApplyFilter}
           legendDetails={legendDetails}
         />
       )}

@@ -8,6 +8,7 @@ import classNames from "classnames";
 import { ExtraFilter, ExtraFilterOperator } from "../../ExtraFilters/types";
 import Checkbox from "../../Main/Checkbox/Checkbox";
 import { useAppState } from "../../../state/common/StateContext";
+import { DisabledIcon } from "../../Main/Icons";
 
 type Props = {
   field: LogsFieldValues;
@@ -28,9 +29,12 @@ const FilterSidebarValue: FC<Props> = ({
 }) => {
   const { isDarkTheme } = useAppState();
 
-  const hasFilter = useMemo(() => {
-    return extraFilters.some(f => f.value === field.value);
+  const filtersByValue = useMemo(() => {
+    return extraFilters.filter(f => f.value === field.value);
   }, [field.value, extraFilters]);
+
+  const hasFilter = !!filtersByValue.length;
+  const isExcluded = filtersByValue.some(f => f.operator === ExtraFilterOperator.NotEquals);
 
   const hitsShort = formatNumberShort(field.hits);
 
@@ -60,6 +64,7 @@ const FilterSidebarValue: FC<Props> = ({
         <Checkbox
           size="small"
           checked={hasFilter || isAnyValueFilter}
+          icon={isExcluded ? <DisabledIcon/> : undefined}
           color={hasFilter ? (isDarkTheme ? "secondary" : "primary") : "gray"}
         />
       </div>

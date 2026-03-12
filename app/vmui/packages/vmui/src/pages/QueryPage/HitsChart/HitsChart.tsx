@@ -10,7 +10,6 @@ import Alert from "../../../components/Main/Alert/Alert";
 import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
-import { ExtraFilter } from "../../../components/ExtraFilters/types";
 import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
 import { useCallback } from "react";
 
@@ -23,10 +22,9 @@ interface Props {
   error?: string;
   isLoading: boolean;
   isOverview?: boolean;
-  onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, onApplyFilter }) => {
+const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
@@ -128,7 +126,6 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
           data={data}
           period={period}
           setPeriod={setPeriod}
-          onApplyFilter={onApplyFilter}
         />
       )}
     </section>

@@ -1,7 +1,7 @@
 import { LegendLogHitsMenu } from "../../../../../api/types";
 import { useMemo } from "react";
 import { FocusIcon, UnfocusIcon, VisibilityIcon, VisibilityOffIcon } from "../../../../Main/Icons";
-import { altKeyLabel, ctrlKeyLabel } from "../../../../../utils/keyboard";
+import { ctrlKeyLabel } from "../../../../../utils/keyboard";
 import { Series } from "uplot";
 
 type Props = {
@@ -23,13 +23,13 @@ const useLegendHitsVisibilityMenu = ({
     {
       title: isShow ? "Hide this series" : "Show this series",
       iconStart: isShow ? <VisibilityOffIcon/> : <VisibilityIcon/>,
-      shortcut: `${altKeyLabel} + Click`, // handled in BarHitsLegendItem.tsx
+      shortcut: `${ctrlKeyLabel} + Click`, // handled in BarHitsLegendItem.tsx
       handler: handleVisibilityToggle,
     },
     {
       title: isOnlyTargetVisible ? "Show all series" : "Show only this series",
       iconStart: isOnlyTargetVisible ? <UnfocusIcon/> : <FocusIcon/>,
-      shortcut: `${ctrlKeyLabel} + Click`, // handled in BarHitsLegendItem.tsx
+      shortcut: "Click", // handled in BarHitsLegendItem.tsx
       handler: handleFocusToggle,
     },
   ], [isOnlyTargetVisible, isShow, handleVisibilityToggle, handleFocusToggle]);

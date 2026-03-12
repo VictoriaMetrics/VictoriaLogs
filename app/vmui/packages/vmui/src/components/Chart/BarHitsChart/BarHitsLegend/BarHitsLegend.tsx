@@ -3,15 +3,13 @@ import uPlot, { Series } from "uplot";
 import "./style.scss";
 import BarHitsLegendItem from "./BarHitsLegendItem";
 import { LegendLogHits } from "../../../../api/types";
-import { ExtraFilter } from "../../../ExtraFilters/types";
 
 interface Props {
   uPlotInst: uPlot;
   legendDetails: LegendLogHits[];
-  onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails, onApplyFilter }) => {
+const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails }) => {
   const [series, setSeries] = useState<Series[]>([]);
 
   const getSeries = () => {
@@ -39,7 +37,6 @@ const BarHitsLegend: FC<Props> = ({ uPlotInst, legendDetails, onApplyFilter }) =
           legend={legend}
           series={series}
           onRedrawGraph={handleRedrawGraph}
-          onApplyFilter={onApplyFilter}
         />
       ))}
     </div>

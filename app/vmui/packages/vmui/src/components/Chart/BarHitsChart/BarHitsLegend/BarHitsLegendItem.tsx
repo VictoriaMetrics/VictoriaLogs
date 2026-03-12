@@ -1,4 +1,4 @@
-import { FC, useMemo, useRef, useState, MouseEvent } from "preact/compat";
+import { FC, useMemo, useRef } from "preact/compat";
 import classNames from "classnames";
 import { Series } from "uplot";
 import { LegendLogHits } from "../../../../api/types";
@@ -7,26 +7,25 @@ import { formatNumberShort } from "../../../../utils/number";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
 import LegendHitsMenu from "../LegendHitsMenu/LegendHitsMenu";
-import { ExtraFilter } from "../../../ExtraFilters/types";
 import { useCallback } from "react";
 import useLegendHitsVisibilityMenu from "./hooks/useLegendHitsVisibilityMenu";
+import Button from "../../../Main/Button/Button";
+import { MoreIcon } from "../../../Main/Icons";
 
 interface Props {
   legend: LegendLogHits;
   series: Series[];
   onRedrawGraph: () => void;
-  onApplyFilter: (value: ExtraFilter) => void;
 }
 
-const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFilter }) => {
+const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph }) => {
   const {
     value: openContextMenu,
-    setTrue: handleOpenContextMenu,
+    toggle: toggleContextMenu,
     setFalse: handleCloseContextMenu,
   } = useBoolean(false);
 
   const legendRef = useRef<HTMLDivElement>(null);
-  const [clickPosition, setClickPosition] = useState<{ top: number; left: number } | null>(null);
 
   const targetSeries = useMemo(() => series.find(s => s.label === legend.label), [series]);
   const isOnlyTargetVisible = series.every(s => s === targetSeries || !s.show);
@@ -35,12 +34,6 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
 
   const label = fields.join(", ");
   const totalShortFormatted = formatNumberShort(legend.total);
-
-  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setClickPosition({ top: e.clientY, left: e.clientX });
-    handleOpenContextMenu();
-  };
 
   const handleVisibilityToggle = useCallback(() => {
     if (!targetSeries) return;
@@ -57,23 +50,22 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
     handleCloseContextMenu();
   }, [series, isOnlyTargetVisible, targetSeries, onRedrawGraph, handleCloseContextMenu]);
 
-  const handleClickByLegend = (e: MouseEvent<HTMLDivElement>) => {
-    const { ctrlKey, metaKey, altKey } = e;
+  const handleClickMenu = (e: MouseEvent) => {
+    e.stopPropagation();
+    toggleContextMenu();
+  };
 
-    // alt + key // see useLegendHitsVisibilityMenu.tsx
-    if (altKey) {
-      handleVisibilityToggle();
-      return;
-    }
-
-    // cmd/ctrl + click // see useLegendHitsVisibilityMenu.tsx
+  const handleClickByLegend = (e: MouseEvent) => {
+    const { ctrlKey, metaKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
-    if (ctrlMetaKey) {
-      handleFocusToggle();
-      return;
-    }
 
-    handleContextMenu(e);
+    if (ctrlMetaKey) {
+      // cmd/ctrl + click // see useLegendHitsVisibilityMenu.tsx
+      handleVisibilityToggle();
+    } else {
+      // click // see useLegendHitsVisibilityMenu.tsx
+      handleFocusToggle();
+    }
   };
 
   const optionsVisibilitySection = useLegendHitsVisibilityMenu({
@@ -101,18 +93,26 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph, onApplyFi
       <div className="vm-bar-hits-legend-item__label">{label}</div>
       <span className="vm-bar-hits-legend-item__total">({totalShortFormatted})</span>
 
+      <div className="vm-bar-hits-legend-item__actions">
+        <Button
+          size="small"
+          variant="text"
+          color="gray"
+          startIcon={<MoreIcon/>}
+          onClick={handleClickMenu}
+        />
+      </div>
+
       <Popper
-        placement="fixed"
+        placement="bottom-right"
         open={openContextMenu}
         buttonRef={legendRef}
-        placementPosition={clickPosition}
         onClose={handleCloseContextMenu}
       >
         <LegendHitsMenu
           legend={legend}
           fields={fields}
           optionsVisibilitySection={optionsVisibilitySection}
-          onApplyFilter={onApplyFilter}
           onClose={handleCloseContextMenu}
         />
       </Popper>

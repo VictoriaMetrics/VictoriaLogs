@@ -22,6 +22,9 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): make legend click perform default action (hide/show series) and move additional actions to hover context menu.
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): use `extra_filters` instead of modifying query when adding legend filters. See [#411](https://github.com/VictoriaMetrics/VictoriaLogs/issues/411).
+
 * BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): properly handle the case when the ingested logs contain `_time` field without the real timestamp, and this field is not mentioned in the `_time_field` query arg or in the `VL-Time-Field` request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters). Previously this could lead to unexpected errors during querying such as `missing _time field in the query results`. See [#1168](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168).
 
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)

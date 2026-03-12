@@ -19,7 +19,6 @@ import { getUpdatedHistory } from "../../components/QueryHistory/utils";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import usePrevious from "../../hooks/usePrevious";
 import { useExtraFilters } from "../../components/ExtraFilters/hooks/useExtraFilters";
-import { ExtraFilter } from "../../components/ExtraFilters/types";
 import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
 import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
@@ -31,7 +30,6 @@ import { useFilterSidebarVisible } from "../../components/FilterSidebar/hooks/us
 import classNames from "classnames";
 import ExtraFiltersPanel from "../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersPanel";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
-import { filterToExpr } from "../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
 const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
@@ -177,11 +175,6 @@ const QueryPage: FC = () => {
 
   const debouncedHandleRunQuery = useDebounceCallback(handleRunQuery, 300);
 
-  const handleApplyFilter = (val: ExtraFilter) => {
-    setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
-    setIsUpdatingQuery(true);
-  };
-
   const handleUpdateQuery = () => {
     if (isLoading || dataLogHits.isLoading) {
       abortController.abort?.();
@@ -315,7 +308,6 @@ const QueryPage: FC = () => {
             query={query}
             period={period}
             step={step}
-            onApplyFilter={handleApplyFilter}
           />
         )}
         <QueryPageBody

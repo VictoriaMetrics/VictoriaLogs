@@ -1,4 +1,4 @@
-import { FC } from "preact/compat";
+import { FC, useCallback } from "preact/compat";
 import "./style.scss";
 import { LegendLogHits, LegendLogHitsMenu } from "../../../../api/types";
 import LegendHitsMenuStats from "./LegendHitsMenuStats";
@@ -7,6 +7,7 @@ import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import LegendHitsMenuFields from "./LegendHitsMenuFields";
 import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
+import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { ExtraFilter } from "../../../ExtraFilters/types";
 
 const otherDescription = `Aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
@@ -15,11 +16,16 @@ interface Props {
   legend: LegendLogHits;
   fields: string[];
   optionsVisibilitySection: LegendLogHitsMenu[];
-  onApplyFilter: (value: ExtraFilter) => void;
   onClose: () => void;
 }
 
-const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, onApplyFilter, onClose }) => {
+const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, onClose }) => {
+  const { addNewFilter } = useExtraFilters();
+
+  const handleApplyFilter = useCallback((filter: ExtraFilter) => {
+    addNewFilter(filter);
+  }, [addNewFilter]);
+
   return (
     <div className="vm-legend-hits-menu">
       <LegendHitsMenuVisibility options={optionsVisibilitySection} />
@@ -27,7 +33,7 @@ const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, o
       {!legend.isOther && (
         <LegendHitsMenuBase
           legend={legend}
-          onApplyFilter={onApplyFilter}
+          onApplyFilter={handleApplyFilter}
           onClose={onClose}
         />
       )}
@@ -35,7 +41,7 @@ const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, o
       {!legend.isOther && (
         <LegendHitsMenuFields
           fields={fields}
-          onApplyFilter={onApplyFilter}
+          onApplyFilter={handleApplyFilter}
           onClose={onClose}
         />
       )}
