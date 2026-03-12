@@ -483,6 +483,7 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 		}
 		if f.Name == "_time" {
 			// Values for the _time field are stored in lr.timestamps
+			// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168
 			continue
 		}
 

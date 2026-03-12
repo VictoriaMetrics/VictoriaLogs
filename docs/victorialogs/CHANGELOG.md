@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): fix mismatched timestamps when the `_time` field is used without being defined in [`VL-Time-Field`](https://docs.victoriametrics.com/victorialogs/data-ingestion/) or [`_time_field`](https://docs.victoriametrics.com/victorialogs/data-ingestion/) parameter. Previously, VictoriaLogs could store and return timestamps that didn't match the actual log time in such cases.
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): properly handle the case when the ingested logs contain `_time` field without the real timestamp, and this field is not mentioned in the `_time_field` query arg or in the `VL-Time-Field` request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters). Previously this could lead to unexpected errors during querying such as `missing _time field in the query results`. See [#1168](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168).
 
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)
 
