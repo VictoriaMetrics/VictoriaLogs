@@ -484,8 +484,8 @@ func (s *Storage) DeleteRunTask(ctx context.Context, taskID string, timestamp in
 	errs := make([]error, len(s.sns))
 
 	// Return an error to the caller when at least a single storage node is unavailable.
-	// This improves awarenes of the caller about unavailable storage nodes.
-	// If some storage node is unavailable, then the deletetion task
+	// This improves awareness of the caller about unavailable storage nodes.
+	// If some storage node is unavailable, then the deletion task
 	// can start on arbitrary number of the remaining available nodes.
 	// It is OK to re-run the delete task in this case.
 	allowPartialResponse := false
@@ -511,7 +511,7 @@ func (s *Storage) DeleteStopTask(ctx context.Context, taskID string) error {
 	errs := make([]error, len(s.sns))
 
 	// Return an error to the caller when at least a single storage node is unavailable.
-	// This improves awarenes of the caller about unavailable storage nodes.
+	// This improves awareness of the caller about unavailable storage nodes.
 	// If some storage node is unavailable, then the deletion task can remain uncanceled on such nodes.
 	// It is OK to stop the delete task multiple times in this case.
 	allowPartialResponse := false

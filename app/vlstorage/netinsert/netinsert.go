@@ -148,7 +148,7 @@ func (sn *storageNode) debugFlush() {
 	// Send pending samples to sn.
 	sn.flushPendingData(true)
 
-	// Instruct sn to convert the recevied samples into searchable parts.
+	// Instruct sn to convert the received samples into searchable parts.
 	if err := sn.doRequest("/internal/force_flush", nil); err != nil {
 		logger.Errorf("cannot convert pending samples into searchable parts: %s", err)
 	}

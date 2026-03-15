@@ -1242,7 +1242,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	needSortFields := !ca.q.IsFixedOutputFieldsOrder()
 	if format == "csv" {
 		if needSortFields {
-			logger.Panicf("BUG: neetSortFields must be false for format=csv")
+			logger.Panicf("BUG: needSortFields must be false for format=csv")
 		}
 		appendRow = appendCSVRow
 	} else {
