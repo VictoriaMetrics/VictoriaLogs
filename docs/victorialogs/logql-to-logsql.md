@@ -36,7 +36,7 @@ It is recommended reading [VictoriaLogs key concepts](https://docs.victoriametri
 The basic practical [LogQL query](https://grafana.com/docs/loki/latest/query/) consists of a [log stream selector](https://grafana.com/docs/loki/latest/query/log_queries/#log-stream-selector),
 which returns logs for the matching log streams. For example:
 
-```logql
+```logsql
 {app="nginx",host="host-42"}
 ```
 
@@ -135,7 +135,7 @@ This provides the following advantages over Loki:
 Given these recommendations, a typical Loki query, which includes parsing JSON lines, can be simplified and significantly sped up at VictoriaLogs.
 For example, the following Loki query selects logs with the given `trace_id` at log lines:
 
-```logql
+```logsql
 {...} | unpack | trace_id == "abcdef"
 ```
 

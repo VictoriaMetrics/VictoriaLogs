@@ -224,7 +224,7 @@ For example, the following command starts VictoriaLogs, which stores the data at
 ```
 
 VictoriaLogs automatically creates the `-storageDataPath` directory on the first run if it is missing. VictoriaLogs stores logs
-per every day into a spearate subdirectory (aka per-day partition). See [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) for details.
+per every day into a separate subdirectory (aka per-day partition). See [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) for details.
 
 VictoriaLogs switches to cluster mode if `-storageNode` command-line flag is specified:
 
@@ -249,7 +249,7 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
 - `/internal/partition/detach?name=YYYYMMDD` - detaches the partition directory with the given name `YYYYMMDD` from VictoriaLogs,
   so it is no longer visible for querying and cannot be used for data ingestion.
   The `/internal/partition/detach` endpoint waits until all the concurrently executed queries stop reading the data from the detached partition
-  before returning. This allows safe on-disk manipulions of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
+  before returning. This allows safe on-disk manipulations of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
   Detached partitions are automatically attached after VictoriaLogs restart if the corresponding subdirectories at `<-storageDataPath>/partitions/` aren't removed.
 - `/internal/partition/list` - returns JSON-encoded list of currently active partitions, which can be passed to `/internal/partition/detach` endpoint via `name` query arg.
 - `/internal/partition/snapshot/create?partition_prefix=<prefix>` - creates [snapshots](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
@@ -270,7 +270,7 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
 These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
-with fast NVMe (SSD) disks, while historical logs are gradully migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
+with fast NVMe (SSD) disks, while historical logs are gradually migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
 This scheme can be implemented with the following simple cron job, which must run once per day:
 
 1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` endpoint.

@@ -163,7 +163,7 @@ See also:
 #### Querying logs in CSV format
 
 The [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) endpoint returns query results in CSV format
-if `format=csv` query arg is passed to this enpoint.
+if `format=csv` query arg is passed to this endpoint.
 
 The query must end with [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
 in order to return results in CSV format. These pipes define the order of the returned fields, so CSV header can be reliably generated for these fields.
@@ -1107,7 +1107,7 @@ which can be used for hiding the specific [log fields](https://docs.victoriametr
 These fields become invisible during query execution - they aren't visible during [filtering](https://docs.victoriametrics.com/victorialogs/logsql/#filters)
 and they aren't visible during execution of all the [LogsQL pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
 
-This functionality is useful for restricting acces to certain log fields with sensitive information for the particular authorized users.
+This functionality is useful for restricting access to certain log fields with sensitive information for the particular authorized users.
 The `hidden_fields_filters` query arg can be attached to the request by auth proxy such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#enforcing-query-args).
 
@@ -1297,7 +1297,7 @@ The following example calculates stats on the number of log messages received du
 grouped by `log.level` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with traditional Unix tools:
 
 ```sh
-curl http://localhost:9428/select/logsql/query -d 'query=_time:5m log.level:*' | jq -r '."log.level"' | sort | uniq -c 
+curl http://localhost:9428/select/logsql/query -d 'query=_time:5m log.level:*' | jq -r '."log.level"' | sort | uniq -c
 ```
 
 The query selects all the log messages with non-empty `log.level` field via ["any value" filter](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter),

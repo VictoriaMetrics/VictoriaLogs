@@ -20,7 +20,7 @@ Starting with [Perses](https://perses.dev/) [v0.53.0-beta.2](https://github.com/
 * Choose `Proxy` or `Direct access` depending on the public availability of your VictoriaLogs instance.
 * Click `Save` to submit.
 
-![VictoriaLogs datasource plugin configration](./perses-datasource.webp)
+![VictoriaLogs datasource plugin configuration](./perses-datasource.webp)
 
 ## Variables plugin
 

@@ -279,7 +279,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_storage_per_query_uncompressed_values_processed_bytes
 **Type:** Histogram
 
-**Description:** Uncompressed bytes processed when reading field values during query exection. See also [`vl_storage_per_query_values_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_read_values`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_values).
+**Description:** Uncompressed bytes processed when reading field values during query execution. See also [`vl_storage_per_query_values_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_read_values`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_values).
 
 
 ## Concurrency and Resource Metrics

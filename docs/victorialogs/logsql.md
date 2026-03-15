@@ -457,7 +457,7 @@ For example, the following query selects logs between Monday and Friday at `+020
 _time:week_range[Mon, Fri] offset 2h
 ```
 
-If logs must be selected on the giveen week days according to UTC, then use `offset 0h`:
+If logs must be selected on the given week days according to UTC, then use `offset 0h`:
 
 ```logsql
 _time:week_range[Mon, Fri] offset 0h
@@ -769,7 +769,7 @@ VictoriaLogs supports filtering logs by patterns with the following filters:
 
 - `pattern_match("pattern")` - matches the given `pattern` for any part of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 - `pattern_match_full("pattern")` - matches the given `pattern` for the whole [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
-- `pattern_match_prefix("pattern")` - matches the given `pattern` at the begining of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+- `pattern_match_prefix("pattern")` - matches the given `pattern` at the beginning of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 - `pattern_match_suffix("pattern")` - matches the given `pattern` at the end of the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 
 These filters can be applied to any given log field with the `log_field:pattern_match("pattern")` syntax.
