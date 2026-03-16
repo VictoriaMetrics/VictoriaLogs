@@ -43,7 +43,7 @@ const useDownloadLogs = () => {
       if (!res || Array.isArray(res) || !res.body || !res.ok) {
         if (res instanceof Response) {
           const errorText = await res.text();
-          setSaveFileError(errorText);
+          setSaveFileError(errorText.trim() || `Download failed: ${res.status} ${res.statusText}`);
         } else {
           setSaveFileError("unable to fetch logs");
         }
