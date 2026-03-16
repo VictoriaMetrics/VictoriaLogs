@@ -135,7 +135,7 @@ This provides the following advantages over Loki:
 Given these recommendations, a typical Loki query, which includes parsing JSON lines, can be simplified and significantly sped up at VictoriaLogs.
 For example, the following Loki query selects logs with the given `trace_id` at log lines:
 
-```logsql
+```logql
 {...} | unpack | trace_id == "abcdef"
 ```
 
