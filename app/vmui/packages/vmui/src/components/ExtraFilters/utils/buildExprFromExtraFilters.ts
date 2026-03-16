@@ -2,13 +2,22 @@ import { ExtraFilter, ExtraFilterOperator } from "../types";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { isStreamFilter } from "./isStreamFilter";
 
+type ExprBuilder = (options: BuildExprOptions) => string;
+
 type BuildExprOptions = {
   field: string;
   operator: ExtraFilterOperator;
   filters: ExtraFilter[];
 };
 
-export const buildFilterExpr = ({ field, operator, filters }: BuildExprOptions) => {
+
+enum FieldType {
+  Field,
+  Stream,
+  Time
+}
+
+const buildFilterExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOptions) => {
   const normalValues: string[] = [];
   const specialValues: string[] = [];
   if (filters.length === 0) return "";
@@ -53,7 +62,7 @@ export const buildFilterExpr = ({ field, operator, filters }: BuildExprOptions) 
   return expr.trim();
 };
 
-export const buildStreamExpr = ({ field, operator, filters }: BuildExprOptions) => {
+const buildStreamExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOptions) => {
   if (filters.length === 0) return "";
 
   const escapedValues = filters.map(f => escapeForLogsQLString(f.value));
@@ -85,9 +94,46 @@ export const buildStreamExpr = ({ field, operator, filters }: BuildExprOptions) 
   return `{${expr.trim()}}`;
 };
 
+const buildTimeExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOptions) => {
+  if (filters.length === 0) return "";
+
+  const isRegexOp = operator === ExtraFilterOperator.Regex || operator === ExtraFilterOperator.NotRegex;
+  const isNegationOp = operator === ExtraFilterOperator.NotEquals || operator === ExtraFilterOperator.NotRegex;
+
+  if (isRegexOp) {
+    console.warn(`${operator} operator is not supported for _time field.`);
+  }
+
+  const values = filters.map(f => f.value.trim()).filter(Boolean);
+
+  if (values.length === 0) return "";
+
+  const parts = values.map(v => `${field}:${v}`);
+  const expr = parts.join(" OR ");
+
+  return isNegationOp ? `NOT (${expr})` : expr;
+};
+
+const getFieldType = (filter: ExtraFilter): FieldType => {
+  if (filter.field === "_time") return FieldType.Time;
+  if (isStreamFilter(filter)) return FieldType.Stream;
+  return FieldType.Field;
+};
+
+export const getExprBuilder = (filter: ExtraFilter): ExprBuilder => {
+  switch (getFieldType(filter)) {
+    case FieldType.Time:
+      return buildTimeExpr;
+    case FieldType.Stream:
+      return buildStreamExpr;
+    case FieldType.Field:
+    default:
+      return buildFilterExpr;
+  }
+};
+
 export const filterToExpr = (filter: ExtraFilter) => {
   const { field, operator } = filter;
-  const isStream = isStreamFilter(filter);
-  const buildExpr = isStream ? buildStreamExpr : buildFilterExpr;
+  const buildExpr = getExprBuilder(filter);
   return buildExpr({ field, operator, filters: [filter] });
 };

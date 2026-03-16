@@ -36,7 +36,18 @@ export const useExtraFilters = () => {
   }, [searchParams, setSearchParams]);
 
   const addNewFilter = useCallback((newFilter: ExtraFilter) => {
-    setNewFilters([...extraFilters, newFilter]);
+    const index = extraFilters.findIndex(
+      f => f.field === newFilter.field && f.value === newFilter.value
+    );
+
+    if (index === -1) {
+      setNewFilters([...extraFilters, newFilter]);
+      return;
+    }
+
+    const next = [...extraFilters];
+    next[index] = newFilter;
+    setNewFilters(next);
   }, [extraFilters, setNewFilters]);
 
   const updateFilter = useCallback((filter: ExtraFilter, index: number) => {

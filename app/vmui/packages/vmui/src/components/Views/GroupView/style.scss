@@ -149,7 +149,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
       z-index: 2;
     }
 
-    &:nth-child(even) > &-content {
+    &:nth-child(2n) > &-content {
       background-color: $color-hover-black;
     }
 
@@ -177,7 +177,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         will-change: outline-width;
       }
 
-      &_interactive:hover:not(&_active) {
+      &_interactive:hover {
         outline-width: 2px;
       }
 
@@ -329,8 +329,8 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
 
     &-fields {
       position: relative;
-      padding: $padding-small 0;
-      margin: $padding-small 0 $padding-small calc($padding-global * 2);
+      padding: 0;
+      margin-bottom: $padding-small;
       border: $border-divider;
       border-radius: $border-radius-small;
       overflow: auto;
@@ -356,6 +356,12 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
       }
 
       &-item {
+        border-bottom: 1px dashed $border-divider-color;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
         &_mobile {
           max-width: calc(100vw - ($padding-global * 4));
           display: flex;
@@ -388,12 +394,13 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         }
 
         &-controls {
-          padding: 0 calc($padding-small / 2);
+          padding: 1px 2px;
 
           &__wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: opacity .1s ease-in;
           }
 
           &__button.vm-button_small {
@@ -407,10 +414,12 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         &__value {
           vertical-align: top;
           line-height: $font-size;
-          padding: calc($padding-small / 2);
+          padding: calc($padding-global / 2) calc($padding-small / 2);
         }
 
         &__key {
+          padding-inline: calc($padding-global / 2);
+          color: $color-text-secondary;
           overflow-wrap: break-word;
         }
 
@@ -418,6 +427,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
           width: 100%;
           word-break: break-all;
           white-space: pre-wrap;
+          text-wrap: balance;
         }
       }
     }

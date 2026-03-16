@@ -1,12 +1,7 @@
-import { FC, memo, useCallback, useEffect, useState } from "preact/compat";
-import Tooltip from "../../Main/Tooltip/Tooltip";
-import Button from "../../Main/Button/Button";
-import { CopyIcon, StorageIcon, VisibilityIcon } from "../../Main/Icons";
-import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
-import { useSearchParams } from "react-router-dom";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
+import { FC, memo } from "preact/compat";
 import classNames from "classnames";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
+import FieldRowActions from "./GroupLogsFieldRowMenu/FieldRowActions";
 
 interface Props {
   field: string;
@@ -14,51 +9,8 @@ interface Props {
   hideGroupButton?: boolean;
 }
 
-const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
+const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton = false }) => {
   const { isMobile } = useDeviceDetect();
-  const copyToClipboard = useCopyToClipboard();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [copied, setCopied] = useState<boolean>(false);
-
-  const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
-  const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || "";
-  const displayFields = displayFieldsString ? displayFieldsString.split(",") : [];
-
-  const isSelectedField = displayFields.includes(field);
-  const isGroupByField = groupBy === field;
-  const tooltipTitle = isGroupByField ? "Clear grouping" : "Group by this field";
-
-  const handleCopy = useCallback(async () => {
-    if (copied) return;
-    try {
-      await copyToClipboard(`${field}: ${JSON.stringify(value)}`);
-      setCopied(true);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [copied, copyToClipboard]);
-
-  const handleSelectDisplayField = () => {
-    const prev = displayFields;
-    const newDisplayFields = prev.includes(field) ? prev.filter(v => v !== field) : [...prev, field];
-    searchParams.set(LOGS_URL_PARAMS.DISPLAY_FIELDS, newDisplayFields.join(","));
-    setSearchParams(searchParams);
-  };
-
-  const handleSelectGroupBy = () => {
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set(LOGS_URL_PARAMS.GROUP_BY, isGroupByField ? WITHOUT_GROUPING : field);
-      return newParams;
-    });
-  };
-
-  useEffect(() => {
-    if (copied === null) return;
-    const timeout = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timeout);
-  }, [copied]);
 
   return (
     <tr
@@ -67,47 +19,15 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton }) => {
       "vm-group-logs-row-fields-item_mobile": isMobile
     })}
     >
-      <td className="vm-group-logs-row-fields-item-controls">
-        <div className="vm-group-logs-row-fields-item-controls__wrapper">
-          <Tooltip title={copied ? "Copied" : "Copy to clipboard"}>
-            <Button
-              className="vm-group-logs-row-fields-item-controls__button"
-              variant="text"
-              color="gray"
-              size="small"
-              startIcon={<CopyIcon/>}
-              onClick={handleCopy}
-              ariaLabel="copy to clipboard"
-            />
-          </Tooltip>
-          <Tooltip title={isSelectedField ? "Hide this field" : "Show this field instead of the message"}>
-            <Button
-              className="vm-group-logs-row-fields-item-controls__button"
-              variant="text"
-              color={isSelectedField ? "secondary" : "gray"}
-              size="small"
-              startIcon={isSelectedField ? <VisibilityIcon/> : <VisibilityIcon/>}
-              onClick={handleSelectDisplayField}
-              ariaLabel={isSelectedField ? "Hide this field" : "Show this field instead of the message"}
-            />
-          </Tooltip>
-          {!hideGroupButton && (
-            <Tooltip title={tooltipTitle}>
-              <Button
-                className="vm-group-logs-row-fields-item-controls__button"
-                variant="text"
-                color={isGroupByField ? "secondary" : "gray"}
-                size="small"
-                startIcon={<StorageIcon/>}
-                onClick={handleSelectGroupBy}
-                ariaLabel={tooltipTitle}
-              />
-            </Tooltip>
-          )}
-        </div>
-      </td>
       <td className="vm-group-logs-row-fields-item__key">{field}</td>
       <td className="vm-group-logs-row-fields-item__value">{value}</td>
+      <td className="vm-group-logs-row-fields-item-controls">
+        <FieldRowActions
+          field={field}
+          value={value}
+          hideGroupButton={hideGroupButton}
+        />
+      </td>
     </tr>
   );
 };
