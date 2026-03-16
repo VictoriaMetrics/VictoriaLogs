@@ -6,12 +6,12 @@ import { LogHits } from "../../../api/types";
 import { useTimeDispatch } from "../../../state/time/TimeStateContext";
 import { AlignedData } from "uplot";
 import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
-import Alert from "../../../components/Main/Alert/Alert";
 import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
 import { useCallback } from "react";
+import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 
 interface Props {
   query: string;
@@ -28,7 +28,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   const { isMobile } = useDeviceDetect();
   const timeDispatch = useTimeDispatch();
   const [searchParams] = useSearchParams();
-  const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
+  const hideChart = useMemo(() => searchParams.get("hide_chart") === "true", [searchParams]);
 
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
@@ -77,20 +77,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     return [xAxis, ...yAxes] as AlignedData;
   }, [logHits, generateTimestamps]);
 
-  const noDataMessage: string = useMemo(() => {
-    if (isLoading) return "";
-
-    const noData = data.every(d => d.length === 0);
-    const noTimestamps = data[0].length === 0;
-    const noValues = data[1].length === 0;
-    if (noData) {
-      return "No logs volume available\nNo volume information available for the current queries and time range.";
-    } else if (noTimestamps) {
-      return "No timestamp information available for the current queries and time range.";
-    } else if (noValues) {
-      return "No value information available for the current queries and time range.";
-    } return "";
-  }, [data, hideChart, isLoading]);
+  const alertData = useHitsChartAlert({ data, error, isLoading, hideChart });
 
   const setPeriod = ({ from, to }: {from: Date, to: Date}) => {
     timeDispatch({ type: "SET_PERIOD", payload: { from, to } });
@@ -105,17 +92,6 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
       })}
     >
       {isLoading && <LineLoader/>}
-      {!error && noDataMessage && !hideChart && (
-        <div className="vm-query-page-chart__empty">
-          <Alert variant="info">{noDataMessage}</Alert>
-        </div>
-      )}
-
-      {error && noDataMessage && !hideChart && (
-        <div className="vm-query-page-chart__empty">
-          <Alert variant="error"><pre>{error}</pre></Alert>
-        </div>
-      )}
 
       {data && (
         <BarHitsChart
@@ -126,6 +102,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
           data={data}
           period={period}
           setPeriod={setPeriod}
+          alertData={alertData}
         />
       )}
     </section>

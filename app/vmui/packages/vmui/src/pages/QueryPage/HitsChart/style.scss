@@ -8,12 +8,9 @@
   padding: 0 0 0 $padding-small !important;
 
   &__empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    top: 0;
-    bottom: 0;
+    margin-block: $padding-small;
+    margin-right: calc($padding-small * 2);
+    margin-left: $padding-small;
     z-index: 2;
   }
 }

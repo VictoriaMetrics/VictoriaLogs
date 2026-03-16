@@ -7,6 +7,10 @@
   border-bottom: $border-divider;
   font-size: $font-size-small;
 
+  &__error {
+    padding: 0 $padding-small $padding-global;
+  }
+
   &-body {
     display: flex;
     flex-wrap: wrap;

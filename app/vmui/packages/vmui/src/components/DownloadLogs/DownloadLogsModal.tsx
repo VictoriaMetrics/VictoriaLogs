@@ -81,7 +81,14 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
               </div>
             </div>
 
-            {error && <Alert variant="error">{error}</Alert>}
+            {error && (
+              <Alert
+                title="Download failed"
+                variant="error"
+              >
+                {error}
+              </Alert>
+            )}
 
             <div className="vm-download-logs-footer">
               <Button

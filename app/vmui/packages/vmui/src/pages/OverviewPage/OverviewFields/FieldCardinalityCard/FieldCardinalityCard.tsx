@@ -52,7 +52,16 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
   return (
     <div className="vm-cardinality-card">
       {isLoading && <LineLoader/>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && (
+        <div className="vm-cardinality-card__error">
+          <Alert
+            title="Failed to load cardinality data"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
 
       <div className="vm-top-fields-header">
         <h2 className="vm-title vm-top-fields-header__title">

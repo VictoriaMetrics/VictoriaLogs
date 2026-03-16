@@ -294,14 +294,23 @@ const QueryPage: FC = () => {
             onRemove={removeFilterByValue}
           />
         </div>
-        {error && <Alert variant="error">{error}</Alert>}
-        {queryHasTimeFilter && <Alert variant="warning">
-          <p>
-            Time range is overridden by the query `_time` filter.
-            Remove `_time` from the query to use manual selection.
+        {error && (
+          <Alert
+            title="Failed to load logs"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        )}
+        {queryHasTimeFilter && (
+          <Alert
+            variant="warning"
+            title="Time range overridden by query filter"
+          >
+            Time range is overridden by the query `_time` filter. Remove `_time` from the query to use manual selection.
             Disable query time override in Settings.
-          </p>
-        </Alert>}
+          </Alert>
+        )}
         {!error && (
           <HitsChart
             {...dataLogHits}

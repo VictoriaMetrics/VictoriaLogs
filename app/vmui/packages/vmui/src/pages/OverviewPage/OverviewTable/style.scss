@@ -58,6 +58,9 @@
   }
 
   &-body {
+    &__error {
+      padding: 0 $padding-small $padding-global;
+    }
 
     &__empty {
       display: flex;

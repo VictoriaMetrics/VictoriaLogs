@@ -9,6 +9,8 @@ import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
 import BarHitsStats from "./BarHitsStats/BarHitsStats";
+import { HitsChartAlert } from "../../../pages/QueryPage/HitsChart/hooks/useHitsChartAlert";
+import Alert from "../../Main/Alert/Alert";
 
 interface Props {
   logHits: LogHits[];
@@ -17,6 +19,7 @@ interface Props {
   period: TimeParams;
   durationMs?: number
   isOverview?: boolean;
+  alertData: HitsChartAlert;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
 }
 
@@ -27,7 +30,8 @@ const BarHitsChart: FC<Props> = ({
   period,
   setPeriod,
   durationMs,
-  isOverview
+  isOverview,
+  alertData,
 }) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
     graphStyle: GRAPH_STYLES.BAR,
@@ -59,6 +63,13 @@ const BarHitsChart: FC<Props> = ({
           onChange={setGraphOptions}
         />
       </div>
+
+      {alertData && (
+        <div className="vm-query-page-chart__empty">
+          <Alert {...alertData}>{alertData.message}</Alert>
+        </div>
+      )}
+
       {!graphOptions.hideChart && (
         <BarHitsPlot
           logHits={logHits}

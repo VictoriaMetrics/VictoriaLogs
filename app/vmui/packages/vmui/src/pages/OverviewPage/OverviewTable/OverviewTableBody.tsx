@@ -48,7 +48,16 @@ const OverviewTableBody: FC<Props> = ({
   return (
     <div className="vm-top-fields-body">
       {isLoading && <LineLoader/>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && (
+        <div className="vm-top-fields-body__error">
+          <Alert
+            title="Failed to load data"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
 
       {isEmptyList && (
         <div className="vm-empty vm-top-fields-body__empty">

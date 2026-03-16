@@ -17,6 +17,8 @@ const BarHitsStats: FC<Props> = ({ totalHits, isHitsMode, durationMs }) => {
   const totalHitsFormat = isMobile ? formatNumberShort(totalHits) : formatNumber(totalHits);
   const durationFormat = durationMs ? getDurationFromMilliseconds(durationMs) : null;
 
+  if (!isHitsMode && !durationFormat) return null;
+
   return (
     <div className="vm-bar-hits-stats">
       {isHitsMode && (

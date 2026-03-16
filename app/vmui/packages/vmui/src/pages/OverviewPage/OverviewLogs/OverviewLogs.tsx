@@ -133,7 +133,14 @@ const OverviewLogs:FC = () => {
         </div>
       </div>
       <div>
-        {error && <Alert variant="error">{error}</Alert>}
+        {error && (
+          <Alert
+            title="Failed to load logs"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        )}
         {!error && (
           <QueryPageBody
             isPreview

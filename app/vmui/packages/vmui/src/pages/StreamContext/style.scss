@@ -46,6 +46,10 @@
     }
   }
 
+  &__error {
+    padding-top: $padding-global;
+  }
+
   &__load-more {
     display: flex;
     align-items: center;

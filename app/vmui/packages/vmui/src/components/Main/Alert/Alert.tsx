@@ -1,17 +1,16 @@
 import { FC, ReactNode } from "preact/compat";
 import classNames from "classnames";
-import { ErrorIcon, InfoIcon, SuccessIcon, WarningIcon } from "../Icons";
+import { DoneIcon, ErrorIcon, InfoIcon, WarningIcon } from "../Icons";
 import "./style.scss";
-import { useAppState } from "../../../state/common/StateContext";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface AlertProps {
   variant?: "success" | "error" | "info" | "warning"
   children: ReactNode
+  title?: string;
 }
 
 const icons = {
-  success: <SuccessIcon/>,
+  success: <DoneIcon/>,
   error: <ErrorIcon/>,
   warning: <WarningIcon/>,
   info: <InfoIcon/>
@@ -19,21 +18,26 @@ const icons = {
 
 const Alert: FC<AlertProps> = ({
   variant,
-  children }) => {
-  const { isDarkTheme } = useAppState();
-  const { isMobile } = useDeviceDetect();
+  title,
+  children
+}) => {
 
   return (
     <div
       className={classNames({
         "vm-alert": true,
-        [`vm-alert_${variant}`]: variant,
-        "vm-alert_dark": isDarkTheme,
-        "vm-alert_mobile": isMobile
+        [`vm-alert_${variant}`]: true
       })}
     >
+      <div className="vm-alert__backdrop"/>
       <div className="vm-alert__icon">{icons[variant || "info"]}</div>
-      <div className="vm-alert__content">{children}</div>
+      {title && <div className="vm-alert__title">{title}</div>}
+      {children && <div
+        className={classNames({
+        "vm-alert__content": title,
+        "vm-alert__title": !title
+      })}
+      >{children}</div>}
     </div>
   );
 };

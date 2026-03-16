@@ -92,7 +92,6 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
       })}
     >
       {isLoading && <LineLoader/>}
-      {error && <Alert variant="error">{error}</Alert>}
 
       <div className={classNames("vm-steam-context-header", { "vm-steam-context-header_page": !isModal })}>
         {!isModal && (
@@ -132,15 +131,29 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
         />
       </div>
 
-      <div className="vm-steam-context__load-more vm-steam-context__load-more_after">
-        <Button
-          onClick={handleLoadMoreAfter}
-          disabled={isLoading || !hasMore.after}
-          variant={!hasMore.after ? "text" : "contained"}
-        >
-          {!hasMore.after ? "no more logs after" : "Load newer logs"}
-        </Button>
-      </div>
+
+      {error && (
+        <div className="vm-steam-context__error">
+          <Alert
+            title="Failed to load log context"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
+
+      {!error && (
+        <div className="vm-steam-context__load-more vm-steam-context__load-more_after">
+          <Button
+            onClick={handleLoadMoreAfter}
+            disabled={isLoading || !hasMore.after}
+            variant={!hasMore.after ? "text" : "contained"}
+          >
+            {!hasMore.after ? "no more logs after" : "Load newer logs"}
+          </Button>
+        </div>
+      )}
 
       <div className="vm-group-logs-section-rows">
         {logsAfter.map((log, rowN) => (
@@ -165,15 +178,17 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
         ))}
       </div>
 
-      <div className="vm-steam-context__load-more vm-steam-context__load-more_before">
-        <Button
-          onClick={handleLoadMoreBefore}
-          disabled={isLoading || !hasMore.before}
-          variant={!hasMore.before ? "text" : "contained"}
-        >
-          {!hasMore.before ? "no more logs before" : "Load older logs"}
-        </Button>
-      </div>
+      {!error && (
+        <div className="vm-steam-context__load-more vm-steam-context__load-more_before">
+          <Button
+            onClick={handleLoadMoreBefore}
+            disabled={isLoading || !hasMore.before}
+            variant={!hasMore.before ? "text" : "contained"}
+          >
+            {!hasMore.before ? "no more logs before" : "Load older logs"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
