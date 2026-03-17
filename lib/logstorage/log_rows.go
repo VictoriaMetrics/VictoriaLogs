@@ -302,28 +302,16 @@ func (lr *LogRows) NeedFlush() bool {
 // MustAddInsertRow adds r to lr.
 func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 	// verify r.StreamTagsCanonical
-	st := GetStreamTags()
-	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
-	tail, err := st.UnmarshalCanonicalInplace(streamTagsCanonical)
-	if err != nil {
+	if err := verifyStreamTagsCanonical(r.StreamTagsCanonical, r.Fields); err != nil {
 		line := MarshalFieldsToJSON(nil, r.Fields)
-		invalidStreamTagsLogger.Warnf("cannot unmarshal streamTagsCanonical: %w; skipping the log entry; log entry: %s", err, line)
+		invalidStreamTagsLogger.Warnf("cannot unmarshal streamTagsCanonical: %s; skipping the log entry; log entry: %s", err, line)
 		return
 	}
-	if len(tail) > 0 {
-		line := MarshalFieldsToJSON(nil, r.Fields)
-		invalidStreamTagsLogger.Warnf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s; log entry: %s", len(tail), st, line)
-		return
-	}
-
-	// TODO: verify that all the stream tags match the corresponding log fields in r.Fields?
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/38
-
-	PutStreamTags(st)
 
 	// Calculate the id for the StreamTags
 	var sid streamID
 	sid.tenantID = r.TenantID
+	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
 	sid.id = hash128(streamTagsCanonical)
 
 	// Store the row
@@ -331,6 +319,21 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 }
 
 var invalidStreamTagsLogger = logger.WithThrottler("invalid_stream_tags", 5*time.Second)
+
+func verifyStreamTagsCanonical(streamTagsCanonical string, fields []Field) error {
+	st := GetStreamTags()
+	defer PutStreamTags(st)
+
+	src := bytesutil.ToUnsafeBytes(streamTagsCanonical)
+	tail, err := st.UnmarshalCanonicalInplace(src)
+	if err != nil {
+		return err
+	}
+	if len(tail) > 0 {
+		return fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), st)
+	}
+	return st.verifyFieldValues(fields)
+}
 
 func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
 	lr.MustAdd(tenantID, timestamp, fields, -1)
@@ -359,7 +362,7 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 				st.Add(fieldName, f.Value)
 			}
 		}
-	} else {
+	} else if len(lr.streamFields) > 0 || len(lr.extraStreamFields) > 0 {
 		// Compose StreamTags from lr.streamFields and lr.extraStreamFields.
 		for _, f := range fields {
 			fieldName := getCanonicalFieldName(f.Name)
@@ -370,6 +373,31 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 		for _, f := range lr.extraStreamFields {
 			fieldName := getCanonicalFieldName(f.Name)
 			st.Add(fieldName, f.Value)
+		}
+	} else {
+		// Extract StreamTags from _stream field.
+		// This can be used when importing the raw logs in JSON line format
+		// received from /select/logsql/query endpoint.
+		for i := range fields {
+			f := &fields[i]
+			switch f.Name {
+			case "_stream":
+				if err := st.unmarshalString(f.Value); err != nil {
+					line := MarshalFieldsToJSON(nil, fields)
+					invalidStreamTagsLogger.Warnf("cannot parse _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
+					return
+				}
+				if err := st.verifyFieldValues(fields); err != nil {
+					line := MarshalFieldsToJSON(nil, fields)
+					invalidStreamTagsLogger.Warnf("invalid _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
+					return
+				}
+				// Remove _stream field, since it is re-generated from st below.
+				f.Value = ""
+			case "_stream_id":
+				// Remove _stream_id field, since it is re-generated from st below.
+				f.Value = ""
+			}
 		}
 	}
 
@@ -484,7 +512,7 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 		}
 		if fieldName == "_stream" || fieldName == "_stream_id" {
 			line := MarshalFieldsToJSON(nil, fields)
-			unexpectedStreamFieldLogger.Warnf("skipping %q field wtith the value %q since it clashes with the automatically generated field by VictoriaLogs; "+
+			unexpectedStreamFieldLogger.Warnf("skipping %q field with the value %q since it clashes with the automatically generated field by VictoriaLogs; "+
 				"see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields; log entry: %s", fieldName, f.Value, line)
 			continue
 		}
