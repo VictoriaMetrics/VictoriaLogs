@@ -51,6 +51,18 @@ func (st *StreamTags) String() string {
 	return string(b)
 }
 
+func (st *StreamTags) verifyFieldValues(fields []Field) error {
+	// Verify that the unmarshaled stream tags match the corresponding fields' values.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/38
+	for _, tag := range st.tags {
+		value := getFieldValueByName(fields, tag.Name)
+		if value != tag.Value {
+			return fmt.Errorf("unexpected value for the stream tag %q; got %q; want %q; streamTags: %s", tag.Name, value, tag.Name, st)
+		}
+	}
+	return nil
+}
+
 func (st *StreamTags) marshalString(dst []byte) []byte {
 	dst = append(dst, '{')
 
@@ -67,6 +79,48 @@ func (st *StreamTags) marshalString(dst []byte) []byte {
 	dst = append(dst, '}')
 
 	return dst
+}
+
+func (st *StreamTags) unmarshalString(s string) error {
+	st.Reset()
+
+	if !strings.HasPrefix(s, "{") {
+		return fmt.Errorf("missing '{' in front of %q", s)
+	}
+	if !strings.HasSuffix(s, "}") {
+		return fmt.Errorf("missing '}' in the end of %q", s)
+	}
+	s = s[1 : len(s)-1]
+	for len(s) > 0 {
+		n := strings.IndexByte(s, '=')
+		if n < 0 {
+			return fmt.Errorf("missing '=' after %q", s)
+		}
+		name := s[:n]
+		s = s[n+1:]
+		prefix, err := strconv.QuotedPrefix(s)
+		if err != nil {
+			return fmt.Errorf("cannot parse value for the tag %q from %q: %w", name, s, err)
+		}
+		value, err := strconv.Unquote(prefix)
+		if err != nil {
+			return fmt.Errorf("cannot parse value for the tag %q from %q: %w", name, prefix, err)
+		}
+		st.tags = append(st.tags, streamTag{
+			Name:  name,
+			Value: value,
+		})
+		s = s[len(prefix):]
+
+		if len(s) == 0 {
+			return nil
+		}
+		if !strings.HasPrefix(s, ",") {
+			return fmt.Errorf("missing comma after %s=%s; unparsed tail: %s", name, prefix, s)
+		}
+		s = s[1:]
+	}
+	return nil
 }
 
 // Add adds (name:value) tag to st.

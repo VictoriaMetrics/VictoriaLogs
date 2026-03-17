@@ -25,23 +25,38 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 		got := sut.LogsQLQuery(t, opts.query, apptest.QueryOpts{})
 		assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: opts.wantLogLines})
 	}
+
 	// json line ingest
 	sut.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
 	f(&opts{
-		query: "ingest jsonline",
+		query: `"ingest jsonline"`,
 		wantLogLines: []string{
 			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 		},
 	})
+
+	// json line with _stream field
+	sut.JSONLineWrite(t, []string{
+		`{"_msg":"ingest _stream jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar", "_stream":"{foo=\"bar\"}", "_stream_id":"abcdefd"}`,
+		`{"_msg":"ingest _stream jsonline","_time": "2025-06-05T14:30:20.088007Z", "bar":"foo", "host": "x", "_stream":"{host=\"x\"}"}`,
+	}, apptest.IngestOpts{})
+	f(&opts{
+		query: `"ingest _stream jsonline"`,
+		wantLogLines: []string{
+			`{"_msg":"ingest _stream jsonline","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+			`{"_msg":"ingest _stream jsonline","_stream":"{host=\"x\"}","_time":"2025-06-05T14:30:20.088007Z","bar":"foo","host":"x"}`,
+		},
+	})
+
 	// native format ingest
 	sut.NativeWrite(t, []logstorage.InsertRow{
 		{
 			StreamTagsCanonical: canonicalStreamTagsFromSet(map[string]string{"foo": "bar"}),
-			Timestamp:           1749141697409000000, // 2025-06-05T:18:41:37.000000Z
+			Timestamp:           1749141697409000000,
 			Fields: []logstorage.Field{
 				{
 					Name:  "_msg",
@@ -51,13 +66,17 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 					Name:  "qwe",
 					Value: "rty",
 				},
+				{
+					Name:  "foo",
+					Value: "bar",
+				},
 			},
 		},
 	}, apptest.QueryOpts{})
 	f(&opts{
-		query: "ingest native",
+		query: `"ingest native"`,
 		wantLogLines: []string{
-			`{"_msg":"ingest native","_time":"2025-06-05T16:41:37.409Z", "_stream":"{foo=\"bar\"}", "qwe": "rty"}`,
+			`{"_msg":"ingest native","_time":"2025-06-05T16:41:37.409Z", "_stream":"{foo=\"bar\"}", "foo": "bar", "qwe": "rty"}`,
 		},
 	})
 

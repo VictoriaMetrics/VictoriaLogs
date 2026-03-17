@@ -18,15 +18,10 @@ func TestVlsingleElasticsearchBulkTimestampParsing(t *testing.T) {
 
 	sut := tc.MustStartDefaultVlsingle()
 
-	io := apptest.IngestOpts{
-		TimeField:    "@timestamp",
-		MessageField: "message",
-		StreamFields: "host",
-	}
 	uv := make(url.Values)
-	uv.Set("_time_field", io.TimeField)
-	uv.Set("_msg_field", io.MessageField)
-	uv.Set("_stream_fields", io.StreamFields)
+	uv.Set("_time_field", "@timestamp")
+	uv.Set("_msg_field", "message")
+	uv.Set("_stream_fields", "host")
 	ingestURL := fmt.Sprintf("http://%s/insert/elasticsearch/_bulk?%s", sut.HTTPAddr(), uv.Encode())
 
 	f := func(timestamp, msg, wantTime string) {

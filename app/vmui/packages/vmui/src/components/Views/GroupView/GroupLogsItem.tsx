@@ -108,7 +108,7 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
     } catch (e) {
       console.error(e);
     }
-  }, [copied, copyToClipboard]);
+  }, [log, copied, copyToClipboard]);
 
   useEffect(() => {
     if (copied === null) return;
@@ -176,13 +176,13 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
               displayFields={displayFields}
             />
           )}
-          <Tooltip title={copied ? "Copied" : "Copy to clipboard"}>
+          <Tooltip title={copied ? "Copied" : "Copy log"}>
             <Button
               variant="text"
               color="gray"
               startIcon={<CopyIcon/>}
               onClick={handleCopy}
-              ariaLabel="copy to clipboard"
+              ariaLabel="Copy log"
             />
           </Tooltip>
         </div>

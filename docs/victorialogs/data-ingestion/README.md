@@ -248,7 +248,11 @@ All the [HTTP-based data ingestion protocols](https://docs.victoriametrics.com/v
 - `_stream_fields` - comma-separated list of [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names,
   which uniquely identify every [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
-  If the `_stream_fields` arg isn't set, then all the ingested logs are written to default log stream - `{}`.
+  If the `_stream_fields` arg isn't set, then the stream fields are extracted from the `_stream` field.
+  For example, if the `_stream={host="abc",app="nginx"}`, then `host="abc"` and `app="nginx"` are used as stream fields.
+  The input log entry must contain these fields with the same values. Otherwise the input log entry is skipped, and the error message is written into VictoriaLogs' log.
+
+  If the `_stream_fields` arg isn't set and the input log entry doesn't contain the `_stream` field, then this entry is stored to the default log stream - `{}`.
 
 - `ignore_fields` - an optional comma-separated list of [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names,
   which must be ignored during data ingestion. The list may contain field name prefixes ending with `*` such a `some-prefix*`.
