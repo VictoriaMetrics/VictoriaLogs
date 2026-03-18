@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/timeutil"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
@@ -102,8 +103,8 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resourceVersion string) {
 	currentNodeName := kc.currentNode.Metadata.Name
 
-	bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
-	defer bt.stop()
+	bt := timeutil.NewBackoffTimer(time.Millisecond*200, time.Second*30)
+	defer bt.Stop()
 
 	// errGone is returned when the current resourceVersion is no longer valid.
 	var errGone = errors.New("gone")
@@ -113,7 +114,7 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 	handleEvent := func(event watchEvent) error {
 		switch event.Type {
 		case "ADDED", "MODIFIED":
-			bt.reset()
+			bt.Reset()
 
 			if errorFired {
 				logger.Infof("successfully re-established watching Pods on Node %q", currentNodeName)
@@ -166,8 +167,8 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 			errorFired = true
 
-			logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.currentDelay())
-			bt.wait(stopCh)
+			logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.CurrentDelay())
+			bt.Wait(stopCh)
 			continue
 		}
 
@@ -192,8 +193,8 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 			errorFired = true
 
-			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.currentDelay())
-			bt.wait(stopCh)
+			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.CurrentDelay())
+			bt.Wait(stopCh)
 			continue
 		}
 	}
