@@ -10553,7 +10553,7 @@
         "type": "datasource"
       },
       {
-        "allValue": ".*",
+        "allValue": "",
         "current": {},
         "datasource": {
           "type": "victoriametrics-metrics-datasource",
