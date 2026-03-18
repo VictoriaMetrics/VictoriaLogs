@@ -17,9 +17,10 @@ func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit 
 	if err != nil {
 		return err
 	}
-	if uint64(len(rows)) > offset {
-		rows = rows[offset:]
+	if offset >= uint64(len(rows)) {
+		return nil
 	}
+	rows = rows[offset:]
 
 	var db logstorage.DataBlock
 	var columns []logstorage.BlockColumn
