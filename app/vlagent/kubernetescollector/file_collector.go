@@ -30,6 +30,11 @@ type processor interface {
 	// ensuring log entries spanning multiple files are handled correctly.
 	tryAddLine(line []byte) bool
 
+	// flush flushes any internally accumulated state.
+	// The caller is responsible for invoking flush when no new log lines are expected for a while,
+	// ensuring the accumulated state is propagated without waiting for the next line.
+	flush()
+
 	// mustClose releases all resources associated with the processor and ensures proper cleanup of internal states.
 	// It must be called after the target log file is deleted or vlagent is shutting down.
 	mustClose()
@@ -197,6 +202,7 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 		switch lf.status() {
 		case logFileStatusNotRotated:
 			// No more lines to read and file hasn't rotated - wait before checking again.
+			proc.flush()
 			bt.wait(fc.stopCh)
 			continue
 		case logFileStatusRotated:
@@ -335,12 +341,12 @@ func openFileWithInode(p string) (*os.File, uint64, bool) {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, 0, false
 		}
-		logger.Panicf("FATAL: cannot open file %q: %s", p, err)
+		logger.Panicf("FATAL: cannot open file: %s", err)
 	}
 
 	fi, err := f.Stat()
 	if err != nil {
-		logger.Panicf("FATAL: cannot stat file %q: %s", p, err)
+		logger.Panicf("FATAL: cannot stat file: %s", err)
 	}
 	inode := getInode(fi)
 

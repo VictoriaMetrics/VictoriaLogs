@@ -60,4 +60,6 @@ func (noopLogFileHandler) tryAddLine(_ []byte) bool {
 	return true
 }
 
+func (noopLogFileHandler) flush() {}
+
 func (noopLogFileHandler) mustClose() {}

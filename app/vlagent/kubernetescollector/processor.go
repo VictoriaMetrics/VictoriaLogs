@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastjson"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
@@ -57,13 +58,17 @@ type logFileProcessor struct {
 	tenantID logstorage.TenantID
 
 	// commonFields are common fields for the given log file.
-	commonFields []logstorage.Field
+	commonFields        []logstorage.Field
+	commonFieldsJSONLen int
 
 	// fieldsBuf is used for constructing log fields from commonFields and the actual log line fields before sending them to VictoriaLogs.
 	fieldsBuf []logstorage.Field
 
 	partialCRIStdout partialCRILineState
 	partialCRIStderr partialCRILineState
+
+	rowsIngestedLocal  int
+	bytesIngestedLocal int
 }
 
 // newLogFileProcessor returns a new logFileProcessor for the given storage.
@@ -76,6 +81,7 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 		}
 	}
 	commonFields = fs
+	commonFieldsJSONLen := logstorage.EstimatedJSONRowLen(commonFields)
 
 	sfs := getStreamFields()
 	efs := getExtraFields()
@@ -83,10 +89,11 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, defaultMsgValue)
 
 	return &logFileProcessor{
-		storage:      storage,
-		lr:           lr,
-		tenantID:     getTenantID(),
-		commonFields: commonFields,
+		storage:             storage,
+		lr:                  lr,
+		tenantID:            getTenantID(),
+		commonFields:        commonFields,
+		commonFieldsJSONLen: commonFieldsJSONLen,
 	}
 }
 
@@ -103,6 +110,7 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 
 		criLine, err := parseCRILineJSON(parser, logLine)
 		if err != nil {
+			rowsDroppedTotalInvalidCRI.Inc()
 			pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
 			namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
 			invalidCRILineLogger.Errorf("skipping invalid json-file log line %q from Pod %q in Namespace %q: %s; "+
@@ -117,6 +125,7 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 
 	criLine, err := parseCRILine(logLine)
 	if err != nil {
+		rowsDroppedTotalInvalidCRI.Inc()
 		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
 		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
 		lfp.partialCRIStdout.reset()
@@ -195,6 +204,7 @@ func (lfp *logFileProcessor) joinPartialLinesSlow(state *partialCRILineState, cr
 	state.size += len(criLine.content)
 	if state.size > maxLogLineSize {
 		// Discard the too large log line.
+		tooLongLinesSkipped.Inc()
 		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
 		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
 		logLineExceedsMaxLineSizeLogger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
@@ -229,10 +239,17 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 	if len(parser.Fields) > 1000 {
 		line := logstorage.MarshalFieldsToJSON(nil, parser.Fields)
 		logger.Warnf("dropping log line with %d fields; %s", len(parser.Fields), line)
+		rowsDroppedTotalTooManyFields.Inc()
 		return
 	}
 
 	lfp.addRow(timestamp, parser.Fields)
+
+	lfp.rowsIngestedLocal++
+	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line)
+	if lfp.rowsIngestedLocal > 128 {
+		lfp.flushMetrics()
+	}
 }
 
 func (lfp *logFileProcessor) addRow(timestamp int64, fields []logstorage.Field) {
@@ -430,7 +447,25 @@ func fieldIndex(fields []logstorage.Field, names []string) int {
 	return -1
 }
 
+func (lfp *logFileProcessor) flush() {
+	lfp.flushMetrics()
+}
+
+var rowsIngestedTotal = metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", "kubernetes_logs"))
+var bytesIngestedTotal = metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", "kubernetes_logs"))
+
+func (lfp *logFileProcessor) flushMetrics() {
+	if lfp.rowsIngestedLocal == 0 {
+		return
+	}
+	rowsIngestedTotal.Add(lfp.rowsIngestedLocal)
+	bytesIngestedTotal.Add(lfp.bytesIngestedLocal)
+	lfp.rowsIngestedLocal = 0
+	lfp.bytesIngestedLocal = 0
+}
+
 func (lfp *logFileProcessor) mustClose() {
+	lfp.flush()
 	lfp.partialCRIStdout.reset()
 	lfp.partialCRIStderr.reset()
 	logstorage.PutLogRows(lfp.lr)
@@ -655,3 +690,7 @@ func mustGetFieldValByName(commonFields []logstorage.Field, fieldName string) st
 	}
 	return commonFields[n].Value
 }
+
+var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")
+var rowsDroppedTotalTooManyFields = metrics.GetOrCreateCounter(`vl_rows_dropped_total{reason="too_many_fields"}`)
+var rowsDroppedTotalInvalidCRI = metrics.GetOrCreateCounter(`vl_rows_dropped_total{reason="invalid_cri_line"}`)

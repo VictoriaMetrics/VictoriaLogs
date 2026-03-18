@@ -73,13 +73,13 @@ func benchmarkProcessor(b *testing.B, logLines []string) {
 	storage := &benchmarkStorage{}
 
 	b.RunParallel(func(pb *testing.PB) {
+		proc := newLogFileProcessor(storage, commonFields)
 		for pb.Next() {
-			proc := newLogFileProcessor(storage, commonFields)
 			for _, line := range rawLines {
 				proc.tryAddLine(line)
 			}
-			proc.mustClose()
 		}
+		proc.mustClose()
 	})
 }
 

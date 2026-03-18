@@ -226,6 +226,8 @@ func (pw *processorWrapper) tryAddLine(line []byte) bool {
 	return pw.proc.tryAddLine(line)
 }
 
+func (pw *processorWrapper) flush() {}
+
 func (pw *processorWrapper) mustClose() {
 	pw.proc.mustClose()
 }
@@ -246,6 +248,8 @@ func (lfp *testLogFileProcessor) tryAddLine(line []byte) bool {
 	lfp.logLines = append(lfp.logLines, string(line))
 	return true
 }
+
+func (lfp *testLogFileProcessor) flush() {}
 
 func (lfp *testLogFileProcessor) mustClose() {}
 
