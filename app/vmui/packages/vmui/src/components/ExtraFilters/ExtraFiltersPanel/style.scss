@@ -22,9 +22,22 @@ $bg-color-dark: $color-background-body;
     gap: calc($padding-small / 2);
     padding-block: 1px;
     padding-inline: $padding-small 2px;
+    max-width: clamp(180px, 50%, 360px);
     border-radius: $border-radius-button;
     color: $color-text-secondary;
     background-color: $color-hover-black;
+
+    &__tooltip {
+      max-width: calc(clamp(180px, 24vw, 360px) - ($padding-small * 2));
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    &__label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     &__remove {
       display: flex;

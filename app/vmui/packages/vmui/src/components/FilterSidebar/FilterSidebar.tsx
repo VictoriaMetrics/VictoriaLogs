@@ -15,6 +15,7 @@ import useBoolean from "../../hooks/useBoolean";
 import { ExtraFilter } from "../ExtraFilters/types";
 import FilterSidebarAlert from "./FilterSidebarAlert/FilterSidebarAlert";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
+import { isStreamFilter } from "../ExtraFilters/utils/isStreamFilter";
 
 type Props = {
   query: string;
@@ -47,11 +48,21 @@ const FilterSidebar: FC<Props> = ({
   const { value: isDescOrder, toggle: toggleSortOrder } = useBoolean(true);
   const orderDir = isDescOrder ? "desc" : "asc";
 
+  const missingSelectedFields: LogsFieldValues[] = useMemo(() => {
+    const missingFields = extraFilters.filter(f =>
+      isStreamFilter(f) && !streamFieldNames.some(v => v.value === f.field)
+    );
+
+    const uniqMissingFields = [...new Set(missingFields.map(f => f.field))];
+    return uniqMissingFields.map(value => ({ value, hits: 0 }));
+  }, [streamFieldNames, extraFilters]);
+
   const fields = useMemo(() => {
+    const allFields = [...streamFieldNames, ...missingSelectedFields];
     return isDescOrder
-      ? streamFieldNames
-      : streamFieldNames.toSorted((a, b) => a.hits - b.hits);
-  }, [streamFieldNames, isDescOrder]);
+      ? allFields // API already returns fields in desc order, so no need to sort
+      : allFields.toSorted((a, b) => a.hits - b.hits);
+  }, [streamFieldNames, missingSelectedFields, isDescOrder]);
 
   const sidebarStyles: CSSProperties = useMemo(() => {
     const styles: CSSProperties = { top };

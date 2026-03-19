@@ -37,6 +37,8 @@ according to the following docs:
 * FEATURE: [`/select/logsql/stream_field_values` HTTP endpoint](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values): add support for an optional `filter=substring` query arg, which allows returning only the field values containing the given `substring`. See [#1186](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1186).
 
 * BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): properly handle the case when the ingested logs contain `_time` field without the real timestamp, and this field is not mentioned in the `_time_field` query arg or in the `VL-Time-Field` request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters). Previously this could lead to unexpected errors during querying such as `missing _time field in the query results`. See [#1168](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): truncate long active filter badges and show full values in tooltip. See [#369](https://github.com/VictoriaMetrics/VictoriaLogs/issues/369#issuecomment-4080410326)
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show active filters in Stream Fields empty state instead of "No stream fields found".
 
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)
 

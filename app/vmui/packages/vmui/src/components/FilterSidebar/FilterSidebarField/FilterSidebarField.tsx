@@ -54,7 +54,8 @@ const FilterSidebarField: FC<Props> = ({
       return !streamValues.some(v => v.value === f.value);
     });
 
-    return missingValues.map(f => ({ value: f.value, hits: 0 }));
+    const uniqMissingValues = [...new Set(missingValues.map(f => f.value))];
+    return uniqMissingValues.map(value => ({ value, hits: 0 }));
   }, [streamValues, filtersByName]);
 
   const values = useMemo(() => {
@@ -154,6 +155,7 @@ const FilterSidebarField: FC<Props> = ({
         "vm-filter-sidebar-field": true,
         "vm-filter-sidebar-field_open": isValuesOpen,
         "vm-filter-sidebar-field_active": hasFilter,
+        "vm-filter-sidebar-field_empty": !field.hits
       })}
     >
       {loading && <LineLoader/>}

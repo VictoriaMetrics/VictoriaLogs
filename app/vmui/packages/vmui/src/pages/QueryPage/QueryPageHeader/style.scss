@@ -3,8 +3,8 @@
 $input-limit-width: 200px;
 
 .vm-query-page-header {
-  display: grid;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   gap: $padding-small;
 
   &-top {
@@ -27,6 +27,7 @@ $input-limit-width: 200px;
       display: flex;
       align-items: center;
       justify-content: flex-start;
+      flex-wrap: wrap;
       gap: $padding-small;
       flex-grow: 1;
     }

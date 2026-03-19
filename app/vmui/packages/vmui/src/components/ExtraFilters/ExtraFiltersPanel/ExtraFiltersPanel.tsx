@@ -1,7 +1,7 @@
 import { FC, useMemo } from "preact/compat";
-import { CloseIcon } from "../../Main/Icons";
 import { ExtraFilter } from "../types";
 import { escapeForLogsQLString } from "../../../utils/regexp";
+import ExtraFiltersPanelItem from "./ExtraFiltersPanelItem";
 import "./style.scss";
 
 type Props = {
@@ -10,10 +10,6 @@ type Props = {
 }
 
 const ExtraFiltersPanel: FC<Props> = ({ extraFilters, onRemove }) => {
-  const handleRemove = (filter: ExtraFilter) => () => {
-    onRemove(filter.field, filter.value);
-  };
-
   const getLabel = (filter: ExtraFilter) => {
     const escapedValue = escapeForLogsQLString(filter.value);
     const expr = `${filter.field}${filter.operator}"${escapedValue}"`;
@@ -29,20 +25,11 @@ const ExtraFiltersPanel: FC<Props> = ({ extraFilters, onRemove }) => {
   return (
     <div className="vm-extra-filters-panel">
       {formattedFilters.map((filter) => (
-        <div
+        <ExtraFiltersPanelItem
           key={filter.label}
-          className="vm-extra-filters-panel-item"
-        >
-          <div>
-            {filter.label}
-          </div>
-          <div
-            className="vm-extra-filters-panel-item__remove"
-            onClick={handleRemove(filter)}
-          >
-            <CloseIcon/>
-          </div>
-        </div>
+          filter={filter}
+          onRemove={onRemove}
+        />
         ))}
     </div>
   );
