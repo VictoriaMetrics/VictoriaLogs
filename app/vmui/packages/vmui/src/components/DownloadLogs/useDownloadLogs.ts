@@ -24,7 +24,7 @@ const useDownloadLogs = () => {
   const downloadLogs = useCallback(async ({ filename, queryParams, }: DownloadLog) => {
     setSaveFileError(null);
 
-    const { query, start, end } = queryParams || {};
+    const { query, start, end, format } = queryParams || {};
     const missing = ["query", "start", "end"].filter(k => !({ query, start, end })[k]);
     if (missing.length) {
       setSaveFileError(`Download failed: missing required params: ${missing.join(", ")}`);
@@ -38,6 +38,12 @@ const useDownloadLogs = () => {
         end: dayjs(end).unix(),
         date: formatDateToUTC(dayjs(end).toDate()),
       };
+
+      if (format === "csv") {
+        extraParams.set("format", format);
+      } else {
+        extraParams.delete("format");
+      }
 
       const res = await fetchLogs({ query, period, isDownload: true, extraParams });
       if (!res || Array.isArray(res) || !res.body || !res.ok) {
@@ -69,6 +75,7 @@ const useDownloadLogs = () => {
 
   return {
     error,
+    setError: setSaveFileError,
     isLoading,
     downloadLogs,
   };

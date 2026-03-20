@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from "preact/compat";
+import { FC, useCallback, useEffect, useMemo, useState } from "preact/compat";
 import useBoolean from "../../hooks/useBoolean";
 import { ReactNode } from "react";
 import Modal from "../Main/Modal/Modal";
@@ -10,13 +10,14 @@ import { DATE_TIME_FORMAT } from "../../constants/date";
 import { DownloadIcon, SpinnerIcon } from "../Main/Icons";
 import Alert from "../Main/Alert/Alert";
 import useDownloadLogs from "./useDownloadLogs";
+import Select from "../Main/Select/Select";
 
 type Props = {
   children: ReactNode;
   queryParams?: Record<string, string>;
 };
 
-const fileExtension = "jsonl";
+const extensions = ["jsonl", "csv"];
 
 const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   const {
@@ -25,9 +26,10 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const { downloadLogs, error, isLoading } = useDownloadLogs();
+  const { downloadLogs, error, setError, isLoading } = useDownloadLogs();
 
   const [filename, setFilename] = useState("vmui_logs_export");
+  const [fileExtension, setFileExtension] = useState("jsonl");
 
   const period = useMemo(() => {
     if (!queryParams) return "";
@@ -47,8 +49,15 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   const handleDownload = useCallback(async () => {
     const safeName = filename.trim() || "vmui_logs_export";
     const outName = `${safeName}.${fileExtension}`;
-    await downloadLogs({ filename: outName, queryParams });
-  }, [filename, queryParams, downloadLogs]);
+
+    await downloadLogs({ filename: outName, queryParams: { ...queryParams, format: fileExtension } });
+  }, [filename, fileExtension, queryParams, downloadLogs]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setError(null);
+    }
+  }, [isOpen]);
 
   return (
     <>
@@ -63,16 +72,20 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
         >
           <div className="vm-download-logs">
             <div className="vm-download-logs-section">
-              <h3 className="vm-download-logs-section__title">
-                File name
-              </h3>
-
               <div className="vm-download-logs-filename">
                 <TextField
+                  label="File name"
                   autofocus
                   value={filename}
-                  endIcon={<span className="vm-download-logs-filename__extension">.{fileExtension}</span>}
                   onChange={setFilename}
+                />
+              </div>
+              <div className="vm-download-logs-extension">
+                <Select
+                  label="Format"
+                  value={fileExtension}
+                  list={extensions}
+                  onChange={setFileExtension}
                 />
               </div>
 
@@ -87,6 +100,16 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
                 variant="error"
               >
                 {error}
+              </Alert>
+            )}
+
+            {fileExtension === "csv" && (
+              <Alert
+                title="CSV Export Requirement"
+                variant="info"
+              >
+                <p>To export to CSV, specify columns at the end of your query using `| fields` or `| stats`.</p>
+                <p>Examples: `| fields _time, _msg` or `| stats by (host) count()`.</p>
               </Alert>
             )}
 

@@ -8,8 +8,8 @@
     padding: 8px 0 8px $padding-global;
     cursor: pointer;
     border: $border-divider;
-    border-radius: $border-radius-small;
-    min-height: 40px;
+    border-radius: $border-radius-medium;
+    min-height: 36px;
 
     &-content {
       display: flex;
