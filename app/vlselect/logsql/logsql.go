@@ -718,6 +718,11 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Live tail always uses streaming mode, so set to unknown
+	atomic.StoreUint32(&ca.qs.IsPartial, 2)
+	ca.writeResponseHeaders(w.Header(), time.Now())
+
 	flusher.Flush()
 
 	qctx := ca.newQueryContext(ctxWithCancel)

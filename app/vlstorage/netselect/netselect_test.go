@@ -154,6 +154,11 @@ func TestGetFirstError_MixedErrors_WithPartialResponse(t *testing.T) {
 		t.Fatalf("expected error when backend returns configuration error")
 	}
 
+	// Verify the returned error is the config error
+	if !errors.Is(err, configErr) {
+		t.Fatalf("expected error to contain configuration error, got: %v", err)
+	}
+
 	isPartial := atomic.LoadUint32(&qs.IsPartial)
 	if isPartial != 0 {
 		t.Fatalf("expected IsPartial=0 (false) when returning configuration error, got %d", isPartial)

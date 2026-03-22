@@ -59,6 +59,9 @@ func TestQueryStats_UpdateAtomic_IsPartial_Propagation(t *testing.T) {
 		}
 	}
 
+	// Priority: 1 (partial) > 2 (unknown) > 0 (full)
+	// Commutative: order doesn't matter
+
 	// Source is full (0), destination is full (0) -> should remain full (0)
 	f(0, 0, 0)
 
@@ -69,19 +72,18 @@ func TestQueryStats_UpdateAtomic_IsPartial_Propagation(t *testing.T) {
 	f(2, 0, 2)
 
 	// Source is full (0), destination is partial (1) -> should remain partial (1)
-	// (once partial, stays partial - we don't downgrade)
 	f(0, 1, 1)
 
 	// Source is partial (1), destination is partial (1) -> should remain partial (1)
 	f(1, 1, 1)
 
-	// Source is unknown (2), destination is partial (1) -> should become unknown (2)
-	f(2, 1, 2)
+	// Source is unknown (2), destination is partial (1) -> should remain partial (1) [partial has higher priority]
+	f(2, 1, 1)
 
 	// Source is full (0), destination is unknown (2) -> should remain unknown (2)
 	f(0, 2, 2)
 
-	// Source is partial (1), destination is unknown (2) -> should become partial (1)
+	// Source is partial (1), destination is unknown (2) -> should become partial (1) [partial has higher priority]
 	f(1, 2, 1)
 
 	// Source is unknown (2), destination is unknown (2) -> should remain unknown (2)

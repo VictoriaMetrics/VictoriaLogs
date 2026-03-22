@@ -70,9 +70,32 @@ func (qs *QueryStats) UpdateAtomic(src *QueryStats) {
 	atomic.AddUint64(&qs.TimestampsRead, src.TimestampsRead)
 	atomic.AddUint64(&qs.BytesProcessedUncompressedValues, src.BytesProcessedUncompressedValues)
 
+	// Priority: 1 (partial) > 2 (unknown) > 0 (full)
 	srcIsPartial := atomic.LoadUint32(&src.IsPartial)
-	if srcIsPartial != 0 {
-		atomic.StoreUint32(&qs.IsPartial, srcIsPartial)
+	for {
+		dstIsPartial := atomic.LoadUint32(&qs.IsPartial)
+
+		// Determine the new value based on priority
+		var newIsPartial uint32
+		if srcIsPartial == 1 || dstIsPartial == 1 {
+			// If either is partial (1), result is partial
+			newIsPartial = 1
+		} else if srcIsPartial == 2 || dstIsPartial == 2 {
+			// If either is unknown (2) and neither is partial, result is unknown
+			newIsPartial = 2
+		} else {
+			// Both are full (0), result is full
+			newIsPartial = 0
+		}
+
+		// Only update if the value changed
+		if newIsPartial == dstIsPartial {
+			break
+		}
+
+		if atomic.CompareAndSwapUint32(&qs.IsPartial, dstIsPartial, newIsPartial) {
+			break
+		}
 	}
 }
 
@@ -110,6 +133,12 @@ func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 	qs.ValuesRead += getUint64Entry("ValuesRead")
 	qs.TimestampsRead += getUint64Entry("TimestampsRead")
 	qs.BytesProcessedUncompressedValues += getUint64Entry("BytesProcessedUncompressedValues")
+
+	// Update IsPartial field
+	isPartial := uint32(getUint64Entry("IsPartial"))
+	if isPartial != 0 {
+		atomic.StoreUint32(&qs.IsPartial, isPartial)
+	}
 
 	return errGlobal
 }
@@ -171,6 +200,8 @@ func (qs *QueryStats) addEntries(addUint64Entry func(name string, value uint64),
 	addUint64Entry("ValuesRead", qs.ValuesRead)
 	addUint64Entry("TimestampsRead", qs.TimestampsRead)
 	addUint64Entry("BytesProcessedUncompressedValues", qs.BytesProcessedUncompressedValues)
+
+	addUint64Entry("IsPartial", uint64(atomic.LoadUint32(&qs.IsPartial)))
 
 	addUint64Entry("QueryDurationNsecs", uint64(queryDurationNsecs))
 }

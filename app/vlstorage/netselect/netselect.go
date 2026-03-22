@@ -769,16 +769,16 @@ func getFirstError(errs []error, allowPartialResponse bool, qs *logstorage.Query
 	if !allowPartialResponse {
 		for _, err := range errs {
 			if err != nil {
-				// Set IsPartial to 0 (false) when returning an error in non-partial mode
-				if qs != nil {
-					atomic.StoreUint32(&qs.IsPartial, 0)
-				}
+				// Don't modify IsPartial when returning an error - let the caller handle it
 				return err
 			}
 		}
 		// All backends succeeded - full response
 		if qs != nil {
-			atomic.StoreUint32(&qs.IsPartial, 0)
+			// Only set to 0 if not already set to a non-zero value
+			if atomic.LoadUint32(&qs.IsPartial) == 0 {
+				atomic.StoreUint32(&qs.IsPartial, 0)
+			}
 		}
 		return nil
 	}
