@@ -85,7 +85,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to false.
   -insert.disable
-     Whether to disable /insert/* HTTP endpoints
+     Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes; see also -internalinsert.disable
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size
