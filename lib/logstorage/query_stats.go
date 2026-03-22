@@ -120,6 +120,18 @@ func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 		return n
 	}
 
+	// getOptionalUint64Entry is like getUint64Entry but doesn't set errGlobal if the field is missing.
+	// This is used for optional fields that may not exist in older versions.
+	getOptionalUint64Entry := func(name string) uint64 {
+		c := db.GetColumnByName(name)
+		if c == nil {
+			return 0
+		}
+		v := c.Values[0]
+		n, _ := tryParseUint64(v)
+		return n
+	}
+
 	qs.BytesReadColumnsHeaders += getUint64Entry("BytesReadColumnsHeaders")
 	qs.BytesReadColumnsHeaderIndexes += getUint64Entry("BytesReadColumnsHeaderIndexes")
 	qs.BytesReadBloomFilters += getUint64Entry("BytesReadBloomFilters")
@@ -135,9 +147,29 @@ func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 	qs.BytesProcessedUncompressedValues += getUint64Entry("BytesProcessedUncompressedValues")
 
 	// Update IsPartial field
-	isPartial := uint32(getUint64Entry("IsPartial"))
+	isPartial := uint32(getOptionalUint64Entry("IsPartial"))
 	if isPartial != 0 {
-		atomic.StoreUint32(&qs.IsPartial, isPartial)
+		// Priority: 1 (partial) > 2 (unknown) > 0 (full)
+		for {
+			dstIsPartial := atomic.LoadUint32(&qs.IsPartial)
+
+			var newIsPartial uint32
+			if isPartial == 1 || dstIsPartial == 1 {
+				newIsPartial = 1
+			} else if isPartial == 2 || dstIsPartial == 2 {
+				newIsPartial = 2
+			} else {
+				newIsPartial = 0
+			}
+
+			if newIsPartial == dstIsPartial {
+				break
+			}
+
+			if atomic.CompareAndSwapUint32(&qs.IsPartial, dstIsPartial, newIsPartial) {
+				break
+			}
+		}
 	}
 
 	return errGlobal

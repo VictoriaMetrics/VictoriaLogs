@@ -124,3 +124,80 @@ func TestQueryStats_UpdateAtomic_PreservesOtherFields(t *testing.T) {
 		t.Fatalf("expected IsPartial=1, got %d", isPartial)
 	}
 }
+
+func TestQueryStats_UpdateFromDataBlock_BackwardCompatibility(t *testing.T) {
+	// Test that UpdateFromDataBlock works with older payloads that don't have IsPartial field
+	qs := &QueryStats{}
+	atomic.StoreUint32(&qs.IsPartial, 0)
+
+	// Create a DataBlock without IsPartial field (simulating older version)
+	db := &DataBlock{
+		columns: []BlockColumn{
+			{Name: "BytesReadColumnsHeaders", Values: []string{"100"}},
+			{Name: "BytesReadColumnsHeaderIndexes", Values: []string{"50"}},
+			{Name: "BytesReadBloomFilters", Values: []string{"30"}},
+			{Name: "BytesReadValues", Values: []string{"200"}},
+			{Name: "BytesReadTimestamps", Values: []string{"40"}},
+			{Name: "BytesReadBlockHeaders", Values: []string{"20"}},
+			{Name: "BlocksProcessed", Values: []string{"10"}},
+			{Name: "RowsProcessed", Values: []string{"100"}},
+			{Name: "RowsFound", Values: []string{"50"}},
+			{Name: "ValuesRead", Values: []string{"150"}},
+			{Name: "TimestampsRead", Values: []string{"100"}},
+			{Name: "BytesProcessedUncompressedValues", Values: []string{"500"}},
+			// Note: IsPartial field is missing (backward compatibility)
+		},
+	}
+
+	err := qs.UpdateFromDataBlock(db)
+	if err != nil {
+		t.Fatalf("UpdateFromDataBlock should not fail on missing optional IsPartial field: %v", err)
+	}
+
+	// Check that stats were updated
+	if qs.BytesReadColumnsHeaders != 100 {
+		t.Fatalf("expected BytesReadColumnsHeaders=100, got %d", qs.BytesReadColumnsHeaders)
+	}
+
+	// Check that IsPartial remains at default value (0) when field is missing
+	isPartial := atomic.LoadUint32(&qs.IsPartial)
+	if isPartial != 0 {
+		t.Fatalf("expected IsPartial=0 when field is missing, got %d", isPartial)
+	}
+}
+
+func TestQueryStats_UpdateFromDataBlock_WithIsPartial(t *testing.T) {
+	// Test that UpdateFromDataBlock correctly merges IsPartial with priority
+	qs := &QueryStats{}
+	atomic.StoreUint32(&qs.IsPartial, 2) // Start with unknown
+
+	// Create a DataBlock with IsPartial=1 (partial)
+	db := &DataBlock{
+		columns: []BlockColumn{
+			{Name: "BytesReadColumnsHeaders", Values: []string{"100"}},
+			{Name: "BytesReadColumnsHeaderIndexes", Values: []string{"50"}},
+			{Name: "BytesReadBloomFilters", Values: []string{"30"}},
+			{Name: "BytesReadValues", Values: []string{"200"}},
+			{Name: "BytesReadTimestamps", Values: []string{"40"}},
+			{Name: "BytesReadBlockHeaders", Values: []string{"20"}},
+			{Name: "BlocksProcessed", Values: []string{"10"}},
+			{Name: "RowsProcessed", Values: []string{"100"}},
+			{Name: "RowsFound", Values: []string{"50"}},
+			{Name: "ValuesRead", Values: []string{"150"}},
+			{Name: "TimestampsRead", Values: []string{"100"}},
+			{Name: "BytesProcessedUncompressedValues", Values: []string{"500"}},
+			{Name: "IsPartial", Values: []string{"1"}},
+		},
+	}
+
+	err := qs.UpdateFromDataBlock(db)
+	if err != nil {
+		t.Fatalf("UpdateFromDataBlock failed: %v", err)
+	}
+
+	// Check that IsPartial was updated to 1 (partial has higher priority than unknown)
+	isPartial := atomic.LoadUint32(&qs.IsPartial)
+	if isPartial != 1 {
+		t.Fatalf("expected IsPartial=1 (partial has priority over unknown), got %d", isPartial)
+	}
+}
