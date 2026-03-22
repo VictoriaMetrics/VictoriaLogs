@@ -22,6 +22,7 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): add `VL-Partial-Response` HTTP response header to all query endpoints. The header indicates whether the response is partial due to unavailable vlstorage nodes in cluster setup. Possible values: `false` (full response), `true` (partial response - some backends unavailable), `unknown` (streaming mode where partial status cannot be determined upfront). See [#718](https://github.com/VictoriaMetrics/VictoriaLogs/issues/718).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): make legend click perform default action (hide/show series) and move additional actions to hover context menu.
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve alert component and simplify error messages for stats view. See [#1128](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1128).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): use `extra_filters` instead of modifying query when adding legend filters. See [#411](https://github.com/VictoriaMetrics/VictoriaLogs/issues/411).

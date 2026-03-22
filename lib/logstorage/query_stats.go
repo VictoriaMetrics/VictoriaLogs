@@ -44,6 +44,9 @@ type QueryStats struct {
 
 	// BytesProcessedUncompressedValues is the total number of uncompressed values bytes processed during the search.
 	BytesProcessedUncompressedValues uint64
+
+	// IsPartial is the field for setting later the VL-Partial-Response header.
+	IsPartial uint32
 }
 
 // GetBytesReadTotal returns the total number of bytes read, which is tracked by qs.
@@ -66,6 +69,11 @@ func (qs *QueryStats) UpdateAtomic(src *QueryStats) {
 	atomic.AddUint64(&qs.ValuesRead, src.ValuesRead)
 	atomic.AddUint64(&qs.TimestampsRead, src.TimestampsRead)
 	atomic.AddUint64(&qs.BytesProcessedUncompressedValues, src.BytesProcessedUncompressedValues)
+
+	srcIsPartial := atomic.LoadUint32(&src.IsPartial)
+	if srcIsPartial != 0 {
+		atomic.StoreUint32(&qs.IsPartial, srcIsPartial)
+	}
 }
 
 // UpdateAtomicFromDataBlock adds query stats from db to qs.

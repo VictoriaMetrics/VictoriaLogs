@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -421,7 +422,7 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 	}
 	wg.Wait()
 
-	return getFirstError(errs, qctx.AllowPartialResponse)
+	return getFirstError(errs, qctx.AllowPartialResponse, qctx.QueryStats)
 }
 
 // GetFieldNames executes qctx and returns field names seen in results.
@@ -512,7 +513,7 @@ func (s *Storage) DeleteRunTask(ctx context.Context, taskID string, timestamp in
 	}
 	wg.Wait()
 
-	return getFirstError(errs, allowPartialResponse)
+	return getFirstError(errs, allowPartialResponse, nil)
 }
 
 // DeleteStopTask stops the delete task with the given taskID.
@@ -538,7 +539,7 @@ func (s *Storage) DeleteStopTask(ctx context.Context, taskID string) error {
 	}
 	wg.Wait()
 
-	return getFirstError(errs, allowPartialResponse)
+	return getFirstError(errs, allowPartialResponse, nil)
 }
 
 // DeleteActiveTasks returns the list of active delete tasks started via DeleteRunTask
@@ -564,7 +565,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, allowPartialResponse); err != nil {
+	if err := getFirstError(errs, allowPartialResponse, nil); err != nil {
 		return nil, err
 	}
 
@@ -619,7 +620,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, allowPartialResponse); err != nil {
+	if err := getFirstError(errs, allowPartialResponse, nil); err != nil {
 		return nil, err
 	}
 
@@ -659,7 +660,7 @@ func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64,
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, qctx.AllowPartialResponse); err != nil {
+	if err := getFirstError(errs, qctx.AllowPartialResponse, qctx.QueryStats); err != nil {
 		return nil, err
 	}
 
@@ -760,7 +761,7 @@ func (sn *storageNode) handleError(ctx context.Context, cancel func(), err error
 	return err
 }
 
-func getFirstError(errs []error, allowPartialResponse bool) error {
+func getFirstError(errs []error, allowPartialResponse bool, qs *logstorage.QueryStats) error {
 	if len(errs) == 0 {
 		logger.Panicf("BUG: len(errs) must be bigger than 0")
 	}
@@ -768,28 +769,62 @@ func getFirstError(errs []error, allowPartialResponse bool) error {
 	if !allowPartialResponse {
 		for _, err := range errs {
 			if err != nil {
+				// Set IsPartial to 0 (false) when returning an error in non-partial mode
+				if qs != nil {
+					atomic.StoreUint32(&qs.IsPartial, 0)
+				}
 				return err
 			}
+		}
+		// All backends succeeded - full response
+		if qs != nil {
+			atomic.StoreUint32(&qs.IsPartial, 0)
 		}
 		return nil
 	}
 
 	// allowPartialResponse == true. Return the error only if all the backends are unavailable
 	// or if some of the backends are improperly configured.
+	hasSuccess := false
+	hasUnavailableError := false
 	for _, err := range errs {
 		if err == nil {
 			// At least a single vlstorage returned full response.
-			return nil
-		}
-		if !isUnavailableBackendError(err) {
+			hasSuccess = true
+		} else if isUnavailableBackendError(err) {
+			hasUnavailableError = true
+		} else {
 			// Return the first error, which isn't related to the backend unavailability, to the client,
 			// since this error may point to configuration issues, which must be fixed ASAP.
 			// Hiding this error would complicate troubleshooting of improperly configured system.
+			if qs != nil {
+				atomic.StoreUint32(&qs.IsPartial, 0)
+			}
 			return fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
 		}
 	}
 
-	return fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
+	if !hasSuccess {
+		// All backends are unavailable
+		if qs != nil {
+			atomic.StoreUint32(&qs.IsPartial, 1)
+		}
+		return fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
+	}
+
+	// Some backends succeeded, some failed with unavailable errors - this is a partial response
+	if hasUnavailableError {
+		if qs != nil {
+			atomic.StoreUint32(&qs.IsPartial, 1)
+		}
+	} else {
+		// All backends succeeded - full response
+		if qs != nil {
+			atomic.StoreUint32(&qs.IsPartial, 0)
+		}
+	}
+
+	return nil
 }
 
 func isUnavailableBackendError(err error) bool {

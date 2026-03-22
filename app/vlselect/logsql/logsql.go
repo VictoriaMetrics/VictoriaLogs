@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -1206,6 +1207,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 			ca.q.AddPipeSortByTimeDesc()
 		}
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
+	} else {
+		// Streaming mode - set IsPartial to unknown (2) since we cannot determine partial status upfront
+		atomic.StoreUint32(&ca.qs.IsPartial, 2)
 	}
 
 	var csvHeader []byte
@@ -1813,6 +1817,22 @@ func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
 	// Write request duration
 	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds"}
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
+
+	// Write VL-Partial-Response header
+	isPartial := atomic.LoadUint32(&ca.qs.IsPartial)
+	var partialResponseValue string
+	switch isPartial {
+	case 0:
+		partialResponseValue = "false"
+	case 1:
+		partialResponseValue = "true"
+	case 2:
+		partialResponseValue = "unknown"
+	default:
+		partialResponseValue = "unknown"
+	}
+	accessControlExposeHeaders = append(accessControlExposeHeaders, "VL-Partial-Response")
+	h.Set("VL-Partial-Response", partialResponseValue)
 
 	if len(ca.tenantIDs) == 1 {
 		// Write the used AccountID and ProjectID, so the client could show them properly.
