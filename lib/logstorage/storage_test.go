@@ -283,6 +283,61 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
+func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	ctx := t.Context()
+
+	cfg := &StorageConfig{
+		Retention:       30 * 24 * time.Hour,
+		FutureRetention: 30 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{
+		{
+			AccountID: 123,
+			ProjectID: 456,
+		},
+	}
+
+	startTime := time.Now().UnixNano() - int64(2*time.Second)
+	rowTimestamp := startTime - int64(500*time.Millisecond)
+
+	lr := GetLogRows([]string{"host"}, nil, nil, nil, "")
+	lr.MustAdd(tenantIDs[0], rowTimestamp, []Field{
+		{
+			Name:  "host",
+			Value: "host-1",
+		},
+		{
+			Name:  "row_id",
+			Value: "1",
+		},
+	}, -1)
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	check := func(qStr string, resultsExpected []string) {
+		t.Helper()
+		checkQueryResults(t, s, tenantIDs, qStr, nil, resultsExpected)
+	}
+
+	check(`row_id:=1 | stats count(*) as rows`, []string{`{"rows":"1"}`})
+
+	dt := newDeleteTask("task_id_relative", tenantIDs, `_time:1s row_id:=1`, startTime)
+	for !s.processDeleteTask(ctx, dt) {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	check(`row_id:=1 | stats count(*) as rows`, []string{`{"rows":"0"}`})
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
 func checkQueryResults(t *testing.T, s *Storage, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
 	t.Helper()
 

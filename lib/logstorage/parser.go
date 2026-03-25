@@ -1919,7 +1919,15 @@ func (f *Filter) MatchRow(row []Field) bool {
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#filters
 func ParseFilter(s string) (*Filter, error) {
-	q, err := ParseQuery(s)
+	timestamp := time.Now().UnixNano()
+	return ParseFilterAtTimestamp(s, timestamp)
+}
+
+// ParseFilterAtTimestamp parses LogsQL filter in the context of the given timestamp.
+//
+// The timestamp is used for properly parsing relative time filters such as `_time:1h`.
+func ParseFilterAtTimestamp(s string, timestamp int64) (*Filter, error) {
+	q, err := ParseQueryAtTimestamp(s, timestamp)
 	if err != nil {
 		return nil, err
 	}
