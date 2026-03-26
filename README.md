@@ -1,27 +1,26 @@
 # VictoriaLogs
 
-[![Latest Release](https://img.shields.io/github/v/release/VictoriaMetrics/VictoriaLogs?sort=semver&label=&logo=github&labelColor=gray&color=gray&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaLogs%2Freleases%2Flatest)](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
-![Docker Pulls](https://img.shields.io/docker/pulls/victoriametrics/victoria-logs?label=&logo=docker&logoColor=white&labelColor=2496ED&color=2496ED&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fvictoriametrics%2Fvictoria-logs)
-[![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/VictoriaLogs?link=https%3A%2F%2Fgoreportcard.com%2Freport%2Fgithub.com%2FVictoriaMetrics%2FVictoriaLogs)](https://goreportcard.com/report/github.com/VictoriaMetrics/VictoriaLogs)
-[![Build Status](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml/badge.svg?branch=master&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaLogs%2Factions)](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml)
-[![codecov](https://codecov.io/gh/VictoriaMetrics/VictoriaLogs/branch/master/graph/badge.svg?link=https%3A%2F%2Fcodecov.io%2Fgh%2FVictoriaMetrics%2FVictoriaLogs)](https://app.codecov.io/gh/VictoriaMetrics/VictoriaLogs)
-[![License](https://img.shields.io/github/license/VictoriaMetrics/VictoriaLogs?labelColor=green&label=&link=https%3A%2F%2Fgithub.com%2FVictoriaMetrics%2FVictoriaLogs%2Fblob%2Fmaster%2FLICENSE)](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE)
-![Slack](https://img.shields.io/badge/Join-4A154B?logo=slack&link=https%3A%2F%2Fslack.victoriametrics.com)
-[![X](https://img.shields.io/twitter/follow/VictoriaMetrics?style=flat&label=Follow&color=black&logo=x&labelColor=black&link=https%3A%2F%2Fx.com%2FVictoriaMetrics)](https://x.com/VictoriaMetrics/)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/VictoriaMetrics?style=flat&label=Join&labelColor=red&logoColor=white&logo=reddit&link=https%3A%2F%2Fwww.reddit.com%2Fr%2FVictoriaMetrics)](https://www.reddit.com/r/VictoriaMetrics/)
+[![Latest Release](https://img.shields.io/github/v/release/VictoriaMetrics/VictoriaLogs?sort=semver&label=Release&logo=github&color=gray)](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
+[![Docker](https://img.shields.io/docker/pulls/victoriametrics/victoria-logs?label=Docker&logo=docker&logoColor=white&labelColor=2496ED&color=2496ED)](https://hub.docker.com/r/victoriametrics/victoria-logs)
+[![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/VictoriaLogs)](https://goreportcard.com/report/github.com/VictoriaMetrics/VictoriaLogs)
+[![Build Status](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml)
+[![License](https://img.shields.io/github/license/VictoriaMetrics/VictoriaLogs?label=License&labelColor=3d444d&color=2496ED)](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE)
+[![Join Slack](https://img.shields.io/badge/Join%20Slack-4A154B?logo=slack)](https://slack.victoriametrics.com)
+[![Follow on X](https://img.shields.io/twitter/follow/VictoriaMetrics?style=flat&label=Follow&color=black&logo=x&labelColor=black)](https://x.com/VictoriaMetrics/)
+[![Join Reddit](https://img.shields.io/reddit/subreddit-subscribers/VictoriaMetrics?style=flat&label=Join&labelColor=red&logoColor=white&logo=reddit)](https://www.reddit.com/r/VictoriaMetrics/)
 
-VictoriaLogs is a fast easy to use database for logs.
+VictoriaLogs is a high-performance, lightweight, zero-config, schema-free database for logs that is easy to use and scales both vertically and horizontally, from very small setups to large-scale deployments handling terabytes per day.
 
-Here are some resources and information about VictoriaLogs:
+Both the single-node and cluster versions of VictoriaLogs are open source and free to use. 
 
-- Playgrounds: [playground for the built-in web UI](https://play-vmlogs.victoriametrics.com/), [playground for Grafana plugin for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs)
+Here are some resources to help you get started with VictoriaLogs:
+
+- Playgrounds: [built-in web UI](https://play-vmlogs.victoriametrics.com/), [Grafana plugin for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs), [SQL to LogsQL](https://play-sql.victoriametrics.com/), [LogQL to LogsQL](https://play-logql.victoriametrics.com/)
 - [Documentation](https://docs.victoriametrics.com/victorialogs/)
 - Available: [Binary releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest), docker images [Docker Hub](https://hub.docker.com/r/victoriametrics/victoria-logs/) and [Quay](https://quay.io/repository/victoriametrics/victoria-logs), [Source code](https://github.com/VictoriaMetrics/VictoriaLogs)
 - Deployment types: [Single-node version](https://docs.victoriametrics.com/victorialogs/), [Cluster version](https://docs.victoriametrics.com/victorialogs/cluster/)
 - Changelog: [CHANGELOG](https://docs.victoriametrics.com/victorialogs/changelog/), and [How to upgrade](https://docs.victoriametrics.com/victorialogs/#upgrading)
 - Community: [Slack](https://slack.victoriametrics.com/), [X (Twitter)](https://x.com/VictoriaMetrics), [LinkedIn](https://www.linkedin.com/company/victoriametrics/), [YouTube](https://www.youtube.com/@VictoriaMetrics)
-
-Both the single-node and the cluster versions of VictoriaLogs are open source and free to use.
 
 ## Community and contributions
 
