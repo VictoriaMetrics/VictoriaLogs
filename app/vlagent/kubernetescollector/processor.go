@@ -90,9 +90,9 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 	}
 }
 
-func (lfp *logFileProcessor) tryAddLine(logLine []byte) (bool, error) {
+func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 	if len(logLine) == 0 {
-		return true, nil
+		return true
 	}
 
 	if logLine[0] == '{' {
@@ -103,17 +103,27 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) (bool, error) {
 
 		criLine, err := parseCRILineJSON(parser, logLine)
 		if err != nil {
-			return false, fmt.Errorf("cannot parse 'json-file' logging driver content %q: %w", logLine, err)
+			pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+			namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+			invalidCRILineLogger.Errorf("skipping invalid json-file log line %q from Pod %q in Namespace %q: %s; "+
+				"see https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting for more details", logLine, pod, namespace, err)
+			return true
 		}
 
 		lfp.addLineInternal(criLine.timestamp, criLine.content)
 
-		return true, nil
+		return true
 	}
 
 	criLine, err := parseCRILine(logLine)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse CRI line content %q: %w", logLine, err)
+		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+		lfp.partialCRIStdout.reset()
+		lfp.partialCRIStderr.reset()
+		invalidCRILineLogger.Errorf("skipping invalid CRI log line %q from Pod %q in Namespace %q: %s; "+
+			"see https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting for more details", logLine, pod, namespace, err)
+		return true
 	}
 
 	prevState := &lfp.partialCRIStderr
@@ -123,19 +133,21 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) (bool, error) {
 	timestamp, content, ok := lfp.joinPartialLines(prevState, criLine)
 	if !ok {
 		// The log content is not yet complete.
-		return false, nil
+		return false
 	}
 	defer prevState.reset()
 
 	if len(content) == 0 {
 		// The log content is truncated or empty.
 		// Skip such lines.
-		return true, nil
+		return true
 	}
 
 	lfp.addLineInternal(timestamp, content)
-	return true, nil
+	return true
 }
+
+var invalidCRILineLogger = logger.WithThrottler("invalid_cri_log_line", 5*time.Second)
 
 type partialCRILineState struct {
 	// content accumulates the content of partial CRI log lines.
@@ -183,7 +195,10 @@ func (lfp *logFileProcessor) joinPartialLinesSlow(state *partialCRILineState, cr
 	state.size += len(criLine.content)
 	if state.size > maxLogLineSize {
 		// Discard the too large log line.
-		reportLogRowSizeExceeded(lfp.commonFields, state.size)
+		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+		logLineExceedsMaxLineSizeLogger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
+			pod, namespace, float64(state.size)/1024/1024, maxLogLineSize/1024/1024)
 		return 0, nil, true
 	}
 
@@ -191,6 +206,8 @@ func (lfp *logFileProcessor) joinPartialLinesSlow(state *partialCRILineState, cr
 	content := state.content.B
 	return criLine.timestamp, content, true
 }
+
+var logLineExceedsMaxLineSizeLogger = logger.WithThrottler("log_line_exceeds_max_line_size", 5*time.Second)
 
 func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 	parser := logstorage.GetJSONParser()
@@ -414,8 +431,8 @@ func fieldIndex(fields []logstorage.Field, names []string) int {
 }
 
 func (lfp *logFileProcessor) mustClose() {
-	lfp.partialCRIStderr.reset()
 	lfp.partialCRIStdout.reset()
+	lfp.partialCRIStderr.reset()
 	logstorage.PutLogRows(lfp.lr)
 	lfp.lr = nil
 }
@@ -629,19 +646,12 @@ var partialCRIContentBufPool bytesutil.ByteBufferPool
 
 var criJSONParserPool fastjson.ParserPool
 
-func reportLogRowSizeExceeded(commonFields []logstorage.Field, size int) {
-	var pod, namespace string
-	for _, f := range commonFields {
-		if f.Name == "kubernetes.pod_namespace" {
-			namespace = f.Value
-		}
-		if f.Name == "kubernetes.pod_name" {
-			pod = f.Value
-		}
-		if pod != "" && namespace != "" {
-			break
-		}
+func mustGetFieldValByName(commonFields []logstorage.Field, fieldName string) string {
+	n := slices.IndexFunc(commonFields, func(f logstorage.Field) bool {
+		return f.Name == fieldName
+	})
+	if n < 0 {
+		panic(fmt.Errorf("BUG: cannot find field %q in commonFields", fieldName))
 	}
-	logger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
-		pod, namespace, float64(size)/1024/1024, maxLogLineSize/1024/1024)
+	return commonFields[n].Value
 }

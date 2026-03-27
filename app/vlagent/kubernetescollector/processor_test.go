@@ -14,12 +14,11 @@ func TestProcessor(t *testing.T) {
 		t.Helper()
 
 		storage := newTestStorage()
-		proc := newLogFileProcessor(storage, nil)
+		commonFields := getCommonFields(node{}, namespace{}, pod{}, containerStatus{})
+		proc := newLogFileProcessor(storage, commonFields)
 
 		for _, s := range in {
-			if _, err := proc.tryAddLine([]byte(s)); err != nil {
-				t.Fatalf("cannot process line: %s", err)
-			}
+			proc.tryAddLine([]byte(s))
 		}
 
 		expected := strings.Join(resultsExpected, "\n")
