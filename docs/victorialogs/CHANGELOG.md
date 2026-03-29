@@ -39,6 +39,7 @@ according to the following docs:
 
 * BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/): properly handle the case when the ingested logs contain `_time` field without the real timestamp, and this field is not mentioned in the `_time_field` query arg or in the `VL-Time-Field` request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters). Previously this could lead to unexpected errors during querying such as `missing _time field in the query results`. See [#1168](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168).
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly apply [query options](https://docs.victoriametrics.com/victorialogs/logsql/#query-options) at `vlselect` in [cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/). Previously the options were sent to `vlstorage`, but were ignored at `vlselect`. This could lead to incorrect query results.
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix `count_uniq()` and `count_uniq_hash()` in [cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/) for queries with 128 or more internal shards. Previously such queries could fail during state merge at `vlselect` with errors such as `cannot import state for count_uniq(...)`. See [#1225](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1225).
 
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)
 
