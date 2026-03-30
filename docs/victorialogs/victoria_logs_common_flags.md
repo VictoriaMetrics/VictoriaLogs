@@ -102,7 +102,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -insert.concurrency int
      The average number of concurrent data ingestion requests, which can be sent to every -storageNode (default 2)
   -insert.disable
-     Whether to disable /insert/* HTTP endpoints
+     Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes; see also -internalinsert.disable
   -insert.disableCompression
      Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
   -insert.maxFieldsPerLine int
@@ -249,7 +249,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -select.disable
-     Whether to disable /select/* HTTP endpoints
+     Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes; see also -internalselect.disable
   -select.disableCompression
      Whether to disable compression for select query responses received from -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
   -snapshotsMaxAge value

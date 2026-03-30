@@ -62,11 +62,8 @@ type logFileProcessor struct {
 	// fieldsBuf is used for constructing log fields from commonFields and the actual log line fields before sending them to VictoriaLogs.
 	fieldsBuf []logstorage.Field
 
-	// partialCRIContent accumulates the content of partial CRI log lines.
-	// Can be truncated if it exceeds maxLineSize.
-	partialCRIContent *bytesutil.ByteBuffer
-	// partialCRIContentSize tracks the actual size of the partialCRIContent.
-	partialCRIContentSize int
+	partialCRIStdout partialCRILineState
+	partialCRIStderr partialCRILineState
 }
 
 // newLogFileProcessor returns a new logFileProcessor for the given storage.
@@ -93,9 +90,9 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 	}
 }
 
-func (lfp *logFileProcessor) tryAddLine(logLine []byte) (bool, error) {
+func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
 	if len(logLine) == 0 {
-		return true, nil
+		return true
 	}
 
 	if logLine[0] == '{' {
@@ -106,82 +103,111 @@ func (lfp *logFileProcessor) tryAddLine(logLine []byte) (bool, error) {
 
 		criLine, err := parseCRILineJSON(parser, logLine)
 		if err != nil {
-			return false, fmt.Errorf("cannot parse 'json-file' logging driver content %q: %w", logLine, err)
+			pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+			namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+			invalidCRILineLogger.Errorf("skipping invalid json-file log line %q from Pod %q in Namespace %q: %s; "+
+				"see https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting for more details", logLine, pod, namespace, err)
+			return true
 		}
 
 		lfp.addLineInternal(criLine.timestamp, criLine.content)
 
-		return true, nil
+		return true
 	}
 
 	criLine, err := parseCRILine(logLine)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse CRI line content %q: %w", logLine, err)
+		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+		lfp.partialCRIStdout.reset()
+		lfp.partialCRIStderr.reset()
+		invalidCRILineLogger.Errorf("skipping invalid CRI log line %q from Pod %q in Namespace %q: %s; "+
+			"see https://docs.victoriametrics.com/victorialogs/vlagent/#troubleshooting for more details", logLine, pod, namespace, err)
+		return true
 	}
 
-	timestamp, content, ok := lfp.joinPartialLines(criLine)
+	prevState := &lfp.partialCRIStderr
+	if criLine.stream == streamStdout {
+		prevState = &lfp.partialCRIStdout
+	}
+	timestamp, content, ok := lfp.joinPartialLines(prevState, criLine)
 	if !ok {
 		// The log content is not yet complete.
-		return false, nil
+		return false
 	}
+	defer prevState.reset()
+
 	if len(content) == 0 {
 		// The log content is truncated or empty.
 		// Skip such lines.
-		return true, nil
+		return true
 	}
 
 	lfp.addLineInternal(timestamp, content)
-
-	if lfp.partialCRIContent != nil {
-		partialCRIContentBufPool.Put(lfp.partialCRIContent)
-		lfp.partialCRIContent = nil
-	}
-
-	return true, nil
+	return true
 }
 
-func (lfp *logFileProcessor) joinPartialLines(criLine criLine) (int64, []byte, bool) {
+var invalidCRILineLogger = logger.WithThrottler("invalid_cri_log_line", 5*time.Second)
+
+type partialCRILineState struct {
+	// content accumulates the content of partial CRI log lines.
+	// Can be truncated if it exceeds maxLineSize.
+	content *bytesutil.ByteBuffer
+	// size tracks the actual size of the content.
+	size int
+}
+
+func (pcs *partialCRILineState) reset() {
+	if pcs.content != nil {
+		partialCRIContentBufPool.Put(pcs.content)
+		pcs.content = nil
+	}
+	pcs.size = 0
+}
+
+func (lfp *logFileProcessor) joinPartialLines(state *partialCRILineState, criLine criLine) (int64, []byte, bool) {
+	if !criLine.partial && (state.content == nil || state.content.Len() == 0) {
+		// Fast path: the log line is complete and not split.
+		return criLine.timestamp, criLine.content, true
+	}
+	// Slow path: line is split into multiple lines.
+	return lfp.joinPartialLinesSlow(state, criLine)
+}
+
+func (lfp *logFileProcessor) joinPartialLinesSlow(state *partialCRILineState, criLine criLine) (int64, []byte, bool) {
 	if criLine.partial {
 		// The log line is split into multiple lines.
 		// Accumulate the content until the full line is received.
 
-		if lfp.partialCRIContent == nil {
-			lfp.partialCRIContent = partialCRIContentBufPool.Get()
+		if state.content == nil {
+			state.content = partialCRIContentBufPool.Get()
 		}
 
-		lfp.partialCRIContentSize += len(criLine.content)
-		if lfp.partialCRIContentSize <= maxLogLineSize {
-			lfp.partialCRIContent.MustWrite(criLine.content)
+		state.size += len(criLine.content)
+		if state.size <= maxLogLineSize {
+			state.content.MustWrite(criLine.content)
 		}
 		return 0, nil, false
 	}
 
-	if lfp.partialCRIContent == nil || lfp.partialCRIContent.Len() == 0 {
-		// The log line is complete and not split.
-		return criLine.timestamp, criLine.content, true
-	}
-
 	// The final part of the split log line received.
 
-	lfp.partialCRIContentSize += len(criLine.content)
-	if lfp.partialCRIContentSize > maxLogLineSize {
+	state.size += len(criLine.content)
+	if state.size > maxLogLineSize {
 		// Discard the too large log line.
-		reportLogRowSizeExceeded(lfp.commonFields, lfp.partialCRIContentSize)
-
-		lfp.partialCRIContent.Reset()
-		lfp.partialCRIContentSize = 0
-
+		pod := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_name")
+		namespace := mustGetFieldValByName(lfp.commonFields, "kubernetes.pod_namespace")
+		logLineExceedsMaxLineSizeLogger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
+			pod, namespace, float64(state.size)/1024/1024, maxLogLineSize/1024/1024)
 		return 0, nil, true
 	}
 
-	lfp.partialCRIContent.MustWrite(criLine.content)
-	content := lfp.partialCRIContent.B
-
-	lfp.partialCRIContent.Reset()
-	lfp.partialCRIContentSize = 0
-
+	state.content.MustWrite(criLine.content)
+	content := state.content.B
 	return criLine.timestamp, content, true
 }
+
+var logLineExceedsMaxLineSizeLogger = logger.WithThrottler("log_line_exceeds_max_line_size", 5*time.Second)
 
 func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 	parser := logstorage.GetJSONParser()
@@ -405,13 +431,24 @@ func fieldIndex(fields []logstorage.Field, names []string) int {
 }
 
 func (lfp *logFileProcessor) mustClose() {
+	lfp.partialCRIStdout.reset()
+	lfp.partialCRIStderr.reset()
 	logstorage.PutLogRows(lfp.lr)
 	lfp.lr = nil
 }
 
+type stream byte
+
+const (
+	streamStdout stream = 0
+	streamStderr stream = 1
+)
+
 type criLine struct {
 	// timestamp of the log entry, from the perspective of Container Runtime.
 	timestamp int64
+	// stream contains the output stream such as stdout or stderr.
+	stream stream
 	// partial is true if the log line is split into multiple lines.
 	partial bool
 	// content of the log entry.
@@ -435,7 +472,10 @@ func parseCRILine(b []byte) (criLine, error) {
 	if n < 0 {
 		return criLine{}, fmt.Errorf("unexpected end of stream")
 	}
-	// Skip stream value.
+	stream := streamStderr
+	if string(b[:n]) == "stdout" {
+		stream = streamStdout
+	}
 	b = b[n+1:]
 
 	n = bytes.IndexByte(b, ' ')
@@ -453,6 +493,7 @@ func parseCRILine(b []byte) (criLine, error) {
 
 	return criLine{
 		timestamp: timestamp,
+		stream:    stream,
 		partial:   partial,
 		content:   content,
 	}, nil
@@ -605,19 +646,12 @@ var partialCRIContentBufPool bytesutil.ByteBufferPool
 
 var criJSONParserPool fastjson.ParserPool
 
-func reportLogRowSizeExceeded(commonFields []logstorage.Field, size int) {
-	var pod, namespace string
-	for _, f := range commonFields {
-		if f.Name == "kubernetes.pod_namespace" {
-			namespace = f.Value
-		}
-		if f.Name == "kubernetes.pod_name" {
-			pod = f.Value
-		}
-		if pod != "" && namespace != "" {
-			break
-		}
+func mustGetFieldValByName(commonFields []logstorage.Field, fieldName string) string {
+	n := slices.IndexFunc(commonFields, func(f logstorage.Field) bool {
+		return f.Name == fieldName
+	})
+	if n < 0 {
+		panic(fmt.Errorf("BUG: cannot find field %q in commonFields", fieldName))
 	}
-	logger.Warnf("skipping log entry from Pod %q in namespace %q: entry size of %.2f MiB exceeds the maximum allowed size of %d MiB",
-		pod, namespace, float64(size)/1024/1024, maxLogLineSize/1024/1024)
+	return commonFields[n].Value
 }
