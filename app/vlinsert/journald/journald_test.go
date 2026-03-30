@@ -180,7 +180,12 @@ func TestGetRemoteIP(t *testing.T) {
 			t.Fatalf("cannot create request: %s", err)
 		}
 		req.RemoteAddr = remoteAddr
-		req.Header.Set("X-Forwared-For", xff)
+		req.Header.Set("X-Forwarded-For", xff)
+
+		ip := getRemoteIP(req)
+		if ip != ipExpected {
+			t.Fatalf("unexpected remote ip; got %q; want %q", ip, ipExpected)
+		}
 	}
 
 	// remoteAddr
