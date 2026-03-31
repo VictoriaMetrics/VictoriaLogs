@@ -1250,6 +1250,8 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}()
 
 	startTime := time.Now()
+	// Streaming queries send headers before completion, so set to unknown
+	atomic.StoreUint32(&ca.qs.IsPartial, 2)
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
