@@ -1212,9 +1212,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 			ca.q.AddPipeSortByTimeDesc()
 		}
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
-	} else {
-		// Streaming mode - set IsPartial to unknown (2) since we cannot determine partial status upfront
-		atomic.StoreUint32(&ca.qs.IsPartial, 2)
 	}
 
 	var csvHeader []byte
@@ -1611,6 +1608,12 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		startAligned: startAligned,
 		endAligned:   endAligned,
 	}
+
+	// When allowPartialResponse is enabled, initialize IsPartial to "unknown" (2).
+	if allowPartialResponse {
+		atomic.StoreUint32(&ca.qs.IsPartial, 2)
+	}
+
 	return ca, nil
 }
 
