@@ -1,6 +1,8 @@
 import { DATE_TIME_FORMAT } from "./date";
 import { getIsMobile } from "../hooks/useDeviceDetect";
 
+export const LOGS_DOCS_URL = "https://docs.victoriametrics.com/victorialogs";
+
 export const LOGS_DEFAULT_LIMIT = 50;
 export const LOGS_CONFIRM_THRESHOLD = 1000;
 export const LOGS_MAX_LIMIT = 10000;

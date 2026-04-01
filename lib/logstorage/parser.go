@@ -365,6 +365,20 @@ type Query struct {
 	timestamp int64
 }
 
+func (q *Query) getFinalFilter() filter {
+	if q.opts.globalFilter == nil {
+		return q.f
+	}
+
+	f := &filterAnd{
+		filters: []filter{
+			q.opts.globalFilter,
+			q.f,
+		},
+	}
+	return optimizeFilters(f)
+}
+
 type queryOptions struct {
 	// needPrint is set to true if the queryOptions must be printed in the queryOptions.String().
 	needPrint bool
@@ -392,6 +406,9 @@ type queryOptions struct {
 
 	// timeOffsetStr is a string representation of the timeOffset.
 	timeOffsetStr string
+
+	// globalFilter is an optional filter, which must be used before applying filters in the query and all its' subqueries.
+	globalFilter filter
 }
 
 func (opts *queryOptions) String() string {
@@ -399,8 +416,12 @@ func (opts *queryOptions) String() string {
 		return ""
 	}
 	var a []string
+
 	if opts.concurrency > 0 {
 		a = append(a, fmt.Sprintf("concurrency=%d", opts.concurrency))
+	}
+	if opts.parallelReaders > 0 {
+		a = append(a, fmt.Sprintf("parallel_readers=%d", opts.parallelReaders))
 	}
 	if opts.ignoreGlobalTimeFilter != nil {
 		a = append(a, fmt.Sprintf("ignore_global_time_filter=%v", *opts.ignoreGlobalTimeFilter))
@@ -411,6 +432,10 @@ func (opts *queryOptions) String() string {
 	if opts.timeOffsetStr != "" {
 		a = append(a, fmt.Sprintf("time_offset=%s", opts.timeOffsetStr))
 	}
+	if opts.globalFilter != nil {
+		a = append(a, fmt.Sprintf("global_filter=(%s)", opts.globalFilter))
+	}
+
 	if len(a) == 0 {
 		return ""
 	}
@@ -477,7 +502,8 @@ func (q *Query) CanLiveTail() bool {
 }
 
 func (q *Query) getStreamIDs() []streamID {
-	switch t := q.f.(type) {
+	f := q.getFinalFilter()
+	switch t := f.(type) {
 	case *filterAnd:
 		for _, f := range t.filters {
 			streamIDs, ok := getStreamIDsFromFilterOr(f)
@@ -487,7 +513,7 @@ func (q *Query) getStreamIDs() []streamID {
 		}
 		return nil
 	default:
-		streamIDs, _ := getStreamIDsFromFilterOr(q.f)
+		streamIDs, _ := getStreamIDsFromFilterOr(f)
 		return streamIDs
 	}
 }
@@ -747,7 +773,8 @@ func (q *Query) CanReturnLastNResults() bool {
 
 // GetFilterTimeRange returns filter time range for the given q.
 func (q *Query) GetFilterTimeRange() (int64, int64) {
-	return getFilterTimeRange(q.f)
+	f := q.getFinalFilter()
+	return getFilterTimeRange(f)
 }
 
 // IsFixedOutputFieldsOrder returns true if the query results have fixed order of fields.
@@ -761,11 +788,11 @@ func (q *Query) IsFixedOutputFieldsOrder() bool {
 
 		switch t := p.(type) {
 		case *pipeUnion:
-			if !t.q.IsFixedOutputFieldsOrder() {
+			if t.q != nil && !t.q.IsFixedOutputFieldsOrder() {
 				return false
 			}
 		case *pipeJoin:
-			if !t.q.IsFixedOutputFieldsOrder() {
+			if t.q != nil && !t.q.IsFixedOutputFieldsOrder() {
 				return false
 			}
 		}
@@ -969,6 +996,12 @@ func (q *Query) optimize() {
 	})
 }
 
+func (q *Query) enablePrintOptions() {
+	q.visitSubqueries(func(q *Query) {
+		q.opts.needPrint = true
+	})
+}
+
 func (q *Query) optimizeNoSubqueries() {
 	q.pipes = optimizeOffsetLimitPipes(q.pipes)
 	q.pipes = optimizeUniqLimitPipes(q.pipes)
@@ -991,17 +1024,23 @@ func (q *Query) optimizeNoSubqueries() {
 		}
 	}
 
+	q.f = optimizeFilters(q.f)
+}
+
+func optimizeFilters(f filter) filter {
 	// flatten nested AND filters
-	q.f = flattenFiltersAnd(q.f)
+	f = flattenFiltersAnd(f)
 
 	// flatten nested OR filters
-	q.f = flattenFiltersOr(q.f)
+	f = flattenFiltersOr(f)
 
 	// Substitute '*' prefixFilter with filterNoop in order to avoid reading _msg data.
-	q.f = removeStarFilters(q.f)
+	f = removeStarFilters(f)
 
 	// Merge multiple {...} filters into a single one.
-	q.f = mergeFiltersStream(q.f)
+	f = mergeFiltersStream(f)
+
+	return f
 }
 
 func (q *Query) visitSubqueries(visitFunc func(q *Query)) {
@@ -1013,6 +1052,9 @@ func (q *Query) visitSubqueries(visitFunc func(q *Query)) {
 	visitFunc(q)
 
 	// Visit subqueries in all the filters at q.
+	if q.opts.globalFilter != nil {
+		visitSubqueriesInFilter(q.opts.globalFilter, visitFunc)
+	}
 	visitSubqueriesInFilter(q.f, visitFunc)
 
 	// Visit subqueries in all the pipes at q.
@@ -1947,12 +1989,21 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			return nil
 		}
 
-		k, v, err := parseKeyValuePair(lex)
+		optionName, err := lex.nextCompoundToken()
 		if err != nil {
-			return fmt.Errorf("cannot parse 'options': %w", err)
+			return fmt.Errorf("cannot parse the option name inside 'options': %w", err)
 		}
-		switch k {
+		if !lex.isKeyword("=") {
+			return fmt.Errorf("missing '=' after %q key; got %q instead", optionName, lex.token)
+		}
+		lex.nextToken()
+
+		switch optionName {
 		case "concurrency":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'concurrency' value inside 'options': %w", err)
+			}
 			n, ok := tryParseUint64(v)
 			if !ok {
 				return fmt.Errorf("cannot parse 'concurrency=%q' option as unsigned integer", v)
@@ -1960,6 +2011,10 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			dstOpts.concurrency = uint(n)
 			dstOpts.needPrint = true
 		case "parallel_readers":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'parallel_readers' value inside 'options': %w", err)
+			}
 			n, ok := tryParseUint64(v)
 			if !ok {
 				return fmt.Errorf("cannot parse 'parallel_readers=%q' option as unsigned integer", v)
@@ -1967,6 +2022,10 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			dstOpts.parallelReaders = uint(n)
 			dstOpts.needPrint = true
 		case "ignore_global_time_filter":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'ignore_global_time_filter' value inside 'options': %w", err)
+			}
 			ignoreGlobalTimeFilter, err := strconv.ParseBool(v)
 			if err != nil {
 				return fmt.Errorf("cannot parse 'ignore_global_time_filter=%q' option as boolean: %w", v, err)
@@ -1974,6 +2033,10 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			dstOpts.ignoreGlobalTimeFilter = &ignoreGlobalTimeFilter
 			dstOpts.needPrint = true
 		case "allow_partial_response":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'allow_partial_response' value inside 'options': %w", err)
+			}
 			allowPartialResponse, err := strconv.ParseBool(v)
 			if err != nil {
 				return fmt.Errorf("cannot parse 'allow_partial_response=%q' option as boolean: %w", v, err)
@@ -1981,6 +2044,10 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			dstOpts.allowPartialResponse = &allowPartialResponse
 			dstOpts.needPrint = true
 		case "time_offset":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'time_offset' value inside 'options': %w", err)
+			}
 			timeOffset, ok := tryParseDuration(v)
 			if !ok {
 				return fmt.Errorf("cannot parse 'time_offset=%q' option as duration", v)
@@ -1988,8 +2055,18 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			dstOpts.timeOffset = timeOffset
 			dstOpts.timeOffsetStr = v
 			dstOpts.needPrint = true
+		case "global_filter":
+			q, err := parseQueryInParens(lex)
+			if err != nil {
+				return fmt.Errorf("cannot parse global_filter at 'options'; it must have the the following format: global_filter=(_time:5m); error: %w", err)
+			}
+			if len(q.pipes) > 0 {
+				return fmt.Errorf("global_filter at 'options' cannot contain pipes; it must contain only filters; got global_filter=(%s)", q)
+			}
+			dstOpts.globalFilter = q.f
+			dstOpts.needPrint = true
 		default:
-			return fmt.Errorf("unexpected option %q with value %q", k, v)
+			return fmt.Errorf("unexpected option inside 'options': %q", optionName)
 		}
 
 		if lex.isKeyword(")") {
@@ -2001,25 +2078,6 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 		}
 		lex.nextToken()
 	}
-}
-
-func parseKeyValuePair(lex *lexer) (string, string, error) {
-	k, err := lex.nextCompoundToken()
-	if err != nil {
-		return "", "", fmt.Errorf("cannot read key in the 'key=value' pair: %w", err)
-	}
-
-	if !lex.isKeyword("=") {
-		return "", "", fmt.Errorf("missing '=' after %q key; got %q instead", k, lex.token)
-	}
-	lex.nextToken()
-
-	v, err := lex.nextCompoundToken()
-	if err != nil {
-		return "", "", fmt.Errorf("cannot read value after '%q=': %w", k, err)
-	}
-
-	return k, v, nil
 }
 
 func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
@@ -3838,6 +3896,9 @@ func parseInQuery(lex *lexer) (*Query, string, error) {
 
 func (q *Query) isStarQuery() bool {
 	if len(q.pipes) > 0 {
+		return false
+	}
+	if q.opts.needPrint {
 		return false
 	}
 	switch t := q.f.(type) {

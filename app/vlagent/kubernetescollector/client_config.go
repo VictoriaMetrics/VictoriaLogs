@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"gopkg.in/yaml.v2"
 )
@@ -21,6 +22,9 @@ func loadKubeAPIConfig() (*kubeAPIConfig, bool, error) {
 	if localErr != nil {
 		return nil, false, fmt.Errorf("cannot load discovery config from in-cluster config: %w; and from local config: %w", inClusterErr, localErr)
 	}
+	logger.Warnf("cannot load in-cluster Kubernetes config: %s; will use local config with server %q instead. "+
+		"Local Kubernetes config is intended for testing purposes only and must not be used in production. "+
+		"See https://docs.victoriametrics.com/victorialogs/vlagent/#kubernetes-collector-configuration for proper in-cluster setup", inClusterErr, cfg.server)
 	return cfg, true, nil
 }
 

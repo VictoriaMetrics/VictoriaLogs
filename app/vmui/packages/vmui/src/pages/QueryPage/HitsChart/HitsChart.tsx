@@ -10,7 +10,6 @@ import { TimeParams } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
-import { useCallback } from "react";
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 
 interface Props {
@@ -41,12 +40,13 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     });
   };
 
-  const fillTimestamps = useCallback((timestamps: number[]) => {
+  const fillTimestamps = (timestamps: number[], period: TimeParams) => {
+    const { step, start, end } = period;
     if (!step || !timestamps.length) return timestamps;
 
     const stepSec = getSecondsFromDuration(step);
-    const minTime = period.start;
-    const maxTime = period.end;
+    const minTime = start;
+    const maxTime = end;
     const anchorUnix = timestamps[0];
 
     const result: number[] = [anchorUnix];
@@ -60,26 +60,28 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     }
 
     return result;
-  }, [step, period.start, period.end]);
+  };
 
-  const generateTimestamps = useCallback((logHits: LogHits[]) => {
+  const generateTimestamps = (logHits: LogHits[]) => {
     const ts = logHits.map(h => h.timestamps).flat();
     const tsUniq = Array.from(new Set(ts));
     const tsUnix = tsUniq.map(t => toEpochSeconds(t));
     const tsSorted = tsUnix.sort((a, b) => a - b);
-    return fillTimestamps(tsSorted);
-  }, [fillTimestamps]);
+    return fillTimestamps(tsSorted, { ...period, step: step! });
+  };
 
+  // Intentionally recompute xAxis only when data changes.
+  // Period may change multiple times before fresh data arrives.
   const data = useMemo(() => {
     if (!logHits.length) return [[], []] as AlignedData;
     const xAxis = generateTimestamps(logHits);
     const yAxes = getYAxes(logHits, xAxis);
     return [xAxis, ...yAxes] as AlignedData;
-  }, [logHits, generateTimestamps]);
+  }, [logHits]);
 
   const alertData = useHitsChartAlert({ data, error, isLoading, hideChart });
 
-  const setPeriod = ({ from, to }: {from: Date, to: Date}) => {
+  const setPeriod = ({ from, to }: { from: Date, to: Date }) => {
     timeDispatch({ type: "SET_PERIOD", payload: { from, to } });
   };
 

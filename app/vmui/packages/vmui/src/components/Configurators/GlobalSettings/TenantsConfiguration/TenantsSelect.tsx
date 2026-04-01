@@ -4,6 +4,7 @@ import classNames from "classnames";
 import TextField from "../../../Main/TextField/TextField";
 import { TenantType } from "./Tenants";
 import Button from "../../../Main/Button/Button";
+import { LOGS_DOCS_URL } from "../../../../constants/logs";
 
 interface Props extends TenantType {
   accountIds: string[];
@@ -63,7 +64,7 @@ const TenantsSelect: FC<Props> = ({ accountIds, tenantId, onChange }) => {
       ))}
       <div className="vm-tenant-input-list__buttons">
         <a
-          href="https://docs.victoriametrics.com/victorialogs/#multitenancy"
+          href={`${LOGS_DOCS_URL}/#multitenancy`}
           target="_blank"
           rel="help noreferrer"
         >

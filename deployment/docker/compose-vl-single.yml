@@ -33,6 +33,7 @@ services:
     ports:
       - "8686:8686"
     user: root
+    restart: always
 
   #  VictoriaLogs instance, a single process responsible for
   #  storing logs and serving read queries.
@@ -44,6 +45,7 @@ services:
       - "--storageDataPath=/vlogs"
     volumes:
       - vldata:/vlogs
+    restart: always
 
   # VictoriaMetrics instance, a single process responsible for
   # scraping, storing metrics and serve read requests.

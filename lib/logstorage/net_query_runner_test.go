@@ -14,7 +14,13 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 			t.Fatalf("cannot parse query: %s", err)
 		}
 
+		qStrBefore := q.String()
 		qRemote, pipesLocal := splitQueryToRemoteAndLocal(q)
+		qStrAfter := q.String()
+
+		if qStrBefore != qStrAfter {
+			t.Fatalf("the query unexpectedly changed in splitQueryToRemoteAndLocal()\noriginal query\n%s\nresulting query\n%s", qStrBefore, qStrAfter)
+		}
 
 		remoteQuery := qRemote.String()
 		if remoteQuery != remoteQueryExpected {
@@ -98,5 +104,13 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`foo | offset 0 | limit 10`, `foo | limit 10`, `limit 10`)
 
 	f(`foo | offset 5 | limit 10`, `foo | limit 15`, `limit 15 | offset 5`)
-	f(`foo | limit 15 | offset 10 | offset 20 | limit 7`, `foo | limit 15`, `limit 15 | offset 10 | limit 27 | offset 20`)
+	f(`foo | limit 35 | offset 10 | offset 20 | limit 7`, `foo | limit 35`, `limit 35 | offset 30`)
+
+	// Make sure the options(..) is correctly propagated to both local and remote parts of the query
+	f(`options(concurrency=10) foo | join by (x) (bar:in(a | keep x))`, `options(concurrency=10) foo`, `join by (x) (options(concurrency=10) bar:in(options(concurrency=10) a | fields x))`)
+	f(`options(parallel_readers=10) foo | join by (x) (bar:in(options(parallel_readers=1) a | keep x))`, `options(parallel_readers=10) foo`, `join by (x) (options(parallel_readers=10) bar:in(options(parallel_readers=1) a | fields x))`)
+	f(`options(ignore_global_time_filter=true) foo | join by (x) (bar:in(a | keep x))`, `options(ignore_global_time_filter=true) foo`, `join by (x) (options(ignore_global_time_filter=true) bar:in(options(ignore_global_time_filter=true) a | fields x))`)
+	f(`options(allow_partial_response=true) foo | join by (x) (bar:in(a | keep x))`, `options(allow_partial_response=true) foo`, `join by (x) (options(allow_partial_response=true) bar:in(options(allow_partial_response=true) a | fields x))`)
+	f(`options(time_offset=7d) foo | join by (x) (bar:in(a | keep x))`, `options(time_offset=7d) foo`, `join by (x) (options(time_offset=7d) bar:in(options(time_offset=7d) a | fields x))`)
+	f(`options(global_filter=(_time:5m)) foo | join by (x) (bar:in(a | keep x))`, `options(global_filter=(_time:5m)) foo`, `join by (x) (options(global_filter=(_time:5m)) bar:in(options(global_filter=(_time:5m)) a | fields x))`)
 }

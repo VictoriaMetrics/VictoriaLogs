@@ -87,8 +87,8 @@ func (pf *pipeFormat) hasFilterInWithQuery() bool {
 	return pf.iff.hasFilterInWithQuery()
 }
 
-func (pf *pipeFormat) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc, keepSubquery bool) (pipe, error) {
-	iffNew, err := pf.iff.initFilterInValues(cache, getFieldValuesFunc, keepSubquery)
+func (pf *pipeFormat) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pf.iff.initFilterInValues(cache, getFieldValuesFunc)
 	if err != nil {
 		return nil, err
 	}

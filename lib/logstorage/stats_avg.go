@@ -75,7 +75,7 @@ func (sap *statsAvgProcessor) exportState(dst []byte, _ <-chan struct{}) []byte 
 
 func (sap *statsAvgProcessor) importState(src []byte, _ <-chan struct{}) (int, error) {
 	if len(src) < 8 {
-		return 0, fmt.Errorf("cannot unmarshal sum from %d bytes; need 8 bytes", len(src))
+		return 0, fmt.Errorf("cannot unmarshal avg from %d bytes; need 8 bytes", len(src))
 	}
 	sap.sum = unmarshalFloat64(bytesutil.ToUnsafeString(src))
 	src = src[8:]

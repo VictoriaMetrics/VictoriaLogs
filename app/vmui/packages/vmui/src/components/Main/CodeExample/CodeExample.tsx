@@ -36,6 +36,7 @@ const CodeExample: FC<{code: string}> = ({ code }) => {
           <Button
             size="small"
             variant="text"
+            color="gray"
             onClick={handlerCopy}
             startIcon={isCopied ? <DoneIcon/> : <CopyIcon/>}
             ariaLabel="close"

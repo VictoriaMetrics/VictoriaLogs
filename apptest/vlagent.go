@@ -36,7 +36,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 		"-remoteWrite.flushInterval": "10ms",
 		"-remoteWrite.showURL":       "true",
 	})
-	app, extracts := mustStartApp(t, instance, "../../bin/vlagent", flags, extractREs)
+	app, extracts := mustStartApp(t, instance, "../../bin/vlagent-race", flags, extractREs)
 
 	return &Vlagent{
 		app:                 app,
