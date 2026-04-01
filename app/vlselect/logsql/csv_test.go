@@ -25,6 +25,7 @@ func TestAppendCSVField(t *testing.T) {
 	f("\t", "\t")
 
 	f(` foo, bar" baz`, `" foo, bar"" baz"`)
+	f(`foo bar" "baz`, `"foo bar"" ""baz"`) // test multiple quotes
 }
 
 func TestAppendCSVLine(t *testing.T) {

@@ -206,7 +206,7 @@ func (br *blockResult) addValues(values []string) {
 	}
 }
 
-func (br *blockResult) addValue(v string) {
+func (br *blockResult) addValue(v string) string {
 	valuesBuf := br.valuesBuf
 	if len(valuesBuf) > 0 && v == valuesBuf[len(valuesBuf)-1] {
 		v = valuesBuf[len(valuesBuf)-1]
@@ -214,6 +214,7 @@ func (br *blockResult) addValue(v string) {
 		v = br.a.copyString(v)
 	}
 	br.valuesBuf = append(br.valuesBuf, v)
+	return v
 }
 
 // sizeBytes returns the size of br in bytes.
@@ -229,7 +230,7 @@ func (br *blockResult) sizeBytes() int {
 	return n
 }
 
-func (br *blockResult) initFromDataBlock(db *DataBlock) {
+func (br *blockResult) mustInitFromDataBlock(db *DataBlock) {
 	br.reset()
 
 	br.rowsLen = db.RowsCount()
@@ -251,6 +252,75 @@ func (br *blockResult) initFromDataBlock(db *DataBlock) {
 			values: c.Values,
 		})
 	}
+}
+
+func (br *blockResult) mustInitFromRows(rows [][]Field) {
+	br.reset()
+
+	br.rowsLen = len(rows)
+
+	if len(rows) == 0 {
+		// Nothing to do.
+		return
+	}
+
+	if areSameFieldsInRows(rows) {
+		// Fast path - all the rows have the same fields
+		fields := rows[0]
+		for i := range fields {
+			name := br.addValue(fields[i].Name)
+
+			valuesBufLen := len(br.valuesBuf)
+			for _, row := range rows {
+				br.addValue(row[i].Value)
+			}
+			values := br.valuesBuf[valuesBufLen:]
+
+			br.addResultColumn(resultColumn{
+				name:   name,
+				values: values,
+			})
+		}
+		return
+	}
+
+	// Slow path - rows have different fields.
+	// Create common columns across all the fields seen in the rows.
+	columnIdxs := getColumnIdxs()
+	for _, fields := range rows {
+		for j := range fields {
+			name := br.addValue(fields[j].Name)
+			if _, ok := columnIdxs[name]; !ok {
+				columnIdxs[name] = len(columnIdxs)
+			}
+		}
+	}
+
+	// Initialize columns
+	csBufLen := len(br.csBuf)
+	br.csBuf = slicesutil.SetLength(br.csBuf, csBufLen+len(columnIdxs))
+	cs := br.csBuf[csBufLen:]
+
+	for name, idx := range columnIdxs {
+		valuesBufLen := len(br.valuesBuf)
+		br.valuesBuf = slicesutil.SetLength(br.valuesBuf, valuesBufLen+len(rows))
+		values := br.valuesBuf[valuesBufLen:]
+
+		c := &cs[idx]
+		c.name = name
+		c.valueType = valueTypeString
+		c.valuesEncoded = values
+	}
+
+	// Add values to columns
+	for i := range rows {
+		for _, f := range rows[i] {
+			idx := columnIdxs[f.Name]
+			value := br.addValue(f.Value)
+			cs[idx].valuesEncoded[i] = value
+		}
+	}
+	putColumnIdxs(columnIdxs)
 }
 
 // setResultColumns sets the given rcs as br columns.

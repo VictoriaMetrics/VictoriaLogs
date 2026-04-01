@@ -402,9 +402,8 @@ func getRemoteIP(r *http.Request) string {
 
 	// handle reverse proxies
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if n := strings.IndexByte(xff, ','); n >= 0 {
-			addr = strings.TrimSpace(xff[:n])
-		}
+		addr, _, _ = strings.Cut(xff, ",")
+		addr = strings.TrimSpace(addr)
 	}
 
 	// http server sets it to IP:port

@@ -1,4 +1,5 @@
 import { CodeIcon, IssueIcon, WikiIcon } from "../components/Main/Icons";
+import { LOGS_DOCS_URL } from "./logs";
 
 const issueLink = {
   href: "https://github.com/VictoriaMetrics/VictoriaLogs/issues/new/choose",
@@ -8,12 +9,12 @@ const issueLink = {
 
 export const footerLinksToLogs = [
   {
-    href: "https://docs.victoriametrics.com/victorialogs/logsql/",
+    href: `${LOGS_DOCS_URL}/logsql/`,
     Icon: CodeIcon,
     title: "LogsQL",
   },
   {
-    href: "https://docs.victoriametrics.com/victorialogs/",
+    href: `${LOGS_DOCS_URL}`,
     Icon: WikiIcon,
     title: "Documentation",
   },

@@ -13,6 +13,10 @@ func TestParsePipeUnionSuccess(t *testing.T) {
 	f(`union (*)`)
 	f(`union (foo)`)
 	f(`union (foo | union (bar | stats count(*) as x))`)
+
+	// inline rows
+	f(`union rows({})`)
+	f(`union rows({"foo":"bar","baz":"123"},{"q":"w"})`)
 }
 
 func TestParsePipeUnionFailure(t *testing.T) {
@@ -25,6 +29,9 @@ func TestParsePipeUnionFailure(t *testing.T) {
 	f(`union()`)
 	f(`union(foo | count)`)
 	f(`union (foo) bar`)
+
+	f(`union rows`)
+	f(`union rows(`)
 }
 
 func TestPipeUnionUpdateNeededFields(t *testing.T) {

@@ -2224,7 +2224,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "max(rate(process_pressure_memory_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "max(rate(process_pressure_memory_waiting_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -2239,7 +2239,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(rate(process_pressure_memory_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "sum(rate(process_pressure_memory_stalled_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -3037,7 +3037,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "max(rate(process_pressure_io_waiting_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "max(rate(process_pressure_io_waiting_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3051,7 +3051,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "max(rate(process_pressure_io_stalled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (instance)",
+          "expr": "max(rate(process_pressure_io_stalled_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance)",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -3718,7 +3718,7 @@
             "uid": "$DS_PROMETHEUS"
           },
           "editorMode": "code",
-          "expr": "sum(histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~\"$job\"}[$__rate_interval])) by (instance, le))) by (instance)",
+          "expr": "sum(histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])) by (instance, le))) by (instance)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,

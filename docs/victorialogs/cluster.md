@@ -195,6 +195,7 @@ See [Security and Load balancing docs](https://docs.victoriametrics.com/victoria
 
 It is possible to disallow access to `/internal/insert` and `/internal/select/*` endpoints at a single-node VictoriaLogs instance
 by running it with `-internalinsert.disable` and `-internalselect.disable` command-line flags.
+The `-insert.disable` and `-select.disable` flags are broader than `-internalinsert.disable` and `-internalselect.disable`: they disable both the public and the corresponding internal endpoints.
 
 ### TLS
 
@@ -232,7 +233,7 @@ Another option is to use third-party HTTP proxies such as [vmauth](https://docs.
 between VictoriaLogs cluster components over untrusted networks.
 
 By default, all the components (vlinsert, vlselect, vlstorage) support all the HTTP endpoints including `/insert/*` and `/select/*`.
-It is recommended to disable select endpoints on `vlinsert` and insert endpoints on `vlselect`:
+It is recommended to disable select endpoints on dedicated `vlinsert` nodes and insert endpoints on dedicated `vlselect` nodes:
 
 ```sh
 # Disable select endpoints on vlinsert

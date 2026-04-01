@@ -1051,6 +1051,53 @@ func TestStorageRunQuery(t *testing.T) {
 			},
 		})
 	})
+	t.Run("pipe-join-inline-rows", func(t *testing.T) {
+		f(t, `'message 5' | stats by (instance) count() x
+			| join on (instance) rows(
+				{"instance":"host-0:234","foo":"bar"}
+				{"instance":"host-2:234","abc":"def","x":"y","z":"qwe"}
+			)`, [][]Field{
+			{
+				{"instance", "host-0:234"},
+				{"x", "55"},
+				{"foo", "bar"},
+			},
+			{
+				{"instance", "host-2:234"},
+				{"x", "55"},
+				{"abc", "def"},
+				{"z", "qwe"},
+			},
+			{
+				{"instance", "host-1:234"},
+				{"x", "55"},
+			},
+		})
+	})
+	t.Run("pipe-join-inline-rows-prefix", func(t *testing.T) {
+		f(t, `'message 5' | stats by (instance) count() x
+			| join on (instance) rows(
+				{"instance":"host-0:234","foo":"bar"}
+				{"instance":"host-2:234","abc":"def","x":"y","z":"qwe"}
+			) prefix "abc."`, [][]Field{
+			{
+				{"instance", "host-0:234"},
+				{"x", "55"},
+				{"abc.foo", "bar"},
+			},
+			{
+				{"instance", "host-2:234"},
+				{"x", "55"},
+				{"abc.abc", "def"},
+				{"abc.x", "y"},
+				{"abc.z", "qwe"},
+			},
+			{
+				{"instance", "host-1:234"},
+				{"x", "55"},
+			},
+		})
+	})
 
 	// Close the storage and delete its data
 	s.MustClose()

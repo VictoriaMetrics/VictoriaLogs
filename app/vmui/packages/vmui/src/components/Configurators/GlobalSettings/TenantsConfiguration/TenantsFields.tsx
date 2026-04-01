@@ -4,6 +4,7 @@ import classNames from "classnames";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import TextField from "../../../Main/TextField/TextField";
 import { TenantType } from "./Tenants";
+import { LOGS_DOCS_URL } from "../../../../constants/logs";
 
 interface Props extends TenantType {
   accountId: string;
@@ -54,7 +55,7 @@ const TenantsFields: FC<Props> = ({ accountId, projectId, onChange }) => {
       </div>
       <div className="vm-tenant-input-list__buttons">
         <a
-          href="https://docs.victoriametrics.com/victorialogs/#multitenancy"
+          href={`${LOGS_DOCS_URL}/#multitenancy`}
           target="_blank"
           rel="help noreferrer"
         >

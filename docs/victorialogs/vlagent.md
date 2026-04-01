@@ -620,6 +620,11 @@ via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via 
   the URL may contain sensitive information such as auth tokens or passwords.
   Pass `-remoteWrite.showURL` command-line flag when starting `vlagent` in order to see all the valid URLs.
 
+- If `vlagent` reports `skipping invalid CRI log line` in the logs, it indicates that the log file content is corrupted.
+  - This can happen if a log file was partially written during an unclean Node shutdown - verify if the Node was recently restarted.
+  - It could point to a disk failure - check the CRI (e.g. `containerd`) logs for any disk write errors and check the disk health.
+  - It could point to a bug in `vlagent` - please report it as a [GitHub issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/new?template=bug_report.yml).
+
 ## Profiling
 
 `vlagent` provides handlers for collecting the following [Go profiles](https://blog.golang.org/profiling-go-programs):

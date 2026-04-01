@@ -221,7 +221,7 @@ func newProcessorWrapper(proc processor, n int) *processorWrapper {
 	}
 }
 
-func (pw *processorWrapper) tryAddLine(line []byte) (bool, error) {
+func (pw *processorWrapper) tryAddLine(line []byte) bool {
 	defer pw.wg.Done()
 	return pw.proc.tryAddLine(line)
 }
@@ -242,9 +242,9 @@ func newTestLogFileProcessor() *testLogFileProcessor {
 	return &testLogFileProcessor{}
 }
 
-func (lfp *testLogFileProcessor) tryAddLine(line []byte) (bool, error) {
+func (lfp *testLogFileProcessor) tryAddLine(line []byte) bool {
 	lfp.logLines = append(lfp.logLines, string(line))
-	return true, nil
+	return true
 }
 
 func (lfp *testLogFileProcessor) mustClose() {}

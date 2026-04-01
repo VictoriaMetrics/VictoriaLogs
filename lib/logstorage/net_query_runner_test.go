@@ -112,4 +112,5 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`options(ignore_global_time_filter=true) foo | join by (x) (bar:in(a | keep x))`, `options(ignore_global_time_filter=true) foo`, `join by (x) (options(ignore_global_time_filter=true) bar:in(options(ignore_global_time_filter=true) a | fields x))`)
 	f(`options(allow_partial_response=true) foo | join by (x) (bar:in(a | keep x))`, `options(allow_partial_response=true) foo`, `join by (x) (options(allow_partial_response=true) bar:in(options(allow_partial_response=true) a | fields x))`)
 	f(`options(time_offset=7d) foo | join by (x) (bar:in(a | keep x))`, `options(time_offset=7d) foo`, `join by (x) (options(time_offset=7d) bar:in(options(time_offset=7d) a | fields x))`)
+	f(`options(global_filter=(_time:5m)) foo | join by (x) (bar:in(a | keep x))`, `options(global_filter=(_time:5m)) foo`, `join by (x) (options(global_filter=(_time:5m)) bar:in(options(global_filter=(_time:5m)) a | fields x))`)
 }

@@ -306,7 +306,7 @@ integration-test:
 	$(MAKE) apptest
 
 apptest:
-	$(MAKE) victoria-logs vlagent vlogscli
+	$(MAKE) victoria-logs-race vlagent-race vlogscli-race
 	go test ./apptest/...
 
 benchmark:

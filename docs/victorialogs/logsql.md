@@ -1156,6 +1156,7 @@ See also:
 - [`contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#contains_any-filter)
 - [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe)
 - [`union` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe)
+- [`global_filter` option](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option)
 
 ### Case-insensitive filter
 
@@ -2504,7 +2505,8 @@ See also:
 
 ### join pipe
 
-The `<q1> | join by (<fields>) (<q2>)` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins `<q1>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results with the `<q2>` results by the given set of comma-separated `<fields>`.
+The `<q1> | join by (<fields>) (<q2>)` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes)
+joins `<q1>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results with the `<q2>` results by the given set of comma-separated `<fields>`.
 This pipe works in the following way:
 
 1. It executes the `<q2>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) and remembers its results.
@@ -2543,6 +2545,9 @@ _time:1d {app="app1"} | stats by (user) count() app1_hits
   ) prefix "app2."
 ```
 
+If the original query and the joined query contain the same filters such as `_time:1d` above,
+then it may be convenient to put common filters into [`global_filter` option](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option).
+
 **Performance tips**:
 
 - Make sure that the `<query>` in the `join` pipe returns relatively small number of results, since they are kept in RAM during execution of `join` pipe.
@@ -2554,7 +2559,28 @@ See also:
 - [subquery filter](https://docs.victoriametrics.com/victorialogs/logsql/#subquery-filter)
 - [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
 - [conditional `stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-with-additional-filters)
-- [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe)
+- [`global_filter` option](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option)
+
+#### enriching logs with static fields
+
+The [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) supports joining by inline rows instead of executing the query
+by using the following syntax: `... | join by (some_field) rows({"f1":"v1",..."fN":"vN"}, ...)`.
+This is useful for enriching the selected logs with the pre-defined static fields. For example, the following query enriches the selected logs
+with `host` field depending on the `ip` field value:
+
+```logsql
+_time:5m | join by (ip) rows(
+    {"ip":"1.2.3.4", "host":"host-1"}
+    {"ip":"3.4.5.6", "host":"host-2"}
+)
+```
+
+It adds `host="host-1"` field to logs with the `ip="1.2.3.4"`, while adding `host="host-2"` to logs with the `ip="3.4.5.6"`.
+
+See also:
+
+- [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
+
 
 ### json_array_len pipe
 
@@ -3753,10 +3779,32 @@ For example, the following query returns logs with `error` [word](https://docs.v
 _time:5m error | union (_time:1h panic)
 ```
 
+If the original query and the `union(...)` query contain the same filters, then it may be convenient to put
+common filters into [`global_filter` option](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option).
+
 See also:
 
 - [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe)
 - [subquery filter](https://docs.victoriametrics.com/victorialogs/logsql/#subquery-filter)
+- [`global_filter` option](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option)
+
+#### adding static logs
+
+The [`union` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#union-pipe) supports adding static logs by using the following syntax:
+
+```
+... | union rows({"f1":"v1",..."fN":"vN"})
+```
+
+For example, the following query adds a statically defined log entry `{"foo":"bar"}` to the selected logs for the last 5 minutes:
+
+```logsql
+_time:5m | union rows({"foo":"bar"})
+```
+
+See also:
+
+- [enriching logs with static fields](https://docs.victoriametrics.com/victorialogs/logsql/#enriching-logs-with-static-fields)
 
 ### uniq pipe
 
@@ -5390,6 +5438,32 @@ over the last hour 7 days ago.
 ```logsql
 options(time_offset=7d) _time:1h error | stats count() as 'errors_7d_ago'
 ```
+
+### `global_filter` query option
+
+Sometimes it is needed to apply the same filters across all the subqueries in the LogsQL query.
+For example, when a graph for the top 3 hosts with the biggest number of 500 errors must be shown,
+then the following query can be used:
+
+```logsql
+_time:5m {app="nginx"} status:=500 host:in(
+    _time:5m {app="nginx"} status:=500 | top 3 (host) | keep host
+) | stats by (host) count()
+```
+
+Note that the `_time:5m {app="nginx"} status:=500` filter is repeated twice in the query.
+Such a common filter can be put into `global_filter` option in order to make the query less verbose:
+
+```logsql
+options(global_filter=(_time:5m {app="nginx"} status:=500))
+host:in(
+    * | top 3 (host) | keep host
+) | stats by (host) count()
+```
+
+See also:
+
+- [extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
 
 ## Troubleshooting
 
