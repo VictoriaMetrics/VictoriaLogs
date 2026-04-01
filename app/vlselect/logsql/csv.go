@@ -24,27 +24,19 @@ func appendCSVField(dst []byte, s string) []byte {
 
 	// slow path - the s must be quoted
 	dst = append(dst, '"')
+	dst = append(dst, s[:n]...)
+	s = s[n:]
 
 	for {
-		dst = append(dst, s[:n]...)
-
-		ch := s[n]
-		if ch == '"' {
-			dst = append(dst, `""`...)
-		} else {
-			dst = append(dst, ch)
-		}
-
-		s = s[n+1:]
-		if len(s) == 0 {
-			break
-		}
-
 		n := strings.IndexByte(s, '"')
 		if n < 0 {
 			dst = append(dst, s...)
 			break
 		}
+
+		dst = append(dst, s[:n]...)
+		dst = append(dst, `""`...)
+		s = s[n+1:]
 	}
 
 	dst = append(dst, '"')

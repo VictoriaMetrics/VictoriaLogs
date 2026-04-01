@@ -1,8 +1,9 @@
 import { ctrlKeyLabel } from "../../../../utils/keyboard";
+import { LOGS_DOCS_URL } from "../../../../constants/logs";
 
 const DocFieldNames = () => (
   <a
-    href="https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names"
+    href={`${LOGS_DOCS_URL}/querying/#querying-field-names`}
     target="_blank"
     rel="noopener noreferrer"
   >
@@ -12,7 +13,7 @@ const DocFieldNames = () => (
 
 const DocStreamNames = () => (
   <a
-    href="https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names"
+    href={`${LOGS_DOCS_URL}/querying/#querying-stream-field-names`}
     target="_blank"
     rel="noopener noreferrer"
   >
