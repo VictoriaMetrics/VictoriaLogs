@@ -2,6 +2,8 @@ package logstorage
 
 import (
 	"math"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/decimal"
@@ -189,4 +191,68 @@ func TestTruncateUint32(t *testing.T) {
 	f(120, 100, 70, 30)
 	f(130, 100, 30, 70)
 	f(130, 100, 70, 130)
+}
+
+func TestBlockResultMustInitFromRows(t *testing.T) {
+	f := func(rowsStr []string) {
+		t.Helper()
+
+		// parse rowsStr into rows
+		var rows [][]Field
+		p := GetJSONParser()
+		for _, rowStr := range rowsStr {
+			if err := p.ParseLogMessage([]byte(rowStr), nil); err != nil {
+				t.Fatalf("cannot parse input row: %s", err)
+			}
+
+			fields := make([]Field, len(p.Fields))
+			for i, f := range p.Fields {
+				fields[i] = Field{
+					Name:  strings.Clone(f.Name),
+					Value: strings.Clone(f.Value),
+				}
+			}
+			rows = append(rows, fields)
+		}
+		PutJSONParser(p)
+
+		// Pass rows into mustInitFromRows.
+		br := getBlockResult()
+		defer putBlockResult(br)
+
+		br.mustInitFromRows(rows)
+
+		// Verify the rows are properly put into br.
+		cs := br.getColumns()
+		var resultRowsStr []string
+		for rowIdx := range rows {
+			var fields []Field
+			for _, c := range cs {
+				v := c.getValueAtRow(br, rowIdx)
+				fields = append(fields, Field{
+					Name:  c.name,
+					Value: v,
+				})
+			}
+			rowStr := MarshalFieldsToJSON(nil, fields)
+			resultRowsStr = append(resultRowsStr, string(rowStr))
+		}
+
+		if !reflect.DeepEqual(resultRowsStr, rowsStr) {
+			t.Fatalf("unexpected rows\ngot\n%s\nwant\n%s", resultRowsStr, rowsStr)
+		}
+	}
+
+	f(nil)
+	f([]string{`{}`})
+
+	// a single row
+	f([]string{`{"foo":"bar","a":"b"}`})
+
+	// multiple rows with the same set of fields
+	f([]string{`{"a":"b","c":"d"}`, `{"a":"x","c":"y"}`})
+	f([]string{`{"a":"b","c":"d"}`, `{"a":"x","c":"y"}`, `{"a":"qwewqr","c":"ieorer"}`})
+
+	// multiple rows with different sets of fields
+	f([]string{`{"a":"b","c":"d"}`, `{}`, `{"a":"x","c":"y"}`, `{"q":"z"}`})
 }

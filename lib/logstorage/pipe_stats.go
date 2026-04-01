@@ -264,11 +264,11 @@ func (ps *pipeStats) hasFilterInWithQuery() bool {
 	return false
 }
 
-func (ps *pipeStats) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc, keepSubquery bool) (pipe, error) {
+func (ps *pipeStats) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
 	funcsNew := make([]pipeStatsFunc, len(ps.funcs))
 	for i := range ps.funcs {
 		f := &ps.funcs[i]
-		iffNew, err := f.iff.initFilterInValues(cache, getFieldValuesFunc, keepSubquery)
+		iffNew, err := f.iff.initFilterInValues(cache, getFieldValuesFunc)
 		if err != nil {
 			return nil, err
 		}

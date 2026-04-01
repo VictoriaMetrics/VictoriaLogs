@@ -65,7 +65,7 @@ func mustStartVlnode(t *testing.T, instance string, flags []string, cli *Client,
 		"-httpListenAddr": "127.0.0.1:0",
 	})
 
-	app, extracts := mustStartApp(t, instance, "../../bin/victoria-logs", flags, extractREs)
+	app, extracts := mustStartApp(t, instance, "../../bin/victoria-logs-race", flags, extractREs)
 
 	node := &vlnode{
 		app: app,
