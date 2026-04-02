@@ -1371,7 +1371,7 @@
             "uid": "${DS_VICTORIALOGS}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| stats by (kubernetes.container_name) count() hits\r\n| sort by (hits) desc",
+          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.container_name) count() hits\r\n| sort by (hits) desc",
           "isApplyExtraFiltersToRootQuery": true,
           "queryType": "instant",
           "refId": "A"
@@ -1504,7 +1504,7 @@
             "uid": "${DS_VICTORIALOGS}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| stats by (log.level) count() \r\n| sort desc",
+          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (log.level) count() \r\n| sort desc",
           "isApplyExtraFiltersToRootQuery": true,
           "legendFormat": "{{ log.level }}",
           "queryType": "statsRange",
@@ -1549,7 +1549,7 @@
             "uid": "${DS_VICTORIALOGS}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| limit $limit",
+          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| limit $limit",
           "isApplyExtraFiltersToRootQuery": true,
           "maxLines": 5000,
           "queryType": "instant",
@@ -1645,6 +1645,31 @@
           "field": "kubernetes.container_name",
           "limit": 25,
           "query": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
+          "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
+          "type": "fieldValue"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": true,
+        "current": {},
+        "datasource": {
+          "type": "victoriametrics-logs-datasource",
+          "uid": "${DS_VICTORIALOGS}"
+        },
+        "definition": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
+        "includeAll": true,
+        "label": "Level",
+        "multi": true,
+        "name": "level",
+        "options": [],
+        "query": {
+          "field": "log.level",
+          "limit": 25,
+          "query": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
