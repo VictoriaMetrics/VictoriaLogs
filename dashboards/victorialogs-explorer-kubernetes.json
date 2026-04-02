@@ -469,7 +469,7 @@
             }
           ],
           "timeFrom": "24h",
-          "title": "Pods - Total",
+          "title": "Logs by level",
           "type": "stat"
         },
         {
