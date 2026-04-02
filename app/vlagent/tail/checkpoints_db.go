@@ -1,4 +1,4 @@
-package kubernetescollector
+package tail
 
 import (
 	"encoding/json"

@@ -1,6 +1,6 @@
 //go:build !windows
 
-package kubernetescollector
+package tail
 
 import (
 	"os"

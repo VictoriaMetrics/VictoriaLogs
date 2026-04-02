@@ -1,4 +1,4 @@
-package kubernetescollector
+package tail
 
 import (
 	"path/filepath"
@@ -35,7 +35,7 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 	b.SetBytes(totalBytes)
 	b.ReportAllocs()
 
-	proc := noopLogFileHandler{}
+	proc := noopProcessor{}
 
 	stopCh := make(chan struct{})
 	b.RunParallel(func(pb *testing.PB) {
@@ -54,12 +54,12 @@ func benchmarkReadLines(b *testing.B, lineLen, count int) {
 	})
 }
 
-type noopLogFileHandler struct{}
+type noopProcessor struct{}
 
-func (noopLogFileHandler) tryAddLine(_ []byte) bool {
+func (noopProcessor) TryAddLine(_ []byte) bool {
 	return true
 }
 
-func (noopLogFileHandler) flush() {}
+func (noopProcessor) Flush() {}
 
-func (noopLogFileHandler) mustClose() {}
+func (noopProcessor) MustClose() {}

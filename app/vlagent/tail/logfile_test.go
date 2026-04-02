@@ -1,4 +1,4 @@
-package kubernetescollector
+package tail
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestReadLines(t *testing.T) {
-	f := func(in []string, expected []string, expectedOffset int) {
+	f := func(in []string, expected string, expectedOffset int) {
 		t.Helper()
 
 		stopCh := t.Context().Done()
@@ -19,7 +19,8 @@ func TestReadLines(t *testing.T) {
 		writeLinesToFile(t, filePath, in...)
 		lf := newLogFile(filePath)
 
-		proc := newTestLogFileProcessor()
+		proc := newTestProcessor(nil)
+		proc.expect(len(in))
 		lf.readLines(stopCh, proc)
 
 		if err := proc.verify(expected); err != nil {
@@ -36,52 +37,52 @@ func TestReadLines(t *testing.T) {
 
 	// Empty file
 	in := []string{}
-	expected := []string{}
+	expected := ""
 	f(in, expected, 0)
 
 	// Empty lines
 	in = []string{"foo", "", "", "", "bar"}
-	expected = in
-	offset := len("foo\n\n\n\nbar\n")
+	expected = strings.Join(in, "\n") + "\n"
+	offset := len(expected)
 	f(in, expected, offset)
 
 	in = []string{"foo"}
-	expected = in
-	offset = len("foo\n")
+	expected = "foo\n"
+	offset = len(expected)
 	f(in, expected, offset)
 
-	in = []string{"one", "two", "tree"}
-	expected = in
-	offset = len("one\ntwo\ntree\n")
+	in = []string{"one", "two", "three"}
+	expected = strings.Join(in, "\n") + "\n"
+	offset = len(expected)
 	f(in, expected, offset)
 
 	// Lines with maxLineSize
 	in = []string{strings.Repeat("a", maxLogLineSize)}
-	expected = in
+	expected = strings.Join(in, "\n") + "\n"
 	offset = maxLogLineSize + len("\n")
 	f(in, expected, offset)
 
 	// Lines with maxLineSize in the middle
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize), "bar"}
-	expected = in
+	expected = strings.Join(in, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
 	// Line exceeding maxLineSize
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize+1), "bar"}
-	expected = []string{"foo", "bar"}
+	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 1 + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
 	// Multiple lines exceeding maxLineSize
 	in = []string{"foo", strings.Repeat("c", maxLogLineSize+10), strings.Repeat("d", maxLogLineSize+20), "bar"}
-	expected = []string{"foo", "bar"}
+	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 10 + len("\n") + maxLogLineSize + 20 + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
 	// Very long line
 	in = []string{strings.Repeat("e", maxLogLineSize*3), "end"}
-	expected = []string{"end"}
+	expected = strings.Join([]string{"end"}, "\n") + "\n"
 	offset = maxLogLineSize*3 + len("\n") + len("end\n")
 	f(in, expected, offset)
 }
@@ -124,6 +125,7 @@ func writeLinesToFile(t testing.TB, filePath string, lines ...string) {
 	defer f.Close()
 
 	for _, s := range lines {
+		s = strings.TrimRight(s, "\n")
 		writeToFile(t, f, s+"\n")
 	}
 	if err := f.Sync(); err != nil {

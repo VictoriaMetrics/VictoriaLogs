@@ -52,6 +52,10 @@ var (
 		"Even this setting is disabled, Namespace annotations are available for filtering via -kubernetesCollector.excludeFilter flag")
 )
 
+// The maximum log line size that VictoriaLogs can accept.
+// See https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
+const maxLogLineSize = 2 * 1024 * 1024
+
 type logFileProcessor struct {
 	storage  insertutil.LogRowsStorage
 	lr       *logstorage.LogRows
@@ -97,7 +101,7 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 	}
 }
 
-func (lfp *logFileProcessor) tryAddLine(logLine []byte) bool {
+func (lfp *logFileProcessor) TryAddLine(logLine []byte) bool {
 	if len(logLine) == 0 {
 		return true
 	}
@@ -447,7 +451,7 @@ func fieldIndex(fields []logstorage.Field, names []string) int {
 	return -1
 }
 
-func (lfp *logFileProcessor) flush() {
+func (lfp *logFileProcessor) Flush() {
 	lfp.flushMetrics()
 }
 
@@ -464,8 +468,8 @@ func (lfp *logFileProcessor) flushMetrics() {
 	lfp.bytesIngestedLocal = 0
 }
 
-func (lfp *logFileProcessor) mustClose() {
-	lfp.flush()
+func (lfp *logFileProcessor) MustClose() {
+	lfp.Flush()
 	lfp.partialCRIStdout.reset()
 	lfp.partialCRIStderr.reset()
 	logstorage.PutLogRows(lfp.lr)

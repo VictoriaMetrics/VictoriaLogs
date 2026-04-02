@@ -54,3 +54,12 @@ func (blp *BenchmarkLogMessageProcessor) AddRow(_ int64, _ []logstorage.Field, _
 // MustClose implements LogMessageProcessor interface.
 func (blp *BenchmarkLogMessageProcessor) MustClose() {
 }
+
+type BenchmarkStorage struct{}
+
+func (BenchmarkStorage) MustAddRows(*logstorage.LogRows) {
+}
+
+func (BenchmarkStorage) CanWriteData() error {
+	return nil
+}

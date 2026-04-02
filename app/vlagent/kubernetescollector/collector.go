@@ -17,6 +17,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/tail"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
@@ -41,7 +42,7 @@ type kubernetesCollector struct {
 	// This directory contains symlinks with specific filenames to actual files.
 	logsPath string
 
-	fileCollector *fileCollector
+	tailer *tail.Tailer
 }
 
 // startKubernetesCollector starts watching Kubernetes cluster on the given node and starts collecting container logs.
@@ -71,11 +72,10 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 	}
 
 	storage := &remotewrite.Storage{}
-	newProcessor := func(commonFields []logstorage.Field) processor {
+	newProcessor := func(commonFields []logstorage.Field) tail.Processor {
 		return newLogFileProcessor(storage, commonFields)
 	}
-	fc := startFileCollector(checkpointsPath, newProcessor)
-	kc.fileCollector = fc
+	kc.tailer = tail.Start(checkpointsPath, newProcessor)
 
 	pl, err := client.getNodePods(ctx, currentNodeName)
 	if err != nil {
@@ -88,7 +88,7 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 		kc.startReadPodLogs(pod)
 	}
 	// Cleanup checkpoints for deleted Pods.
-	fc.cleanupCheckpoints()
+	kc.tailer.CleanupCheckpoints()
 
 	// Begin watching for new Pods and start reading their logs.
 	kc.wg.Go(func() {
@@ -215,7 +215,7 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 
 		filePath := kc.getLogFilePath(pod, pc, cs)
 
-		kc.fileCollector.startRead(filePath, commonFields)
+		kc.tailer.StartRead(filePath, commonFields)
 	}
 
 	for _, pc := range pod.Spec.Containers {
@@ -327,5 +327,5 @@ func (kc *kubernetesCollector) mustUpdateNamespaces() {
 func (kc *kubernetesCollector) stop() {
 	kc.cancel()
 	kc.wg.Wait()
-	kc.fileCollector.stop()
+	kc.tailer.Stop()
 }

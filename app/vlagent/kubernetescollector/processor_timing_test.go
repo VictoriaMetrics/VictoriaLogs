@@ -3,6 +3,7 @@ package kubernetescollector
 import (
 	"testing"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
@@ -70,24 +71,15 @@ func benchmarkProcessor(b *testing.B, logLines []string) {
 	b.ReportAllocs()
 
 	commonFields := []logstorage.Field{{Name: "name", Value: "benchmarkProcessor"}}
-	storage := &benchmarkStorage{}
+	storage := insertutil.BenchmarkStorage{}
 
 	b.RunParallel(func(pb *testing.PB) {
 		proc := newLogFileProcessor(storage, commonFields)
 		for pb.Next() {
 			for _, line := range rawLines {
-				proc.tryAddLine(line)
+				proc.TryAddLine(line)
 			}
 		}
-		proc.mustClose()
+		proc.MustClose()
 	})
-}
-
-type benchmarkStorage struct{}
-
-func (s *benchmarkStorage) MustAddRows(*logstorage.LogRows) {
-}
-
-func (s *benchmarkStorage) CanWriteData() error {
-	return nil
 }
