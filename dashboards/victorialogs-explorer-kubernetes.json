@@ -1539,6 +1539,7 @@
           "editorMode": "code",
           "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| limit $limit",
           "isApplyExtraFiltersToRootQuery": true,
+          "maxLines": 5000,
           "queryType": "instant",
           "refId": "A"
         }
