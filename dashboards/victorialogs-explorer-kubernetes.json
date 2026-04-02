@@ -13,12 +13,6 @@
   "__requires": [
     {
       "type": "panel",
-      "id": "barchart",
-      "name": "Bar chart",
-      "version": ""
-    },
-    {
-      "type": "panel",
       "id": "bargauge",
       "name": "Bar gauge",
       "version": ""
@@ -79,7 +73,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
   "links": [],
   "panels": [
     {
@@ -339,7 +332,7 @@
                 "uid": "${DS_VICTORIALOGS}"
               },
               "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| stats by (kubernetes.container_name) count()\r\n| count()",
+              "expr": "_stream:{kubernetes.pod_namespace=$namespace}\r\n| stats by (kubernetes.container_name) count()\r\n| stats count()",
               "legendFormat": "Total",
               "queryType": "stats",
               "refId": "A"
@@ -507,7 +500,7 @@
             "h": 8,
             "w": 11,
             "x": 0,
-            "y": 210
+            "y": 27
           },
           "id": 15,
           "options": {
@@ -567,16 +560,29 @@
                 "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
-                "fillOpacity": 80,
+                "barAlignment": 0,
+                "barWidthFactor": 1,
+                "drawStyle": "bars",
+                "fillOpacity": 100,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
                   "tooltip": false,
                   "viz": false
                 },
-                "lineWidth": 1,
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 3,
+                "pointSize": 5,
                 "scaleDistribution": {
                   "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "normal"
                 },
                 "thresholdsStyle": {
                   "mode": "off"
@@ -591,7 +597,8 @@
                     "value": 0
                   }
                 ]
-              }
+              },
+              "unit": "short"
             },
             "overrides": []
           },
@@ -599,30 +606,26 @@
             "h": 8,
             "w": 13,
             "x": 11,
-            "y": 210
+            "y": 27
           },
-          "id": 16,
+          "id": 20,
           "options": {
-            "barRadius": 0,
-            "barWidth": 1,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
             "legend": {
-              "calcs": [],
-              "displayMode": "list",
+              "calcs": [
+                "lastNotNull",
+                "sum"
+              ],
+              "displayMode": "table",
               "placement": "bottom",
-              "showLegend": false
+              "showLegend": true,
+              "sortBy": "Total",
+              "sortDesc": true
             },
-            "orientation": "vertical",
-            "showValue": "auto",
-            "stacking": "normal",
             "tooltip": {
               "hideZeros": false,
               "mode": "multi",
-              "sort": "none"
-            },
-            "xTickLabelRotation": 0,
-            "xTickLabelSpacing": 200
+              "sort": "desc"
+            }
           },
           "pluginVersion": "12.3.0",
           "targets": [
@@ -639,7 +642,7 @@
             }
           ],
           "title": "Logs total",
-          "type": "barchart"
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -703,7 +706,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 218
+            "y": 35
           },
           "id": 17,
           "options": {
@@ -817,7 +820,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 2
+            "y": 277
           },
           "id": 6,
           "options": {
@@ -939,7 +942,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 2
+            "y": 277
           },
           "id": 7,
           "options": {
@@ -1063,7 +1066,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 32
+            "y": 285
           },
           "id": 8,
           "options": {
@@ -1190,7 +1193,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 32
+            "y": 285
           },
           "id": 9,
           "options": {
@@ -1618,7 +1621,7 @@
           "type": "victoriametrics-logs-datasource",
           "uid": "${DS_VICTORIALOGS}"
         },
-        "definition": "_stream:{kubernetes.pod_namespace=$namespace} kubernetes.pod_labels.app.kubernetes.io/name:=\"$app\"",
+        "definition": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
         "description": "Limit: 25",
         "includeAll": true,
         "label": "Сontainer",
