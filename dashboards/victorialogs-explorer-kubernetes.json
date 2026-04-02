@@ -1435,7 +1435,7 @@
           "type": "victoriametrics-logs-datasource",
           "uid": "${DS_VICTORIALOGS}"
         },
-        "definition": "_stream:{kubernetes.pod_namespace=$namespace } kubernetes.pod_labels.app.kubernetes.io/name:=\"$app\"",
+        "definition": "_stream:{kubernetes.pod_namespace=$namespace} kubernetes.pod_labels.app.kubernetes.io/name:=\"$app\"",
         "description": "Limit: 25",
         "includeAll": true,
         "label": "Сontainer",
@@ -1445,7 +1445,7 @@
         "query": {
           "field": "kubernetes.container_name",
           "limit": 25,
-          "query": "_stream:{kubernetes.pod_namespace=$namespace } kubernetes.pod_labels.app.kubernetes.io/name:=\"$app\"",
+          "query": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
