@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
@@ -178,8 +179,7 @@ func getFileFingerprint(f *os.File) uint64 {
 func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 	defer lf.close()
 
-	bt := newBackoffTimer(time.Millisecond*100, time.Second*10)
-	defer bt.stop()
+	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
 
 	proc := fc.newProcessor(commonFields)
 	defer proc.mustClose()
@@ -193,8 +193,8 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 		if ok {
 			// Some lines were read - update checkpoint and wait before checking again.
 			fc.checkpointsDB.set(lf.checkpoint())
-			bt.reset()
-			bt.wait(fc.stopCh)
+			bt.Reset()
+			bt.Wait(fc.stopCh)
 			continue
 		}
 
@@ -203,17 +203,17 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 		case logFileStatusNotRotated:
 			// No more lines to read and file hasn't rotated - wait before checking again.
 			proc.flush()
-			bt.wait(fc.stopCh)
+			bt.Wait(fc.stopCh)
 			continue
 		case logFileStatusRotated:
 			// Ensure all remaining lines are flushed to the rotated file and read from it.
 			// Do not use fc.stopCh here to finish reading from the rotated file even if vlagent is shutting down.
 			var neverStopCh chan struct{}
-			bt.reset()
-			bt.wait(neverStopCh)
+			bt.Reset()
+			bt.Wait(neverStopCh)
 			if lf.readLines(neverStopCh, proc) {
 				// Double-check: if there are still new lines, it's an unexpected situation.
-				bt.wait(neverStopCh)
+				bt.Wait(neverStopCh)
 				if lf.readLines(neverStopCh, proc) {
 					logger.Panicf("BUG: log file %q was appended after rotation", lf.path)
 				}
@@ -223,7 +223,7 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 				fc.checkpointsDB.set(lf.checkpoint())
 			} else {
 				// Cannot reopen the file right now - wait before retrying.
-				bt.wait(fc.stopCh)
+				bt.Wait(fc.stopCh)
 			}
 			continue
 		case logFileStatusDeleted:

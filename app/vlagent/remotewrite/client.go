@@ -18,7 +18,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/persistentqueue"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/ratelimiter"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timerpool"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
 )
@@ -325,8 +324,7 @@ func (c *client) newRequest(url string, body []byte) (*http.Request, error) {
 // Otherwise, it tries sending the block to remote storage indefinitely.
 func (c *client) sendBlockHTTP(block []byte) bool {
 	c.rl.Register(len(block))
-	maxRetryDuration := timeutil.AddJitterToDuration(c.retryMaxTime)
-	retryDuration := timeutil.AddJitterToDuration(c.retryMinInterval)
+	bt := timeutil.NewBackoffTimer(c.retryMinInterval, c.retryMaxTime)
 	retriesCount := 0
 
 again:
@@ -335,19 +333,10 @@ again:
 	c.requestDuration.UpdateDuration(startTime)
 	if err != nil {
 		c.errorsCount.Inc()
-		retryDuration *= 2
-		if retryDuration > maxRetryDuration {
-			retryDuration = maxRetryDuration
-		}
-		remoteWriteRetryLogger.Warnf("couldn't send a block with size %d bytes to %q: %s; re-sending the block in %.3f seconds",
-			len(block), c.sanitizedURL, err, retryDuration.Seconds())
-		t := timerpool.Get(retryDuration)
-		select {
-		case <-c.stopCh:
-			timerpool.Put(t)
+		remoteWriteRetryLogger.Warnf("couldn't send a block with size %d bytes to %q: %s; re-sending the block in %s",
+			len(block), c.sanitizedURL, err, bt.CurrentDelay())
+		if !bt.Wait(c.stopCh) {
 			return false
-		case <-t.C:
-			timerpool.Put(t)
 		}
 		c.retriesCount.Inc()
 		goto again
@@ -372,7 +361,10 @@ again:
 	// Unexpected status code returned
 	retriesCount++
 	retryAfterHeader := parseRetryAfterHeader(resp.Header.Get("Retry-After"))
-	retryDuration = getRetryDuration(retryAfterHeader, retryDuration, maxRetryDuration)
+	// retryAfterDuration has the highest priority duration
+	if retryAfterHeader > 0 {
+		bt.SetDelay(retryAfterHeader)
+	}
 
 	// Handle response
 	body, err := io.ReadAll(resp.Body)
@@ -381,15 +373,10 @@ again:
 		logger.Errorf("cannot read response body from %q during retry #%d: %s", c.sanitizedURL, retriesCount, err)
 	} else {
 		logger.Errorf("unexpected status code received after sending a block with size %d bytes to %q during retry #%d: %d; response body=%q; "+
-			"re-sending the block in %.3f seconds", len(block), c.sanitizedURL, retriesCount, statusCode, body, retryDuration.Seconds())
+			"re-sending the block in %s", len(block), c.sanitizedURL, retriesCount, statusCode, body, bt.CurrentDelay())
 	}
-	t := timerpool.Get(retryDuration)
-	select {
-	case <-c.stopCh:
-		timerpool.Put(t)
+	if !bt.Wait(c.stopCh) {
 		return false
-	case <-t.C:
-		timerpool.Put(t)
 	}
 	c.retriesCount.Inc()
 	goto again
@@ -397,27 +384,6 @@ again:
 
 var remoteWriteRejectedLogger = logger.WithThrottler("remoteWriteRejected", 5*time.Second)
 var remoteWriteRetryLogger = logger.WithThrottler("remoteWriteRetry", 5*time.Second)
-
-// getRetryDuration returns retry duration.
-// retryAfterDuration has the highest priority.
-// If retryAfterDuration is not specified, retryDuration gets doubled.
-// retryDuration can't exceed maxRetryDuration.
-//
-// Also see: https://github.com/VictoriaMetrics/VictoriaMetrics/issues/6097
-func getRetryDuration(retryAfterDuration, retryDuration, maxRetryDuration time.Duration) time.Duration {
-	// retryAfterDuration has the highest priority duration
-	if retryAfterDuration > 0 {
-		return timeutil.AddJitterToDuration(retryAfterDuration)
-	}
-
-	// default backoff retry policy
-	retryDuration *= 2
-	if retryDuration > maxRetryDuration {
-		retryDuration = maxRetryDuration
-	}
-
-	return retryDuration
-}
 
 func logBlockRejected(block []byte, sanitizedURL string, resp *http.Response) {
 	body, err := io.ReadAll(resp.Body)
