@@ -317,6 +317,22 @@ benchmark-pure:
 	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./lib/...
 	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./app/...
 
+vendor-update-vm:
+	@set -e; \
+	if grep -q 'VictoriaMetrics-enterprise' go.mod; then \
+		vm_module=github.com/VictoriaMetrics/VictoriaMetrics-enterprise; \
+		vm_ref=enterprise-single-node; \
+		vm_env="GOPRIVATE=$$vm_module"; \
+		vm_version=$$(env GOFLAGS=-mod=mod $$vm_env go list -m -f '{{.Version}}' $$vm_module@$$vm_ref); \
+		echo "updating replace to $$vm_module $$vm_version"; \
+		env $$vm_env go mod edit -replace=github.com/VictoriaMetrics/VictoriaMetrics=$$vm_module@$$vm_version; \
+	else \
+		echo "updating require for github.com/VictoriaMetrics/VictoriaMetrics@master"; \
+		go get github.com/VictoriaMetrics/VictoriaMetrics@master; \
+	fi; \
+	go mod tidy -compat=1.26; \
+	go mod vendor
+
 vendor-update:
 	go get -u ./lib/...
 	go get -u ./app/...
