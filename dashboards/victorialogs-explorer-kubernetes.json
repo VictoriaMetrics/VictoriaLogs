@@ -995,7 +995,6 @@
                 },
                 "renameByName": {
                   "hits": "Count",
-                  "kubernetes.pod_labels.app.kubernetes.io/name": "App",
                   "log.level": "Level"
                 }
               }
@@ -1122,8 +1121,7 @@
                 "renameByName": {
                   "field_name": "Name",
                   "field_value": "Value",
-                  "hits": "Count",
-                  "kubernetes.pod_labels.app.kubernetes.io/name": "App"
+                  "hits": "Count"
                 }
               }
             }
@@ -1184,6 +1182,22 @@
                   {
                     "id": "custom.align",
                     "value": "right"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Level"
+                },
+                "properties": [
+                  {
+                    "id": "custom.align",
+                    "value": "right"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 100
                   }
                 ]
               }
@@ -1250,8 +1264,7 @@
                 "renameByName": {
                   "Line": "Message",
                   "detected_level": "Level",
-                  "hits": "Count",
-                  "kubernetes.pod_labels.app.kubernetes.io/name": "App"
+                  "hits": "Count"
                 }
               }
             }
@@ -1390,8 +1403,7 @@
             },
             "renameByName": {
               "hits": "Count",
-              "kubernetes.container_name": "Container",
-              "kubernetes.pod_labels.app.kubernetes.io/name": "App"
+              "kubernetes.container_name": "Container"
             }
           }
         }
