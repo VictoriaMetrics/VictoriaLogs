@@ -225,6 +225,7 @@ func initPipeParsers() {
 		"stats":             parsePipeStats,
 		"stats_remote":      parsePipeStats,
 		"stream_context":    parsePipeStreamContext,
+		"template":          parsePipeTemplate,
 		"time_add":          parsePipeTimeAdd,
 		"top":               parsePipeTop,
 		"total_stats":       parsePipeTotalStats,
