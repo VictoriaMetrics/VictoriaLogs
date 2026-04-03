@@ -57,6 +57,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): truncate long active filter badges and show full values in tooltip. See [#369](https://github.com/VictoriaMetrics/VictoriaLogs/issues/369#issuecomment-4080410326)
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show active filters in Stream Fields empty state instead of "No stream fields found".
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly apply `offset` when returning the last N logs sorted by `_time desc`, so queries like `| sort by (_time) desc | offset X | limit Y` return empty results when `X` is greater than or equal to the number of matched logs. Previously, such queries could incorrectly return all matched logs. See [#1190](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1190).
+* BUGFIX: All VictoriaLogs components: Fix `unsupported` metric type display in exposed metric metadata for summaries and quantiles. This `unsupported` type exists when a summary is not updated within a certain time window. See [#120](https://github.com/VictoriaMetrics/metrics/issues/120) for details.
 
 ## [v1.48.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.48.0)
 

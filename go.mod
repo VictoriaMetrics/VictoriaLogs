@@ -7,7 +7,7 @@ replace github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.138.0
 	github.com/VictoriaMetrics/easyproto v1.2.0
-	github.com/VictoriaMetrics/metrics v1.43.0
+	github.com/VictoriaMetrics/metrics v1.43.1
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
