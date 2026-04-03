@@ -71,11 +71,7 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 		logsPath:      logsPath,
 	}
 
-	storage := &remotewrite.Storage{}
-	newProcessor := func(commonFields []logstorage.Field) tail.Processor {
-		return newLogFileProcessor(storage, commonFields)
-	}
-	kc.tailer = tail.Start(checkpointsPath, newProcessor)
+	kc.tailer = tail.Start(checkpointsPath)
 
 	pl, err := client.getNodePods(ctx, currentNodeName)
 	if err != nil {
@@ -203,19 +199,25 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 	}
 }
 
+var storage = &remotewrite.Storage{}
+
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	ns := kc.mustGetNamespace(pod.Metadata.Namespace)
 
 	startRead := func(pc podContainer, cs containerStatus) {
+		filePath := kc.getLogFilePath(pod, pc, cs)
+		if kc.tailer.IsTailing(filePath) {
+			return
+		}
+
 		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
 		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
 			// Filter matches - skip this container.
 			return
 		}
 
-		filePath := kc.getLogFilePath(pod, pc, cs)
-
-		kc.tailer.StartRead(filePath, commonFields)
+		proc := newLogFileProcessor(storage, commonFields)
+		kc.tailer.StartRead(filePath, proc)
 	}
 
 	for _, pc := range pod.Spec.Containers {

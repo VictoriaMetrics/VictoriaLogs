@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestTailer(t *testing.T) {
@@ -19,23 +17,20 @@ func TestTailer(t *testing.T) {
 	f := func(resultExpected string, linesExpected int, inodeExpected uint64, offsetExpected int) {
 		t.Helper()
 
+		tailer := Start(checkpointsPath)
+
 		proc := newTestProcessor(nil)
 		proc.expect(linesExpected)
-		newProc := func(_ []logstorage.Field) Processor {
-			return proc
-		}
-
-		fc := Start(checkpointsPath, newProc)
-
-		fc.StartRead(logFilePath, nil)
+		tailer.StartRead(logFilePath, proc)
 		proc.wait()
-		fc.Stop()
+
+		tailer.Stop()
 
 		if err := proc.verify(resultExpected); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 
-		cpGot, ok := fc.checkpointsDB.get(logFilePath)
+		cpGot, ok := tailer.checkpointsDB.get(logFilePath)
 		if !ok {
 			t.Fatalf("checkpoint for %q is missing", logFilePath)
 		}
@@ -86,18 +81,16 @@ func TestCommitPartialLines(t *testing.T) {
 			return full
 		}
 
+		tailer := Start(checkpointsPath)
+
 		proc := newTestProcessor(commitFn)
 		proc.expect(readLinesExpected)
-		newProc := func(_ []logstorage.Field) Processor {
-			return proc
-		}
-
-		fc := Start(checkpointsPath, newProc)
-		fc.StartRead(logFilePath, nil)
+		tailer.StartRead(logFilePath, proc)
 		proc.wait()
-		fc.Stop()
 
-		cpGot, ok := fc.checkpointsDB.get(logFilePath)
+		tailer.Stop()
+
+		cpGot, ok := tailer.checkpointsDB.get(logFilePath)
 		if !ok {
 			t.Fatalf("checkpoint for %q is missing", logFilePath)
 		}
@@ -140,9 +133,6 @@ func TestRestoringFromFingerprint(t *testing.T) {
 		logFilePath, _ := createTestLogFile(t)
 
 		proc := newTestProcessor(nil)
-		newProc := func(_ []logstorage.Field) Processor {
-			return proc
-		}
 
 		for _, s := range []string{file1, file2} {
 			proc.expect(1)
@@ -155,10 +145,12 @@ func TestRestoringFromFingerprint(t *testing.T) {
 			_ = f.Sync()
 			_ = f.Close()
 
-			fc := Start(checkpointsPath, newProc)
-			fc.StartRead(logFilePath, nil)
+			tailer := Start(checkpointsPath)
+
+			tailer.StartRead(logFilePath, proc)
 			proc.wait()
-			fc.Stop()
+
+			tailer.Stop()
 		}
 
 		if err := proc.verify(outExpected); err != nil {

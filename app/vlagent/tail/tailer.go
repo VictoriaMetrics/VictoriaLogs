@@ -12,8 +12,6 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // Processor processes log lines from a single file.
@@ -45,8 +43,6 @@ type Tailer struct {
 	logFiles     map[string]struct{}
 	logFilesLock sync.Mutex
 
-	newProcessor func(commonFields []logstorage.Field) Processor
-
 	checkpointsDB *checkpointsDB
 
 	wg     sync.WaitGroup
@@ -58,7 +54,7 @@ type Tailer struct {
 //
 // The Tailer maintains a checkpoint file as persistent state,
 // allowing log reading to resume from the last position after vlagent restart.
-func Start(checkpointsPath string, newProcessor func(commonFields []logstorage.Field) Processor) *Tailer {
+func Start(checkpointsPath string) *Tailer {
 	checkpointsDB, err := startCheckpointsDB(checkpointsPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot start checkpoints DB: %s", err)
@@ -66,25 +62,25 @@ func Start(checkpointsPath string, newProcessor func(commonFields []logstorage.F
 
 	return &Tailer{
 		logFiles:      make(map[string]struct{}),
-		newProcessor:  newProcessor,
 		checkpointsDB: checkpointsDB,
 		stopCh:        make(chan struct{}),
 	}
 }
 
-func (fc *Tailer) StartRead(filepath string, commonFields []logstorage.Field) {
+func (fc *Tailer) StartRead(filepath string, proc Processor) {
 	fc.logFilesLock.Lock()
 	_, ok := fc.logFiles[filepath]
 	fc.logFiles[filepath] = struct{}{}
 	fc.logFilesLock.Unlock()
 	if ok {
 		// Already reading from the file.
+		proc.MustClose()
 		return
 	}
 
 	fc.wg.Go(func() {
 		lf := fc.openLogFile(filepath)
-		fc.process(lf, commonFields)
+		fc.process(lf, proc)
 	})
 }
 
@@ -175,13 +171,11 @@ func getFileFingerprint(f *os.File) uint64 {
 	return fp
 }
 
-func (fc *Tailer) process(lf *logFile, commonFields []logstorage.Field) {
+func (fc *Tailer) process(lf *logFile, proc Processor) {
 	defer lf.close()
+	defer proc.MustClose()
 
 	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
-
-	proc := fc.newProcessor(commonFields)
-	defer proc.MustClose()
 
 	for {
 		if needStop(fc.stopCh) {
@@ -317,6 +311,14 @@ func (fc *Tailer) getUnusedCheckpoints() []checkpoint {
 		unused = append(unused, cp)
 	}
 	return unused
+}
+
+func (fc *Tailer) IsTailing(filepath string) bool {
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
+	_, ok := fc.logFiles[filepath]
+	return ok
 }
 
 func (fc *Tailer) Stop() {
