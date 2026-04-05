@@ -56,7 +56,6 @@ const TreeField: FC<TreeFieldProps> = ({
     }
   }, [currentPath, onToggleProp]);
 
-  // Parse JSON string once; shared by isExpandable and entries
   const parsedValue = useMemo(() => {
     if (typeof value === 'string') return parseJsonString(value);
     return null;
@@ -81,7 +80,6 @@ const TreeField: FC<TreeFieldProps> = ({
     }
   }, [toggle]);
 
-  // Prevent stack overflow with very deeply nested data — after all hooks
   if (depth >= MAX_TREE_DEPTH) {
     return (
       <div className="vm-tree-field">
@@ -95,7 +93,6 @@ const TreeField: FC<TreeFieldProps> = ({
   }
 
   const isSystemField = fieldKey.startsWith('_');
-
   const isRoot = !fieldKey;
 
   return (
@@ -188,6 +185,7 @@ const TreeField: FC<TreeFieldProps> = ({
               value={val}
               depth={isRoot ? depth : depth + 1}
               path={currentPathSegments}
+              defaultExpanded={typeof val === "string" && parseJsonString(val) !== null}
               isExpanded={isExpandedProp}
               onToggle={onToggleProp}
             />

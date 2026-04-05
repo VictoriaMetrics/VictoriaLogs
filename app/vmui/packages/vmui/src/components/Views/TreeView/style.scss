@@ -1,0 +1,144 @@
+@use "src/styles/variables" as *;
+
+$font-size-logs: var(--font-size-logs, $font-size-small);
+
+.vm-tree-logs-view {
+  padding: 0 $padding-small $padding-small;
+}
+
+.vm-tree-log-item {
+  padding: 4px 0 $padding-small;
+  border-bottom: 1px solid $color-hover-black;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.vm-tree-field {
+  font-family: $font-family-monospace;
+  font-size: $font-size-logs;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 0 -8px;
+
+  &__line {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    padding: 1px 0;
+    white-space: pre;
+  }
+
+  &__indent {
+    display: inline-block;
+    width: 0;
+    overflow: visible;
+    white-space: pre;
+  }
+
+  &__toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-family: $font-family-monospace;
+    font-size: $font-size-logs;
+    color: var(--color-primary);
+    min-width: 24px;
+    text-align: center;
+    font-weight: 600;
+
+    &:hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  &__key {
+    color: light-dark(#991b1b, #fca5a5);
+    font-weight: 500;
+    font-family: $font-family-monospace;
+  }
+
+  &__separator {
+    color: var(--color-text-secondary);
+    margin-right: 2px;
+  }
+
+  &__expander {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  &__value {
+    color: var(--color-text);
+    word-break: break-word;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &-string {
+      color: light-dark(#059669, #34d399);
+    }
+
+    &-number {
+      color: light-dark(#2563eb, #60a5fa);
+    }
+
+    &-boolean {
+      color: light-dark(#7c3aed, #a78bfa);
+    }
+
+    &-null {
+      color: var(--color-text-secondary);
+      font-style: italic;
+      opacity: 0.8;
+    }
+  }
+
+  &__children {
+    margin-top: 0;
+
+    &_root {
+      display: flex;
+      flex-direction: column;
+      margin-left: 0;
+    }
+  }
+
+  &__root-toggle {
+    position: absolute;
+    left: -32px;
+    top: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-family: $font-family-monospace;
+    font-size: $font-size-logs;
+    color: var(--color-primary);
+    min-width: 28px;
+    text-align: left;
+    font-weight: 600;
+    line-height: 1.3;
+
+    &:hover {
+      color: var(--color-primary-hover);
+    }
+  }
+
+  &_system {
+    .vm-tree-field__key {
+      color: var(--color-text-secondary);
+      font-family: $font-family-monospace;
+      font-style: normal;
+    }
+  }
+
+  &_root {
+    margin-left: 32px;
+    position: relative;
+    min-height: 0.6em;
+  }
+}

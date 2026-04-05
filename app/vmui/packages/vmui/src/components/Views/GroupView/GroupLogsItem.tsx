@@ -1,8 +1,8 @@
-import { FC, memo, useMemo, useCallback, useEffect, useState, ReactNode, useRef } from "preact/compat";
+import { FC, memo, useMemo, useCallback, useEffect, useState, ReactNode } from "preact/compat";
 import { Logs } from "../../../api/types";
 import "./style.scss";
 import useBoolean from "../../../hooks/useBoolean";
-import { ArrowDownIcon, CopyIcon, TreeIcon, ListIcon } from "../../Main/Icons";
+import { ArrowDownIcon, CopyIcon } from "../../Main/Icons";
 import classNames from "classnames";
 import { useLogsState } from "../../../state/logsPanel/LogsStateContext";
 import { useTimeState } from "../../../state/time/TimeStateContext";
@@ -19,7 +19,6 @@ import StreamContextButton from "../../../pages/StreamContext/StreamContextButto
 import { useAppState } from "../../../state/common/StateContext";
 import { formatDateWithNanoseconds } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
-import TreeField from "./TreeField";
 
 interface Props {
   log: Logs;
@@ -38,15 +37,8 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
     value: isOpenFields,
     toggle: toggleOpenFields,
   } = useBoolean(false);
-  const [showTreeStructure] = useLocalStorageBoolean("LOGS_SHOW_TREE_STRUCTURE");
-  const {
-    value: isTreeStructure,
-    toggle: toggleTreeStructure,
-  } = useBoolean(showTreeStructure);
   const [copied, setCopied] = useState<boolean>(false);
   const copyToClipboard = useCopyToClipboard();
-  const [, setExpandedVersion] = useState(0);
-  const expandedPaths = useRef<Set<string>>(new Set(showTreeStructure ? ["[]"] : []));
 
   const [searchParams] = useSearchParams();
   const { markdownParsing, ansiParsing } = useLogsState();
@@ -65,27 +57,6 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
     if (!markdownParsing || !log._msg || !displayFields.includes("_msg")) return "";
     return marked(log._msg.replace(/```/g, "\n```\n")) as string;
   }, [log._msg, markdownParsing, displayFields]);
-
-  const isMessageVisible = useMemo(() => {
-    if (!log._msg) return false;
-
-    const hasConfiguredDisplayFields = displayFields.some(field => log[field]);
-    if (hasConfiguredDisplayFields) {
-      return displayFields.includes("_msg");
-    }
-
-    return true;
-  }, [displayFields, log]);
-
-  const isTreeAvailable = useMemo(() => {
-    if (!isMessageVisible) return false;
-    try {
-      const parsed = JSON.parse(log._msg);
-      return typeof parsed === "object" && parsed !== null && Object.keys(parsed).length > 0;
-    } catch {
-      return false;
-    }
-  }, [isMessageVisible, log._msg]);
 
   const hasFields = Object.keys(log).length > 0;
 
@@ -127,30 +98,6 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
     toggleOpenFields();
     onItemClick?.(log);
   };
-
-  const isExpandedPath = useCallback((path: string) => {
-    return expandedPaths.current.has(path);
-  }, []);
-
-  const toggleExpandPath = useCallback((path: string) => {
-    if (expandedPaths.current.has(path)) {
-      expandedPaths.current.delete(path);
-    } else {
-      expandedPaths.current.add(path);
-    }
-    setExpandedVersion((v) => v + 1);
-  }, []);
-
-  const handleToggleTree = useCallback((e: Event) => {
-    e.stopPropagation();
-    const newTreeStructure = !isTreeStructure;
-    if (newTreeStructure && isTreeAvailable) {
-      // Expand first level when switching to tree view
-      expandedPaths.current.add("[]");
-      setExpandedVersion((v) => v + 1);
-    }
-    toggleTreeStructure();
-  }, [isTreeStructure, toggleTreeStructure, isTreeAvailable]);
 
   const handleCopy = useCallback(async (e: Event) => {
     e.stopPropagation();
@@ -205,31 +152,17 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
             "vm-group-logs-row-content__msg_empty-msg": !log._msg,
             "vm-group-logs-row-content__msg_missing": !displayMessage,
             "vm-group-logs-row-content__msg_single-line": noWrapLines,
-            "vm-group-logs-row-content__msg_tree": isTreeStructure,
           })}
         >
-          {isTreeStructure && isTreeAvailable ? (
-            <TreeField
-              fieldKey=""
-              value={log._msg}
-              depth={0}
-              path={[]}
-              isExpanded={isExpandedPath}
-              onToggle={toggleExpandPath}
-            />
-          ) : (
-            <>
-              {formattedMarkdown && <span dangerouslySetInnerHTML={{ __html: formattedMarkdown }}/>}
-              {displayMessage.map((msg, i) => (
-                <span
-                  className="vm-group-logs-row-content__sub-msg"
-                  key={`${msg}_${i}`}
-                >
-                  {msg}
-                </span>
-              ))}
-            </>
-          )}
+          {formattedMarkdown && <span dangerouslySetInnerHTML={{ __html: formattedMarkdown }}/>}
+          {displayMessage.map((msg, i) => (
+            <span
+              className="vm-group-logs-row-content__sub-msg"
+              key={`${msg}_${i}`}
+            >
+              {msg}
+            </span>
+          ))}
         </div>
         <div
           className={classNames({
@@ -237,17 +170,6 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
             "vm-group-logs-row-content__actions_active": isOpenFields,
           })}
         >
-          {isTreeAvailable && (
-            <Tooltip title={isTreeStructure ? "Show as raw text" : "Show as tree structure"}>
-              <Button
-                variant="text"
-                color="gray"
-                startIcon={isTreeStructure ? <ListIcon/> : <TreeIcon/>}
-                onClick={handleToggleTree}
-                ariaLabel={isTreeStructure ? "show as raw text" : "show as tree structure"}
-              />
-            </Tooltip>
-          )}
           {!isContextView && (
             <StreamContextButton
               log={log}

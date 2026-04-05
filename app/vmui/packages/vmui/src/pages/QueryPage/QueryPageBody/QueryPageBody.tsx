@@ -4,6 +4,7 @@ import {
   ListIcon,
   TableIcon,
   PlayIcon,
+  TreeIcon,
   VisibilityOffIcon,
   VisibilityIcon,
   DownloadIcon
@@ -19,6 +20,7 @@ import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import GroupView from "../../../components/Views/GroupView/GroupView";
 import TableView from "../../../components/Views/TableView/TableView";
 import JsonLogsView from "../../../components/Views/JsonView/JsonLogsView";
+import TreeLogsView from "../../../components/Views/TreeView/TreeLogsView";
 import LiveTailingView from "../../../components/Views/LiveTailingView/LiveTailingView";
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
@@ -36,6 +38,7 @@ enum DisplayType {
   group = "group",
   table = "table",
   json = "json",
+  tree = "tree",
   liveTailing = "liveTailing",
 }
 
@@ -43,6 +46,7 @@ const tabs = [
   { label: "Group", value: DisplayType.group, icon: <ListIcon/>, Component: GroupView },
   { label: "Table", value: DisplayType.table, icon: <TableIcon/>, Component: TableView },
   { label: "JSON", value: DisplayType.json, icon: <CodeIcon/>, Component: JsonLogsView },
+  { label: "Tree", value: DisplayType.tree, icon: <TreeIcon/>, Component: TreeLogsView },
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 

@@ -49,7 +49,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   const [errorFormat, setErrorFormat] = useState("");
 
   const [disabledHovers, handleSetDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
-  const [showTreeStructure, handleSetShowTreeStructure] = useLocalStorageBoolean("LOGS_SHOW_TREE_STRUCTURE");
 
   const isGroupChanged = groupBy !== LOGS_GROUP_BY;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
@@ -244,17 +243,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
               />
               <span className="vm-group-logs-configurator-item__info">
                 Shows group headers in one line with a &quot;+N more&quot; badge for extra fields.
-              </span>
-            </div>
-
-            <div className="vm-group-logs-configurator-item">
-              <Switch
-                value={showTreeStructure}
-                onChange={handleSetShowTreeStructure}
-                label="Show tree structure for JSON messages by default"
-              />
-              <span className="vm-group-logs-configurator-item__info">
-                Automatically display JSON messages as an expandable tree structure.
               </span>
             </div>
 
