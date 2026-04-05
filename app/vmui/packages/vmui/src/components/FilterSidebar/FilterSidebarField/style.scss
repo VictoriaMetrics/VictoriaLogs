@@ -20,6 +20,10 @@ $icon-width: 14px;
     background-color: $color-hover-black;
   }
 
+  &_empty > &-header {
+    color: $color-text-secondary;
+  }
+
   &-header {
     position: relative;
     display: flex;

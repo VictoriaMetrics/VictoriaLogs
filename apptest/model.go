@@ -13,6 +13,9 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 type QueryOpts struct {
+	AccountID string
+	ProjectID string
+
 	Timeout      string
 	Start        string
 	End          string
@@ -202,6 +205,9 @@ func (qos *StatsQueryRangeOpts) asURLValues() url.Values {
 
 // IngestOpts contains various params used for VictoriaLogs ingesting data
 type IngestOpts struct {
+	AccountID string
+	ProjectID string
+
 	MessageField string
 	StreamFields string
 	TimeField    string

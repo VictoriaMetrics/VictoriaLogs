@@ -17,14 +17,12 @@ import (
 )
 
 var (
-	maxRequestSize = flagutil.NewBytes("nativeinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /insert/native HTTP endpoint")
+	// MaxRequestSize is the maximum size for the request to /insert/native and /insert/multitenant/native
+	MaxRequestSize = flagutil.NewBytes("nativeinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted "+
+		"at /insert/native and /insert/multitenant/native HTTP endpoints")
 )
 
 // RequestHandler processes /insert/native requests.
-//
-// This handler uses the same data format as /internal/insert;
-// the distinction is that this handler supports all the data ingestion HTTP parameters.
-// See https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	if r.Method != "POST" {
@@ -51,29 +49,29 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	if cp.IsTimeFieldSet {
 		unsupportedOptionsLogger.Warnf("/insert/native endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; "+
-			"ignoring them; timeFields=%q", cp.TimeFields)
+			"ignoring them; timeFields=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.TimeFields)
 	}
 	// Unconditionally reset cp.TimeFields, since the code below shouldn't depend on this field.
 	cp.TimeFields = nil
 
 	if len(cp.MsgFields) > 0 {
 		unsupportedOptionsLogger.Warnf("/insert/native endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; "+
-			"ignoring them; msgFields=%q", cp.MsgFields)
+			"ignoring them; msgFields=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.MsgFields)
 		cp.MsgFields = nil
 	}
 	if len(cp.StreamFields) > 0 {
 		unsupportedOptionsLogger.Warnf("/insert/native endpoint doesn't support setting stream fields via _stream_fields query arg and via VL-Stream-Fields request header; "+
-			"ignoring them; streamFields=%q", cp.StreamFields)
+			"ignoring them; streamFields=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.StreamFields)
 		cp.StreamFields = nil
 	}
 	if len(cp.DecolorizeFields) > 0 {
 		unsupportedOptionsLogger.Warnf("/insert/native endpoint doesn't support setting decolorize_fields query arg and VL-Decolorize-Fields request header; "+
-			"ignoring them; decolorizeFields=%q", cp.DecolorizeFields)
+			"ignoring them; decolorizeFields=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.DecolorizeFields)
 		cp.DecolorizeFields = nil
 	}
 
 	encoding := r.Header.Get("Content-Encoding")
-	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
+	err = protoparserutil.ReadUncompressedData(r.Body, encoding, MaxRequestSize, func(data []byte) error {
 		lmp := cp.NewLogMessageProcessor("nativeinsert", false)
 		irp := lmp.(insertutil.InsertRowProcessor)
 		err := parseData(irp, data, cp.TenantID)

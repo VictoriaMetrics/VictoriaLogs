@@ -13,12 +13,12 @@ func TestProcessor(t *testing.T) {
 	f := func(in []string, resultsExpected []string) {
 		t.Helper()
 
-		storage := newTestStorage()
+		storage := newTestLogRowsStorage()
 		commonFields := getCommonFields(node{}, namespace{}, pod{}, containerStatus{})
 		proc := newLogFileProcessor(storage, commonFields)
 
 		for _, s := range in {
-			proc.tryAddLine([]byte(s))
+			proc.TryAddLine([]byte(s))
 		}
 
 		expected := strings.Join(resultsExpected, "\n")
@@ -260,17 +260,17 @@ func TestParseCRILine(t *testing.T) {
 	f(`2025-10-16T15:37:36Z stdout F      `, streamStdout, 1760629056000000000, false, "     ")
 }
 
-// Storage implements insertutil.LogRowsStorage interface
-type testStorage struct {
+// testLogRowsStorage implements insertutil.LogRowsStorage interface
+type testLogRowsStorage struct {
 	logRows []string
 }
 
-func newTestStorage() *testStorage {
-	return &testStorage{}
+func newTestLogRowsStorage() *testLogRowsStorage {
+	return &testLogRowsStorage{}
 }
 
 // MustAddRows implements insertutil.LogRowsStorage interface
-func (s *testStorage) MustAddRows(lr *logstorage.LogRows) {
+func (s *testLogRowsStorage) MustAddRows(lr *logstorage.LogRows) {
 	for i := range lr.RowsCount() {
 		logRow := lr.GetRowString(i)
 		s.logRows = append(s.logRows, logRow)
@@ -278,59 +278,15 @@ func (s *testStorage) MustAddRows(lr *logstorage.LogRows) {
 }
 
 // CanWriteData implements insertutil.LogRowsStorage interface
-func (s *testStorage) CanWriteData() error {
+func (s *testLogRowsStorage) CanWriteData() error {
 	return nil
 }
 
-func (s *testStorage) verify(expected string) error {
+func (s *testLogRowsStorage) verify(expected string) error {
 	got := strings.Join(s.logRows, "\n")
-
-	expected = removeRepeats(expected)
-	got = removeRepeats(got)
 
 	if got != expected {
 		return fmt.Errorf("unexpected rows\ngot:\n%s\nwant:\n%s", got, expected)
 	}
 	return nil
-}
-
-// removeRepeats replaces repeated characters with text like "[repeated 200000 times]"
-// only when a character repeats more than 32 times in sequence.
-func removeRepeats(s string) string {
-	if len(s) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	var prev rune
-	var n int
-
-	for i, r := range s {
-		if i == 0 {
-			prev = r
-			n = 1
-			continue
-		}
-
-		if r == prev {
-			n++
-		} else {
-			if n > 32 {
-				sb.WriteString(fmt.Sprintf("%c[repeated %d times]", prev, n))
-			} else {
-				sb.WriteString(strings.Repeat(string(prev), n))
-			}
-			prev = r
-			n = 1
-		}
-	}
-
-	// Handle the last character(s)
-	if n > 32 {
-		sb.WriteString(fmt.Sprintf("%c[repeated %d times]", prev, n))
-	} else {
-		sb.WriteString(strings.Repeat(string(prev), n))
-	}
-
-	return sb.String()
 }

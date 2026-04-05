@@ -44,10 +44,22 @@ func (c *Client) Post(t *testing.T, url, contentType string, data []byte) (strin
 	return c.do(t, http.MethodPost, url, contentType, data)
 }
 
+// PostWithTenant sends HTTP POST request with the given (accountID, projectID) tenant headers and returns the response body together with status code.
+func (c *Client) PostWithTenant(t *testing.T, accountID, projectID, url, contentType string, data []byte) (string, int) {
+	t.Helper()
+	return c.doWithTenant(t, http.MethodPost, accountID, projectID, url, contentType, data)
+}
+
 // PostForm sends a HTTP POST request containing the POST-form data, returns the response body and status code to the caller.
 func (c *Client) PostForm(t *testing.T, url string, data url.Values) (string, int) {
 	t.Helper()
 	return c.Post(t, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
+}
+
+// PostFormWithTenant sends a HTTP POST request with the given (accountID, projectID) tenant headers, returns the response body and status code to the caller.
+func (c *Client) PostFormWithTenant(t *testing.T, accountID, projectID, url string, data url.Values) (string, int) {
+	t.Helper()
+	return c.PostWithTenant(t, accountID, projectID, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
 }
 
 // PostFormSuccess sends a HTTP POST request containing the POST-form data and returns the response body.
@@ -69,15 +81,30 @@ func (c *Client) Delete(t *testing.T, url string) (string, int) {
 // do prepares a HTTP request, sends it to the server, receives the response from the server, returns the response body and status code to the caller.
 func (c *Client) do(t *testing.T, method, url, contentType string, data []byte) (string, int) {
 	t.Helper()
+	return c.doWithTenant(t, method, "", "", url, contentType, data)
+}
+
+// doWithTenant prepares a HTTP request, sends it to the server, receives the response from the server, returns the response body and status code to the caller.
+func (c *Client) doWithTenant(t *testing.T, method, accountID, projectID, url, contentType string, data []byte) (string, int) {
+	t.Helper()
 
 	req, err := http.NewRequest(method, url, bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("could not create a HTTP request: %v", err)
 	}
 
-	if len(contentType) > 0 {
+	// Set (accountID, projectID) request headers according to https://docs.victoriametrics.com/victorialogs/#multitenancy
+	if accountID != "" {
+		req.Header.Set("AccountID", accountID)
+	}
+	if projectID != "" {
+		req.Header.Set("ProjectID", projectID)
+	}
+
+	if contentType != "" {
 		req.Header.Add("Content-Type", contentType)
 	}
+
 	res, err := c.httpCli.Do(req)
 	if err != nil {
 		t.Fatalf("could not send HTTP request: %v", err)

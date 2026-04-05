@@ -1106,7 +1106,7 @@
         "type": "victoriametrics-metrics-datasource",
         "uid": "$DS_PROMETHEUS"
       },
-      "description": "Ingestion rate in number of log entries and bytes per second.\n\nNote: this panel excludes `type=\"internalinsert\"` (traffic via `/internal/insert`), since `/internal/*` APIs are used for internal (in-cluster) communication.\n\nIf you ingest logs via `vlagent` and it is configured with `-remoteWrite.url=.../internal/insert`, then the forwarded traffic is recorded as `type=\"internalinsert\"` on VictoriaLogs side, so it won't be shown here. In this case see ingestion panels in the `vlstorage` / `vlinsert` sections below, or use the official [`vlagent` dashboard](https://grafana.com/grafana/dashboards/24513).",
+      "description": "Ingestion rate in number of log entries and bytes per second.\n\nNote: this panel excludes `type=\"internalinsert\"` (traffic via `/internal/insert`), since `/internal/*` APIs are used for internal (in-cluster) communication",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1267,7 +1267,7 @@
         "type": "victoriametrics-metrics-datasource",
         "uid": "$DS_PROMETHEUS"
       },
-      "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics\n\nNote: this panel excludes `/internal/*` endpoints, since they are used for internal (in-cluster) communication.\n\nIf you use `vlagent` and it is configured to write to `/internal/insert`, then the forwarded ingestion traffic won't appear here. See `vlinsert` / `vlstorage` sections below or the official [`vlagent` dashboard](https://grafana.com/grafana/dashboards/24513).",
+      "description": "* `*` - unsupported query path\n* `/insert` - [inserts](https://docs.victoriametrics.com/victorialogs/data-ingestion/)\n* `/select` - [reads](https://docs.victoriametrics.com/victorialogs/querying/)\n* `/metrics` - scraping of system metrics\n\nNote: this panel excludes `/internal/*` endpoints, since they are used for internal (in-cluster) communication",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -5120,7 +5120,7 @@
             "type": "victoriametrics-metrics-datasource",
             "uid": "$DS_PROMETHEUS"
           },
-          "description": "Rate of incoming HTTP requests handled by insert nodes, grouped by endpoint path (for example: `/insert/*` and `/internal/insert`).\n\nThis is a good proxy for ingestion traffic and request load. Spikes usually mean more clients sending logs or higher batch frequency, and can increase CPU/network usage.",
+          "description": "Rate of incoming HTTP requests handled by insert nodes, grouped by endpoint path.\n\nThis is a good proxy for ingestion traffic and request load. Spikes usually mean more clients sending logs or higher batch frequency, and can increase CPU/network usage.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -6268,7 +6268,7 @@
             "type": "victoriametrics-metrics-datasource",
             "uid": "$DS_PROMETHEUS"
           },
-          "description": "Rate of incoming HTTP requests handled by insert nodes, grouped by endpoint path (for example: `/insert/*` and `/internal/insert`).\n\nThis is a good proxy for ingestion traffic and request load. Spikes usually mean more clients sending logs or higher batch frequency, and can increase CPU/network usage.",
+          "description": "Rate of incoming HTTP requests handled by insert nodes, grouped by endpoint path.\n\nThis is a good proxy for ingestion traffic and request load. Spikes usually mean more clients sending logs or higher batch frequency, and can increase CPU/network usage.",
           "fieldConfig": {
             "defaults": {
               "color": {

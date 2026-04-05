@@ -3,16 +3,25 @@
 .vm-code-example {
   position: relative;
   display: block;
-  padding: $padding-global;
+  padding-block: $padding-small;
+  padding-inline: $padding-global calc($padding-global * 2 + $padding-global);
   white-space: pre-wrap;
   border-radius: $border-radius-medium;
   background-color: $color-hover-black;
   color: $color-text;
+  font-size: inherit;
   overflow: auto;
+  line-height: 1.4;
+
+  &:hover &__copy {
+    opacity: 1;
+  }
 
   &__copy {
     position: absolute;
-    right: 10px;
-    top: 10px;
+    right: calc($padding-small / 2);
+    top: calc($padding-small / 2);
+    opacity: 1;
+    transition: opacity 100ms;
   }
 }

@@ -971,7 +971,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	logger.Infof("started processing delete task %s", dt)
 	startTime := time.Now()
 
-	f, err := ParseFilter(dt.Filter)
+	f, err := ParseFilterAtTimestamp(dt.Filter, dt.StartTime.UnixNano())
 	if err != nil {
 		logger.Panicf("BUG: cannot parse filter from delete task: [%s]", dt.Filter)
 	}
@@ -991,7 +991,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false, nil)
 
 	// Initialize subqueries
-	qNew, err := initSubqueries(qctx, s.runQuery, true)
+	qNew, err := initSubqueries(qctx, s.runQuery, false)
 	if err != nil {
 		logger.Errorf("cannot process delete task with task_id=%q while initializing subqueries: %s; retrying later", dt.TaskID, err)
 		return false

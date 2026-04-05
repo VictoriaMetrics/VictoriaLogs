@@ -1,4 +1,4 @@
-package kubernetescollector
+package tail
 
 import (
 	"bytes"
@@ -87,7 +87,7 @@ var (
 	processConcurrencyCh = make(chan struct{}, cgroup.AvailableCPUs())
 )
 
-func (lf *logFile) readLines(stopCh <-chan struct{}, proc processor) bool {
+func (lf *logFile) readLines(stopCh <-chan struct{}, proc Processor) bool {
 	if lf.file == nil {
 		// This happens on the first read attempt.
 		// File may not exist in the case of races with Container Runtime or OS.
@@ -132,7 +132,7 @@ func (lf *logFile) readLines(stopCh <-chan struct{}, proc processor) bool {
 	}
 }
 
-func (lf *logFile) processLines(data []byte, p processor) {
+func (lf *logFile) processLines(data []byte, p Processor) {
 	if len(data) == 0 {
 		return
 	}
@@ -239,14 +239,14 @@ func (lf *logFile) setTail(tail []byte) {
 
 var tailByteBufferPool bytesutil.ByteBufferPool
 
-func (lf *logFile) addLine(p processor, line []byte) {
+func (lf *logFile) addLine(p Processor, line []byte) {
 	if lf.offset == 0 {
 		// This is the first line of the current file.
 		lf.fingerprint = calcFingerprint(line)
 	}
 	lf.offset += int64(len(line) + len("\n"))
 
-	ok := p.tryAddLine(line)
+	ok := p.TryAddLine(line)
 	if ok {
 		lf.commitInode = lf.inode
 		lf.commitFingerprint = lf.fingerprint

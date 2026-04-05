@@ -15,6 +15,15 @@ func TestParsePipeStatsSuccess(t *testing.T) {
 	f(`stats by (x) count(*) as rows, count_uniq(x) as uniqs`)
 	f(`stats by (_time:month offset 6.5h, y) count(*) as rows, count_uniq(x) as uniqs`)
 	f(`stats by (_time:month offset 6.5h, y) count(*) if (q:w) as rows, count_uniq(x) as uniqs`)
+
+	// a single switch
+	f(`stats count(*) switch(case (status:=200) as ok, case (status:>=400 status:<500) as bad, default as other)`)
+
+	// multiple switches with regular funcs
+	f(`stats count(*) if (a) as x, sum(b) switch(case (c) as q), min(x) switch(default as w), max(y) switch(default as qq, case (p) as ww), avg(w) switch()`)
+
+	// switch with by (...)
+	f(`stats by (host) count(*) switch(case (path:~"^/admin/") as admin_requests, default as other_requests)`)
 }
 
 func TestParsePipeStatsFailure(t *testing.T) {
@@ -36,6 +45,22 @@ func TestParsePipeStatsFailure(t *testing.T) {
 	f(`stats by (x*) count()`)
 	f(`stats count() as *`)
 	f(`stats count() as x*`)
+
+	f(`stats count(*) switch(`)
+
+	// double result name
+	f(`stats count(*) switch(case (x) as y) as bar`)
+	f(`stats count() switch(case (x) a, case (y) a)`)
+	f(`stats count() switch(case (x) a), count() a)`)
+	f(`stats count() sum(x) a, count() a)`)
+
+	// result name clashes with by (...) fields
+	f(`stats by (x) count() as x`)
+	f(`stats by (x) count() switch(case (a) x)`)
+
+	// zero cases
+	f(`stats count() switch()`)
+	f(`stats by (x) count() switch()`)
 }
 
 func TestPipeStats(t *testing.T) {
@@ -87,7 +112,8 @@ func TestPipeStats(t *testing.T) {
 		},
 	})
 
-	f("stats count() as rows, count() if (a:2) rows2", [][]Field{
+	// switch
+	f("stats count() switch (case (a:2) rows2, default other), count() total, sum(a) sum_a", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -103,8 +129,10 @@ func TestPipeStats(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"rows", "3"},
 			{"rows2", "2"},
+			{"other", "1"},
+			{"total", "3"},
+			{"sum_a", "5"},
 		},
 	})
 

@@ -19,7 +19,7 @@ func BenchmarkAddRow(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	SetLogRowsStorage(benchmarkStorage{})
+	SetLogRowsStorage(BenchmarkStorage{})
 
 	ts := int64(fasttime.UnixTimestamp()) * 1e9
 	rows := [][]logstorage.Field{
@@ -54,13 +54,4 @@ func BenchmarkAddRow(b *testing.B) {
 			}
 		}
 	})
-}
-
-type benchmarkStorage struct{}
-
-func (benchmarkStorage) MustAddRows(*logstorage.LogRows) {
-}
-
-func (benchmarkStorage) CanWriteData() error {
-	return nil
 }

@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/tail"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
@@ -40,7 +42,7 @@ type kubernetesCollector struct {
 	// This directory contains symlinks with specific filenames to actual files.
 	logsPath string
 
-	fileCollector *fileCollector
+	tailer *tail.Tailer
 }
 
 // startKubernetesCollector starts watching Kubernetes cluster on the given node and starts collecting container logs.
@@ -69,12 +71,7 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 		logsPath:      logsPath,
 	}
 
-	storage := &remotewrite.Storage{}
-	newProcessor := func(commonFields []logstorage.Field) processor {
-		return newLogFileProcessor(storage, commonFields)
-	}
-	fc := startFileCollector(checkpointsPath, newProcessor)
-	kc.fileCollector = fc
+	kc.tailer = tail.Start(checkpointsPath)
 
 	pl, err := client.getNodePods(ctx, currentNodeName)
 	if err != nil {
@@ -87,7 +84,7 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 		kc.startReadPodLogs(pod)
 	}
 	// Cleanup checkpoints for deleted Pods.
-	fc.cleanupCheckpoints()
+	kc.tailer.CleanupCheckpoints()
 
 	// Begin watching for new Pods and start reading their logs.
 	kc.wg.Go(func() {
@@ -102,8 +99,7 @@ func startKubernetesCollector(client *kubeAPIClient, currentNodeName, logsPath, 
 func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resourceVersion string) {
 	currentNodeName := kc.currentNode.Metadata.Name
 
-	bt := newBackoffTimer(time.Millisecond*200, time.Second*30)
-	defer bt.stop()
+	bt := timeutil.NewBackoffTimer(time.Millisecond*200, time.Second*30)
 
 	// errGone is returned when the current resourceVersion is no longer valid.
 	var errGone = errors.New("gone")
@@ -113,7 +109,7 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 	handleEvent := func(event watchEvent) error {
 		switch event.Type {
 		case "ADDED", "MODIFIED":
-			bt.reset()
+			bt.Reset()
 
 			if errorFired {
 				logger.Infof("successfully re-established watching Pods on Node %q", currentNodeName)
@@ -166,8 +162,10 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 			errorFired = true
 
-			logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.currentDelay())
-			bt.wait(stopCh)
+			logger.Errorf("failed to start watching Pods on node %q: %s; will retry in %s", currentNodeName, err, bt.CurrentDelay())
+			if !bt.Wait(stopCh) {
+				return
+			}
 			continue
 		}
 
@@ -192,26 +190,34 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 			errorFired = true
 
-			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.currentDelay())
-			bt.wait(stopCh)
+			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.CurrentDelay())
+			if !bt.Wait(stopCh) {
+				return
+			}
 			continue
 		}
 	}
 }
 
+var storage = &remotewrite.Storage{}
+
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	ns := kc.mustGetNamespace(pod.Metadata.Namespace)
 
 	startRead := func(pc podContainer, cs containerStatus) {
+		filePath := kc.getLogFilePath(pod, pc, cs)
+		if kc.tailer.IsTailing(filePath) {
+			return
+		}
+
 		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
 		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
 			// Filter matches - skip this container.
 			return
 		}
 
-		filePath := kc.getLogFilePath(pod, pc, cs)
-
-		kc.fileCollector.startRead(filePath, commonFields)
+		proc := newLogFileProcessor(storage, commonFields)
+		kc.tailer.StartRead(filePath, proc)
 	}
 
 	for _, pc := range pod.Spec.Containers {
@@ -323,5 +329,5 @@ func (kc *kubernetesCollector) mustUpdateNamespaces() {
 func (kc *kubernetesCollector) stop() {
 	kc.cancel()
 	kc.wg.Wait()
-	kc.fileCollector.stop()
+	kc.tailer.Stop()
 }

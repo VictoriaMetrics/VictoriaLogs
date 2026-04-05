@@ -12,9 +12,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
-// TestVlagentRemoteWrite performs tests for remote write data ingestion
-// by vlagent application
-func TestVlagentRemoteWrite(t *testing.T) {
+func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
@@ -64,6 +62,60 @@ func TestVlagentRemoteWrite(t *testing.T) {
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
+}
+
+func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlsingle()
+
+	remoteWriteURL := fmt.Sprintf("http://%s/insert/multitenant/native", sut.HTTPAddr())
+	vlagent := tc.MustStartDefaultVlagent([]string{remoteWriteURL})
+
+	// Add logs for one tenant, and then add logs to another tenant.
+	vlagent.JSONLineWrite(t, []string{
+		`{"_msg":"tenant 1","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
+		`{"_msg":"tenant 1","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
+	}, apptest.IngestOpts{
+		AccountID: "123",
+		ProjectID: "45",
+	})
+
+	vlagent.JSONLineWrite(t, []string{
+		`{"_msg":"tenant 2","_time": "2025-06-05T15:30:19.088007Z", "foo":"bar"}`,
+		`{"_msg":"tenant 2","_time": "2025-06-05T15:30:19.088007Z", "bar":"foo"}`,
+	}, apptest.IngestOpts{
+		AccountID:    "1",
+		StreamFields: "foo,bar",
+	})
+
+	sut.ForceFlush(t)
+
+	// Query logs from different tenants
+	got := sut.LogsQLQuery(t, "*", apptest.QueryOpts{
+		AccountID: "123",
+		ProjectID: "45",
+	})
+	wantLogLines := []string{
+		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
+		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+	}
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
+
+	got = sut.LogsQLQuery(t, "*", apptest.QueryOpts{
+		AccountID: "1",
+	})
+	wantLogLines = []string{
+		`{"_msg":"tenant 2","_stream":"{bar=\"foo\"}","_time":"2025-06-05T15:30:19.088007Z","bar":"foo"}`,
+		`{"_msg":"tenant 2","_stream":"{foo=\"bar\"}","_time":"2025-06-05T15:30:19.088007Z","foo":"bar"}`,
+	}
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
+
+	got = sut.LogsQLQuery(t, "*", apptest.QueryOpts{})
+	wantLogLines = []string{}
 	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/jsonline"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/loki"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/nativeinsert"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/nativeinsert/nativemultitenant"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/opentelemetry"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/syslog"
 )
@@ -66,6 +67,9 @@ func insertHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		return true
 	case "/insert/native":
 		nativeinsert.RequestHandler(w, r)
+		return true
+	case "/insert/multitenant/native":
+		nativemultitenant.RequestHandler(w, r)
 		return true
 	case "/insert/ready":
 		w.Header().Set("Content-Type", "application/json")

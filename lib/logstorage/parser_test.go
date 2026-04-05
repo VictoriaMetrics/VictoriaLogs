@@ -124,7 +124,8 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
-	visitSubqueriesInFilter(q.f, func(q *Query) {
+	ff := q.getFinalFilter()
+	visitSubqueriesInFilter(ff, func(q *Query) {
 		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2)
 	})
 
@@ -134,7 +135,8 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
-	visitSubqueriesInFilter(q.f, func(q *Query) {
+	ff = q.getFinalFilter()
+	visitSubqueriesInFilter(ff, func(q *Query) {
 		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1)
 	})
 }
@@ -475,6 +477,7 @@ func TestParseQuery_OptimizeStreamFilters(t *testing.T) {
 func TestParseDayRange(t *testing.T) {
 	f := func(s string, startExpected, endExpected, offsetExpected int64) {
 		t.Helper()
+
 		q, err := ParseQuery("_time:day_range" + s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -519,6 +522,7 @@ func TestParseDayRange(t *testing.T) {
 func TestParseWeekRange(t *testing.T) {
 	f := func(s string, startDayExpected, endDayExpected time.Weekday, offsetExpected int64) {
 		t.Helper()
+
 		q, err := ParseQuery("_time:week_range" + s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -569,6 +573,7 @@ func TestParseWeekRange(t *testing.T) {
 func TestTimeOffsetUpdatesDayAndWeekRangeFilters(t *testing.T) {
 	f := func(qStr string, offsetExpected int64) {
 		t.Helper()
+
 		q, err := ParseQuery(qStr)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -594,6 +599,7 @@ func TestTimeOffsetUpdatesDayAndWeekRangeFilters(t *testing.T) {
 func TestParseTimeDuration(t *testing.T) {
 	f := func(s string, durationExpected time.Duration) {
 		t.Helper()
+
 		q, err := ParseQuery("_time:" + s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -622,6 +628,7 @@ func TestParseTimeDuration(t *testing.T) {
 func TestParseTimeRange(t *testing.T) {
 	f := func(s string, minTimestampExpected, maxTimestampExpected int64) {
 		t.Helper()
+
 		q, err := ParseQuery("_time:" + s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -847,6 +854,7 @@ func TestParseTimeRange(t *testing.T) {
 func TestParseFilterSequence(t *testing.T) {
 	f := func(s, fieldNameExpected string, phrasesExpected []string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -872,19 +880,20 @@ func TestParseFilterSequence(t *testing.T) {
 func TestParseFilterIn(t *testing.T) {
 	f := func(s, fieldNameExpected string, valuesExpected []string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		f, ok := q.f.(*filterIn)
+		fi, ok := q.f.(*filterIn)
 		if !ok {
 			t.Fatalf("unexpected filter type; got %T; want *filterIn; filter: %s", q.f, q.f)
 		}
-		if f.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", f.fieldName, fieldNameExpected)
+		if fi.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fi.fieldName, fieldNameExpected)
 		}
-		if !reflect.DeepEqual(f.values.values, valuesExpected) {
-			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", f.values.values, valuesExpected)
+		if !reflect.DeepEqual(fi.values.values, valuesExpected) {
+			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fi.values.values, valuesExpected)
 		}
 	}
 
@@ -915,19 +924,20 @@ func TestParseFilterInStar(t *testing.T) {
 func TestParseFilterContainsAll(t *testing.T) {
 	f := func(s, fieldNameExpected string, valuesExpected []string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		f, ok := q.f.(*filterContainsAll)
+		fc, ok := q.f.(*filterContainsAll)
 		if !ok {
 			t.Fatalf("unexpected filter type; got %T; want *filterContainsAll; filter: %s", q.f, q.f)
 		}
-		if f.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", f.fieldName, fieldNameExpected)
+		if fc.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fc.fieldName, fieldNameExpected)
 		}
-		if !reflect.DeepEqual(f.values.values, valuesExpected) {
-			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", f.values.values, valuesExpected)
+		if !reflect.DeepEqual(fc.values.values, valuesExpected) {
+			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fc.values.values, valuesExpected)
 		}
 	}
 
@@ -945,19 +955,20 @@ func TestParseFilterContainsAll(t *testing.T) {
 func TestParseFilterContainsAny(t *testing.T) {
 	f := func(s, fieldNameExpected string, valuesExpected []string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		f, ok := q.f.(*filterContainsAny)
+		fc, ok := q.f.(*filterContainsAny)
 		if !ok {
 			t.Fatalf("unexpected filter type; got %T; want *filterContainsAny; filter: %s", q.f, q.f)
 		}
-		if f.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", f.fieldName, fieldNameExpected)
+		if fc.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fc.fieldName, fieldNameExpected)
 		}
-		if !reflect.DeepEqual(f.values.values, valuesExpected) {
-			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", f.values.values, valuesExpected)
+		if !reflect.DeepEqual(fc.values.values, valuesExpected) {
+			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fc.values.values, valuesExpected)
 		}
 	}
 
@@ -975,6 +986,7 @@ func TestParseFilterContainsAny(t *testing.T) {
 func TestParseFilterIPv4Range(t *testing.T) {
 	f := func(s, fieldNameExpected string, minValueExpected, maxValueExpected uint32) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1006,6 +1018,7 @@ func TestParseFilterIPv4Range(t *testing.T) {
 func TestParseFilterIPv6Range(t *testing.T) {
 	f := func(s, fieldNameExpected, minIPExpected, maxIPExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1044,6 +1057,7 @@ func TestParseFilterIPv6Range(t *testing.T) {
 func TestParseFilterStringRange(t *testing.T) {
 	f := func(s, fieldNameExpected, minValueExpected, maxValueExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1074,6 +1088,7 @@ func TestParseFilterStringRange(t *testing.T) {
 func TestParseFilterValueType(t *testing.T) {
 	f := func(s, fieldNameExpected, valueTypeExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1099,6 +1114,7 @@ func TestParseFilterValueType(t *testing.T) {
 func TestParseFilterJSONArrayContainsAny(t *testing.T) {
 	f := func(s, fieldNameExpected string, valuesExpected []string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1127,6 +1143,7 @@ func TestParseFilterJSONArrayContainsAny(t *testing.T) {
 func TestParseFilterRegexp(t *testing.T) {
 	f := func(s, reExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery("re(" + s + ")")
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1149,6 +1166,7 @@ func TestParseFilterRegexp(t *testing.T) {
 func TestParseAnyCaseFilterPhrase(t *testing.T) {
 	f := func(s, fieldNameExpected, phraseExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1174,6 +1192,7 @@ func TestParseAnyCaseFilterPhrase(t *testing.T) {
 func TestParseAnyCaseFilterPrefix(t *testing.T) {
 	f := func(s, fieldNameExpected, prefixExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1201,6 +1220,7 @@ func TestParseAnyCaseFilterPrefix(t *testing.T) {
 func TestParseFilterPhrase(t *testing.T) {
 	f := func(s, fieldNameExpected, phraseExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1228,6 +1248,7 @@ func TestParseFilterPhrase(t *testing.T) {
 func TestParseFilterPrefix(t *testing.T) {
 	f := func(s, fieldNameExpected, prefixExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1264,6 +1285,7 @@ func TestParseFilterPrefix(t *testing.T) {
 func TestParseRangeFilter(t *testing.T) {
 	f := func(s, fieldNameExpected string, minValueExpected, maxValueExpected float64) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -1320,6 +1342,7 @@ func TestParseRangeFilter(t *testing.T) {
 func TestParseQuery_Success(t *testing.T) {
 	f := func(s, resultExpected string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
@@ -2205,6 +2228,7 @@ func TestParseQuery_Success(t *testing.T) {
 	// union pipe
 	f(`* | union(foo)`, `* | union (foo)`)
 	f(`* | union(foo | union(bar baz | count() x))`, `* | union (foo | union (bar baz | stats count(*) as x))`)
+	f(`* | union rows({foo=bar baz:"x:y=z,}"})`, `* | union rows({"foo":"bar","baz":"x:y=z,}"})`)
 
 	// unpack_json pipe
 	f(`* | unpack_json`, `* | unpack_json`)
@@ -2222,6 +2246,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | join by (x) (foo:bar)`, `* | join by (x) (foo:bar)`)
 	f(`* | join on (x, y) (foo:bar)`, `* | join by (x, y) (foo:bar)`)
 	f(`* | join (x, y) (foo:bar)`, `* | join by (x, y) (foo:bar)`)
+	f(`* | join by (x) rows({"foo":"bar","baz":"x"},{"a":"b"})`, `* | join by (x) rows({"foo":"bar","baz":"x"},{"a":"b"})`)
 
 	// json_array_len pipe
 	f(`* | json_array_len x`, `* | json_array_len(x)`)
@@ -2262,6 +2287,9 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`options(ignore_global_time_filter=true) *`, `options(ignore_global_time_filter=true) *`)
 	f(`options(time_offset=1h) *`, `options(time_offset=1h) *`)
 	f(`options(time_offset=1h) _time:1d`, `options(time_offset=1h) _time:1d`)
+	f(`options(global_filter=(*)) *`, `options(global_filter=(*)) *`)
+	f(`options(global_filter=(_time:5m)) foo:bar`, `options(global_filter=(_time:5m)) foo:bar`)
+	f(`options(global_filter=(_time:5m {host="abc"})) _time:1h foo:in(_time:3m | keep foo)`, `options(global_filter=(_time:5m {host="abc"})) _time:1h foo:in(_time:3m | fields foo)`)
 
 	// nested options
 	f(`options (concurrency=2) foo bar:in(a:b | uniq(bar)) | union (abc) | join on (x) (y)`, `options(concurrency=2) foo bar:in(a:b | uniq by (bar)) | union (abc) | join by (x) (y)`)
@@ -2321,6 +2349,7 @@ func TestParseQuery_Success(t *testing.T) {
 func TestParseQuery_Failure(t *testing.T) {
 	f := func(s string) {
 		t.Helper()
+
 		q, err := ParseQuery(s)
 		if q != nil {
 			t.Fatalf("expecting nil result for ParseQuery(%q); got [%s]", s, q)
@@ -3028,6 +3057,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | union (`)
 	f(`foo | union ( bar`)
 	f(`foo | union (bar | count)`)
+	f(`foo | union rows`)
 
 	// invalid unpack_json pipe
 	f(`foo | unpack_json bar,`)
@@ -3486,6 +3516,7 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | unroll (a, b) | count() r1`, `a,b`, ``)
 	f(`* | unroll if (q:w p:a) (a, b) | count() r1`, `a,b,p,q`, ``)
 	f(`* | join on (a, b) (xxx) | count() r1`, `a,b`, ``)
+	f(`* | join by (a) rows({"x":"y"}) | count() r1`, `a`, ``)
 	f(`* | json_array_len (x) | count() r1`, ``, ``)
 	f(`* | json_array_len (x) y | count() r1`, ``, ``)
 	f(`* | len(a) as b | count() r1`, ``, ``)
@@ -3702,6 +3733,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | hash(x)", true)
 	f("* | hash(x) as _time", false)
 	f("* | join by (x) (foo)", false)
+	f("* | join by (x) rows({'a':'b'})", false)
 	f("* | json_array_len (x)", true)
 	f("* | json_array_len (x) as _time", false)
 	f("* | last 10 (x)", false)
@@ -3807,6 +3839,7 @@ func TestQueryCanLiveTail(t *testing.T) {
 	f("* | unpack_words a", true)
 	f("* | unroll by (a)", true)
 	f("* | join by (a) (b)", true)
+	f("* | join by (a) rows({'a':'b'})", true)
 	f("* | json_array_len (a)", true)
 	f("* | hash(a)", true)
 	f("* | sample 10", true)
@@ -4308,8 +4341,18 @@ func TestQuery_AddCountByTimePipe(t *testing.T) {
 	f(`foo | union (bar) | stats count()`, nsecsPerMinute, 0, nil, `foo | union (bar) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
 	f(`foo | union (bar | stats count())`, nsecsPerMinute, 0, nil, `foo | union (bar) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
 
+	// union rows(...) isn't allowed.
+	f(`foo | union rows()`, nsecsPerMinute, 0, nil, `foo | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | union rows({})`, nsecsPerMinute, 0, nil, `foo | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | union rows({_time=foo,x=bar})`, nsecsPerMinute, 0, nil, `foo | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+
 	// join pipe is allowed
 	f(`foo | join by (x) (y)`, nsecsPerMinute, 0, nil, `foo | join by (x) (y) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+
+	// join rows(...) is allowed
+	f(`foo | join by (x) rows()`, nsecsPerMinute, 0, nil, `foo | join by (x) rows() | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | join by (x) rows({})`, nsecsPerMinute, 0, nil, `foo | join by (x) rows({}) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
+	f(`foo | join by (x) rows({x=y})`, nsecsPerMinute, 0, nil, `foo | join by (x) rows({"x":"y"}) | stats by (_time:1m) count(*) as hits | sort by (_time)`)
 
 	// pipes, which change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer' | stats count()", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)
@@ -4537,8 +4580,10 @@ func TestQueryIsFixedOutputFieldsOrder(t *testing.T) {
 	f("* | sort by (_time)", false)
 	f("* | fields x | union (*)", false)
 	f("* | fields x | union (* | count())", true)
+	f("* | fields x | union rows({'a':'b','c':'d'})", true)
 	f("* | fields x | join by (a) (*)", false)
 	f("* | fields x | join by (a) (* | count())", true)
+	f("* | fields x | join by (a) rows({'a':'b','c':'d'})", true)
 
 	f("* | fields x, y", true)
 	f("* | fields x, y | sort by (a)", true)

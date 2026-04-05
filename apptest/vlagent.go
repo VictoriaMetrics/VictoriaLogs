@@ -36,7 +36,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 		"-remoteWrite.flushInterval": "10ms",
 		"-remoteWrite.showURL":       "true",
 	})
-	app, extracts := mustStartApp(t, instance, "../../bin/vlagent", flags, extractREs)
+	app, extracts := mustStartApp(t, instance, "../../bin/vlagent-race", flags, extractREs)
 
 	return &Vlagent{
 		app:                 app,
@@ -66,7 +66,7 @@ func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpt
 		url += "?" + uvs
 	}
 	app.sendBlocking(t, len(records), func() {
-		_, statusCode := app.cli.Post(t, url, "text/plain", data)
+		_, statusCode := app.cli.PostWithTenant(t, opts.AccountID, opts.ProjectID, url, "text/plain", data)
 		if statusCode != http.StatusOK {
 			t.Fatalf("unexpected status code: got %d, want %d", statusCode, http.StatusOK)
 		}

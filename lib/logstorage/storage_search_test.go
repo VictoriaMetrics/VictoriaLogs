@@ -724,6 +724,16 @@ func TestStorageRunQuery(t *testing.T) {
 			},
 		})
 	})
+	t.Run("stats-switch", func(t *testing.T) {
+		f(t, `* | stats count() as rows, count() switch(default as other, case({instance="host-1:234"}) host1, if({instance="host-2:234"}) host2)`, [][]Field{
+			{
+				{"rows", "1155"},
+				{"other", "385"},
+				{"host1", "385"},
+				{"host2", "385"},
+			},
+		})
+	})
 	t.Run("query_stats-sum_len", func(t *testing.T) {
 		f(t, `* | sum_len(*) | query_stats | keep TimestampsRead, ValuesRead, RowsFound`, [][]Field{
 			{
@@ -1048,6 +1058,53 @@ func TestStorageRunQuery(t *testing.T) {
 				{"abc.total", "77"},
 				{"abc.streams", "1"},
 				{"abc.x", "1"},
+			},
+		})
+	})
+	t.Run("pipe-join-inline-rows", func(t *testing.T) {
+		f(t, `'message 5' | stats by (instance) count() x
+			| join on (instance) rows(
+				{"instance":"host-0:234","foo":"bar"}
+				{"instance":"host-2:234","abc":"def","x":"y","z":"qwe"}
+			)`, [][]Field{
+			{
+				{"instance", "host-0:234"},
+				{"x", "55"},
+				{"foo", "bar"},
+			},
+			{
+				{"instance", "host-2:234"},
+				{"x", "55"},
+				{"abc", "def"},
+				{"z", "qwe"},
+			},
+			{
+				{"instance", "host-1:234"},
+				{"x", "55"},
+			},
+		})
+	})
+	t.Run("pipe-join-inline-rows-prefix", func(t *testing.T) {
+		f(t, `'message 5' | stats by (instance) count() x
+			| join on (instance) rows(
+				{"instance":"host-0:234","foo":"bar"}
+				{"instance":"host-2:234","abc":"def","x":"y","z":"qwe"}
+			) prefix "abc."`, [][]Field{
+			{
+				{"instance", "host-0:234"},
+				{"x", "55"},
+				{"abc.foo", "bar"},
+			},
+			{
+				{"instance", "host-2:234"},
+				{"x", "55"},
+				{"abc.abc", "def"},
+				{"abc.x", "y"},
+				{"abc.z", "qwe"},
+			},
+			{
+				{"instance", "host-1:234"},
+				{"x", "55"},
 			},
 		})
 	})

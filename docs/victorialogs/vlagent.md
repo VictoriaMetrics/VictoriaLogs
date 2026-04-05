@@ -311,7 +311,7 @@ spec:
       serviceAccountName: vlagent
       containers:
         - name: vlagent
-          image: victoriametrics/vlagent:v1.48.0
+          image: victoriametrics/vlagent:v1.49.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -589,10 +589,11 @@ via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via 
       -remoteWrite.headers='AccountID:12^^ProjectID:34'
   ```
 
-- `/internal/insert`. This endpoint accepts logs with arbitrary tenants passed to `vlagent` via the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/):
+- `/insert/multitenant/native`. This endpoint accepts logs with mixed tenants, which are passed to `vlagent`
+  via the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/):
 
   ```sh
-  ./vlagent -remoteWrite.url=http://victoria-logs:9428/internal/insert
+  ./vlagent -remoteWrite.url=http://victoria-logs:9428/insert/multitenant/native
   ```
 
 ## Troubleshooting

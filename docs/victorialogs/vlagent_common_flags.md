@@ -201,7 +201,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Flag value can be read from the given file when using -metricsAuthKey=file:///abs/path/to/file or -metricsAuthKey=file://./relative/path/to/file.
      Flag value can be read from the given http/https url when using -metricsAuthKey=http://host/path or -metricsAuthKey=https://host/path
   -nativeinsert.maxRequestSize size
-     The maximum size in bytes of a single request, which can be accepted at /insert/native HTTP endpoint
+     The maximum size in bytes of a single request, which can be accepted at /insert/native and /insert/multitenant/native HTTP endpoints
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
   -opentelemetry.maxRequestSize size
      The maximum size in bytes of a single OpenTelemetry request

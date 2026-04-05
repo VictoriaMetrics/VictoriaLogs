@@ -15,6 +15,8 @@ import FilterSidebarToggle from "../../../components/FilterSidebar/FilterSidebar
 import AutocompleteToggle from "../../../components/Configurators/QueryEditor/AutocompleteToggle";
 import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersReset";
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
+import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
+import { LOGS_DOCS_URL } from "../../../constants/logs";
 
 interface Props {
   query: string;
@@ -55,7 +57,7 @@ const QueryPageHeader: FC<Props> = ({
     });
   };
 
-  const handleSelectHistory = (value: string) => {
+  const handleChangeAndRun = (value: string) => {
     onChange(value);
     setAwaitQuery(true);
   };
@@ -109,7 +111,7 @@ const QueryPageHeader: FC<Props> = ({
           <div className="vm-query-page-header-bottom-helpful">
             <a
               target="_blank"
-              href="https://docs.victoriametrics.com/victorialogs/logsql/"
+              href={`${LOGS_DOCS_URL}/logsql/`}
               rel="help noreferrer"
             >
               <Button
@@ -122,7 +124,7 @@ const QueryPageHeader: FC<Props> = ({
             </a>
             <a
               target="_blank"
-              href="https://docs.victoriametrics.com/victorialogs/"
+              href={`${LOGS_DOCS_URL}`}
               rel="help noreferrer"
             >
               <Button
@@ -135,9 +137,10 @@ const QueryPageHeader: FC<Props> = ({
             </a>
           </div>
         )}
+        <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
         <QueryHistory
-          handleSelectQuery={handleSelectHistory}
+          handleSelectQuery={handleChangeAndRun}
           historyKey={"LOGS_QUERY_HISTORY"}
         />
         <div className="vm-query-page-header-bottom-execute">

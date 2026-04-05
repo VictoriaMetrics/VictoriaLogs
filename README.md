@@ -11,7 +11,7 @@
 
 VictoriaLogs is a high-performance, lightweight, zero-config, schema-free database for logs that is easy to use and scales both vertically and horizontally, from very small setups to large-scale deployments handling terabytes per day.
 
-Both the single-node and cluster versions of VictoriaLogs are open source and free to use. 
+Both the single-node and cluster versions of VictoriaLogs are open source and free to use.
 
 Here are some resources to help you get started with VictoriaLogs:
 

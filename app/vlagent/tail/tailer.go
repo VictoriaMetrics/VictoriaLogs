@@ -1,4 +1,4 @@
-package kubernetescollector
+package tail
 
 import (
 	"bytes"
@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 )
 
-// processor processes log lines from a single file.
+// Processor processes log lines from a single file.
 // Log lines can be accumulated within a single file without committing them to the checkpointsDB.
-type processor interface {
-	// tryAddLine processes a log line and returns true if it should be committed to the checkpointsDB.
+type Processor interface {
+	// TryAddLine processes a log line and returns true if it should be committed to the checkpointsDB.
 	// Returns true if the current line should be committed to checkpointsDB, false otherwise.
 	//
 	// This allows accumulating multiple lines within a file before committing, which is useful for:
@@ -28,18 +27,21 @@ type processor interface {
 	//
 	// Note: when a log file is rotated, no checkpoint will be written until tryAddLine returns true,
 	// ensuring log entries spanning multiple files are handled correctly.
-	tryAddLine(line []byte) bool
+	TryAddLine(line []byte) bool
 
-	// mustClose releases all resources associated with the processor and ensures proper cleanup of internal states.
+	// Flush flushes any internally accumulated state.
+	// The caller is responsible for invoking flush when no new log lines are expected for a while,
+	// ensuring the accumulated state is propagated without waiting for the next line.
+	Flush()
+
+	// MustClose releases all resources associated with the Processor and ensures proper cleanup of internal states.
 	// It must be called after the target log file is deleted or vlagent is shutting down.
-	mustClose()
+	MustClose()
 }
 
-type fileCollector struct {
+type Tailer struct {
 	logFiles     map[string]struct{}
 	logFilesLock sync.Mutex
-
-	newProcessor func(commonFields []logstorage.Field) processor
 
 	checkpointsDB *checkpointsDB
 
@@ -47,43 +49,42 @@ type fileCollector struct {
 	stopCh chan struct{}
 }
 
-// startFileCollector starts watching for new logs in a given directory.
-// The caller must call stop() when the fileCollector is no longer needed.
+// Start initializes a new Tailer with the given checkpoints storage path.
+// The caller must call Stop() when the Tailer is no longer needed.
 //
-// The fileCollector maintains a checkpoint file that serves as persistent state storage.
-// This allows resuming log reading from the exact position where it was interrupted
-// when vlagent is restarted, preventing duplication.
-func startFileCollector(checkpointsPath string, newProcessor func(commonFields []logstorage.Field) processor) *fileCollector {
+// The Tailer maintains a checkpoint file as persistent state,
+// allowing log reading to resume from the last position after vlagent restart.
+func Start(checkpointsPath string) *Tailer {
 	checkpointsDB, err := startCheckpointsDB(checkpointsPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot start checkpoints DB: %s", err)
 	}
 
-	return &fileCollector{
+	return &Tailer{
 		logFiles:      make(map[string]struct{}),
-		newProcessor:  newProcessor,
 		checkpointsDB: checkpointsDB,
 		stopCh:        make(chan struct{}),
 	}
 }
 
-func (fc *fileCollector) startRead(filepath string, commonFields []logstorage.Field) {
+func (fc *Tailer) StartRead(filepath string, proc Processor) {
 	fc.logFilesLock.Lock()
 	_, ok := fc.logFiles[filepath]
 	fc.logFiles[filepath] = struct{}{}
 	fc.logFilesLock.Unlock()
 	if ok {
 		// Already reading from the file.
+		proc.MustClose()
 		return
 	}
 
 	fc.wg.Go(func() {
 		lf := fc.openLogFile(filepath)
-		fc.process(lf, commonFields)
+		fc.process(lf, proc)
 	})
 }
 
-func (fc *fileCollector) openLogFile(filepath string) *logFile {
+func (fc *Tailer) openLogFile(filepath string) *logFile {
 	cp, ok := fc.checkpointsDB.get(filepath)
 	if !ok {
 		// No checkpoint found - start reading from the beginning of the file.
@@ -101,7 +102,7 @@ func (fc *fileCollector) openLogFile(filepath string) *logFile {
 func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 	f, inode, ok := openFileWithInode(cp.Path)
 	if !ok {
-		// The file was deleted just after startRead was called.
+		// The file was deleted just after StartRead was called.
 		logger.Warnf("log file %q was deleted before being fully read; "+
 			"this is expected if the Pod was deleted while vlagent was starting", filepath)
 		return nil, false
@@ -170,14 +171,11 @@ func getFileFingerprint(f *os.File) uint64 {
 	return fp
 }
 
-func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
+func (fc *Tailer) process(lf *logFile, proc Processor) {
 	defer lf.close()
+	defer proc.MustClose()
 
-	bt := newBackoffTimer(time.Millisecond*100, time.Second*10)
-	defer bt.stop()
-
-	proc := fc.newProcessor(commonFields)
-	defer proc.mustClose()
+	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
 
 	for {
 		if needStop(fc.stopCh) {
@@ -188,8 +186,8 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 		if ok {
 			// Some lines were read - update checkpoint and wait before checking again.
 			fc.checkpointsDB.set(lf.checkpoint())
-			bt.reset()
-			bt.wait(fc.stopCh)
+			bt.Reset()
+			bt.Wait(fc.stopCh)
 			continue
 		}
 
@@ -197,17 +195,18 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 		switch lf.status() {
 		case logFileStatusNotRotated:
 			// No more lines to read and file hasn't rotated - wait before checking again.
-			bt.wait(fc.stopCh)
+			proc.Flush()
+			bt.Wait(fc.stopCh)
 			continue
 		case logFileStatusRotated:
 			// Ensure all remaining lines are flushed to the rotated file and read from it.
 			// Do not use fc.stopCh here to finish reading from the rotated file even if vlagent is shutting down.
 			var neverStopCh chan struct{}
-			bt.reset()
-			bt.wait(neverStopCh)
+			bt.Reset()
+			bt.Wait(neverStopCh)
 			if lf.readLines(neverStopCh, proc) {
 				// Double-check: if there are still new lines, it's an unexpected situation.
-				bt.wait(neverStopCh)
+				bt.Wait(neverStopCh)
 				if lf.readLines(neverStopCh, proc) {
 					logger.Panicf("BUG: log file %q was appended after rotation", lf.path)
 				}
@@ -217,7 +216,7 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 				fc.checkpointsDB.set(lf.checkpoint())
 			} else {
 				// Cannot reopen the file right now - wait before retrying.
-				bt.wait(fc.stopCh)
+				bt.Wait(fc.stopCh)
 			}
 			continue
 		case logFileStatusDeleted:
@@ -235,7 +234,7 @@ func (fc *fileCollector) process(lf *logFile, commonFields []logstorage.Field) {
 
 // forgetFile removes the given file from the tracking list and deletes its checkpoint.
 // It is called when the file is not expected to reappear, so its state no longer needs to be stored.
-func (fc *fileCollector) forgetFile(filePath string) {
+func (fc *Tailer) forgetFile(filePath string) {
 	fc.checkpointsDB.delete(filePath)
 
 	fc.logFilesLock.Lock()
@@ -282,8 +281,8 @@ func findRenamedFile(logPath string, inode uint64) (*os.File, bool) {
 	return nil, false
 }
 
-// cleanupCheckpoints removes all checkpoints for files that are no longer being processed.
-func (fc *fileCollector) cleanupCheckpoints() {
+// CleanupCheckpoints removes all checkpoints for files that are no longer being processed.
+func (fc *Tailer) CleanupCheckpoints() {
 	unusedCheckpoints := fc.getUnusedCheckpoints()
 	if len(unusedCheckpoints) == 0 {
 		return
@@ -298,7 +297,7 @@ func (fc *fileCollector) cleanupCheckpoints() {
 		"an example of such file: %q", len(unusedCheckpoints), unusedCheckpoints[0].Path)
 }
 
-func (fc *fileCollector) getUnusedCheckpoints() []checkpoint {
+func (fc *Tailer) getUnusedCheckpoints() []checkpoint {
 	cps := fc.checkpointsDB.getAll()
 
 	fc.logFilesLock.Lock()
@@ -314,7 +313,15 @@ func (fc *fileCollector) getUnusedCheckpoints() []checkpoint {
 	return unused
 }
 
-func (fc *fileCollector) stop() {
+func (fc *Tailer) IsTailing(filepath string) bool {
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
+	_, ok := fc.logFiles[filepath]
+	return ok
+}
+
+func (fc *Tailer) Stop() {
 	close(fc.stopCh)
 	fc.wg.Wait()
 	fc.checkpointsDB.stop()
@@ -335,12 +342,12 @@ func openFileWithInode(p string) (*os.File, uint64, bool) {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, 0, false
 		}
-		logger.Panicf("FATAL: cannot open file %q: %s", p, err)
+		logger.Panicf("FATAL: cannot open file: %s", err)
 	}
 
 	fi, err := f.Stat()
 	if err != nil {
-		logger.Panicf("FATAL: cannot stat file %q: %s", p, err)
+		logger.Panicf("FATAL: cannot stat file: %s", err)
 	}
 	inode := getInode(fi)
 

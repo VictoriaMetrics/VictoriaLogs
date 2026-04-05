@@ -47,7 +47,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	if cp.TenantID.AccountID != 0 || cp.TenantID.ProjectID != 0 {
 		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting tenantID via AccountID and ProjectID request headers; "+
-			"ignoring it; tenantID=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.TenantID)
+			"ignoring it; tenantID=%q", cp.TenantID)
 		cp.TenantID = logstorage.TenantID{}
 	}
 

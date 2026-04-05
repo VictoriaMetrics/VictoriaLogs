@@ -47,6 +47,66 @@ func TestVlclusterIngestAndQuery(t *testing.T) {
 		`{"logs":"5"}`,
 	})
 
+	// Verify stats pipe with switch
+	f("* | stats count() total, count() switch(case (aa) x, case (gh) y, case (aaa) yy, default z), count() if (abc) q", []string{
+		`{"total":"5","x":"2","y":"1","yy":"0","z":"2","q":"1"}`,
+	})
+
+	// Verify in(items)
+	f("x:in(y,aaa) | count() as logs", []string{
+		`{"logs":"4"}`,
+	})
+
+	// Verify in(subquery) in filters
+	f("x:in(def | keep x) | count() as logs", []string{
+		`{"logs":"4"}`,
+	})
+	f("x:in(aa | keep x) x:-=y | count() as logs", []string{
+		`{"logs":"1"}`,
+	})
+
+	// Verify in(items) in if() filters
+	f("* | format if (x:in(x,z)) 'foo <_msg>' | filter ~'^foo .+' | keep _msg", []string{
+		`{"_msg":"foo aa"}`,
+	})
+
+	// Verify in(subquery) in if() filters
+	f("* | format if (x:in(aa | keep x) -x:=y) 'foo <_msg>' | filter ~'^foo .+' | keep _msg", []string{
+		`{"_msg":"foo aa"}`,
+	})
+
+	// Verify join rows()
+	f("* | join by (x) rows({x=z,q=a}) | filter q:* | keep _msg, q", []string{
+		`{"_msg":"aa","q":"a"}`,
+	})
+
+	// Verify join(subquery)
+	f("* | join by (x) (x:z) inner prefix abc | keep _msg, abc_msg", []string{
+		`{"_msg":"aa","abc_msg":"aa"}`,
+	})
+
+	// Verify union rows()
+	f("x:z | keep _msg | union rows({qwe=rty})", []string{
+		`{"_msg":"aa"}`,
+		`{"qwe":"rty"}`,
+	})
+
+	// Verify union(subquery)
+	f("x:z | keep _msg | union (gh | keep x)", []string{
+		`{"_msg":"aa"}`,
+		`{"x":"y"}`,
+	})
+
+	// Verify union(rows) inside filters
+	f("x:in(foo:bar | union rows({x=z}) | keep x) | x:z | keep _msg", []string{
+		`{"_msg":"aa"}`,
+	})
+
+	// Verify union(subquery) inside filters
+	f("x:in(foo:bar | union (aa) | keep x) | x:z | keep _msg", []string{
+		`{"_msg":"aa"}`,
+	})
+
 	// Verify facets pipe.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/940
 	f("* | facets | filter field_name:=x", []string{

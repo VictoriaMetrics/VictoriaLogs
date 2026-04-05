@@ -67,8 +67,7 @@ func (tc *TestCase) addApp(instance string, app Stopper) {
 	tc.startedApps[instance] = app
 }
 
-// StopApp stops the app identified by the `instance` name and removes it from
-// the collection of started apps.
+// StopApp stops the app identified by the `instance` name and removes it from the collection of started apps.
 func (tc *TestCase) StopApp(instance string) {
 	if app, exists := tc.startedApps[instance]; exists {
 		app.Stop()

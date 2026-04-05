@@ -124,7 +124,7 @@ func (lr *LineReader) readMoreData() bool {
 	return n > 0
 }
 
-var tooLongLinesSkipped = metrics.NewCounter("vl_too_long_lines_skipped_total")
+var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")
 
 func (lr *LineReader) skipUntilNextLine() (bool, int) {
 

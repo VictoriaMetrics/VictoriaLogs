@@ -166,8 +166,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 			logger.Panicf("BUG: expecting 3 columns; got %d columns", len(columns))
 		}
 
-		// Fetch columns by name to avoid relying on column ordering at VictoriaLogs cluster.
-		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/648
 		fieldNames := columns[0].Values
 		fieldValues := columns[1].Values
 		hits := columns[2].Values
@@ -686,6 +684,10 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	refreshInterval, err := parseDuration(r, "refresh_interval", "1s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	if refreshInterval <= 0 {
+		httpserver.Errorf(w, r, "'refresh_interval' must be bigger than zero")
 		return
 	}
 

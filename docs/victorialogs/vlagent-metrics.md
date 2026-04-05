@@ -20,6 +20,79 @@ aliases:
 This document provides a comprehensive reference for all metrics exposed by `vlagent` at the `http://localhost:9429/metrics` endpoint.
 These metrics follow the Prometheus exposition format and can be used for monitoring, alerting, and performance analysis of log collection and remote write operations.
 
+## Table of Contents
+
+- [HTTP Request Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#http-request-metrics)
+- [Data Ingestion Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#data-ingestion-metrics)
+- [Error and Network Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#error-and-network-metrics)
+
+## HTTP Request Metrics
+
+### vl_http_requests_total
+**Type:** Counter
+
+**Labels:**
+- `path`: `/select/logsql/query`, `/insert/jsonline`, `/insert/loki/api/v1/push`, etc.
+- `format`: `json`, `protobuf`
+
+**Description:** HTTP requests arriving at VictoriaLogs endpoints. Counts all requests immediately when received, before any validation or authentication happens.
+
+### vl_http_errors_total
+**Type:** Counter
+
+**Labels:**
+- `path`: endpoint path
+- `format`: request format when applicable (e.g. `protobuf`)
+
+**Description:** Errors encountered while processing requests for the given endpoint. The counter is incremented by endpoint handlers on non-trivial processing errors (e.g. request decoding/parsing failures or query execution errors) and may differ from the number of HTTP responses with error status. For line-oriented ingestion (e.g. `/insert/jsonline`), it is incremented per invalid log line inside a request.
+
+### vl_http_request_duration_seconds
+**Type:** Summary
+
+**Labels:**
+- `path`: endpoint path
+
+**Description:** Complete time spent processing each HTTP request from start to finish. Includes all processing steps: parsing request data, validating parameters, storing logs, and sending responses. Captured when requests complete successfully.
+
+## Data Ingestion Metrics
+
+### vl_rows_ingested_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`
+
+**Description:** Log entries successfully parsed and added to the processing pipeline. Counts all entries that pass initial validation, including debug entries that are processed but not stored when `debug=1` is used.
+
+### vl_bytes_ingested_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`
+
+**Description:** Estimated JSON size of ingested log entry fields. Calculated using field name lengths and values to provide consistent volume measurement across different input formats like JSON, Loki, or syslog.
+
+### vl_rows_dropped_total
+**Type:** Counter
+
+**Labels:**
+- `reason`: `debug`, `too_many_fields`, `too_big_timestamp`, `too_small_timestamp`, `invalid_cri_line`
+
+**Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod`. `too_big_timestamp` counts entries newer than `-futureRetention`. `invalid_cri_line` counts entries that fail to parse as CRI-compatible log lines in the [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs) mode.
+
+### vl_insert_flush_duration_seconds
+**Type:** Summary
+
+**Labels:**
+- `type`: ingestion protocol
+
+**Description:** Time taken to flush accumulated logs from memory buffers to storage. Triggered when buffers fill up or during periodic flushes (every ~1 second with jitter). High values suggest storage bottlenecks or slow disk performance.
+
+### vl_too_long_lines_skipped_total
+**Type:** Counter
+
+**Description:** Log lines exceeding `-insert.maxLineSizeBytes` (default 256KB) during parsing. Lines are skipped to prevent memory exhaustion. Indicates malformed data, overly verbose logs, or need to increase the size limit.
+
 ## Remote Write Metrics
 
 ### vlagent_remotewrite_block_size_bytes
@@ -147,6 +220,32 @@ These metrics follow the Prometheus exposition format and can be used for monito
 - `url`: remote storage URL
 
 **Description:** Number of parallel transmission workers configured via `-remoteWrite.queues` flag. Higher values provide more concurrent transmission capacity but consume additional memory and connection resources.
+
+## Error and Network Metrics
+
+### vl_errors_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `syslog`
+
+**Description:** Syslog parsing errors encountered during log line processing. Individual syslog messages that fail to parse due to malformed timestamps, invalid priorities, or other RFC3164/RFC5424 format violations. Syslog data quality monitoring.
+
+### vl_udp_requests_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `syslog`
+
+**Description:** UDP packets received at syslog endpoints configured via `-syslog.listenAddr.udp`. Total network traffic volume to syslog UDP listeners regardless of content validity.
+
+### vl_udp_errors_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `syslog`
+
+**Description:** UDP network errors at syslog endpoints including temporary network failures, connection resets, and socket read failures. Excludes parsing errors which are tracked separately. UDP network connectivity issues.
 
 ## Grafana Dashboards
 
