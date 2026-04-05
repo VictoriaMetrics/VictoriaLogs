@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -107,6 +108,129 @@ func TestStorageMustAddRows(t *testing.T) {
 	}
 	s.MustClose()
 
+	fs.MustRemoveDir(path)
+}
+
+func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention:       365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+
+	addRow := func(stream, marker, msg string) {
+		t.Helper()
+
+		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "stream",
+				Value: stream,
+			},
+			{
+				Name:  "marker",
+				Value: marker,
+			},
+			{
+				Name:  "_msg",
+				Value: msg,
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+
+	check := func(qStr string, rowsExpected int) {
+		t.Helper()
+		checkQueryResults(t, s, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+	}
+
+	addRow("same_stream", "before_detach", "before detach")
+	s.DebugFlush()
+	check(`marker:=before_detach | stats count(*) as rows`, 1)
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	fs.MustRemoveDir(filepath.Join(path, partitionsDirname, partitionName))
+
+	addRow("same_stream", "after_detach", "after detach")
+	s.DebugFlush()
+
+	check(`marker:=after_detach | stats count(*) as rows`, 1)
+	check(`* | stats count(*) as rows`, 1)
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
+func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention:       365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+
+	addRow := func(stream, marker, msg string) {
+		t.Helper()
+
+		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "stream",
+				Value: stream,
+			},
+			{
+				Name:  "marker",
+				Value: marker,
+			},
+			{
+				Name:  "_msg",
+				Value: msg,
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+
+	check := func(qStr string, rowsExpected int) {
+		t.Helper()
+		checkQueryResults(t, s, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+	}
+
+	addRow("same_stream", "before_detach", "before detach")
+	s.DebugFlush()
+
+	// Populate filterStreamCache with an empty result for new_stream at the old partition.
+	check(`{stream="new_stream"} | stats count(*) as rows`, 0)
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	fs.MustRemoveDir(filepath.Join(path, partitionsDirname, partitionName))
+
+	addRow("new_stream", "after_detach", "after detach")
+	s.DebugFlush()
+
+	check(`{stream="new_stream"} | stats count(*) as rows`, 1)
+
+	s.MustClose()
 	fs.MustRemoveDir(path)
 }
 

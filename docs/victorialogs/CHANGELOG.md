@@ -23,6 +23,7 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [/select/logsql/hits](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): fix `invalid memory address or nil pointer dereference` panic when the `query` passed to `/select/logsql/hits` contains [`union rows(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs). The panic has been introduced in [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).
+* BUGFIX: [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle): fix querying logs after detaching, removing and then re-creating the same per-day partition before VictoriaLogs restart. Previously newly ingested logs could be missing from normal queries and from `_stream:{...}` filters until restart. See [#657](https://github.com/VictoriaMetrics/VictoriaLogs/issues/657).
 
 ## [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0)
 

@@ -202,6 +202,11 @@ type Storage struct {
 	// It reduces the load on persistent storage during querying by _stream:{...} filter.
 	filterStreamCache *cache
 
+	// partitionCacheGeneration is incremented on partition attach and detach.
+	//
+	// It is used for invalidating partition-related caches after partition lifecycle changes.
+	partitionCacheGeneration atomic.Uint64
+
 	// deleteTasksLock protects deleteTasks
 	deleteTasksLock sync.Mutex
 
@@ -246,6 +251,7 @@ func (s *Storage) PartitionAttach(name string) error {
 
 	s.partitions = append(s.partitions, ptw)
 	sortPartitions(s.partitions)
+	s.partitionCacheGeneration.Add(1)
 
 	logger.Infof("successfully attached partition %q from %q", name, partitionPath)
 
@@ -286,6 +292,10 @@ func (s *Storage) PartitionDetach(name string) error {
 
 	logger.Infof("waiting until the partition %q isn't accessed", name)
 	<-ptw.doneCh
+
+	// Invalidate partition-related caches after partition detach.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/657
+	s.partitionCacheGeneration.Add(1)
 
 	logger.Infof("successfully detached partition %q from %q", name, partitionPath)
 
