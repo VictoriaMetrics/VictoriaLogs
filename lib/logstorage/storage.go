@@ -673,13 +673,12 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	fs.MustSyncPath(path)
 
 	des := fs.MustReadDir(partitionsPath)
-	ptws := make([]*partitionWrapper, len(des))
+	partitionNames := make([]string, 0, len(des))
+	for _, de := range des {
+		if !de.IsDir() {
+			continue
+		}
 
-	// Open partitions in parallel. This should improve VictoriaLogs initialization duration
-	// when it opens many partitions.
-	var wg sync.WaitGroup
-	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
-	for idx, de := range des {
 		fname := de.Name()
 
 		partitionDir := filepath.Join(partitionsPath, fname)
@@ -689,6 +688,16 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			continue
 		}
 
+		partitionNames = append(partitionNames, fname)
+	}
+
+	ptws := make([]*partitionWrapper, len(partitionNames))
+
+	// Open partitions in parallel. This should improve VictoriaLogs initialization duration
+	// when it opens many partitions.
+	var wg sync.WaitGroup
+	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
+	for idx, fname := range partitionNames {
 		concurrencyLimiterCh <- struct{}{}
 		wg.Go(func() {
 			day, err := getPartitionDayFromName(fname)
