@@ -28,6 +28,7 @@ var (
 // Init initializes vlinsert
 func Init() {
 	syslog.MustInit()
+	journald.MustInit()
 }
 
 // Stop stops vlinsert

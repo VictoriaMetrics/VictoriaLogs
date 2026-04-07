@@ -43,16 +43,25 @@ var (
 	journaldUseRemoteIP          = flag.Bool("journald.useRemoteIP", false, "Whether to add the remote IP address as the remote_ip log field for ingested journald messages.")
 )
 
+var tenantID logstorage.TenantID
+
+// MustInit initializes journald parser
+//
+// This function must be called after flag.Parse().
+func MustInit() {
+	t, err := logstorage.ParseTenantID(*journaldTenantID)
+	if err != nil {
+		logger.Panicf("cannot parse -journald.tenantID=%q for journald: %s", *journaldTenantID, err)
+	}
+	tenantID = t
+}
+
 func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
 		return nil, err
 	}
 	if cp.TenantID.AccountID == 0 && cp.TenantID.ProjectID == 0 {
-		tenantID, err := logstorage.ParseTenantID(*journaldTenantID)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse -journald.tenantID=%q for journald: %w", *journaldTenantID, err)
-		}
 		cp.TenantID = tenantID
 	}
 
