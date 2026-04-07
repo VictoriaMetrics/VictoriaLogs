@@ -6,6 +6,7 @@ The folder contains examples of [FluentBit](https://docs.fluentbit.io/manual) in
 * [loki](./loki)
 * [jsonline single node](./jsonline)
 * [otlp](./otlp)
+* [splunk](./splunk)
 
 ## Quick start
 
@@ -37,5 +38,6 @@ FluentBit configuration example can be found below:
 * [loki](./loki/fluent-bit.conf)
 * [jsonline single node](./jsonline/fluent-bit.conf)
 * [otlp](./otlp/fluent-bit.conf)
+* [splunk](./splunk/fluent-bit.conf)
 
 > Please, note that `_stream_fields` parameter must follow recommended [best practices](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) to achieve better performance.

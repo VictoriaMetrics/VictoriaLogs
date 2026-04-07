@@ -105,7 +105,7 @@ func (pu *pipeUnpackJSON) newPipeProcessor(_ int, _ <-chan struct{}, _ func(), p
 			return
 		}
 		p := GetJSONParser()
-		err := p.parseLogMessage(bytesutil.ToUnsafeBytes(s), pu.preserveKeys, "", math.MaxInt)
+		err := p.parseLogMessage(bytesutil.ToUnsafeBytes(s), pu.preserveKeys, math.MaxInt, "")
 		if err != nil {
 			for _, filter := range pu.fieldFilters {
 				if !prefixfilter.IsWildcardFilter(filter) {

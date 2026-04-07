@@ -177,7 +177,7 @@ func TestJSONParserTooLongFieldName(t *testing.T) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.parseLogMessage([]byte(data), nil, "", maxFieldLen)
+		err := p.parseLogMessage([]byte(data), nil, maxFieldLen, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
