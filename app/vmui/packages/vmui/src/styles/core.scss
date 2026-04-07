@@ -92,9 +92,9 @@ input[type=number]::-webkit-outer-spin-button {
       font-weight: 600;
       padding-bottom: calc($padding-small/2);
       margin-bottom: calc($padding-small/2);
-      border-width: 1px;
-      border-style: solid;
-      border-color: inherit;
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      border-bottom-color: inherit;
     }
 
     &__msg {
