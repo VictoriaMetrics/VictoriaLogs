@@ -32,10 +32,10 @@ var parserPool fastjson.ParserPool
 // RequestHandler processes Datadog insert requests
 func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 	switch path {
-	case "/insert/datadog/api/v1/validate":
+	case "/api/v1/validate", "/insert/datadog/api/v1/validate":
 		fmt.Fprintf(w, `{}`)
 		return true
-	case "/insert/datadog/api/v2/logs":
+	case "/api/v2/logs", "/insert/datadog/api/v2/logs":
 		return datadogLogsIngestion(w, r)
 	default:
 		return false
