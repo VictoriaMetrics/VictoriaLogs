@@ -23,6 +23,7 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [/select/logsql/hits](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): fix `invalid memory address or nil pointer dereference` panic when the `query` passed to `/select/logsql/hits` contains [`union rows(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs). The panic has been introduced in [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).
+* BUGFIX: [/select/logsql/hits](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): fix panic when the internal `stats` pipe generated for this endpoint uses `hits` both as a grouping field and as the result name. See [#1278](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1278).
 
 ## [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0)
 

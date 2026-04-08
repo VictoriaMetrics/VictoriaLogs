@@ -4332,6 +4332,7 @@ func TestQuery_AddCountByTimePipe(t *testing.T) {
 	f("*", nsecsPerMinute, 0, nil, "* | stats by (_time:1m) count(*) as hits | sort by (_time)")
 	f("*", nsecsPerMinute, 2*nsecsPerHour, nil, "* | stats by (_time:1m offset 2h) count(*) as hits | sort by (_time)")
 	f("foo bar:baz", nsecsPerMinute, -2*nsecsPerHour, nil, "foo bar:baz | stats by (_time:1m offset -2h) count(*) as hits | sort by (_time)")
+	f("*", nsecsPerMinute, 0, []string{"hits"}, "* | stats by (_time:1m, hits) count(*) as hitss | sort by (_time, hits)")
 
 	// pipes, which do not change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer'", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)
