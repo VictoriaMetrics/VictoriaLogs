@@ -32,7 +32,7 @@ var (
 	timeField = flagutil.NewArrayString("kubernetesCollector.timeField", "Fields that may contain the _time field. "+
 		"Default: time,timestamp,ts. If none of the specified fields is found in the log line, then the write time will be used. "+
 		"See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field")
-	extraFields = flag.String("kubernetesCollector.extraFields", "", "Extra fields to add to each log line collected from Kubernetes pods in JSON format. "+
+	extraFields = flag.String("kubernetesCollector.extraFields", "", "Extra fields in JSON format to add to each log line collected from Kubernetes Pods. "+
 		`For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'`)
 	streamFields = flagutil.NewArrayString("kubernetesCollector.streamFields", "Comma-separated list of fields to use as log stream fields for logs ingested from Kubernetes Pods. "+
 		"Default: kubernetes.container_name,kubernetes.pod_name,kubernetes.pod_namespace. "+
