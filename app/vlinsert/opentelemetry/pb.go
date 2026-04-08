@@ -259,8 +259,6 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 	var (
 		timeUnixNano         uint64
 		observedTimeUnixNano uint64
-		severityText         string
-		severityNumber       int32
 		eventName            string
 	)
 
@@ -284,15 +282,18 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 				return "", 0, fmt.Errorf("cannot read log record observed timestamp")
 			}
 		case 2:
-			severityNumber, ok = fc.Int32()
+			severityNumber, ok := fc.Int32()
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read severity number")
 			}
+			severityNumberStr := fb.formatInt(int64(severityNumber))
+			fs.Add("severity_number", severityNumberStr)
 		case 3:
-			severityText, ok = fc.String()
+			severityText, ok := fc.String()
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read severity string")
 			}
+			fs.Add("severity_text", severityText)
 		case 5:
 			body, ok := fc.MessageData()
 			if !ok {
@@ -330,11 +331,6 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			}
 		}
 	}
-
-	if severityText == "" {
-		severityText = formatSeverity(severityNumber)
-	}
-	fs.Add("severity", severityText)
 
 	var timestamp int64
 	switch {
@@ -491,40 +487,4 @@ func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldN
 		}
 	}
 	return nil
-}
-
-func formatSeverity(severity int32) string {
-	if severity < 0 || severity >= int32(len(logSeverities)) {
-		return logSeverities[0]
-	}
-	return logSeverities[severity]
-}
-
-// See https://github.com/open-telemetry/opentelemetry-collector/blob/a0cbea73c189551d751d09659e306f48f594fd62/pdata/plog/severity_number.go#L41
-var logSeverities = []string{
-	"Unspecified",
-	"Trace",
-	"Trace2",
-	"Trace3",
-	"Trace4",
-	"Debug",
-	"Debug2",
-	"Debug3",
-	"Debug4",
-	"Info",
-	"Info2",
-	"Info3",
-	"Info4",
-	"Warn",
-	"Warn2",
-	"Warn3",
-	"Warn4",
-	"Error",
-	"Error2",
-	"Error3",
-	"Error4",
-	"Fatal",
-	"Fatal2",
-	"Fatal3",
-	"Fatal4",
 }

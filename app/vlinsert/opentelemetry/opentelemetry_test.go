@@ -51,7 +51,7 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected := []int64{1234}
-	resultsExpected := `{"_msg":"log-line-message","severity":"Trace"}`
+	resultsExpected := `{"severity_number":"1","_msg":"log-line-message"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// single line with scope attributes
@@ -75,7 +75,7 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"scope.name":"foo","scope.version":"v1.234.5","scope.attributes.abc":"de","scope.attributes.x":"aaa","_msg":"log-line-message","severity":"Trace"}`
+	resultsExpected = `{"scope.name":"foo","scope.version":"v1.234.5","scope.attributes.abc":"de","scope.attributes.x":"aaa","severity_number":"1","_msg":"log-line-message"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// severities mapping
@@ -89,9 +89,9 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234, 1235, 1236}
-	resultsExpected = `{"_msg":"log-line-message","severity":"Trace"}
-{"_msg":"log-line-message","severity":"Warn"}
-{"_msg":"log-line-message","severity":"Fatal4"}`
+	resultsExpected = `{"severity_number":"1","_msg":"log-line-message"}
+{"severity_number":"13","_msg":"log-line-message"}
+{"severity_number":"24","_msg":"log-line-message"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// multi-line with resource attributes
@@ -123,10 +123,10 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234, 1235, 1236, 1237}
-	resultsExpected = `{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","_msg":"833","severity":"Trace"}
-{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","_msg":"log-line-message-msg-2","severity":"Unspecified"}
-{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","_msg":"log-line-message-msg-3","severity":"Unspecified"}
-{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","event_name":"abc","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","_msg":"10","severity":"Unspecified"}`
+	resultsExpected = `{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","severity_number":"1","_msg":"833"}
+{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","severity_number":"25","_msg":"log-line-message-msg-2"}
+{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","severity_number":"-1","_msg":"log-line-message-msg-3"}
+{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","event_name":"abc","scope.name":"foo","scope.version":"unknown","scope.attributes.x":"aaa","severity_number":"0","_msg":"10"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// multi-scope with resource attributes and multi-line
@@ -170,14 +170,14 @@ func TestPushProtobufRequest(t *testing.T) {
 		]
 	}]`
 	timestampsExpected = []int64{1234, 1235, 2345, 2346, 2347, 2348, 3333, 432}
-	resultsExpected = `{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"unknown","scope.version":"unknown","scope.attributes.abc":"de","_msg":"log-line-message","severity":"Trace"}
-{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"unknown","scope.version":"unknown","scope.attributes.abc":"de","_msg":"log-line-message-msg-2","severity":"Debug"}
-{"_msg":"log-line-resource-scope-1-0-0","severity":"Info2"}
-{"_msg":"log-line-resource-scope-1-0-1","severity":"Info2"}
-{"_msg":"log-line-resource-scope-1-1-0","severity":"Info4"}
-{"_msg":"log-line-resource-scope-1-1-1","trace_id":"1234","span_id":"45","severity":"Info4"}
-{"_msg":"log-line-resource-scope-1-1-2","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","severity":"Unspecified"}
-{"event_name":"foobar","_msg":"abcd","severity":"Unspecified"}`
+	resultsExpected = `{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"unknown","scope.version":"unknown","scope.attributes.abc":"de","severity_number":"1","_msg":"log-line-message"}
+{"logger":"context","instance_id":"10","node_taints.role":"dev","node_taints.cluster_load_percent":"0.55","scope.name":"unknown","scope.version":"unknown","scope.attributes.abc":"de","severity_number":"5","_msg":"log-line-message-msg-2"}
+{"severity_number":"10","_msg":"log-line-resource-scope-1-0-0"}
+{"severity_number":"10","_msg":"log-line-resource-scope-1-0-1"}
+{"severity_number":"12","_msg":"log-line-resource-scope-1-1-0"}
+{"severity_number":"12","_msg":"log-line-resource-scope-1-1-1","trace_id":"1234","span_id":"45"}
+{"severity_number":"0","_msg":"log-line-resource-scope-1-1-2","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7"}
+{"event_name":"foobar","severity_number":"0","_msg":"abcd"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// nested fields
@@ -254,15 +254,15 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"nested fields","error.type":"document_parsing_exception","error.reason":"failed to parse field [_msg] of type [text]",` +
+	resultsExpected = `{"severity_number":"0","_msg":"nested fields","error.type":"document_parsing_exception","error.reason":"failed to parse field [_msg] of type [text]",` +
 		`"error.caused_by.type":"x_content_parse_exception","error.caused_by.reason":"unexpected end-of-input in VALUE_STRING",` +
-		`"error.caused_by.caused_by.type":"json_e_o_f_exception","error.caused_by.caused_by.reason":"eof","severity":"Unspecified"}`
+		`"error.caused_by.caused_by.type":"json_e_o_f_exception","error.caused_by.caused_by.reason":"eof"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode BytesValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"bytesValue":"Zm9vIGJhcg=="}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"Zm9vIGJhcg==","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"Zm9vIGJhcg=="}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode KeyValueList
@@ -289,19 +289,19 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"foo":"bar","bar":"buz","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","foo":"bar","bar":"buz"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode BoolValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"boolValue":true}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"true","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"true"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode StringValue of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"stringValue":"foo bar"}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[\"foo bar\"]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[\"foo bar\"]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode ArrayValue of ArrayValue
@@ -336,43 +336,43 @@ func TestPushProtobufRequest(t *testing.T) {
 		}]
 	}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[[\"foo\"],[\"bar\"],[\"buz\"]]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[[\"foo\"],[\"bar\"],[\"buz\"]]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode BoolValue of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"boolValue":true}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[true]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[true]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode IntValue of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"intValue":123}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[123]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[123]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode DoubleValue of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"doubleValue":123.45}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[123.45]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[123.45]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode KeyValueList of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"keyValueList":{"values":[{"key":"foo","value":{"stringValue":"bar"}}]}}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[{\"foo\":\"bar\"}]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[{\"foo\":\"bar\"}]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode bytes of ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[{"bytesValue":"Zm9vIGJhcg=="}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[\"Zm9vIGJhcg==\"]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[\"Zm9vIGJhcg==\"]"}`
 	f(data, timestampsExpected, resultsExpected)
 
 	// decode null in ArrayValue
 	data = `[{"scopeLogs":[{"logRecords":[{"timeUnixNano":1234,"body":{"arrayValue":{"values":[null,{}]}}}]}]}]`
 	timestampsExpected = []int64{1234}
-	resultsExpected = `{"_msg":"[null,null]","severity":"Unspecified"}`
+	resultsExpected = `{"severity_number":"0","_msg":"[null,null]"}`
 	f(data, timestampsExpected, resultsExpected)
 }
 
