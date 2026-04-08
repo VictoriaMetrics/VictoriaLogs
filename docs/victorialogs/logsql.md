@@ -1933,7 +1933,7 @@ See also:
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
 
 ### coalesce pipe
-`<q> | coalesce(<field1>, ..., <fieldN>) as result_field [default "value"]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) {{% available_from "#" %}}
+`<q> | coalesce(<field1>, ..., <fieldN>) [default "value"] as result_field` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) {{% available_from "#" %}}
 returns the first non-empty value from the specified list of fields in order, writing the result as `result_field`. 
 If all source fields are empty, the optional `default` value is used instead.
 
