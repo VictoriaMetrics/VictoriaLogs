@@ -25,10 +25,10 @@ func (pc *pipeCoalesce) String() string {
 	}
 
 	s := "coalesce(" + strings.Join(pc.srcFields, ", ") + ")"
-	s += " as " + quoteTokenIfNeeded(pc.dstField)
 	if pc.defaultValue != "" {
 		s += " default " + quoteTokenIfNeeded(pc.defaultValue)
 	}
+	s += " as " + quoteTokenIfNeeded(pc.dstField)
 	return s
 }
 
@@ -44,6 +44,10 @@ func (pc *pipeCoalesce) canReturnLastNResults() bool {
 	return pc.dstField != "_time"
 }
 
+func (pc *pipeCoalesce) isFixedOutputFieldsOrder() bool {
+	return false
+}
+
 func (pc *pipeCoalesce) updateNeededFields(pf *prefixfilter.Filter) {
 	if pf.MatchString(pc.dstField) {
 		pf.AddAllowFilters(pc.srcFields)
@@ -56,7 +60,7 @@ func (pc *pipeCoalesce) hasFilterInWithQuery() bool {
 	return false
 }
 
-func (pc *pipeCoalesce) initFilterInValues(_ *inValuesCache, _ getFieldValuesFunc, _ bool) (pipe, error) {
+func (pc *pipeCoalesce) initFilterInValues(_ *inValuesCache, _ getFieldValuesFunc) (pipe, error) {
 	return pc, nil
 }
 
@@ -126,7 +130,7 @@ func (pcp *pipeCoalesceProcessor) flush() error {
 	return nil
 }
 
-// parsePipeCoalesce parses '| coalesce(field1, field2, field3) as result_field default "default value"'
+// parsePipeCoalesce parses '| coalesce(field1, field2, field3) default "default value" as result_field'
 func parsePipeCoalesce(lex *lexer) (pipe, error) {
 	if !lex.isKeyword("coalesce") {
 		return nil, fmt.Errorf("expecting 'coalesce'; got %q", lex.token)
@@ -169,6 +173,17 @@ func parsePipeCoalesce(lex *lexer) (pipe, error) {
 		return nil, fmt.Errorf("coalesce requires at least one field name")
 	}
 
+	// Parse optional 'default' keyword and value
+	var defaultValue string
+	if lex.isKeyword("default") {
+		lex.nextToken() // Skip the "default" keyword
+		value, err := lex.nextCompoundToken()
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse default value: %w", err)
+		}
+		defaultValue = value
+	}
+
 	// Parse 'as' keyword
 	if !lex.isKeyword("as") {
 		return nil, fmt.Errorf("expecting 'as' after coalesce(...); got %q", lex.token)
@@ -181,21 +196,11 @@ func parsePipeCoalesce(lex *lexer) (pipe, error) {
 		return nil, fmt.Errorf("cannot parse result field name: %w", err)
 	}
 
-	// Parse optional 'default' keyword and value
-	var defaultValue string
-	if lex.isKeyword("default") {
-		lex.nextToken() // Skip the "default" keyword
-		value, err := lex.nextCompoundToken()
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse default value: %w", err)
-		}
-		defaultValue = value
-	}
-
 	pc := &pipeCoalesce{
 		srcFields:    srcFields,
 		dstField:     dstField,
 		defaultValue: defaultValue,
 	}
+
 	return pc, nil
 }

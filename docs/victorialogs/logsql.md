@@ -1940,7 +1940,7 @@ If all source fields are empty, the optional `default` value is used instead.
 This is useful for handling fields that may exist under different names or for providing fallback values when data is missing.
 
 ```
-_time:5m | coalesce (user_id, username, email) as user default "anonymous"
+_time:5m | coalesce (user_id, username, email) default "anonymous" as user
 ```
 
 This checks `user_id` first, then `username`, then `email`, and uses "anonymous" if all three are empty.

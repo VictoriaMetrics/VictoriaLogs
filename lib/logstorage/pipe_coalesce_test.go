@@ -13,9 +13,9 @@ func TestParsePipeCoalesceSuccess(t *testing.T) {
 	f(`coalesce(a) as b`)
 	f(`coalesce(foo, bar) as result`)
 	f(`coalesce(foo, bar, baz) as result`)
-	f(`coalesce(foo, bar) as result default " "`)
-	f(`coalesce(foo, bar) as result default foobar`)
-	f(`coalesce(foo, bar) as result default "coalesce"`)
+	f(`coalesce(foo, bar) default " " as result`)
+	f(`coalesce(foo, bar) default foobar as result`)
+	f(`coalesce(foo, bar) default "coalesce" as result`)
 }
 
 func TestParsePipeCoalesceFailure(t *testing.T) {
@@ -33,7 +33,7 @@ func TestParsePipeCoalesceFailure(t *testing.T) {
 	f(`coalesce(foo, bar) as`)
 	f(`coalesce(foo,,) as result`)
 	f(`coalesce(,foo) as result`)
-	f(`coalesce(foo) as result default count()`)
+	f(`coalesce(foo) default count() as result`)
 }
 
 func TestPipeCoalesce(t *testing.T) {
@@ -87,7 +87,7 @@ func TestPipeCoalesce(t *testing.T) {
 		},
 	})
 
-	f(`coalesce(a, b) as result default "default_value"`, [][]Field{
+	f(`coalesce(a, b) default "default_value" as result`, [][]Field{
 		{
 			{"_msg", `test`},
 			{"a", ``},
@@ -102,7 +102,7 @@ func TestPipeCoalesce(t *testing.T) {
 		},
 	})
 
-	f(`coalesce(x, y, z) as result default "unknown"`, [][]Field{
+	f(`coalesce(x, y, z) default "unknown" as result`, [][]Field{
 		{
 			{"_msg", `test`},
 			{"a", `value`},
@@ -159,7 +159,7 @@ func TestPipeCoalesce(t *testing.T) {
 		},
 	})
 
-	f(`coalesce(a, b) as result default ""`, [][]Field{
+	f(`coalesce(a, b) default "" as result`, [][]Field{
 		{
 			{"_msg", `test`},
 		},
