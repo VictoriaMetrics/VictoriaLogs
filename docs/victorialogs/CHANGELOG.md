@@ -23,6 +23,9 @@ according to the following docs:
 ## tip
 
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): add `VL-Partial-Response` HTTP response header to all query endpoints. The header indicates whether the response is partial due to unavailable vlstorage nodes in cluster setup. Possible values: `false` (full response), `true` (partial response - some backends unavailable), `unknown` (streaming mode where partial status cannot be determined upfront). See [#718](https://github.com/VictoriaMetrics/VictoriaLogs/issues/718).
+* SECURITY: upgrade Go builder from Go1.26.1 to Go1.26.2. See [the list of issues addressed in Go1.26.2](https://github.com/golang/go/issues?q=milestone%3AGo1.26.2%20label%3ACherryPickApproved).
+
+* BUGFIX: [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs): honor [`-defaultMsgValue`](https://docs.victoriametrics.com/victorialogs/vlagent/#common-flags) for logs without message fields. Previously `vlagent` stored the hard-coded `missing _msg field; ...` text instead of the configured value when logs were collected via `kubernetesCollector`. See [#1283](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1283).
 * BUGFIX: [/select/logsql/hits](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats): fix `invalid memory address or nil pointer dereference` panic when the `query` passed to `/select/logsql/hits` contains [`union rows(...)`](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs). The panic has been introduced in [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0).
 
 ## [v1.49.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.49.0)

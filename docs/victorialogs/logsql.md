@@ -78,6 +78,10 @@ which have [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#
 error AND _time:5m
 ```
 
+[Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) and
+[Grafana plugin](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) for VictoriaLogs automatically pass the selected time range to VictoriaLogs,
+so there is usually no need to specify the [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) explicitly.
+
 This query consists of two [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) joined with `AND` [operator](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter):
 
 - The filter on the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word).

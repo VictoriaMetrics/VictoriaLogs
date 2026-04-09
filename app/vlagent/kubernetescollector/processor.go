@@ -89,8 +89,7 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 
 	sfs := getStreamFields()
 	efs := getExtraFields()
-	const defaultMsgValue = "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field"
-	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, defaultMsgValue)
+	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, *insertutil.DefaultMsgValue)
 
 	return &logFileProcessor{
 		storage:             storage,
