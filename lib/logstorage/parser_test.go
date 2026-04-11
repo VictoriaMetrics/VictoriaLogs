@@ -77,9 +77,9 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	f("options(time_offset=1h) *", math.MinInt64, math.MaxInt64)
 
 	// relative time filter
-	f("_time:1h", -nsecsPerHour*1, 0)
-	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1)
-	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1)
+	f("_time:1h", -nsecsPerHour+1, 0)
+	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2+1, -nsecsPerHour)
+	f("options(time_offset=-1h) _time:1h", 1, nsecsPerHour)
 	f("options(time_offset=1h) _time:offset 1h", math.MinInt64, -nsecsPerHour*2)
 	f("options(time_offset=-1h) _time:offset 1h", math.MinInt64, 0)
 
@@ -123,10 +123,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3+1, -nsecsPerHour*2)
 	ff := q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2)
+		assertQueryRange(q, -nsecsPerHour*8+1, -nsecsPerHour*2)
 	})
 
 	// subquery has its own time_offset
@@ -134,10 +134,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3+1, -nsecsPerHour*2)
 	ff = q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1)
+		assertQueryRange(q, -nsecsPerHour*7+1, -nsecsPerHour)
 	})
 }
 
@@ -616,13 +616,13 @@ func TestParseTimeDuration(t *testing.T) {
 			t.Fatalf("unexpected duration; got %s; want %s", duration, durationExpected)
 		}
 	}
-	f("5m", 5*time.Minute)
-	f("5m offset 1h", 5*time.Minute)
-	f("5m offset -3.5h5m45s", 5*time.Minute)
-	f("-5.5m", 5*time.Minute+30*time.Second)
-	f("-5.5m offset 1d5m", 5*time.Minute+30*time.Second)
-	f("3d2h12m34s45ms", 3*24*time.Hour+2*time.Hour+12*time.Minute+34*time.Second+45*time.Millisecond)
-	f("3d2h12m34s45ms offset 10ms", 3*24*time.Hour+2*time.Hour+12*time.Minute+34*time.Second+45*time.Millisecond)
+	f("5m", 5*time.Minute-1)
+	f("5m offset 1h", 5*time.Minute-1)
+	f("5m offset -3.5h5m45s", 5*time.Minute-1)
+	f("-5.5m", 5*time.Minute+30*time.Second-1)
+	f("-5.5m offset 1d5m", 5*time.Minute+30*time.Second-1)
+	f("3d2h12m34s45ms", 3*24*time.Hour+2*time.Hour+12*time.Minute+34*time.Second+45*time.Millisecond-1)
+	f("3d2h12m34s45ms offset 10ms", 3*24*time.Hour+2*time.Hour+12*time.Minute+34*time.Second+45*time.Millisecond-1)
 }
 
 func TestParseTimeRange(t *testing.T) {

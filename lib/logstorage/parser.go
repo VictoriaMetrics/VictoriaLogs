@@ -3465,10 +3465,10 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
-	if prefix == "<" {
-		d--
-	}
 	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	if prefix == "<" {
+		minTimestamp++
+	}
 	stringRepr := prefix + s
 	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
 }
@@ -3502,7 +3502,7 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
-	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d) + 1
 	stringRepr := prefix + s
 	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
 }
