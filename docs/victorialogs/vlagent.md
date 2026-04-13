@@ -353,8 +353,8 @@ This is useful for collecting logs from applications that write to log files, su
 
 ### Quick start
 
-The following command starts `vlagent` to collect logs from a file
-and sends the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
+The following command starts `vlagent` to collect logs from the `/path/to/file` file
+and to send the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
 
 ```sh
 ./vlagent-prod \
@@ -371,7 +371,7 @@ By default, `vlagent` uses `hostname` and `file` as [`_stream`](https://docs.vic
 
 ### Glob pattern requirements
 
-The `-fileCollector.glob` flag must point to a file, not a directory:
+The `-fileCollector.glob` flag must point to a file or a collection of files with the given suffix (extension), not a directory:
 
 ```sh
 # correct
