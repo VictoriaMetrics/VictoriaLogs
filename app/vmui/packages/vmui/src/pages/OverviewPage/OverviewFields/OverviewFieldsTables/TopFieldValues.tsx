@@ -16,6 +16,7 @@ import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
 import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
+import { OrderDir } from "../../../../types";
 
 const MODE_CONFIG = {
   top: {
@@ -30,6 +31,11 @@ const MODE_CONFIG = {
 
 export type ValuesMode = keyof typeof MODE_CONFIG; // "top" | "bottom"
 const MODE_KEYS = Object.keys(MODE_CONFIG) as ValuesMode[]; // ["top","bottom"]
+
+const MODE_TO_SORT_DIR: Record<ValuesMode, OrderDir> = {
+  top: "desc",
+  bottom: "asc",
+};
 
 type Props = {
   scope: "field" | "stream";
@@ -168,6 +174,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
       title={<>Field values: <b>`{selectedKey}`</b></>}
       rows={rows}
       columns={isFieldScope ? fieldValuesCol : streamFieldValuesCol}
+      defaultOrder={{ key: "hits", dir: MODE_TO_SORT_DIR[mode] }}
       isLoading={isLoading}
       error={error}
       isEmptyList={isEmptyList}
