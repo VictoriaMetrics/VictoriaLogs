@@ -3468,9 +3468,11 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 	if prefix == "<" {
 		d--
 	}
+
 	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	maxTimestamp := SubInt64NoOverflow(lex.currentTimestamp, 1)
 	stringRepr := prefix + s
-	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
+	return newFilterTime(minTimestamp, maxTimestamp, stringRepr), nil
 }
 
 func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
@@ -3494,7 +3496,7 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 		return ft, nil
 	}
 
-	// Parse _time:duration, which transforms to '_time:(now-duration, now]'
+	// Parse _time:duration, which transforms to '_time:[lex.currentTimestamp-duration, lex.currentTimestamp)'
 	d, s, err := parseDuration(lex)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse duration at _time filter: %w", err)
@@ -3502,9 +3504,11 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
+
 	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	maxTimestamp := SubInt64NoOverflow(lex.currentTimestamp, 1)
 	stringRepr := prefix + s
-	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
+	return newFilterTime(minTimestamp, maxTimestamp, stringRepr), nil
 }
 
 func isLikelyTimestamp(lex *lexer) bool {

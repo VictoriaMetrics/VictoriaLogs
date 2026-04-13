@@ -1622,7 +1622,7 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 
 	check := func(qStr string, hiddenFieldsFilters, rowsExpected []string) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, qStr, hiddenFieldsFilters, rowsExpected)
+		checkQueryResults(t, s, now, tenantIDs, qStr, hiddenFieldsFilters, rowsExpected)
 	}
 
 	storeRowsForSearchHiddenFieldsFilters(s, tenantIDs, now)

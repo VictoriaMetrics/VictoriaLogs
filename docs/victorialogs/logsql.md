@@ -352,7 +352,8 @@ It uses various optimizations in order to accelerate queries without the `_time`
 but such queries can be slow if the storage contains large number of logs over long time range. The easiest way to optimize queries
 is to narrow down the search with a filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 
-For example, the following query returns logs with [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last hour, which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
+For example, the following query returns logs with [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last hour,
+which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
 ```logsql
@@ -361,12 +362,15 @@ _time:1h AND error
 
 The following formats are supported for `_time` filter:
 
-- `_time:duration` matches logs with timestamps on the time range `(now-duration, now]`, where `duration` can have [these values](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values). Examples:
+- `_time:duration` matches logs with timestamps on the time range `[now-duration, now)`, where `duration`
+  can have [these values](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values). Examples:
   - `_time:5m` - returns logs for the last 5 minutes
   - `_time:2.5d15m42.345s` - returns logs for the last 2.5 days, 15 minutes and 42.345 seconds
   - `_time:1y` - returns logs for the last year
-- `_time:>duration` - matches logs with timestamps older than `now-duration`.
-- `_time:<duration` - matches logs with timestamps newer than `now-duration`. It is equivalent to `_time:duration`.
+- `_time:>duration` - matches logs with timestamps on the time range `(oldest_timestamp, now-duration)`, where the `oldest_timestamp` is the oldest timestamp across the stored logs.
+- `_time:>=duration` - matches logs with timestamps on the time range `(oldest_timestamp, now-duration]`, where the `oldest_timestamp` is the oldest timestamp across the stored logs.
+- `_time:<duration` - matches logs with timestamps on the time range `(now-duration, now)`.
+- `_time:<=duration` - matches logs with timestamps on the time range `[now-duration, now)`.
 - `_time:YYYY-MM-DDZ` - matches all the logs for the particular day by UTC. For example, `_time:2023-04-25Z` matches logs on April 25, 2023 by UTC.
 - `_time:YYYY-MMZ` - matches all the logs for the particular month by UTC. For example, `_time:2023-02Z` matches logs on February, 2023 by UTC.
 - `_time:YYYYZ` - matches all the logs for the particular year by UTC. For example, `_time:2023Z` matches logs on 2023 by UTC.

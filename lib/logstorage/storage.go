@@ -436,7 +436,7 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 // The timestamp must contain the timestamp in seconds when the task is started.
 func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int64, tenantIDs []TenantID, f *Filter) error {
 	// Register the task in the list of active delete tasks, so it survives application restarts and crashes.
-	dt := newDeleteTask(taskID, tenantIDs, f.String(), timestamp)
+	dt := newDeleteTask(taskID, timestamp, tenantIDs, f.String())
 
 	s.deleteTasksLock.Lock()
 	defer s.deleteTasksLock.Unlock()
@@ -966,8 +966,9 @@ func (s *Storage) watchDeleteTasks() {
 func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	logger.Infof("started processing delete task %s", dt)
 	startTime := time.Now()
+	now := dt.StartTime.UnixNano()
 
-	f, err := ParseFilterAtTimestamp(dt.Filter, dt.StartTime.UnixNano())
+	f, err := ParseFilterAtTimestamp(dt.Filter, now)
 	if err != nil {
 		logger.Panicf("BUG: cannot parse filter from delete task: [%s]", dt.Filter)
 	}
@@ -977,11 +978,8 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 		timestamp: dt.StartTime.UnixNano(),
 	}
 
-	// Add time filter ending at the delete task start time.
-	// This avoids deleting logs from the future.
-	start := int64(math.MinInt64)
-	end := dt.StartTime.UnixNano()
-	q.AddTimeFilter(start, end)
+	// Add time filter ending at now in order to avoid deleting logs from the future.
+	q.AddTimeFilter(math.MinInt64, now)
 
 	var qs QueryStats
 	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false, nil)

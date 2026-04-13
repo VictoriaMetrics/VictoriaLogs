@@ -77,9 +77,9 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	f("options(time_offset=1h) *", math.MinInt64, math.MaxInt64)
 
 	// relative time filter
-	f("_time:1h", -nsecsPerHour*1, 0)
-	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1)
-	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1)
+	f("_time:1h", -nsecsPerHour*1, -1)
+	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1-1)
+	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1-1)
 	f("options(time_offset=1h) _time:offset 1h", math.MinInt64, -nsecsPerHour*2)
 	f("options(time_offset=-1h) _time:offset 1h", math.MinInt64, 0)
 
@@ -102,8 +102,8 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	f("_time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999)
 	f("options(time_offset=1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999-nsecsPerHour*1)
 	f("options(time_offset=-1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999+nsecsPerHour*1)
-	f("options(time_offset=1h) _time:<2h", -nsecsPerHour*3+1, -nsecsPerHour)
-	f("options(time_offset=1h) _time:<=2h", -nsecsPerHour*3, -nsecsPerHour)
+	f("options(time_offset=1h) _time:<2h", -nsecsPerHour*3+1, -nsecsPerHour-1)
+	f("options(time_offset=1h) _time:<=2h", -nsecsPerHour*3, -nsecsPerHour-1)
 }
 
 func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
@@ -123,10 +123,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2-1)
 	ff := q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2)
+		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2-1)
 	})
 
 	// subquery has its own time_offset
@@ -134,10 +134,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2-1)
 	ff = q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1)
+		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1-1)
 	})
 }
 
@@ -611,7 +611,7 @@ func TestParseTimeDuration(t *testing.T) {
 		if ft.stringRepr != s {
 			t.Fatalf("unexpected string representation for filterTime; got %q; want %q", ft.stringRepr, s)
 		}
-		duration := time.Duration(ft.maxTimestamp - ft.minTimestamp)
+		duration := time.Duration(ft.maxTimestamp - ft.minTimestamp + 1)
 		if duration != durationExpected {
 			t.Fatalf("unexpected duration; got %s; want %s", duration, durationExpected)
 		}
