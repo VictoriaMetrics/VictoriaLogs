@@ -89,8 +89,7 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 
 	sfs := getStreamFields()
 	efs := getExtraFields()
-	const defaultMsgValue = "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field"
-	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, defaultMsgValue)
+	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, *insertutil.DefaultMsgValue)
 
 	return &logFileProcessor{
 		storage:             storage,
@@ -273,7 +272,7 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 	switch data[0] {
 	case '{':
-		err := p.ParseLogMessage(data, nil)
+		err := p.ParseLogMessage(data, nil, "")
 		if err != nil {
 			return 0, false
 		}
@@ -614,7 +613,7 @@ func initExtraFields() {
 	}
 
 	p := logstorage.GetJSONParser()
-	if err := p.ParseLogMessage([]byte(*extraFields), nil); err != nil {
+	if err := p.ParseLogMessage([]byte(*extraFields), nil, ""); err != nil {
 		logger.Fatalf("cannot parse -kubernetesCollector.extraFields=%q: %s", *extraFields, err)
 	}
 

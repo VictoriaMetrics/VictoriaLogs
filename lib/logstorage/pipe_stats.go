@@ -127,14 +127,10 @@ func (sw *pipeStatsSwitch) getDefaultFilter() *ifFilter {
 	}
 
 	if len(filters) == 0 {
-		return newIfFilter(&filterNoop{})
+		return newIfFilter(newFilterNoop())
 	}
 
-	filter := &filterNot{
-		f: &filterOr{
-			filters: filters,
-		},
-	}
+	filter := newFilterNot(newFilterOr(filters))
 	return newIfFilter(filter)
 }
 

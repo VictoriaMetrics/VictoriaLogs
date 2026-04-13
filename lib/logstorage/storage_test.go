@@ -440,3 +440,66 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 
 	s.DebugFlush()
 }
+
+func TestStorageDropStalePartitions(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention: 30 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	expectPartitionsNumber := func(n int) {
+		t.Helper()
+
+		pws := s.getPartitions()
+		defer s.putPartitions(pws)
+
+		if len(pws) != n {
+			t.Fatalf("unexpected number of partitions; got %d; want %d", len(pws), n)
+		}
+	}
+
+	var tenantID TenantID
+	timestamp := time.Now().UnixNano() - 10*nsecsPerDay
+	timestamp -= timestamp % nsecsPerDay
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	for i := range 100 {
+		fields := []Field{
+			{
+				Name:  "_msg",
+				Value: fmt.Sprintf("message #%d", i),
+			},
+		}
+		timestamp += nsecsPerSecond
+		lr.mustAdd(tenantID, timestamp, fields)
+	}
+
+	s.dropStalePartitions()
+	expectPartitionsNumber(0)
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+	s.dropStalePartitions()
+	expectPartitionsNumber(1)
+	s.MustClose()
+
+	// Open the storage with the same retention and verify partitions still exsit
+	s = MustOpenStorage(path, cfg)
+	expectPartitionsNumber(1)
+	s.MustClose()
+
+	// Open the storage with smaller retention and drop stale partitions
+	cfg = &StorageConfig{
+		Retention: 24 * time.Hour,
+	}
+	s = MustOpenStorage(path, cfg)
+	s.dropStalePartitions()
+	expectPartitionsNumber(0)
+	s.MustClose()
+
+	// Drop the created data on disk
+	fs.MustRemoveDir(path)
+}

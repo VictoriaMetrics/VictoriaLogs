@@ -370,12 +370,10 @@ func (q *Query) getFinalFilter() filter {
 		return q.f
 	}
 
-	f := &filterAnd{
-		filters: []filter{
-			q.opts.globalFilter,
-			q.f,
-		},
-	}
+	f := newFilterAnd([]filter{
+		q.opts.globalFilter,
+		q.f,
+	})
 	return optimizeFilters(f)
 }
 
@@ -902,12 +900,10 @@ func addTimeFilter(f filter, start, end, offset int64) filter {
 	startStr := marshalTimestampRFC3339NanoPreciseString(nil, start)
 	endStr := marshalTimestampRFC3339NanoPreciseString(nil, end)
 
-	ft := &filterTime{
-		minTimestamp: SubInt64NoOverflow(start, offset),
-		maxTimestamp: SubInt64NoOverflow(end, offset),
-
-		stringRepr: fmt.Sprintf("[%s,%s]", startStr, endStr),
-	}
+	minTimestamp := SubInt64NoOverflow(start, offset)
+	maxTimestamp := SubInt64NoOverflow(end, offset)
+	stringRepr := fmt.Sprintf("[%s,%s]", startStr, endStr)
+	ft := newFilterTime(minTimestamp, maxTimestamp, stringRepr)
 
 	fa, ok := f.(*filterAnd)
 	if ok {
@@ -916,9 +912,7 @@ func addTimeFilter(f filter, start, end, offset int64) filter {
 		copy(filters[1:], fa.filters)
 		fa.filters = filters
 	} else {
-		f = &filterAnd{
-			filters: []filter{ft, f},
-		}
+		f = newFilterAnd([]filter{ft, f})
 	}
 
 	f = flattenFiltersAnd(f)
@@ -946,9 +940,8 @@ func (q *Query) addExtraFiltersNoSubqueries(filters []filter) {
 	if ok {
 		fa.filters = append(filters, fa.filters...)
 	} else {
-		q.f = &filterAnd{
-			filters: append(filters, q.f),
-		}
+		filters = append(filters, q.f)
+		q.f = newFilterAnd(filters)
 	}
 
 	q.optimizeNoSubqueries()
@@ -1073,12 +1066,8 @@ func visitSubqueriesInFilter(f filter, visitFunc func(q *Query)) {
 	}
 	callback := func(f filter) bool {
 		switch t := f.(type) {
-		case *filterIn:
-			t.values.q.visitSubqueries(visitFunc)
-		case *filterContainsAll:
-			t.values.q.visitSubqueries(visitFunc)
-		case *filterContainsAny:
-			t.values.q.visitSubqueries(visitFunc)
+		case *filterGeneric:
+			t.visitSubqueries(visitFunc)
 		case *filterStreamID:
 			t.q.visitSubqueries(visitFunc)
 		}
@@ -1113,10 +1102,7 @@ func mergeFiltersStream(f filter) filter {
 		filters = append(filters, fs)
 	}
 	filters = append(filters, otherFilters...)
-	fa = &filterAnd{
-		filters: filters,
-	}
-	return fa
+	return newFilterAnd(filters)
 }
 
 func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
@@ -1136,15 +1122,13 @@ func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
 		tfs = append(tfs, fs.f.orFilters[0].tagFilters...)
 	}
 	return []*filterStream{
-		{
-			f: &StreamFilter{
-				orFilters: []*andStreamFilter{
-					{
-						tagFilters: tfs,
-					},
+		newFilterStream(&StreamFilter{
+			orFilters: []*andStreamFilter{
+				{
+					tagFilters: tfs,
 				},
 			},
-		},
+		}),
 	}
 }
 
@@ -1459,9 +1443,7 @@ func flattenFiltersAnd(f filter) filter {
 			}
 			resultFilters = append(resultFilters, child.filters...)
 		}
-		return &filterAnd{
-			filters: resultFilters,
-		}, nil
+		return newFilterAnd(resultFilters), nil
 	}
 	f, err := copyFilter(f, visitFunc, copyFunc)
 	if err != nil {
@@ -1495,9 +1477,7 @@ func flattenFiltersOr(f filter) filter {
 			}
 			resultFilters = append(resultFilters, child.filters...)
 		}
-		return &filterOr{
-			filters: resultFilters,
-		}, nil
+		return newFilterOr(resultFilters), nil
 	}
 	f, err := copyFilter(f, visitFunc, copyFunc)
 	if err != nil {
@@ -1509,11 +1489,18 @@ func flattenFiltersOr(f filter) filter {
 func removeStarFilters(f filter) filter {
 	// Substitute `*` filterPrefix with filterNoop
 	visitFunc := func(f filter) bool {
-		fp, ok := f.(*filterPrefix)
-		return ok && isMsgFieldName(fp.fieldName) && fp.prefix == ""
+		fg, ok := f.(*filterGeneric)
+		if !ok {
+			return false
+		}
+		if !isMsgFieldName(fg.fieldName) {
+			return false
+		}
+		fp, ok := fg.f.(*filterPrefix)
+		return ok && fp.prefix == ""
 	}
 	copyFunc := func(_ filter) (filter, error) {
-		fn := &filterNoop{}
+		fn := newFilterNoop()
 		return fn, nil
 	}
 	f, err := copyFilter(f, visitFunc, copyFunc)
@@ -1535,7 +1522,7 @@ func removeStarFilters(f filter) filter {
 		return false
 	}
 	copyFunc = func(_ filter) (filter, error) {
-		fn := &filterNoop{}
+		fn := newFilterNoop()
 		return fn, nil
 	}
 	f, err = copyFilter(f, visitFunc, copyFunc)
@@ -1565,14 +1552,12 @@ func removeStarFilters(f filter) filter {
 			}
 		}
 		if len(resultFilters) == 0 {
-			return &filterNoop{}, nil
+			return newFilterNoop(), nil
 		}
 		if len(resultFilters) == 1 {
 			return resultFilters[0], nil
 		}
-		return &filterAnd{
-			filters: resultFilters,
-		}, nil
+		return newFilterAnd(resultFilters), nil
 	}
 	f, err = copyFilter(f, visitFunc, copyFunc)
 	if err != nil {
@@ -1779,9 +1764,7 @@ func mergeFiltersAnd(f1, f2 filter) filter {
 		return fa2
 	}
 
-	return &filterAnd{
-		filters: []filter{f1, f2},
-	}
+	return newFilterAnd([]filter{f1, f2})
 }
 
 func getNeededColumns(pipes []pipe) *prefixfilter.Filter {
@@ -2126,9 +2109,7 @@ func parseFilterOr(lex *lexer, fieldName string) (filter, error) {
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
-			fo := &filterOr{
-				filters: filters,
-			}
+			fo := newFilterOr(filters)
 			return fo, nil
 		case lex.isKeyword("or"):
 			lex.nextToken()
@@ -2149,9 +2130,7 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
-			fa := &filterAnd{
-				filters: filters,
-			}
+			fa := newFilterAnd(filters)
 			return fa, nil
 		case lex.isKeyword("and"):
 			lex.nextToken()
@@ -2260,6 +2239,15 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 		return nil, err
 	}
 
+	if !lex.isSkippedSpace && lex.isKeyword("*") {
+		lex.nextToken()
+		if fieldName == "" && lex.isKeyword(":") {
+			lex.nextToken()
+			return parseFilterGeneric(lex, phrase+"*")
+		}
+		return newFilterPrefix(fieldName, phrase), nil
+	}
+
 	if fieldName == "" && lex.isKeyword(":") {
 		// The phrase contains a field name for the filter
 		lex.nextToken()
@@ -2280,19 +2268,11 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 	if !lex.isSkippedSpace && lex.isKeyword("*") {
 		// The phrase is a search prefix in the form `foo*`.
 		lex.nextToken()
-		f := &filterPrefix{
-			fieldName: getCanonicalColumnName(fieldName),
-			prefix:    phrase,
-		}
-		return f, nil
+		return newFilterPrefix(fieldName, phrase), nil
 	}
 
 	// The phrase is a search phrase.
-	f := &filterPhrase{
-		fieldName: getCanonicalColumnName(fieldName),
-		phrase:    phrase,
-	}
-	return f, nil
+	return newFilterPhrase(fieldName, phrase), nil
 }
 
 func parseFilterParens(lex *lexer, fieldName string) (filter, error) {
@@ -2322,25 +2302,17 @@ func parseFilterNot(lex *lexer, fieldName string) (filter, error) {
 	if ok {
 		return fn.f, nil
 	}
-	fn = &filterNot{
-		f: f,
-	}
+	fn = newFilterNot(f)
 	return fn, nil
 }
 
 func parseAnyCaseFilter(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArgMaybePrefix(lex, fieldName, func(phrase string, isFilterPrefix bool) (filter, error) {
 		if isFilterPrefix {
-			f := &filterAnyCasePrefix{
-				fieldName: getCanonicalColumnName(fieldName),
-				prefix:    phrase,
-			}
+			f := newFilterAnyCasePrefix(fieldName, phrase)
 			return f, nil
 		}
-		f := &filterAnyCasePhrase{
-			fieldName: getCanonicalColumnName(fieldName),
-			phrase:    phrase,
-		}
+		f := newFilterAnyCasePhrase(fieldName, phrase)
 		return f, nil
 	})
 }
@@ -2400,13 +2372,7 @@ func parseFilterLenRange(lex *lexer, fieldName string) (filter, error) {
 		// There is no need in quoting the args, since they are integers.
 		stringRepr := fmt.Sprintf("(%s, %s)", args[0], args[1])
 
-		fr := &filterLenRange{
-			fieldName: getCanonicalColumnName(fieldName),
-			minLen:    minLen,
-			maxLen:    maxLen,
-
-			stringRepr: stringRepr,
-		}
+		fr := newFilterLenRange(fieldName, minLen, maxLen, stringRepr)
 		return fr, nil
 	})
 }
@@ -2416,33 +2382,22 @@ func parseFilterStringRange(lex *lexer, fieldName string) (filter, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("unexpected number of args for %s(); got %d; want 2", funcName, len(args))
 		}
-		fr := &filterStringRange{
-			fieldName: getCanonicalColumnName(fieldName),
-			minValue:  args[0],
-			maxValue:  args[1],
-
-			stringRepr: fmt.Sprintf("%s(%s, %s)", funcName, quoteTokenIfNeeded(args[0]), quoteTokenIfNeeded(args[1])),
-		}
+		stringRepr := fmt.Sprintf("%s(%s, %s)", funcName, quoteTokenIfNeeded(args[0]), quoteTokenIfNeeded(args[1]))
+		fr := newFilterStringRange(fieldName, args[0], args[1], stringRepr)
 		return fr, nil
 	})
 }
 
 func parseFilterValueType(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
-		fv := &filterValueType{
-			fieldName: getCanonicalColumnName(fieldName),
-			valueType: arg,
-		}
+		fv := newFilterValueType(fieldName, arg)
 		return fv, nil
 	})
 }
 
 func parseFilterJSONArrayContainsAny(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArgs(lex, fieldName, func(_ string, args []string) (filter, error) {
-		fa := &filterJSONArrayContainsAny{
-			fieldName: getCanonicalColumnName(fieldName),
-			values:    args,
-		}
+		fa := newFilterJSONArrayContainsAny(fieldName, args)
 		return fa, nil
 	})
 }
@@ -2454,11 +2409,7 @@ func parseFilterIPv4Range(lex *lexer, fieldName string) (filter, error) {
 			if !ok {
 				return nil, fmt.Errorf("cannot parse IPv4 address or IPv4 CIDR %q at %s()", args[0], funcName)
 			}
-			fr := &filterIPv4Range{
-				fieldName: getCanonicalColumnName(fieldName),
-				minValue:  minValue,
-				maxValue:  maxValue,
-			}
+			fr := newFilterIPv4Range(fieldName, minValue, maxValue)
 			return fr, nil
 		}
 		if len(args) != 2 {
@@ -2472,11 +2423,7 @@ func parseFilterIPv4Range(lex *lexer, fieldName string) (filter, error) {
 		if !ok {
 			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", args[1], funcName)
 		}
-		fr := &filterIPv4Range{
-			fieldName: getCanonicalColumnName(fieldName),
-			minValue:  minValue,
-			maxValue:  maxValue,
-		}
+		fr := newFilterIPv4Range(fieldName, minValue, maxValue)
 		return fr, nil
 	})
 }
@@ -2488,11 +2435,7 @@ func parseFilterIPv6Range(lex *lexer, fieldName string) (filter, error) {
 			if !ok {
 				return nil, fmt.Errorf("cannot parse IPv6 address or IPv6 CIDR %q at %s()", args[0], funcName)
 			}
-			fr := &filterIPv6Range{
-				fieldName: getCanonicalColumnName(fieldName),
-				minValue:  minValue,
-				maxValue:  maxValue,
-			}
+			fr := newFilterIPv6Range(fieldName, minValue, maxValue)
 			return fr, nil
 		}
 		if len(args) != 2 {
@@ -2506,11 +2449,7 @@ func parseFilterIPv6Range(lex *lexer, fieldName string) (filter, error) {
 		if !ok {
 			return nil, fmt.Errorf("cannot parse upper bound ip %q in %s()", args[1], funcName)
 		}
-		fr := &filterIPv6Range{
-			fieldName: getCanonicalColumnName(fieldName),
-			minValue:  minValue,
-			maxValue:  maxValue,
-		}
+		fr := newFilterIPv6Range(fieldName, minValue, maxValue)
 		return fr, nil
 	})
 }
@@ -2589,24 +2528,21 @@ func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
 }
 
 func parseFilterContainsAll(lex *lexer, fieldName string) (filter, error) {
-	fi := &filterContainsAll{
-		fieldName: getCanonicalColumnName(fieldName),
-	}
-	return parseInValues(lex, fieldName, fi, &fi.values)
+	var fi filterContainsAll
+	fg := newFilterGeneric(fieldName, &fi)
+	return parseInValues(lex, fieldName, fg, &fi.values)
 }
 
 func parseFilterContainsAny(lex *lexer, fieldName string) (filter, error) {
-	fi := &filterContainsAny{
-		fieldName: getCanonicalColumnName(fieldName),
-	}
-	return parseInValues(lex, fieldName, fi, &fi.values)
+	var fi filterContainsAny
+	fg := newFilterGeneric(fieldName, &fi)
+	return parseInValues(lex, fieldName, fg, &fi.values)
 }
 
 func parseFilterIn(lex *lexer, fieldName string) (filter, error) {
-	fi := &filterIn{
-		fieldName: getCanonicalColumnName(fieldName),
-	}
-	return parseInValues(lex, fieldName, fi, &fi.values)
+	var fi filterIn
+	fg := newFilterGeneric(fieldName, &fi)
+	return parseInValues(lex, fieldName, fg, &fi.values)
 }
 
 func parseFilterContainsCommonCase(lex *lexer, fieldName string) (filter, error) {
@@ -2663,7 +2599,7 @@ func parseInValues(lex *lexer, fieldName string, f filter, iv *inValues) (filter
 		return nil, errFirst
 	}
 	if q == nil {
-		return &filterNoop{}, nil
+		return newFilterNoop(), nil
 	}
 
 	iv.q = q
@@ -2673,113 +2609,78 @@ func parseInValues(lex *lexer, fieldName string, f filter, iv *inValues) (filter
 
 func parseFilterSequence(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArgs(lex, fieldName, func(_ string, args []string) (filter, error) {
-		fs := &filterSequence{
-			fieldName: getCanonicalColumnName(fieldName),
-			phrases:   args,
-		}
-		return fs, nil
+		return newFilterSequence(fieldName, args), nil
 	})
 }
 
 func parseFilterEqField(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
-		fe := &filterEqField{
-			fieldName:      getCanonicalColumnName(fieldName),
-			otherFieldName: arg,
-		}
-		return fe, nil
+		return newFilterEqField(fieldName, arg), nil
 	})
 }
 
 func parseFilterLeField(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
-		fe := &filterLeField{
-			fieldName:      getCanonicalColumnName(fieldName),
-			otherFieldName: arg,
-		}
-		return fe, nil
+		return newFilterLeField(fieldName, arg, false), nil
 	})
 }
 
 func parseFilterLtField(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
-		fe := &filterLeField{
-			fieldName:      getCanonicalColumnName(fieldName),
-			otherFieldName: arg,
-
-			excludeEqualValues: true,
-		}
-		return fe, nil
+		return newFilterLeField(fieldName, arg, true), nil
 	})
 }
 
 func parseFilterExact(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArgMaybePrefix(lex, fieldName, func(phrase string, isFilterPrefix bool) (filter, error) {
 		if isFilterPrefix {
-			f := &filterExactPrefix{
-				fieldName: getCanonicalColumnName(fieldName),
-				prefix:    phrase,
-			}
-			return f, nil
+			return newFilterExactPrefix(fieldName, phrase), nil
 		}
-		f := &filterExact{
-			fieldName: getCanonicalColumnName(fieldName),
-			value:     phrase,
-		}
-		return f, nil
+		return newFilterExact(fieldName, phrase), nil
 	})
 }
 
 func parseFilterPatternMatch(lex *lexer, fieldName string, pmo patternMatcherOption) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(funcName, arg string) (filter, error) {
-		fp := &filterPatternMatch{
-			fieldName: getCanonicalColumnName(fieldName),
-			funcName:  funcName,
-			pm:        newPatternMatcher(arg, pmo),
-		}
-		return fp, nil
+		pm := newPatternMatcher(arg, pmo)
+		return newFilterPatternMatch(fieldName, funcName, pm), nil
 	})
 }
 
 func parseFilterRegexp(lex *lexer, fieldName string) (filter, error) {
 	return parseFuncArg(lex, fieldName, func(_, arg string) (filter, error) {
-		return newFilterRegexp(fieldName, arg)
+		return newFilterRegexpOpt(fieldName, arg)
 	})
 }
 
-func newFilterRegexp(fieldName, arg string) (filter, error) {
+func newFilterRegexpOpt(fieldName, arg string) (filter, error) {
 	// Optimizations for typical regexps generated by Grafana
 	if arg == "" || arg == ".*" {
-		return &filterNoop{}, nil
+		return newFilterNoop(), nil
 	}
 	if arg == ".+" {
-		fp := &filterPrefix{
-			fieldName: getCanonicalColumnName(fieldName),
-		}
-		return fp, nil
+		return newFilterPrefix(fieldName, ""), nil
 	}
 
 	re, err := regexutil.NewRegex(arg)
 	if err != nil {
 		return nil, fmt.Errorf("invalid regexp %q:%q: %w", getCanonicalColumnName(fieldName), arg, err)
 	}
-	fr := &filterRegexp{
-		fieldName: getCanonicalColumnName(fieldName),
-		re:        re,
-	}
-	return fr, nil
+	return newFilterRegexp(fieldName, re), nil
 }
 
 func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	lex.nextToken()
 
+	if fieldName == "" && lex.isKeyword(":") {
+		// The '*:something' filter
+		lex.nextToken()
+		return parseFilterGeneric(lex, "*")
+	}
+
 	if lex.isSkippedSpace || lex.isKeyword("", ")", "|") {
 		// '*' or 'fieldName:*' filter
-		f := &filterPrefix{
-			fieldName: getCanonicalColumnName(fieldName),
-			prefix:    "",
-		}
-		return f, nil
+		return newFilterPrefix(fieldName, ""), nil
 	}
 
 	// Read '*substr*' filter
@@ -2795,11 +2696,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	if !lex.isSkippedSpace && !lex.isKeyword("", ")", "|") {
 		return nil, fmt.Errorf("missing whitespace between *%q* and %q", phrase, lex.token)
 	}
-	f := &filterSubstring{
-		fieldName: getCanonicalColumnName(fieldName),
-		substring: phrase,
-	}
-	return f, nil
+	return newFilterSubstring(fieldName, phrase), nil
 }
 
 func parseFilterTilda(lex *lexer, fieldName string) (filter, error) {
@@ -2820,7 +2717,7 @@ func parseFilterTilda(lex *lexer, fieldName string) (filter, error) {
 		return nil, fmt.Errorf("cannot read regexp for field %q: %w", getCanonicalColumnName(fieldName), err)
 	}
 
-	return newFilterRegexp(fieldName, arg)
+	return newFilterRegexpOpt(fieldName, arg)
 }
 
 func parseFilterNotTilda(lex *lexer, fieldName string) (filter, error) {
@@ -2828,10 +2725,7 @@ func parseFilterNotTilda(lex *lexer, fieldName string) (filter, error) {
 	if err != nil {
 		return nil, err
 	}
-	fn := &filterNot{
-		f: f,
-	}
-	return fn, nil
+	return newFilterNot(f), nil
 }
 
 func parseFilterEQ(lex *lexer, fieldName string) (filter, error) {
@@ -2849,17 +2743,9 @@ func parseFilterEQ(lex *lexer, fieldName string) (filter, error) {
 
 	if !lex.isSkippedSpace && lex.isKeyword("*") {
 		lex.nextToken()
-		f := &filterExactPrefix{
-			fieldName: getCanonicalColumnName(fieldName),
-			prefix:    phrase,
-		}
-		return f, nil
+		return newFilterExactPrefix(fieldName, phrase), nil
 	}
-	f := &filterExact{
-		fieldName: getCanonicalColumnName(fieldName),
-		value:     phrase,
-	}
-	return f, nil
+	return newFilterExact(fieldName, phrase), nil
 }
 
 func parseFilterNEQ(lex *lexer, fieldName string) (filter, error) {
@@ -2867,10 +2753,7 @@ func parseFilterNEQ(lex *lexer, fieldName string) (filter, error) {
 	if err != nil {
 		return nil, err
 	}
-	fn := &filterNot{
-		f: f,
-	}
-	return fn, nil
+	return newFilterNot(f), nil
 }
 
 func parseFilterGT(lex *lexer, fieldName string) (filter, error) {
@@ -2903,14 +2786,8 @@ func parseFilterGT(lex *lexer, fieldName string) (filter, error) {
 	if !includeMinValue {
 		minValue = nextafter(minValue, inf)
 	}
-	fr := &filterRange{
-		fieldName: getCanonicalColumnName(fieldName),
-		minValue:  minValue,
-		maxValue:  inf,
-
-		stringRepr: op + fStr,
-	}
-	return fr, nil
+	stringRepr := op + fStr
+	return newFilterRange(fieldName, minValue, inf, stringRepr), nil
 }
 
 func parseFilterLT(lex *lexer, fieldName string) (filter, error) {
@@ -2943,14 +2820,8 @@ func parseFilterLT(lex *lexer, fieldName string) (filter, error) {
 	if !includeMaxValue {
 		maxValue = nextafter(maxValue, -inf)
 	}
-	fr := &filterRange{
-		fieldName: getCanonicalColumnName(fieldName),
-		minValue:  -inf,
-		maxValue:  maxValue,
-
-		stringRepr: op + fStr,
-	}
-	return fr, nil
+	stringRepr := op + fStr
+	return newFilterRange(fieldName, -inf, maxValue, stringRepr), nil
 }
 
 func tryParseFilterGTString(lex *lexer, fieldName, op string, includeMinValue bool) filter {
@@ -2962,14 +2833,8 @@ func tryParseFilterGTString(lex *lexer, fieldName, op string, includeMinValue bo
 	if !includeMinValue {
 		minValue = string(append([]byte(minValue), 0))
 	}
-	fr := &filterStringRange{
-		fieldName: getCanonicalColumnName(fieldName),
-		minValue:  minValue,
-		maxValue:  maxStringRangeValue,
-
-		stringRepr: op + quoteStringTokenIfNeeded(minValueOrig),
-	}
-	return fr
+	stringRepr := op + quoteStringTokenIfNeeded(minValueOrig)
+	return newFilterStringRange(fieldName, minValue, maxStringRangeValue, stringRepr)
 }
 
 func tryParseFilterLTString(lex *lexer, fieldName, op string, includeMaxValue bool) filter {
@@ -2981,13 +2846,8 @@ func tryParseFilterLTString(lex *lexer, fieldName, op string, includeMaxValue bo
 	if includeMaxValue {
 		maxValue = string(append([]byte(maxValue), 0))
 	}
-	fr := &filterStringRange{
-		fieldName: getCanonicalColumnName(fieldName),
-		maxValue:  maxValue,
-
-		stringRepr: op + quoteStringTokenIfNeeded(maxValueOrig),
-	}
-	return fr
+	stringRepr := op + quoteStringTokenIfNeeded(maxValueOrig)
+	return newFilterStringRange(fieldName, "", maxValue, stringRepr)
 }
 
 func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
@@ -3051,14 +2911,7 @@ func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
 		maxValue = nextafter(maxValue, -inf)
 	}
 
-	fr := &filterRange{
-		fieldName: getCanonicalColumnName(fieldName),
-		minValue:  minValue,
-		maxValue:  maxValue,
-
-		stringRepr: stringRepr,
-	}
-	return fr, nil
+	return newFilterRange(fieldName, minValue, maxValue, stringRepr), nil
 }
 
 func parseNumber(lex *lexer) (float64, string, error) {
@@ -3116,7 +2969,7 @@ func parseFuncArgsPossibleWildcard(lex *lexer, fieldName string, callback func(a
 		return nil, fmt.Errorf("cannot parse %s(): %w", funcName, err)
 	}
 	if isWildcard {
-		return &filterNoop{}, nil
+		return newFilterNoop(), nil
 	}
 
 	return callback(args)
@@ -3312,14 +3165,8 @@ func parseFilterDayRange(lex *lexer) (*filterDayRange, error) {
 		}
 	}
 
-	fr := &filterDayRange{
-		start:  start,
-		end:    end,
-		offset: offset,
-
-		stringRepr: fmt.Sprintf("%s%s, %s%s%s", startBrace, startStr, endStr, endBrace, offsetStr),
-	}
-	return fr, nil
+	stringRepr := fmt.Sprintf("%s%s, %s%s%s", startBrace, startStr, endStr, endBrace, offsetStr)
+	return newFilterDayRange(start, end, offset, stringRepr), nil
 }
 
 func parseFilterWeekRange(lex *lexer) (*filterWeekRange, error) {
@@ -3390,14 +3237,8 @@ func parseFilterWeekRange(lex *lexer) (*filterWeekRange, error) {
 		}
 	}
 
-	fr := &filterWeekRange{
-		startDay: startDay,
-		endDay:   endDay,
-		offset:   offset,
-
-		stringRepr: fmt.Sprintf("%s%s, %s%s%s", startBrace, startStr, endStr, endBrace, offsetStr),
-	}
-	return fr, nil
+	stringRepr := fmt.Sprintf("%s%s, %s%s%s", startBrace, startStr, endStr, endBrace, offsetStr)
+	return newFilterWeekRange(startDay, endDay, offset, stringRepr), nil
 }
 
 func getDayRangeArg(lex *lexer) (int64, string, error) {
@@ -3444,10 +3285,7 @@ func getWeekRangeArg(lex *lexer) (time.Weekday, string, error) {
 
 func parseFilterTimeRange(lex *lexer) (*filterTime, error) {
 	if lex.isKeyword("offset") {
-		ft := &filterTime{
-			minTimestamp: math.MinInt64,
-			maxTimestamp: lex.currentTimestamp,
-		}
+		ft := newFilterTime(math.MinInt64, lex.currentTimestamp, "")
 		offset, offsetStr, err := parseTimeOffset(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse offset for _time filter []: %w", err)
@@ -3549,13 +3387,7 @@ func parseFilterTime(lex *lexer) (*filterTime, error) {
 		endTime--
 	}
 
-	ft := &filterTime{
-		minTimestamp: startTime,
-		maxTimestamp: endTime,
-
-		stringRepr: stringRepr,
-	}
-	return ft, nil
+	return newFilterTime(startTime, endTime, stringRepr), nil
 }
 
 func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
@@ -3579,12 +3411,8 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 		if prefix == ">" {
 			startTime++
 		}
-		ft := &filterTime{
-			minTimestamp: startTime,
-			maxTimestamp: math.MaxInt64,
-
-			stringRepr: prefix + startTimeString,
-		}
+		stringRepr := prefix + startTimeString
+		ft := newFilterTime(startTime, math.MaxInt64, stringRepr)
 		return ft, nil
 	}
 
@@ -3598,13 +3426,9 @@ func parseFilterTimeGt(lex *lexer) (*filterTime, error) {
 	if prefix == ">" {
 		d++
 	}
-	ft := &filterTime{
-		minTimestamp: math.MinInt64,
-		maxTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
-
-		stringRepr: prefix + s,
-	}
-	return ft, nil
+	maxTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	stringRepr := prefix + s
+	return newFilterTime(math.MinInt64, maxTimestamp, stringRepr), nil
 }
 
 func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
@@ -3629,12 +3453,8 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 		} else {
 			endTime = adjustEndTimestamp(endTime, endTimeString)
 		}
-		ft := &filterTime{
-			minTimestamp: math.MinInt64,
-			maxTimestamp: endTime,
-
-			stringRepr: prefix + endTimeString,
-		}
+		stringRepr := prefix + endTimeString
+		ft := newFilterTime(math.MinInt64, endTime, stringRepr)
 		return ft, nil
 	}
 
@@ -3648,13 +3468,9 @@ func parseFilterTimeLt(lex *lexer) (*filterTime, error) {
 	if prefix == "<" {
 		d--
 	}
-	ft := &filterTime{
-		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
-		maxTimestamp: lex.currentTimestamp,
-
-		stringRepr: prefix + s,
-	}
-	return ft, nil
+	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	stringRepr := prefix + s
+	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
 }
 
 func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
@@ -3673,12 +3489,8 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 		// Round to milliseconds
 		startTime := nsecs
 		endTime := adjustEndTimestamp(startTime, s)
-		ft := &filterTime{
-			minTimestamp: startTime,
-			maxTimestamp: endTime,
-
-			stringRepr: prefix + s,
-		}
+		stringRepr := prefix + s
+		ft := newFilterTime(startTime, endTime, stringRepr)
 		return ft, nil
 	}
 
@@ -3690,13 +3502,9 @@ func parseFilterTimeEq(lex *lexer) (*filterTime, error) {
 	if d < 0 {
 		d = -d
 	}
-	ft := &filterTime{
-		minTimestamp: SubInt64NoOverflow(lex.currentTimestamp, d),
-		maxTimestamp: lex.currentTimestamp,
-
-		stringRepr: prefix + s,
-	}
-	return ft, nil
+	minTimestamp := SubInt64NoOverflow(lex.currentTimestamp, d)
+	stringRepr := prefix + s
+	return newFilterTime(minTimestamp, lex.currentTimestamp, stringRepr), nil
 }
 
 func isLikelyTimestamp(lex *lexer) bool {
@@ -3839,10 +3647,7 @@ func parseFilterStreamIDInternal(lex *lexer) (filter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse _stream_id: %w", err)
 	}
-	fs := &filterStreamID{
-		streamIDs: []streamID{sid},
-	}
-	return fs, nil
+	return newFilterStreamID([]streamID{sid}), nil
 }
 
 func parseFilterStreamIDIn(lex *lexer) (filter, error) {
@@ -3859,10 +3664,7 @@ func parseFilterStreamIDIn(lex *lexer) (filter, error) {
 				return nil, fmt.Errorf("cannot unmarshal _stream_id from %q", arg)
 			}
 		}
-		fs := &filterStreamID{
-			streamIDs: streamIDs,
-		}
-		return fs, nil
+		return newFilterStreamID(streamIDs), nil
 	})
 	if err == nil {
 		return fs, nil
@@ -3881,14 +3683,10 @@ func parseFilterStreamIDIn(lex *lexer) (filter, error) {
 		return nil, errFirst
 	}
 	if q == nil {
-		return &filterNoop{}, nil
+		return newFilterNoop(), nil
 	}
 
-	fs = &filterStreamID{
-		q:          q,
-		qFieldName: qFieldName,
-	}
-	return fs, nil
+	return newFilterStreamIDFromQuery(q, qFieldName), nil
 }
 
 func parseInQuery(lex *lexer) (*Query, string, error) {
@@ -3916,8 +3714,12 @@ func (q *Query) isStarQuery() bool {
 	switch t := q.f.(type) {
 	case *filterNoop:
 		return true
-	case *filterPrefix:
-		return len(t.prefix) == 0
+	case *filterGeneric:
+		if !isMsgFieldName(t.fieldName) {
+			return false
+		}
+		fp, ok := t.f.(*filterPrefix)
+		return ok && len(fp.prefix) == 0
 	default:
 		return false
 	}
@@ -3982,10 +3784,7 @@ func parseFilterStreamInternal(lex *lexer, fieldName string) (*filterStream, err
 	if err != nil {
 		return nil, err
 	}
-	fs := &filterStream{
-		f: sf,
-	}
-	return fs, nil
+	return newFilterStream(sf), nil
 }
 
 func parseTime(lex *lexer) (int64, string, error) {

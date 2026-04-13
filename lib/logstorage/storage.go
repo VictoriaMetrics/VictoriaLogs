@@ -765,47 +765,43 @@ func (s *Storage) watchRetention() {
 	ticker := time.NewTicker(d)
 	defer ticker.Stop()
 	for {
-		var ptwsToDelete []*partitionWrapper
-		now := time.Now().UnixNano()
-		minAllowedDay := s.getMinAllowedDay(now)
-
-		s.partitionsLock.Lock()
-
-		// Delete outdated partitions.
-		// s.partitions are sorted by day, so the partitions, which can become outdated, are located at the beginning of the list
-		ptws := s.partitions
-		for i, ptw := range ptws {
-			if ptw.day < minAllowedDay {
-				continue
-			}
-
-			// ptws are sorted by time, so just drop all the partitions until i.
-			ptwsToDelete = ptws[:i]
-			s.partitions = ptws[i:]
-			s.updateDeletedPartitionsLocked(ptwsToDelete)
-
-			// Remove reference to deleted partitions from s.ptwHot
-			if slices.Contains(ptwsToDelete, s.ptwHot) {
-				s.ptwHot = nil
-			}
-
-			break
-		}
-
-		s.partitionsLock.Unlock()
-
-		for i, ptw := range ptwsToDelete {
-			logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
-			ptw.mustDrop.Store(true)
-			ptw.decRef()
-			ptwsToDelete[i] = nil
-		}
+		s.dropStalePartitions()
 
 		select {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func (s *Storage) dropStalePartitions() {
+	now := time.Now().UnixNano()
+	minAllowedDay := s.getMinAllowedDay(now)
+
+	s.partitionsLock.Lock()
+
+	// Delete outdated partitions.
+	// s.partitions are sorted by day, so find the first non-expired partition.
+	n := sort.Search(len(s.partitions), func(i int) bool {
+		return s.partitions[i].day >= minAllowedDay
+	})
+	ptwsToDelete := s.partitions[:n]
+	s.partitions = s.partitions[n:]
+	s.updateDeletedPartitionsLocked(ptwsToDelete)
+
+	// Remove reference to deleted partitions from s.ptwHot
+	if slices.Contains(ptwsToDelete, s.ptwHot) {
+		s.ptwHot = nil
+	}
+
+	s.partitionsLock.Unlock()
+
+	for i, ptw := range ptwsToDelete {
+		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
+		ptw.mustDrop.Store(true)
+		ptw.decRef()
+		ptwsToDelete[i] = nil
 	}
 }
 

@@ -20,71 +20,38 @@ func TestFilterTime(t *testing.T) {
 	}
 
 	// match
-	ft := &filterTime{
-		minTimestamp: -10,
-		maxTimestamp: 1,
-	}
+	ft := newFilterTime(-10, 1, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterTime{
-		minTimestamp: -10,
-		maxTimestamp: 10,
-	}
+	ft = newFilterTime(-10, 10, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0, 1})
 
-	ft = &filterTime{
-		minTimestamp: 1,
-		maxTimestamp: 1,
-	}
+	ft = newFilterTime(1, 1, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterTime{
-		minTimestamp: 2,
-		maxTimestamp: 456,
-	}
+	ft = newFilterTime(2, 456, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1, 2, 3})
 
-	ft = &filterTime{
-		minTimestamp: 2,
-		maxTimestamp: 457,
-	}
+	ft = newFilterTime(2, 457, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1, 2, 3})
 
-	ft = &filterTime{
-		minTimestamp: 120,
-		maxTimestamp: 788,
-	}
+	ft = newFilterTime(120, 788, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3})
 
-	ft = &filterTime{
-		minTimestamp: 120,
-		maxTimestamp: 789,
-	}
+	ft = newFilterTime(120, 789, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3, 4})
 
-	ft = &filterTime{
-		minTimestamp: 120,
-		maxTimestamp: 10000,
-	}
+	ft = newFilterTime(120, 10000, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3, 4})
 
-	ft = &filterTime{
-		minTimestamp: 789,
-		maxTimestamp: 1000,
-	}
+	ft = newFilterTime(789, 1000, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{4})
 
 	// mismatch
-	ft = &filterTime{
-		minTimestamp: -1000,
-		maxTimestamp: 0,
-	}
+	ft = newFilterTime(-1000, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
-	ft = &filterTime{
-		minTimestamp: 790,
-		maxTimestamp: 1000,
-	}
+	ft = newFilterTime(790, 1000, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 }
 

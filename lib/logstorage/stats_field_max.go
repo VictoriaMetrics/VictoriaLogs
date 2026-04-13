@@ -50,17 +50,17 @@ func (smp *statsFieldMaxProcessor) updateStatsForAllRows(sf statsFunc, br *block
 	if c.isTime {
 		timestamp, ok := TryParseTimestampRFC3339Nano(smp.max)
 		if !ok {
-			timestamp = (1 << 63) - 1
+			timestamp = -1 << 63
 		}
-		minTimestamp := br.getMinTimestamp(timestamp)
-		if minTimestamp >= timestamp {
+		maxTimestamp := br.getMaxTimestamp(timestamp)
+		if maxTimestamp <= timestamp {
 			return stateSizeIncrease
 		}
 
 		bb := bbPool.Get()
-		bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], minTimestamp)
+		bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], maxTimestamp)
 		v := bytesutil.ToUnsafeString(bb.B)
-		stateSizeIncrease += smp.updateState(sm, v, br, 0)
+		stateSizeIncrease += smp.updateState(sm, v, br, br.rowsLen-1)
 		bbPool.Put(bb)
 		return stateSizeIncrease
 	}
@@ -77,28 +77,28 @@ func (smp *statsFieldMaxProcessor) updateStatsForAllRows(sf statsFunc, br *block
 		})
 	case valueTypeUint8, valueTypeUint16, valueTypeUint32, valueTypeUint64:
 		bb := bbPool.Get()
-		bb.B = marshalUint64String(bb.B[:0], c.minValue)
+		bb.B = marshalUint64String(bb.B[:0], c.maxValue)
 		needUpdateState = smp.needUpdateStateBytes(bb.B)
 		bbPool.Put(bb)
 	case valueTypeInt64:
 		bb := bbPool.Get()
-		bb.B = marshalInt64String(bb.B[:0], int64(c.minValue))
+		bb.B = marshalInt64String(bb.B[:0], int64(c.maxValue))
 		needUpdateState = smp.needUpdateStateBytes(bb.B)
 		bbPool.Put(bb)
 	case valueTypeFloat64:
-		f := math.Float64frombits(c.minValue)
+		f := math.Float64frombits(c.maxValue)
 		bb := bbPool.Get()
 		bb.B = marshalFloat64String(bb.B[:0], f)
 		needUpdateState = smp.needUpdateStateBytes(bb.B)
 		bbPool.Put(bb)
 	case valueTypeIPv4:
 		bb := bbPool.Get()
-		bb.B = marshalIPv4String(bb.B[:0], uint32(c.minValue))
+		bb.B = marshalIPv4String(bb.B[:0], uint32(c.maxValue))
 		needUpdateState = smp.needUpdateStateBytes(bb.B)
 		bbPool.Put(bb)
 	case valueTypeTimestampISO8601:
 		bb := bbPool.Get()
-		bb.B = marshalTimestampISO8601String(bb.B[:0], int64(c.minValue))
+		bb.B = marshalTimestampISO8601String(bb.B[:0], int64(c.maxValue))
 		needUpdateState = smp.needUpdateStateBytes(bb.B)
 		bbPool.Put(bb)
 	default:

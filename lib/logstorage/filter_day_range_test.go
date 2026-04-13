@@ -16,92 +16,46 @@ func TestFilterDayRange(t *testing.T) {
 	}
 
 	// match
-	ft := &filterDayRange{
-		start: 0,
-		end:   1,
-	}
+	ft := newFilterDayRange(0, 1, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterDayRange{
-		start: 0,
-		end:   10,
-	}
+	ft = newFilterDayRange(0, 10, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0, 1})
 
-	ft = &filterDayRange{
-		start: 1,
-		end:   1,
-	}
+	ft = newFilterDayRange(1, 1, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterDayRange{
-		start:  1,
-		end:    1,
-		offset: -8,
-	}
+	ft = newFilterDayRange(1, 1, -8, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1})
 
-	ft = &filterDayRange{
-		start:  10,
-		end:    10,
-		offset: 9,
-	}
+	ft = newFilterDayRange(10, 10, 9, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterDayRange{
-		start: 2,
-		end:   456,
-	}
+	ft = newFilterDayRange(2, 456, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1, 2, 3})
 
-	ft = &filterDayRange{
-		start: 2,
-		end:   457,
-	}
+	ft = newFilterDayRange(2, 457, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1, 2, 3})
 
-	ft = &filterDayRange{
-		start: 120,
-		end:   788,
-	}
+	ft = newFilterDayRange(120, 788, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3})
 
-	ft = &filterDayRange{
-		start: 120,
-		end:   789,
-	}
+	ft = newFilterDayRange(120, 789, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3, 4})
 
-	ft = &filterDayRange{
-		start: 120,
-		end:   10000,
-	}
+	ft = newFilterDayRange(120, 10000, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{2, 3, 4})
 
-	ft = &filterDayRange{
-		start: 789,
-		end:   1000,
-	}
+	ft = newFilterDayRange(789, 1000, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{4})
 
 	// mismatch
-	ft = &filterDayRange{
-		start:  1,
-		end:    1,
-		offset: -10,
-	}
+	ft = newFilterDayRange(1, 1, -10, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
-	ft = &filterDayRange{
-		start:  0,
-		end:    1000,
-		offset: -10_000,
-	}
+	ft = newFilterDayRange(0, 1000, -10_000, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
-	ft = &filterDayRange{
-		start: 790,
-		end:   1000,
-	}
+	ft = newFilterDayRange(790, 1000, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 }
