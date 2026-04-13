@@ -765,39 +765,42 @@ func (s *Storage) watchRetention() {
 	ticker := time.NewTicker(d)
 	defer ticker.Stop()
 	for {
-		now := time.Now().UnixNano()
-		minAllowedDay := s.getMinAllowedDay(now)
-
-		s.partitionsLock.Lock()
-
-		// Delete outdated partitions.
-		// s.partitions are sorted by day, so find the first non-expired partition.
-		n := sort.Search(len(s.partitions), func(i int) bool {
-			return s.partitions[i].day >= minAllowedDay
-		})
-		ptwsToDelete := s.partitions[:n]
-		s.partitions = s.partitions[n:]
-		s.updateDeletedPartitionsLocked(ptwsToDelete)
-
-		// Remove reference to deleted partitions from s.ptwHot
-		if slices.Contains(ptwsToDelete, s.ptwHot) {
-			s.ptwHot = nil
-		}
-
-		s.partitionsLock.Unlock()
-
-		for i, ptw := range ptwsToDelete {
-			logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
-			ptw.mustDrop.Store(true)
-			ptw.decRef()
-			ptwsToDelete[i] = nil
-		}
+		s.deleteExpiredPartitions(time.Now().UnixNano())
 
 		select {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func (s *Storage) deleteExpiredPartitions(nowNsec int64) {
+	minAllowedDay := s.getMinAllowedDay(nowNsec)
+
+	s.partitionsLock.Lock()
+
+	// Delete outdated partitions.
+	// s.partitions are sorted by day, so find the first non-expired partition.
+	n := sort.Search(len(s.partitions), func(i int) bool {
+		return s.partitions[i].day >= minAllowedDay
+	})
+	ptwsToDelete := s.partitions[:n]
+	s.partitions = s.partitions[n:]
+	s.updateDeletedPartitionsLocked(ptwsToDelete)
+
+	// Remove reference to deleted partitions from s.ptwHot
+	if slices.Contains(ptwsToDelete, s.ptwHot) {
+		s.ptwHot = nil
+	}
+
+	s.partitionsLock.Unlock()
+
+	for i, ptw := range ptwsToDelete {
+		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
+		ptw.mustDrop.Store(true)
+		ptw.decRef()
+		ptwsToDelete[i] = nil
 	}
 }
 

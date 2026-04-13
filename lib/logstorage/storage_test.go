@@ -440,3 +440,38 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 
 	s.DebugFlush()
 }
+
+func TestStorageRetentionAllExpired(t *testing.T) {
+	path := t.Name()
+
+	// Open storage with long retention and write old data.
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	lr := newTestLogRows(1, 10, 0)
+	oldTimestamp := time.Now().UTC().UnixNano() - 30*nsecsPerDay
+	for i := range lr.timestamps {
+		lr.timestamps[i] = oldTimestamp
+	}
+	s.MustAddRows(lr)
+	s.DebugFlush()
+	s.MustClose()
+
+	// Reopen with short retention so all partitions are expired.
+	cfg = &StorageConfig{
+		Retention: 24 * time.Hour,
+	}
+	s = MustOpenStorage(path, cfg)
+
+	// Manually trigger expired partition deletion.
+	s.deleteExpiredPartitions(time.Now().UnixNano())
+
+	if ptns := s.PartitionList(); len(ptns) != 0 {
+		t.Fatalf("expected no partitions after retention cleanup; got %v", ptns)
+	}
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
