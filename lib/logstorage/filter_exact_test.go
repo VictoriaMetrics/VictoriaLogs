@@ -20,29 +20,17 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "abc def",
-		}
+		fe := newFilterExact("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "abc",
-		}
+		fe = newFilterExact("foo", "abc")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "non-existing column",
-			value:     "abc",
-		}
+		fe = newFilterExact("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -59,35 +47,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "abc def",
-		}
+		fe := newFilterExact("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "foobar",
-		}
+		fe = newFilterExact("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "non-existing column",
-			value:     "x",
-		}
+		fe = newFilterExact("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -108,29 +81,17 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "foobar",
-		}
+		fe := newFilterExact("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 6})
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "baz",
-		}
+		fe = newFilterExact("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "non-existing column",
-			value:     "foobar",
-		}
+		fe = newFilterExact("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -154,35 +115,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "aa abc a",
-		}
+		fe := newFilterExact("foo", "aa abc a")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "aa a",
-		}
+		fe = newFilterExact("foo", "aa a")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "fooaaazz a",
-		}
+		fe = newFilterExact("foo", "fooaaazz a")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -207,35 +153,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "12",
-		}
+		fe := newFilterExact("foo", "12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 5})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "33",
-		}
+		fe = newFilterExact("foo", "33")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -260,35 +191,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "12",
-		}
+		fe := newFilterExact("foo", "12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 5})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "33",
-		}
+		fe = newFilterExact("foo", "33")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -313,35 +229,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "12",
-		}
+		fe := newFilterExact("foo", "12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 5})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "33",
-		}
+		fe = newFilterExact("foo", "33")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -366,35 +267,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "12",
-		}
+		fe := newFilterExact("foo", "12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 5})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "33",
-		}
+		fe = newFilterExact("foo", "33")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -419,41 +305,23 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "12",
-		}
+		fe := newFilterExact("foo", "12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1})
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "-12",
-		}
+		fe = newFilterExact("foo", "-12")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{5})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "33",
-		}
+		fe = newFilterExact("foo", "33")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -476,59 +344,32 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "1234",
-		}
+		fe := newFilterExact("foo", "1234")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "1234.5678901",
-		}
+		fe = newFilterExact("foo", "1234.5678901")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{4})
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "-65536",
-		}
+		fe = newFilterExact("foo", "-65536")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{3})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "65536",
-		}
+		fe = newFilterExact("foo", "65536")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "123",
-		}
+		fe = newFilterExact("foo", "123")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "12345678901234567890",
-		}
+		fe = newFilterExact("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -554,41 +395,23 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "foo",
-			value:     "127.0.0.1",
-		}
+		fe := newFilterExact("foo", "127.0.0.1")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2, 4, 5, 7})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "bar",
-		}
+		fe = newFilterExact("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "",
-		}
+		fe = newFilterExact("foo", "")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "127.0",
-		}
+		fe = newFilterExact("foo", "127.0")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterExact{
-			fieldName: "foo",
-			value:     "255.255.255.255",
-		}
+		fe = newFilterExact("foo", "255.255.255.255")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -611,35 +434,20 @@ func TestFilterExact(t *testing.T) {
 		}
 
 		// match
-		fe := &filterExact{
-			fieldName: "_msg",
-			value:     "2006-01-02T15:04:05.005Z",
-		}
+		fe := newFilterExact("_msg", "2006-01-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{4})
 
-		fe = &filterExact{
-			fieldName: "non-existing-column",
-			value:     "",
-		}
+		fe = newFilterExact("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterExact{
-			fieldName: "_msg",
-			value:     "bar",
-		}
+		fe = newFilterExact("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterExact{
-			fieldName: "_msg",
-			value:     "",
-		}
+		fe = newFilterExact("_msg", "")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterExact{
-			fieldName: "_msg",
-			value:     "2006-03-02T15:04:05.005Z",
-		}
+		fe = newFilterExact("_msg", "2006-03-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 	})
 

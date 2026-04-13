@@ -10,7 +10,7 @@ func TestJSONParserFailure(t *testing.T) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.ParseLogMessage([]byte(data), nil)
+		err := p.ParseLogMessage([]byte(data), nil, "")
 		if err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
@@ -23,11 +23,11 @@ func TestJSONParserFailure(t *testing.T) {
 }
 
 func TestJSONParserSuccess(t *testing.T) {
-	f := func(data string, preserveKeys []string, fieldsExpected []Field) {
+	f := func(data string, preserveKeys []string, fieldPrefix string, fieldsExpected []Field) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.ParseLogMessage([]byte(data), preserveKeys)
+		err := p.ParseLogMessage([]byte(data), preserveKeys, fieldPrefix)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
@@ -37,14 +37,14 @@ func TestJSONParserSuccess(t *testing.T) {
 		PutJSONParser(p)
 	}
 
-	f("{}", nil, nil)
-	f(`{"foo":"bar"}`, nil, []Field{
+	f("{}", nil, "", nil)
+	f(`{"foo":"bar"}`, nil, "", []Field{
 		{
 			Name:  "foo",
 			Value: "bar",
 		},
 	})
-	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, nil, []Field{
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, nil, "", []Field{
 		{
 			Name:  "foo.bar.x",
 			Value: "y",
@@ -71,8 +71,36 @@ func TestJSONParserSuccess(t *testing.T) {
 		},
 	})
 
+	// add prefix to the parsed field names
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, nil, "qwe.", []Field{
+		{
+			Name:  "qwe.foo.bar.x",
+			Value: "y",
+		},
+		{
+			Name:  "qwe.foo.bar.z",
+			Value: `["foo"]`,
+		},
+		{
+			Name:  "qwe.a",
+			Value: "1",
+		},
+		{
+			Name:  "qwe.b",
+			Value: "true",
+		},
+		{
+			Name:  "qwe.c",
+			Value: "[1,2]",
+		},
+		{
+			Name:  "qwe.d",
+			Value: "false",
+		},
+	})
+
 	// preserve foo
-	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo"}, []Field{
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo"}, "", []Field{
 		{
 			Name:  "foo",
 			Value: `{"bar":{"x":"y","z":["foo"]}}`,
@@ -95,8 +123,32 @@ func TestJSONParserSuccess(t *testing.T) {
 		},
 	})
 
+	// preserve foo and add prefix to the parsed fields
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo"}, "qwe_", []Field{
+		{
+			Name:  "qwe_foo",
+			Value: `{"bar":{"x":"y","z":["foo"]}}`,
+		},
+		{
+			Name:  "qwe_a",
+			Value: "1",
+		},
+		{
+			Name:  "qwe_b",
+			Value: "true",
+		},
+		{
+			Name:  "qwe_c",
+			Value: "[1,2]",
+		},
+		{
+			Name:  "qwe_d",
+			Value: "false",
+		},
+	})
+
 	// preserve foo.bar
-	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo.bar"}, []Field{
+	f(`{"foo":{"bar":{"x":"y","z":["foo"]}},"a":1,"b":true,"c":[1,2],"d":false,"e":null}`, []string{"foo.bar"}, "", []Field{
 		{
 			Name:  "foo.bar",
 			Value: `{"x":"y","z":["foo"]}`,
@@ -125,7 +177,7 @@ func TestJSONParserTooLongFieldName(t *testing.T) {
 		t.Helper()
 
 		p := GetJSONParser()
-		err := p.parseLogMessage([]byte(data), nil, maxFieldLen)
+		err := p.parseLogMessage([]byte(data), nil, "", maxFieldLen)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}

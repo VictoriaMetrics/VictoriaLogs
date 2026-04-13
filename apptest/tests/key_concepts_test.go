@@ -113,13 +113,28 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 			`{"_msg":"case 5","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"_msg":"case 5","_time": "2025-06-05T14:30:19.088007Z", "foo":"abc", "x":"y"}`,
 		},
-		ingestQueryArgs: apptest.IngestOpts{},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","x":"y"}`,
 			},
 		},
 		query: "options(global_filter=('case 5')) foo:=bar | join by (_msg) (foo:=abc)",
+	})
+
+	// use field_max, field_min, row_max and row_min on _time column
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1294
+	f(&opts{
+		ingestRecords: []string{
+			`{"_time":"2025-06-05T14:30:19Z","a":"b1","_msg":"issue 1294"}`,
+			`{"_time":"2025-06-05T14:30:20Z","a":"b2","_msg":"issue 1294"}`,
+			`{"_time":"2025-06-05T14:30:21Z","a":"b3","_msg":"issue 1294"}`,
+		},
+		wantResponse: &apptest.LogsQLQueryResponse{
+			LogLines: []string{
+				`{"a_max":"b3","a_min":"b1","a_max_row":"{\"a\":\"b3\"}","a_min_row":"{\"a\":\"b1\"}"}`,
+			},
+		},
+		query: "'issue 1294' | field_max(_time, a) a_max, field_min(_time, a) a_min, row_max(_time, a) a_max_row, row_min(_time, a) a_min_row",
 	})
 }
 
@@ -224,13 +239,28 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 			`{"_msg":"case 5","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 			`{"_msg":"case 5","_time": "2025-06-05T14:30:19.088007Z", "foo":"abc", "x":"y"}`,
 		},
-		ingestQueryArgs: apptest.IngestOpts{},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
 				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","x":"y"}`,
 			},
 		},
 		query: "options(global_filter=('case 5')) foo:=bar | join by (_msg) (foo:=abc)",
+	})
+
+	// use field_max, field_min, row_max and row_min on _time column
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1294
+	f(&opts{
+		ingestRecords: []string{
+			`{"_time":"2025-06-05T14:30:19Z","a":"b1","_msg":"issue 1294"}`,
+			`{"_time":"2025-06-05T14:30:20Z","a":"b2","_msg":"issue 1294"}`,
+			`{"_time":"2025-06-05T14:30:21Z","a":"b3","_msg":"issue 1294"}`,
+		},
+		wantResponse: &apptest.LogsQLQueryResponse{
+			LogLines: []string{
+				`{"a_max":"b3","a_min":"b1","a_max_row":"{\"a\":\"b3\"}","a_min_row":"{\"a\":\"b1\"}"}`,
+			},
+		},
+		query: "'issue 1294' | field_max(_time, a) a_max, field_min(_time, a) a_min, row_max(_time, a) a_max_row, row_min(_time, a) a_min_row",
 	})
 }
 

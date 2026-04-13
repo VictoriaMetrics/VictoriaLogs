@@ -768,6 +768,41 @@ func TestStorageRunQuery(t *testing.T) {
 			},
 		})
 	})
+	t.Run("field-prefix-filter-match", func(t *testing.T) {
+		f(t, `s*:foo | stats count() rows`, [][]Field{
+			{
+				{"rows", "1155"},
+			},
+		})
+	})
+	t.Run("field-prefix-filter-match-in-filter-pipe", func(t *testing.T) {
+		f(t, `* | format "foo" as bar | filter s*:foo | stats count() rows`, [][]Field{
+			{
+				{"rows", "1155"},
+			},
+		})
+	})
+	t.Run("field-prefix-filter-non-existing-prefix", func(t *testing.T) {
+		f(t, `f*:foo | stats count() rows`, [][]Field{
+			{
+				{"rows", "0"},
+			},
+		})
+	})
+	t.Run("field-prefix-filter-all-fields-match", func(t *testing.T) {
+		f(t, `*:0 | stats count() rows`, [][]Field{
+			{
+				{"rows", "675"},
+			},
+		})
+	})
+	t.Run("field-prefix-filter-all-fields-mismatch", func(t *testing.T) {
+		f(t, `*:123343 | stats count() rows`, [][]Field{
+			{
+				{"rows", "0"},
+			},
+		})
+	})
 	t.Run("in-filter-with-subquery-match", func(t *testing.T) {
 		f(t, `tenant.id:in(tenant.id:2 | fields tenant.id) | stats count() rows`, [][]Field{
 			{
@@ -1192,13 +1227,9 @@ func TestStorageSearch(t *testing.T) {
 			maxTimestamp: maxTimestamp,
 		})
 		if sf != nil {
-			filters = append(filters, &filterStream{
-				f: sf,
-			})
+			filters = append(filters, newFilterStream(sf))
 		}
-		return &filterAnd{
-			filters: filters,
-		}
+		return newFilterAnd(filters)
 	}
 
 	t.Run("missing-tenant-smaller-than-existing", func(_ *testing.T) {
@@ -1353,15 +1384,10 @@ func TestStorageSearch(t *testing.T) {
 		minTimestamp := baseTimestamp
 		maxTimestamp := baseTimestamp + rowsPerBlock*1e9 + blocksPerStream
 		f := getBaseFilter(minTimestamp, maxTimestamp, sf)
-		f = &filterAnd{
-			filters: []filter{
-				f,
-				&filterRegexp{
-					fieldName: "_msg",
-					re:        mustCompileRegex("message [02] at "),
-				},
-			},
-		}
+		f = newFilterAnd([]filter{
+			f,
+			newFilterRegexp("_msg", mustCompileRegex("message [02] at ")),
+		})
 		sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{"_msg"})
 		qs := &QueryStats{}
 		var rowsCountTotal atomic.Uint32
@@ -1596,7 +1622,7 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 
 	check := func(qStr string, hiddenFieldsFilters, rowsExpected []string) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, qStr, hiddenFieldsFilters, rowsExpected)
+		checkQueryResults(t, s, now, tenantIDs, qStr, hiddenFieldsFilters, rowsExpected)
 	}
 
 	storeRowsForSearchHiddenFieldsFilters(s, tenantIDs, now)

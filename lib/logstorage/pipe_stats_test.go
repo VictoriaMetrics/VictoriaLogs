@@ -20,7 +20,7 @@ func TestParsePipeStatsSuccess(t *testing.T) {
 	f(`stats count(*) switch(case (status:=200) as ok, case (status:>=400 status:<500) as bad, default as other)`)
 
 	// multiple switches with regular funcs
-	f(`stats count(*) if (a) as x, sum(b) switch(case (c) as q), min(x) switch(default as w), max(y) switch(default as qq, case (p) as ww), avg(w) switch()`)
+	f(`stats count(*) if (a) as x, sum(b) switch(case (c) as q), min(x) switch(default as w), max(y) switch(default as qq, case (p) as ww), avg(w) switch(default as avg_w)`)
 
 	// switch with by (...)
 	f(`stats by (host) count(*) switch(case (path:~"^/admin/") as admin_requests, default as other_requests)`)
@@ -61,6 +61,11 @@ func TestParsePipeStatsFailure(t *testing.T) {
 	// zero cases
 	f(`stats count() switch()`)
 	f(`stats by (x) count() switch()`)
+	f(`stats count(), avg() switch()`)
+
+	// multiple defaults
+	f(`stats count() switch(default a, default b)`)
+	f(`stats count() as total, avg() switch(case (x) avg_x, default avg_other, default avg_fallback)`)
 }
 
 func TestPipeStats(t *testing.T) {

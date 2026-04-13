@@ -127,14 +127,10 @@ func (sw *pipeStatsSwitch) getDefaultFilter() *ifFilter {
 	}
 
 	if len(filters) == 0 {
-		return newIfFilter(&filterNoop{})
+		return newIfFilter(newFilterNoop())
 	}
 
-	filter := &filterNot{
-		f: &filterOr{
-			filters: filters,
-		},
-	}
+	filter := newFilterNot(newFilterOr(filters))
 	return newIfFilter(filter)
 }
 
@@ -1481,6 +1477,7 @@ func parseStatsSwitch(lex *lexer, sf statsFunc) (*pipeStatsSwitch, error) {
 	lex.nextToken()
 
 	var cases []pipeStatsCase
+	defaultSet := false
 	for !lex.isKeyword(")") {
 		switch {
 		case lex.isKeyword("case", "if"):
@@ -1500,6 +1497,10 @@ func parseStatsSwitch(lex *lexer, sf statsFunc) (*pipeStatsSwitch, error) {
 				resultName: resultName,
 			})
 		case lex.isKeyword("default"):
+			if defaultSet {
+				return nil, fmt.Errorf("switch(...) cannot contain more than one 'default'")
+			}
+			defaultSet = true
 			lex.nextToken()
 			if lex.isKeyword("as") {
 				lex.nextToken()
@@ -1521,6 +1522,9 @@ func parseStatsSwitch(lex *lexer, sf statsFunc) (*pipeStatsSwitch, error) {
 		if lex.isKeyword(",") {
 			lex.nextToken()
 		}
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("switch(...) must contain at least a single 'case' or 'default'")
 	}
 	lex.nextToken()
 

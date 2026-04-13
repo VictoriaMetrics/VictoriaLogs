@@ -18,62 +18,31 @@ func TestFilterWeekRange(t *testing.T) {
 	}
 
 	// match
-	ft := &filterWeekRange{
-		startDay: time.Sunday,
-		endDay:   time.Sunday,
-	}
+	ft := newFilterWeekRange(time.Sunday, time.Sunday, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0})
 
-	ft = &filterWeekRange{
-		startDay: time.Sunday,
-		endDay:   time.Monday,
-	}
+	ft = newFilterWeekRange(time.Sunday, time.Monday, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0, 1})
 
-	ft = &filterWeekRange{
-		startDay: time.Monday,
-		endDay:   time.Monday,
-	}
+	ft = newFilterWeekRange(time.Monday, time.Monday, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{1})
 
-	ft = &filterWeekRange{
-		startDay: time.Monday,
-		endDay:   time.Monday,
-		offset:   -3 * nsecsPerDay,
-	}
+	ft = newFilterWeekRange(time.Monday, time.Monday, -3*nsecsPerDay, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{3})
 
-	ft = &filterWeekRange{
-		startDay: time.Monday,
-		endDay:   time.Monday,
-		offset:   2 * nsecsPerDay,
-	}
+	ft = newFilterWeekRange(time.Monday, time.Monday, 2*nsecsPerDay, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{4})
 
-	ft = &filterWeekRange{
-		startDay: time.Sunday,
-		endDay:   time.Saturday,
-	}
+	ft = newFilterWeekRange(time.Sunday, time.Saturday, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, []int{0, 1, 2, 3, 4})
 
 	// mismatch
-	ft = &filterWeekRange{
-		startDay: time.Friday,
-		endDay:   time.Friday,
-	}
+	ft = newFilterWeekRange(time.Friday, time.Friday, 0, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
-	ft = &filterWeekRange{
-		startDay: time.Thursday,
-		endDay:   time.Thursday,
-		offset:   -2 * nsecsPerHour,
-	}
+	ft = newFilterWeekRange(time.Thursday, time.Thursday, -2*nsecsPerHour, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 
-	ft = &filterWeekRange{
-		startDay: time.Friday,
-		endDay:   time.Friday,
-		offset:   1 * nsecsPerHour,
-	}
+	ft = newFilterWeekRange(time.Friday, time.Friday, 1*nsecsPerHour, "")
 	testFilterMatchForTimestamps(t, timestamps, ft, nil)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/pushmetrics"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/filecollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/kubernetescollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert"
@@ -28,7 +29,9 @@ var (
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
-	tmpDataPath = flag.String("tmpDataPath", "", "Default path for storing vlagent data; see also -remoteWrite.tmpDataPath and -kubernetesCollector.checkpointsPath")
+	tmpDataPath = flag.String("tmpDataPath", "", "Base directory for storing vlagent data. "+
+		"Used as default for -remoteWrite.tmpDataPath, -kubernetesCollector.checkpointsPath, "+
+		"and -fileCollector.checkpointsPath unless those flags are set explicitly")
 )
 
 func main() {
@@ -50,6 +53,7 @@ func main() {
 	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
 	remotewrite.Init(*tmpDataPath)
 
+	filecollector.Init(*tmpDataPath)
 	kubernetescollector.Init(*tmpDataPath)
 	vlinsert.Init()
 
@@ -70,6 +74,7 @@ func main() {
 	}
 	vlinsert.Stop()
 	kubernetescollector.Stop()
+	filecollector.Stop()
 	remotewrite.Stop()
 	logger.Infof("successfully shut down the webservice in %.3f seconds", time.Since(startTime).Seconds())
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())

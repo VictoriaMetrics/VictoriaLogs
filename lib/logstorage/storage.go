@@ -436,7 +436,7 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 // The timestamp must contain the timestamp in seconds when the task is started.
 func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int64, tenantIDs []TenantID, f *Filter) error {
 	// Register the task in the list of active delete tasks, so it survives application restarts and crashes.
-	dt := newDeleteTask(taskID, tenantIDs, f.String(), timestamp)
+	dt := newDeleteTask(taskID, timestamp, tenantIDs, f.String())
 
 	s.deleteTasksLock.Lock()
 	defer s.deleteTasksLock.Unlock()
@@ -765,47 +765,43 @@ func (s *Storage) watchRetention() {
 	ticker := time.NewTicker(d)
 	defer ticker.Stop()
 	for {
-		var ptwsToDelete []*partitionWrapper
-		now := time.Now().UnixNano()
-		minAllowedDay := s.getMinAllowedDay(now)
-
-		s.partitionsLock.Lock()
-
-		// Delete outdated partitions.
-		// s.partitions are sorted by day, so the partitions, which can become outdated, are located at the beginning of the list
-		ptws := s.partitions
-		for i, ptw := range ptws {
-			if ptw.day < minAllowedDay {
-				continue
-			}
-
-			// ptws are sorted by time, so just drop all the partitions until i.
-			ptwsToDelete = ptws[:i]
-			s.partitions = ptws[i:]
-			s.updateDeletedPartitionsLocked(ptwsToDelete)
-
-			// Remove reference to deleted partitions from s.ptwHot
-			if slices.Contains(ptwsToDelete, s.ptwHot) {
-				s.ptwHot = nil
-			}
-
-			break
-		}
-
-		s.partitionsLock.Unlock()
-
-		for i, ptw := range ptwsToDelete {
-			logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
-			ptw.mustDrop.Store(true)
-			ptw.decRef()
-			ptwsToDelete[i] = nil
-		}
+		s.dropStalePartitions()
 
 		select {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+func (s *Storage) dropStalePartitions() {
+	now := time.Now().UnixNano()
+	minAllowedDay := s.getMinAllowedDay(now)
+
+	s.partitionsLock.Lock()
+
+	// Delete outdated partitions.
+	// s.partitions are sorted by day, so find the first non-expired partition.
+	n := sort.Search(len(s.partitions), func(i int) bool {
+		return s.partitions[i].day >= minAllowedDay
+	})
+	ptwsToDelete := s.partitions[:n]
+	s.partitions = s.partitions[n:]
+	s.updateDeletedPartitionsLocked(ptwsToDelete)
+
+	// Remove reference to deleted partitions from s.ptwHot
+	if slices.Contains(ptwsToDelete, s.ptwHot) {
+		s.ptwHot = nil
+	}
+
+	s.partitionsLock.Unlock()
+
+	for i, ptw := range ptwsToDelete {
+		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
+		ptw.mustDrop.Store(true)
+		ptw.decRef()
+		ptwsToDelete[i] = nil
 	}
 }
 
@@ -970,8 +966,9 @@ func (s *Storage) watchDeleteTasks() {
 func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	logger.Infof("started processing delete task %s", dt)
 	startTime := time.Now()
+	now := dt.StartTime.UnixNano()
 
-	f, err := ParseFilterAtTimestamp(dt.Filter, dt.StartTime.UnixNano())
+	f, err := ParseFilterAtTimestamp(dt.Filter, now)
 	if err != nil {
 		logger.Panicf("BUG: cannot parse filter from delete task: [%s]", dt.Filter)
 	}
@@ -981,11 +978,8 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 		timestamp: dt.StartTime.UnixNano(),
 	}
 
-	// Add time filter ending at the delete task start time.
-	// This avoids deleting logs from the future.
-	start := int64(math.MinInt64)
-	end := dt.StartTime.UnixNano()
-	q.AddTimeFilter(start, end)
+	// Add time filter ending at now in order to avoid deleting logs from the future.
+	q.AddTimeFilter(math.MinInt64, now)
 
 	var qs QueryStats
 	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false, nil)
