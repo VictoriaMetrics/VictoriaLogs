@@ -14,7 +14,7 @@ endif
 GO_BUILDINFO = -X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GOLANGCI_LINT_VERSION := 2.4.0
+GOLANGCI_LINT_VERSION := 2.9.0
 
 .PHONY: $(MAKECMDGOALS)
 
@@ -71,6 +71,10 @@ vlutils-linux-ppc64le: \
 	vlagent-linux-ppc64le \
 	vlogscli-linux-ppc64le
 
+vlutils-linux-s390x: \
+        vlagent-linux-s390x \
+        vlogscli-linux-s390x
+
 vlutils-darwin-amd64: \
 	vlagent-darwin-amd64 \
 	vlogscli-darwin-amd64
@@ -100,6 +104,7 @@ victoria-logs-crossbuild: \
 	victoria-logs-linux-arm64 \
 	victoria-logs-linux-arm \
 	victoria-logs-linux-ppc64le \
+	victoria-logs-linux-s390x \
 	victoria-logs-darwin-amd64 \
 	victoria-logs-darwin-arm64 \
 	victoria-logs-freebsd-amd64 \
@@ -112,6 +117,7 @@ vlutils-crossbuild: \
 	vlutils-linux-arm64 \
 	vlutils-linux-arm \
 	vlutils-linux-ppc64le \
+	vlutils-linux-s390x \
 	vlutils-darwin-amd64 \
 	vlutils-darwin-arm64 \
 	vlutils-freebsd-amd64 \
@@ -136,6 +142,7 @@ release-victoria-logs:
 		release-victoria-logs-linux-amd64 \
 		release-victoria-logs-linux-arm \
 		release-victoria-logs-linux-arm64 \
+		release-victoria-logs-linux-s390x \
 		release-victoria-logs-darwin-amd64 \
 		release-victoria-logs-darwin-arm64 \
 		release-victoria-logs-freebsd-amd64 \
@@ -153,6 +160,9 @@ release-victoria-logs-linux-arm:
 
 release-victoria-logs-linux-arm64:
 	GOOS=linux GOARCH=arm64 $(MAKE) release-victoria-logs-goos-goarch
+
+release-victoria-logs-linux-s390x:
+	GOOS=linux GOARCH=s390x $(MAKE) release-victoria-logs-goos-goarch
 
 release-victoria-logs-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 $(MAKE) release-victoria-logs-goos-goarch
@@ -193,6 +203,7 @@ release-vlutils: \
 	release-vlutils-linux-amd64 \
 	release-vlutils-linux-arm64 \
 	release-vlutils-linux-arm \
+	release-vlutils-linux-s390x \
 	release-vlutils-darwin-amd64 \
 	release-vlutils-darwin-arm64 \
 	release-vlutils-freebsd-amd64 \
@@ -210,6 +221,9 @@ release-vlutils-linux-arm64:
 
 release-vlutils-linux-arm:
 	GOOS=linux GOARCH=arm $(MAKE) release-vlutils-goos-goarch
+
+release-vlutils-linux-s390x:
+	GOOS=linux GOARCH=s390x $(MAKE) release-vlutils-goos-goarch
 
 release-vlutils-darwin-amd64:
 	GOOS=darwin GOARCH=amd64 $(MAKE) release-vlutils-goos-goarch
@@ -257,7 +271,7 @@ release-vlutils-windows-goarch: \
 		vlogscli-windows-$(GOARCH)-prod.exe
 
 pprof-cpu:
-	go tool pprof -trim_path=github.com/VictoriaMetrics/VictoriaLogs@ $(PPROF_FILE)
+	go tool pprof -trim_path=github.com/VictoriaMetrics/VictoriaLogs $(PPROF_FILE)
 
 fmt:
 	gofmt -l -w -s ./lib
@@ -265,7 +279,7 @@ fmt:
 	gofmt -l -w -s ./apptest
 
 vet:
-	GOEXPERIMENT=synctest go vet ./lib/...
+	go vet ./lib/...
 	go vet ./app/...
 	go vet ./apptest/...
 
@@ -274,39 +288,42 @@ check-all: fmt vet golangci-lint govulncheck
 clean-checkers: remove-golangci-lint remove-govulncheck
 
 test:
-	GOEXPERIMENT=synctest go test ./lib/... ./app/...
+	go test -tags 'synctest' ./lib/... ./app/...
+
+test-386:
+	GOARCH=386 go test -tags 'synctest' ./lib/... ./app/...
 
 test-race:
-	GOEXPERIMENT=synctest go test -race ./lib/... ./app/...
+	go test -tags 'synctest' -race ./lib/... ./app/...
 
 test-pure:
-	GOEXPERIMENT=synctest CGO_ENABLED=0 go test ./lib/... ./app/...
+	CGO_ENABLED=0 go test -tags 'synctest' ./lib/... ./app/...
 
 test-full:
-	GOEXPERIMENT=synctest go test -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
+	go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
 
 test-full-386:
-	GOEXPERIMENT=synctest GOARCH=386 go test -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
+	GOARCH=386 go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
 
 integration-test:
 	$(MAKE) apptest
 
 apptest:
-	$(MAKE) victoria-logs vlagent vlogscli
+	$(MAKE) victoria-logs-race vlagent-race vlogscli-race
 	go test ./apptest/...
 
 benchmark:
-	GOEXPERIMENT=synctest go test -bench=. ./lib/...
-	go test -bench=. ./app/...
+	go test -run=NO_TESTS -bench=. ./lib/...
+	go test -run=NO_TESTS -bench=. ./app/...
 
 benchmark-pure:
-	GOEXPERIMENT=synctest CGO_ENABLED=0 go test -bench=. ./lib/...
-	CGO_ENABLED=0 go test -bench=. ./app/...
+	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./lib/...
+	CGO_ENABLED=0 go test -run=NO_TESTS -bench=. ./app/...
 
 vendor-update:
 	go get -u ./lib/...
 	go get -u ./app/...
-	go mod tidy -compat=1.25
+	go mod tidy -compat=1.26
 	go mod vendor
 
 app-local:
@@ -322,13 +339,14 @@ app-local-windows-goarch:
 	CGO_ENABLED=0 GOOS=windows GOARCH=$(GOARCH) go build $(RACE) -ldflags "$(GO_BUILDINFO)" -o bin/$(APP_NAME)-windows-$(GOARCH)$(RACE).exe $(PKG_PREFIX)/app/$(APP_NAME)
 
 quicktemplate-gen: install-qtc
-	qtc
+	qtc -dir=lib
+	qtc -dir=app
 
 install-qtc:
 	which qtc || go install github.com/valyala/quicktemplate/qtc@latest
 
 golangci-lint: install-golangci-lint
-	GOEXPERIMENT=synctest golangci-lint run
+	golangci-lint run
 
 install-golangci-lint:
 	which golangci-lint && (golangci-lint --version | grep -q $(GOLANGCI_LINT_VERSION)) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v$(GOLANGCI_LINT_VERSION)

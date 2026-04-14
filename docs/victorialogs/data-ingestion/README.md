@@ -6,7 +6,9 @@ build:
 sitemap:
   disable: true
 ---
-[VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) can accept logs from the following log collectors:
+
+[VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
+can accept logs from the following log collectors:
 
 - Syslog, Rsyslog and Syslog-ng - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/).
 - Filebeat - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/filebeat/).
@@ -24,7 +26,6 @@ The ingested logs can be queried according to [these docs](https://docs.victoria
 
 See also:
 
-- [Log collectors and data ingestion formats](https://docs.victoriametrics.com/victorialogs/data-ingestion/#log-collectors-and-data-ingestion-formats).
 - [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
 ## HTTP APIs
@@ -53,7 +54,9 @@ echo '{"create":{}}
 ' | curl -X POST -H 'Content-Type: application/json' --data-binary @- http://localhost:9428/insert/elasticsearch/_bulk
 ```
 
-It is possible to push thousands of log lines in a single request to this API.
+It is possible to push arbitrary number of log lines in a single request to this API - it parses logs line-by-line
+and immediately stores them into VictoriaLogs. It stops parsing logs on the first encountered error and returns
+the error to the client, so it could be quickly identified and resolved.
 
 If the [timestamp field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) is set to `"0"`,
 then the current timestamp at VictoriaLogs side is used per each ingested log line.
@@ -63,6 +66,7 @@ Otherwise the timestamp field must be in one of the following formats:
   For example, `2023-06-20T15:32:10Z` or `2023-06-20 15:32:10.123456789+02:00`.
   If timezone information is missing (for example, `2023-06-20 15:32:10`),
   then the time is parsed in the local timezone of the host where VictoriaLogs runs.
+  See [how to control local timezone at VictoriaLogs server](https://docs.victoriametrics.com/victorialogs/#server-side-timezone).
 
 - Unix timestamp in seconds, milliseconds, microseconds or nanoseconds. For example, `1686026893` (seconds), `1686026893735` (milliseconds),
   `1686026893735321` (microseconds) or `1686026893735321098` (nanoseconds).
@@ -123,6 +127,7 @@ Otherwise the timestamp field must be in one of the following formats:
   For example, `2023-06-20T15:32:10Z` or `2023-06-20 15:32:10.123456789+02:00`.
   If timezone information is missing (for example, `2023-06-20 15:32:10`),
   then the time is parsed in the local timezone of the host where VictoriaLogs runs.
+  See [how to control local timezone at VictoriaLogs server](https://docs.victoriametrics.com/victorialogs/#server-side-timezone).
 
 - Unix timestamp in seconds, milliseconds, microseconds or nanoseconds. For example, `1686026893` (seconds), `1686026893735` (milliseconds),
   `1686026893735321` (microseconds) or `1686026893735321098` (nanoseconds).
@@ -243,7 +248,11 @@ All the [HTTP-based data ingestion protocols](https://docs.victoriametrics.com/v
 - `_stream_fields` - comma-separated list of [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names,
   which uniquely identify every [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
-  If the `_stream_fields` arg isn't set, then all the ingested logs are written to default log stream - `{}`.
+  If the `_stream_fields` arg isn't set, then the stream fields are extracted from the `_stream` field.
+  For example, if the `_stream={host="abc",app="nginx"}`, then `host="abc"` and `app="nginx"` are used as stream fields.
+  The input log entry must contain these fields with the same values. Otherwise the input log entry is skipped, and the error message is written into VictoriaLogs' log.
+
+  If the `_stream_fields` arg isn't set and the input log entry doesn't contain the `_stream` field, then this entry is stored to the default log stream - `{}`.
 
 - `ignore_fields` - an optional comma-separated list of [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names,
   which must be ignored during data ingestion. The list may contain field name prefixes ending with `*` such a `some-prefix*`.
@@ -256,6 +265,12 @@ All the [HTTP-based data ingestion protocols](https://docs.victoriametrics.com/v
 - `extra_fields` - an optional comma-separated list of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model),
   which must be added to all the ingested logs. The format of every `extra_fields` entry is `field_name=field_value`.
   If the log entry contains fields from the `extra_fields`, then they are overwritten by the values specified in `extra_fields`.
+
+- `preserve_json_keys` - an optional comma-separated list of JSON keys for values,
+  which mustn't be flattened according to [these rules](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+  For example, `preserve_json_keys=host.os` preserves `host.os` field value as `{"version":"1.2.3"}` string
+  for the input JSON `{"host":{"os":{"version":"1.2.3"}}}`. If the `preserve_json_keys` isn't set to `host.os`,
+  then the given JSON is parsed into `host.os.version` field with the `1.2.3` value.
 
 - `debug` - if this arg is set to `1`, then the ingested logs aren't stored in VictoriaLogs. Instead,
   the ingested data is logged by VictoriaLogs, so it can be investigated later.
@@ -307,6 +322,12 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
   which must be added to all the ingested logs. The format of every `extra_fields` entry is `field_name=field_value`.
   If the log entry contains fields from the `extra_fields`, then they are overwritten by the values specified in `extra_fields`.
 
+- `VL-Preserve-JSON-Keys` - an optional comma-separated list of JSON keys for values,
+  which mustn't be flattened according to [these rules](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+  For example, `VL-Preserve-JSON-Keys: host.os` preserves `host.os` field value as `{"version":"1.2.3"}` string
+  for the input JSON `{"host":{"os":{"version":"1.2.3"}}}`. If the `VL-Preserve-JSON-Keys` header isn't set to `host.os`,
+  then the given JSON is parsed into `host.os.version` field with the `1.2.3` value.
+
 - `VL-Debug` - if this parameter is set to `1`, then the ingested logs aren't stored in VictoriaLogs. Instead,
   the ingested data is logged by VictoriaLogs, so it can be investigated later.
 
@@ -341,6 +362,7 @@ VictoriaLogs provides the following command-line flags, which can help debugging
 - `-logNewStreams` - if this flag is passed to VictoriaLogs, then it logs all the newly
   registered [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
   This may help debugging [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
+  Logging of new streams can be also enabled for the given number of seconds - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
 - `-logIngestedRows` - if this flag is passed to VictoriaLogs, then it logs all the ingested
   [log entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
   See also `debug` [parameter](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
@@ -357,23 +379,4 @@ VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victoria
 - [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
   since the last VictoriaLogs restart. If this metric grows rapidly during extended periods of time, then this may lead
   to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
-  The newly created log streams can be inspected in logs by passing `-logNewStreams` command-line flag to VictoriaLogs.
-
-## Log collectors and data ingestion formats
-
-Here is the list of log collectors and their ingestion formats supported by VictoriaLogs:
-
-| How to setup the collector                                                                   | Format: Elasticsearch | Format: JSON Stream | Format: Loki | Format: syslog | Format: OpenTelemetry | Format: Journald | Format: DataDog |
-|----------------------------------------------------------------------------------------------|-----------------------|---------------------|--------------|----------------|-----------------------|------------------|-----------------|
-| [Rsyslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/)              | [Yes](https://www.rsyslog.com/doc/configuration/modules/omelasticsearch.html) | No | No | [Yes](https://www.rsyslog.com/doc/configuration/modules/omfwd.html) | No | No | No |
-| [Syslog-ng](https://docs.victoriametrics.com/victorialogs/data-ingestion/filebeat/)          | Yes, [v1](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.16/administration-guide/28#TOPIC-956489), [v2](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.16/administration-guide/29#TOPIC-956494) | No | No | [Yes](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.16/administration-guide/44#TOPIC-956553) | No | No | No |
-| [Filebeat](https://docs.victoriametrics.com/victorialogs/data-ingestion/filebeat/)           | [Yes](https://www.elastic.co/guide/en/beats/filebeat/current/elasticsearch-output.html) | No | No | No | No | No | No |
-| [Fluentbit](https://docs.victoriametrics.com/victorialogs/data-ingestion/fluentbit/)         | No | [Yes](https://docs.fluentbit.io/manual/pipeline/outputs/http) | [Yes](https://docs.fluentbit.io/manual/pipeline/outputs/loki) | [Yes](https://docs.fluentbit.io/manual/pipeline/outputs/syslog) | [Yes](https://docs.fluentbit.io/manual/pipeline/outputs/opentelemetry) | No | [Yes](https://docs.fluentbit.io/manual/pipeline/outputs/datadog) |
-| [Logstash](https://docs.victoriametrics.com/victorialogs/data-ingestion/logstash/)           | [Yes](https://www.elastic.co/guide/en/logstash/current/plugins-outputs-elasticsearch.html) | No | No | [Yes](https://www.elastic.co/guide/en/logstash/current/plugins-outputs-syslog.html) | [Yes](https://github.com/paulgrav/logstash-output-opentelemetry) | No | [Yes](https://www.elastic.co/guide/en/logstash/current/plugins-outputs-datadog.html) |
-| [Vector](https://docs.victoriametrics.com/victorialogs/data-ingestion/vector/)               | [Yes](https://vector.dev/docs/reference/configuration/sinks/elasticsearch/) | [Yes](https://vector.dev/docs/reference/configuration/sinks/http/) | [Yes](https://vector.dev/docs/reference/configuration/sinks/loki/) | No | No | No | [Yes](https://vector.dev/docs/reference/configuration/sinks/datadog_logs/) |
-| [Promtail](https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/)           | No | No | [Yes](https://grafana.com/docs/loki/latest/clients/promtail/configuration/#clients) | No | No | No | No |
-| [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)                          | [Yes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter) | No | [Yes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/lokiexporter) | [Yes](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/syslogexporter) | [Yes](https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/otlphttpexporter) | No | [Yes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter) |
-| [Telegraf](https://docs.victoriametrics.com/victorialogs/data-ingestion/telegraf/)           | [Yes](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/elasticsearch) | [Yes](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/http) | [Yes](https://github.com/influxdata/telegraf/tree/master/plugins/outputs/loki) | [Yes](https://github.com/influxdata/telegraf/blob/master/plugins/outputs/syslog) | Yes | No | No |
-| [Fluentd](https://docs.victoriametrics.com/victorialogs/data-ingestion/fluentd/)             | [Yes](https://github.com/uken/fluent-plugin-elasticsearch) | [Yes](https://docs.fluentd.org/output/http) | [Yes](https://grafana.com/docs/loki/latest/send-data/fluentd/) | [Yes](https://github.com/fluent-plugins-nursery/fluent-plugin-remote_syslog) | No | No | No |
-| [Journald](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/)           | No | No | No | No | No | Yes | No |
-| [DataDog Agent](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/) | No | No | No | No | No | No | Yes |
+  The newly created log streams can be inspected in logs - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).

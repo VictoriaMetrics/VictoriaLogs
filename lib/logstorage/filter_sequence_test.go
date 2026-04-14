@@ -45,65 +45,35 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc"},
-		}
+		fs := newFilterSequence("foo", []string{"abc"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"def"},
-		}
+		fs = newFilterSequence("foo", []string{"def"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc def"},
-		}
+		fs = newFilterSequence("foo", []string{"abc def"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc ", "", "def", ""},
-		}
+		fs = newFilterSequence("foo", []string{"abc ", "", "def", ""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"ab"},
-		}
+		fs = newFilterSequence("foo", []string{"ab"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc", "abc"},
-		}
+		fs = newFilterSequence("foo", []string{"abc", "abc"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc", "def", "foo"},
-		}
+		fs = newFilterSequence("foo", []string{"abc", "def", "foo"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -120,41 +90,23 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc", " def"},
-		}
+		fs := newFilterSequence("foo", []string{"abc", " def"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc ", ""},
-		}
+		fs = newFilterSequence("foo", []string{"abc ", ""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{"", ""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{"", ""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"abc def ", "foobar"},
-		}
+		fs = newFilterSequence("foo", []string{"abc def ", "foobar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "non-existing column",
-			phrases:   []string{"x", "yz"},
-		}
+		fs = newFilterSequence("non-existing column", []string{"x", "yz"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -175,41 +127,23 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"foobar", "baz"},
-		}
+		fs := newFilterSequence("foo", []string{"foobar", "baz"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{3})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"baz", "aaaa"},
-		}
+		fs = newFilterSequence("foo", []string{"baz", "aaaa"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "non-existing column",
-			phrases:   []string{"foobar", "aaaa"},
-		}
+		fs = newFilterSequence("non-existing column", []string{"foobar", "aaaa"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -233,53 +167,29 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"a", "bb"},
-		}
+		fs := newFilterSequence("foo", []string{"a", "bb"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 6})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"НГКШ", " "},
-		}
+		fs = newFilterSequence("foo", []string{"НГКШ", " "})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{8})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"!,", "(!1)"},
-		}
+		fs = newFilterSequence("foo", []string{"!,", "(!1)"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{9})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"aa a", "bcdasqq"},
-		}
+		fs = newFilterSequence("foo", []string{"aa a", "bcdasqq"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"@", "!!!!"},
-		}
+		fs = newFilterSequence("foo", []string{"@", "!!!!"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -304,53 +214,29 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12"},
-		}
+		fs := newFilterSequence("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{1, 5})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "bar"},
-		}
+		fs = newFilterSequence("foo", []string{"", "bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234"},
-		}
+		fs = newFilterSequence("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234", "567"},
-		}
+		fs = newFilterSequence("foo", []string{"1234", "567"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -375,53 +261,29 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12"},
-		}
+		fs := newFilterSequence("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{1, 5})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "bar"},
-		}
+		fs = newFilterSequence("foo", []string{"", "bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234"},
-		}
+		fs = newFilterSequence("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234", "567"},
-		}
+		fs = newFilterSequence("foo", []string{"1234", "567"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -446,53 +308,29 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12"},
-		}
+		fs := newFilterSequence("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{1, 5})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "bar"},
-		}
+		fs = newFilterSequence("foo", []string{"", "bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234"},
-		}
+		fs = newFilterSequence("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234", "567"},
-		}
+		fs = newFilterSequence("foo", []string{"1234", "567"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -517,53 +355,29 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12"},
-		}
+		fs := newFilterSequence("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{1, 5})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "bar"},
-		}
+		fs = newFilterSequence("foo", []string{"", "bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234"},
-		}
+		fs = newFilterSequence("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234", "567"},
-		}
+		fs = newFilterSequence("foo", []string{"1234", "567"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -588,59 +402,32 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12"},
-		}
+		fs := newFilterSequence("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{1, 5})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"-32"},
-		}
+		fs = newFilterSequence("foo", []string{"-32"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{2})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "bar"},
-		}
+		fs = newFilterSequence("foo", []string{"", "bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234"},
-		}
+		fs = newFilterSequence("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234", "567"},
-		}
+		fs = newFilterSequence("foo", []string{"1234", "567"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -663,65 +450,35 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"-", "65536"},
-		}
+		fs := newFilterSequence("foo", []string{"-", "65536"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{3})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"1234.", "5678901"},
-		}
+		fs = newFilterSequence("foo", []string{"1234.", "5678901"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{4})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", "5678901"},
-		}
+		fs = newFilterSequence("foo", []string{"", "5678901"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{4})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"", ""},
-		}
+		fs = newFilterSequence("foo", []string{"", ""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"65536", "-"},
-		}
+		fs = newFilterSequence("foo", []string{"65536", "-"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"5678901", "1234"},
-		}
+		fs = newFilterSequence("foo", []string{"5678901", "1234"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"12345678901234567890"},
-		}
+		fs = newFilterSequence("foo", []string{"12345678901234567890"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -747,77 +504,41 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"127.0.0.1"},
-		}
+		fs := newFilterSequence("foo", []string{"127.0.0.1"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{2, 4, 5, 7})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"127", "1"},
-		}
+		fs = newFilterSequence("foo", []string{"127", "1"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{2, 4, 5, 7})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"127.0.0"},
-		}
+		fs = newFilterSequence("foo", []string{"127.0.0"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{2, 4, 5, 7})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"2.3", ".4"},
-		}
+		fs = newFilterSequence("foo", []string{"2.3", ".4"})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("foo", []string{})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"5"},
-		}
+		fs = newFilterSequence("foo", []string{"5"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"127.", "1", "1", "345"},
-		}
+		fs = newFilterSequence("foo", []string{"127.", "1", "1", "345"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"27.0"},
-		}
+		fs = newFilterSequence("foo", []string{"27.0"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 
-		fs = &filterSequence{
-			fieldName: "foo",
-			phrases:   []string{"255.255.255.255"},
-		}
+		fs = newFilterSequence("foo", []string{"255.255.255.255"})
 		testFilterMatchForColumns(t, columns, fs, "foo", nil)
 	})
 
@@ -840,65 +561,35 @@ func TestFilterSequence(t *testing.T) {
 		}
 
 		// match
-		fs := &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"2006-01-02T15:04:05.005Z"},
-		}
+		fs := newFilterSequence("_msg", []string{"2006-01-02T15:04:05.005Z"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{4})
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"2006-01", "04:05."},
-		}
+		fs = newFilterSequence("_msg", []string{"2006-01", "04:05."})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"2006", "002Z"},
-		}
+		fs = newFilterSequence("_msg", []string{"2006", "002Z"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{1})
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{},
-		}
+		fs = newFilterSequence("_msg", []string{})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("_msg", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fs = &filterSequence{
-			fieldName: "non-existing-column",
-			phrases:   []string{""},
-		}
+		fs = newFilterSequence("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fs, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"bar"},
-		}
+		fs = newFilterSequence("_msg", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", nil)
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"002Z", "2006"},
-		}
+		fs = newFilterSequence("_msg", []string{"002Z", "2006"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", nil)
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"2006-04-02T15:04:05.005Z", "2023"},
-		}
+		fs = newFilterSequence("_msg", []string{"2006-04-02T15:04:05.005Z", "2023"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", nil)
 
-		fs = &filterSequence{
-			fieldName: "_msg",
-			phrases:   []string{"06"},
-		}
+		fs = newFilterSequence("_msg", []string{"06"})
 		testFilterMatchForColumns(t, columns, fs, "_msg", nil)
 	})
 

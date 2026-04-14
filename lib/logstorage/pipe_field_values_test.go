@@ -11,7 +11,9 @@ func TestParsePipeFieldValuesSuccess(t *testing.T) {
 	}
 
 	f(`field_values x`)
+	f(`field_values x filter abc`)
 	f(`field_values x limit 10`)
+	f(`field_values x filter abc limit 10`)
 }
 
 func TestParsePipeFieldValuesFailure(t *testing.T) {
@@ -26,6 +28,7 @@ func TestParsePipeFieldValuesFailure(t *testing.T) {
 	f(`field_values a b`)
 	f(`field_values a limit`)
 	f(`field_values limit N`)
+	f(`field_values a filter`)
 }
 
 func TestPipeFieldValues(t *testing.T) {
@@ -76,6 +79,35 @@ func TestPipeFieldValues(t *testing.T) {
 		},
 		{
 			{"b", "54"},
+			{"hits", "1"},
+		},
+	})
+
+	f("field_values b filter 4", [][]Field{
+		{
+			{"a", `2`},
+			{"b", `3`},
+		},
+		{
+			{"a", `2`},
+			{"b", `-233`},
+		},
+		{
+			{"a", "2"},
+			{"b", "a4bc"},
+		},
+		{
+			{"a", `2`},
+			{"b", `54`},
+			{"c", "d"},
+		},
+	}, [][]Field{
+		{
+			{"b", "54"},
+			{"hits", "1"},
+		},
+		{
+			{"b", "a4bc"},
 			{"hits", "1"},
 		},
 	})

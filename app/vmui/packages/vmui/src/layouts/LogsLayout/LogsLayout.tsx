@@ -9,11 +9,15 @@ import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
+import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
+import { migrateStorageToPrefixedKeys } from "../../utils/storage";
+import { useAppState } from "../../state/common/StateContext";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
   const { isMobile } = useDeviceDetect();
   const { pathname } = useLocation();
+  const { isDarkTheme } = useAppState();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {
@@ -27,9 +31,22 @@ const LogsLayout: FC = () => {
 
   useEffect(setDocumentTitle, [pathname]);
 
-  return <section className="vm-container">
+  useEffect(() => {
+    const migrateStorage = migrateStorageToPrefixedKeys();
+    if (migrateStorage.removed.length || migrateStorage.migrated.length) {
+      console.info(migrateStorage);
+    }
+  }, []);
+
+  return <section
+    className={classNames({
+    "vm-container": true,
+    "vm-container_dark": isDarkTheme
+  })}
+  >
     <Header controlsComponent={ControlsLogsLayout}/>
     <div
+      id="vm-body"
       className={classNames({
         "vm-container-body": true,
         "vm-container-body_mobile": isMobile,
@@ -39,6 +56,8 @@ const LogsLayout: FC = () => {
       <Outlet/>
     </div>
     {!appModeEnable && <Footer links={footerLinksToLogs}/>}
+
+    <WebStorageCheck/>
   </section>;
 };
 

@@ -2,6 +2,8 @@ package fs
 
 import (
 	"sync"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 )
 
 // ParallelReaderAtOpener opens ReaderAt files in parallel.
@@ -32,19 +34,16 @@ func (pro *ParallelReaderAtOpener) Add(path string, rc *MustReadAtCloser, fileSi
 // Run executes all the registered tasks in parallel.
 func (pro *ParallelReaderAtOpener) Run() {
 	var wg sync.WaitGroup
+	concurrencyCh := fsutil.GetConcurrencyCh()
 	for _, task := range pro.tasks {
 		concurrencyCh <- struct{}{}
-		wg.Add(1)
 
-		go func(path string, rc *MustReadAtCloser, fileSize *uint64) {
-			defer func() {
-				wg.Done()
-				<-concurrencyCh
-			}()
+		wg.Go(func() {
+			*task.rc = MustOpenReaderAt(task.path)
+			*task.fileSize = MustFileSize(task.path)
 
-			*rc = MustOpenReaderAt(path)
-			*fileSize = MustFileSize(path)
-		}(task.path, task.rc, task.fileSize)
+			<-concurrencyCh
+		})
 	}
 	wg.Wait()
 }
@@ -60,19 +59,13 @@ type MustCloser interface {
 // on high-latency storage systems such as NFS or Ceph.
 func MustCloseParallel(cs []MustCloser) {
 	var wg sync.WaitGroup
+	concurrencyCh := fsutil.GetConcurrencyCh()
 	for _, c := range cs {
 		concurrencyCh <- struct{}{}
-		wg.Add(1)
-		go func(c MustCloser) {
-			defer func() {
-				wg.Done()
-				<-concurrencyCh
-			}()
+		wg.Go(func() {
 			c.MustClose()
-		}(c)
+			<-concurrencyCh
+		})
 	}
 	wg.Wait()
 }
-
-// concurrencyCh limits the concurrency of parallel operations performed by ParallelReaderAtOpener and MustCloseParallel
-var concurrencyCh = make(chan struct{}, 256)

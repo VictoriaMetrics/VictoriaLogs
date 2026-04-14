@@ -211,8 +211,6 @@ func TestStatsRowAny_ExportImportState(t *testing.T) {
 
 	// non-zero state
 	sap = statsRowAnyProcessor{
-		captured: true,
-
 		fields: []Field{
 			{
 				Name:  "foo",
@@ -224,5 +222,5 @@ func TestStatsRowAny_ExportImportState(t *testing.T) {
 			},
 		},
 	}
-	f(&sap, 17)
+	f(&sap, 16)
 }

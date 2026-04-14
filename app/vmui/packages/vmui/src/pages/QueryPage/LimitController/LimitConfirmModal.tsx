@@ -4,6 +4,8 @@ import Button from "../../../components/Main/Button/Button";
 import LogsLimitInput from "./LogsLimitInput";
 import "./style.scss";
 import Checkbox from "../../../components/Main/Checkbox/Checkbox";
+import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
+import { formatNumber } from "../../../utils/number";
 
 type Props = {
   isOpen: boolean;
@@ -11,6 +13,7 @@ type Props = {
   limitDraft: number;
   setLimitDraft: (limit: number) => void;
   suppressWarning: boolean;
+  queryParams?: Record<string, string>;
   onChangeSuppressWarning: (value: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -22,11 +25,12 @@ const LimitConfirmModal: FC<Props> = ({
   setLimitDraft,
   isOpen,
   suppressWarning,
+  queryParams,
   onChangeSuppressWarning,
   onConfirm,
   onCancel
 }) => {
-  const limitText = !initialLimit ? "an unlimited number of" : initialLimit.toLocaleString("en-US");
+  const limitText = !initialLimit ? "an unlimited number of" : formatNumber(initialLimit);
   const [error, setError] = useState(false);
 
   useEffect(() => () => onCancel(), [onCancel]);
@@ -55,11 +59,17 @@ const LimitConfirmModal: FC<Props> = ({
           />
         </div>
 
+        <DownloadLogsModal queryParams={queryParams}>
+          <p className="vm-logs-limit-modal-download vm-link vm-link_colored vm-link_underlined">
+            Click to download all matching logs without a limit.
+          </p>
+        </DownloadLogsModal>
+
         <div className="vm-logs-limit-modal-footer">
           <div>
             <Checkbox
               color="primary"
-              label="Don’t show this warning again"
+              label="Don't show again in this tab"
               checked={suppressWarning}
               onChange={onChangeSuppressWarning}
             />

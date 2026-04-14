@@ -20,12 +20,26 @@ type filterTime struct {
 	stringRepr string
 }
 
+func newFilterTime(minTimestamp, maxTimestamp int64, stringRepr string) *filterTime {
+	return &filterTime{
+		minTimestamp: minTimestamp,
+		maxTimestamp: maxTimestamp,
+
+		stringRepr: stringRepr,
+	}
+}
+
 func (ft *filterTime) String() string {
 	return "_time:" + ft.stringRepr
 }
 
 func (ft *filterTime) updateNeededFields(pf *prefixfilter.Filter) {
 	pf.AddAllowFilter("_time")
+}
+
+func (ft *filterTime) matchRow(fields []Field) bool {
+	v := getFieldValueByName(fields, "_time")
+	return ft.matchTimestampString(v)
 }
 
 func (ft *filterTime) applyToBlockResult(br *blockResult, bm *bitmap) {

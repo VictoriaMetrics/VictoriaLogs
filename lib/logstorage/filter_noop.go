@@ -8,12 +8,22 @@ import (
 type filterNoop struct {
 }
 
+func newFilterNoop() *filterNoop {
+	return &noopFilter
+}
+
+var noopFilter filterNoop
+
 func (fn *filterNoop) String() string {
 	return "*"
 }
 
 func (fn *filterNoop) updateNeededFields(_ *prefixfilter.Filter) {
 	// nothing to do
+}
+
+func (fn *filterNoop) matchRow(fields []Field) bool {
+	return true
 }
 
 func (fn *filterNoop) applyToBlockResult(_ *blockResult, _ *bitmap) {

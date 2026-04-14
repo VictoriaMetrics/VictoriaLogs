@@ -62,59 +62,32 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "Abc",
-		}
+		pf := newFilterAnyCasePhrase("foo", "Abc")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "abc def",
-		}
+		pf = newFilterAnyCasePhrase("foo", "abc def")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "def",
-		}
+		pf = newFilterAnyCasePhrase("foo", "def")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "other column",
-			phrase:    "ASdfdsf",
-		}
+		pf = newFilterAnyCasePhrase("other column", "ASdfdsf")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "ab",
-		}
+		pf = newFilterAnyCasePhrase("foo", "ab")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "other column",
-			phrase:    "sd",
-		}
+		pf = newFilterAnyCasePhrase("other column", "sd")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing column",
-			phrase:    "abc",
-		}
+		pf = newFilterAnyCasePhrase("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -147,83 +120,44 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "abc",
-		}
+		pf := newFilterAnyCasePhrase("foo", "abc")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "def",
-		}
+		pf = newFilterAnyCasePhrase("foo", "def")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    " def",
-		}
+		pf = newFilterAnyCasePhrase("foo", " def")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "abc def",
-		}
+		pf = newFilterAnyCasePhrase("foo", "abc def")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "other-column",
-			phrase:    "x",
-		}
+		pf = newFilterAnyCasePhrase("other-column", "x")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    " 2 ",
-		}
+		pf = newFilterAnyCasePhrase("_msg", " 2 ")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "abc def ",
-		}
+		pf = newFilterAnyCasePhrase("foo", "abc def ")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "x",
-		}
+		pf = newFilterAnyCasePhrase("foo", "x")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "other-column",
-			phrase:    "foo",
-		}
+		pf = newFilterAnyCasePhrase("other-column", "foo")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing column",
-			phrase:    "x",
-		}
+		pf = newFilterAnyCasePhrase("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "foo",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "foo")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -244,41 +178,23 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "FoobAr",
-		}
+		pf := newFilterAnyCasePhrase("foo", "FoobAr")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{1, 3, 6})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "baZ",
-		}
+		pf = newFilterAnyCasePhrase("foo", "baZ")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{3})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing column",
-			phrase:    "foobar",
-		}
+		pf = newFilterAnyCasePhrase("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -302,53 +218,29 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "A",
-		}
+		pf := newFilterAnyCasePhrase("foo", "A")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "НгкШ",
-		}
+		pf = newFilterAnyCasePhrase("foo", "НгкШ")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{8})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "!,",
-		}
+		pf = newFilterAnyCasePhrase("foo", "!,")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{9})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "aa a",
-		}
+		pf = newFilterAnyCasePhrase("foo", "aa a")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "@",
-		}
+		pf = newFilterAnyCasePhrase("foo", "@")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -373,47 +265,26 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12",
-		}
+		pf := newFilterAnyCasePhrase("foo", "12")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{1, 5})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "0",
-		}
+		pf = newFilterAnyCasePhrase("foo", "0")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{3, 4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-clumn", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf = newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -437,47 +308,26 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf := newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "0",
-		}
+		pf = newFilterAnyCasePhrase("foo", "0")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{1})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "123456",
-		}
+		pf = newFilterAnyCasePhrase("foo", "123456")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -501,47 +351,26 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf := newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "65536",
-		}
+		pf = newFilterAnyCasePhrase("foo", "65536")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{3})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12345678901",
-		}
+		pf = newFilterAnyCasePhrase("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -564,47 +393,26 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf := newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12345678901",
-		}
+		pf = newFilterAnyCasePhrase("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12345678901234567890",
-		}
+		pf = newFilterAnyCasePhrase("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -627,47 +435,26 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf := newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "-12345678901",
-		}
+		pf = newFilterAnyCasePhrase("foo", "-12345678901")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12345678901234567890",
-		}
+		pf = newFilterAnyCasePhrase("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -690,89 +477,47 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234",
-		}
+		pf := newFilterAnyCasePhrase("foo", "1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "1234.5678901",
-		}
+		pf = newFilterAnyCasePhrase("foo", "1234.5678901")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "5678901",
-		}
+		pf = newFilterAnyCasePhrase("foo", "5678901")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "-65536",
-		}
+		pf = newFilterAnyCasePhrase("foo", "-65536")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{3})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "65536",
-		}
+		pf = newFilterAnyCasePhrase("foo", "65536")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{3})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "-1234",
-		}
+		pf = newFilterAnyCasePhrase("foo", "-1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "+1234",
-		}
+		pf = newFilterAnyCasePhrase("foo", "+1234")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "123",
-		}
+		pf = newFilterAnyCasePhrase("foo", "123")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "5678",
-		}
+		pf = newFilterAnyCasePhrase("foo", "5678")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "33",
-		}
+		pf = newFilterAnyCasePhrase("foo", "33")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "12345678901234567890",
-		}
+		pf = newFilterAnyCasePhrase("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -798,77 +543,41 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "127.0.0.1",
-		}
+		pf := newFilterAnyCasePhrase("foo", "127.0.0.1")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{2, 4, 5, 7})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "127",
-		}
+		pf = newFilterAnyCasePhrase("foo", "127")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{2, 4, 5, 6, 7, 8})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "127.0.0",
-		}
+		pf = newFilterAnyCasePhrase("foo", "127.0.0")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{2, 4, 5, 7})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "2.3",
-		}
+		pf = newFilterAnyCasePhrase("foo", "2.3")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "0",
-		}
+		pf = newFilterAnyCasePhrase("foo", "0")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{1, 2, 4, 5, 6, 7, 8})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("foo", "bar")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("foo", "")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "5",
-		}
+		pf = newFilterAnyCasePhrase("foo", "5")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "127.1",
-		}
+		pf = newFilterAnyCasePhrase("foo", "127.1")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "27.0",
-		}
+		pf = newFilterAnyCasePhrase("foo", "27.0")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "foo",
-			phrase:    "255.255.255.255",
-		}
+		pf = newFilterAnyCasePhrase("foo", "255.255.255.255")
 		testFilterMatchForColumns(t, columns, pf, "foo", nil)
 	})
 
@@ -891,67 +600,37 @@ func TestFilterAnyCasePhrase(t *testing.T) {
 		}
 
 		// match
-		pf := &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "2006-01-02t15:04:05.005z",
-		}
+		pf := newFilterAnyCasePhrase("_msg", "2006-01-02t15:04:05.005z")
 		testFilterMatchForColumns(t, columns, pf, "_msg", []int{4})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "2006-01",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "2006-01")
 		testFilterMatchForColumns(t, columns, pf, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "002Z",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "002Z")
 		testFilterMatchForColumns(t, columns, pf, "_msg", []int{1})
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "non-existing-column",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, pf, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "bar",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "bar")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "2006-03-02T15:04:05.005Z",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "2006-03-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "06",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "06")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it has different string representation of the timestamp
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "2006-01-02T16:04:05.005+01:00",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "2006-01-02T16:04:05.005+01:00")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it contains too many digits for millisecond part
-		pf = &filterAnyCasePhrase{
-			fieldName: "_msg",
-			phrase:    "2006-01-02T15:04:05.00500Z",
-		}
+		pf = newFilterAnyCasePhrase("_msg", "2006-01-02T15:04:05.00500Z")
 		testFilterMatchForColumns(t, columns, pf, "_msg", nil)
 	})
 

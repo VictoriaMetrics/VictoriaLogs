@@ -113,7 +113,7 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
         startIcon={<ClockIcon/>}
         ariaLabel={"Query history"}
       >
-        Query history
+        {!isMobile && "History"}
       </Button>
 
       {openModal && (
@@ -174,7 +174,7 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
                     startIcon={<DeleteIcon/>}
                     onClick={handleClearStorage}
                   >
-                    clear history
+                    Clear history
                   </Button>
                 </div>
               )}

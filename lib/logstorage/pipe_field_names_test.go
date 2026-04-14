@@ -11,7 +11,9 @@ func TestParsePipeFieldNamesSuccess(t *testing.T) {
 	}
 
 	f(`field_names`)
+	f(`field_names filter foo`)
 	f(`field_names as x`)
+	f(`field_names filter foo as x`)
 }
 
 func TestParsePipeFieldNamesFailure(t *testing.T) {
@@ -25,6 +27,7 @@ func TestParsePipeFieldNamesFailure(t *testing.T) {
 	f(`field_names(foo)`)
 	f(`field_names a b`)
 	f(`field_names as`)
+	f(`field_names filter`)
 }
 
 func TestPipeFieldNames(t *testing.T) {
@@ -74,6 +77,19 @@ func TestPipeFieldNames(t *testing.T) {
 		},
 		{
 			{"x", "c"},
+			{"hits", "1"},
+		},
+	})
+
+	// non-empty filter
+	f("field_names filter a", [][]Field{
+		{
+			{"_msg", `{"foo":"bar"}`},
+			{"a", `test`},
+		},
+	}, [][]Field{
+		{
+			{"name", "a"},
 			{"hits", "1"},
 		},
 	})

@@ -7,7 +7,7 @@ import Alert from "../../components/Main/Alert/Alert";
 import QueryPageHeader from "./QueryPageHeader/QueryPageHeader";
 import "./style.scss";
 import { ErrorTypes, TimeParams } from "../../types";
-import { useTimeState } from "../../state/time/TimeStateContext";
+import { useTimeDispatch, useTimeState } from "../../state/time/TimeStateContext";
 import { getFromStorage, saveToStorage } from "../../utils/storage";
 import HitsChart from "./HitsChart/HitsChart";
 import { useFetchLogHits } from "./hooks/useFetchLogHits";
@@ -18,11 +18,18 @@ import { useQueryDispatch, useQueryState } from "../../state/query/QueryStateCon
 import { getUpdatedHistory } from "../../components/QueryHistory/utils";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import usePrevious from "../../hooks/usePrevious";
-import { filterToExpr } from "../OverviewPage/hooks/useExtraFilters";
-import { ExtraFilter } from "../OverviewPage/FiltersBar/types";
+import { useExtraFilters } from "../../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
 import { useLimitGuard } from "./LimitController/useLimitGuard";
 import LimitConfirmModal from "./LimitController/LimitConfirmModal";
+import { useFetchQueryTime } from "./hooks/useFetchQueryTime";
+import { GRAPH_QUERY_MODE } from "../../components/Chart/BarHitsChart/types";
+import FilterSidebar from "../../components/FilterSidebar/FilterSidebar";
+import { useFetchStreamFieldNames } from "../OverviewPage/hooks/useFetchStreamNames";
+import { useFilterSidebarVisible } from "../../components/FilterSidebar/hooks/useFilterSidebarVisible";
+import classNames from "classnames";
+import ExtraFiltersPanel from "../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersPanel";
+import useDeviceDetect from "../../hooks/useDeviceDetect";
 
 const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
 const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
@@ -30,20 +37,37 @@ const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
 type FetchFlags = { logs: boolean; hits: boolean };
 
 const QueryPage: FC = () => {
-  const { queryHistory } = useQueryState();
+  const { isMobile } = useDeviceDetect();
+  const { queryHistory, queryHasTimeFilter } = useQueryState();
   const queryDispatch = useQueryDispatch();
   const { duration, relativeTime, period: periodState } = useTimeState();
+  const timeDispatch = useTimeDispatch();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
-  const { topHits, groupFieldHits } = useHitsChartConfig();
+  const {
+    topHits: { value: topHits },
+    groupFieldHits: { value: groupFieldHits },
+    step: { value: step },
+  } = useHitsChartConfig();
+  const prevTopHits = usePrevious(topHits);
+  const prevGroupFieldHits = usePrevious(groupFieldHits);
+  const prevStep = usePrevious(step);
+
   const [searchParams] = useSearchParams();
 
   const hideChart = useMemo(() => Boolean(searchParams.get("hide_chart")), [searchParams]);
+  const prevHideChart = usePrevious(hideChart);
 
   const hideLogs = useMemo(() => Boolean(searchParams.get("hide_logs")), [searchParams]);
   const prevHideLogs = usePrevious(hideLogs);
 
+  const [graphQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
+  const prevGraphMode = usePrevious(graphQueryMode);
+
   const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
   const [query, setQuery] = useStateSearchParams("*", "query");
+  const queryFromParams = searchParams.get("query") || "*";
+
+  const [skipNextPeriodEffect, setSkipNextPeriodEffect] = useState(false);
 
   const handleChangeLimit = (limit: number) => {
     setLimit(limit);
@@ -68,17 +92,38 @@ const QueryPage: FC = () => {
   const [period, setPeriod] = useState<TimeParams>(periodState);
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration } = useFetchLogs(query, limit);
+  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration, queryParams } = useFetchLogs(query, limit);
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
+  const { fetchQueryTime } = useFetchQueryTime(query);
+
+  const { extraFilters, extraParams, addNewFilter, removeFilterByValue, removeFilterByField } = useExtraFilters();
+  const { fetchStreamFieldNames, ...dataStreamFields } = useFetchStreamFieldNames();
+  const { isVisible: isVisibleFilterSidebar } = useFilterSidebarVisible();
+  const prevIsVisibleFilterSidebar = usePrevious(isVisibleFilterSidebar);
 
   const fetchData = async (period: TimeParams, flags: FetchFlags) => {
+    if (isVisibleFilterSidebar) {
+      void fetchStreamFieldNames({ ...period, query, extraParams });
+    }
+
     if (flags.logs) {
-      const isSuccess = await fetchLogs({ period, beforeFetch });
+      const isSuccess = await fetchLogs({
+        period,
+        extraParams,
+        beforeFetch
+      });
       if (!isSuccess) return;
     }
 
     if (flags.hits) {
-      await fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
+      await fetchLogHits({
+        period,
+        step,
+        extraParams,
+        field: groupFieldHits,
+        fieldsLimit: topHits,
+        queryMode: graphQueryMode,
+      });
     }
   };
 
@@ -91,17 +136,33 @@ const QueryPage: FC = () => {
     return getTimeperiodForDuration(duration, until());
   };
 
-  const handleRunQuery = () => {
+  const handleRunQuery = async () => {
     if (!query) {
       setQueryError(ErrorTypes.validQuery);
       return;
     }
     setQueryError("");
 
-    const newPeriod = getPeriod();
+    const uiPeriod = getPeriod();
+    const apiPeriod = await fetchQueryTime({ query, period: uiPeriod });
+
+    const newPeriod = apiPeriod ?? uiPeriod;
+
+    queryDispatch({ type: "SET_QUERY_HAS_TIME_FILTER", payload: !!apiPeriod?.hasTimeFilter });
+    if (apiPeriod?.hasTimeFilter) {
+      setSkipNextPeriodEffect(true);
+      timeDispatch({
+        type: "SET_PERIOD",
+        payload: {
+          from: new Date(newPeriod.start * 1000),
+          to: new Date(newPeriod.end * 1000)
+        }
+      });
+    }
+
     setPeriod(newPeriod);
-    dataLogHits.abortController.abort();
-    abortController.abort();
+    dataLogHits.abortController.abort?.();
+    abortController.abort?.();
     debouncedFetchLogs(newPeriod, { logs: !hideLogs, hits: !hideChart });
     setSearchParamsFromKeys({
       query,
@@ -111,69 +172,159 @@ const QueryPage: FC = () => {
     });
     updateHistory();
   };
-  const handleApplyFilter = (val: ExtraFilter) => {
-    setQuery(prev => `${filterToExpr(val)} AND ${prev}`);
-    setIsUpdatingQuery(true);
-  };
+
+  const debouncedHandleRunQuery = useDebounceCallback(handleRunQuery, 300);
 
   const handleUpdateQuery = () => {
     if (isLoading || dataLogHits.isLoading) {
       abortController.abort?.();
       dataLogHits.abortController.abort?.();
     } else {
-      handleRunQuery();
+      debouncedHandleRunQuery();
     }
   };
 
   useEffect(() => {
     if (!query) return;
-    handleRunQuery();
+    if (skipNextPeriodEffect) {
+      setSkipNextPeriodEffect(false);
+      return;
+    }
+    setPeriod(getPeriod());
+    debouncedHandleRunQuery();
   }, [periodState]);
 
   useEffect(() => {
     if (!isUpdatingQuery) return;
-    handleRunQuery();
+    debouncedHandleRunQuery();
     setIsUpdatingQuery(false);
   }, [query, isUpdatingQuery]);
 
   useEffect(() => {
     if (hideChart) return;
-    fetchLogHits({ period, field: groupFieldHits, fieldsLimit: topHits });
-  }, [hideChart, period, groupFieldHits, topHits]);
+    // TODO: refactor effect logic
+    const topChanged = prevTopHits && (topHits !== prevTopHits);
+    const stepChanged = prevStep && (step !== prevStep);
+    const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
+    const becameVisible = prevHideChart && !hideChart;
+    const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
+
+    if (!(topChanged || groupChanged || becameVisible || queryModeChanged || stepChanged)) return;
+
+    dataLogHits.abortController.abort?.();
+    void fetchLogHits({
+      period,
+      step,
+      extraParams,
+      field: groupFieldHits,
+      fieldsLimit: topHits,
+      queryMode: graphQueryMode,
+    });
+  }, [
+    hideChart,
+    prevHideChart,
+    period,
+    groupFieldHits,
+    prevGroupFieldHits,
+    topHits,
+    prevTopHits,
+    step,
+    prevStep,
+    graphQueryMode,
+    prevGraphMode,
+    fetchLogHits,
+  ]);
 
   useEffect(() => {
-    if (!hideLogs && prevHideLogs) {
-      fetchLogs({ period, beforeFetch });
-    }
-  }, [hideLogs, prevHideLogs, period]);
+    if (hideLogs || !prevHideLogs) return;
+    void fetchLogs({ period, beforeFetch, extraParams });
+  }, [hideLogs, prevHideLogs, period, fetchLogs, beforeFetch, extraParams]);
+
+  useEffect(() => {
+    const isEqual = prevIsVisibleFilterSidebar === isVisibleFilterSidebar;
+    if (isEqual) return;
+    void fetchStreamFieldNames({ ...period, query, extraParams });
+  }, [isVisibleFilterSidebar, prevIsVisibleFilterSidebar, fetchStreamFieldNames]);
+
+  useEffect(() => {
+    void handleRunQuery();
+  }, [extraParams.toString()]);
 
   return (
-    <div className="vm-query-page">
-      <LimitConfirmModal {...modalProps}/>
+    <div
+      className={classNames({
+      "vm-query-page": true,
+      "vm-query-page_with-sidebar": isVisibleFilterSidebar,
+    })}
+    >
+      <LimitConfirmModal
+        {...modalProps}
+        queryParams={queryParams}
+      />
 
-      <QueryPageHeader
-        query={query}
-        queryDurationMs={hideLogs ? undefined : queryDuration}
-        error={queryError}
-        limit={limit}
-        onChange={setQuery}
-        onChangeLimit={handleChangeLimit}
-        onRun={handleUpdateQuery}
-        isLoading={isLoading || dataLogHits.isLoading}
+      <FilterSidebar
+        query={queryFromParams}
+        extraFilters={extraFilters}
+        onAddFilter={addNewFilter}
+        onRemoveByValue={removeFilterByValue}
+        onRemoveByField={removeFilterByField}
+        {...dataStreamFields}
       />
-      {error && <Alert variant="error">{error}</Alert>}
-      {!error && (
-        <HitsChart
-          {...dataLogHits}
-          query={query}
-          period={period}
-          onApplyFilter={handleApplyFilter}
+
+      <div className="vm-query-page-content">
+        <div
+          className={classNames({
+            "vm-query-page-header": true,
+            "vm-block": true,
+            "vm-block_mobile": isMobile,
+          })}
+        >
+          <QueryPageHeader
+            query={query}
+            queryDurationMs={hideLogs ? undefined : queryDuration}
+            error={queryError}
+            limit={limit}
+            onChange={setQuery}
+            onChangeLimit={handleChangeLimit}
+            onRun={handleUpdateQuery}
+            isLoading={isLoading || dataLogHits.isLoading}
+          />
+          <ExtraFiltersPanel
+            extraFilters={extraFilters}
+            onRemove={removeFilterByValue}
+          />
+        </div>
+        {error && (
+          <Alert
+            title="Failed to load logs"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        )}
+        {queryHasTimeFilter && (
+          <Alert
+            variant="warning"
+            title="Time range overridden by query filter"
+          >
+            Time range is overridden by the query `_time` filter. Remove `_time` from the query to use manual selection.
+            Disable query time override in Settings.
+          </Alert>
+        )}
+        {!error && (
+          <HitsChart
+            {...dataLogHits}
+            query={query}
+            period={period}
+            step={step}
+          />
+        )}
+        <QueryPageBody
+          data={logs}
+          queryParams={queryParams}
+          isLoading={isLoading}
         />
-      )}
-      <QueryPageBody
-        data={logs}
-        isLoading={isLoading}
-      />
+      </div>
     </div>
   );
 };

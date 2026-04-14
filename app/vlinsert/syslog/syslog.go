@@ -127,46 +127,38 @@ func MustInit() {
 	workersStopCh = make(chan struct{})
 
 	for argIdx, addr := range *listenAddrTCP {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runTCPListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	for argIdx, addr := range *listenAddrUDP {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runUDPListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	for argIdx, addr := range *listenAddrUnix {
-		workersWG.Add(1)
-		go func(addr string, argIdx int) {
+		workersWG.Go(func() {
 			runUnixListener(addr, argIdx)
-			workersWG.Done()
-		}(addr, argIdx)
+		})
 	}
 
 	currentYear := time.Now().Year()
 	globalCurrentYear.Store(int64(currentYear))
-	workersWG.Add(1)
-	go func() {
+	workersWG.Go(func() {
 		ticker := time.NewTicker(time.Minute)
 		for {
 			select {
 			case <-workersStopCh:
 				ticker.Stop()
-				workersWG.Done()
 				return
 			case <-ticker.C:
 				currentYear := time.Now().Year()
 				globalCurrentYear.Store(int64(currentYear))
 			}
 		}
-	}()
+	})
 
 	if *syslogTimezone != "" {
 		tz, err := time.LoadLocation(*syslogTimezone)
@@ -254,16 +246,16 @@ func runUnixPacketListener(laddr *net.UnixAddr, cfg *configs) {
 
 func getUnixSocketNetworkAndPath(addr string) *net.UnixAddr {
 	// An optional network such as unix or unixgram can be specified in front of addr and followed by ':'
-	n := strings.IndexByte(addr, ':')
-	if n < 0 {
+	before, after, ok := strings.Cut(addr, ":")
+	if !ok {
 		return &net.UnixAddr{
 			Net:  "unix",
 			Name: addr,
 		}
 	}
 	return &net.UnixAddr{
-		Net:  addr[:n],
-		Name: addr[n+1:],
+		Net:  before,
+		Name: after,
 	}
 }
 
@@ -334,10 +326,8 @@ func servePacketListener(ln net.PacketConn, cfg *configs) {
 	gomaxprocs := cgroup.AvailableCPUs()
 	var wg sync.WaitGroup
 	localAddr := ln.LocalAddr()
-	for i := 0; i < gomaxprocs; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range gomaxprocs {
+		wg.Go(func() {
 			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 			var bb bytesutil.ByteBuffer
 			bb.B = bytesutil.ResizeNoCopyNoOverallocate(bb.B, 64*1024)
@@ -370,7 +360,7 @@ func servePacketListener(ln net.PacketConn, cfg *configs) {
 					logger.Errorf("syslog: cannot process %s data from %s at %s: %s", cfg.typ, remoteAddr, localAddr, err)
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -403,8 +393,7 @@ func serveStreamListener(ln net.Listener, cfg *configs) {
 			break
 		}
 
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			cp := insertutil.GetCommonParamsForSyslog(cfg.tenantID, cfg.streamFields, cfg.ignoreFields, cfg.decolorizeFields, cfg.extraFields)
 
 			remoteAddr := c.RemoteAddr()
@@ -415,8 +404,7 @@ func serveStreamListener(ln net.Listener, cfg *configs) {
 
 			cm.Delete(c)
 			_ = c.Close()
-			wg.Done()
-		}()
+		})
 	}
 
 	cm.CloseAll(0)
@@ -437,7 +425,13 @@ func processStream(protocol string, r io.Reader, compressMethod string, useLocal
 }
 
 func processStreamInternal(r io.Reader, compressMethod string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
-	reader, err := protoparserutil.GetUncompressedReader(r, compressMethod)
+	wcr, err := writeconcurrencylimiter.GetReader(r)
+	if err != nil {
+		return err
+	}
+	defer writeconcurrencylimiter.PutReader(wcr)
+
+	reader, err := protoparserutil.GetUncompressedReader(wcr, compressMethod)
 	if err != nil {
 		return fmt.Errorf("cannot decode syslog data: %w", err)
 	}
@@ -447,16 +441,12 @@ func processStreamInternal(r io.Reader, compressMethod string, useLocalTimestamp
 }
 
 func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
-	wcr := writeconcurrencylimiter.GetReader(r)
-	defer writeconcurrencylimiter.PutReader(wcr)
-
-	slr := getSyslogLineReader(wcr)
+	slr := getSyslogLineReader(r)
 	defer putSyslogLineReader(slr)
 
 	n := 0
 	for {
 		ok := slr.nextLine()
-		wcr.DecConcurrency()
 		if !ok {
 			break
 		}
@@ -616,7 +606,7 @@ func processLine(line []byte, currentYear int, timezone *time.Location, useLocal
 		}
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
-	lmp.AddRow(ts, p.Fields, nil)
+	lmp.AddRow(ts, p.Fields, -1)
 
 	return nil
 }
@@ -695,6 +685,9 @@ func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolo
 	streamFields, err := parseFieldsList(streamFieldsStr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse -syslog.streamFields.%s=%q: %w", typ, streamFieldsStr, err)
+	}
+	if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
+		return nil, fmt.Errorf("invalid stream field names inside -syslog.streamFields.%s=%q: %w", typ, streamFieldsStr, err)
 	}
 
 	ignoreFieldsStr := ignoreFieldsArg.GetOptionalArg(argIdx)

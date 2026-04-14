@@ -1,7 +1,6 @@
 import { createPortal, FC, useCallback, useEffect, useMemo, useState, RefObject } from "preact/compat";
 import "./style.scss";
 import { Logs } from "../../../api/types";
-import Accordion from "../../Main/Accordion/Accordion";
 import { groupByMultipleKeys } from "../../../utils/array";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import GroupLogsItem from "./GroupLogsItem";
@@ -18,7 +17,7 @@ import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { usePaginateGroups } from "../../../pages/QueryPage/hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
-import DownloadLogsButton from "../../../pages/QueryPage/DownloadLogsButton/DownloadLogsButton";
+import GroupLogsItemWrapper from "./GroupLogsItemWrapper";
 
 interface Props {
   logs: Logs[];
@@ -87,8 +86,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     window.scrollTo({ top: 0 });
   };
 
-  const getLogs = useCallback(() => logs, [logs]);
-
   useEffect(() => {
     setExpandGroups(prev => {
       const keepClosed = (prev.every(v => !v) && prev.length) || isMobile;
@@ -108,10 +105,11 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
             className="vm-group-logs-section"
             key={group.keysString}
           >
-            <Accordion
-              defaultExpanded={expandGroups[groupN]}
-              onChange={handleChangeExpand(groupN)}
-              title={(
+            <GroupLogsItemWrapper
+              groupBy={groupBy}
+              expand={expandGroups[groupN]}
+              onExpandChange={handleChangeExpand(groupN)}
+              header={(
                 <GroupLogsHeader
                   group={group}
                   index={groupN}
@@ -127,7 +125,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
                   />
                 ))}
               </div>
-            </Accordion>
+            </GroupLogsItemWrapper>
           </div>
         ))}
 
@@ -142,14 +140,19 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
       {settingsRef.current && createPortal((
         <div className="vm-group-logs-header">
-          <div className="vm-query-page-body-header__log-info">
-            Total groups: <b>{groupData.length}</b>
+          <div className="vm-bar-hits-stats">
+            {!isMobile && (
+              <>
+                <div className="vm-bar-hits-stats__item">Total logs returned: <b>{logs.length}</b></div>
+                <div className="vm-bar-hits-stats__item">Total groups: <b>{groupData.length}</b></div>
+              </>
+            )}
+            <SelectLimit
+              allowUnlimited
+              limit={rowsPerPage}
+              onChange={handleSetRowsPerPage}
+            />
           </div>
-          <SelectLimit
-            allowUnlimited
-            limit={rowsPerPage}
-            onChange={handleSetRowsPerPage}
-          />
           <Tooltip title={expandAll ? "Collapse All" : "Expand All"}>
             <Button
               variant="text"
@@ -158,7 +161,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               ariaLabel={expandAll ? "Collapse All" : "Expand All"}
             />
           </Tooltip>
-          <DownloadLogsButton getLogs={getLogs}/>
           <GroupLogsConfigurators logs={logs}/>
         </div>
       ), settingsRef.current)}

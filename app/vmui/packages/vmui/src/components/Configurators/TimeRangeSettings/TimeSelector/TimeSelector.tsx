@@ -18,10 +18,17 @@ import DateTimeInput from "../../../Main/DatePicker/DateTimeInput/DateTimeInput"
 import useBoolean from "../../../../hooks/useBoolean";
 import useWindowSize from "../../../../hooks/useWindowSize";
 import usePrevious from "../../../../hooks/usePrevious";
+import { useQueryState } from "../../../../state/query/QueryStateContext";
 
-export const TimeSelector: FC = () => {
+type Props = {
+  onOpenSettings?: () => void;
+}
+
+export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
+  const { queryHasTimeFilter } = useQueryState();
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const documentSize = useWindowSize();
   const displayFullDate = useMemo(() => documentSize.width > 1120, [documentSize]);
@@ -91,6 +98,11 @@ export const TimeSelector: FC = () => {
     handleCloseOptions();
   };
 
+  const handleOpenSettings = () => {
+    onOpenSettings && onOpenSettings();
+    handleCloseOptions();
+  };
+
   useEffect(() => {
     const value = getRelativeTime({
       relativeTimeId: relativeTime,
@@ -155,6 +167,19 @@ export const TimeSelector: FC = () => {
         })}
         ref={wrapperRef}
       >
+        {queryHasTimeFilter && (
+          <div className="vm-time-selector-warning">
+            <p>Time range is overridden by the query `_time` filter.</p>
+            <p>Remove `_time` from the query to use manual selection.</p>
+            <p
+              className="vm-time-selector-warning__interactive"
+              onClick={handleOpenSettings}
+            >
+              To disable query time override in settings, click here.
+            </p>
+          </div>
+        )}
+
         <div className="vm-time-selector-left">
           <div
             className={classNames({
@@ -179,7 +204,10 @@ export const TimeSelector: FC = () => {
               onEnter={setTimeAndClosePicker}
             />
           </div>
-          <div className="vm-time-selector-left-timezone">
+          <div
+            className="vm-time-selector-left-timezone"
+            onClick={handleOpenSettings}
+          >
             <div className="vm-time-selector-left-timezone__title">{activeTimezone.region}</div>
             <div className="vm-time-selector-left-timezone__utc">{activeTimezone.utc}</div>
           </div>
@@ -188,7 +216,7 @@ export const TimeSelector: FC = () => {
             startIcon={<AlarmIcon />}
             onClick={onSwitchToNow}
           >
-            switch to now
+            Switch to now
           </Button>
           <div className="vm-time-selector-left__controls">
             <Button

@@ -12,7 +12,7 @@ and then issues HTTP requests to it and verifies the responses, examines the
 metrics the app exposes and/or files it creates, etc.
 
 Note that an object of testing may be not just a single app, but several apps
-working together. A good example is VictoriaMetrics cluster. An integration test
+working together. A good example is VictoriaLogs cluster. An integration test
 may reproduce an arbitrary cluster configuration and verify how the components
 work together as a system.
 

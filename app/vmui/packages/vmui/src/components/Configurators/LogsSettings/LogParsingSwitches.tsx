@@ -1,10 +1,8 @@
 import { FC } from "preact/compat";
 import Switch from "../../Main/Switch/Switch";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { useLogsDispatch, useLogsState } from "../../../state/logsPanel/LogsStateContext";
 
 const LogParsingSwitches: FC = () => {
-  const { isMobile } = useDeviceDetect();
   const { markdownParsing, ansiParsing } = useLogsState();
   const dispatch = useLogsDispatch();
 
@@ -31,7 +29,6 @@ const LogParsingSwitches: FC = () => {
           label={"Enable markdown parsing"}
           value={markdownParsing}
           onChange={handleChangeMarkdownParsing}
-          fullWidth={isMobile}
         />
         <div className="vm-group-logs-configurator-item__info">
           Toggle this switch to enable or disable the Markdown formatting for log entries.
@@ -43,7 +40,6 @@ const LogParsingSwitches: FC = () => {
           label={"Enable ANSI parsing"}
           value={ansiParsing}
           onChange={handleChangeAnsiParsing}
-          fullWidth={isMobile}
         />
         <div className="vm-group-logs-configurator-item__info">
           Toggle this switch to enable or disable ANSI escape sequence parsing for log entries.

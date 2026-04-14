@@ -19,37 +19,34 @@ type Vlagent struct {
 	httpListenAddr      string
 }
 
-// StartVlagent starts an instance of vlagent with the given flags.
+// MustStartVlagent starts an instance of vlagent with the given flags.
 // It also sets the default flags and populates the app instance state with runtime
 // values extracted from the application log (such as httpListenAddr)
-func StartVlagent(instance string, remoteWriteURLs []string, flags []string, cli *Client) (*Vlagent, error) {
+func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, flags []string, cli *Client) *Vlagent {
+	t.Helper()
+
 	extractREs := []*regexp.Regexp{
 		httpListenAddrRE,
 	}
 
-	app, stderrExtracts, err := startApp(instance, "../../bin/vlagent", flags, &appOptions{
-		defaultFlags: map[string]string{
-			"-httpListenAddr":            "127.0.0.1:0",
-			"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
-			"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
-			"-remoteWrite.flushInterval": "10ms",
-			"-remoteWrite.showURL":       "true",
-		},
-		extractREs: extractREs,
+	flags = setDefaultFlags(flags, map[string]string{
+		"-httpListenAddr":            "127.0.0.1:0",
+		"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
+		"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
+		"-remoteWrite.flushInterval": "10ms",
+		"-remoteWrite.showURL":       "true",
 	})
-	if err != nil {
-		return nil, err
-	}
+	app, extracts := mustStartApp(t, instance, "../../bin/vlagent-race", flags, extractREs)
 
 	return &Vlagent{
 		app:                 app,
 		remoteStoragesCount: len(remoteWriteURLs),
 		ServesMetrics: &ServesMetrics{
-			metricsURL: fmt.Sprintf("http://%s/metrics", stderrExtracts[0]),
+			metricsURL: fmt.Sprintf("http://%s/metrics", extracts[0]),
 			cli:        cli,
 		},
-		httpListenAddr: stderrExtracts[0],
-	}, nil
+		httpListenAddr: extracts[0],
+	}
 }
 
 // JSONLineWrite is a test helper function that inserts a
@@ -57,7 +54,7 @@ func StartVlagent(instance string, remoteWriteURLs []string, flags []string, cli
 // POST request to /insert/jsonline vlagent endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
-func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts QueryOptsLogs) {
+func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
 	t.Helper()
 
 	data := []byte(strings.Join(records, "\n"))
@@ -69,7 +66,7 @@ func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts QueryOpts
 		url += "?" + uvs
 	}
 	app.sendBlocking(t, len(records), func() {
-		_, statusCode := app.cli.Post(t, url, "text/plain", data)
+		_, statusCode := app.cli.PostWithTenant(t, opts.AccountID, opts.ProjectID, url, "text/plain", data)
 		if statusCode != http.StatusOK {
 			t.Fatalf("unexpected status code: got %d, want %d", statusCode, http.StatusOK)
 		}
@@ -113,6 +110,11 @@ func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
 func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()) {
 	t.Helper()
 
+	// Take the current counter value before calling send(), since it may be updated
+	// concurrently with the request execution. See TestVlagentRemoteWriteReplication
+	// flakiness in CI when the counter is read after send().
+	rowsPushed := app.remoteWriteRowsPushed(t)
+
 	send()
 
 	const (
@@ -120,7 +122,7 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 		period  = 100 * time.Millisecond
 	)
 	// take in account data replication
-	wantRowsSentCount := app.remoteWriteRowsPushed(t) + numRecordsToSend*app.remoteStoragesCount
+	wantRowsSentCount := rowsPushed + numRecordsToSend*app.remoteStoragesCount
 	for range retries {
 		if app.remoteWriteRowsPushed(t) >= wantRowsSentCount {
 			return

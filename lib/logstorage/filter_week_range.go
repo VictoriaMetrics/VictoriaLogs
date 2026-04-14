@@ -25,12 +25,26 @@ type filterWeekRange struct {
 	stringRepr string
 }
 
+func newFilterWeekRange(startDay, endDay time.Weekday, offset int64, stringRepr string) *filterWeekRange {
+	return &filterWeekRange{
+		startDay:   startDay,
+		endDay:     endDay,
+		offset:     offset,
+		stringRepr: stringRepr,
+	}
+}
+
 func (fr *filterWeekRange) String() string {
 	return "_time:week_range" + fr.stringRepr
 }
 
 func (fr *filterWeekRange) updateNeededFields(pf *prefixfilter.Filter) {
 	pf.AddAllowFilter("_time")
+}
+
+func (fr *filterWeekRange) matchRow(fields []Field) bool {
+	v := getFieldValueByName(fields, "_time")
+	return fr.matchTimestampString(v)
 }
 
 func (fr *filterWeekRange) applyToBlockResult(br *blockResult, bm *bitmap) {
@@ -121,7 +135,7 @@ func (fr *filterWeekRange) matchTimestampValue(timestamp int64) bool {
 }
 
 func (fr *filterWeekRange) weekday(timestamp int64) time.Weekday {
-	timestamp -= fr.offset
+	timestamp = SubInt64NoOverflow(timestamp, -fr.offset)
 	return time.Unix(0, timestamp).UTC().Weekday()
 }
 

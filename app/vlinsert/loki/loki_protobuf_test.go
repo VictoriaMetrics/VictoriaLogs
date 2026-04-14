@@ -11,12 +11,12 @@ import (
 )
 
 type testLogMessageProcessor struct {
-	pr PushRequest
+	pr pushRequest
 }
 
-func (tlp *testLogMessageProcessor) AddRow(timestamp int64, fields, streamFields []logstorage.Field) {
-	if streamFields != nil {
-		panic(fmt.Errorf("unexpected non-nil streamFields: %v", streamFields))
+func (tlp *testLogMessageProcessor) AddRow(timestamp int64, fields []logstorage.Field, streamFieldsLen int) {
+	if streamFieldsLen >= 0 {
+		panic(fmt.Errorf("unexpected positive streamFieldsLen: %d", streamFieldsLen))
 	}
 	msg := ""
 	for _, f := range fields {
@@ -33,9 +33,9 @@ func (tlp *testLogMessageProcessor) AddRow(timestamp int64, fields, streamFields
 		a = append(a, item)
 	}
 	labels := "{" + strings.Join(a, ", ") + "}"
-	tlp.pr.Streams = append(tlp.pr.Streams, Stream{
+	tlp.pr.Streams = append(tlp.pr.Streams, stream{
 		Labels: labels,
-		Entries: []Entry{
+		Entries: []entry{
 			{
 				Timestamp: time.Unix(0, timestamp),
 				Line:      strings.Clone(msg),
@@ -52,7 +52,7 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 		t.Helper()
 
 		tlp := &testLogMessageProcessor{}
-		if err := parseJSONRequest([]byte(s), tlp, nil, false, false); err != nil {
+		if err := parseJSONRequest([]byte(s), tlp, nil, nil, "", false, false); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if len(tlp.pr.Streams) != len(timestampsExpected) {
@@ -62,7 +62,7 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 		data := tlp.pr.MarshalProtobuf(nil)
 
 		tlp2 := &insertutil.TestLogMessageProcessor{}
-		if err := parseProtobufRequest(data, tlp2, nil, false, false); err != nil {
+		if err := parseProtobufRequest(data, tlp2, nil, nil, "", false, false); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := tlp2.Verify(timestampsExpected, resultExpected); err != nil {
@@ -86,10 +86,10 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 	"label2": "value2"
 },"values":[
 	["1577836800000000001", "foo bar"],
-	["1477836900005000002", "abc"],
+	["1477836900005000002", "abc", {"foo":"bar","a":"b"}],
 	["147.78369e9", "foobar"]
 ]}]}`, []int64{1577836800000000001, 1477836900005000002, 147783690000000000}, `{"label1":"value1","label2":"value2","_msg":"foo bar"}
-{"label1":"value1","label2":"value2","_msg":"abc"}
+{"label1":"value1","label2":"value2","foo":"bar","a":"b","_msg":"abc"}
 {"label1":"value1","label2":"value2","_msg":"foobar"}`)
 
 	// Multiple streams
@@ -120,11 +120,11 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 }
 
 func TestParseProtobufRequest_ParseMessage(t *testing.T) {
-	f := func(s string, msgFields []string, timestampsExpected []int64, resultExpected string) {
+	f := func(s string, msgFields, preserveKeys []string, msgFieldsPrefix string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
 		tlp := &testLogMessageProcessor{}
-		if err := parseJSONRequest([]byte(s), tlp, nil, false, false); err != nil {
+		if err := parseJSONRequest([]byte(s), tlp, msgFields, preserveKeys, msgFieldsPrefix, false, false); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if len(tlp.pr.Streams) != len(timestampsExpected) {
@@ -134,7 +134,7 @@ func TestParseProtobufRequest_ParseMessage(t *testing.T) {
 		data := tlp.pr.MarshalProtobuf(nil)
 
 		tlp2 := &insertutil.TestLogMessageProcessor{}
-		if err := parseProtobufRequest(data, tlp2, msgFields, false, true); err != nil {
+		if err := parseProtobufRequest(data, tlp2, msgFields, preserveKeys, msgFieldsPrefix, false, true); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := tlp2.Verify(timestampsExpected, resultExpected); err != nil {
@@ -164,55 +164,51 @@ func TestParseProtobufRequest_ParseMessage(t *testing.T) {
 			]
 		}
 	]
-}`, []string{"a", "trace_id"}, []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","user_id":"123"}
+}`, []string{"a", "trace_id"}, nil, "", []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","user_id":"123"}
 {"foo":"bar","a":"b","trace_id":"pqw","_msg":"abc"}
 {"foo":"bar","a":"b","_msg":"{def}"}
 {"x":"y","_msg":"432","parent_id":"qwerty"}`)
-}
 
-func TestParsePromLabels_Success(t *testing.T) {
-	f := func(s string) {
-		t.Helper()
-		fields, err := parsePromLabels(nil, s)
-		if err != nil {
-			t.Fatalf("unexpected error: %s", err)
+	// with msgFieldsPrefix
+	f(`{
+	"streams": [
+		{
+			"stream": {
+				"foo": "bar",
+				"a": "b"
+			},
+			"values": [
+				["1577836800000000001", "{\"user_id\":\"123\"}"],
+				["1577836900005000002", "abc", {"trace_id":"pqw"}],
+				["1577836900005000003", "{def}"]
+			]
+		},
+		{
+			"stream": {
+				"x": "y"
+			},
+			"values": [
+				["1877836900005000004", "{\"trace_id\":\"432\",\"parent_id\":\"qwerty\"}"]
+			]
 		}
+	]
+}`, []string{"a", "qwe.trace_id"}, nil, "qwe.", []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","qwe.user_id":"123"}
+{"foo":"bar","a":"b","trace_id":"pqw","_msg":"abc"}
+{"foo":"bar","a":"b","_msg":"{def}"}
+{"x":"y","_msg":"432","qwe.parent_id":"qwerty"}`)
 
-		var a []string
-		for _, f := range fields {
-			a = append(a, fmt.Sprintf("%s=%q", f.Name, f.Value))
+	// with preserve keys
+	f(`{
+	"streams": [
+		{
+			"stream": {
+				"x": "y"
+			},
+			"values": [
+				["1577836800000000001", "{\"trace_id\":\"432\",\"parent_id\":\"qwerty\",\"x\":{\"a\":123}}"]
+			]
 		}
-		result := "{" + strings.Join(a, ", ") + "}"
-		if result != s {
-			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, s)
-		}
-	}
+	]
+}`, []string{"a", "trace_id"}, []string{"x"}, "", []int64{1577836800000000001}, `{"x":"y","_msg":"432","parent_id":"qwerty","x":"{\"a\":123}"}`)
 
-	f("{}")
-	f(`{foo="bar"}`)
-	f(`{foo="bar", baz="x", y="z"}`)
-	f(`{foo="ba\"r\\z\n", a="", b="\"\\"}`)
-}
-
-func TestParsePromLabels_Failure(t *testing.T) {
-	f := func(s string) {
-		t.Helper()
-		fields, err := parsePromLabels(nil, s)
-		if err == nil {
-			t.Fatalf("expecting non-nil error")
-		}
-		if len(fields) > 0 {
-			t.Fatalf("unexpected non-empty fields: %s", fields)
-		}
-	}
-
-	f("")
-	f("{")
-	f(`{foo}`)
-	f(`{foo=bar}`)
-	f(`{foo="bar}`)
-	f(`{foo="ba\",r}`)
-	f(`{foo="bar" baz="aa"}`)
-	f(`foobar`)
-	f(`foo{bar="baz"}`)
 }

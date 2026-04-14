@@ -24,6 +24,9 @@ victoria-logs-linux-arm64-prod:
 victoria-logs-linux-ppc64le-prod:
 	APP_NAME=victoria-logs $(MAKE) app-via-docker-linux-ppc64le
 
+victoria-logs-linux-s390x-prod:
+	APP_NAME=victoria-logs $(MAKE) app-via-docker-linux-s390x
+
 victoria-logs-linux-386-prod:
 	APP_NAME=victoria-logs $(MAKE) app-via-docker-linux-386
 
@@ -59,6 +62,9 @@ package-victoria-logs-arm64:
 
 package-victoria-logs-ppc64le:
 	APP_NAME=victoria-logs $(MAKE) package-via-docker-ppc64le
+
+package-victoria-logs-s390x:
+	APP_NAME=victoria-logs $(MAKE) package-via-docker-s390x
 
 package-victoria-logs-386:
 	APP_NAME=victoria-logs $(MAKE) package-via-docker-386

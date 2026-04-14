@@ -19,13 +19,15 @@ docker compose down
 
 The docker compose file contains the following components:
 
-* filebeat - logs collection agent configured to collect and write data to `victorialogs`
-* victorialogs - logs database, receives data from `filebeat` agent
-* victoriametrics - metrics database, collects metrics from `victorialogs` and `filebeat` for observability purposes
+* filebeat - logs collection agent configured to collect and write data to `vlagent`
+* vlagent - agent, that replicates log data to `victorialogs-x` instances
+* victorialogs-x - logs database instances, receive data from `vlagent` agent
+* vmauth - proxy that serves as a query entrypoint for `victorialogs-x` instances
+* victoriametrics - metrics database, which collects metrics from `filebeat` for observability purposes
 
 ## Querying
 
-* [vmui](https://docs.victoriametrics.com/victorialogs/querying/#vmui) - a web UI is accessible by `http://localhost:9428/select/vmui`
+* [vmui](https://docs.victoriametrics.com/victorialogs/querying/#vmui) - a web UI is accessible by `http://localhost:9428/select/vmui/`
 * for querying the data via command-line please check [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/#command-line)
 
 Filebeat configuration example can be found below:

@@ -1,11 +1,11 @@
 import { FC, useEffect, useMemo } from "preact/compat";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useState } from "react";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
-import { LogsFiledValues } from "../../../../api/types";
-import { ExtraFilterOperator } from "../../FiltersBar/types";
+import { LogsFieldValues } from "../../../../api/types";
+import { ExtraFilterOperator } from "../../../../components/ExtraFilters/types";
 import { fieldValuesCol, streamFieldValuesCol } from "../columns";
 import OverviewTable from "../../OverviewTable/OverviewTable";
 import "../../OverviewTable/style.scss";
@@ -14,8 +14,8 @@ import { buildFieldValuesQuery } from "./topFieldValuesUtils";
 import { useOverviewState } from "../../../../state/overview/OverviewStateContext";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
-import { isMacOs } from "../../../../utils/detect-device";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
+import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 
 const MODE_CONFIG = {
   top: {
@@ -44,14 +44,15 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const { totalLogs } = useOverviewState();
   const copyToClipboard = useCopyToClipboard();
 
-  const selectedKey = scope === "field" ? fieldFilter : streamFieldFilter;
-  const selectedValue = scope === "field" ? fieldValueFilters : streamFieldValueFilters;
-  const setterFilter = scope === "field" ? toggleFieldValueFilter : toggleStreamFieldValueFilter;
+  const isFieldScope = scope === "field";
+  const selectedKey = isFieldScope ? fieldFilter : streamFieldFilter;
+  const selectedValue = isFieldScope ? fieldValueFilters : streamFieldValueFilters;
+  const setterFilter = isFieldScope ? toggleFieldValueFilter : toggleStreamFieldValueFilter;
 
   const [mode, setMode] = useState(MODE_KEYS[0]);
   const [limit, setLimit] = useState(10);
 
-  const rows: LogsFiledValues[] = useMemo(() => {
+  const rows: LogsFieldValues[] = useMemo(() => {
     return logs.map(l => {
       const hits = Number(l.hits) || 0;
       return {
@@ -63,22 +64,22 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   }, [selectedKey, logs, totalLogs]);
 
   const isEmptyList = (!isLoading && !error && (rows.length === 0)) || !selectedKey;
-  const emptyText = selectedKey ? "No values found" : `Select ${scope === "field" ? "field" : "stream field"} name to see values`;
+  const emptyText = selectedKey ? "No values found" : `Select ${isFieldScope ? "field" : "stream field"} name to see values`;
 
-  const handleAddFilter = (row: LogsFiledValues, operator: ExtraFilterOperator) => {
+  const handleAddFilter = (row: LogsFieldValues, operator: ExtraFilterOperator) => {
     addNewFilter({ field: selectedKey, value: row.value, operator });
   };
 
-  const selectFieldValue = (row: LogsFiledValues) => {
+  const selectFieldValue = (row: LogsFieldValues) => {
     setterFilter(row.value);
   };
 
-  const handleCopy = async (row: LogsFiledValues) => {
+  const handleCopy = async (row: LogsFieldValues) => {
     const copyValue = `${selectedKey}:${row.value}`;
     await copyToClipboard(copyValue, `\`${copyValue}\` has been copied`);
   };
 
-  const handleClickRow = (row: LogsFiledValues, e: MouseEvent) => {
+  const handleClickRow = (row: LogsFieldValues, e: MouseEvent) => {
     const { ctrlKey, metaKey, altKey } = e;
     const ctrlMetaKey = ctrlKey || metaKey;
 
@@ -91,7 +92,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
     }
   };
 
-  const detectActiveRow = (row: LogsFiledValues) => {
+  const detectActiveRow = (row: LogsFieldValues) => {
     return selectedValue.includes(row.value);
   };
 
@@ -103,7 +104,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
     return () => abortController.abort();
   }, [period, extraParams.toString(), selectedKey, limit, mode]);
 
-  const TableAction = (row: LogsFiledValues) => {
+  const TableAction = (row: LogsFieldValues) => {
     const menu = [
       [{
         label: selectedValue.includes(row.value) ? "Unfocus" : "Focus",
@@ -115,13 +116,13 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
         {
           label: "Include",
           icon: <FilterIcon/>,
-          shortcut: (isMacOs() ? "Option" : "Alt") + " + Click",
+          shortcut: `${altKeyLabel} + Click`,
           onClick: () => handleAddFilter(row, ExtraFilterOperator.Equals)
         },
         {
           label: "Exclude",
           icon: <FilterOffIcon/>,
-          shortcut: `${isMacOs() ? "Cmd" : "Ctrl"} + Click`,
+          shortcut: `${ctrlKeyLabel} + Click`,
           onClick: () => handleAddFilter(row, ExtraFilterOperator.NotEquals)
         }
       ],
@@ -162,10 +163,11 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
 
   return (
     <OverviewTable
+      tableId={isFieldScope ? "table-overview-field-values" : "table-overview-stream-field-values"}
       enableSearch
       title={<>Field values: <b>`{selectedKey}`</b></>}
       rows={rows}
-      columns={scope === "field" ? fieldValuesCol : streamFieldValuesCol}
+      columns={isFieldScope ? fieldValuesCol : streamFieldValuesCol}
       isLoading={isLoading}
       error={error}
       isEmptyList={isEmptyList}

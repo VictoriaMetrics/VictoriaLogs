@@ -1,7 +1,6 @@
 package insertutil
 
 import (
-	"flag"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -19,11 +18,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var (
-	defaultMsgValue = flag.String("defaultMsgValue", "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field",
-		"Default value for _msg field if the ingested log entry doesn't contain it; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field")
-)
-
 // CommonParams contains common HTTP parameters used by log ingestion APIs.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters
@@ -34,9 +28,13 @@ type CommonParams struct {
 	StreamFields     []string
 	IgnoreFields     []string
 	DecolorizeFields []string
+	PreserveJSONKeys []string
 	ExtraFields      []logstorage.Field
 
-	IsTimeFieldSet  bool
+	// IsTimeFieldSet means whether the TimeFields is set **manually**.
+	// The TimeFields has default value `_time`. It's not empty even if the IsTimeFieldSet is false.
+	IsTimeFieldSet bool
+
 	Debug           bool
 	DebugRequestURI string
 	DebugRemoteAddr string
@@ -52,15 +50,21 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 
 	var isTimeFieldSet bool
 	timeFields := []string{"_time"}
-	if tfs := httputil.GetArray(r, "_time_field", "VL-Time-Field"); len(tfs) > 0 {
+	if tfs := getArray(r, "_time_field", "VL-Time-Field"); len(tfs) > 0 {
 		isTimeFieldSet = true
 		timeFields = tfs
 	}
 
-	msgFields := httputil.GetArray(r, "_msg_field", "VL-Msg-Field")
-	streamFields := httputil.GetArray(r, "_stream_fields", "VL-Stream-Fields")
-	ignoreFields := httputil.GetArray(r, "ignore_fields", "VL-Ignore-Fields")
-	decolorizeFields := httputil.GetArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	msgFields := getArray(r, "_msg_field", "VL-Msg-Field")
+	streamFields := getArray(r, "_stream_fields", "VL-Stream-Fields")
+	ignoreFields := getArray(r, "ignore_fields", "VL-Ignore-Fields")
+	decolorizeFields := getArray(r, "decolorize_fields", "VL-Decolorize-Fields")
+	preserveJSONKeys := getArray(r, "preserve_json_keys", "VL-Preserve-JSON-Keys")
+
+	// verify that the _stream_fields contains valid values
+	if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
+		return nil, fmt.Errorf("cannot parse stream field names from the _stream_fields query arg or from VL-Stream-Fields header: %w", err)
+	}
 
 	extraFields, err := getExtraFields(r)
 	if err != nil {
@@ -88,6 +92,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 		StreamFields:     streamFields,
 		IgnoreFields:     ignoreFields,
 		DecolorizeFields: decolorizeFields,
+		PreserveJSONKeys: preserveJSONKeys,
 		ExtraFields:      extraFields,
 
 		IsTimeFieldSet:  isTimeFieldSet,
@@ -100,7 +105,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 }
 
 func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
-	efs := httputil.GetArray(r, "extra_fields", "VL-Extra-Fields")
+	efs := getArray(r, "extra_fields", "VL-Extra-Fields")
 	if len(efs) == 0 {
 		return nil, nil
 	}
@@ -117,6 +122,22 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 		}
 	}
 	return extraFields, nil
+}
+
+func getArray(r *http.Request, argKey, headerKey string) []string {
+	a := httputil.GetArray(r, argKey, headerKey)
+	return removeEmptyTokens(a)
+}
+
+func removeEmptyTokens(a []string) []string {
+	dst := a[:0]
+	for _, s := range a {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			dst = append(dst, s)
+		}
+	}
+	return dst
 }
 
 // GetCommonParamsForSyslog returns common params needed for parsing syslog messages and storing them to the given tenantID.
@@ -176,10 +197,10 @@ func CanWriteData() error {
 type LogMessageProcessor interface {
 	// AddRow must add row to the LogMessageProcessor with the given timestamp and fields.
 	//
-	// If streamFields is non-nil, then the given streamFields must be used as log stream fields instead of pre-configured fields.
+	// If streamFieldsLen >= 0, then the given number of initial fields must be used as log stream fields instead of pre-configured fields.
 	//
 	// The LogMessageProcessor implementation cannot hold references to fields, since the caller can reuse them.
-	AddRow(timestamp int64, fields, streamFields []logstorage.Field)
+	AddRow(timestamp int64, fields []logstorage.Field, streamFieldsLen int)
 
 	// MustClose() must flush all the remaining fields and free up resources occupied by LogMessageProcessor.
 	MustClose()
@@ -197,15 +218,15 @@ type logMessageProcessor struct {
 	rowsIngestedTotal  *metrics.Counter
 	bytesIngestedTotal *metrics.Counter
 	flushDuration      *metrics.Summary
+
+	unflushedRows  int
+	unflushedBytes int
 }
 
 func (lmp *logMessageProcessor) initPeriodicFlush() {
 	lmp.lastFlushTime = time.Now()
 
-	lmp.wg.Add(1)
-	go func() {
-		defer lmp.wg.Done()
-
+	lmp.wg.Go(func() {
 		d := timeutil.AddJitterToDuration(time.Second)
 		ticker := time.NewTicker(d)
 		defer ticker.Stop()
@@ -222,16 +243,20 @@ func (lmp *logMessageProcessor) initPeriodicFlush() {
 				lmp.mu.Unlock()
 			}
 		}
-	}()
+	})
 }
 
 // AddRow adds new log message to lmp with the given timestamp and fields.
 //
-// If streamFields is non-nil, then it is used as log stream fields instead of the pre-configured stream fields.
-func (lmp *logMessageProcessor) AddRow(timestamp int64, fields, streamFields []logstorage.Field) {
-	lmp.rowsIngestedTotal.Inc()
+// If streamFieldsLen >= 0, then the given number of the initial fields is used as log stream fields
+// instead of the pre-configured stream fields.
+func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Field, streamFieldsLen int) {
+	lmp.mu.Lock()
+	defer lmp.mu.Unlock()
+
+	lmp.unflushedRows++
 	n := logstorage.EstimatedJSONRowLen(fields)
-	lmp.bytesIngestedTotal.Add(n)
+	lmp.unflushedBytes += n
 
 	if len(fields) > *MaxFieldsPerLine {
 		line := logstorage.MarshalFieldsToJSON(nil, fields)
@@ -240,10 +265,7 @@ func (lmp *logMessageProcessor) AddRow(timestamp int64, fields, streamFields []l
 		return
 	}
 
-	lmp.mu.Lock()
-	defer lmp.mu.Unlock()
-
-	lmp.lr.MustAdd(lmp.cp.TenantID, timestamp, fields, streamFields)
+	lmp.lr.MustAdd(lmp.cp.TenantID, timestamp, fields, streamFieldsLen)
 
 	if lmp.cp.Debug {
 		s := lmp.lr.GetRowString(0)
@@ -265,9 +287,12 @@ type InsertRowProcessor interface {
 
 // AddInsertRow adds r to lmp.
 func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
-	lmp.rowsIngestedTotal.Inc()
+	lmp.mu.Lock()
+	defer lmp.mu.Unlock()
+
+	lmp.unflushedRows++
 	n := logstorage.EstimatedJSONRowLen(r.Fields)
-	lmp.bytesIngestedTotal.Add(n)
+	lmp.unflushedBytes += n
 
 	if len(r.Fields) > *MaxFieldsPerLine {
 		line := logstorage.MarshalFieldsToJSON(nil, r.Fields)
@@ -275,9 +300,6 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 		rowsDroppedTotalTooManyFields.Inc()
 		return
 	}
-
-	lmp.mu.Lock()
-	defer lmp.mu.Unlock()
 
 	lmp.lr.MustAddInsertRow(r)
 
@@ -299,7 +321,13 @@ func (lmp *logMessageProcessor) flushLocked() {
 	lmp.lastFlushTime = start
 	logRowsStorage.MustAddRows(lmp.lr)
 	lmp.lr.ResetKeepSettings()
+
 	lmp.flushDuration.UpdateDuration(start)
+	lmp.rowsIngestedTotal.Add(lmp.unflushedRows)
+	lmp.bytesIngestedTotal.Add(lmp.unflushedBytes)
+
+	lmp.unflushedRows = 0
+	lmp.unflushedBytes = 0
 }
 
 // MustClose flushes the remaining data to the underlying storage and closes lmp.
@@ -317,10 +345,12 @@ func (lmp *logMessageProcessor) MustClose() {
 //
 // MustClose() must be called on the returned LogMessageProcessor when it is no longer needed.
 func (cp *CommonParams) NewLogMessageProcessor(protocolName string, isStreamMode bool) LogMessageProcessor {
-	lr := logstorage.GetLogRows(cp.StreamFields, cp.IgnoreFields, cp.DecolorizeFields, cp.ExtraFields, *defaultMsgValue)
+	lr := logstorage.GetLogRows(cp.StreamFields, cp.IgnoreFields, cp.DecolorizeFields, cp.ExtraFields, *DefaultMsgValue)
+
 	rowsIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", protocolName))
 	bytesIngestedTotal := metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", protocolName))
 	flushDuration := metrics.GetOrCreateSummary(fmt.Sprintf("vl_insert_flush_duration_seconds{type=%q}", protocolName))
+
 	lmp := &logMessageProcessor{
 		cp: cp,
 		lr: lr,
@@ -342,7 +372,12 @@ func (cp *CommonParams) NewLogMessageProcessor(protocolName string, isStreamMode
 
 var (
 	rowsDroppedTotalDebug         = metrics.NewCounter(`vl_rows_dropped_total{reason="debug"}`)
-	rowsDroppedTotalTooManyFields = metrics.NewCounter(`vl_rows_dropped_total{reason="too_many_fields"}`)
+	rowsDroppedTotalTooManyFields = metrics.GetOrCreateCounter(`vl_rows_dropped_total{reason="too_many_fields"}`)
 	_                             = metrics.NewGauge(`vl_insert_processors_count`, func() float64 { return float64(messageProcessorCount.Load()) })
 	messageProcessorCount         atomic.Int64
 )
+
+// IsJSONContentType returns true if ct is JSON content-type.
+func IsJSONContentType(ct string) bool {
+	return ct == "application/json" || strings.HasPrefix(ct, "application/json;")
+}

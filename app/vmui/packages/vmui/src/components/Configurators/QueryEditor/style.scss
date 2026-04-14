@@ -11,4 +11,21 @@
     z-index: -9999;
     visibility: hidden;
   }
+
+  &-help-tooltip {
+    &-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      padding: 4px 0;
+      border-bottom: $border-divider;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      span:last-child {
+        text-align: right;
+      }
+    }
+  }
 }

@@ -149,9 +149,13 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
           )}
       </div>
       {isLimitedLogsPerUpdate && (
-        <Alert variant="warning">Too many logs per second detected. Large volumes of log data are difficult to process
-          and may impact performance. We recommend adding filters to your query for better analysis and system
-          performance.</Alert>)}
+        <Alert
+          title="Too many logs per second detected"
+          variant="warning"
+        >
+          Large volumes of log data are difficult to process and may impact performance.
+          We recommend adding filters to your query for better analysis and system performance.
+        </Alert>)}
     </>
   );
 };

@@ -65,28 +65,8 @@ Enumerate all the `vlselect` instances in the cluster under the `url_prefix` con
 
 The diagram below illustrates this architecture in the clustered version of VictoriaLogs:
 
-```mermaid
-flowchart BT
-    subgraph Remote2["VictoriaLogs 2"]
-        direction BT
-        vlselect-az2["vlselect"]
-        vlselect-az2 --> vlstorage2-1["vlstorage 1"]
-        vlselect-az2 --> vlstorage2-2["vlstorage 2"]
-    end
-    subgraph Remote1["VictoriaLogs 1"]
-        direction BT
-        vlselect-az1["vlselect"]
-        vlselect-az1 --> vlstorage1-1["vlstorage 1"]
-        vlselect-az1 --> vlstorage1-2["vlstorage 2"]
-    end
-
-    vmui -->|Basic auth| vmauth
-    Grafana -->|Bearer auth| vmauth
-    curl -->|mTLS| vmauth
-
-    vmauth --> vlselect-az1
-    vmauth --> vlselect-az2
-```
+![security-and-lb-search-auth.webp](security-and-lb-search-auth.webp)
+{width="600"}
 
 Update the connection settings in all clients (like Grafana) after configuring the `vmauth` in order
 to match the selected authentication method and the `vmauth` endpoint.
@@ -94,8 +74,8 @@ to match the selected authentication method and the `vmauth` endpoint.
 Important: Requests sent directly to VictoriaLogs bypass `vmauth` and are not authorized.
 To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
 
-It is recommended to pass the `-insert.disable` command-line flag to `vlselect` to disable the write API.
-This helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
+It is recommended to pass the `-insert.disable` command-line flag to dedicated `vlselect` nodes to disable the write API.
+This disables both `/insert/*` and `/internal/insert` endpoints and helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
 
 For configuration examples using Bearer tokens, Basic auth, and mTLS, see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
@@ -229,7 +209,7 @@ However, user `admin` needs to set the required `AccountID` or `ProjectID` heade
 
 In Grafana, you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs`.
 Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set it.
-Each tenant will have `vmui` at the address `/select/vmui`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui`.
+Each tenant will have `vmui` at the address `/select/vmui/`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui/`.
 
 If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
 it is enough to not specify the corresponding field in the `headers` section.
@@ -271,7 +251,11 @@ VictoriaLogs will assume that the corresponding header has a value of 0.
 
 `VictoriaLogs` can apply extra filters for each request to the select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
 This is useful when you need to give access to a subset of data within a single tenant.
-If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`:
+If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`.
+
+`extra_filters` are enforced globally - they are propagated into all the subqueries inside the provided `query`. This makes it impossible to bypass the restrictions via `join`, `union`, `in(<query>)` and other subqueries.
+
+Consider the example below:
 
 ```yaml
 users:
@@ -364,8 +348,8 @@ it is very important to secure the write API:
 - Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.
 - Write logs from untrusted applications to dedicated VictoriaLogs instances or clusters so that the unpredictable write load does not affect other instances.
 
-It is recommended to pass the `-select.disable` command-line flag to `vlinsert` in order to disable the search API.
-This will secure access to the stored logs in case an attacker has direct network access to `vlinsert`.
+It is recommended to pass the `-select.disable` command-line flag to dedicated `vlinsert` nodes in order to disable the search API.
+This disables both `/select/*` and `/internal/select/*` endpoints and secures access to the stored logs in case an attacker has direct network access to `vlinsert`.
 
 For configuration examples using Bearer tokens, Basic auth, and mTLS, see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
@@ -420,21 +404,8 @@ users:
 
 Below is a diagram of this architecture for the clustered version of VictoriaLogs:
 
-```mermaid
-flowchart BT
-    subgraph Remote2["VictoriaLogs cluster"]
-        direction BT
-        vlinsert-az1["vlinsert"]
-        vlinsert-az1 --> vlstorage2-1["vlstorage 1"]
-        vlinsert-az1 --> vlstorage2-2["vlstorage 2"]
-    end
-
-    vector -->|Basic auth<br> /my-account/kubernetes-logs| vmauth
-    vlagent -->|Bearer auth<br>/my-account/mobile-logs| vmauth
-    filebeat -->|mTLS<br>/my-account/frontend-logs| vmauth
-
-    vmauth -->|AccountID: X<br>ProjectID: Y| vlinsert-az1
-```
+![security-and-lb-tenants.webp](security-and-lb-tenants.webp)
+{width="600"}
 
 ### Tenant-based proxying of data ingestion requests
 

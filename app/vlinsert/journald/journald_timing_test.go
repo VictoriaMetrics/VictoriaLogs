@@ -46,7 +46,7 @@ func BenchmarkPushJournaldPerformance(b *testing.B) {
 		blp := &insertutil.BenchmarkLogMessageProcessor{}
 		for pb.Next() {
 			r.Reset(data)
-			if err := processStreamInternal("performance_test", r, blp, cp); err != nil {
+			if err := processStreamInternal("performance_test", r, "", blp, cp); err != nil {
 				panic(fmt.Errorf("unexpected error: %w", err))
 			}
 		}

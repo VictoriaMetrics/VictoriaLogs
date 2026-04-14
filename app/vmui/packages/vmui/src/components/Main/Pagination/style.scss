@@ -4,6 +4,7 @@
   position: sticky;
   left: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: $padding-small;
   padding: $padding-global 0;

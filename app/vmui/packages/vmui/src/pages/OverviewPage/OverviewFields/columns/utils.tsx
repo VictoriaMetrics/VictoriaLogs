@@ -1,26 +1,37 @@
-import { Column } from "../../../../components/Table/Table";
-import { LogsFiledValues } from "../../../../api/types";
+import { type Column } from "../../../../components/Table/types";
+import { LogsFieldValues } from "../../../../api/types";
+import { formatNumber } from "../../../../utils/number";
 
-export const getFieldCol = (title: string): Column<LogsFiledValues> => ({
+const options = {
+  sortable: true,
+  draggable: false,
+  resizable: false,
+  menuEnabled: false
+};
+
+export const getFieldCol = (title: string): Column<LogsFieldValues> => ({
   title,
-  className: "vm-top-fields__cell-name",
-  key: "value" as keyof LogsFiledValues,
+  options,
+  classNameHeader: "vm-table-cell_full",
+  key: "value" as keyof LogsFieldValues,
 });
 
 export const getHitsCol = () => ({
   title: "Hits",
-  isNum: true,
-  className: "vm-top-fields__cell-value",
-  key: "hits" as keyof LogsFiledValues,
-  render: (n: LogsFiledValues) => Number(n.hits).toLocaleString("en-US")
+  options,
+  className: "vm-table-cell_number",
+  classNameHeader: "vm-table-cell-header_number",
+  key: "hits" as keyof LogsFieldValues,
+  render: (n: LogsFieldValues) => formatNumber(n.hits),
 });
 
 export const getPercentCol = (title: string) => ({
   title,
-  isNum: true,
-  className: "vm-top-fields__cell-percent",
-  key: "percent" as keyof LogsFiledValues,
-  render: (n: LogsFiledValues) => {
+  options,
+  className: "vm-table-cell_number",
+  classNameHeader: "vm-table-cell-header_number",
+  key: "percent" as keyof LogsFieldValues,
+  render: (n: LogsFieldValues) => {
     const p = n.percent ?? 0;
     const text = p.toFixed(2);
     return `${text}%`;

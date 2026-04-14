@@ -1,5 +1,5 @@
 import { FC } from "preact/compat";
-import { ExtraFilter } from "../types";
+import { ExtraFilter } from "../../../../components/ExtraFilters/types";
 import Button from "../../../../components/Main/Button/Button";
 import { CloseIcon } from "../../../../components/Main/Icons";
 import classNames from "classnames";

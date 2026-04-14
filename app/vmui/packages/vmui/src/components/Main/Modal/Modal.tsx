@@ -78,6 +78,7 @@ const Modal: FC<ModalProps> = ({
           <div className="vm-modal-content-header__close">
             <Button
               variant="text"
+              color="gray"
               size="small"
               onClick={onClose}
               ariaLabel="close"

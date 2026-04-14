@@ -11,7 +11,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bufferedwriter"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/protoparser/protoparserutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/writeconcurrencylimiter"
@@ -50,6 +49,12 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 	if strings.HasPrefix(path, "/insert/elasticsearch/_nodes") {
 		// Return fake response for Elasticsearch nodes discovery request.
 		// See: https://www.elastic.co/guide/en/elasticsearch/reference/8.8/cluster.html
+		fmt.Fprintf(w, `{}`)
+		return true
+	}
+	if strings.HasPrefix(path, "/insert/elasticsearch/_rollup") {
+		// Return fake response for Elasticsearch rollup apis
+		// See: https://www.elastic.co/guide/en/elasticsearch/reference/8.8/rollup-apis.html
 		fmt.Fprintf(w, `{}`)
 		return true
 	}
@@ -104,10 +109,10 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		lmp := cp.NewLogMessageProcessor("elasticsearch_bulk", true)
 		encoding := r.Header.Get("Content-Encoding")
 		streamName := fmt.Sprintf("remoteAddr=%s, requestURI=%q", httpserver.GetQuotedRemoteAddr(r), r.RequestURI)
-		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, lmp)
+		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
 		lmp.MustClose()
 		if err != nil {
-			logger.Warnf("cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
+			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
 			return true
 		}
 
@@ -133,32 +138,34 @@ var (
 	bulkRequestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}`)
 )
 
-func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) (int, error) {
+func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (int, error) {
 	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
 
-	reader, err := protoparserutil.GetUncompressedReader(r, encoding)
+	wcr, err := writeconcurrencylimiter.GetReader(r)
+	if err != nil {
+		return 0, err
+	}
+	defer writeconcurrencylimiter.PutReader(wcr)
+
+	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
 		return 0, fmt.Errorf("cannot decode Elasticsearch protocol data: %w", err)
 	}
 	defer protoparserutil.PutUncompressedReader(reader)
 
-	wcr := writeconcurrencylimiter.GetReader(reader)
-	defer writeconcurrencylimiter.PutReader(wcr)
-
-	lr := insertutil.NewLineReader(streamName, wcr)
+	lr := insertutil.NewLineReader(streamName, reader)
 
 	n := 0
 	for {
-		ok, err := readBulkLine(lr, timeFields, msgFields, lmp)
-		wcr.DecConcurrency()
-		if err != nil || !ok {
+		hasMoreLines, err := readBulkLine(lr, timeFields, msgFields, preserveKeys, lmp)
+		if err != nil || !hasMoreLines {
 			return n, err
 		}
 		n++
 	}
 }
 
-func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp insertutil.LogMessageProcessor) (bool, error) {
+func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (bool, error) {
 	var line []byte
 
 	// Read the command, must be "create" or "index"
@@ -191,8 +198,13 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 	p := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(p)
 
-	if err := p.ParseLogMessage(line); err != nil {
-		return false, fmt.Errorf("cannot parse json-encoded log entry: %w", err)
+	if err := p.ParseLogMessage(line, preserveKeys, ""); err != nil {
+		const tailBytes = 128
+		lineTail := line
+		if len(lineTail) > tailBytes {
+			lineTail = lineTail[len(lineTail)-tailBytes:]
+		}
+		return false, fmt.Errorf("cannot parse json-encoded log entry: %w; last %d bytes: %q", err, len(lineTail), lineTail)
 	}
 
 	ts, err := extractTimestampFromFields(timeFields, p.Fields)
@@ -203,7 +215,7 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields []string, lmp
 		ts = time.Now().UnixNano()
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
-	lmp.AddRow(ts, p.Fields, nil)
+	lmp.AddRow(ts, p.Fields, -1)
 
 	return true, nil
 }

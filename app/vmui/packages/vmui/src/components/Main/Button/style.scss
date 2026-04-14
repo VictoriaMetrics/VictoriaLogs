@@ -1,6 +1,6 @@
 @use "src/styles/variables" as *;
-
-$button-radius: 6px;
+@use "sass:meta";
+@use "sass:map";
 
 .vm-button {
   display: inline-flex;
@@ -10,11 +10,10 @@ $button-radius: 6px;
   padding: 6px 14px;
   font-size: $font-size-small;
   font-weight: normal;
-  text-transform: capitalize;
   color: $color-white;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: $button-radius;
+  border-radius: $border-radius-button;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -39,9 +38,12 @@ $button-radius: 6px;
   &_small {
     padding: 4px 10px;
     line-height: 14px;
+    border-radius: $border-radius-small;
 
     svg {
       width: 14px;
+      min-width: 14px;
+      max-width: 14px;
     }
   }
 
@@ -51,6 +53,8 @@ $button-radius: 6px;
 
     svg {
       width: 16px;
+      min-width: 16px;
+      max-width: 16px;
     }
   }
 
@@ -60,6 +64,8 @@ $button-radius: 6px;
 
     svg {
       width: 18px;
+      min-width: 18px;
+      max-width: 18px;
       line-height: 16px;
     }
   }
@@ -127,9 +133,23 @@ $button-radius: 6px;
     white: $color-white
   );
 
+  $outlined-border-overrides: (
+    gray: $border-divider-color,
+  );
+
   @each $name, $color in $button-colors {
-    @include contained-button($name, $color, if($name == white, $color-black, $color-white));
-    @include outlined-button($name, $color, if($name == white, $color-white, $color));
-    @include text-button($name, if($name == white, $color-white, $color));
+    @if $name == white {
+      @include contained-button($name, $color, $color-black);
+      @include outlined-button($name, $color, $color-white);
+      @include text-button($name, $color-white);
+    } @else {
+      @include contained-button($name, $color, $color-white);
+      $border-color: $color;
+      @if map.has-key($outlined-border-overrides, $name) {
+        $border-color: map.get($outlined-border-overrides, $name);
+      }
+      @include outlined-button($name, $border-color, $color);
+      @include text-button($name, $color);
+    }
   }
 }

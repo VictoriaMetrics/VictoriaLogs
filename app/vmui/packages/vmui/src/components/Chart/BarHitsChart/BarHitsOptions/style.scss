@@ -3,33 +3,60 @@
 .vm-bar-hits-options {
   display: flex;
   align-items: center;
-  justify-content: end;
+  justify-content: flex-end;
+  flex-grow: 1;
+  flex-wrap: wrap;
   z-index: 2;
 
-  &-settings {
-    display: grid;
-    align-items: flex-start;
-    min-width: 200px;
-    gap: $padding-global;
-    padding-bottom: $padding-global;
+  &__hidden-info {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: $font-size-small;
+    color: $color-text-secondary;
+  }
 
-    &-item {
-      padding: 0 $padding-global;
+  &_selections {
+    flex-grow: 1;
+    justify-content: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: $padding-small;
+  }
 
-      &_list {
-        padding: 0;
-      }
+  &-item {
+    &_switch {
+      padding-right: $padding-global;
+    }
+  }
 
-      &__title {
-        font-size: $font-size-small;
-        color: $color-text-secondary;
-        padding: 0 $padding-small $padding-small;
-      }
+  &_mobile {
+    gap: 0;
 
-      &:last-child {
-        border-bottom: none;
-      }
+    .vm-select-limits-button {
+      height: 100%;
+    }
 
+    .vm-bar-hits-options-item {
+      width: 100%;
+      padding: $padding-global 0;
+      border-bottom: $border-divider;
+    }
+
+    .vm-bar-hits-options_selections {
+      width: 100%;
+      gap: 0;
+    }
+
+    .vm-bar-hits-options_selections > .vm-bar-hits-options-item {
+      padding: 0;
+    }
+
+    .vm-select-limits-button {
+      padding: $padding-global 0;
+      justify-content: flex-start;
+      border: none;
     }
   }
 }

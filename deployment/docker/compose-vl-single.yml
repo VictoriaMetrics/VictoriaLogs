@@ -1,7 +1,7 @@
 services:
   # Grafana instance configured with VictoriaLogs as datasource
   grafana:
-    image: grafana/grafana:12.0.2
+    image: grafana/grafana:12.3.1
     depends_on:
       - "victoriametrics"
       - "victorialogs"
@@ -11,7 +11,8 @@ services:
       - grafanadata:/var/lib/grafana
       - ./provisioning/datasources/victoriametrics-logs-datasource/single.yml:/etc/grafana/provisioning/datasources/single.yml
       - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards
-      - ./../../dashboards/victorialogs.json:/var/lib/grafana/dashboards/vl.json
+      - ./../../dashboards/victorialogs.json:/var/lib/grafana/dashboards/victorialogs.json
+      - ./../../dashboards/victorialogs-internal.json:/var/lib/grafana/dashboards/victorialogs-internal.json
     environment:
       - "GF_INSTALL_PLUGINS=victoriametrics-logs-datasource"
     restart: always
@@ -32,22 +33,24 @@ services:
     ports:
       - "8686:8686"
     user: root
+    restart: always
 
   #  VictoriaLogs instance, a single process responsible for
   #  storing logs and serving read queries.
   victorialogs:
-    image: victoriametrics/victoria-logs:v1.36.1
+    image: victoriametrics/victoria-logs:v1.49.0
     ports:
       - "9428:9428"
     command:
       - "--storageDataPath=/vlogs"
     volumes:
       - vldata:/vlogs
+    restart: always
 
   # VictoriaMetrics instance, a single process responsible for
   # scraping, storing metrics and serve read requests.
   victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.120.0
+    image: victoriametrics/victoria-metrics:v1.137.0
     ports:
       - "8428:8428"
     volumes:
@@ -56,13 +59,14 @@ services:
     command:
       - "--storageDataPath=/storage"
       - "--promscrape.config=/etc/prometheus/prometheus.yml"
+      - "--vmalert.proxyURL=http://vmalert:8880"
     restart: always
 
   # vmauth is a router and balancer for HTTP requests.
   # It proxies query requests from vmalert to either VictoriaMetrics or VictoriaLogs,
   # depending on the requested path.
   vmauth:
-    image: victoriametrics/vmauth:v1.120.0
+    image: victoriametrics/vmauth:v1.137.0
     depends_on:
       - "victoriametrics"
       - "victorialogs"
@@ -76,7 +80,7 @@ services:
 
   # vmalert executes alerting and recording rules according to the given rule type.
   vmalert:
-    image: victoriametrics/vmalert:v1.120.0
+    image: victoriametrics/vmalert:v1.137.0
     depends_on:
       - "vmauth"
       - "alertmanager"
@@ -106,7 +110,7 @@ services:
   # alertmanager receives alerting notifications from vmalert
   # and distributes them according to --config.file.
   alertmanager:
-    image: prom/alertmanager:v0.28.0
+    image: prom/alertmanager:v0.30.1
     volumes:
       - ./alertmanager.yml:/config/alertmanager.yml
     command:

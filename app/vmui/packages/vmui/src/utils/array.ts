@@ -22,3 +22,10 @@ export const isDecreasing = (arr: number[]): boolean => {
 
   return arr.every((v, i) => i === 0 || v < arr[i - 1]);
 };
+
+export const arrayMove = <T, >(a: T[], from: number, to: number) => {
+  const next = a.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+};

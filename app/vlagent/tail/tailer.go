@@ -1,0 +1,381 @@
+package tail
+
+import (
+	"bytes"
+	"errors"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
+	"github.com/VictoriaMetrics/metrics"
+)
+
+// Processor processes log lines from a single file.
+// Log lines can be accumulated within a single file without committing them to the checkpointsDB.
+type Processor interface {
+	// TryAddLine processes a log line and returns true if it should be committed to the checkpointsDB.
+	// Returns true if the current line should be committed to checkpointsDB, false otherwise.
+	//
+	// This allows accumulating multiple lines within a file before committing, which is useful for:
+	// - Multi-line log entries that span across lines.
+	// - Batching multiple log lines for efficiency.
+	// - Custom log parsing that needs context from multiple lines.
+	//
+	// Note: when a log file is rotated, no checkpoint will be written until tryAddLine returns true,
+	// ensuring log entries spanning multiple files are handled correctly.
+	TryAddLine(line []byte) bool
+
+	// Flush flushes any internally accumulated state.
+	// The caller is responsible for invoking flush when no new log lines are expected for a while,
+	// ensuring the accumulated state is propagated without waiting for the next line.
+	Flush()
+
+	// MustClose releases all resources associated with the Processor and ensures proper cleanup of internal states.
+	// It must be called after the target log file is deleted or vlagent is shutting down.
+	MustClose()
+}
+
+type Tailer struct {
+	logFiles     map[string]struct{}
+	logFilesLock sync.Mutex
+
+	checkpointsDB *checkpointsDB
+
+	wg     sync.WaitGroup
+	stopCh chan struct{}
+}
+
+// Start initializes a new Tailer with the given checkpoints storage path.
+// The caller must call Stop() when the Tailer is no longer needed.
+//
+// The Tailer maintains a checkpoint file as persistent state,
+// allowing log reading to resume from the last position after vlagent restart.
+func Start(checkpointsPath string) *Tailer {
+	checkpointsDB, err := startCheckpointsDB(checkpointsPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot start checkpoints DB: %s", err)
+	}
+
+	return &Tailer{
+		logFiles:      make(map[string]struct{}),
+		checkpointsDB: checkpointsDB,
+		stopCh:        make(chan struct{}),
+	}
+}
+
+func (fc *Tailer) StartRead(relPath string, proc Processor) {
+	// Use absolute paths to prevent duplicate logs in case the vlagent working directory changes.
+	absPath, err := filepath.Abs(relPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot get absolute path of %q: %s", relPath, err)
+	}
+
+	fc.logFilesLock.Lock()
+	_, ok := fc.logFiles[absPath]
+	fc.logFiles[absPath] = struct{}{}
+	fc.logFilesLock.Unlock()
+	if ok {
+		// Already reading from the file.
+		proc.MustClose()
+		return
+	}
+
+	fc.wg.Go(func() {
+		lf := fc.openLogFile(absPath)
+		fc.process(lf, proc)
+	})
+}
+
+func (fc *Tailer) openLogFile(filepath string) *logFile {
+	cp, ok := fc.checkpointsDB.get(filepath)
+	if !ok {
+		// No checkpoint found - start reading from the beginning of the file.
+		return newLogFile(filepath)
+	}
+
+	lf, ok := tryResumeFromCheckpoint(filepath, cp)
+	if !ok {
+		fc.checkpointsDB.delete(filepath)
+		return newLogFile(filepath)
+	}
+	return lf
+}
+
+func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
+	f, inode, ok := openFileWithInode(cp.Path)
+	if !ok {
+		// The file was deleted just after StartRead was called.
+		logger.Warnf("log file %q was deleted before being fully read; "+
+			"this is expected if the file was deleted while vlagent was starting", filepath)
+		return nil, false
+	}
+
+	if inode != cp.Inode {
+		_ = f.Close()
+
+		// When kubelet or logrotate rotates log files, it typically keeps the previous log file uncompressed
+		// in the same directory with a different name (typically with a timestamp suffix).
+		// We attempt to find this renamed file to continue reading from our last offset.
+		// See https://github.com/kubernetes/kubernetes/blob/f794aa12d78f5b1f9579ce8a991a116a99a2c43c/pkg/kubelet/logs/container_log_manager.go#L416
+		var ok bool
+		f, ok = findRenamedFile(cp.Path, cp.Inode)
+		if !ok {
+			// Could not find the rotated file with matching inode.
+			// This means the file was rotated and potentially removed before we could process it.
+			logger.Warnf("skipping log file %q: rotated log file not found (inode=%d); "+
+				"some log lines may have been lost; "+
+				"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
+				"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
+				filepath, cp.Inode)
+			return nil, false
+		}
+	}
+
+	fp := getFileFingerprint(f)
+	if fp == 0 || cp.Fingerprint != 0 && cp.Fingerprint != fp {
+		logger.Warnf("skipping log file %q: file content changed unexpectedly (expected fingerprint=%d, got=%d); "+
+			"log file was likely rotated and truncated before vlagent could finish reading; "+
+			"some log lines may have been lost; "+
+			"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
+			"consider reducing log rotation frequency",
+			filepath, cp.Fingerprint, fp)
+		return nil, false
+	}
+
+	logfile, err := newLogFileFromFile(f, fp, cp.Path)
+	if err != nil {
+		logger.Panicf("FATAL: cannot create log file: %s", err)
+	}
+	logfile.setOffset(cp.Offset)
+
+	return logfile, true
+}
+
+// getFileFingerprint returns a fingerprint of the file.
+// This function returns 0 if the file does not contain any valid log lines.
+func getFileFingerprint(f *os.File) uint64 {
+	buf := make([]byte, maxFingerprintDataLen)
+	n, err := f.ReadAt(buf, 0)
+	if err != nil && err != io.EOF {
+		logger.Panicf("FATAL: cannot read file %q: %s", f.Name(), err)
+	}
+
+	nl := bytes.IndexByte(buf[:n], '\n')
+	if nl < 0 && n < len(buf) {
+		// Line is not yet fully written - cannot calculate fingerprint.
+		return 0
+	}
+	if nl >= 0 {
+		buf = buf[:nl]
+	}
+
+	fp := calcFingerprint(buf)
+	return fp
+}
+
+func (fc *Tailer) process(lf *logFile, proc Processor) {
+	defer lf.close()
+	defer proc.MustClose()
+
+	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
+
+	for {
+		if needStop(fc.stopCh) {
+			return
+		}
+
+		ok := lf.readLines(fc.stopCh, proc)
+		if ok {
+			// Some lines were read - update checkpoint and wait before checking again.
+			fc.checkpointsDB.set(lf.checkpoint())
+			bt.Reset()
+			bt.Wait(fc.stopCh)
+			continue
+		}
+
+		// No lines read - check the log file status.
+		switch lf.status() {
+		case logFileStatusNotRotated:
+			// No more lines to read and file hasn't rotated - wait before checking again.
+			proc.Flush()
+			bt.Wait(fc.stopCh)
+			continue
+		case logFileStatusRotated:
+			// Ensure all remaining lines are flushed to the rotated file and read from it.
+			// Do not use fc.stopCh here to finish reading from the rotated file even if vlagent is shutting down.
+			var neverStopCh chan struct{}
+			bt.Reset()
+			bt.Wait(neverStopCh)
+			if lf.readLines(neverStopCh, proc) {
+				// Double-check: if there are still new lines, it's an unexpected situation.
+				bt.Wait(neverStopCh)
+				if lf.readLines(neverStopCh, proc) {
+					logger.Panicf("BUG: log file %q was appended after rotation", lf.path)
+				}
+			}
+
+			if lf.tryReopen() {
+				fc.checkpointsDB.set(lf.checkpoint())
+			} else {
+				// Cannot reopen the file right now - wait before retrying.
+				bt.Wait(fc.stopCh)
+			}
+			continue
+		case logFileStatusDeleted:
+			fc.forgetFile(lf.path)
+
+			if lf.tail != nil {
+				logger.Panicf("BUG: tail must be empty when the log file no longer exists; got: %q", lf.tail.B)
+			}
+			return
+		default:
+			logger.Panicf("BUG: unexpected log file status")
+		}
+	}
+}
+
+// forgetFile removes the given file from the tracking list and deletes its checkpoint.
+// It is called when the file is not expected to reappear, so its state no longer needs to be stored.
+func (fc *Tailer) forgetFile(filePath string) {
+	fc.checkpointsDB.delete(filePath)
+
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+	delete(fc.logFiles, filePath)
+}
+
+// findRenamedFile looks for a file with the given inode in the same directory as logPath.
+func findRenamedFile(logPath string, inode uint64) (*os.File, bool) {
+	actualPath := tryResolveSymlink(logPath)
+
+	dir := path.Dir(actualPath)
+	des, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false
+		}
+		logger.Panicf("FATAL: cannot read dir %q: %s", dir, err)
+	}
+
+	for _, de := range des {
+		if de.IsDir() {
+			continue
+		}
+
+		fileName := de.Name()
+		if strings.HasSuffix(fileName, ".gz") {
+			continue
+		}
+
+		filePath := path.Join(dir, fileName)
+		file, fileInode, ok := openFileWithInode(filePath)
+		if !ok {
+			continue
+		}
+
+		if fileInode == inode {
+			return file, true
+		}
+
+		_ = file.Close()
+	}
+
+	return nil, false
+}
+
+// CleanupCheckpoints removes all checkpoints for files that are no longer being processed.
+func (fc *Tailer) CleanupCheckpoints() {
+	unusedCheckpoints := fc.getUnusedCheckpoints()
+	if len(unusedCheckpoints) == 0 {
+		return
+	}
+
+	for _, cp := range unusedCheckpoints {
+		fc.checkpointsDB.delete(cp.Path)
+	}
+
+	logger.Warnf("%d log files were deleted before being fully read; "+
+		"this is expected if files were deleted while vlagent was restarting; "+
+		"an example of such file: %q", len(unusedCheckpoints), unusedCheckpoints[0].Path)
+}
+
+func (fc *Tailer) getUnusedCheckpoints() []checkpoint {
+	cps := fc.checkpointsDB.getAll()
+
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
+	var unused []checkpoint
+	for _, cp := range cps {
+		if _, ok := fc.logFiles[cp.Path]; ok {
+			continue
+		}
+		unused = append(unused, cp)
+	}
+	return unused
+}
+
+func (fc *Tailer) IsTailing(relPath string) bool {
+	// Use absolute paths to prevent duplicate logs in case the vlagent working directory changes.
+	absPath, err := filepath.Abs(relPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot get absolute path of %q: %s", relPath, err)
+	}
+
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
+	_, ok := fc.logFiles[absPath]
+	return ok
+}
+
+func (fc *Tailer) Stop() {
+	close(fc.stopCh)
+	fc.wg.Wait()
+	fc.checkpointsDB.stop()
+}
+
+func needStop(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
+}
+
+func openFileWithInode(p string) (*os.File, uint64, bool) {
+	f, err := os.Open(p)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, 0, false
+		}
+		logger.Panicf("FATAL: cannot open file: %s", err)
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		logger.Panicf("FATAL: cannot stat file: %s", err)
+	}
+	inode := getInode(fi)
+
+	return f, inode, true
+}
+
+// tryResolveSymlink resolves symlink to its target path.
+// If symlink cannot be resolved (e.g., symlink is not valid), returns the original path.
+func tryResolveSymlink(symlink string) string {
+	resolvedPath, err := os.Readlink(symlink)
+	if err != nil {
+		return symlink
+	}
+	return resolvedPath
+}
+
+var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")

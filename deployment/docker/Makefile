@@ -3,11 +3,10 @@
 DOCKER_REGISTRIES ?= docker.io quay.io
 DOCKER_NAMESPACE ?= victoriametrics
 
-ROOT_IMAGE ?= alpine:3.22.2
-ROOT_IMAGE_SCRATCH ?= scratch
-CERTS_IMAGE := alpine:3.22.2
+ROOT_IMAGE ?= alpine:3.23.3
+CERTS_IMAGE := alpine:3.23.3
 
-GO_BUILDER_IMAGE := golang:1.25.3
+GO_BUILDER_IMAGE := golang:1.26.2
 
 BUILDER_IMAGE := local/builder:2.0.0-$(shell echo $(GO_BUILDER_IMAGE) | tr :/ __)-1
 BASE_IMAGE := local/base:1.1.4-$(shell echo $(ROOT_IMAGE) | tr :/ __)-$(shell echo $(CERTS_IMAGE) | tr :/ __)
@@ -68,8 +67,8 @@ package-via-docker: package-base
 		$(DOCKER_BUILD) \
 			--build-arg src_binary=$(APP_NAME)$(APP_SUFFIX)-prod \
 			--build-arg base_image=$(BASE_IMAGE) \
-			--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaMetrics" \
-			--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/" \
+			--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaLogs" \
+			--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/victorialogs/" \
 			--label "org.opencontainers.image.title=$(APP_NAME)" \
 			--label "org.opencontainers.image.vendor=VictoriaMetrics" \
 			--label "org.opencontainers.image.version=$(PKG_TAG)" \
@@ -89,8 +88,8 @@ publish-via-docker:
 		--build-arg root_image=$(ROOT_IMAGE) \
 		--build-arg APP_NAME=$(APP_NAME) \
 		--build-arg BINARY_SUFFIX="" \
-		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaMetrics" \
-		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/" \
+		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaLogs" \
+		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/victorialogs/" \
 		--label "org.opencontainers.image.title=$(APP_NAME)" \
 		--label "org.opencontainers.image.vendor=VictoriaMetrics" \
 		--label "org.opencontainers.image.version=$(PKG_TAG)" \
@@ -100,26 +99,7 @@ publish-via-docker:
 		) \
 		-o type=image \
 		--provenance=false \
-		-f app/$(APP_NAME)/multiarch/Dockerfile \
-		--push \
-		bin
-	$(DOCKER) buildx build \
-		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
-		--build-arg certs_image=$(CERTS_IMAGE) \
-		--build-arg root_image=$(ROOT_IMAGE_SCRATCH) \
-		--build-arg APP_NAME=$(APP_NAME) \
-		--build-arg BINARY_SUFFIX="" \
-		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaMetrics" \
-		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/" \
-		--label "org.opencontainers.image.title=$(APP_NAME)" \
-		--label "org.opencontainers.image.vendor=VictoriaMetrics" \
-		--label "org.opencontainers.image.version=$(PKG_TAG)" \
-		--label "org.opencontainers.image.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-		$(foreach registry,$(DOCKER_REGISTRIES),\
-		--tag $(registry)/$(DOCKER_NAMESPACE)/$(APP_NAME):$(PKG_TAG)$(RACE)$(EXTRA_DOCKER_TAG_SUFFIX)-scratch \
-		) \
-		-o type=image \
-		--provenance=false \
+		--sbom=true \
 		-f app/$(APP_NAME)/multiarch/Dockerfile \
 		--push \
 		bin
@@ -165,6 +145,9 @@ app-via-docker-linux-arm:
 app-via-docker-linux-ppc64le:
 	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le $(MAKE) app-via-docker-goos-goarch
 
+app-via-docker-linux-s390x:
+	CGO_ENABLED=0 GOOS=linux GOARCH=s390x $(MAKE) app-via-docker-goos-goarch
+
 app-via-docker-linux-386:
 	CGO_ENABLED=0 GOOS=linux GOARCH=386 $(MAKE) app-via-docker-goos-goarch
 
@@ -207,6 +190,9 @@ package-via-docker-arm:
 
 package-via-docker-ppc64le:
 	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-via-docker-goarch
+
+package-via-docker-s390x:
+	CGO_ENABLED=0 GOARCH=s390x $(MAKE) package-via-docker-goarch
 
 package-via-docker-386:
 	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-via-docker-goarch

@@ -5,10 +5,11 @@ import { getCssVariable } from "../../../../utils/theme";
 import { useAppState } from "../../../../state/common/StateContext";
 import { MinMax, SetMinMax } from "../../../../types";
 import { LogHits } from "../../../../api/types";
-import getSeriesPaths from "../../../../utils/uplot/paths";
 import { GraphOptions, GRAPH_STYLES } from "../types";
-import { getMaxFromArray } from "../../../../utils/math";
 import { getColorFromString } from "../../../../utils/color";
+import useBarPaths from "./useBarPaths";
+import useBarClickHooks from "./useBarClickHooks";
+import { Size } from "../../../../hooks/useResizeObserver";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -30,14 +31,15 @@ interface UseGetBarHitsOptionsArgs {
   logHits: LogHits[];
   xRange: MinMax;
   bands?: Band[];
-  containerSize: { width: number, height: number };
+  containerSize: Size;
   setPlotScale: SetMinMax;
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
   timezone: string;
+  setPeriod: (period: { from: Date, to: Date }) => void;
 }
 
-export const OTHER_HITS_LABEL = "other";
+export const OTHER_HITS_LABEL = "other fields";
 
 export const getLabelFromLogHit = (logHit: LogHits) => {
   if (logHit?._isOther) return OTHER_HITS_LABEL;
@@ -45,10 +47,30 @@ export const getLabelFromLogHit = (logHit: LogHits) => {
   return fields.map((value) => value || "\"\"").join(", ");
 };
 
-const getYRange = (u: uPlot, _initMin = 0, initMax = 1) => {
-  const maxValues = u.series.filter(({ scale }) => scale === "y").map(({ max }) => max || initMax);
-  const max = getMaxFromArray(maxValues);
-  return getMinMaxBuffer(0, max || initMax);
+const getYRange = (u: uPlot, initMin = 0, initMax = 1) => {
+  const ySeries = u.series.filter(({ scale }) => scale === "y");
+
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const s of ySeries) {
+    const sMin = Number.isFinite(s.min) ? (s.min as number) : initMin;
+    const sMax = Number.isFinite(s.max) ? (s.max as number) : initMax;
+
+    if (sMin < min) min = sMin;
+    if (sMax > max) max = sMax;
+  }
+
+  let lo = Number.isFinite(min) ? min : initMin;
+  let hi = Number.isFinite(max) ? max : initMax;
+
+  // If the whole dataset is non-negative, anchor the lower bound at 0
+  if (lo >= 0) lo = 0;
+
+  // If the whole dataset is non-positive, anchor the upper bound at 0
+  if (hi <= 0) hi = 0;
+
+  return getMinMaxBuffer(lo, hi);
 };
 
 const useBarHitsOptions = ({
@@ -61,14 +83,21 @@ const useBarHitsOptions = ({
   setPlotScale,
   graphOptions,
   timezone,
+  setPeriod,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
+  const { barPaths, drawHoverBar, getHoverAbsIdxForBars } = useBarPaths();
+  const barClickHooks = useBarClickHooks({
+    getHoverAbsIdxForBars,
+    onBarClick: setPeriod,
+  });
 
   const [focusDataIdx, setFocusDataIdx] = useState(-1);
 
   const setCursor = (u: uPlot) => {
-    const dataIdx = u.cursor.idx ?? -1;
-    setFocusDataIdx(dataIdx);
+    const nextIdx = getHoverAbsIdxForBars(u);
+    setFocusDataIdx((prev) => (prev === nextIdx ? prev : nextIdx));
+    requestAnimationFrame(() => u.redraw());
   };
 
   const series: Series[] = useMemo(() => {
@@ -95,10 +124,11 @@ const useBarHitsOptions = ({
         show: true,
         stroke: color,
         fill: graphOptions.fill && !isOther ? `${color}80` : graphOptions.fill ? color : "",
-        paths: getSeriesPaths(graphOptions.graphStyle),
+        paths: barPaths,
+        points: { show: false },
       };
     });
-  }, [isDarkTheme, data, graphOptions]);
+  }, [isDarkTheme, data, graphOptions, logHits, barPaths]);
 
   const options: Options = {
     series,
@@ -106,12 +136,7 @@ const useBarHitsOptions = ({
     width: containerSize.width || (window.innerWidth / 2),
     height: containerSize.height || 200,
     cursor: {
-      points: {
-        width: (u, seriesIdx, size) => size / 4,
-        size: (u, seriesIdx) => (u.series?.[seriesIdx]?.points?.size || 1) * 1.5,
-        stroke: (u, seriesIdx) => `${series?.[seriesIdx]?.stroke || "#ffffff"}`,
-        fill: () => "#ffffff",
-      },
+      points: { width: 0, size: 0 },
     },
     scales: {
       x: {
@@ -124,10 +149,11 @@ const useBarHitsOptions = ({
     },
     hooks: {
       drawSeries: [],
-      ready: [onReadyChart],
+      draw: [drawHoverBar],
+      ready: [onReadyChart, barClickHooks.ready],
       setCursor: [setCursor],
       setSelect: [setSelect(setPlotScale)],
-      destroy: [handleDestroy],
+      destroy: [handleDestroy, barClickHooks.destroy],
     },
     legend: { show: false },
     axes: getAxes([{}, { scale: "y" }]),

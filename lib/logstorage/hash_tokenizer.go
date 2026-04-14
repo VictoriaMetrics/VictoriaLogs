@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"slices"
 	"sync"
 	"unsafe"
 
@@ -113,10 +114,8 @@ func (t *hashTokenizer) addToken(token string) (uint64, bool) {
 	if b.v == h {
 		return h, false
 	}
-	for _, v := range b.overflow {
-		if v == h {
-			return h, false
-		}
+	if slices.Contains(b.overflow, h) {
+		return h, false
 	}
 	b.overflow = append(b.overflow, h)
 	return h, true

@@ -1,12 +1,12 @@
 import { FC, useEffect, useState } from "preact/compat";
 import { DeleteIcon, FilterIcon, FilterOffIcon } from "../../../components/Main/Icons";
 import { UrlFieldFilterParam, useFieldFilter, useStreamFieldFilter } from "../hooks/useFieldFilter";
-import { ExtraFilterOperator } from "./types";
+import { ExtraFilterOperator } from "../../../components/ExtraFilters/types";
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import FiltersBarItem from "./FiltersBarItem/FiltersBarItem";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
-import { useExtraFilters } from "../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 
 const FiltersBarPreview: FC = () => {
   const [, setSearchParams] = useSearchParams();

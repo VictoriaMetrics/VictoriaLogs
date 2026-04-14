@@ -13,6 +13,9 @@ tags:
 Loki provides [LogQL](https://grafana.com/docs/loki/latest/query/) query language, while VictoriaLogs provides [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/)
 query language. Both languages are optimized for querying logs. The docs below show how to convert typical LogQL queries to LogsQL queries.
 
+See also [this playground, which automatically converts Loki queries to VictoriaLogs queries](https://play-logql.victoriametrics.com/).
+The source code of this project is available [here](https://github.com/VictoriaMetrics-community/logql-to-logsql/).
+
 ## Data model
 
 Both Loki and VictoriaLogs support log streams - these are timestamp-ordered streams of logs, where every stream may have its own set of labels. These labels can be used
@@ -112,7 +115,8 @@ See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#logical-f
 ## IP filter
 
 Loki provides the ability to filter logs by IP and IP ranges according to [these docs](https://grafana.com/docs/loki/latest/query/ip/).
-These filters can be substituted with [`ipv4_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter) at VictoriaLogs.
+These filters can be substituted with [`ipv4_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv4-range-filter) and
+[`ipv6_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#ipv6-range-filter) at VictoriaLogs.
 
 ## JSON parser
 
@@ -152,6 +156,20 @@ in VictoriaLogs, then the following query can be used instead of the query above
 Note that this query will be much slower than the recommended query above (though it should be still faster than the corresponding Loki query :) ).
 
 See [this article](https://itnext.io/why-victorialogs-is-a-better-alternative-to-grafana-loki-7e941567c4d5) for more details.
+
+### JSON arrays
+
+Loki users sometimes encode arrays into JSON and then try checking whether the array contains the given value at query time.
+This is often done with regexp or substring matching (e.g. `tags=~".*prod.*"`), which may produce false positives and is usually slow.
+
+If a VictoriaLogs field contains a valid JSON array (for example, `tags=["prod","canary"]`), then it can be filtered with the
+[`json_array_contains_any` filter](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_contains_any-filter). For example:
+
+```logsql
+tags:json_array_contains_any("prod")
+```
+
+See also [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe), which can be used for extracting JSON values into separate fields when needed.
 
 ## Logfmt parser
 

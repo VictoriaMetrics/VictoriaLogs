@@ -1,11 +1,18 @@
 @use "src/styles/variables" as *;
 
 .vm-container {
+  color-scheme: light;
   display: flex;
   flex-direction: column;
   min-height: calc(($vh * 100) - var(--scrollbar-height));
 
+  &_dark {
+    color-scheme: dark;
+  }
+
   &-body {
+    display: grid;
+    align-items: flex-start;
     flex-grow: 1;
     min-height: 100%;
     padding: $padding-medium;

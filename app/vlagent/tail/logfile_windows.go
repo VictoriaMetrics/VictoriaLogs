@@ -1,0 +1,14 @@
+//go:build windows
+
+package tail
+
+import (
+	"os"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+)
+
+func getInode(_ os.FileInfo) uint64 {
+	logger.Panicf("vlagent does not support collecting logs from files on Windows")
+	return 0
+}

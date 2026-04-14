@@ -2,6 +2,7 @@ package logsql
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
@@ -24,6 +26,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastjson"
+	"github.com/valyala/quicktemplate"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
@@ -36,7 +39,89 @@ var (
 	allowPartialResponseFlag = flag.Bool("search.allowPartialResponse", false, "Whether to allow returning partial responses when some of vlstorage nodes "+
 		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
+
+	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum query length in bytes, which can be passed to /select/* endpoints")
 )
+
+// ProcessQueryTimeRangeRequest handles /select/logsql/query_time_range request.
+//
+// This request returns JSON object with "start" and "end" fields containing
+// the really selected time range by the provided query in RFC3339Nano format.
+// This is needed for https://github.com/VictoriaMetrics/VictoriaLogs/issues/558#issuecomment-3527811816
+//
+// The format of the returned JSON:
+//
+//	{
+//	  "start":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
+//	  "end":"YYYY-MM-DDThh:mm:sss.nnnnnnnnnZ",
+//	  "hasTimeFilter":true|false
+//	}
+func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	minTimestamp, maxTimestamp, hasTimeFilter, err := parseQueryTimeRangeArgs(r)
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	startStr := timestampToRFC3339Nano(minTimestamp)
+	endStr := timestampToRFC3339Nano(maxTimestamp)
+	fmt.Fprintf(w, `{"start":%q,"end":%q,"hasTimeFilter":%t}`, startStr, endStr, hasTimeFilter)
+}
+
+func parseQueryTimeRangeArgs(r *http.Request) (int64, int64, bool, error) {
+	currTimestamp := time.Now().UnixNano()
+	q, err := parseQueryFromRequest(r, currTimestamp)
+	if err != nil {
+		return 0, 0, false, err
+	}
+
+	minTimestamp, maxTimestamp := q.GetFilterTimeRange()
+
+	// hasTimeFilter is true if the query itself contains a _time filter
+	hasTimeFilter := (minTimestamp != math.MinInt64 || maxTimestamp != math.MaxInt64)
+
+	if minTimestamp == math.MinInt64 {
+		start, ok, err := getTimeNsec(r, "start")
+		if err != nil {
+			return 0, 0, false, err
+		}
+		if ok {
+			minTimestamp = start
+		}
+	}
+	if maxTimestamp == math.MaxInt64 {
+		end, ok, err := getTimeNsec(r, "end")
+		if err != nil {
+			return 0, 0, false, err
+		}
+		if ok {
+			maxTimestamp = end
+		}
+	}
+
+	return minTimestamp, maxTimestamp, hasTimeFilter, nil
+}
+
+func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query, error) {
+	qStr := r.FormValue("query")
+	if qStr == "" {
+		return nil, fmt.Errorf("`query` arg cannot be empty")
+	}
+	if len(qStr) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `query` arg length cannot exceed -search.maxQueryLen=%d bytes; the current query length is %d bytes; query=%s", maxQueryLen.IntN(), len(qStr), qStr)
+	}
+	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse `query` arg: %w; query=%s", err, qStr)
+	}
+	return q, nil
+}
+
+func timestampToRFC3339Nano(nsec int64) string {
+	return time.Unix(0, nsec).UTC().Format(time.RFC3339Nano)
+}
 
 // ProcessFacetsRequest handles /select/logsql/facets request.
 //
@@ -65,10 +150,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 	keepConstFields := httputil.GetBool(r, "keep_const_fields")
 
-	// Pipes must be dropped, since it is expected facets are obtained
-	// from the real logs stored in the database.
-	ca.q.DropAllPipes()
-
 	ca.q.AddFacetsPipe(limit, maxValuesPerField, maxValueLen, keepConstFields)
 
 	var mLock sync.Mutex
@@ -79,24 +160,14 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 			return
 		}
 
-		columns := db.Columns
+		columns := db.GetColumns(false)
 		if len(columns) != 3 {
 			logger.Panicf("BUG: expecting 3 columns; got %d columns", len(columns))
 		}
 
-		// Fetch columns by name to avoid relying on column ordering at VictoriaLogs cluster.
-		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/648
-		cFieldName := db.GetColumnByName("field_name")
-		cFieldValue := db.GetColumnByName("field_value")
-		cHits := db.GetColumnByName("hits")
-		if cFieldName == nil || cFieldValue == nil || cHits == nil {
-			logger.Panicf("BUG: missing expected columns for facets response: field_name=%v, field_value=%v, hits=%v",
-				cFieldName != nil, cFieldValue != nil, cHits != nil)
-		}
-
-		fieldNames := cFieldName.Values
-		fieldValues := cFieldValue.Values
-		hits := cHits.Values
+		fieldNames := columns[0].Values
+		fieldValues := columns[1].Values
+		hits := columns[2].Values
 
 		bb := blockResultPool.Get()
 		for i := range fieldNames {
@@ -128,7 +199,7 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteFacetsResponse(w, m)
@@ -150,13 +221,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, err := timeutil.ParseDuration(stepStr)
+	step, err := parseDuration(r, "step", "")
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot parse 'step' arg: %s", err)
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 	if step <= 0 {
@@ -165,13 +232,9 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Obtain offset
-	offsetStr := r.FormValue("offset")
-	if offsetStr == "" {
-		offsetStr = "0s"
-	}
-	offset, err := timeutil.ParseDuration(offsetStr)
+	offset, err := parseDuration(r, "offset", "0s")
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot parse 'offset' arg: %s", err)
+		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 
@@ -186,7 +249,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Add a pipe, which calculates hits over time with the given step and offset for the given fields.
-	ca.q.AddCountByTimePipe(int64(step), int64(offset), fields)
+	ca.q.AddCountByTimePipe(step, offset, fields)
 
 	var mLock sync.Mutex
 	m := make(map[string]*hitsSeries)
@@ -196,14 +259,17 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		columns := db.Columns
+		columns := db.GetColumns(false)
 		timestampValues := columns[0].Values
 		hitsValues := columns[len(columns)-1].Values
 		columns = columns[1 : len(columns)-1]
 
 		bb := blockResultPool.Get()
-		for i := 0; i < rowsCount; i++ {
-			timestampStr := strings.Clone(timestampValues[i])
+		for i := range rowsCount {
+			timestampNsec, ok := logstorage.TryParseTimestampRFC3339Nano(timestampValues[i])
+			if !ok {
+				logger.Panicf("BUG: cannot parse timestamp=%q", timestampValues[i])
+			}
 			hitsStr := strings.Clone(hitsValues[i])
 			hits, err := strconv.ParseUint(hitsStr, 10, 64)
 			if err != nil {
@@ -216,11 +282,10 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 			mLock.Lock()
 			hs, ok := m[string(bb.B)]
 			if !ok {
-				k := string(bb.B)
 				hs = &hitsSeries{}
-				m[k] = hs
+				m[string(bb.B)] = hs
 			}
-			hs.timestamps = append(hs.timestamps, timestampStr)
+			hs.timestamps = append(hs.timestamps, timestampNsec)
 			hs.hits = append(hs.hits, hits)
 			hs.hitsTotal += hits
 			mLock.Unlock()
@@ -239,20 +304,55 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	m = getTopHitsSeries(m, fieldsLimit)
+	addMissingZeroHits(m, ca.startAligned, ca.endAligned, step, offset)
 
 	// Write response headers
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-
-	// The VL-Selected-Time-Range contains the time range specified in the query, not counting (start, end) and extra_filters
-	// It is used by the built-in web UI in order to adjust the selected time range.
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/558#issuecomment-3180070712
-	h.Set("VL-Selected-Time-Range", ca.getSelectedTimeRange())
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteHitsSeries(w, m)
+}
+
+func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64) {
+	if start == math.MinInt64 {
+		start = math.MaxInt64
+		for _, hs := range m {
+			start = min(start, slices.Min(hs.timestamps))
+		}
+	}
+
+	if end == math.MaxInt64 {
+		end = math.MinInt64
+		for _, hs := range m {
+			end = max(end, slices.Max(hs.timestamps))
+		}
+	}
+
+	start, end = alignStartEndToStep(start, end, step, offset)
+
+	if start > end {
+		// nothing to do
+		return
+	}
+
+	for _, hs := range m {
+		ts := start
+		for ts <= end {
+			if !slices.Contains(hs.timestamps, ts) {
+				hs.timestamps = append(hs.timestamps, ts)
+				hs.hits = append(hs.hits, 0)
+			}
+
+			if ts+step < ts {
+				// stop on int64 overflow
+				break
+			}
+			ts += step
+		}
+	}
 }
 
 var blockResultPool bytesutil.ByteBufferPool
@@ -277,15 +377,15 @@ func getTopHitsSeries(m map[string]*hitsSeries, fieldsLimit int) map[string]*hit
 		return a[i].hs.hitsTotal > a[j].hs.hitsTotal
 	})
 
-	hitsOther := make(map[string]uint64)
+	hitsOther := make(map[int64]uint64)
 	for _, x := range a[fieldsLimit:] {
-		for i, timestampStr := range x.hs.timestamps {
-			hitsOther[timestampStr] += x.hs.hits[i]
+		for i, timestamp := range x.hs.timestamps {
+			hitsOther[timestamp] += x.hs.hits[i]
 		}
 	}
 	var hsOther hitsSeries
-	for timestampStr, hits := range hitsOther {
-		hsOther.timestamps = append(hsOther.timestamps, timestampStr)
+	for timestamp, hits := range hitsOther {
+		hsOther.timestamps = append(hsOther.timestamps, timestamp)
 		hsOther.hits = append(hsOther.hits, hits)
 		hsOther.hitsTotal += hits
 	}
@@ -301,7 +401,7 @@ func getTopHitsSeries(m map[string]*hitsSeries, fieldsLimit int) map[string]*hit
 
 type hitsSeries struct {
 	hitsTotal  uint64
-	timestamps []string
+	timestamps []int64
 	hits       []uint64
 }
 
@@ -332,14 +432,17 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Filter is used for filtering the returned field names by the given filter substring
+	filter := r.FormValue("filter")
+
 	qctx := ca.newQueryContext(ctx)
 	defer ca.updatePerQueryStatsMetrics()
 
 	// Obtain field names for the given query
 	startTime := time.Now()
-	fieldNames, err := vlstorage.GetFieldNames(qctx)
+	fieldNames, err := vlstorage.GetFieldNames(qctx, filter)
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot obtain field names: %s", err)
+		httpserver.Errorf(w, r, "cannot obtain field names with filter=%q: %s", filter, err)
 		return
 	}
 
@@ -347,7 +450,7 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, fieldNames)
@@ -363,12 +466,15 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Parse fieldName query arg
+	// Parse field query arg
 	fieldName := r.FormValue("field")
 	if fieldName == "" {
 		httpserver.Errorf(w, r, "missing 'field' query arg")
 		return
 	}
+
+	// Filter is used for filtering the returned field values by the given filter substring
+	filter := r.FormValue("filter")
 
 	// Parse limit query arg
 	limit, err := getPositiveInt(r, "limit")
@@ -382,9 +488,9 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 
 	// Obtain unique values for the given field
 	startTime := time.Now()
-	values, err := vlstorage.GetFieldValues(qctx, fieldName, uint64(limit))
+	values, err := vlstorage.GetFieldValues(qctx, fieldName, filter, uint64(limit))
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot obtain values for field %q: %s", fieldName, err)
+		httpserver.Errorf(w, r, "cannot obtain values for field %q with filter %q: %s", fieldName, filter, err)
 		return
 	}
 
@@ -392,7 +498,7 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -408,14 +514,17 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 		return
 	}
 
+	// Filter is used for filtering the returned field names by the given filter substring
+	filter := r.FormValue("filter")
+
 	qctx := ca.newQueryContext(ctx)
 	defer ca.updatePerQueryStatsMetrics()
 
 	// Obtain stream field names for the given query
 	startTime := time.Now()
-	names, err := vlstorage.GetStreamFieldNames(qctx)
+	names, err := vlstorage.GetStreamFieldNames(qctx, filter)
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot obtain stream field names: %s", err)
+		httpserver.Errorf(w, r, "cannot obtain stream field names with filter %q: %s", filter, err)
 		return
 	}
 
@@ -423,7 +532,7 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, names)
@@ -439,12 +548,15 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 		return
 	}
 
-	// Parse fieldName query arg
+	// Parse field query arg
 	fieldName := r.FormValue("field")
 	if fieldName == "" {
 		httpserver.Errorf(w, r, "missing 'field' query arg")
 		return
 	}
+
+	// Filter is used for filtering the returned field values by the given filter substring
+	filter := r.FormValue("filter")
 
 	// Parse limit query arg
 	limit, err := getPositiveInt(r, "limit")
@@ -458,9 +570,9 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 
 	// Obtain stream field values for the given query and the given fieldName
 	startTime := time.Now()
-	values, err := vlstorage.GetStreamFieldValues(qctx, fieldName, uint64(limit))
+	values, err := vlstorage.GetStreamFieldValues(qctx, fieldName, filter, uint64(limit))
 	if err != nil {
-		httpserver.Errorf(w, r, "cannot obtain stream field values: %s", err)
+		httpserver.Errorf(w, r, "cannot obtain stream field values for field %q with filter %q: %s", fieldName, filter, err)
 		return
 	}
 
@@ -468,7 +580,7 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -506,7 +618,7 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streamIDs)
@@ -544,7 +656,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streams)
@@ -557,7 +669,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgs(r)
+	ca, err := parseCommonArgsWithConfig(r, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -568,31 +680,33 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	refreshIntervalMsecs, err := httputil.GetDuration(r, "refresh_interval", 1000)
+	refreshInterval, err := parseDuration(r, "refresh_interval", "1s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	refreshInterval := time.Millisecond * time.Duration(refreshIntervalMsecs)
+	if refreshInterval <= 0 {
+		httpserver.Errorf(w, r, "'refresh_interval' must be bigger than zero")
+		return
+	}
 
-	startOffsetMsecs, err := httputil.GetDuration(r, "start_offset", 5*1000)
+	startOffset, err := parseDuration(r, "start_offset", "5s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	startOffset := startOffsetMsecs * 1e6
 
-	offsetMsecs, err := httputil.GetDuration(r, "offset", 5000)
+	offset, err := parseDuration(r, "offset", "5s")
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
-	offset := offsetMsecs * 1e6
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	tp := newTailProcessor(cancel)
+	needSortFields := !ca.q.IsFixedOutputFieldsOrder()
+	tp := newTailProcessor(cancel, needSortFields)
 
-	ticker := time.NewTicker(refreshInterval)
+	ticker := time.NewTicker(time.Duration(refreshInterval))
 	defer ticker.Stop()
 
 	end := time.Now().UnixNano() - offset
@@ -659,15 +773,19 @@ type tailProcessor struct {
 
 	mu sync.Mutex
 
+	needSortFields bool
+
 	perStreamRows  map[string][]logRow
 	lastTimestamps map[string]int64
 
 	err error
 }
 
-func newTailProcessor(cancel func()) *tailProcessor {
+func newTailProcessor(cancel func(), needSortFields bool) *tailProcessor {
 	return &tailProcessor{
 		cancel: cancel,
+
+		needSortFields: needSortFields,
 
 		perStreamRows:  make(map[string][]logRow),
 		lastTimestamps: make(map[string]int64),
@@ -695,10 +813,11 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	}
 
 	// Copy block rows to tp.perStreamRows
+	columns := db.GetColumns(tp.needSortFields)
 	for i, timestamp := range timestamps {
 		streamID := ""
-		fields := make([]logstorage.Field, len(db.Columns))
-		for j, c := range db.Columns {
+		fields := make([]logstorage.Field, len(columns))
+		for j, c := range columns {
 			name := strings.Clone(c.Name)
 			value := strings.Clone(c.Values[i])
 
@@ -763,13 +882,8 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	// Obtain step
-	stepStr := r.FormValue("step")
-	if stepStr == "" {
-		stepStr = "1d"
-	}
-	step, err := timeutil.ParseDuration(stepStr)
+	step, err := parseDuration(r, "step", "")
 	if err != nil {
-		err = fmt.Errorf("cannot parse 'step' arg: %s", err)
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
@@ -779,9 +893,14 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	// Obtain `by(...)` fields from the last `| stats` pipe in q.
-	// Add `_time:step` to the `by(...)` list.
-	byFields, err := ca.q.GetStatsByFieldsAddGroupingByTime(int64(step))
+	// Obtain offset
+	offset, err := parseDuration(r, "offset", "0s")
+	if err != nil {
+		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
+	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -790,20 +909,40 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	m := make(map[string]*statsSeries)
 	var mLock sync.Mutex
 
+	addPoint := func(name string, columnIdx int, labels []logstorage.Field, p statsPoint) {
+		dst := encoding.MarshalUint32(nil, uint32(columnIdx))
+		dst = append(dst, name...)
+		dst = logstorage.MarshalFieldsToJSON(dst, labels)
+		key := string(dst)
+
+		mLock.Lock()
+		ss := m[key]
+		if ss == nil {
+			ss = &statsSeries{
+				key:    key,
+				Name:   name,
+				Labels: labels,
+			}
+			m[key] = ss
+		}
+		ss.Points = append(ss.Points, p)
+		mLock.Unlock()
+	}
+
 	writeBlock := func(_ uint, db *logstorage.DataBlock) {
 		rowsCount := db.RowsCount()
 
-		columns := db.Columns
+		columns := db.GetColumns(false)
 		clonedColumnNames := make([]string, len(columns))
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
-		for i := 0; i < rowsCount; i++ {
+		for i := range rowsCount {
 			// Do not move q.GetTimestamp() outside writeBlock, since ts
 			// must be initialized to query timestamp for every processed log row.
 			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8312
 			ts := ca.q.GetTimestamp()
-			labels := make([]logstorage.Field, 0, len(byFields))
+			labels := make([]logstorage.Field, 0, len(labelFields))
 			for j, c := range columns {
 				if c.Name == "_time" {
 					nsec, ok := logstorage.TryParseTimestampRFC3339Nano(c.Values[i])
@@ -812,7 +951,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 						continue
 					}
 				}
-				if slices.Contains(byFields, c.Name) {
+				if slices.Contains(labelFields, c.Name) {
 					labels = append(labels, logstorage.Field{
 						Name:  clonedColumnNames[j],
 						Value: strings.Clone(c.Values[i]),
@@ -820,32 +959,45 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 				}
 			}
 
-			var dst []byte
+			columnIdx := 0
 			for j, c := range columns {
-				if !slices.Contains(byFields, c.Name) {
-					name := clonedColumnNames[j]
-					dst = dst[:0]
-					dst = append(dst, name...)
-					dst = logstorage.MarshalFieldsToJSON(dst, labels)
-					key := string(dst)
-					p := statsPoint{
-						Timestamp: ts,
-						Value:     strings.Clone(c.Values[i]),
-					}
-
-					mLock.Lock()
-					ss := m[key]
-					if ss == nil {
-						ss = &statsSeries{
-							key:    key,
-							Name:   name,
-							Labels: labels,
-						}
-						m[key] = ss
-					}
-					ss.Points = append(ss.Points, p)
-					mLock.Unlock()
+				if slices.Contains(labelFields, c.Name) {
+					continue
 				}
+
+				v := strings.Clone(c.Values[i])
+				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
+					// Special case - the value is the result of histogram() stats function.
+					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+					// Convert it to values for individual buckets.
+					var buckets []histogramBucket
+					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
+						name := clonedColumnNames[j] + "_bucket"
+						for _, bucket := range buckets {
+							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
+							bucketLabels = append(bucketLabels, labels...)
+							bucketLabels = append(bucketLabels, logstorage.Field{
+								Name:  "vmrange",
+								Value: bucket.VMRange,
+							})
+							p := statsPoint{
+								Timestamp: ts,
+								Value:     strconv.FormatUint(bucket.Hits, 10),
+							}
+							addPoint(name, columnIdx, bucketLabels, p)
+						}
+						columnIdx++
+
+						continue
+					}
+				}
+
+				p := statsPoint{
+					Timestamp: ts,
+					Value:     v,
+				}
+				addPoint(clonedColumnNames[j], columnIdx, labels, p)
+				columnIdx++
 			}
 		}
 	}
@@ -878,12 +1030,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
-
-	// The VL-Selected-Time-Range contains the time range specified in the query, not counting (start, end) and extra_filters
-	// It is used by the built-in web UI in order to adjust the selected time range.
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/558#issuecomment-3180070712
-	h.Set("VL-Selected-Time-Range", ca.getSelectedTimeRange())
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteStatsQueryRangeResponse(w, rows)
@@ -912,8 +1059,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Obtain `by(...)` fields from the last `| stats` pipe in q.
-	byFields, err := ca.q.GetStatsByFields()
+	labelFields, err := ca.q.GetStatsLabels()
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -925,15 +1071,16 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	timestamp := ca.q.GetTimestamp()
 	writeBlock := func(_ uint, db *logstorage.DataBlock) {
 		rowsCount := db.RowsCount()
-		columns := db.Columns
+
+		columns := db.GetColumns(false)
 		clonedColumnNames := make([]string, len(columns))
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
-		for i := 0; i < rowsCount; i++ {
-			labels := make([]logstorage.Field, 0, len(byFields))
+		for i := range rowsCount {
+			labels := make([]logstorage.Field, 0, len(labelFields))
 			for j, c := range columns {
-				if slices.Contains(byFields, c.Name) {
+				if slices.Contains(labelFields, c.Name) {
 					labels = append(labels, logstorage.Field{
 						Name:  clonedColumnNames[j],
 						Value: strings.Clone(c.Values[i]),
@@ -942,18 +1089,51 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 			}
 
 			for j, c := range columns {
-				if !slices.Contains(byFields, c.Name) {
-					r := statsRow{
-						Name:      clonedColumnNames[j],
-						Labels:    labels,
-						Timestamp: timestamp,
-						Value:     strings.Clone(c.Values[i]),
-					}
-
-					rowsLock.Lock()
-					rows = append(rows, r)
-					rowsLock.Unlock()
+				if slices.Contains(labelFields, c.Name) {
+					continue
 				}
+
+				v := strings.Clone(c.Values[i])
+				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
+					// Special case - the value is the result of histogram() stats function.
+					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+					// Convert it to values for individual buckets.
+					var buckets []histogramBucket
+					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
+						name := clonedColumnNames[j] + "_bucket"
+						bucketRows := make([]statsRow, 0, len(buckets))
+						for _, bucket := range buckets {
+							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
+							bucketLabels = append(bucketLabels, labels...)
+							bucketLabels = append(bucketLabels, logstorage.Field{
+								Name:  "vmrange",
+								Value: bucket.VMRange,
+							})
+							bucketRows = append(bucketRows, statsRow{
+								Name:      name,
+								Labels:    bucketLabels,
+								Timestamp: timestamp,
+								Value:     strconv.FormatUint(bucket.Hits, 10),
+							})
+						}
+						rowsLock.Lock()
+						rows = append(rows, bucketRows...)
+						rowsLock.Unlock()
+
+						continue
+					}
+				}
+
+				r := statsRow{
+					Name:      clonedColumnNames[j],
+					Labels:    labels,
+					Timestamp: timestamp,
+					Value:     v,
+				}
+
+				rowsLock.Lock()
+				rows = append(rows, r)
+				rowsLock.Unlock()
 			}
 		}
 	}
@@ -973,7 +1153,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	writeRequestDuration(h, startTime)
+	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
 	WriteStatsQueryResponse(w, rows)
@@ -984,6 +1164,11 @@ type statsRow struct {
 	Labels    []logstorage.Field
 	Timestamp int64
 	Value     string
+}
+
+type histogramBucket struct {
+	VMRange string `json:"vmrange"`
+	Hits    uint64 `json:"hits"`
 }
 
 // ProcessQueryRequest handles /select/logsql/query request.
@@ -1010,20 +1195,11 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	sw := &syncWriter{
-		w: w,
+	format := r.FormValue("format")
+	if format != "" && format != "csv" {
+		httpserver.Errorf(w, r, "unexpected format=%q; expecting 'csv' or ''", format)
+		return
 	}
-
-	var bwShards atomicutil.Slice[bufferedWriter]
-	bwShards.Init = func(shard *bufferedWriter) {
-		shard.sw = sw
-	}
-	defer func() {
-		shards := bwShards.All()
-		for _, shard := range shards {
-			shard.FlushIgnoreErrors()
-		}
-	}()
 
 	if limit > 0 {
 		// Add '| sort by (_time) desc | offset <offset> | limit <limit>' to the end of the query.
@@ -1034,14 +1210,69 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}
 
+	var csvHeader []byte
+	if format == "csv" {
+		fields, ok := ca.q.GetFixedFields()
+		if !ok {
+			// Slow path - detect the fields by scanning the logs for the given query.
+			qctx := ca.newQueryContext(ctx)
+			fieldNames, err := vlstorage.GetFieldNames(qctx, "")
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot obtain field names for returning query results in csv format: %s", err)
+				return
+			}
+			fields = make([]string, len(fieldNames))
+			for i, fieldName := range fieldNames {
+				fields[i] = fieldName.Value
+			}
+			sort.Strings(fields)
+			ca.q.AddPipeFields(fields)
+		}
+		csvHeader = appendCSVLine(nil, fields)
+	}
+
+	sw := &syncWriter{
+		w: w,
+	}
+
+	var bwShards atomicutil.Slice[bytesutil.ByteBuffer]
+	defer func() {
+		shards := bwShards.All()
+		for _, shard := range shards {
+			if len(shard.B) > 0 {
+				_, _ = sw.Write(shard.B)
+			}
+		}
+	}()
+
 	startTime := time.Now()
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
 
-		h.Set("Content-Type", "application/stream+json")
-		writeRequestDuration(h, startTime)
+		if format == "csv" {
+			h.Set("Content-Type", "text/csv")
+		} else {
+			h.Set("Content-Type", "application/stream+json")
+		}
+		ca.writeResponseHeaders(h, startTime)
+
+		if format == "csv" {
+			_, _ = sw.Write(csvHeader)
+		}
 	})
+
+	var appendRow func(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte
+
+	needSortFields := !ca.q.IsFixedOutputFieldsOrder()
+	if format == "csv" {
+		if needSortFields {
+			logger.Panicf("BUG: needSortFields must be false for format=csv")
+		}
+		appendRow = appendCSVRow
+	} else {
+		appendRow = appendJSONRow
+	}
 
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
 		writeResponseHeadersOnce()
@@ -1049,13 +1280,15 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		if rowsCount == 0 {
 			return
 		}
-		columns := db.Columns
+
+		columns := db.GetColumns(needSortFields)
 
 		bw := bwShards.Get(workerID)
-		for i := 0; i < rowsCount; i++ {
-			WriteJSONRow(bw, columns, i)
-			if len(bw.buf) > 16*1024 {
-				bw.FlushIgnoreErrors()
+		for i := range rowsCount {
+			bw.B = appendRow(bw.B, columns, i)
+			if len(bw.B) > 16*1024 {
+				_, _ = sw.Write(bw.B)
+				bw.B = bw.B[:0]
 			}
 		}
 	}
@@ -1073,6 +1306,111 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	writeResponseHeadersOnce()
 }
 
+func appendCSVRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte {
+	for i := range columns {
+		v := columns[i].Values[rowIdx]
+		dst = appendCSVField(dst, v)
+		if i+1 < len(columns) {
+			dst = append(dst, ',')
+		}
+	}
+	dst = append(dst, '\n')
+	return dst
+}
+
+func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte {
+	dstLen := len(dst)
+	dst = append(dst, '{')
+	for i := range columns {
+		c := &columns[i]
+
+		name := c.Name
+		value := c.Values[rowIdx]
+		if value == "" {
+			// skip empty fields, since they equal to non-existing fields
+			// according to VictoriaLogs data model.
+			// See https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
+			continue
+		}
+
+		dst = quicktemplate.AppendJSONString(dst, name, true)
+		dst = append(dst, ':')
+		dst = quicktemplate.AppendJSONString(dst, value, true)
+		dst = append(dst, ',')
+	}
+	if len(dst)-dstLen == 1 {
+		// skip empty row.
+		return dst[:dstLen]
+	}
+
+	// Replace the trailing comma with closing braces
+	dst = append(dst[:len(dst)-1], "}\n"...)
+	return dst
+}
+
+// ProcessTenantIDsRequest processes /select/tenant_ids request.
+func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	accountID := r.Header.Get("AccountID")
+	if accountID != "" {
+		// Security measure - prevent from requesting tenant_ids for requests with the already specified tenant.
+		// This allows enforcing the needed tenants at vmauth side, so they won't have access to /select/tenant_ids endpoint.
+		// See https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers
+		err := &httpserver.ErrorWithStatusCode{
+			Err:        fmt.Errorf("the /select/tenant_ids endpoint cannot be requested with non-empty AccountID=%q header", accountID),
+			StatusCode: http.StatusForbidden,
+		}
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+
+	start, okStart, err := getTimeNsec(r, "start")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	end, okEnd, err := getTimeNsec(r, "end")
+	if err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
+	if !okStart {
+		start = math.MinInt64
+	}
+	if !okEnd {
+		end = math.MaxInt64
+	} else {
+		// Treat HTTP 'end' query arg as exclusive: [start, end)
+		// Convert to inclusive bound for internal filter by subtracting 1ns.
+		if end != math.MinInt64 {
+			end--
+		}
+	}
+
+	if start > end {
+		httpserver.Errorf(w, r, "'start=%d' must be smaller than 'end=%d'", start, end)
+		return
+	}
+
+	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
+		return
+	}
+
+	data, err := json.Marshal(tenants)
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, err := w.Write(data); err != nil {
+		httpserver.Errorf(w, r, "cannot send response to the client: %s", err)
+		return
+	}
+}
+
 type syncWriter struct {
 	mu sync.Mutex
 	w  io.Writer
@@ -1083,24 +1421,6 @@ func (sw *syncWriter) Write(p []byte) (int, error) {
 	n, err := sw.w.Write(p)
 	sw.mu.Unlock()
 	return n, err
-}
-
-type bufferedWriter struct {
-	buf []byte
-	sw  *syncWriter
-}
-
-func (bw *bufferedWriter) Write(p []byte) (int, error) {
-	bw.buf = append(bw.buf, p...)
-
-	// Do not send bw.buf to bw.sw here, since the data at bw.buf may be incomplete (it must end with '\n')
-
-	return len(p), nil
-}
-
-func (bw *bufferedWriter) FlushIgnoreErrors() {
-	_, _ = bw.sw.Write(bw.buf)
-	bw.buf = bw.buf[:0]
 }
 
 type commonArgs struct {
@@ -1114,28 +1434,32 @@ type commonArgs struct {
 	// This option makes sense only for cluster setup when vlselect queries vlstorage nodes.
 	allowPartialResponse bool
 
-	// minTimestamp and maxTimestamp is the time range specified in the original query,
-	// without taking into account extra_filters and (start, end) query args.
-	minTimestamp int64
-	maxTimestamp int64
+	// Optional fields and field prefixes to hide during query execution.
+	hiddenFieldsFilters []string
 
 	// qs contains query execution statistics.
 	qs logstorage.QueryStats
+
+	// startAligned is the start of the selected time range aligned to the given step.
+	startAligned int64
+
+	// endAligned is the aligned end of the selected time range aligned to the given step.
+	endAligned int64
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse)
+	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters)
 }
 
 func (ca *commonArgs) updatePerQueryStatsMetrics() {
 	vlstorage.UpdatePerQueryStatsMetrics(&ca.qs)
 }
 
-func (ca *commonArgs) getSelectedTimeRange() string {
-	return fmt.Sprintf("[%d,%d]", ca.minTimestamp, ca.maxTimestamp)
+func parseCommonArgs(r *http.Request) (*commonArgs, error) {
+	return parseCommonArgsWithConfig(r, false)
 }
 
-func parseCommonArgs(r *http.Request) (*commonArgs, error) {
+func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*commonArgs, error) {
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
@@ -1152,9 +1476,9 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Treat HTTP 'end' query arg as exclusive: [start, end)
-	// Convert to inclusive bound for internal filter by subtracting 1ns.
 	if endOK {
+		// Treat HTTP 'end' query arg as exclusive: [start, end)
+		// Convert to inclusive bound for internal filter by subtracting 1ns.
 		if end != math.MinInt64 {
 			end--
 		}
@@ -1165,28 +1489,32 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 	if err != nil {
 		return nil, err
 	}
-	// decrease timestamp by one nanosecond in order to avoid capturing logs belonging
-	// to the first nanosecond at the next period of time (month, week, day, hour, etc.)
-	timestamp--
 
+	currTimestamp := time.Now().UnixNano()
 	if !timeOK {
 		// If time arg is missing, then evaluate query either at the end timestamp (if it is set)
 		// or at the current timestamp (if end query arg isn't set)
 		if endOK {
 			timestamp = end
 		} else {
-			timestamp = time.Now().UnixNano()
+			timestamp = currTimestamp
 		}
 	}
 
 	// Parse query
-	qStr := r.FormValue("query")
-	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
+	q, err := parseQueryFromRequest(r, timestamp)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse query [%s]: %s", qStr, err)
+		return nil, err
 	}
 
-	minTimestamp, maxTimestamp := q.GetFilterTimeRange()
+	// Parse ignore_pipes arg
+	ignorePipes := false
+	if err := getBoolFromRequest(&ignorePipes, r, "ignore_pipes"); err != nil {
+		return nil, err
+	}
+	if ignorePipes {
+		q.DropAllPipes()
+	}
 
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
@@ -1196,7 +1524,31 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		if !endOK {
 			end = math.MaxInt64
 		}
+
+		if stepStr := r.FormValue("step"); stepStr != "" {
+			if step, ok := logstorage.TryParseDuration(stepStr); ok {
+				offset := int64(0)
+				if offsetStr := r.FormValue("offset"); offsetStr != "" {
+					nsecs, ok := logstorage.TryParseDuration(offsetStr)
+					if ok {
+						offset = nsecs
+					}
+				}
+				start, end = alignStartEndToStep(start, end, step, offset)
+			}
+		}
+
 		q.AddTimeFilter(start, end)
+	}
+
+	// Initialize startAligned and endAligned
+	startAligned := int64(math.MinInt64)
+	if startOK {
+		startAligned = start
+	}
+	endAligned := int64(math.MaxInt64)
+	if endOK {
+		endAligned = end
 	}
 
 	// Parse optional extra_filters
@@ -1217,16 +1569,7 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
-	if minTimestamp == math.MinInt64 || maxTimestamp == math.MaxInt64 {
-		// The original time range is open-bounded.
-		// Override it with the (start, end) time range in this case.
-		minTimestamp, maxTimestamp = q.GetFilterTimeRange()
-		if maxTimestamp == math.MaxInt64 {
-			maxTimestamp = timestamp
-		}
-	}
-
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start
@@ -1243,16 +1586,52 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 		return nil, err
 	}
 
+	hiddenFieldsFilters, err := getStringSliceFromRequest(r, "hidden_fields_filters")
+	if err != nil {
+		return nil, err
+	}
+
 	ca := &commonArgs{
 		q:         q,
 		tenantIDs: tenantIDs,
 
 		allowPartialResponse: allowPartialResponse,
+		hiddenFieldsFilters:  hiddenFieldsFilters,
 
-		minTimestamp: minTimestamp,
-		maxTimestamp: maxTimestamp,
+		startAligned: startAligned,
+		endAligned:   endAligned,
 	}
 	return ca, nil
+}
+
+func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
+	if step <= 0 {
+		return start, end
+	}
+
+	start = logstorage.SubInt64NoOverflow(start, -offset)
+	if start >= 0 {
+		start -= start % step
+	} else {
+		d := step + start%step
+		start = logstorage.SubInt64NoOverflow(start, d)
+	}
+	start = logstorage.SubInt64NoOverflow(start, offset)
+
+	end = logstorage.SubInt64NoOverflow(end, -offset)
+	if end <= 0 {
+		end -= end % step
+	} else {
+		d := step - end%step
+		end = logstorage.SubInt64NoOverflow(end, -d)
+	}
+	end = logstorage.SubInt64NoOverflow(end, offset)
+
+	if end > math.MinInt64 {
+		end--
+	}
+
+	return start, end
 }
 
 func timestampToString(nsecs int64) string {
@@ -1409,7 +1788,53 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 	return nil
 }
 
-func writeRequestDuration(h http.Header, startTime time.Time) {
-	h.Set("Access-Control-Expose-Headers", "VL-Request-Duration-Seconds")
+func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
+	s := r.FormValue(argName)
+	if s == "" {
+		return nil, nil
+	}
+
+	if strings.HasPrefix(s, "[") {
+		// Parse as a JSON array of strings.
+		var a []string
+		if err := json.Unmarshal([]byte(s), &a); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal JSON array from %s=%q: %w", argName, s, err)
+		}
+		return a, nil
+	}
+
+	// Parse as a comma-separated list of strings
+	a := strings.Split(s, ",")
+	return a, nil
+}
+
+func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
+	// Write request duration
+	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds"}
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
+
+	if len(ca.tenantIDs) == 1 {
+		// Write the used AccountID and ProjectID, so the client could show them properly.
+		accessControlExposeHeaders = append(accessControlExposeHeaders, "AccountID", "ProjectID")
+		tenantID := ca.tenantIDs[0]
+		h.Set("AccountID", fmt.Sprintf("%d", tenantID.AccountID))
+		h.Set("ProjectID", fmt.Sprintf("%d", tenantID.ProjectID))
+	}
+
+	for i, v := range accessControlExposeHeaders {
+		accessControlExposeHeaders[i] = http.CanonicalHeaderKey(v)
+	}
+	h.Set("Access-Control-Expose-Headers", strings.Join(accessControlExposeHeaders, ", "))
+}
+
+func parseDuration(r *http.Request, argName, defaultValue string) (int64, error) {
+	s := r.FormValue(argName)
+	if s == "" {
+		s = defaultValue
+	}
+	nsecs, ok := logstorage.TryParseDuration(s)
+	if !ok {
+		return 0, fmt.Errorf("cannot parse duration from the arg '%s=%s'", argName, s)
+	}
+	return nsecs, nil
 }

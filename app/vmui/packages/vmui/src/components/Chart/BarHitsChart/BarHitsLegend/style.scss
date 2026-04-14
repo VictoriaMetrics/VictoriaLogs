@@ -11,9 +11,9 @@
     max-width: calc(50% - 2px);
     display: flex;
     align-items: center;
-    gap: $padding-small;
+    gap: calc($padding-small / 2);
     font-size: $font-size-small;
-    padding: $padding-small $padding-global;
+    padding-left: 5px;
     border-radius: $border-radius-small;
     cursor: pointer;
     transition: 0.2s;
@@ -21,6 +21,10 @@
     &_active,
     &:hover {
       background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    &:hover &__actions {
+      transform: scale(1);
     }
 
     &_hide {
@@ -43,8 +47,12 @@
 
     &__total {
       color: $color-text-secondary;
-      font-style: italic;
       grid-column: 2;
+    }
+
+    &__actions {
+      transform: scale(0);
+      transition: transform 200ms ease-in;
     }
   }
 }

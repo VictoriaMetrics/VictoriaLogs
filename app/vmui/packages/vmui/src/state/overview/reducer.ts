@@ -1,19 +1,19 @@
-import { LogsFiledValues } from "../../api/types";
+import { LogsFieldValues } from "../../api/types";
 
 type ParamsKey = string;
 
 export interface OverviewState {
   totalLogs: number;
-  fieldNames: LogsFiledValues[];
+  fieldNames: LogsFieldValues[];
   fieldNamesParamsKey: ParamsKey | null;
-  streamsFieldNames: LogsFiledValues[];
+  streamsFieldNames: LogsFieldValues[];
   streamsFieldNamesParamsKey: ParamsKey | null;
 }
 
 export type Action =
   | { type: "SET_TOTAL_LOGS"; payload: number }
-  | { type: "SET_FIELD_NAMES"; payload: { key: ParamsKey; rows: LogsFiledValues[] } }
-  | { type: "SET_STREAM_FIELD_NAMES"; payload: { key: ParamsKey; rows: LogsFiledValues[] } }
+  | { type: "SET_FIELD_NAMES"; payload: { key: ParamsKey; rows: LogsFieldValues[] } }
+  | { type: "SET_STREAM_FIELD_NAMES"; payload: { key: ParamsKey; rows: LogsFieldValues[] } }
 
 export const initialState: OverviewState = {
   totalLogs: 0,

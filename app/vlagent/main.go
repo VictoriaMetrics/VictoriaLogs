@@ -15,6 +15,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/pushmetrics"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/filecollector"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/kubernetescollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
@@ -27,6 +29,9 @@ var (
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
+	tmpDataPath = flag.String("tmpDataPath", "", "Base directory for storing vlagent data. "+
+		"Used as default for -remoteWrite.tmpDataPath, -kubernetesCollector.checkpointsPath, "+
+		"and -fileCollector.checkpointsPath unless those flags are set explicitly")
 )
 
 func main() {
@@ -38,16 +43,20 @@ func main() {
 	remotewrite.InitSecretFlags()
 	logger.Init()
 
-	remotewrite.Init()
-	vlinsert.Init()
-
-	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
 	listenAddrs := *httpListenAddrs
 	if len(listenAddrs) == 0 {
 		listenAddrs = []string{":9429"}
 	}
 	logger.Infof("starting vlagent at %q...", listenAddrs)
 	startTime := time.Now()
+
+	insertutil.SetLogRowsStorage(&remotewrite.Storage{})
+	remotewrite.Init(*tmpDataPath)
+
+	filecollector.Init(*tmpDataPath)
+	kubernetescollector.Init(*tmpDataPath)
+	vlinsert.Init()
+
 	go httpserver.Serve(listenAddrs, requestHandler, httpserver.ServeOptions{
 		UseProxyProtocol: useProxyProtocol,
 	})
@@ -64,6 +73,8 @@ func main() {
 		logger.Fatalf("cannot stop the webservice: %s", err)
 	}
 	vlinsert.Stop()
+	kubernetescollector.Stop()
+	filecollector.Stop()
 	remotewrite.Stop()
 	logger.Infof("successfully shut down the webservice in %.3f seconds", time.Since(startTime).Seconds())
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())

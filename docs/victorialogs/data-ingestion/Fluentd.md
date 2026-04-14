@@ -11,6 +11,7 @@ tags:
 aliases:
   - /victorialogs/data-ingestion/fluentd.html
   - /victorialogs/data-ingestion/Fluentd.html
+  - /VictoriaLogs/data-ingestion/Fluentd.html
 ---
 
 ## HTTP

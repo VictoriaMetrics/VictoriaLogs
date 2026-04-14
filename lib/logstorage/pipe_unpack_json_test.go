@@ -18,6 +18,8 @@ func TestParsePipeUnpackJSONSuccess(t *testing.T) {
 	f(`unpack_json fields (a*, b, c)`)
 	f(`unpack_json fields (a, b, c) skip_empty_results`)
 	f(`unpack_json fields (a, b, c) keep_original_fields`)
+	f(`unpack_json preserve_keys (a)`)
+	f(`unpack_json preserve_keys (a, b)`)
 	f(`unpack_json if (a:x)`)
 	f(`unpack_json if (a:x) skip_empty_results`)
 	f(`unpack_json if (a:x) keep_original_fields`)
@@ -32,6 +34,7 @@ func TestParsePipeUnpackJSONSuccess(t *testing.T) {
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc`)
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc skip_empty_results`)
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc keep_original_fields`)
+	f(`unpack_json if (a:x) from x fields (a, b) preserve_keys (a.b, c) result_prefix abc`)
 	f(`unpack_json result_prefix abc`)
 	f(`unpack_json if (a:x) fields (a, b) result_prefix abc`)
 	f(`unpack_json if (a:x) fields (a, b) result_prefix abc skip_empty_results`)
@@ -48,6 +51,8 @@ func TestParsePipeUnpackJSONFailure(t *testing.T) {
 	f(`unpack_json if`)
 	f(`unpack_json fields`)
 	f(`unpack_json fields x`)
+	f(`unpack_json preserve_keys`)
+	f(`unpack_json preserve_keys x`)
 	f(`unpack_json if (x:y) foobar,`)
 	f(`unpack_json from`)
 	f(`unpack_json from *`)
@@ -142,6 +147,20 @@ func TestPipeUnpackJSON(t *testing.T) {
 			{"_msg", `{"foo":"bar","z":"q","a":"b"}`},
 			{"foo", "bar"},
 			{"b", ""},
+		},
+	})
+
+	// preserve keys
+	f("unpack_json preserve_keys (foo)", [][]Field{
+		{
+			{"_msg", `{"foo":{"bar":"baz"},"z":{"q":"y"},"a":"b"}`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `{"foo":{"bar":"baz"},"z":{"q":"y"},"a":"b"}`},
+			{"foo", `{"bar":"baz"}`},
+			{"z.q", "y"},
+			{"a", "b"},
 		},
 	})
 

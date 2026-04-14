@@ -1,6 +1,6 @@
 exporters:
   loki:
-    endpoint: http://victorialogs:9428/insert/loki/api/v1/push
+    endpoint: http://vlagent:9429/insert/loki/api/v1/push
 receivers:
   filelog:
     include: [/var/lib/docker/containers/**/*.log]

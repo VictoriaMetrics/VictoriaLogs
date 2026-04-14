@@ -1,6 +1,7 @@
 package vlstorage
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/metrics"
@@ -36,6 +38,11 @@ var (
 	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent")
 	futureRetention     = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
+	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
+		"see https://docs.victoriametrics.com/victorialogs/#backfilling")
+	snapshotsMaxAge = flagutil.NewRetentionDuration("snapshotsMaxAge", "3d", "Snapshots are automatically deleted after the given duration if it is set to positive value. "+
+		"Make sure that the backup process has enough time for backing up the snapshot before its' deletion. "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots")
 	storageDataPath = flag.String("storageDataPath", "victoria-logs-data", "Path to directory where to store VictoriaLogs data; "+
 		"see https://docs.victoriametrics.com/victorialogs/#storage")
 	inmemoryDataFlushInterval = flag.Duration("inmemoryDataFlushInterval", 5*time.Second, "The interval for guaranteed saving of in-memory data to disk. "+
@@ -49,6 +56,8 @@ var (
 	minFreeDiskSpaceBytes = flagutil.NewBytes("storage.minFreeDiskSpaceBytes", 10e6, "The minimum free disk space at -storageDataPath after which "+
 		"the storage stops accepting new data")
 
+	logNewStreamsAuthKey = flagutil.NewPassword("logNewStreamsAuthKey", "authKey, which must be passed in query string to /internal/log_new_streams . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#logging-new-streams")
 	forceMergeAuthKey = flagutil.NewPassword("forceMergeAuthKey", "authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#forced-merge")
 	forceFlushAuthKey = flagutil.NewPassword("forceFlushAuthKey", "authKey, which must be passed in query string to /internal/force_flush . It overrides -httpAuth.* . "+
@@ -127,6 +136,8 @@ func initLocalStorage() {
 		MaxDiskUsagePercent:    *maxDiskUsagePercent,
 		FlushInterval:          *inmemoryDataFlushInterval,
 		FutureRetention:        futureRetention.Duration(),
+		MaxBackfillAge:         maxBackfillAge.Duration(),
+		SnapshotsMaxAge:        snapshotsMaxAge.Duration(),
 		LogNewStreams:          *logNewStreams,
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,
@@ -232,6 +243,8 @@ func Stop() {
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := r.URL.Path
 	switch path {
+	case "/internal/log_new_streams":
+		return processLogNewStreams(w, r)
 	case "/internal/force_merge":
 		return processForceMerge(w, r)
 	case "/internal/force_flush":
@@ -246,8 +259,35 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processPartitionSnapshotCreate(w, r)
 	case "/internal/partition/snapshot/list":
 		return processPartitionSnapshotList(w, r)
+	case "/internal/partition/snapshot/delete":
+		return processPartitionSnapshotDelete(w, r)
+	case "/internal/partition/snapshot/delete_stale":
+		return processPartitionSnapshotDeleteStale(w, r)
 	}
 	return false
+}
+
+func processLogNewStreams(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// logging of new streams is available only at local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, logNewStreamsAuthKey) {
+		return true
+	}
+
+	seconds, err := httputil.GetInt(r, "seconds")
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot parse 'seconds' query arg: %s", err)
+		return true
+	}
+	if seconds <= 0 {
+		seconds = 10
+	}
+
+	localStorage.EnableLogNewStreams(seconds)
+	return true
 }
 
 func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
@@ -261,29 +301,30 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	// Run force merge in background
-	partitionNamePrefix := r.FormValue("partition_prefix")
+	partitionPrefix := r.FormValue("partition_prefix")
 	go func() {
 		activeForceMerges.Inc()
 		defer activeForceMerges.Dec()
-		logger.Infof("forced merge for partition_prefix=%q has been started", partitionNamePrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been started", partitionPrefix)
 		startTime := time.Now()
-		localStorage.MustForceMerge(partitionNamePrefix)
-		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionNamePrefix, time.Since(startTime).Seconds())
+		localStorage.MustForceMerge(partitionPrefix)
+		logger.Infof("forced merge for partition_prefix=%q has been successfully finished in %.3f seconds", partitionPrefix, time.Since(startTime).Seconds())
 	}()
 	return true
 }
 
 func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
-	if localStorage == nil {
-		// Force merge isn't supported by non-local storage
-		return false
-	}
-
 	if !httpserver.CheckAuthFlag(w, r, forceFlushAuthKey) {
 		return true
 	}
 
 	logger.Infof("flushing storage to make pending data available for reading")
+
+	if localStorage == nil {
+		netstorageInsert.DebugFlush()
+		return true
+	}
+
 	localStorage.DebugFlush()
 	return true
 }
@@ -356,14 +397,32 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return true
 	}
 
-	name := r.FormValue("name")
-	snapshotPath, err := localStorage.PartitionSnapshotCreate(name)
-	if err != nil {
-		httpserver.Errorf(w, r, "%s", err)
+	partitionPrefix := r.FormValue("partition_prefix")
+	if partitionPrefix == "" {
+		// Fall back to the deprecated argument.
+		partitionPrefix = r.FormValue("name")
+	}
+
+	snapshotPaths := localStorage.PartitionSnapshotMustCreate(partitionPrefix)
+	if snapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		snapshotPaths = []string{}
+	}
+
+	// Verify whether the client already closed the connection.
+	// In this case it is better to drop the created snapshot, since the client isn't interested in it.
+	if err := r.Context().Err(); err != nil {
+		for _, snapshotPath := range snapshotPaths {
+			logger.Infof("deleting already created snapshot at %s because the client canceled the request", snapshotPath)
+			if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+				logger.Warnf("cannot delete already created snapshot: %s", err)
+				continue
+			}
+		}
 		return true
 	}
 
-	writeJSONResponse(w, snapshotPath)
+	writeJSONResponse(w, snapshotPaths)
 	return true
 }
 
@@ -384,6 +443,67 @@ func processPartitionSnapshotList(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	writeJSONResponse(w, snapshotPaths)
+	return true
+}
+
+func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	snapshotPath := r.FormValue("path")
+	if snapshotPath == "" {
+		httpserver.Errorf(w, r, "missing `path` query arg")
+		return true
+	}
+
+	if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return true
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return true
+}
+
+func processPartitionSnapshotDeleteStale(w http.ResponseWriter, r *http.Request) bool {
+	if localStorage == nil {
+		// There are no partitions in non-local storage
+		return false
+	}
+
+	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
+		return true
+	}
+
+	maxAge := snapshotsMaxAge.Duration()
+	maxAgeStr := r.FormValue("max_age")
+	if maxAgeStr != "" {
+		var d flagutil.RetentionDuration
+		if err := d.Set(maxAgeStr); err != nil {
+			httpserver.Errorf(w, r, "cannot parse max_age=%q: %s", maxAgeStr, err)
+			return true
+		}
+		maxAge = d.Duration()
+	}
+	if maxAge <= 0 {
+		// Nothing to delete.
+		fmt.Fprintf(w, `[]`)
+		return true
+	}
+
+	deletedSnapshotPaths := localStorage.MustDeleteStalePartitionSnapshots(maxAge)
+	if deletedSnapshotPaths == nil {
+		// This is needed in order to return `[]` instead of `null` to the client.
+		deletedSnapshotPaths = []string{}
+	}
+
+	writeJSONResponse(w, deletedSnapshotPaths)
 	return true
 }
 
@@ -445,39 +565,47 @@ func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBloc
 }
 
 // GetFieldNames executes qctx and returns field names seen in results.
-func GetFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+//
+// If the filter isn't empty, then only the field names containing the filter substing are returned.
+func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
-		return localStorage.GetFieldNames(qctx)
+		return localStorage.GetFieldNames(qctx, filter)
 	}
-	return netstorageSelect.GetFieldNames(qctx)
+	return netstorageSelect.GetFieldNames(qctx, filter)
 }
 
 // GetFieldValues executes the given qctx and returns unique values for the fieldName seen in results.
 //
+// If the filter isn't empty, then only the field values containing the filter substing are returned.
+//
 // If limit > 0, then up to limit unique values are returned.
-func GetFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func GetFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
-		return localStorage.GetFieldValues(qctx, fieldName, limit)
+		return localStorage.GetFieldValues(qctx, fieldName, filter, limit)
 	}
-	return netstorageSelect.GetFieldValues(qctx, fieldName, limit)
+	return netstorageSelect.GetFieldValues(qctx, fieldName, filter, limit)
 }
 
 // GetStreamFieldNames executes the given qctx and returns stream field names seen in results.
-func GetStreamFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+//
+// If the filter is non-empty, then only the field names containing the filter substring are returned.
+func GetStreamFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
-		return localStorage.GetStreamFieldNames(qctx)
+		return localStorage.GetStreamFieldNames(qctx, filter)
 	}
-	return netstorageSelect.GetStreamFieldNames(qctx)
+	return netstorageSelect.GetStreamFieldNames(qctx, filter)
 }
 
 // GetStreamFieldValues executes the given qctx and returns stream field values for the given fieldName seen in results.
 //
+// If the filter is non-empty, then only the field values containing the filter substring are returned.
+//
 // If limit > 0, then up to limit unique stream field values are returned.
-func GetStreamFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func GetStreamFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
-		return localStorage.GetStreamFieldValues(qctx, fieldName, limit)
+		return localStorage.GetStreamFieldValues(qctx, fieldName, filter, limit)
 	}
-	return netstorageSelect.GetStreamFieldValues(qctx, fieldName, limit)
+	return netstorageSelect.GetStreamFieldValues(qctx, fieldName, filter, limit)
 }
 
 // GetStreams executes the given qctx and returns streams seen in query results.
@@ -498,6 +626,50 @@ func GetStreamIDs(qctx *logstorage.QueryContext, limit uint64) ([]logstorage.Val
 		return localStorage.GetStreamIDs(qctx, limit)
 	}
 	return netstorageSelect.GetStreamIDs(qctx, limit)
+}
+
+// DeleteRunTask starts deletion of logs for the given filter f for the given tenantIDs.
+//
+// The taskID and timestamp are tracked in the list of tasks returned by DeleteActiveTasks().
+func DeleteRunTask(ctx context.Context, taskID string, timestamp int64, tenantIDs []logstorage.TenantID, f *logstorage.Filter) error {
+	logger.Infof("starting deleting logs for task_id=%q, filter=%q, tenantIDs=%s", taskID, f, tenantIDs)
+
+	if localStorage != nil {
+		return localStorage.DeleteRunTask(ctx, taskID, timestamp, tenantIDs, f)
+	}
+	return netstorageSelect.DeleteRunTask(ctx, taskID, timestamp, tenantIDs, f)
+}
+
+// DeleteStopTask stops delete task with the given taskID.
+func DeleteStopTask(ctx context.Context, taskID string) error {
+	logger.Infof("stopping delete task with task_id=%q", taskID)
+
+	var err error
+	if localStorage != nil {
+		err = localStorage.DeleteStopTask(ctx, taskID)
+	} else {
+		err = netstorageSelect.DeleteStopTask(ctx, taskID)
+	}
+	if err == nil {
+		logger.Infof("the delete task with task_id=%q has been stopped", taskID)
+	}
+	return err
+}
+
+// DeleteActiveTasks returns a list of active deletion tasks started via DeleteRunTask().
+func DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
+	if localStorage != nil {
+		return localStorage.DeleteActiveTasks(ctx)
+	}
+	return netstorageSelect.DeleteActiveTasks(ctx)
+}
+
+// GetTenantIDs returns tenantIDs from the storage by the given start and end.
+func GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	if localStorage != nil {
+		return localStorage.GetTenantIDs(ctx, start, end)
+	}
+	return netstorageSelect.GetTenantIDs(ctx, start, end)
 }
 
 func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {

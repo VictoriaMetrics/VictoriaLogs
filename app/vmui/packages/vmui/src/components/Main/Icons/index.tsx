@@ -85,17 +85,6 @@ export const ErrorIcon = () => (
   </svg>
 );
 
-export const SuccessIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path
-      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-    ></path>
-  </svg>
-);
-
 export const RefreshIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -113,15 +102,6 @@ export const ArrowDownIcon = () => (
     fill="currentColor"
   >
     <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"></path>
-  </svg>
-);
-
-export const ArrowLeftIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="M11.67 3.87 9.9 2.1 0 12l9.9 9.9 1.77-1.77L3.54 12z"></path>
   </svg>
 );
 
@@ -196,15 +176,6 @@ export const PlayCircleOutlineIcon = () => (
     <path
       d="m10 16.5 6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
     ></path>
-  </svg>
-);
-
-export const ChartIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="m3.5 18.49 6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"></path>
   </svg>
 );
 
@@ -286,7 +257,9 @@ export const DragIcon = () => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path d="M20 9H4v2h16V9zM4 15h16v-2H4v2z"></path>
+    <path
+      d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2m-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2"
+    ></path>
   </svg>
 );
 
@@ -553,12 +526,7 @@ export const ScrollToTopIcon = () => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path
-      d="M8 12l4-4 4 4m-4-4v12"
-      strokeWidth="2"
-      stroke="currentColor"
-      fill="none"
-    />
+    <path d="M11 6.83 9.41 8.41 8 7l4-4 4 4-1.41 1.41L13 6.83V21h-2z"></path>
   </svg>
 );
 
@@ -603,34 +571,106 @@ export const OpenNewIcon = () => (
   </svg>
 );
 
-export const PlusIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
-  </svg>
-);
-
-export const EditIcon = () => (
+export const WrapTextIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
   >
     <path
-      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"
+      d="M15 6L3 6V8L15 8C17.21 8 19 9.79 19 12C19 14.21 17.21 16 15 16H10.83L12.42 14.41L11 13L7 17L11 21L12.41 19.59L10.83 18H15C18.31 18 21 15.31 21 12C21 8.69 18.31 6 15 6Z"
     ></path>
   </svg>
 );
 
-export const EditOffIcon = () => (
+export const UnwrapTextIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M11.59 7.41 15.17 11H1v2h14.17l-3.59 3.59L13 18l6-6-6-6zM20 6v12h2V6z"></path>
+  </svg>
+);
+
+export const WidthIcon = () => (
   <svg
     viewBox="0 0 24 24"
     fill="currentColor"
   >
     <path
-      d="m12.126 8.125 1.937-1.937 3.747 3.747-1.937 1.938zM20.71 5.63l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L20.71 7a1 1 0 0 0 0-1.37M2 5l6.63 6.63L3 17.25V21h3.75l5.63-5.62L18 21l2-2L4 3z"
+      d="M19 16V13L23 13V11H19V8L15 12L19 16ZM5 8V11H1V13H5V16L9 12L5 8ZM11 20H13L13 4H11L11 20Z"
+    />
+  </svg>
+);
+
+export const SortIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M3 18h6v-2H3zM3 6v2h18V6zm0 7h12v-2H3z"></path>
+  </svg>
+);
+
+export const FilterListIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M10 18h4v-2h-4zM3 6v2h18V6zm3 7h12v-2H6z"></path>
+  </svg>
+);
+
+export const AutocompleteIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="m20 7 .94-2.06L23 4l-2.06-.94L20 1l-.94 2.06L17 4l2.06.94zM8.5 7l.94-2.06L11.5 4l-2.06-.94L8.5 1l-.94 2.06L5.5 4l2.06.94zM20 12.5l-.94 2.06-2.06.94 2.06.94.94 2.06.94-2.06L23 15.5l-2.06-.94zm-2.29-3.38-2.83-2.83c-.2-.19-.45-.29-.71-.29s-.51.1-.71.29L2.29 17.46c-.39.39-.39 1.02 0 1.41l2.83 2.83c.2.2.45.3.71.3s.51-.1.71-.29l11.17-11.17c.39-.39.39-1.03 0-1.42m-3.54-.7 1.41 1.41L14.41 11 13 9.59zM5.83 19.59l-1.41-1.41L11.59 11 13 12.41z"
     ></path>
   </svg>
 );
 
+export const MinusIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M2.62207 11C2.62207 10.4477 3.06979 10 3.62207 10H20.3784C20.9306 10 21.3784 10.4477 21.3784 11V13C21.3784 13.5523 20.9306 14 20.3784 14H3.62207C3.06979 14 2.62207 13.5523 2.62207 13V11Z"
+    />
+  </svg>
+);
+
+export const BoltIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66s.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21"
+    ></path>
+  </svg>
+);
+
+export const DisabledIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M5.99256 4.59064C6.17996 4.40316 6.43461 4.29796 6.69966 4.29785C6.96472 4.29785 7.2193 4.40326 7.40677 4.59064L11.9988 9.18407L16.5909 4.59202C16.9815 4.2016 17.6145 4.2016 18.0051 4.59202L19.4089 5.99173C19.5964 6.17914 19.7016 6.43378 19.7017 6.69884C19.7017 6.96389 19.5963 7.21847 19.4089 7.40594L14.8127 11.9994L19.4069 16.5949C19.5943 16.7823 19.7002 17.0362 19.7003 17.3013C19.7003 17.5665 19.5944 17.8216 19.4069 18.0091L18.0072 19.4088C17.6166 19.7994 16.9835 19.7994 16.5929 19.4088L11.9981 14.814L7.4047 19.406C7.21726 19.5935 6.96339 19.6994 6.69828 19.6995C6.43304 19.6995 6.17802 19.5936 5.99049 19.406L4.59077 18.0063C4.20021 17.6158 4.20021 16.9826 4.59077 16.5921L9.18352 11.9994L4.59285 7.40871C4.20243 7.01812 4.20243 6.38507 4.59285 5.99449L5.99256 4.59064Z"
+    />
+  </svg>
+);
+
+export const ListAllIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path
+      d="M19 5v14H5V5zm1.1-2H3.9c-.5 0-.9.4-.9.9v16.2c0 .4.4.9.9.9h16.2c.4 0 .9-.5.9-.9V3.9c0-.5-.5-.9-.9-.9M11 7h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6zM7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7z"
+    ></path>
+  </svg>
+);

@@ -49,9 +49,9 @@
 	"fields":{%s= k %},
 	"timestamps":[
 		{% if len(timestamps) > 0 %}
-			{%q= timestamps[0] %}
+			{%q= timestampToString(timestamps[0]) %}
 			{% for _, ts := range timestamps[1:] %}
-				,{%q= ts %}
+				,{%q= timestampToString(ts) %}
 			{% endfor %}
 		{% endif %}
 	],

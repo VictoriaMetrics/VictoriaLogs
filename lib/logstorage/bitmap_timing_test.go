@@ -122,7 +122,7 @@ func benchmarkBitmapIsSetBit(b *testing.B, bm *bitmap) {
 	b.RunParallel(func(pb *testing.PB) {
 		n := 0
 		for pb.Next() {
-			for i := 0; i < bitsLen; i++ {
+			for i := range bitsLen {
 				if bm.isSetBit(i) {
 					n++
 				}

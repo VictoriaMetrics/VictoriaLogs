@@ -27,7 +27,7 @@ prometheus.remote_write "default" {
 loki.write "default" {
   endpoint {
     headers = { "VL-Msg-Field" = "msg", "VL-Stream-Fields" = "container_name" }
-    url = "http://victorialogs:9428/insert/loki/api/v1/push"
+    url = "http://vlagent:9429/insert/loki/api/v1/push"
   }
 }
 

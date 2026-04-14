@@ -10,8 +10,9 @@ menu:
 tags:
   - logs
 aliases:
-- /victorialogs/FAQ.html
 - /victorialogs/faq.html
+- /victorialogs/FAQ.html
+- /VictoriaLogs/FAQ.html
 ---
 
 ## Is VictoriaLogs ready for production use?
@@ -216,6 +217,42 @@ The maximum number of fields per log entry is hardcoded and is unlikely to incre
 The limit can be set to the lower value during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 via `-insert.maxFieldsPerLine` command-line flag.
 
+The most frequent source of too big number of unique log fields is JSON logs with many unique keys. For example:
+
+```json
+{
+  "level":"info",
+  "_msg":"foo bar",
+  "items":{
+    "item-1":{...},
+    ...
+    "item-N":{...}
+  }
+}
+```
+
+This JSON contains many unique keys - `item-*`. They are flattened into the following keys according to [VictoriaLogs data model](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model):
+
+- "items.item-1"
+- ...
+- "items.item-N"
+
+Where `N` can be arbitrary large. Do not ingest such logs into VictoriaLogs.
+
+It is possible to instruct VictoriaLogs preserving the `items` field value without flattening it,
+by passing `preserve_json_keys=items` query arg to HTTP data ingestion endpoints, which accept JSON-encoded logs.
+This will result into a single `items` field with the following string value:
+
+```
+{
+  "item-1":{...},
+  ...
+  "item-N":{...}
+}
+```
+
+See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details.
+
 ## How to determine which log fields occupy the most of disk space?
 
 [Run](https://docs.victoriametrics.com/victorialogs/querying/) the following [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query
@@ -239,11 +276,41 @@ which occupy the most of disk space across the logs ingested during the last day
 is returned in the `total_bytes` field.
 
 If you use [VictoriaLogs web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
-or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/),
+or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/integrations/grafana/),
 then make sure the selected time range covers the last day. Otherwise, the query above returns
 results on the intersection of the last day and the selected time range.
 
-See [why the log field occupies a lot of disk space](https://docs.victoriametrics.com/victorialogs/faq/#why-the-log-field-occupies-a-lot-of-disk-space).
+See also:
+
+- [Why the log field occupies a lot of disk space](https://docs.victoriametrics.com/victorialogs/faq/#why-the-log-field-occupies-a-lot-of-disk-space).
+- [How to detect log streams, which occupy the most of disk space](https://docs.victoriametrics.com/victorialogs/faq/#how-to-determine-which-log-streams-occupy-the-most-of-disk-space).
+
+## How to determine which log streams occupy the most of disk space?
+
+[Run](https://docs.victoriametrics.com/victorialogs/querying/) the following [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query
+based on [`block_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#block_stats-pipe):
+
+```logsql
+_time:1d
+  | block_stats
+  | stats by (_stream)
+      sum(values_bytes) as values_bytes,
+      sum(bloom_bytes) as bloom_bytes
+  | math
+      (values_bytes+bloom_bytes) as total_bytes
+  | first 10 (total_bytes desc)
+```
+
+This query returns top 10 [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields),
+which occupy the most of disk space across the logs ingested during the last day. The occupied disk space
+is returned in the `total_bytes` field.
+
+If you use [VictoriaLogs web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui)
+or [Grafana plugin for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/integrations/grafana/),
+then make sure the selected time range covers the last day. Otherwise, the query above returns
+results on the intersection of the last day and the selected time range.
+
+See also [how to detect log fields, which occupy the most of disk space](https://docs.victoriametrics.com/victorialogs/faq/#how-to-determine-which-log-fields-occupy-the-most-of-disk-space).
 
 ## Why the log field occupies a lot of disk space?
 

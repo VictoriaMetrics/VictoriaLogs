@@ -11,6 +11,12 @@ type filterNot struct {
 	f filter
 }
 
+func newFilterNot(f filter) *filterNot {
+	return &filterNot{
+		f: f,
+	}
+}
+
 func (fn *filterNot) String() string {
 	s := fn.f.String()
 	switch fn.f.(type) {
@@ -23,6 +29,10 @@ func (fn *filterNot) String() string {
 
 func (fn *filterNot) updateNeededFields(pf *prefixfilter.Filter) {
 	fn.f.updateNeededFields(pf)
+}
+
+func (fn *filterNot) matchRow(fields []Field) bool {
+	return !fn.f.matchRow(fields)
 }
 
 func (fn *filterNot) applyToBlockResult(br *blockResult, bm *bitmap) {

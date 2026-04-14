@@ -36,7 +36,7 @@ describe("ANSI Parser", () => {
 
     expect(spans.length).toBe(2);
     expect(spans[0]).toHaveStyle("color: #AA0000");
-    expect(spans[1]).toHaveStyle("color: inherit");
+    expect(spans[1]).toHaveStyle("color: rgb(0, 0, 0)");
   });
 
   // Test that parseAnsiToHtml correctly parses bold text.
@@ -115,6 +115,6 @@ describe("ANSI Parser", () => {
   test("parseAnsiToHtml should ignore unknown ANSI codes", () => {
     const { container } = render(parseAnsiToHtml("\u001B[999mText with unknown code\u001B[0m"));
     const span = container.querySelector("span");
-    expect(span).toHaveStyle("color: inherit");
+    expect(span).toHaveStyle("color: rgb(0, 0, 0)");
   });
 });

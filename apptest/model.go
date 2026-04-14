@@ -9,59 +9,234 @@ import (
 	"testing"
 )
 
-// QueryOpts contains various params used for querying or ingesting data
+// QueryOpts contains params used for querying VictoriaLogs via /select/logsq/query
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 type QueryOpts struct {
+	AccountID string
+	ProjectID string
+
 	Timeout      string
 	Start        string
 	End          string
-	Time         string
-	Step         string
+	Limit        string
 	ExtraFilters []string
-	ExtraLabels  []string
+	Format       string
 }
 
 func (qos *QueryOpts) asURLValues() url.Values {
 	uv := make(url.Values)
-	addNonEmpty := func(name string, values ...string) {
-		for _, value := range values {
-			if len(value) == 0 {
-				continue
-			}
-			uv.Add(name, value)
-		}
-	}
-	addNonEmpty("start", qos.Start)
-	addNonEmpty("end", qos.End)
-	addNonEmpty("time", qos.Time)
-	addNonEmpty("step", qos.Step)
-	addNonEmpty("timeout", qos.Timeout)
-	addNonEmpty("extra_label", qos.ExtraLabels...)
-	addNonEmpty("extra_filters", qos.ExtraFilters...)
-
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "start", qos.Start)
+	addNonEmpty(uv, "end", qos.End)
+	addNonEmpty(uv, "limit", qos.Limit)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	addNonEmpty(uv, "format", qos.Format)
 	return uv
 }
 
-// QueryOptsLogs contains various params used for VictoriaLogs querying or ingesting data
-type QueryOptsLogs struct {
+// FieldNamesOpts contains params used for query VictoriaLogs via /select/logsql/field_names
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names
+type FieldNamesOpts struct {
+	Start       string
+	End         string
+	Filter      string
+	IgnorePipes string
+}
+
+func (fos *FieldNamesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "filter", fos.Filter)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// FieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/field_values
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values
+type FieldValuesOpts struct {
+	Start       string
+	End         string
+	Field       string
+	Filter      string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *FieldValuesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "field", fos.Field)
+	addNonEmpty(uv, "filter", fos.Filter)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamFieldNamesOpts contains params used for query VictoriaLogs via /select/logsql/stream_field_names
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names
+type StreamFieldNamesOpts struct {
+	Start       string
+	End         string
+	Filter      string
+	IgnorePipes string
+}
+
+func (fos *StreamFieldNamesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "filter", fos.Filter)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamFieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/field_values
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values
+type StreamFieldValuesOpts struct {
+	Start       string
+	End         string
+	Field       string
+	Filter      string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *StreamFieldValuesOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "field", fos.Field)
+	addNonEmpty(uv, "filter", fos.Filter)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StreamsOpts contains params used for query VictoriaLogs via /select/logsql/streams
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-streams
+type StreamsOpts struct {
+	Start       string
+	End         string
+	Limit       string
+	IgnorePipes string
+}
+
+func (fos *StreamsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// HitsOpts contains params used for query VitoriaLogs via /select/logsql/hits
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats
+type HitsOpts struct {
+	Start string
+	End   string
+	Step  string
+	Field string
+}
+
+func (hos *HitsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", hos.Start)
+	addNonEmpty(uv, "end", hos.End)
+	addNonEmpty(uv, "step", hos.Step)
+	addNonEmpty(uv, "field", hos.Field)
+	return uv
+}
+
+// FacetsOpts contains params used for querying VictoriaLogs via /select/logsql/facets
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-facets
+type FacetsOpts struct {
+	Start             string
+	End               string
+	Limit             string
+	MaxValuesPerField string
+	MaxValueLen       string
+	KeepConstFields   string
+	ExtraFilters      []string
+	IgnorePipes       string
+}
+
+func (fos *FacetsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", fos.Start)
+	addNonEmpty(uv, "end", fos.End)
+	addNonEmpty(uv, "limit", fos.Limit)
+	addNonEmpty(uv, "max_values_per_field", fos.MaxValuesPerField)
+	addNonEmpty(uv, "max_value_len", fos.MaxValueLen)
+	addNonEmpty(uv, "keep_const_fields", fos.KeepConstFields)
+	addNonEmpty(uv, "extra_filters", fos.ExtraFilters...)
+	addNonEmpty(uv, "ignore_pipes", fos.IgnorePipes)
+	return uv
+}
+
+// StatsQueryOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
+type StatsQueryOpts struct {
+	Timeout      string
+	Time         string
+	ExtraFilters []string
+}
+
+func (qos *StatsQueryOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "time", qos.Time)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	return uv
+}
+
+// StatsQueryRangeOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query_range
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
+type StatsQueryRangeOpts struct {
+	Timeout      string
+	Start        string
+	End          string
+	Step         string
+	ExtraFilters []string
+}
+
+func (qos *StatsQueryRangeOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "timeout", qos.Timeout)
+	addNonEmpty(uv, "start", qos.Start)
+	addNonEmpty(uv, "end", qos.End)
+	addNonEmpty(uv, "step", qos.Step)
+	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
+	return uv
+}
+
+// IngestOpts contains various params used for VictoriaLogs ingesting data
+type IngestOpts struct {
+	AccountID string
+	ProjectID string
+
 	MessageField string
 	StreamFields string
 	TimeField    string
 }
 
-func (qos *QueryOptsLogs) asURLValues() url.Values {
+func (qos *IngestOpts) asURLValues() url.Values {
 	uv := make(url.Values)
-	addNonEmpty := func(name string, values ...string) {
-		for _, value := range values {
-			if len(value) == 0 {
-				continue
-			}
-			uv.Add(name, value)
-		}
-	}
-	addNonEmpty("_time_field", qos.TimeField)
-	addNonEmpty("_stream_fields", qos.StreamFields)
-	addNonEmpty("_msg_field", qos.MessageField)
-
+	addNonEmpty(uv, "_time_field", qos.TimeField)
+	addNonEmpty(uv, "_stream_fields", qos.StreamFields)
+	addNonEmpty(uv, "_msg_field", qos.MessageField)
 	return uv
 }
 
@@ -75,6 +250,7 @@ type LogsQLQueryResponse struct {
 // instance of LogsQLQueryResponse by unmarshalling a json string.
 func NewLogsQLQueryResponse(t *testing.T, s string) *LogsQLQueryResponse {
 	t.Helper()
+
 	res := &LogsQLQueryResponse{}
 	if len(s) == 0 {
 		return res
@@ -104,4 +280,12 @@ func NewLogsQLQueryResponse(t *testing.T, s string) *LogsQLQueryResponse {
 	}
 
 	return res
+}
+
+func addNonEmpty(uv url.Values, name string, values ...string) {
+	for _, value := range values {
+		if value != "" {
+			uv.Add(name, value)
+		}
+	}
 }

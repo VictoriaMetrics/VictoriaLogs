@@ -3,7 +3,7 @@ import { useFetchLogHits } from "../../QueryPage/hooks/useFetchLogHits";
 import HitsChart from "../../QueryPage/HitsChart/HitsChart";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useSearchParams } from "react-router-dom";
-import { useExtraFilters } from "../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "../../QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 const OverviewHits: FC = () => {
@@ -11,9 +11,13 @@ const OverviewHits: FC = () => {
   const { period } = useTimeState();
   const query = "*";
 
-  const { topHits, groupFieldHits } = useHitsChartConfig();
+  const {
+    topHits: { value: topHits },
+    groupFieldHits: { value: groupFieldHits },
+    step: { value: step },
+  } = useHitsChartConfig();
 
-  const { extraParams, addNewFilter } = useExtraFilters();
+  const { extraParams } = useExtraFilters();
   const { fetchLogHits, ...dataLogHits } = useFetchLogHits();
 
   const hideChart = useMemo(() => {
@@ -27,19 +31,21 @@ const OverviewHits: FC = () => {
       period,
       extraParams,
       query,
+      step,
       field: groupFieldHits,
       fieldsLimit: topHits,
     });
 
-  }, [hideChart, period, extraParams.toString(), topHits, groupFieldHits]);
+  }, [hideChart, period, extraParams.toString(), step, topHits, groupFieldHits]);
 
   return (
     <div>
       <HitsChart
+        isOverview
         {...dataLogHits}
         query={query}
         period={period}
-        onApplyFilter={addNewFilter}
+        step={step}
       />
     </div>
   );

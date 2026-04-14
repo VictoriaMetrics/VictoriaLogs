@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -558,33 +559,21 @@ func TestStatsCountUniq_ExportImportState_DistinctConcurrency(t *testing.T) {
 		supRemote := newStatsCountUniqProcessor(remoteConcurrency)
 		supLocal := newStatsCountUniqProcessor(localConcurrency)
 
-		supRemote.shards = []statsCountUniqSet{
-			{
-				timestamps: map[uint64]struct{}{
-					123: {},
-					0:   {},
-				},
-				u64: map[uint64]struct{}{
-					43: {},
-				},
-				negative64: map[uint64]struct{}{
-					8234932: {},
-				},
-				strings: map[string]struct{}{
-					"foo": {},
-					"bar": {},
-				},
-			},
-			{
-				timestamps: map[uint64]struct{}{
-					10:      {},
-					1123:    {},
-					3234324: {},
-				},
-				u64: map[uint64]struct{}{
-					42: {},
-				},
-			},
+		supRemote.shards = make([]statsCountUniqSet, remoteConcurrency)
+		for i := range int(remoteConcurrency) {
+			shard := &supRemote.shards[i]
+			shard.timestamps = map[uint64]struct{}{
+				uint64(i): {},
+			}
+			shard.u64 = map[uint64]struct{}{
+				uint64(i) + 1_000: {},
+			}
+			shard.negative64 = map[uint64]struct{}{
+				uint64(int64(-i - 1)): {},
+			}
+			shard.strings = map[string]struct{}{
+				fmt.Sprintf("string-%d", i): {},
+			}
 		}
 		remoteEntriesCount := supRemote.entriesCount()
 
@@ -603,4 +592,6 @@ func TestStatsCountUniq_ExportImportState_DistinctConcurrency(t *testing.T) {
 	f(2, 3)
 	f(2, 1)
 	f(2, 100)
+	f(128, 3)
+	f(128, 100)
 }

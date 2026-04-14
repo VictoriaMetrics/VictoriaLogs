@@ -3,9 +3,7 @@ import { ReactNode } from "preact/compat";
 
 export interface MetricBase {
   group: number;
-  metric: {
-    [key: string]: string;
-  };
+  metric: Record<string, string>
 }
 
 export interface MetricResult extends MetricBase {
@@ -20,7 +18,7 @@ export interface InstantMetricResult extends MetricBase {
 
 export interface QueryStats {
   seriesFetched?: string;
-  executionTimeMsec?: number;
+  executionTimeMs?: number;
   resultLength?: number;
   isPartial?: boolean;
 }
@@ -51,18 +49,14 @@ export interface LegendLogHits {
 
 export interface LegendLogHitsMenu {
   title: string;
-  icon?: ReactNode;
+  iconStart?: ReactNode;
+  iconEnd?: ReactNode;
+  shortcut?: string;
   handler?: () => void;
 }
 
-export interface LogsFiledValues {
+export interface LogsFieldValues {
   value: string;
   hits: number;
   percent?: number;
 }
-
-export type CardinalityMetricsRow = {
-  distinct: number;
-  coverage: number;
-  ratio: number;
-};

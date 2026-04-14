@@ -23,6 +23,15 @@ type filterLeField struct {
 	prefixFilterOnce sync.Once
 }
 
+func newFilterLeField(fieldName, otherFieldName string, excludeEqualValues bool) *filterLeField {
+	return &filterLeField{
+		fieldName:      getCanonicalColumnName(fieldName),
+		otherFieldName: getCanonicalColumnName(otherFieldName),
+
+		excludeEqualValues: excludeEqualValues,
+	}
+}
+
 func (fe *filterLeField) String() string {
 	funcName := "le_field"
 	if fe.excludeEqualValues {
@@ -43,6 +52,12 @@ func (fe *filterLeField) getPrefixFilter() *prefixfilter.Filter {
 
 func (fe *filterLeField) initPrefixFilter() {
 	fe.prefixFilter.AddAllowFilters([]string{fe.fieldName, fe.otherFieldName})
+}
+
+func (fe *filterLeField) matchRow(fields []Field) bool {
+	v := getFieldValueByName(fields, fe.fieldName)
+	vOther := getFieldValueByName(fields, fe.otherFieldName)
+	return leValuesString(v, vOther, fe.excludeEqualValues)
 }
 
 func (fe *filterLeField) applyToBlockResult(br *blockResult, bm *bitmap) {

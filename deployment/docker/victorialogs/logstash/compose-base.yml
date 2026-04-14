@@ -10,6 +10,6 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers
       - ${PWD}/pipeline.conf:/usr/share/logstash/pipeline/logstash.conf:ro
       - ./logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-    depends_on: [victorialogs]
+    depends_on: [vlagent]
     ports:
       - "5140:5140"

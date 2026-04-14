@@ -4,7 +4,7 @@ import { CopyIcon, FilterIcon, FilterOffIcon } from "../../../Main/Icons";
 import { convertToFieldFilter } from "../../../../utils/logs";
 import { LegendLogHitsMenu } from "../../../../api/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
-import { ExtraFilter, ExtraFilterOperator } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { ExtraFilter, ExtraFilterOperator } from "../../../ExtraFilters/types";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
 
 interface Props {
@@ -31,7 +31,9 @@ const stringToFilter = (string: string) => {
 
 const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => {
   const copyToClipboard = useCopyToClipboard();
-  const { groupFieldHits } = useHitsChartConfig();
+  const {
+    groupFieldHits: { value: groupFieldHits },
+  } = useHitsChartConfig();
 
   const handleCopy = (field: string) => async () => {
     await copyToClipboard(field, `${field} has been copied`);
@@ -39,7 +41,7 @@ const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => 
   };
 
   const handleAddToFilter = (field: string, operator: ExtraFilterOperator) => () => {
-    onApplyFilter({ ...stringToFilter(field), operator });
+    onApplyFilter({ ...stringToFilter(field), operator, isStream: groupFieldHits === "_stream" });
     onClose();
   };
 
@@ -47,17 +49,17 @@ const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => 
     return [
       {
         title: "Copy",
-        icon: <CopyIcon/>,
+        iconStart: <CopyIcon/>,
         handler: handleCopy(field),
       },
       {
         title: "Add to filter",
-        icon: <FilterIcon/>,
+        iconStart: <FilterIcon/>,
         handler: handleAddToFilter(field, ExtraFilterOperator.Equals),
       },
       {
         title: "Exclude to filter",
-        icon: <FilterOffIcon/>,
+        iconStart: <FilterOffIcon/>,
         handler: handleAddToFilter(field, ExtraFilterOperator.NotEquals),
       }
     ];

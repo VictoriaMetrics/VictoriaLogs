@@ -13,6 +13,12 @@ func TestParsePipeRunningStatsSuccess(t *testing.T) {
 	f(`running_stats count(*) as rows`)
 	f(`running_stats count(a*, b) as rows`)
 	f(`running_stats by (x) count(*) as rows, sum(x) as running_sum`)
+
+	f(`running_stats first(a) as first_a`)
+	f(`running_stats first(a) offset 4 as first_a`)
+
+	f(`running_stats last(a) as last_a`)
+	f(`running_stats last(a) offset 4 as last_a`)
 }
 
 func TestParsePipeRunningStatsFailure(t *testing.T) {
@@ -33,6 +39,24 @@ func TestParsePipeRunningStatsFailure(t *testing.T) {
 
 	// duplicate output name
 	f(`running_stats sum() x, count() x`)
+
+	// missing field name in the first() and last()
+	f(`running_stats first() as x`)
+	f(`running_stats last() as x`)
+
+	// wildcard arg for the first() and last()
+	f(`running_stats first(a*) as x`)
+	f(`running_stats last(a*) as x`)
+
+	// miltiple args arg for the first() and last()
+	f(`running_stats first(a, b)`)
+	f(`running_stats last(a, b)`)
+	f(`running_stats first(a, b, c)`)
+	f(`running_stats last(a, b, c)`)
+
+	// negative second arg for the first() and last()
+	f(`running_stats first(a) offset -1`)
+	f(`running_stats last(a) offset -1`)
 }
 
 func TestPipeRunningStats(t *testing.T) {
@@ -110,7 +134,13 @@ func TestPipeRunningStats(t *testing.T) {
 	})
 
 	// multiple results
-	f("running_stats count() running_count, sum(a) running_sum, min(b) running_b_min, max() running_max_all", [][]Field{
+	f(`running_stats
+		count() running_count,
+		sum(a) running_sum,
+		min(b) running_b_min,
+		max() running_max_all,
+		first(a) offset 1 first_a,
+		last(a) offset 1 last_a`, [][]Field{
 		{
 			{"_time", `bar`},
 			{"a", `1`},
@@ -132,6 +162,8 @@ func TestPipeRunningStats(t *testing.T) {
 			{"running_sum", "2"},
 			{"running_b_min", "54"},
 			{"running_max_all", "54"},
+			{"first_a", ""},
+			{"last_a", ""},
 		},
 		{
 			{"_time", `bar`},
@@ -140,6 +172,8 @@ func TestPipeRunningStats(t *testing.T) {
 			{"running_sum", "3"},
 			{"running_b_min", ""},
 			{"running_max_all", "bar"},
+			{"first_a", "1"},
+			{"last_a", "2"},
 		},
 		{
 			{"_time", "foo"},
@@ -149,6 +183,8 @@ func TestPipeRunningStats(t *testing.T) {
 			{"running_sum", "5"},
 			{"running_b_min", ""},
 			{"running_max_all", "foo"},
+			{"first_a", "1"},
+			{"last_a", "1"},
 		},
 	})
 

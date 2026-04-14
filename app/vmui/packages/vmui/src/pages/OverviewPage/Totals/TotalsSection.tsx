@@ -21,6 +21,17 @@ const TotalsSection: FC = () => {
     dispatch({ type: "SET_TOTAL_LOGS", payload: Number(totals?.totalLogs || 0) });
   }, [totals]);
 
+  if (error) {
+    return (
+      <Alert
+        title="Failed to load totals data"
+        variant="error"
+      >
+        {error}
+      </Alert>
+    );
+  }
+
   return (
     <div className="vm-total-section">
       {explorerTotals.map(total => (
@@ -33,7 +44,6 @@ const TotalsSection: FC = () => {
           valuePrev={totalsPrev?.[total.alias]}
         />
       ))}
-      {error && <Alert variant="error">{error}</Alert>}
     </div>
   );
 };

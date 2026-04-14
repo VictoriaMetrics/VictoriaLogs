@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 	"sync"
 
@@ -71,12 +70,10 @@ func newJSONPrettifier(r io.ReadCloser, outputMode outputMode) *jsonPrettifier {
 		bw: bw,
 	}
 
-	jp.wg.Add(1)
-	go func() {
-		defer jp.wg.Done()
+	jp.wg.Go(func() {
 		err := jp.prettifyJSONLines()
 		jp.closePipesWithError(err)
-	}()
+	})
 
 	return jp
 }
@@ -92,9 +89,6 @@ func (jp *jsonPrettifier) prettifyJSONLines() error {
 		if err != nil {
 			return err
 		}
-		sort.Slice(fields, func(i, j int) bool {
-			return fields[i].Name < fields[j].Name
-		})
 		if err := jp.formatter(jp.bw, fields); err != nil {
 			return err
 		}

@@ -314,7 +314,7 @@ func TestPipeExtractUpdateNeededFields(t *testing.T) {
 	f("extract '<foo>' from x", "*", "f1,f2", "*", "f1,f2,foo")
 	f("extract '<foo>' from x keep_original_fields", "*", "f1,f2", "*", "f1,f2")
 	f("extract '<foo>' from x skip_empty_results", "*", "f1,f2", "*", "f1,f2")
-	f("extract if (f1:x) '<foo>' from x", "*", "f1,f2", "*", "f2,foo")
+	f("extract if (f1:x) '<foo>' from x", "*", "f1,f2", "*", "f2")
 	f("extract if (f1:x) '<foo>' from x keep_original_fields", "*", "f1,f2", "*", "f2")
 	f("extract if (f1:x) '<foo>' from x skip_empty_results", "*", "f1,f2", "*", "f2")
 	f("extract if (foo:bar f1:x) '<foo>' from x", "*", "f1,f2", "*", "f2")
@@ -323,16 +323,16 @@ func TestPipeExtractUpdateNeededFields(t *testing.T) {
 	f("extract '<foo>' from x", "*", "f2,x", "*", "f2,foo")
 	f("extract '<foo>' from x keep_original_fields", "*", "f2,x", "*", "f2")
 	f("extract '<foo>' from x skip_empty_results", "*", "f2,x", "*", "f2")
-	f("extract if (f1:abc) '<foo>' from x", "*", "f2,x", "*", "f2,foo")
-	f("extract if (f2:abc) '<foo>' from x", "*", "f2,x", "*", "foo")
+	f("extract if (f1:abc) '<foo>' from x", "*", "f2,x", "*", "f2")
+	f("extract if (f2:abc) '<foo>' from x", "*", "f2,x", "*", "")
 
 	// unneeded fields intersect with output fields
 	f("extract '<foo>x<bar>' from x", "*", "f2,foo", "*", "bar,f2,foo")
 	f("extract '<foo>x<bar>' from x", "*", "f2,foo,x", "*", "bar,f2,foo")
 	f("extract '<foo>x<bar>' from x keep_original_fields", "*", "f2,foo", "*", "f2,foo")
 	f("extract '<foo>x<bar>' from x skip_empty_results", "*", "f2,foo", "*", "f2,foo")
-	f("extract if (f1:abc) '<foo>x<bar>' from x", "*", "f2,foo", "*", "bar,f2,foo")
-	f("extract if (f2:abc foo:w) '<foo>x<bar>' from x", "*", "f2,foo", "*", "bar")
+	f("extract if (f1:abc) '<foo>x<bar>' from x", "*", "f2,foo", "*", "f2,foo")
+	f("extract if (f2:abc foo:w) '<foo>x<bar>' from x", "*", "f2,foo", "*", "")
 	f("extract if (f2:abc foo:w) '<foo>x<bar>' from x keep_original_fields", "*", "f2,foo", "*", "")
 	f("extract if (f2:abc foo:w) '<foo>x<bar>' from x skip_empty_results", "*", "f2,foo", "*", "")
 
@@ -361,7 +361,7 @@ func TestPipeExtractUpdateNeededFields(t *testing.T) {
 	f("extract '<foo>x<bar>' from x", "f2,foo", "", "f2,x", "")
 	f("extract '<foo>x<bar>' from x keep_original_fields", "f2,foo", "", "foo,f2,x", "")
 	f("extract '<foo>x<bar>' from x skip_empty_results", "f2,foo", "", "foo,f2,x", "")
-	f("extract if (a:b) '<foo>x<bar>' from x", "f2,foo", "", "a,f2,x", "")
+	f("extract if (a:b) '<foo>x<bar>' from x", "f2,foo", "", "a,f2,foo,x", "")
 
 	// needed fields intersect with pattern and output fields
 	f("extract '<foo>x<bar>' from x", "f2,foo,x,y", "", "f2,x,y", "")

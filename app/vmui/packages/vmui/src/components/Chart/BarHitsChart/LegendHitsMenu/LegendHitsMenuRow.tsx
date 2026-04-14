@@ -7,6 +7,7 @@ import useClickOutside from "../../../../hooks/useClickOutside";
 
 interface Props {
   title: string;
+  shortcut?: string;
   handler?: () => void;
   iconStart?: ReactNode;
   iconEnd?: ReactNode;
@@ -14,7 +15,7 @@ interface Props {
   submenu?: LegendLogHitsMenu[];
 }
 
-const LegendHitsMenuRow: FC<Props> = ({ title, handler, iconStart, iconEnd, className, submenu }) => {
+const LegendHitsMenuRow: FC<Props> = ({ title, shortcut, handler, iconStart, iconEnd, className, submenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,7 @@ const LegendHitsMenuRow: FC<Props> = ({ title, handler, iconStart, iconEnd, clas
       {iconStart && <div className="vm-legend-hits-menu-row__icon">{iconStart}</div>}
       {isOverflownTitle ? (<Tooltip title={title}>{titleContent}</Tooltip>) : titleContent}
       {iconEnd && !hasSubmenu && <div className="vm-legend-hits-menu-row__icon">{iconEnd}</div>}
+      {shortcut && <div className="vm-legend-hits-menu-row__shortcut">{shortcut}</div>}
 
       {hasSubmenu && (
         <div className="vm-legend-hits-menu-row__icon vm-legend-hits-menu-row__icon_drop">
@@ -96,12 +98,10 @@ const LegendHitsMenuRow: FC<Props> = ({ title, handler, iconStart, iconEnd, clas
           })}
         >
           <div className="vm-legend-hits-menu-section">
-            {submenu.map(({ icon, title, handler }) => (
+            {submenu.map(({ ...menuProps }) => (
               <LegendHitsMenuRow
-                key={title}
-                iconStart={icon}
-                title={title}
-                handler={handler}
+                key={menuProps.title}
+                {...menuProps}
               />
             ))}
           </div>

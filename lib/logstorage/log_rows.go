@@ -28,7 +28,7 @@ type LogRows struct {
 	// streamIDs holds streamIDs for rows added to LogRows
 	streamIDs []streamID
 
-	// timestamps holds stimestamps for rows added to LogRows
+	// timestamps holds timestamps for rows added to LogRows
 	timestamps []int64
 
 	// rows holds fields for rows added to LogRows.
@@ -38,7 +38,7 @@ type LogRows struct {
 	streamTagsCanonicals []string
 
 	// streamFields contains names for stream fields
-	streamFields map[string]struct{}
+	streamFields []string
 
 	// ignoreFields is a filter for fields, which must be ignored during data ingestion
 	ignoreFields prefixfilter.Filter
@@ -66,7 +66,7 @@ type logRows struct {
 	// streamIDs holds streamIDs for rows added to logRows
 	streamIDs []streamID
 
-	// timestamps holds stimestamps for rows added to logRows
+	// timestamps holds timestamps for rows added to logRows
 	timestamps []int64
 
 	// rows holds fields for rows added to logRows.
@@ -251,10 +251,7 @@ func (lr *LogRows) ForEachRow(callback func(streamHash uint64, r *InsertRow)) {
 func (lr *LogRows) Reset() {
 	lr.ResetKeepSettings()
 
-	sfs := lr.streamFields
-	for k := range sfs {
-		delete(sfs, k)
-	}
+	lr.streamFields = lr.streamFields[:0]
 
 	lr.ignoreFields.Reset()
 	lr.decolorizeFields.Reset()
@@ -299,94 +296,115 @@ func (lr *LogRows) ResetKeepSettings() {
 
 // NeedFlush returns true if lr contains too much data, so it must be flushed to the storage.
 func (lr *LogRows) NeedFlush() bool {
-	return len(lr.a.b) > (maxUncompressedBlockSize/8)*7
+	return len(lr.a.b) > (maxUncompressedBlockSize/8)*7 || len(lr.rows) > maxUncompressedBlockSize/100
 }
 
 // MustAddInsertRow adds r to lr.
 func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 	// verify r.StreamTagsCanonical
-	st := GetStreamTags()
-	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
-	tail, err := st.UnmarshalCanonical(streamTagsCanonical)
-	if err != nil {
+	if err := verifyStreamTagsCanonical(r.StreamTagsCanonical, r.Fields); err != nil {
 		line := MarshalFieldsToJSON(nil, r.Fields)
-		logger.Warnf("cannot unmarshal streamTagsCanonical: %w; skipping the log entry; log entry: %s", err, line)
+		invalidStreamTagsLogger.Warnf("cannot unmarshal streamTagsCanonical: %s; skipping the log entry; log entry: %s", err, line)
 		return
 	}
-	if len(tail) > 0 {
-		line := MarshalFieldsToJSON(nil, r.Fields)
-		logger.Warnf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s; log entry: %s", len(tail), st, line)
-		return
-	}
-	PutStreamTags(st)
 
 	// Calculate the id for the StreamTags
 	var sid streamID
 	sid.tenantID = r.TenantID
+	streamTagsCanonical := bytesutil.ToUnsafeBytes(r.StreamTagsCanonical)
 	sid.id = hash128(streamTagsCanonical)
 
 	// Store the row
 	lr.mustAddInternal(sid, r.Timestamp, r.Fields, r.StreamTagsCanonical)
 }
 
+var invalidStreamTagsLogger = logger.WithThrottler("invalid_stream_tags", 5*time.Second)
+
+func verifyStreamTagsCanonical(streamTagsCanonical string, fields []Field) error {
+	st := GetStreamTags()
+	defer PutStreamTags(st)
+
+	src := bytesutil.ToUnsafeBytes(streamTagsCanonical)
+	tail, err := st.UnmarshalCanonicalInplace(src)
+	if err != nil {
+		return fmt.Errorf("cannot unmarshal streamTagsCanonical: %w", err)
+	}
+	if len(tail) > 0 {
+		return fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), st)
+	}
+	return st.verifyCanonicalFieldValues(fields)
+}
+
+func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
+	lr.MustAdd(tenantID, timestamp, fields, -1)
+}
+
 // MustAdd adds a log entry with the given args to lr.
 //
-// If streamFields is non-nil, the the given streamFields are used as log stream fields
+// If streamFieldsLen >= 0, then the given number of initial fields are used as log stream fields
 // instead of the pre-configured stream fields from GetLogRows().
 //
-// It is OK to modify the args after returning from the function,
-// since lr copies all the args to internal data.
+// It is OK to modify the args after returning from the function, since lr copies all the args to internal data.
 //
 // Log entries are dropped with the warning message in the following cases:
 // - if there are too many log fields
 // - if there are too long log field names
 // - if the total length of log entries is too long
-func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields, streamFields []Field) {
-	// Verify that the log entry doesn't exceed limits.
-	if len(fields) > maxColumnsPerBlock {
-		line := MarshalFieldsToJSON(nil, fields)
-		logger.Warnf("ignoring log entry with too big number of fields %d, since it exceeds the limit %d; "+
-			"see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain ; log entry: %s", len(fields), maxColumnsPerBlock, line)
-		return
-	}
-	for i := range fields {
-		fieldName := fields[i].Name
-		if len(fieldName) > maxFieldNameSize {
-			line := MarshalFieldsToJSON(nil, fields)
-			logger.Warnf("ignoring log entry with too long field name %q, since its length (%d) exceeds the limit %d bytes; "+
-				"see https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length ; log entry: %s",
-				fieldName, len(fieldName), maxFieldNameSize, line)
-			return
-		}
-	}
-	rowLen := EstimatedJSONRowLen(fields)
-	if rowLen > maxUncompressedBlockSize {
-		line := MarshalFieldsToJSON(nil, fields)
-		logger.Warnf("ignoring too long log entry with the estimated length of %d bytes, since it exceeds the limit %d bytes; "+
-			"see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have ; log entry: %s", rowLen, maxUncompressedBlockSize, line)
-		return
-	}
-
-	// Compose StreamTags from fields according to streamFields, lr.streamFields and lr.extraStreamFields
+// - if the log entry contains _stream or _stream_id fields (these fields clash with the automatically generated fields by VictoriaLogs)
+func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, streamFieldsLen int) {
+	// Compose StreamTags from fields
 	st := GetStreamTags()
-	if streamFields != nil {
-		// streamFields override lr.streamFields
-		for _, f := range streamFields {
+	if streamFieldsLen >= 0 {
+		// Compose StreamTags from fields[:streamFieldsLen] and ignore lr.streamFields with lr.extraStreamFields.
+		for _, f := range fields[:streamFieldsLen] {
 			fieldName := getCanonicalFieldName(f.Name)
+
+			if err := CheckStreamFieldName(fieldName); err != nil {
+				line := MarshalFieldsToJSON(nil, fields)
+				invalidStreamTagsLogger.Warnf("invalid stream field name %q: %s; skipping the log entry; log entry: %s", fieldName, err, line)
+				return
+			}
+
 			if !lr.ignoreFields.MatchString(fieldName) {
 				st.Add(fieldName, f.Value)
 			}
 		}
-	} else {
+	} else if len(lr.streamFields) > 0 || len(lr.extraStreamFields) > 0 {
+		// Compose StreamTags from lr.streamFields and lr.extraStreamFields.
 		for _, f := range fields {
 			fieldName := getCanonicalFieldName(f.Name)
-			if _, ok := lr.streamFields[fieldName]; ok {
+			if slices.Contains(lr.streamFields, fieldName) {
 				st.Add(fieldName, f.Value)
 			}
 		}
 		for _, f := range lr.extraStreamFields {
 			fieldName := getCanonicalFieldName(f.Name)
 			st.Add(fieldName, f.Value)
+		}
+	} else {
+		// Extract StreamTags from _stream field.
+		// This can be used when importing the raw logs in JSON line format
+		// received from /select/logsql/query endpoint.
+		for i := range fields {
+			f := &fields[i]
+			switch f.Name {
+			case "_stream":
+				if err := st.unmarshalStringInplace(f.Value); err != nil {
+					line := MarshalFieldsToJSON(nil, fields)
+					invalidStreamTagsLogger.Warnf("cannot parse _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
+					return
+				}
+				if err := st.verifyCanonicalFieldValues(fields); err != nil {
+					line := MarshalFieldsToJSON(nil, fields)
+					invalidStreamTagsLogger.Warnf("invalid _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
+					return
+				}
+				// Remove _stream field, since it is re-generated from st below.
+				f.Value = ""
+			case "_stream_id":
+				// Remove _stream_id field, since it is re-generated from st below.
+				f.Value = ""
+			}
 		}
 	}
 
@@ -407,6 +425,30 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields, streamFie
 }
 
 func (lr *LogRows) mustAddInternal(sid streamID, timestamp int64, fields []Field, streamTagsCanonical string) {
+	// Verify that the log entry doesn't exceed limits.
+	if len(fields) > maxColumnsPerBlock {
+		line := MarshalFieldsToJSON(nil, fields)
+		tooManyColumnsLogger.Warnf("ignoring log entry with too big number of fields %d, since it exceeds the limit %d; "+
+			"see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain ; log entry: %s", len(fields), maxColumnsPerBlock, line)
+		return
+	}
+	for i := range fields {
+		fieldName := fields[i].Name
+		if len(fieldName) > maxFieldNameSize {
+			line := MarshalFieldsToJSON(nil, fields)
+			tooLongFieldNameLogger.Warnf("ignoring log entry with too long field name %q, since its length (%d) exceeds the limit %d bytes; "+
+				"see https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length ; log entry: %s",
+				fieldName, len(fieldName), maxFieldNameSize, line)
+			return
+		}
+	}
+	if rowLen := EstimatedJSONRowLen(fields); rowLen > maxUncompressedBlockSize {
+		line := MarshalFieldsToJSON(nil, fields)
+		tooLongEntryLogger.Warnf("ignoring too long log entry with the estimated length of %d bytes, since it exceeds the limit %d bytes; "+
+			"see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have ; log entry: %s", rowLen, maxUncompressedBlockSize, line)
+		return
+	}
+
 	stcs := lr.streamTagsCanonicals
 	if len(stcs) > 0 && string(stcs[len(stcs)-1]) == streamTagsCanonical {
 		stcs = append(stcs, stcs[len(stcs)-1])
@@ -437,6 +479,12 @@ func (lr *LogRows) mustAddInternal(sid streamID, timestamp int64, fields []Field
 	lr.rows = append(lr.rows, row)
 }
 
+var (
+	tooManyColumnsLogger   = logger.WithThrottler("too_many_columns", 5*time.Second)
+	tooLongFieldNameLogger = logger.WithThrottler("too_logn_field_name", 5*time.Second)
+	tooLongEntryLogger     = logger.WithThrottler("too_long_entry", 5*time.Second)
+)
+
 func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFields *prefixfilter.Filter, mustCopyFields bool) bool {
 	if len(fields) == 0 {
 		return false
@@ -459,6 +507,20 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 		}
 		if f.Value == "" {
 			// Skip fields without values
+			continue
+		}
+		if fieldName == "_time" {
+			// Values for the _time field are stored in lr.timestamps
+			// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1168
+			line := MarshalFieldsToJSON(nil, fields)
+			unexpectedTimeFieldLogger.Warnf("skipping _time field with the value %q because the timestamp is parsed from another field "+
+				"according to https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters ; log entry: %s", f.Value, line)
+			continue
+		}
+		if fieldName == "_stream" || fieldName == "_stream_id" {
+			line := MarshalFieldsToJSON(nil, fields)
+			unexpectedStreamFieldLogger.Warnf("skipping %q field with the value %q since it clashes with the automatically generated field by VictoriaLogs; "+
+				"see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields; log entry: %s", fieldName, f.Value, line)
 			continue
 		}
 
@@ -504,6 +566,11 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 
 	return hasMsgField
 }
+
+var (
+	unexpectedTimeFieldLogger   = logger.WithThrottler("unexpected_time_field", 5*time.Second)
+	unexpectedStreamFieldLogger = logger.WithThrottler("unexpected_stream_field", 5*time.Second)
+)
 
 func getCanonicalFieldName(fieldName string) string {
 	if fieldName == "_msg" {
@@ -581,15 +648,10 @@ func GetLogRows(streamFields, ignoreFields, decolorizeFields []string, extraFiel
 	}
 
 	// Initialize streamFields
-	sfs := lr.streamFields
-	if sfs == nil {
-		sfs = make(map[string]struct{}, len(streamFields))
-		lr.streamFields = sfs
-	}
 	for _, f := range streamFields {
 		f = getCanonicalFieldName(f)
 		if !lr.ignoreFields.MatchString(f) {
-			sfs[f] = struct{}{}
+			lr.streamFields = append(lr.streamFields, f)
 		}
 	}
 
@@ -598,7 +660,7 @@ func GetLogRows(streamFields, ignoreFields, decolorizeFields []string, extraFiel
 		fieldName := getCanonicalFieldName(f.Name)
 		if slices.Contains(streamFields, fieldName) {
 			lr.extraStreamFields = append(lr.extraStreamFields, f)
-			delete(sfs, fieldName)
+			lr.streamFields = slices.DeleteFunc(lr.streamFields, func(s string) bool { return s == fieldName })
 		}
 	}
 
@@ -689,6 +751,28 @@ func (r *InsertRow) Marshal(dst []byte) []byte {
 	for _, field := range r.Fields {
 		dst = field.marshal(dst, true)
 	}
+	return dst
+}
+
+// AppendJSON appends marshaled r to dst in JSON format and returns the result.
+func (r *InsertRow) AppendJSON(dst []byte) []byte {
+	fields := r.Fields
+	fields = SkipLeadingFieldsWithoutValues(fields)
+
+	dst = append(dst, `{"_time":"`...)
+	dst = marshalTimestampRFC3339NanoString(dst, r.Timestamp)
+	dst = append(dst, '"')
+
+	for i := range fields {
+		f := &fields[i]
+		if f.Value == "" {
+			// Skip fields without values
+			continue
+		}
+		dst = append(dst, ',')
+		dst = f.marshalToJSON(dst)
+	}
+	dst = append(dst, '}')
 	return dst
 }
 

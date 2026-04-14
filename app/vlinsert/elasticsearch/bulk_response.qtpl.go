@@ -26,7 +26,7 @@ func StreamBulkResponse(qw422016 *qt422016.Writer, n int, tookMs int64) {
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:5
 	qw422016.N().S(`,"errors":false,"items":[`)
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:8
-	for i := 0; i < n; i++ {
+	for i := range n {
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:8
 		qw422016.N().S(`{"create":{"status":201}}`)
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:14

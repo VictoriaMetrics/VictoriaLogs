@@ -9,6 +9,9 @@ import StreamContext from "./pages/StreamContext/StreamContext";
 import router from "./router";
 import "./constants/markedPlugins";
 import PreviewIcons from "./components/Main/Icons/PreviewIcons";
+import AllButtonsPreview from "./components/Main/Button/AllButtonsPreview";
+
+const isDev = import.meta.env.DEV;
 
 const App: FC = () => {
   const [loadedTheme, setLoadedTheme] = useState(false);
@@ -37,10 +40,18 @@ const App: FC = () => {
                   element={<StreamContext/>}
                 />
 
-                <Route
-                  path={"/icons"}
-                  element={<PreviewIcons/>}
-                />
+                {isDev && (
+                  <>
+                    <Route
+                      path="/icons"
+                      element={<PreviewIcons />}
+                    />
+                    <Route
+                      path="/buttons"
+                      element={<AllButtonsPreview />}
+                    />
+                  </>
+                )}
               </Route>
             </Routes>
           )}

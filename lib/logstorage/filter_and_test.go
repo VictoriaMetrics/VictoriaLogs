@@ -87,7 +87,7 @@ func TestGetCommonTokensForAndFilters(t *testing.T) {
 		}
 		if _, ok := q.f.(*filterNoop); ok {
 			if len(tokensExpected) != 0 {
-				t.Fatalf("expecting non-empty tokens %q", tokensExpected)
+				t.Fatalf("expecting non-empty tokens %v", tokensExpected)
 			}
 			return
 		}

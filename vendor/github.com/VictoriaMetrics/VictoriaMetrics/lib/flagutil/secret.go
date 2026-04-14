@@ -15,6 +15,14 @@ func RegisterSecretFlag(flagName string) {
 	secretFlags[lname] = true
 }
 
+// UnregisterAllSecretFlags unregisters all secret flags.
+//
+// This function must be used in tests only.
+// It cannot be called from concurrent goroutines.
+func UnregisterAllSecretFlags() {
+	secretFlags = make(map[string]bool)
+}
+
 var secretFlags = make(map[string]bool)
 
 // IsSecretFlag returns true of s contains flag name with secret value, which shouldn't be exposed.

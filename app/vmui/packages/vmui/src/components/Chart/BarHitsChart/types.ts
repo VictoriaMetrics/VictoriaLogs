@@ -5,9 +5,16 @@ export enum GRAPH_STYLES {
   POINTS = "Points",
 }
 
+export enum GRAPH_QUERY_MODE {
+  hits = "hits",
+  stats = "stats"
+}
+
 export interface GraphOptions {
   graphStyle: GRAPH_STYLES;
+  queryMode: GRAPH_QUERY_MODE;
   stacked: boolean;
+  cumulative: boolean;
   fill: boolean;
   hideChart: boolean;
 }

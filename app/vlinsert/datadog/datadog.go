@@ -67,8 +67,13 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if len(cp.StreamFields) == 0 {
+		if err := logstorage.CheckStreamFieldNames(*datadogStreamFields); err != nil {
+			httpserver.Errorf(w, r, "invalid stream field names at -datadog.streamFields=%s: %s", datadogStreamFields, err)
+			return true
+		}
 		cp.StreamFields = *datadogStreamFields
 	}
+
 	if len(cp.IgnoreFields) == 0 {
 		cp.IgnoreFields = *datadogIgnoreFields
 	}
@@ -231,6 +236,7 @@ func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) 
 								Name:  bytesutil.ToUnsafeString(pair),
 								Value: "no_label_value",
 							})
+							continue
 						}
 						fields = append(fields, logstorage.Field{
 							Name:  bytesutil.ToUnsafeString(pair[:n]),
@@ -253,7 +259,7 @@ func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) 
 		if err != nil {
 			return err
 		}
-		lmp.AddRow(ts, fields, nil)
+		lmp.AddRow(ts, fields, -1)
 		fields = fields[:0]
 	}
 	return nil

@@ -7,6 +7,7 @@ import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { mergeSearchParams } from "../../../utils/query-string";
+import { TenantType } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
 
 interface FetchLogsParams {
   query?: string;
@@ -14,6 +15,7 @@ interface FetchLogsParams {
   limit?: number;
   extraParams?: URLSearchParams;
   beforeFetch?: BeforeFetch;
+  isDownload?: boolean;
 }
 
 export type BeforeFetchResult =
@@ -26,9 +28,10 @@ export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFet
 export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [logs, setLogs] = useState<Logs[]>([]);
+  const [queryParams, setQueryParams] = useState<Record<string, string>>({});
   const [durationMs, setDurationMs] = useState<number | undefined>();
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
   const [error, setError] = useState<ErrorTypes | string>();
@@ -70,14 +73,28 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     };
   };
 
+  const updateTenant = ({ accountId, projectId }: Partial<TenantType>) => {
+    if (accountId) searchParams.set("accountID", accountId);
+    if (projectId) searchParams.set("projectID", projectId);
+    setSearchParams(searchParams);
+  };
+
   const fetchLogs = useCallback(async ({
     query = defaultQuery,
     limit = defaultLimit,
     period,
     extraParams,
     beforeFetch,
+    isDownload = false,
   }: FetchLogsParams) => {
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    const options = buildOptions({ signal });
+
     let baseBody = buildBody({ query, limit, period, extraParams });
+
+    const preQueryParams = { ...Object.fromEntries(baseBody), ...options.headers };
+    setQueryParams(preQueryParams);
 
     if (beforeFetch) {
       // new instance to avoid mutation of original body
@@ -89,17 +106,28 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     }
 
     const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
-
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
+    const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));
     setError(undefined);
 
     try {
-      const options = buildOptions({ signal });
       const response = await fetch(url,  { body, ...options });
+
+      if (isDownload) {
+        return response;
+      }
+
+      const uiAccountId = (options.headers as Record<string, string>)?.AccountID;
+      const vlAccountId = response.headers.get("AccountID");
+      const changedAccountId = vlAccountId && vlAccountId !== uiAccountId;
+      if (changedAccountId) updateTenant({ accountId: vlAccountId });
+
+      const uiProjectId = (options.headers as Record<string, string>)?.ProjectID;
+      const vlProjectId = response.headers.get("ProjectID");
+      const changedProjectId = vlProjectId && vlProjectId !== uiProjectId;
+      if (changedProjectId) updateTenant({ projectId: vlProjectId });
 
       const duration = response.headers.get("vl-request-duration-seconds");
       setDurationMs(duration ? Number(duration) * 1000 : undefined);
@@ -113,6 +141,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
 
       const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
+      setQueryParams(tmpQueryParams);
       return data;
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
@@ -143,6 +172,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
 
   return {
     logs,
+    queryParams,
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchLogs,

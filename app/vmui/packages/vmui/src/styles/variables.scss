@@ -38,8 +38,8 @@ $padding-small: 8px;
 
 
 /************* fonts *************/
-$font-family-global: system-ui;
-$font-family-monospace: monospace;
+$font-family-global: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+$font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
 $font-size-large: 18px;
 $font-size-medium: 16px;
 $font-size: 14px;
@@ -47,11 +47,15 @@ $font-size-small: 12px;
 
 
 /************* border *************/
-$border-divider: var(--border-divider);
+$border-divider-width: var(--border-width);
+$border-divider-style: var(--border-style);
+$border-divider-color: var(--border-color);
+$border-divider: $border-divider-width $border-divider-style $border-divider-color;
 
 
 /************* border-radius *************/
 $border-radius-small: 4px;
+$border-radius-button: 6px;
 $border-radius-medium: 8px;
 $border-radius-large: 16px;
 

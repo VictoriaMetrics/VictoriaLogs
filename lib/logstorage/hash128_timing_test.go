@@ -9,7 +9,7 @@ import (
 func BenchmarkHash128(b *testing.B) {
 	a := make([][]byte, 100)
 	for i := range a {
-		a[i] = []byte(fmt.Sprintf("some string %d", i))
+		a[i] = fmt.Appendf(nil, "some string %d", i)
 	}
 	b.ReportAllocs()
 	b.SetBytes(int64(len(a)))

@@ -5,7 +5,8 @@ import {
   TableIcon,
   PlayIcon,
   VisibilityOffIcon,
-  VisibilityIcon
+  VisibilityIcon,
+  DownloadIcon
 } from "../../../components/Main/Icons";
 import Tabs from "../../../components/Main/Tabs/Tabs";
 import "./style.scss";
@@ -22,10 +23,11 @@ import LiveTailingView from "../../../components/Views/LiveTailingView/LiveTaili
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
-import Alert from "../../../components/Main/Alert/Alert";
+import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
 
 interface Props {
   data: Logs[];
+  queryParams?: Record<string, string>;
   isLoading: boolean;
   isPreview?: boolean;
 }
@@ -44,7 +46,7 @@ const tabs = [
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 
-const QueryPageBody: FC<Props> = ({ data, isLoading, isPreview }) => {
+const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) => {
   const { isMobile } = useDeviceDetect();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
@@ -96,36 +98,49 @@ const QueryPageBody: FC<Props> = ({ data, isLoading, isPreview }) => {
             items={tabs}
             onChange={handleChangeTab}
           />
-          {activeTab !== DisplayType.liveTailing && (
-            <div className="vm-query-page-body-header__log-info">
-              Total logs returned: <b>{data.length}</b>
-            </div>
-          )}
         </div>
         <div
-          className="vm-query-page-body-header__settings"
-          ref={settingsRef}
-        />
-        <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
-          <Button
-            variant="text"
-            color="primary"
-            startIcon={hideLogs ? <VisibilityOffIcon/> : <VisibilityIcon/>}
-            onClick={toggleHideLogs}
-            ariaLabel="settings"
-          />
-        </Tooltip>
+          className={classNames({
+          "vm-query-page-body-header__settings": true,
+          "vm-query-page-body-header__settings_mobile": isMobile,
+        })}
+        >
+          <div ref={settingsRef}/>
+          <DownloadLogsModal queryParams={queryParams}>
+            <Tooltip title="Download Logs">
+              <Button
+                variant="text"
+                startIcon={<DownloadIcon/>}
+                ariaLabel="Download Logs"
+              />
+            </Tooltip>
+          </DownloadLogsModal>
+          <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
+            <Button
+              variant="text"
+              color="primary"
+              startIcon={hideLogs ? <VisibilityIcon/> : <VisibilityOffIcon/>}
+              onClick={toggleHideLogs}
+              ariaLabel="settings"
+            >
+              {hideLogs ? "Show Logs" : ""}
+            </Button>
+          </Tooltip>
+        </div>
       </div>
 
       <div
         className={classNames({
-          "vm-query-page-body__table": true,
-          "vm-query-page-body__table_hide": hideLogs,
-          "vm-query-page-body__table_mobile": isMobile,
+          "vm-query-page-body__content": true,
+          "vm-query-page-body__content_hide": hideLogs,
+          "vm-query-page-body__content_mobile": isMobile,
+          "vm-query-page-body__content_table": activeTab === DisplayType.table,
         })}
       >
         {hideLogs && (
-          <Alert variant="info">Logs are hidden. Updates paused.</Alert>
+          <div className="vm-query-page-body__hiden-info">
+            Logs view is hidden. Data updates are paused.
+          </div>
         )}
 
         {!hideLogs && ActiveTabComponent &&

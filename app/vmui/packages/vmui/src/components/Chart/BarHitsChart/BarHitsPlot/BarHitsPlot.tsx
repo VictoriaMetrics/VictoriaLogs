@@ -1,5 +1,4 @@
 import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
-import useElementSize from "../../../../hooks/useElementSize";
 import uPlot, { AlignedData } from "uplot";
 import { GraphOptions } from "../types";
 import usePlotScale from "../../../../hooks/uplot/usePlotScale";
@@ -16,7 +15,9 @@ import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import useDeviceDetect from "../../../../hooks/useDeviceDetect";
+import { cumulativeMatrix } from "../../../../utils/uplot/cumulative";
+import { Size, useResizeObserver } from "../../../../hooks/useResizeObserver";
 
 interface Props {
   logHits: LogHits[];
@@ -24,24 +25,32 @@ interface Props {
   data: AlignedData;
   period: TimeParams;
   setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
-  onApplyFilter: (value: ExtraFilter) => void;
   graphOptions: GraphOptions;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod, onApplyFilter }: Props) => {
+const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod }: Props) => {
+  const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
-  const [containerRef, containerSize] = useElementSize();
+  const containerRef = useRef<HTMLDivElement>(null);
   const uPlotRef = useRef<HTMLDivElement>(null);
   const [uPlotInst, setUPlotInst] = useState<uPlot>();
+
+  const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
 
   const { xRange, setPlotScale } = usePlotScale({ period, setPeriod });
   const { onReadyChart, isPanning } = useReadyChart(setPlotScale);
   useZoomChart({ uPlotInst, xRange, setPlotScale });
 
+  const transformedData = useMemo(() => {
+    if (graphOptions.cumulative) return cumulativeMatrix(_data);
+    return _data;
+  }, [graphOptions.cumulative, _data]);
+
   const { data, bands } = useMemo(() => {
-    return graphOptions.stacked ? stack(_data, () => false) : { data: _data, bands: [] };
-  }, [graphOptions, _data]);
+    if (graphOptions.stacked) return stack(transformedData, () => false);
+    return { data: transformedData, bands: [] };
+  }, [graphOptions.stacked, transformedData]);
 
   const { options, series, focusDataIdx } = useBarHitsOptions({
     data,
@@ -52,7 +61,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     onReadyChart,
     setPlotScale,
     graphOptions,
-    timezone
+    timezone,
+    setPeriod
   });
 
   const legendDetails: LegendLogHits[] = useMemo(() => {
@@ -71,6 +81,10 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
       return legendItem;
     }).sort(sortLogHits("total"));
   }, [logHits, totalHits, series]);
+
+  const isSingleOtherSeries = useMemo(() => {
+    return legendDetails.length === 1 && legendDetails.every(l => l.isOther);
+  }, [legendDetails]);
 
   useEffect(() => {
     if (!uPlotInst) return;
@@ -112,7 +126,10 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
 
   useEffect(() => {
     if (!uPlotInst) return;
-    uPlotInst.setSize(containerSize);
+    uPlotInst.setSize({
+      width: containerSize.width || window.innerWidth / 2,
+      height: containerSize.height || window.innerHeight / 4,
+    });
     uPlotInst.redraw();
   }, [containerSize]);
 
@@ -121,6 +138,8 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
     uPlotInst.setData(data);
     uPlotInst.redraw();
   }, [data]);
+
+  useResizeObserver({ ref: containerRef, onResize: setContainerSize });
 
   return (
     <>
@@ -135,17 +154,20 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
           className="vm-line-chart__u-plot"
           ref={uPlotRef}
         />
-        <BarHitsTooltip
-          uPlotInst={uPlotInst}
-          data={_data}
-          focusDataIdx={focusDataIdx}
-        />
+        {!isMobile && (
+          <BarHitsTooltip
+            uPlotInst={uPlotInst}
+            data={transformedData}
+            focusDataIdx={focusDataIdx}
+          />
+        )}
       </div>
-      {uPlotInst && <BarHitsLegend
-        uPlotInst={uPlotInst}
-        onApplyFilter={onApplyFilter}
-        legendDetails={legendDetails}
-      />}
+      {uPlotInst && !isSingleOtherSeries && (
+        <BarHitsLegend
+          uPlotInst={uPlotInst}
+          legendDetails={legendDetails}
+        />
+      )}
     </>
   );
 };

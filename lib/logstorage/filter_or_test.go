@@ -84,7 +84,7 @@ func TestGetCommonTokensForOrFilters(t *testing.T) {
 		if _, ok := q.f.(*filterNoop); ok {
 			// The query is noop, so there are no common tokens
 			if len(tokensExpected) > 0 {
-				t.Fatalf("got no tokens, expecting tokens %q", tokensExpected)
+				t.Fatalf("got no tokens, expecting tokens %v", tokensExpected)
 			}
 			return
 		}

@@ -1,46 +1,39 @@
-import { FC } from "preact/compat";
-import { Series } from "uplot";
+import { FC, useCallback } from "preact/compat";
 import "./style.scss";
-import { LegendLogHits } from "../../../../api/types";
+import { LegendLogHits, LegendLogHitsMenu } from "../../../../api/types";
 import LegendHitsMenuStats from "./LegendHitsMenuStats";
 import LegendHitsMenuBase from "./LegendHitsMenuBase";
 import LegendHitsMenuRow from "./LegendHitsMenuRow";
 import LegendHitsMenuFields from "./LegendHitsMenuFields";
 import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
-import { ExtraFilter } from "../../../../pages/OverviewPage/FiltersBar/types";
+import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
+import { ExtraFilter } from "../../../ExtraFilters/types";
 
-const otherDescription = `aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
+const otherDescription = `Aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
 
 interface Props {
   legend: LegendLogHits;
   fields: string[];
-  series: Series[];
-  onApplyFilter: (value: ExtraFilter) => void;
-  onRedrawGraph: () => void;
+  optionsVisibilitySection: LegendLogHitsMenu[];
   onClose: () => void;
 }
 
-const LegendHitsMenu: FC<Props> = ({ legend, fields, series, onApplyFilter, onRedrawGraph, onClose }) => {
+const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, onClose }) => {
+  const { addNewFilter } = useExtraFilters();
+
+  const handleApplyFilter = useCallback((filter: ExtraFilter) => {
+    addNewFilter(filter);
+  }, [addNewFilter]);
+
   return (
     <div className="vm-legend-hits-menu">
-      {legend.isOther && (
-        <div className="vm-legend-hits-menu-section vm-legend-hits-menu-section_info">
-          <LegendHitsMenuRow title={otherDescription}/>
-        </div>
-      )}
-
-      <LegendHitsMenuVisibility
-        legend={legend}
-        series={series}
-        onRedrawGraph={onRedrawGraph}
-        onClose={onClose}
-      />
+      <LegendHitsMenuVisibility options={optionsVisibilitySection} />
 
       {!legend.isOther && (
         <LegendHitsMenuBase
           legend={legend}
-          onApplyFilter={onApplyFilter}
+          onApplyFilter={handleApplyFilter}
           onClose={onClose}
         />
       )}
@@ -48,12 +41,18 @@ const LegendHitsMenu: FC<Props> = ({ legend, fields, series, onApplyFilter, onRe
       {!legend.isOther && (
         <LegendHitsMenuFields
           fields={fields}
-          onApplyFilter={onApplyFilter}
+          onApplyFilter={handleApplyFilter}
           onClose={onClose}
         />
       )}
 
       <LegendHitsMenuStats legend={legend}/>
+
+      {legend.isOther && (
+        <div className="vm-legend-hits-menu-section vm-legend-hits-menu-section_info">
+          <LegendHitsMenuRow title={otherDescription}/>
+        </div>
+      )}
     </div>
   );
 };

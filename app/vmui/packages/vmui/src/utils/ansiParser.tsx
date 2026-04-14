@@ -68,7 +68,7 @@ const updateStyles = (
       return { color: null, fontWeight: null, fontStyle: null, textDecoration: null, backgroundColor: null };
     case 30: case 31: case 32: case 33:
     case 34: case 35: case 36: case 37:
-      // Set foreground color.
+      // Set the foreground color.
       return { ...styles, color: getAnsiColor(code - 30) };
     case 90: case 91: case 92: case 93:
     case 94: case 95: case 96: case 97:
@@ -121,6 +121,8 @@ const updateStyles = (
  * @returns An array of ReactNode elements.
  */
 export const parseAnsiToHtml = (input: string): ReactNode[] => {
+  ansiRegex.lastIndex = 0;
+
   let lastIndex = 0;
   const result: ReactNode[] = [];
   let currentStyles: AnsiStyles = {
@@ -131,7 +133,7 @@ export const parseAnsiToHtml = (input: string): ReactNode[] => {
     backgroundColor: null
   };
 
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = ansiRegex.exec(input)) !== null) {
     // Process text before the ANSI escape sequence.
     const plainText = input.slice(lastIndex, match.index);

@@ -2,7 +2,7 @@ import { FC, useMemo } from "preact/compat";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
-import { useExtraFilters } from "../../hooks/useExtraFilters";
+import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useEffect } from "react";
 import "./style.scss";
 import LineLoader from "../../../../components/Main/LineLoader/LineLoader";
@@ -52,7 +52,16 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
   return (
     <div className="vm-cardinality-card">
       {isLoading && <LineLoader/>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && (
+        <div className="vm-cardinality-card__error">
+          <Alert
+            title="Failed to load cardinality data"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
 
       <div className="vm-top-fields-header">
         <h2 className="vm-title vm-top-fields-header__title">

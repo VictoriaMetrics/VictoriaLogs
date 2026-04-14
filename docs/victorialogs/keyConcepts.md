@@ -10,8 +10,9 @@ menu:
 tags:
   - logs
 aliases:
-- /victorialogs/keyConcepts.html
 - /victorialogs/keyConcepts/
+- /victorialogs/keyConcepts.html
+- /VictoriaLogs/keyConcepts.html
 ---
 ## Data model
 
@@ -110,6 +111,9 @@ Unicode characters must be encoded with [UTF-8](https://en.wikipedia.org/wiki/UT
 }
 ```
 
+It is possible to preserve the original values for the given set of JSON keys by enumerating them in the `preserve_json_keys`
+query arg or `VL-Preserve-JSON-Keys` http request header according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
+
 VictoriaLogs automatically indexes all the fields in all the [ingested](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs.
 This enables [full-text search](https://docs.victoriametrics.com/victorialogs/logsql/) across all the fields.
 
@@ -121,8 +125,8 @@ VictoriaLogs supports the following special fields in addition to arbitrary [oth
 
 ### Message field
 
-Every ingested [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) must contain at least a `_msg` field with the actual log message. For example, this is the minimal
-log entry for VictoriaLogs:
+It is expected that every ingested [log entry](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) contains at least a `_msg` field with the actual log message.
+For example, this is the minimal log entry for VictoriaLogs:
 
 ```json
 {
@@ -136,7 +140,8 @@ For example, if the log message is located in the `event.original` field, then s
 See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details.
 
 If the `_msg` field remains empty after an attempt to get it from `_msg_field`, then VictoriaLogs automatically sets it to the value specified
-via `-defaultMsgValue` command-line flag.
+via `-defaultMsgValue` command-line flag. It is OK to have an empty `_msg` field if log entry contains essential information in other fields -
+VictoriaLogs just fills the `_msg` with the `-defaultMsgValue` constant, which is very lightweight for processing and querying.
 
 ```mermaid
 flowchart LR
@@ -144,7 +149,7 @@ flowchart LR
   B -- yes --> C["Use first non-empty (by list order) as _msg"]
   B -- no  --> D{"_msg present?"}
   D -- yes --> E["Use _msg"]
-  D -- no  --> F["Use default message"]
+  D -- no  --> F["Use -defaultMsgValue"]
 ```
 
 ### Time field
@@ -156,6 +161,7 @@ This field must be in one of the following formats:
   For example, `2023-06-20T15:32:10Z` or `2023-06-20 15:32:10.123456789+02:00`.
   If timezone information is missing (for example, `2023-06-20 15:32:10`),
   then the time is parsed in the local timezone of the host where VictoriaLogs runs.
+  See [how to control local timezone at VictoriaLogs server](https://docs.victoriametrics.com/victorialogs/#server-side-timezone).
 
 - Unix timestamp in seconds, milliseconds, microseconds or nanoseconds. For example, `1686026893` (seconds), `1686026893735` (milliseconds),
   `1686026893735321` (microseconds) or `1686026893735321098` (nanoseconds).
@@ -280,7 +286,7 @@ VictoriaLogs works perfectly with such fields unless they are associated with [l
 VictoriaLogs exposes `vl_streams_created_total` [metric](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total),
 which shows the number of created streams since the last VictoriaLogs restart. If this metric grows at a rapid rate
 over a long period of time, then there is a high chance of high-cardinality issues mentioned above.
-VictoriaLogs can log all the newly registered streams when `-logNewStreams` command-line flag is passed to it.
+VictoriaLogs can log all the newly registered streams - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
 This can help narrow down and eliminate high-cardinality fields from [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
 
 ### Other fields

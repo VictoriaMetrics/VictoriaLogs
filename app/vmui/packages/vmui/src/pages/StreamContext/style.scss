@@ -1,5 +1,5 @@
 @use "src/styles/variables" as *;
-@use 'sass:color';
+@use "sass:color";
 
 .vm-stream-context-page {
   position: relative;
@@ -18,6 +18,8 @@
   }
 
   &__target-row {
+    background-color: rgba($color-dodger-blue, 0.15);
+    border-radius: $border-radius-small;
     position: sticky;
     top: 59px;
     bottom: 0;
@@ -44,6 +46,10 @@
     }
   }
 
+  &__error {
+    padding-top: $padding-global;
+  }
+
   &__load-more {
     display: flex;
     align-items: center;
@@ -63,23 +69,29 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: $padding-large;
     border-bottom: $border-divider;
     background-color: $color-background-block;
     z-index: 1;
 
+    &_page {
+      border-top: $border-divider;
+    }
+
     &-title {
-      flex-grow: 1;
       display: grid;
       gap: $padding-small;
+    }
 
-      &__info {
-        display: flex;
-        align-items: center;
-        gap: $padding-large;
-        font-size: $font-size-small;
-        color: $color-text-secondary;
-      }
+    &-streams {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: calc($padding-small / 2);
+      font-size: $font-size-small;
     }
 
     &__link {
@@ -90,6 +102,6 @@
   }
 
   &_modal &-header {
-    top: 51px
+    top: 41px
   }
 }

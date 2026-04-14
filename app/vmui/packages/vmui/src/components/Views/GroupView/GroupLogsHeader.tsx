@@ -6,8 +6,9 @@ import useEventListener from "../../../hooks/useEventListener";
 import Popper from "../../Main/Popper/Popper";
 import useBoolean from "../../../hooks/useBoolean";
 import GroupLogsHeaderItem from "./GroupLogsHeaderItem";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
+import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
 import { GroupLogsType } from "../../../types";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   group: GroupLogsType;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 const GroupLogsHeader: FC<Props> = ({ group, index }) => {
+  const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const [searchParams] = useSearchParams();
 
@@ -30,7 +32,7 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
   const [hideParisCount, setHideParisCount] = useState<number>(0);
 
   const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
-  const compactGroupHeader = searchParams.get(LOGS_URL_PARAMS.COMPACT_GROUP_HEADER) === "true";
+  const compactGroupHeader = isMobile || searchParams.get(LOGS_URL_PARAMS.COMPACT_GROUP_HEADER) === "true";
 
   const pairs = group.pairs;
   const hideAboveIndex = pairs.length - hideParisCount - 1;
@@ -76,7 +78,7 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
       ref={containerRef}
     >
       <span className="vm-group-logs-section-keys__title">
-        {groupBy === WITHOUT_GROUPING ? WITHOUT_GROUPING : <>{index + 1}. Group by <code>{groupBy}</code>:</>}
+        {index + 1}. Group by <code>{groupBy}</code>
       </span>
       {pairs.map((pair, i) => (
         <GroupLogsHeaderItem

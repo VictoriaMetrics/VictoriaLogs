@@ -10,7 +10,9 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      victorialogs:
+      vmauth:
+        condition: service_healthy
+      vlagent:
         condition: service_healthy
       victoriametrics:
         condition: service_healthy

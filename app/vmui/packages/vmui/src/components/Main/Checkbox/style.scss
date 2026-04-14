@@ -1,9 +1,57 @@
+@use "sass:map";
 @use "src/styles/variables" as *;
 
-$checkbox-size: 16px;
-$checkbox-padding: 2px;
-$checkbox-handle-size: $checkbox-size - ($checkbox-padding * 2);
-$checkbox-border-radius: $border-radius-small;
+$checkbox-sizes: (
+  small: (
+    size: 12px,
+    padding: 2px,
+    radius: $border-radius-small,
+    gap: $padding-small
+  ),
+  medium: (
+    size: 14px,
+    padding: 2px,
+    radius: $border-radius-small,
+    gap: $padding-small
+  ),
+  large: (
+    size: 16px,
+    padding: 3px,
+    radius: $border-radius-small,
+    gap: $padding-small
+  )
+);
+
+@mixin checkbox-size($name) {
+  $cfg: map.get($checkbox-sizes, $name);
+
+  $size: map.get($cfg, size);
+  $pad: map.get($cfg, padding);
+  $radius: map.get($cfg, radius);
+  $gap: map.get($cfg, gap);
+
+  $thumb: $size - ($pad * 2);
+
+  .vm-checkbox-track {
+    width: $size;
+    height: $size;
+    padding: $pad;
+    border-radius: $radius;
+
+    &__thumb {
+      width: $thumb;
+      height: $thumb;
+
+      svg {
+        width: $thumb;
+      }
+    }
+  }
+
+  .vm-checkbox__label {
+    margin-left: $gap;
+  }
+}
 
 .vm-checkbox {
   display: flex;
@@ -11,6 +59,18 @@ $checkbox-border-radius: $border-radius-small;
   justify-content: flex-start;
   cursor: pointer;
   user-select: none;
+
+  &_small {
+    @include checkbox-size(small);
+  }
+
+  &_medium {
+    @include checkbox-size(medium);
+  }
+
+  &_large {
+    @include checkbox-size(large);
+  }
 
   &_disabled {
     opacity: 0.6;
@@ -33,6 +93,19 @@ $checkbox-border-radius: $border-radius-small;
     border: 1px solid $color-primary;
   }
 
+  &_gray_active &-track {
+    border-color: transparent!important;
+    background-color: $border-divider-color;
+  }
+
+  &_gray &-track {
+    border: 1px solid $border-divider-color;
+  }
+
+  &_inherit &-track {
+    background-color: currentColor;
+  }
+
   &_active &-track {
     &__thumb {
       transform: scale(1);
@@ -49,18 +122,12 @@ $checkbox-border-radius: $border-radius-small;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: $checkbox-border-radius;
-    padding: $checkbox-padding;
-    width: $checkbox-size;
-    height: $checkbox-size;
     transition: background-color 200ms ease, opacity 300ms ease-out;
 
     &__thumb {
       display: grid;
       align-items: center;
       justify-content: center;
-      width: $checkbox-handle-size;
-      height: $checkbox-handle-size;
       color: $color-white;
       transform: scale(0);
       transition: transform 100ms ease-in-out;
@@ -71,7 +138,6 @@ $checkbox-border-radius: $border-radius-small;
     white-space: nowrap;
     font-size: inherit;
     color: inherit;
-    margin-left: $padding-small;
     transition: color 200ms ease;
   }
 }

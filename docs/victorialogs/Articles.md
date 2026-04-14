@@ -7,6 +7,8 @@ menu:
     identifier: "victorialogs-articles"
     weight: 70
 tags: []
+aliases:
+- /VictoriaLogs/Articles.html
 ---
 
 ## Third-party articles and slides
@@ -26,9 +28,11 @@ Kubernetes Deployment and Production:
 * [Kubernetes Monitoring — A Complete Solution, Part 8: Logging with VictoriaLogs](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-8-logging-with-victorialogs-f17c44461034)
 * [Kubernetes Monitoring — A Complete Solution, Part 9: Talos Linux System Logs with VictoriaLogs and Vector](https://medium.com/@ryanjjacobs/kubernetes-monitoring-a-complete-solution-part-9-talos-linux-system-logs-with-victorialogs-and-65c1f1e44a23)
 * [VictoriaMetrics: migrating VMSingle and VictoriaLogs data between Kubernetes clusters](https://itnext.io/victoriametrics-migrating-vmsingle-and-victorialogs-data-between-kubernetes-clusters-23d0cba27cda)
+* [VictoriaLogs single server k8s setup gotchas](https://davidhernandez21.github.io/posts/Victorialogs-k8s-stack-gotchas/)
 
 Integration and Data Collection:
 
+* [GDPR-compliant website analytics with nginx, VictoriaLogs and Grafana](https://ayedo.de/posts/dsgvo-konforme-website-analytics-mit-nginx-victorialogs-und-grafana/)
 * [Vector.dev: introduction, AWS S3 logs, and integration with VictoriaLogs](https://itnext.io/vector-dev-introduction-aws-s3-logs-and-integration-with-victorialogs-d3585d7d9218)
 * [Using Vector and VictoriaLogs for Collect Switch Syslog](https://blog.vitalvas.com/post/2024/12/02/using-vector-and-victorialogs-for-collect-switch-syslog/)
 * [How to Extend Percona Monitoring and Management to Add Logging Functionality](https://www.percona.com/blog/how-to-extend-percona-monitoring-and-management-to-add-logging-functionality/)

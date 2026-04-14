@@ -16,6 +16,10 @@ func TestParsePipeUniqSuccess(t *testing.T) {
 	f(`uniq by (x, y) with hits`)
 	f(`uniq by (x, y) limit 10`)
 	f(`uniq by (x, y) with hits limit 10`)
+	f(`uniq by (x) filter abc`)
+	f(`uniq by (x) filter abc with hits`)
+	f(`uniq by (x) filter abc limit 10`)
+	f(`uniq by (x) filter abc with hits limit 10`)
 }
 
 func TestParsePipeUniqFailure(t *testing.T) {
@@ -37,6 +41,10 @@ func TestParsePipeUniqFailure(t *testing.T) {
 	f(`uniq by(x) limit`)
 	f(`uniq by(x) limit foo`)
 	f(`uniq by (x) with`)
+	f(`uniq by (x) filter`)
+
+	// filter cannot be applied to multiple fields
+	f(`uniq by (x, y) filter z`)
 }
 
 func TestPipeUniq(t *testing.T) {
@@ -109,6 +117,26 @@ func TestPipeUniq(t *testing.T) {
 		},
 	})
 
+	f("uniq b filter 5", [][]Field{
+		{
+			{"a", `2`},
+			{"b", `3`},
+		},
+		{
+			{"a", "2"},
+			{"b", "3"},
+		},
+		{
+			{"a", `2`},
+			{"b", `54`},
+			{"c", "d"},
+		},
+	}, [][]Field{
+		{
+			{"b", "54"},
+		},
+	})
+
 	f("uniq by (b) hits", [][]Field{
 		{
 			{"a", `2`},
@@ -131,6 +159,27 @@ func TestPipeUniq(t *testing.T) {
 		{
 			{"b", "54"},
 			{"hits", "1"},
+		},
+	})
+
+	f("uniq by (b) filter 3 hits", [][]Field{
+		{
+			{"a", `2`},
+			{"b", `3`},
+		},
+		{
+			{"a", "2"},
+			{"b", "3"},
+		},
+		{
+			{"a", `2`},
+			{"b", `54`},
+			{"c", "d"},
+		},
+	}, [][]Field{
+		{
+			{"b", "3"},
+			{"hits", "2"},
 		},
 	})
 

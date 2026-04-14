@@ -1,6 +1,6 @@
 import { useState, useCallback } from "preact/hooks";
 import { useAppState } from "../../../state/common/StateContext";
-import { LogsFiledValues } from "../../../api/types";
+import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
 
@@ -9,7 +9,8 @@ interface FetchOptions {
   end: number;
   query?: string;
   extraParams?: URLSearchParams;
-  showAllFields?: boolean;
+  skipNoiseFields?: boolean;
+  skipStreamFields?: boolean;
 }
 
 const NOISE_FIELDS = ["_msg", "_time"];
@@ -21,14 +22,17 @@ export const useFetchFieldNames = () => {
   const dispatch = useOverviewDispatch();
   const tenant = useTenant();
 
-  const [fieldNames, setFieldNames] = useState<LogsFiledValues[]>([]);
+  const [fieldNames, setFieldNames] = useState<LogsFieldValues[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string>("");
 
-  const setterFieldNames = (values: LogsFiledValues[], showAllFields?: boolean) => {
-    const filteredFieldNames = showAllFields
+  const setterFieldNames = (values: LogsFieldValues[], skipNoiseFields = true, skipStreamFields = false) => {
+    const noiseFields = skipNoiseFields ? NOISE_FIELDS : [];
+    const streamFields = skipStreamFields ? STREAM_FIELDS : [];
+    const skipFields = noiseFields.concat(streamFields);
+    const filteredFieldNames = !skipFields.length
       ? values
-      : values.filter(v => !NOISE_FIELDS.concat(STREAM_FIELDS).includes(v.value));
+      : values.filter(v => !skipFields.includes(v.value));
     setFieldNames(filteredFieldNames);
   };
 
@@ -53,13 +57,17 @@ export const useFetchFieldNames = () => {
       const cacheKey = queryParams + JSON.stringify(tenant);
 
       if (fieldNamesParamsKey === cacheKey) {
-        setterFieldNames(fieldNamesState, options.showAllFields);
+        setterFieldNames(fieldNamesState, options.skipNoiseFields, options.skipStreamFields);
         setLoading(false);
         return;
       }
 
-      const url = `${serverUrl}/select/logsql/field_names?${queryParams}`;
-      const response = await fetch(url, { headers });
+      const url = `${serverUrl}/select/logsql/field_names`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: params,
+      });
 
       if (!response.ok) {
         const errorResponse = await response.text();
@@ -69,8 +77,8 @@ export const useFetchFieldNames = () => {
         return;
       }
 
-      const data: { values: LogsFiledValues[] } = await response.json();
-      setterFieldNames(data.values, options.showAllFields);
+      const data: { values: LogsFieldValues[] } = await response.json();
+      setterFieldNames(data.values, options.skipNoiseFields, options.skipStreamFields);
       dispatch({
         type: "SET_FIELD_NAMES",
         payload: { rows: data.values, key: cacheKey }

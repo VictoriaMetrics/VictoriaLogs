@@ -2,6 +2,7 @@ package netselect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -30,37 +30,52 @@ const (
 	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldNamesProtocolVersion = "v2"
+	FieldNamesProtocolVersion = "v4"
 
 	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldValuesProtocolVersion = "v2"
+	FieldValuesProtocolVersion = "v4"
 
 	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldNamesProtocolVersion = "v2"
+	StreamFieldNamesProtocolVersion = "v4"
 
 	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldValuesProtocolVersion = "v2"
+	StreamFieldValuesProtocolVersion = "v4"
 
 	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamsProtocolVersion = "v2"
+	StreamsProtocolVersion = "v4"
 
 	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamIDsProtocolVersion = "v2"
+	StreamIDsProtocolVersion = "v4"
 
 	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	QueryProtocolVersion = "v2"
+	QueryProtocolVersion = "v4"
+
+	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
+	//
+	// It must be updated every time the protocol changes.
+	DeleteRunTaskProtocolVersion = "v1"
+
+	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/delete/stop_task HTTP endpoint.
+	//
+	// It must be updated every time the protocol changes.
+	DeleteStopTaskProtocolVersion = "v1"
+
+	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/delete/active_tasks endpoint.
+	//
+	// It must be updated every time the protocol changes.
+	DeleteActiveTasksProtocolVersion = "v1"
 )
 
 // Storage is a network storage for querying remote storage nodes in the cluster.
@@ -154,7 +169,7 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 		if !sn.s.disableCompression {
 			bufLen := len(buf)
 			var err error
-			buf, err = zstd.Decompress(buf, buf)
+			buf, err = encoding.DecompressZSTD(buf, buf)
 			if err != nil {
 				return fmt.Errorf("cannot decompress data block: %w", err)
 			}
@@ -188,29 +203,33 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 	}
 }
 
-func (sn *storageNode) getFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+func (sn *storageNode) getFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(FieldNamesProtocolVersion, qctx)
+	args.Set("filter", filter)
 
 	return sn.getValuesWithHits(qctx, "/internal/select/field_names", args)
 }
 
-func (sn *storageNode) getFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func (sn *storageNode) getFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(FieldValuesProtocolVersion, qctx)
 	args.Set("field", fieldName)
+	args.Set("filter", filter)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
 	return sn.getValuesWithHits(qctx, "/internal/select/field_values", args)
 }
 
-func (sn *storageNode) getStreamFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+func (sn *storageNode) getStreamFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(StreamFieldNamesProtocolVersion, qctx)
+	args.Set("filter", filter)
 
 	return sn.getValuesWithHits(qctx, "/internal/select/stream_field_names", args)
 }
 
-func (sn *storageNode) getStreamFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func (sn *storageNode) getStreamFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(StreamFieldValuesProtocolVersion, qctx)
 	args.Set("field", fieldName)
+	args.Set("filter", filter)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
 	return sn.getValuesWithHits(qctx, "/internal/select/stream_field_values", args)
@@ -230,14 +249,40 @@ func (sn *storageNode) getStreamIDs(qctx *logstorage.QueryContext, limit uint64)
 	return sn.getValuesWithHits(qctx, "/internal/select/stream_ids", args)
 }
 
+func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	args := url.Values{}
+	args.Set("start", fmt.Sprintf("%d", start))
+	args.Set("end", fmt.Sprintf("%d", end))
+
+	path := "/internal/select/tenant_ids"
+	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
+	if err != nil {
+		return nil, err
+	}
+	var tenantIDs []logstorage.TenantID
+	if err := json.Unmarshal(data, &tenantIDs); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal tenantIDs received from %q; data=%q: %w", reqURL, data, err)
+	}
+	return tenantIDs, nil
+}
+
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
+	// ATTENTION: the *ProtocolVersion consts must be incremented every time the set of common args changes or its format changes.
+
 	args := url.Values{}
 	args.Set("version", version)
-	args.Set("tenant_ids", string(logstorage.MarshalTenantIDs(nil, qctx.TenantIDs)))
+	args.Set("tenant_ids", string(logstorage.MarshalTenantIDsToJSON(qctx.TenantIDs)))
 	args.Set("query", qctx.Query.String())
 	args.Set("timestamp", fmt.Sprintf("%d", qctx.Query.GetTimestamp()))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
 	args.Set("allow_partial_response", fmt.Sprintf("%v", qctx.AllowPartialResponse))
+
+	hiddenFieldsFilters, err := json.Marshal(qctx.HiddenFieldsFilters)
+	if err != nil {
+		logger.Panicf("BUG: cannot marshal HiddenFieldsFilters=%#v: %s", qctx.HiddenFieldsFilters, err)
+	}
+	args.Set("hidden_fields_filters", string(hiddenFieldsFilters))
+
 	return args
 }
 
@@ -267,7 +312,7 @@ func (sn *storageNode) getResponseForPathAndArgs(ctx context.Context, path strin
 	}
 
 	bbLen := len(bb.B)
-	bb.B, err = zstd.Decompress(bb.B, bb.B)
+	bb.B, err = encoding.DecompressZSTD(bb.B, bb.B)
 	if err != nil {
 		return nil, err
 	}
@@ -365,17 +410,14 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 	errs := make([]error, len(s.sns))
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			err := sn.runQuery(qctxLocal, func(db *logstorage.DataBlock) {
 				writeBlock(uint(nodeIdx), db)
 			})
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, qctx.AllowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -383,38 +425,46 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 }
 
 // GetFieldNames executes qctx and returns field names seen in results.
-func (s *Storage) GetFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+//
+// If the filter is non-empty, then only the field names containing the filter substring are returned.
+func (s *Storage) GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	return s.getValuesWithHits(qctx, 0, false, func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error) {
 		qctxLocal := qctx.WithContext(ctx)
-		return sn.getFieldNames(qctxLocal)
+		return sn.getFieldNames(qctxLocal, filter)
 	})
 }
 
 // GetFieldValues executes qctx and returns unique values for the fieldName seen in results.
 //
+// If the filter is non-empty, then only the field values containing the filter substring are returned.
+//
 // If limit > 0, then up to limit unique values are returned.
-func (s *Storage) GetFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func (s *Storage) GetFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	return s.getValuesWithHits(qctx, limit, true, func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error) {
 		qctxLocal := qctx.WithContext(ctx)
-		return sn.getFieldValues(qctxLocal, fieldName, limit)
+		return sn.getFieldValues(qctxLocal, fieldName, filter, limit)
 	})
 }
 
 // GetStreamFieldNames executes qctx and returns stream field names seen in results.
-func (s *Storage) GetStreamFieldNames(qctx *logstorage.QueryContext) ([]logstorage.ValueWithHits, error) {
+//
+// If the filter is non-empty, then only the field names containing the filter substring are returned.
+func (s *Storage) GetStreamFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	return s.getValuesWithHits(qctx, 0, false, func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error) {
 		qctxLocal := qctx.WithContext(ctx)
-		return sn.getStreamFieldNames(qctxLocal)
+		return sn.getStreamFieldNames(qctxLocal, filter)
 	})
 }
 
 // GetStreamFieldValues executes qctx and returns stream field values for the given fieldName seen in results.
 //
+// If the filter is non-empty, then only the field values containing the filter substring are returned.
+//
 // If limit > 0, then up to limit unique stream field values are returned.
-func (s *Storage) GetStreamFieldValues(qctx *logstorage.QueryContext, fieldName string, limit uint64) ([]logstorage.ValueWithHits, error) {
+func (s *Storage) GetStreamFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
 	return s.getValuesWithHits(qctx, limit, true, func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error) {
 		qctxLocal := qctx.WithContext(ctx)
-		return sn.getStreamFieldValues(qctxLocal, fieldName, limit)
+		return sn.getStreamFieldValues(qctxLocal, fieldName, filter, limit)
 	})
 }
 
@@ -438,6 +488,157 @@ func (s *Storage) GetStreamIDs(qctx *logstorage.QueryContext, limit uint64) ([]l
 	})
 }
 
+// DeleteRunTask starts deletion of logs for the given filter f at the given tenantIDs.
+func (s *Storage) DeleteRunTask(ctx context.Context, taskID string, timestamp int64, tenantIDs []logstorage.TenantID, f *logstorage.Filter) error {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errs := make([]error, len(s.sns))
+
+	// Return an error to the caller when at least a single storage node is unavailable.
+	// This improves awareness of the caller about unavailable storage nodes.
+	// If some storage node is unavailable, then the deletion task
+	// can start on arbitrary number of the remaining available nodes.
+	// It is OK to re-run the delete task in this case.
+	allowPartialResponse := false
+
+	var wg sync.WaitGroup
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
+			sn := s.sns[nodeIdx]
+			err := sn.deleteRunTask(ctxWithCancel, taskID, timestamp, tenantIDs, f)
+			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
+		})
+	}
+	wg.Wait()
+
+	return getFirstError(errs, allowPartialResponse)
+}
+
+// DeleteStopTask stops the delete task with the given taskID.
+func (s *Storage) DeleteStopTask(ctx context.Context, taskID string) error {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errs := make([]error, len(s.sns))
+
+	// Return an error to the caller when at least a single storage node is unavailable.
+	// This improves awareness of the caller about unavailable storage nodes.
+	// If some storage node is unavailable, then the deletion task can remain uncanceled on such nodes.
+	// It is OK to stop the delete task multiple times in this case.
+	allowPartialResponse := false
+
+	var wg sync.WaitGroup
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
+			sn := s.sns[nodeIdx]
+			err := sn.deleteStopTask(ctxWithCancel, taskID)
+			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
+		})
+	}
+	wg.Wait()
+
+	return getFirstError(errs, allowPartialResponse)
+}
+
+// DeleteActiveTasks returns the list of active delete tasks started via DeleteRunTask
+func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errs := make([]error, len(s.sns))
+	results := make([][]*logstorage.DeleteTask, len(s.sns))
+
+	// Return an error to the caller when at least a single storage node is unavailable,
+	// since this prevents from returning the full list of active delete tasks.
+	allowPartialResponse := false
+
+	var wg sync.WaitGroup
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
+			sn := s.sns[nodeIdx]
+			tasks, err := sn.deleteActiveTasks(ctxWithCancel)
+			results[nodeIdx] = tasks
+			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
+		})
+	}
+	wg.Wait()
+
+	if err := getFirstError(errs, allowPartialResponse); err != nil {
+		return nil, err
+	}
+
+	// Merge tasks received from storage nodes.
+	m := make(map[string]*logstorage.DeleteTask)
+	for _, tasks := range results {
+		for _, dt := range tasks {
+			dst := m[dt.TaskID]
+			if dst == nil {
+				m[dt.TaskID] = dt
+			}
+		}
+	}
+
+	tasks := make([]*logstorage.DeleteTask, 0, len(m))
+	for _, t := range m {
+		tasks = append(tasks, t)
+	}
+
+	return tasks, nil
+}
+
+// GetTenantIDs returns tenantIDs for the given start and end.
+func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	return s.getTenantIDs(ctx, start, end)
+}
+
+func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
+	ctxWithCancel, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	results := make([][]logstorage.TenantID, len(s.sns))
+	errs := make([]error, len(s.sns))
+
+	// Return an error to the caller when at least a single storage node is unavailable,
+	// since this may result in incomplete list of the returned tenantIDs, which may mislead the caller.
+	allowPartialResponse := false
+
+	var wg sync.WaitGroup
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
+			sn := s.sns[nodeIdx]
+			tenantIDs, err := sn.getTenantIDs(ctxWithCancel, start, end)
+			results[nodeIdx] = tenantIDs
+			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, allowPartialResponse)
+
+			if err != nil {
+				// Cancel the remaining parallel requests
+				cancel()
+			}
+		})
+	}
+	wg.Wait()
+
+	if err := getFirstError(errs, allowPartialResponse); err != nil {
+		return nil, err
+	}
+
+	// Deduplicate tenantIDs
+	m := make(map[logstorage.TenantID]struct{})
+	for _, tenantIDs := range results {
+		for _, tenantID := range tenantIDs {
+			m[tenantID] = struct{}{}
+		}
+	}
+
+	tenantIDs := make([]logstorage.TenantID, 0, len(m))
+	for tenantID := range m {
+		tenantIDs = append(tenantIDs, tenantID)
+	}
+
+	return tenantIDs, nil
+}
+
 func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64, resetHitsOnLimitExceeded bool,
 	callback func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error)) ([]logstorage.ValueWithHits, error) {
 
@@ -448,16 +649,13 @@ func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64,
 	errs := make([]error, len(s.sns))
 
 	var wg sync.WaitGroup
-	for i := range s.sns {
-		wg.Add(1)
-		go func(nodeIdx int) {
-			defer wg.Done()
-
+	for nodeIdx := range s.sns {
+		wg.Go(func() {
 			sn := s.sns[nodeIdx]
 			vhs, err := callback(ctxWithCancel, sn)
 			results[nodeIdx] = vhs
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, qctx.AllowPartialResponse)
-		}(i)
+		})
 	}
 	wg.Wait()
 
@@ -468,6 +666,76 @@ func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64,
 	vhs := logstorage.MergeValuesWithHits(results, limit, resetHitsOnLimitExceeded)
 
 	return vhs, nil
+}
+
+func (sn *storageNode) deleteRunTask(ctx context.Context, taskID string, timestamp int64, tenantIDs []logstorage.TenantID, f *logstorage.Filter) error {
+	args := url.Values{}
+	args.Set("version", DeleteRunTaskProtocolVersion)
+	args.Set("task_id", taskID)
+	args.Set("timestamp", fmt.Sprintf("%d", timestamp))
+	args.Set("tenant_ids", string(logstorage.MarshalTenantIDsToJSON(tenantIDs)))
+	args.Set("filter", f.String())
+
+	path := "/internal/delete/run_task"
+	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
+	if err != nil {
+		return err
+	}
+	if len(data) > 0 {
+		return fmt.Errorf("unexpected response body received from %q: %q", reqURL, data)
+	}
+
+	return nil
+}
+
+func (sn *storageNode) deleteStopTask(ctx context.Context, taskID string) error {
+	args := url.Values{}
+	args.Set("version", DeleteStopTaskProtocolVersion)
+	args.Set("task_id", taskID)
+
+	path := "/internal/delete/stop_task"
+	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
+	if err != nil {
+		return err
+	}
+	if len(data) > 0 {
+		return fmt.Errorf("unexpected response body received from %q: %q", reqURL, data)
+	}
+
+	return nil
+}
+
+func (sn *storageNode) deleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
+	args := url.Values{}
+	args.Set("version", DeleteActiveTasksProtocolVersion)
+
+	path := "/internal/delete/active_tasks"
+	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
+	if err != nil {
+		return nil, err
+	}
+
+	tasks, err := logstorage.UnmarshalDeleteTasksFromJSON(data)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse response from %q: %w; response body: %q", reqURL, err, data)
+	}
+
+	return tasks, nil
+}
+
+func (sn *storageNode) getPlainResponseBodyForPathAndArgs(ctx context.Context, path string, args url.Values) ([]byte, string, error) {
+	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(ctx, path, args)
+	if err != nil {
+		return nil, reqURL, err
+	}
+	defer responseBody.Close()
+
+	data, err := io.ReadAll(responseBody)
+	if err != nil {
+		return nil, reqURL, fmt.Errorf("cannot read response from %q: %w", reqURL, err)
+	}
+
+	return data, reqURL, nil
 }
 
 func (sn *storageNode) handleError(ctx context.Context, cancel func(), err error, allowPartialResponse bool) error {

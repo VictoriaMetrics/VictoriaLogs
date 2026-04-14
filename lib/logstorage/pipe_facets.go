@@ -66,8 +66,10 @@ func (pf *pipeFacets) splitToRemoteAndLocal(timestamp int64) (pipe, []pipe) {
 	psLocalStr := fmt.Sprintf(`stats by (field_name, field_value) sum(hits) as hits
 	        | total_stats by (field_name) count() as field_values_count
 		| filter field_values_count:<=%d
+		| delete field_values_count
 		| sort by (hits desc) limit %d partition by (field_name)
-		| sort by (field_name, hits desc)`, pf.maxValuesPerField, pf.limit)
+		| sort by (field_name, hits desc, field_value)
+		| fields field_name, field_value, hits`, pf.maxValuesPerField, pf.limit)
 	psLocal := mustParsePipes(psLocalStr, timestamp)
 
 	return &pRemote, psLocal
@@ -81,6 +83,10 @@ func (pf *pipeFacets) canReturnLastNResults() bool {
 	return false
 }
 
+func (pf *pipeFacets) isFixedOutputFieldsOrder() bool {
+	return true
+}
+
 func (pf *pipeFacets) updateNeededFields(f *prefixfilter.Filter) {
 	f.AddAllowFilter("*")
 }
@@ -89,7 +95,7 @@ func (pf *pipeFacets) hasFilterInWithQuery() bool {
 	return false
 }
 
-func (pf *pipeFacets) initFilterInValues(_ *inValuesCache, _ getFieldValuesFunc, _ bool) (pipe, error) {
+func (pf *pipeFacets) initFilterInValues(_ *inValuesCache, _ getFieldValuesFunc) (pipe, error) {
 	return pf, nil
 }
 
@@ -220,7 +226,7 @@ func (shard *pipeFacetsProcessorShard) updateFacetsForColumn(br *blockResult, c 
 			shard.updateStateInt64(fhs, n)
 		}
 	default:
-		for i := 0; i < br.rowsLen; i++ {
+		for i := range br.rowsLen {
 			v := c.getValueAtRow(br, i)
 			shard.updateStateGeneric(fhs, v, 1)
 		}
@@ -312,7 +318,7 @@ func (shard *pipeFacetsProcessorShard) getFieldHits(fieldName string) *pipeFacet
 	fhs, ok := shard.m[fieldName]
 	if !ok {
 		fhs = &pipeFacetsFieldHits{}
-		fhs.m.init(uint(shard.pfp.concurrency), &shard.stateSizeBudget)
+		fhs.m.init(uint(shard.pfp.concurrency), "", &shard.stateSizeBudget)
 		fieldNameCopy := shard.a.cloneString(fieldName)
 		shard.m[fieldNameCopy] = fhs
 		shard.stateSizeBudget -= len(fieldNameCopy) + int(unsafe.Sizeof(fhs)+unsafe.Sizeof(*fhs))

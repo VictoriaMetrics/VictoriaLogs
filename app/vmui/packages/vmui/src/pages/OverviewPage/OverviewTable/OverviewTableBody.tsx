@@ -1,21 +1,24 @@
 import { FC, ReactNode } from "preact/compat";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import Alert from "../../../components/Main/Alert/Alert";
-import Table, { Column } from "../../../components/Table/Table";
+import Table from "../../../components/Table/Table";
 import Pagination from "../../../components/Main/Pagination/Pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LogsFiledValues } from "../../../api/types";
+import { useEffect, useRef } from "react";
+import { LogsFieldValues } from "../../../api/types";
+import { useTableLogsPaginate } from "../../../components/Views/TableView/hooks/useTableLogsPaginate";
+import { type Column } from "../../../components/Table/types";
 
 export type OverviewTableProps = {
-  rows: LogsFiledValues[]
-  columns: Column<LogsFiledValues>[]
+  tableId: string;
+  rows: LogsFieldValues[]
+  columns: Column<LogsFieldValues>[]
   isLoading: boolean;
   error?: string | Error;
   isEmptyList?: boolean;
   emptyListText?: string;
-  onClickRow?: (row: LogsFiledValues, e: MouseEvent) => void;
-  detectActiveRow?: (row: LogsFiledValues) => boolean;
-  actionsRender?: (row: LogsFiledValues) => ReactNode;
+  onClickRow?: (row: LogsFieldValues, e: MouseEvent) => void;
+  detectActiveRow?: (row: LogsFieldValues) => boolean;
+  actionsRender?: (row: LogsFieldValues) => ReactNode;
 }
 
 interface Props extends  OverviewTableProps {
@@ -23,6 +26,7 @@ interface Props extends  OverviewTableProps {
 }
 
 const OverviewTableBody: FC<Props> = ({
+  tableId,
   rows,
   columns,
   isLoading,
@@ -35,30 +39,25 @@ const OverviewTableBody: FC<Props> = ({
   actionsRender
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const [page, setPage] = useState(1);
-  const paginationOffset = useMemo(() => {
-    const startIndex = (page - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    return { startIndex, endIndex };
-  }, [page, rowsPerPage]);
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    if (containerRef.current) {
-      const y = containerRef.current.getBoundingClientRect().top + window.scrollY - 50;
-      if (y < window.scrollY) window.scrollTo({ top: y });
-    }
-  };
+  const { page, offset, onChangePage } = useTableLogsPaginate({ rowsPerPage, containerRef });
 
   useEffect(() => {
-    setPage(1);
-  }, [rows, rowsPerPage]);
+    onChangePage(1);
+  }, [rows]);
 
   return (
     <div className="vm-top-fields-body">
       {isLoading && <LineLoader/>}
-      {error && <Alert variant="error">{error}</Alert>}
+      {error && (
+        <div className="vm-top-fields-body__error">
+          <Alert
+            title="Failed to load data"
+            variant="error"
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
 
       {isEmptyList && (
         <div className="vm-empty vm-top-fields-body__empty">
@@ -73,13 +72,13 @@ const OverviewTableBody: FC<Props> = ({
             ref={containerRef}
           >
             <Table
+              tableId={tableId}
               rows={rows}
               columns={columns}
-              defaultOrderBy={"hits"}
-              defaultOrderDir={"desc"}
+              defaultOrder={{ key: "hits", dir: "desc" }}
               isActiveRow={detectActiveRow}
               onClickRow={onClickRow}
-              paginationOffset={paginationOffset}
+              paginationOffset={offset}
               actionsRender={actionsRender}
             />
           </div>
@@ -87,7 +86,7 @@ const OverviewTableBody: FC<Props> = ({
             currentPage={page}
             totalItems={rows.length}
             itemsPerPage={rowsPerPage}
-            onPageChange={handlePageChange}
+            onPageChange={onChangePage}
           />
         </>
       )}

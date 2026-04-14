@@ -6,9 +6,9 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 In the project directory, you can run:
 
-### `npm start`
+### `npm run start:playground`
 
-Runs the app in the development mode.\
+Runs the app in the development mode and connects it to https://play-vmlogs.victoriametrics.com/ as backend.\
 Open [http://localhost:3000](http://localhost:3000) to view it in the browser.\
 Open [http://localhost:3000/#/icons](http://localhost:3000/#/icons) to view the icons used in the project.
 

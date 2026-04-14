@@ -30,7 +30,7 @@ func benchmarkParseProtobufRequest(b *testing.B, streams, rows, labels int) {
 	b.RunParallel(func(pb *testing.PB) {
 		body := getProtobufBody(streams, rows, labels)
 		for pb.Next() {
-			if err := parseProtobufRequest(body, blp, nil, false, true); err != nil {
+			if err := parseProtobufRequest(body, blp, nil, nil, "", false, true); err != nil {
 				panic(fmt.Errorf("unexpected error: %w", err))
 			}
 		}
@@ -39,12 +39,12 @@ func benchmarkParseProtobufRequest(b *testing.B, streams, rows, labels int) {
 
 func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 	var b []byte
-	var entries []Entry
-	streams := make([]Stream, streamsCount)
+	var entries []entry
+	streams := make([]stream, streamsCount)
 	for i := range streams {
 		b = b[:0]
 		b = append(b, '{')
-		for j := 0; j < labelsCount; j++ {
+		for j := range labelsCount {
 			b = append(b, "label_"...)
 			b = strconv.AppendInt(b, int64(j), 10)
 			b = append(b, `="value_`...)
@@ -59,11 +59,11 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 
 		var rowsBuf []byte
 		entriesLen := len(entries)
-		for j := 0; j < rowsCount; j++ {
+		for j := range rowsCount {
 			rowsBufLen := len(rowsBuf)
 			rowsBuf = append(rowsBuf, "value_"...)
 			rowsBuf = strconv.AppendInt(rowsBuf, int64(j), 10)
-			entries = append(entries, Entry{
+			entries = append(entries, entry{
 				Timestamp: time.Now(),
 				Line:      bytesutil.ToUnsafeString(rowsBuf[rowsBufLen:]),
 			})
@@ -73,7 +73,7 @@ func getProtobufBody(streamsCount, rowsCount, labelsCount int) []byte {
 		st.Labels = labels
 		st.Entries = entries[entriesLen:]
 	}
-	pr := PushRequest{
+	pr := pushRequest{
 		Streams: streams,
 	}
 

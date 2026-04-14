@@ -1,11 +1,11 @@
 @use "src/styles/variables" as *;
 @use "src/components/Main/Modal/style" as *;
-@use 'sass:color';
+@use "sass:color";
 
 $font-size-logs: var(--font-size-logs, $font-size-small);
 
 $actions-buttons: 2;
-$actions-width: calc(($actions-buttons*30px) + 10px);
+$actions-width: calc(($actions-buttons * 30px) + 10px);
 
 .vm-group-logs {
   margin-top: calc(-1 * $padding-medium);
@@ -13,6 +13,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
   &-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
 
@@ -24,11 +25,19 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         padding: $padding-small;
       }
     }
+
+    .vm-bar-hits-stats {
+      margin-right: $padding-small;
+    }
   }
 
   &-section {
     border-bottom: $border-divider;
     padding-bottom: $padding-small;
+
+    &__ungrouped {
+      padding-top: $padding-small;
+    }
 
     &-keys {
       position: relative;
@@ -91,6 +100,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         border-radius: $border-radius-medium;
         transition: background-color 0.3s ease-in, transform 0.1s ease-in, opacity 0.3s ease-in;
         white-space: nowrap;
+        cursor: pointer;
 
         &_hide {
           order: 2;
@@ -127,21 +137,34 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
     &-rows {
       font-size: $font-size-logs;
       font-variant-numeric: tabular-nums;
-      line-height: 1.3;
+      line-height: 1.2;
     }
   }
 
   &-row {
     position: relative;
+    margin-block: 1px;
 
     &:hover {
       z-index: 2;
     }
 
+    &:nth-child(2n) > &-content {
+      background-color: $color-hover-black;
+    }
+
     &-content {
       display: flex;
+      align-items: flex-start;
+      border-radius: $border-radius-small;
       padding: 2px $actions-width 2px 2px;
       cursor: pointer;
+
+      &_mobile {
+        flex-wrap: wrap;
+        gap: $padding-small;
+        border-bottom: $border-divider;
+      }
 
       &_active {
         padding-right: 0;
@@ -149,19 +172,19 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
       &_interactive {
         contain: layout;
-        will-change: background-color;
+        outline: 0 solid rgba($color-dodger-blue, 0.5);
+        outline-offset: -2px;
+        will-change: outline-width;
       }
 
       &_interactive:hover {
-        background-color: $color-hover-black;
+        outline-width: 2px;
       }
 
       &__arrow {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: $font-size;
         transform: rotate(-90deg);
         transition: transform 0.2s ease-out;
 
@@ -169,9 +192,9 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
           transform: rotate(0deg);
         }
 
-
         svg {
-          width: 16px;
+          width: $font-size;
+          height: $font-size;
         }
       }
 
@@ -232,7 +255,6 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
         p {
           font-family: $font-family-global;
-          line-height: 1.4;
         }
 
         pre {
@@ -286,7 +308,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         align-items: center;
         align-self: flex-start;
         border-radius: $border-radius-small;
-        padding: calc($padding-small/2);
+        padding: calc($padding-small / 2);
         visibility: hidden;
         border: $border-divider;
         background-color: $color-background-body;
@@ -297,7 +319,7 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         top: 0;
         border-color: transparent;
         background: transparent;
-        visibility:  visible;
+        visibility: visible;
       }
 
       &_interactive:hover &__actions {
@@ -307,8 +329,8 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
 
     &-fields {
       position: relative;
-      padding: $padding-small 0;
-      margin: $padding-small 0 $padding-small calc($padding-global * 2);
+      padding: 0;
+      margin-bottom: $padding-small;
       border: $border-divider;
       border-radius: $border-radius-small;
       overflow: auto;
@@ -317,6 +339,12 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
       font-family: $font-family-monospace;
       font-size: $font-size-logs;
       font-variant-numeric: tabular-nums;
+
+      &_mobile {
+        height: auto;
+        margin: $padding-small 0;
+        padding: calc($padding-small / 2);
+      }
 
       &_interactive &-item {
         contain: layout;
@@ -328,13 +356,51 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
       }
 
       &-item {
+        border-bottom: 1px dashed $border-divider-color;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &_mobile {
+          max-width: calc(100vw - ($padding-global * 4));
+          display: flex;
+          flex-wrap: wrap;
+          gap: calc($padding-small / 2);
+          align-items: flex-start;
+          justify-content: flex-start;
+          border-bottom: $border-divider;
+        }
+
+        &_mobile &__key {
+          flex-grow: 1;
+          color: $color-text-secondary;
+          max-width: calc(100% - 100px);
+          order: 1;
+        }
+
+        &_mobile &-controls {
+          flex-grow: 1;
+          order: 2;
+        }
+
+        &_mobile &__value {
+          order: 3;
+        }
+
+        &_mobile &-controls__wrapper {
+          width: 100%;
+          justify-content: flex-end;
+        }
+
         &-controls {
-          padding: 0 calc($padding-small / 2);
+          padding: 1px 2px;
 
           &__wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: opacity .1s ease-in;
           }
 
           &__button.vm-button_small {
@@ -348,18 +414,20 @@ $actions-width: calc(($actions-buttons*30px) + 10px);
         &__value {
           vertical-align: top;
           line-height: $font-size;
-          padding: calc($padding-small / 2);
+          padding: calc($padding-global / 2) calc($padding-small / 2);
         }
 
         &__key {
+          padding-inline: calc($padding-global / 2);
+          color: $color-text-secondary;
           overflow-wrap: break-word;
-          width: max-content;
         }
 
         &__value {
           width: 100%;
           word-break: break-all;
           white-space: pre-wrap;
+          text-wrap: balance;
         }
       }
     }

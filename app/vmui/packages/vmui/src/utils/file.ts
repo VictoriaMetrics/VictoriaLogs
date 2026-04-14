@@ -46,3 +46,8 @@ export const downloadJSON = (data: string, filename: string) => {
   const blob = new Blob([data], { type: "application/json" });
   downloadFile(blob, filename);
 };
+
+export const downloadJSONL = (data: string, filename: string) => {
+  const blob = new Blob([data], { type: "application/x-ndjson;charset=utf-8" });
+  downloadFile(blob, filename);
+};

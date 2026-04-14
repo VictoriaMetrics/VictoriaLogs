@@ -4,6 +4,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
@@ -35,18 +36,13 @@ func (pfc *ParallelFileCreator) Add(dstPath string, wc *WriteCloser, nocache boo
 // Run runs all the registered tasks for creating files in parallel.
 func (pfc *ParallelFileCreator) Run() {
 	var wg sync.WaitGroup
+	concurrencyCh := fsutil.GetConcurrencyCh()
 	for _, task := range pfc.tasks {
 		concurrencyCh <- struct{}{}
-		wg.Add(1)
-
-		go func(dstPath string, wc *WriteCloser, nocache bool) {
-			defer func() {
-				wg.Done()
-				<-concurrencyCh
-			}()
-
-			*wc = MustCreate(dstPath, nocache)
-		}(task.dstPath, task.wc, task.nocache)
+		wg.Go(func() {
+			*task.wc = MustCreate(task.dstPath, task.nocache)
+			<-concurrencyCh
+		})
 	}
 	wg.Wait()
 }
@@ -79,18 +75,13 @@ func (pfo *ParallelFileOpener) Add(path string, rc *ReadCloser, nocache bool) {
 // Run runs all the registered tasks for opening files in parallel.
 func (pfo *ParallelFileOpener) Run() {
 	var wg sync.WaitGroup
+	concurrencyCh := fsutil.GetConcurrencyCh()
 	for _, task := range pfo.tasks {
 		concurrencyCh <- struct{}{}
-		wg.Add(1)
-
-		go func(path string, rc *ReadCloser, nocache bool) {
-			defer func() {
-				wg.Done()
-				<-concurrencyCh
-			}()
-
-			*rc = MustOpen(path, nocache)
-		}(task.path, task.rc, task.nocache)
+		wg.Go(func() {
+			*task.rc = MustOpen(task.path, task.nocache)
+			<-concurrencyCh
+		})
 	}
 	wg.Wait()
 }
@@ -121,28 +112,22 @@ func (psw *ParallelStreamWriter) Add(dstPath string, src io.WriterTo) {
 // Run executes all the tasks added via Add() call in parallel.
 func (psw *ParallelStreamWriter) Run() {
 	var wg sync.WaitGroup
+	concurrencyCh := fsutil.GetConcurrencyCh()
 	for _, task := range psw.tasks {
 		concurrencyCh <- struct{}{}
-		wg.Add(1)
 
-		go func(dstPath string, src io.WriterTo) {
-			defer func() {
-				wg.Done()
-				<-concurrencyCh
-			}()
-
-			f := MustCreate(dstPath, false)
-			if _, err := src.WriteTo(f); err != nil {
+		wg.Go(func() {
+			f := MustCreate(task.dstPath, false)
+			if _, err := task.src.WriteTo(f); err != nil {
 				f.MustClose()
 				// Do not call MustRemovePath(path), so the user could inspect
 				// the file contents during investigation of the issue.
-				logger.Panicf("FATAL: cannot write data to %q: %s", dstPath, err)
+				logger.Panicf("FATAL: cannot write data to %q: %s", task.dstPath, err)
 			}
 			f.MustClose()
-		}(task.dstPath, task.src)
+
+			<-concurrencyCh
+		})
 	}
 	wg.Wait()
 }
-
-// concurrencyCh limits the concurrency of parallel operations performed by ParallelFileCreator, ParallelFileOpener and ParallelStreamWriter
-var concurrencyCh = make(chan struct{}, 256)

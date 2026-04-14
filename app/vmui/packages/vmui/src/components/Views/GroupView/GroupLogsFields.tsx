@@ -1,9 +1,10 @@
-import { FC, useMemo } from "preact/compat";
+import { FC } from "preact/compat";
 import { Logs } from "../../../api/types";
 import "./style.scss";
 import classNames from "classnames";
 import GroupLogsFieldRow from "./GroupLogsFieldRow";
 import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   log: Logs;
@@ -11,10 +12,7 @@ interface Props {
 }
 
 const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
-  const sortedFields = useMemo(() => {
-    return Object.entries(log)
-      .sort(([aKey], [bKey]) => aKey.localeCompare(bKey));
-  }, [log]);
+  const { isMobile } = useDeviceDetect();
 
   const [disabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
 
@@ -22,12 +20,13 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
     <div
       className={classNames({
         "vm-group-logs-row-fields": true,
+        "vm-group-logs-row-fields_mobile": isMobile,
         "vm-group-logs-row-fields_interactive": !disabledHovers
       })}
     >
       <table>
         <tbody>
-          {sortedFields.map(([key, value]) => (
+          {Object.entries(log).map(([key, value]) => (
             <GroupLogsFieldRow
               key={key}
               field={key}

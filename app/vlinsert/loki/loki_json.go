@@ -3,6 +3,7 @@ package loki
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -40,7 +41,7 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.cp.NewLogMessageProcessor("loki_json", false)
 		useDefaultStreamFields := len(cp.cp.StreamFields) == 0
-		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, useDefaultStreamFields, cp.parseMessage)
+		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, cp.cp.PreserveJSONKeys, cp.msgFieldsPrefix, useDefaultStreamFields, cp.parseMessage)
 		lmp.MustClose()
 		return err
 	})
@@ -63,7 +64,7 @@ var (
 	requestJSONDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="json"}`)
 )
 
-func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields, parseMessage bool) error {
+func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields, preserveKeys []string, msgFieldsPrefix string, useDefaultStreamFields, parseMessage bool) error {
 	p := parserPool.Get()
 	defer parserPool.Put(p)
 
@@ -81,8 +82,13 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 		return fmt.Errorf("`streams` item in the parsed JSON must contain an array; got %q", streamsV)
 	}
 
-	fields := getFields()
-	defer putFields(fields)
+	fieldsTmp := logstorage.GetFields()
+	defer func() {
+		// Explicitly clear fieldsTmp up to its' capacity in order to free up
+		// all the references to the original byte slice, so it could be freed by Go GC.
+		fieldsTmp.ClearUpToCapacity()
+		logstorage.PutFields(fieldsTmp)
+	}()
 
 	var msgParser *logstorage.JSONParser
 	if parseMessage {
@@ -90,11 +96,8 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 		defer logstorage.PutJSONParser(msgParser)
 	}
 
-	currentTimestamp := time.Now().UnixNano()
-
 	for _, stream := range streams {
 		// populate common labels from `stream` dict
-		fields.fields = fields.fields[:0]
 		labelsV := stream.Get("stream")
 		var labels *fastjson.Object
 		if labelsV != nil {
@@ -104,16 +107,11 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			}
 			labels = o
 		}
+		fieldsTmp.Reset()
 		labels.Visit(func(k []byte, v *fastjson.Value) {
 			vStr := getMarshaledJSONValue(v)
-			fields.fields = append(fields.fields, logstorage.Field{
-				Name:  bytesutil.ToUnsafeString(k),
-				Value: bytesutil.ToUnsafeString(vStr),
-			})
+			fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 		})
-		if err != nil {
-			return fmt.Errorf("error when parsing `stream` object: %w", err)
-		}
 
 		// populate messages from `values` array
 		linesV := stream.Get("values")
@@ -125,9 +123,9 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			return fmt.Errorf("`values` item in the parsed JSON must contain an array; got %q", linesV)
 		}
 
-		commonFieldsLen := len(fields.fields)
+		commonFieldsLen := len(fieldsTmp.Fields)
 		for _, line := range lines {
-			fields.fields = fields.fields[:commonFieldsLen]
+			fieldsTmp.Fields = fieldsTmp.Fields[:commonFieldsLen]
 
 			lineA, err := line.Array()
 			if err != nil {
@@ -147,7 +145,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				return fmt.Errorf("cannot parse log timestamp %q: %w", timestamp, err)
 			}
 			if ts == 0 {
-				ts = currentTimestamp
+				ts = time.Now().UnixNano()
 			}
 
 			// parse structured metadata - see https://grafana.com/docs/loki/latest/reference/loki-http-api/#ingest-logs
@@ -158,14 +156,8 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 				}
 				structuredMetadata.Visit(func(k []byte, v *fastjson.Value) {
 					vStr := getMarshaledJSONValue(v)
-					fields.fields = append(fields.fields, logstorage.Field{
-						Name:  bytesutil.ToUnsafeString(k),
-						Value: bytesutil.ToUnsafeString(vStr),
-					})
+					fieldsTmp.Add(bytesutil.ToUnsafeString(k), bytesutil.ToUnsafeString(vStr))
 				})
-				if err != nil {
-					return fmt.Errorf("error when parsing `structuredMetadata` object: %w", err)
-				}
 			}
 
 			// parse log message
@@ -173,39 +165,39 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			if err != nil {
 				return fmt.Errorf("unexpected log message type for %q; want string", lineA[1])
 			}
-			allowMsgRenaming := false
-			fields.fields, allowMsgRenaming = addMsgField(fields.fields, msgParser, bytesutil.ToUnsafeString(msg))
-
-			var streamFields []logstorage.Field
-			if useDefaultStreamFields {
-				streamFields = fields.fields[:commonFieldsLen]
-			}
+			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg), preserveKeys, msgFieldsPrefix)
 			if allowMsgRenaming {
-				logstorage.RenameField(fields.fields[commonFieldsLen:], msgFields, "_msg")
+				logstorage.RenameField(fieldsTmp.Fields[commonFieldsLen:], msgFields, "_msg")
 			}
-			lmp.AddRow(ts, fields.fields, streamFields)
+
+			streamFieldsLen := -1
+			if useDefaultStreamFields {
+				streamFieldsLen = commonFieldsLen
+			}
+
+			lmp.AddRow(ts, fieldsTmp.Fields, streamFieldsLen)
 		}
 	}
 
 	return nil
 }
 
-func addMsgField(dst []logstorage.Field, msgParser *logstorage.JSONParser, msg string) ([]logstorage.Field, bool) {
+func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msgOrig string, preserveKeys []string, msgFieldsPrefix string) bool {
+	// Log collectors can leave trailing whitespaces, see https://github.com/VictoriaMetrics/VictoriaLogs/issues/1044
+	msg := strings.TrimSpace(msgOrig)
+
 	if msgParser == nil || len(msg) < 2 || msg[0] != '{' || msg[len(msg)-1] != '}' {
-		return append(dst, logstorage.Field{
-			Name:  "_msg",
-			Value: msg,
-		}), false
+		fs.Add("_msg", msgOrig)
+		return false
 	}
-	if msgParser != nil && len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
-		if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg)); err == nil {
-			return append(dst, msgParser.Fields...), true
-		}
+
+	if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg), preserveKeys, msgFieldsPrefix); err != nil {
+		fs.Add("_msg", msgOrig)
+		return false
 	}
-	return append(dst, logstorage.Field{
-		Name:  "_msg",
-		Value: msg,
-	}), false
+
+	fs.Fields = append(fs.Fields, msgParser.Fields...)
+	return true
 }
 
 func parseLokiTimestamp(s string) (int64, error) {

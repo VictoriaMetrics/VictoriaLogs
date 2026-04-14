@@ -31,127 +31,49 @@ func TestComplexFilters(t *testing.T) {
 	}
 
 	// (foobar AND NOT baz AND (abcdef OR xyz))
-	f := &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-				},
-			},
-		},
-	}
+	f := newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{6})
 
 	// (foobaz AND NOT baz AND (abcdef OR xyz))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobaz",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobaz"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", nil)
 
 	// (foobaz AND NOT baz AND (abcdef OR xyz OR a))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "a",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+			newFilterPhrase("foo", "a"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{1, 6})
 
 	// (foobaz AND NOT qwert AND (abcdef OR xyz OR a))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "qwert",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "a",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "qwert")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+			newFilterPhrase("foo", "a"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{1, 3, 6})
 }
 
@@ -196,7 +118,7 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f filter, neededColumnName string, expectedValues []string, expectedTimestamps []int64) {
 	t.Helper()
 
-	so := newTestGenericSearchOptions([]TenantID{tenantID}, f, []string{neededColumnName, "_time"})
+	sso := newTestStorageSearchOptions([]TenantID{tenantID}, f, []string{neededColumnName, "_time"})
 	qs := &QueryStats{}
 
 	type result struct {
@@ -207,7 +129,7 @@ func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f fi
 	var results []result
 
 	const workersCount = 3
-	s.searchParallel(workersCount, so, qs, nil, func(_ uint, br *blockResult) {
+	s.searchParallel(workersCount, sso, qs, nil, func(_ uint, br *blockResult) {
 		// Verify columns
 		cs := br.getColumns()
 		if len(cs) != 2 {
@@ -270,7 +192,7 @@ func generateRowsFromColumns(s *Storage, tenantID TenantID, columns []column) {
 			})
 		}
 		timestamp := int64(i) * 1e9
-		lr.MustAdd(tenantID, timestamp, fields, nil)
+		lr.mustAdd(tenantID, timestamp, fields)
 	}
 	s.MustAddRows(lr)
 	PutLogRows(lr)

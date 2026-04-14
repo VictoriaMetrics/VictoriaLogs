@@ -10,6 +10,7 @@ tags:
   - logs
 aliases:
   - /victorialogs/data-ingestion/OpenTelemetry.html
+  - /VictoriaLogs/data-ingestion/OpenTelemetry.html
 ---
 VictoriaLogs supports both client open-telemetry [SDK](https://opentelemetry.io/docs/languages/) and [collector](https://opentelemetry.io/docs/collector/).
 

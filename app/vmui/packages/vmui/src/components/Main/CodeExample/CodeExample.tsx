@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from "preact/compat";
 import "./style.scss";
 import Tooltip from "../Tooltip/Tooltip";
 import Button from "../Button/Button";
-import { CopyIcon } from "../Icons";
+import { CopyIcon, DoneIcon } from "../Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 
 enum CopyState { copy = "Copy", copied = "Copied" }
@@ -11,6 +11,7 @@ const CodeExample: FC<{code: string}> = ({ code }) => {
   const copyToClipboard = useCopyToClipboard();
 
   const [tooltip, setTooltip] = useState(CopyState.copy);
+  const isCopied = tooltip === CopyState.copied;
   const handlerCopy = async () => {
     await copyToClipboard(code);
     setTooltip(CopyState.copied);
@@ -35,8 +36,9 @@ const CodeExample: FC<{code: string}> = ({ code }) => {
           <Button
             size="small"
             variant="text"
+            color="gray"
             onClick={handlerCopy}
-            startIcon={<CopyIcon/>}
+            startIcon={isCopied ? <DoneIcon/> : <CopyIcon/>}
             ariaLabel="close"
           />
         </Tooltip>

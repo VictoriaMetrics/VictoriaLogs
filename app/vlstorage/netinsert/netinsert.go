@@ -103,11 +103,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 
 	sn.isReachable.Store(true)
 
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		sn.backgroundFlusher()
-	}()
+	s.wg.Go(sn.backgroundFlusher)
 
 	_ = metrics.GetOrCreateGauge(fmt.Sprintf(`vl_insert_remote_is_reachable{addr=%q}`, addr), func() float64 {
 		if sn.isReachable.Load() {
@@ -126,16 +122,17 @@ func (sn *storageNode) backgroundFlusher() {
 	for {
 		select {
 		case <-sn.s.stopCh:
+			sn.flushPendingData(true)
 			return
 		case <-t.C:
-			sn.flushPendingData()
+			sn.flushPendingData(false)
 		}
 	}
 }
 
-func (sn *storageNode) flushPendingData() {
+func (sn *storageNode) flushPendingData(force bool) {
 	sn.pendingDataMu.Lock()
-	if time.Since(sn.pendingDataLastFlush) < time.Second {
+	if !force && time.Since(sn.pendingDataLastFlush) < time.Second {
 		// nothing to flush
 		sn.pendingDataMu.Unlock()
 		return
@@ -145,6 +142,16 @@ func (sn *storageNode) flushPendingData() {
 	sn.pendingDataMu.Unlock()
 
 	sn.mustSendInsertRequest(pendingData)
+}
+
+func (sn *storageNode) debugFlush() {
+	// Send pending samples to sn.
+	sn.flushPendingData(true)
+
+	// Instruct sn to convert the received samples into searchable parts.
+	if err := sn.doRequest("/internal/force_flush", nil); err != nil {
+		logger.Errorf("cannot convert pending samples into searchable parts: %s", err)
+	}
 }
 
 func (sn *storageNode) addRow(r *logstorage.InsertRow) {
@@ -226,9 +233,6 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		return errTemporarilyDisabled
 	}
 
-	ctx, cancel := contextutil.NewStopChanContext(sn.s.stopCh)
-	defer cancel()
-
 	var body io.Reader
 	if !sn.s.disableCompression {
 		bb := zstdBufPool.Get()
@@ -240,24 +244,42 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		body = pendingData.NewReader()
 	}
 
-	reqURL := sn.getRequestURL("/internal/insert")
-	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, body)
-	if err != nil {
-		return fmt.Errorf("cannot create an http request for %q: %w", reqURL, err)
+	if err := sn.doRequest("/internal/insert", body); err != nil {
+		return fmt.Errorf("cannot send data block with the length %d: %w", pendingData.Len(), err)
 	}
-	req.Header.Set("Content-Type", "application/octet-stream")
-	if !sn.s.disableCompression {
-		req.Header.Set("Content-Encoding", "zstd")
+
+	return nil
+}
+
+func (sn *storageNode) doRequest(path string, body io.Reader) error {
+	ctx, cancel := contextutil.NewStopChanContext(sn.s.stopCh)
+	defer cancel()
+
+	method := "GET"
+	if body != nil {
+		method = "POST"
+	}
+
+	reqURL := sn.getRequestURL(path)
+	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
+	if err != nil {
+		return fmt.Errorf("cannot create http %s request for %s: %w", method, reqURL, err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/octet-stream")
+		if !sn.s.disableCompression {
+			req.Header.Set("Content-Encoding", "zstd")
+		}
 	}
 	if err := sn.ac.SetHeaders(req, true); err != nil {
 		sn.sendErrors.Inc()
-		return fmt.Errorf("cannot set auth headers for %q: %w", reqURL, err)
+		return fmt.Errorf("cannot set auth headers for %s: %w", reqURL, err)
 	}
 
 	resp, err := sn.c.Do(req)
 	if err != nil {
 		sn.setDisableTemporarily()
-		return fmt.Errorf("cannot send data block with the length %d to %q: %s", pendingData.Len(), reqURL, err)
+		return fmt.Errorf("cannot send http request to %s: %s", reqURL, err)
 	}
 	defer resp.Body.Close()
 
@@ -268,12 +290,12 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		respBody = []byte(fmt.Sprintf("%s", err))
+		respBody = fmt.Appendf(nil, "%s", err)
 	}
 
 	sn.setDisableTemporarily()
 
-	return fmt.Errorf("unexpected status code returned when sending data block to %q: %d; want 2xx; response body: %q", reqURL, resp.StatusCode, respBody)
+	return fmt.Errorf("unexpected response status code for request to %s: %d; want 2xx; response body: %q", reqURL, resp.StatusCode, respBody)
 }
 
 func (sn *storageNode) getRequestURL(path string) string {
@@ -299,7 +321,7 @@ var zstdBufPool bytesutil.ByteBufferPool
 // Call MustStop on the returned storage when it is no longer needed.
 func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool) *Storage {
 	pendingDataBuffers := make(chan *bytesutil.ByteBuffer, concurrency*len(addrs))
-	for i := 0; i < cap(pendingDataBuffers); i++ {
+	for range cap(pendingDataBuffers) {
 		pendingDataBuffers <- &bytesutil.ByteBuffer{}
 	}
 
@@ -338,6 +360,15 @@ func (s *Storage) MustStop() {
 	close(s.stopCh)
 	s.wg.Wait()
 	s.sns = nil
+}
+
+// DebugFlush flushes pending samples to s, so they become visible for querying.
+func (s *Storage) DebugFlush() {
+	var wg sync.WaitGroup
+	for _, sn := range s.sns {
+		wg.Go(sn.debugFlush)
+	}
+	wg.Wait()
 }
 
 // AddRow adds the given log row into s.

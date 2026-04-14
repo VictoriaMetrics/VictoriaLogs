@@ -2,11 +2,13 @@ package internalselect
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -67,7 +69,7 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
-		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_request_errors_total{path=%q}`, path)).Inc()
+		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		// The return is skipped intentionally in order to track the duration of failed queries.
 	}
@@ -82,6 +84,11 @@ var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter
 	"/internal/select/stream_field_values": processStreamFieldValuesRequest,
 	"/internal/select/streams":             processStreamsRequest,
 	"/internal/select/stream_ids":          processStreamIDsRequest,
+	"/internal/select/tenant_ids":          processTenantIDsRequest,
+
+	"/internal/delete/run_task":     processDeleteRunTask,
+	"/internal/delete/stop_task":    processDeleteStopTask,
+	"/internal/delete/active_tasks": processDeleteActiveTasks,
 }
 
 func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -123,11 +130,10 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	var bufs atomicutil.Slice[bytesutil.ByteBuffer]
 
-	var errGlobalLock sync.Mutex
-	var errGlobal error
+	var errGlobal atomic.Pointer[error]
 
 	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
-		if errGlobal != nil {
+		if errGlobal.Load() != nil {
 			return
 		}
 
@@ -146,11 +152,7 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 		// Slow path - the bb must be sent to the client.
 		if err := sendBuf(bb); err != nil {
-			errGlobalLock.Lock()
-			if errGlobal != nil {
-				errGlobal = err
-			}
-			errGlobalLock.Unlock()
+			errGlobal.CompareAndSwap(nil, &err)
 		}
 	}
 
@@ -160,8 +162,8 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
 		return err
 	}
-	if errGlobal != nil {
-		return errGlobal
+	if errP := errGlobal.Load(); errP != nil {
+		return *errP
 	}
 
 	// Send the remaining data
@@ -186,10 +188,12 @@ func processFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
+	filter := r.FormValue("filter")
+
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
 
-	fieldNames, err := vlstorage.GetFieldNames(qctx)
+	fieldNames, err := vlstorage.GetFieldNames(qctx, filter)
 	if err != nil {
 		return fmt.Errorf("cannot obtain field names: %w", err)
 	}
@@ -204,6 +208,7 @@ func processFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	}
 
 	fieldName := r.FormValue("field")
+	filter := r.FormValue("filter")
 
 	limit, err := getInt64FromRequest(r, "limit")
 	if err != nil {
@@ -213,7 +218,7 @@ func processFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
 
-	fieldValues, err := vlstorage.GetFieldValues(qctx, fieldName, uint64(limit))
+	fieldValues, err := vlstorage.GetFieldValues(qctx, fieldName, filter, uint64(limit))
 	if err != nil {
 		return fmt.Errorf("cannot obtain field values: %w", err)
 	}
@@ -227,10 +232,12 @@ func processStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
+	filter := r.FormValue("filter")
+
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
 
-	fieldNames, err := vlstorage.GetStreamFieldNames(qctx)
+	fieldNames, err := vlstorage.GetStreamFieldNames(qctx, filter)
 	if err != nil {
 		return fmt.Errorf("cannot obtain stream field names: %w", err)
 	}
@@ -245,6 +252,7 @@ func processStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	}
 
 	fieldName := r.FormValue("field")
+	filter := r.FormValue("filter")
 
 	limit, err := getInt64FromRequest(r, "limit")
 	if err != nil {
@@ -254,7 +262,7 @@ func processStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
 
-	fieldValues, err := vlstorage.GetStreamFieldValues(qctx, fieldName, uint64(limit))
+	fieldValues, err := vlstorage.GetStreamFieldValues(qctx, fieldName, filter, uint64(limit))
 	if err != nil {
 		return fmt.Errorf("cannot obtain stream field values: %w", err)
 	}
@@ -306,6 +314,101 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	return writeValuesWithHits(w, qctx, streamIDs, cp.DisableCompression)
 }
 
+func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
+		return err
+	}
+
+	// Parse query args
+	taskID := r.FormValue("task_id")
+	if taskID == "" {
+		return fmt.Errorf("missing task_id arg")
+	}
+
+	timestamp, err := getInt64FromRequest(r, "timestamp")
+	if err != nil {
+		return err
+	}
+
+	tenantIDsStr := r.FormValue("tenant_ids")
+	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
+	if err != nil {
+		return fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
+	}
+
+	fStr := r.FormValue("filter")
+	f, err := logstorage.ParseFilter(fStr)
+	if err != nil {
+		return fmt.Errorf("cannot unmarshal filter=%q: %w", fStr, err)
+	}
+
+	// Execute the delete task
+	return vlstorage.DeleteRunTask(ctx, taskID, timestamp, tenantIDs, f)
+}
+
+func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if err := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion); err != nil {
+		return err
+	}
+
+	taskID := r.FormValue("task_id")
+	if taskID == "" {
+		return fmt.Errorf("missing task_id arg")
+	}
+
+	return vlstorage.DeleteStopTask(ctx, taskID)
+}
+
+func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	if err := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion); err != nil {
+		return err
+	}
+
+	tasks, err := vlstorage.DeleteActiveTasks(ctx)
+	if err != nil {
+		return err
+	}
+
+	data := logstorage.MarshalDeleteTasksToJSON(tasks)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, err := w.Write(data); err != nil {
+		return fmt.Errorf("cannot send response to the client: %w", err)
+	}
+
+	return nil
+}
+
+func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	start, err := getInt64FromRequest(r, "start")
+	if err != nil {
+		return err
+	}
+	end, err := getInt64FromRequest(r, "end")
+	if err != nil {
+		return err
+	}
+
+	tenantIDs, err := vlstorage.GetTenantIDs(ctx, start, end)
+	if err != nil {
+		return fmt.Errorf("cannot obtain tenant IDs: %w", err)
+	}
+
+	// Marshal tenantIDs at first
+	data, err := json.Marshal(tenantIDs)
+	if err != nil {
+		return fmt.Errorf("cannot marshal tenantIDs: %w", err)
+	}
+
+	// Send the marshaled tenantIDs to the client
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(data); err != nil {
+		return fmt.Errorf("cannot send response to the client: %w", err)
+	}
+	return nil
+}
+
 type commonParams struct {
 	TenantIDs []logstorage.TenantID
 	Query     *logstorage.Query
@@ -316,12 +419,15 @@ type commonParams struct {
 	// Whether to allow partial response when some of vlstorage nodes are unavailable.
 	AllowPartialResponse bool
 
+	// Optional list of log fields or log field prefixes ending with *, which must be hidden during query execution.
+	HiddenFieldsFilters []string
+
 	// qs contains execution statistics for the Query.
 	qs logstorage.QueryStats
 }
 
 func (cp *commonParams) NewQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse)
+	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
 }
 
 func (cp *commonParams) UpdatePerQueryStatsMetrics() {
@@ -329,14 +435,12 @@ func (cp *commonParams) UpdatePerQueryStatsMetrics() {
 }
 
 func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonParams, error) {
-	version := r.FormValue("version")
-	if version != expectedProtocolVersion {
-		return nil, fmt.Errorf("unexpected protocol version=%q; want %q; the most likely casue of this error is different versions of VictoriaLogs cluster components; "+
-			"make sure VictoriaLogs compoments have the same release version", version, expectedProtocolVersion)
+	if err := checkProtocolVersion(r, expectedProtocolVersion); err != nil {
+		return nil, err
 	}
 
 	tenantIDsStr := r.FormValue("tenant_ids")
-	tenantIDs, err := logstorage.UnmarshalTenantIDs([]byte(tenantIDsStr))
+	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
 	}
@@ -352,13 +456,18 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 		return nil, fmt.Errorf("cannot unmarshal query=%q: %w", qStr, err)
 	}
 
-	disableCompression := false
-	if err := getBoolFromRequest(&disableCompression, r, "disable_compression"); err != nil {
+	disableCompression, err := getBoolFromRequest(r, "disable_compression")
+	if err != nil {
 		return nil, err
 	}
 
-	allowPartialResponse := false
-	if err := getBoolFromRequest(&allowPartialResponse, r, "allow_partial_response"); err != nil {
+	allowPartialResponse, err := getBoolFromRequest(r, "allow_partial_response")
+	if err != nil {
+		return nil, err
+	}
+
+	hiddenFieldsFilters, err := getStringSliceFromRequest(r, "hidden_fields_filters")
+	if err != nil {
 		return nil, err
 	}
 
@@ -369,8 +478,18 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 		DisableCompression: disableCompression,
 
 		AllowPartialResponse: allowPartialResponse,
+		HiddenFieldsFilters:  hiddenFieldsFilters,
 	}
 	return cp, nil
+}
+
+func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
+	version := r.FormValue("version")
+	if version != expectedProtocolVersion {
+		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
+			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
+	}
+	return nil
 }
 
 func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, vhs []logstorage.ValueWithHits, disableCompression bool) error {
@@ -407,6 +526,9 @@ func marshalQueryStatsBlock(dst []byte, qctx *logstorage.QueryContext) []byte {
 
 func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
 	s := r.FormValue(argName)
+	if s == "" {
+		return 0, fmt.Errorf("missing the required arg %s", argName)
+	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse %s=%q: %w", argName, s, err)
@@ -414,15 +536,29 @@ func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
 	return n, nil
 }
 
-func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
+func getBoolFromRequest(r *http.Request, argName string) (bool, error) {
 	s := r.FormValue(argName)
 	if s == "" {
-		return nil
+		return false, fmt.Errorf("missing the required arg %s", argName)
 	}
 	b, err := strconv.ParseBool(s)
 	if err != nil {
-		return fmt.Errorf("cannot parse %s=%q as bool: %w", argName, s, err)
+		return false, fmt.Errorf("cannot parse %s=%q as bool: %w", argName, s, err)
 	}
-	*dst = b
-	return nil
+
+	return b, nil
+}
+
+func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
+	s := r.FormValue(argName)
+	if s == "" {
+		return nil, fmt.Errorf("missing the required arg %s", argName)
+	}
+
+	var a []string
+	if err := json.Unmarshal([]byte(s), &a); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal JSON array from %s=%q: %w", argName, s, err)
+	}
+
+	return a, nil
 }

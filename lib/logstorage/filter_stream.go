@@ -27,6 +27,12 @@ type filterStream struct {
 	streamIDs     map[streamID]struct{}
 }
 
+func newFilterStream(f *StreamFilter) *filterStream {
+	return &filterStream{
+		f: f,
+	}
+}
+
 func (fs *filterStream) String() string {
 	return fs.f.String()
 }
@@ -47,6 +53,11 @@ func (fs *filterStream) initStreamIDs() {
 		m[streamIDs[i]] = struct{}{}
 	}
 	fs.streamIDs = m
+}
+
+func (fs *filterStream) matchRow(fields []Field) bool {
+	v := getFieldValueByName(fields, "_stream")
+	return fs.f.matchStreamName(v)
 }
 
 func (fs *filterStream) applyToBlockResult(br *blockResult, bm *bitmap) {

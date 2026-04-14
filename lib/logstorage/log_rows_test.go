@@ -30,11 +30,11 @@ func TestLogRows_WildcardIgnoreFields(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil, ""); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1
-			lr.MustAdd(tid, timestamp, p.Fields, nil)
+			lr.mustAdd(tid, timestamp, p.Fields)
 		}
 
 		var result []string
@@ -72,8 +72,8 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 	type opts struct {
 		rows []string
 
-		streamFields []Field
-		ignoreFields []string
+		streamFieldsLen int
+		ignoreFields    []string
 
 		resultExpected []string
 	}
@@ -92,11 +92,11 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil, ""); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1
-			lr.MustAdd(tid, timestamp, p.Fields, o.streamFields)
+			lr.MustAdd(tid, timestamp, p.Fields, o.streamFieldsLen)
 		}
 
 		var result []string
@@ -113,19 +113,14 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 
 	o = opts{
 		rows: []string{
-			`{"foo":"bar","_msg":"abc"}`,
+			`{"xyz":"123","foo":"bar","_msg":"abc"}`,
 			`{"xyz":"bar","_msg":"abc"}`,
 			`{"xyz":"123","_msg":"abc"}`,
 		},
-		streamFields: []Field{
-			{
-				Name:  "xyz",
-				Value: "123",
-			},
-		},
+		streamFieldsLen: 1,
 		resultExpected: []string{
-			`{"_msg":"abc","_stream":"{xyz=\"123\"}","_time":"1970-01-01T00:00:00.000000001Z","foo":"bar"}`,
-			`{"_msg":"abc","_stream":"{xyz=\"123\"}","_time":"1970-01-01T00:00:00.000001001Z","xyz":"bar"}`,
+			`{"_msg":"abc","_stream":"{xyz=\"123\"}","_time":"1970-01-01T00:00:00.000000001Z","foo":"bar","xyz":"123"}`,
+			`{"_msg":"abc","_stream":"{xyz=\"bar\"}","_time":"1970-01-01T00:00:00.000001001Z","xyz":"bar"}`,
 			`{"_msg":"abc","_stream":"{xyz=\"123\"}","_time":"1970-01-01T00:00:00.000002001Z","xyz":"123"}`,
 		},
 	}
@@ -137,21 +132,12 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 			`{"xyz":"bar","_msg":"abc"}`,
 			`{"xyz":"123","_msg":"abc"}`,
 		},
-		streamFields: []Field{
-			{
-				Name:  "xyz",
-				Value: "123",
-			},
-			{
-				Name:  "f1",
-				Value: "v1",
-			},
-		},
-		ignoreFields: []string{"xyz", "qwert"},
+		streamFieldsLen: 0,
+		ignoreFields:    []string{"xyz", "qwert"},
 		resultExpected: []string{
-			`{"_msg":"abc","_stream":"{f1=\"v1\"}","_time":"1970-01-01T00:00:00.000000001Z","foo":"bar"}`,
-			`{"_msg":"abc","_stream":"{f1=\"v1\"}","_time":"1970-01-01T00:00:00.000001001Z"}`,
-			`{"_msg":"abc","_stream":"{f1=\"v1\"}","_time":"1970-01-01T00:00:00.000002001Z"}`,
+			`{"_msg":"abc","_stream":"{}","_time":"1970-01-01T00:00:00.000000001Z","foo":"bar"}`,
+			`{"_msg":"abc","_stream":"{}","_time":"1970-01-01T00:00:00.000001001Z"}`,
+			`{"_msg":"abc","_stream":"{}","_time":"1970-01-01T00:00:00.000002001Z"}`,
 		},
 	}
 	f(o)
@@ -184,11 +170,11 @@ func TestLogRows_DefaultMsgValue(t *testing.T) {
 		p := GetJSONParser()
 		defer PutJSONParser(p)
 		for i, r := range o.rows {
-			if err := p.ParseLogMessage([]byte(r)); err != nil {
+			if err := p.ParseLogMessage([]byte(r), nil, ""); err != nil {
 				t.Fatalf("unexpected error when parsing %q: %s", r, err)
 			}
 			timestamp := int64(i)*1_000 + 1
-			lr.MustAdd(tid, timestamp, p.Fields, nil)
+			lr.mustAdd(tid, timestamp, p.Fields)
 		}
 
 		var result []string
@@ -361,4 +347,122 @@ func TestInsertRow_MarshalUnmarshal(t *testing.T) {
 	if len(tail) > 0 {
 		t.Fatalf("unexpected tail left after unmarshaling InsertRow; len(tail)=%d; tail=%X", len(tail), tail)
 	}
+}
+
+func TestInsertRow_MarshalJSON(t *testing.T) {
+	f := func(ts int64, fields []Field, expected string) {
+		t.Helper()
+
+		r := InsertRow{
+			Timestamp: ts,
+			Fields:    fields,
+		}
+		got := r.AppendJSON(nil)
+
+		if string(got) != expected {
+			t.Fatalf("unexpected result\ngot\n%q\nwant\n%q", got, expected)
+		}
+	}
+
+	// empty fields
+	f(0, nil, `{"_time":"1970-01-01T00:00:00Z"}`)
+
+	// non-empty fields
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: "y",
+		},
+		{
+			Name:  "qwe",
+			Value: "rty",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","x":"y","qwe":"rty"}`)
+
+	// empty values
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: "",
+		},
+		{
+			Name:  "qwe",
+			Value: "",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z"}`)
+
+	// empty field name
+	f(123456789, []Field{
+		{
+			Name:  "",
+			Value: "y",
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","_msg":"y"}`)
+
+	// escape quotes
+	f(123456789, []Field{
+		{
+			Name:  "x",
+			Value: `"y"`,
+		},
+	}, `{"_time":"1970-01-01T00:00:00.123456789Z","x":"\"y\""}`)
+}
+
+func TestVerifyStreamTagsCanonical_Success(t *testing.T) {
+	f := func(streamTags, fieldsStr string) {
+		t.Helper()
+
+		st := GetStreamTags()
+		if err := st.unmarshalStringInplace(streamTags); err != nil {
+			t.Fatalf("cannot unmarshal stream tags: %s", err)
+		}
+		streamTagsCanonical := st.MarshalCanonical(nil)
+		PutStreamTags(st)
+
+		p := getLogfmtParser()
+		defer putLogfmtParser(p)
+		p.parse(fieldsStr)
+
+		if err := verifyStreamTagsCanonical(string(streamTagsCanonical), p.fields); err != nil {
+			t.Fatalf("cannot verify stream tags: %s", err)
+		}
+	}
+
+	f(`{}`, ``)
+	f(`{}`, `a=b c=d`)
+	f(`{a="b"}`, `a=b`)
+	f(`{a="b"}`, `x=y a=b q=w`)
+	f(`{a="b",c="d"}`, `c=d x=y a=b`)
+	f(`{a="b"}`, `a=b x=y a=b`)
+}
+
+func TestVerifyStreamTagsCanonical_Failure(t *testing.T) {
+	f := func(streamTags, fieldsStr string) {
+		t.Helper()
+
+		st := GetStreamTags()
+		if err := st.unmarshalStringInplace(streamTags); err != nil {
+			t.Fatalf("cannot unmarshal stream tags: %s", err)
+		}
+		streamTagsCanonical := st.MarshalCanonical(nil)
+		PutStreamTags(st)
+
+		p := getLogfmtParser()
+		defer putLogfmtParser(p)
+		p.parse(fieldsStr)
+
+		if err := verifyStreamTagsCanonical(string(streamTagsCanonical), p.fields); err == nil {
+			t.Fatalf("expecting non-nil error")
+		}
+	}
+
+	// missing value
+	f(`{a="b"}`, ``)
+	f(`{a="b"}`, `x=y`)
+
+	// value mismatch
+	f(`{a="b"}`, `a=c`)
+
+	// multiple fields with the same name
+	f(`{a="b"}`, `a=b x=y a=c`)
 }

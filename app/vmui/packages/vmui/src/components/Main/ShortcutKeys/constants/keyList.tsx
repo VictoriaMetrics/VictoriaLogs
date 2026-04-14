@@ -1,10 +1,9 @@
 import { isMacOs } from "../../../../utils/detect-device";
-import { VisibilityIcon } from "../../Icons";
-import GraphTips from "../../../Chart/GraphTips/GraphTips";
+import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 
-const ctrlMeta = <code>{isMacOs() ? "Cmd" : "Ctrl"}</code>;
+const ctrlMeta = <code>{ctrlKeyLabel}</code>;
 
-export const AUTOCOMPLETE_QUICK_KEY = <>{<code>{isMacOs() ? "Option" : "Ctrl"}</code>} + <code>Space</code></>;
+export const AUTOCOMPLETE_QUICK_KEY = <>{<code>{isMacOs() ? altKeyLabel : "Ctrl"}</code>} + <code>Space</code></>;
 
 const keyList = [
   {
@@ -27,10 +26,6 @@ const keyList = [
         description: "Next command from the Query history"
       },
       {
-        keys: <>{ctrlMeta} + <code>click</code> by <VisibilityIcon/></>,
-        description: "Toggle multiple queries"
-      },
-      {
         keys: AUTOCOMPLETE_QUICK_KEY,
         description: "Show quick autocomplete tips"
       }
@@ -38,7 +33,6 @@ const keyList = [
   },
   {
     title: "Graph",
-    readMore: <GraphTips/>,
     list: [
       {
         keys: <>{ctrlMeta} + <code>scroll Up</code> or <code>+</code></>,
@@ -53,12 +47,20 @@ const keyList = [
         description: "Move the graph left/right"
       },
       {
-        keys: <><code>click</code></>,
-        description: "Select the series in the legend"
+        keys: <><code>click</code> on legend item</>,
+        description: "Open the legend item menu"
       },
       {
-        keys: <>{ctrlMeta} + <code>click</code></>,
-        description: "Toggle multiple series in the legend"
+        keys: <><code>{altKeyLabel}</code> + <code>click</code> on legend item</>,
+        description: "Hide or show this series"
+      },
+      {
+        keys: <>{ctrlMeta} + <code>click</code> on legend item</>,
+        description: "Show only this series or show all series"
+      },
+      {
+        keys: <><code>Click</code> on bar</>,
+        description: "Set the time range to the selected bar"
       }
     ]
   },

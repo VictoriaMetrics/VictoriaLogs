@@ -2,6 +2,7 @@ package vlstorage
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -16,9 +17,10 @@ func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit 
 	if err != nil {
 		return err
 	}
-	if uint64(len(rows)) > offset {
-		rows = rows[offset:]
+	if offset >= uint64(len(rows)) {
+		return nil
 	}
+	rows = rows[offset:]
 
 	var db logstorage.DataBlock
 	var columns []logstorage.BlockColumn
@@ -31,7 +33,7 @@ func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit 
 			columns[j].Name = f.Name
 			columns[j].Values = values[j : j+1]
 		}
-		db.Columns = columns
+		db.SetColumns(columns)
 		writeBlock(0, &db)
 	}
 	return nil
@@ -47,6 +49,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 	if err != nil {
 		return nil, err
 	}
+
 	if uint64(len(rows)) < 2*limit {
 		// Fast path - the requested time range contains up to 2*limit rows.
 		rows = getLastNRows(rows, limit)
@@ -55,6 +58,9 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 
 	// Slow path - use binary search for adjusting time range for selecting up to 2*limit rows.
 	start, end := q.GetFilterTimeRange()
+	if end < math.MaxInt64 {
+		end++
+	}
 	start += end/2 - start/2
 	n := limit
 
@@ -62,7 +68,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 	var lastNonEmptyRows []logRow
 
 	for {
-		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end)
+		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
 		rows, err := getQueryResults(qctxLocal)
@@ -71,7 +77,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 		}
 
 		if end/2-start/2 <= 0 {
-			// The [start ... end] time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
+			// The [start ... end) time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
 			// Return up to limit rows from the found rows and the last non-empty rows.
 			rowsFound = append(rowsFound, lastNonEmptyRows...)
 			rowsFound = append(rowsFound, rows...)
@@ -80,8 +86,8 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 		}
 
 		if uint64(len(rows)) >= 2*n {
-			// The number of found rows on the [start ... end] time range exceeds 2*n,
-			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end].
+			// The number of found rows on the [start ... end) time range exceeds 2*n,
+			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
 			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
 				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
 				rows, err := getLogRowsLastN(qctx, start, end, n)
@@ -103,7 +109,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 			return rowsFound, nil
 		}
 
-		// The number of found rows is below the limit. This means the [start ... end] time range
+		// The number of found rows is below the limit. This means the [start ... end) time range
 		// doesn't cover the needed logs, so it must be extended.
 		// Append the found rows to rowsFound, adjust n, so it doesn't take into account already found rows
 		// and adjust the time range to search logs at [start-(end/2-start/2) ... start).
@@ -111,7 +117,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 		n -= uint64(len(rows))
 
 		d := end/2 - start/2
-		end = start - 1
+		end = start
 		start -= d
 	}
 }
@@ -159,17 +165,34 @@ func getLogRowsFromDataBlock(db *logstorage.DataBlock) ([]logRow, error) {
 		return nil, fmt.Errorf("missing _time field in the query results")
 	}
 
-	columnNames := make([]string, len(db.Columns))
-	for i, c := range db.Columns {
+	// There is no need to sort columns here, since they will be sorted by the caller.
+	columns := db.GetColumns(false)
+
+	columnNames := make([]string, len(columns))
+	var timestampsColumn logstorage.BlockColumn
+	for i, c := range columns {
+		if c.Name == "_time" {
+			timestampsColumn = c
+		}
 		columnNames[i] = strings.Clone(c.Name)
 	}
 
 	lrs := make([]logRow, 0, len(timestamps))
-	fieldsBuf := make([]logstorage.Field, 0, len(columnNames)*len(timestamps))
+	fieldsBuf := make([]logstorage.Field, 0, len(columns)*len(timestamps))
 
 	for i, timestamp := range timestamps {
 		fieldsBufLen := len(fieldsBuf)
-		for j, c := range db.Columns {
+
+		// The _time column must go first, since the query results are sorted by _time.
+		fieldsBuf = append(fieldsBuf, logstorage.Field{
+			Name:  "_time",
+			Value: strings.Clone(timestampsColumn.Values[i]),
+		})
+
+		for j, c := range columns {
+			if c.Name == "_time" {
+				continue
+			}
 			fieldsBuf = append(fieldsBuf, logstorage.Field{
 				Name:  columnNames[j],
 				Value: strings.Clone(c.Values[i]),

@@ -9,6 +9,20 @@ sitemap:
 VictoriaLogs is [open source](https://github.com/VictoriaMetrics/VictoriaLogs/) user-friendly database for logs
 from [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/).
 
+![README-components.webp](README-components.webp)
+{width="600"}
+
+- **Articles**: [Design, Benchmarks, Comparisons...](https://docs.victoriametrics.com/victorialogs/articles/).
+- **Available**: [Binary releases](https://github.com/VictoriaMetrics/Victorialogs/releases/latest), Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/victoria-logs/) and [Quay](https://quay.io/repository/victoriametrics/victoria-logs), [Source code](https://github.com/VictoriaMetrics/VictoriaLogs).
+- **Deployment types**: [Single-node version](https://docs.victoriametrics.com/victorialogs/) and [Cluster version](https://docs.victoriametrics.com/victorialogs/cluster/) under [Apache License 2.0](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE).
+- **Getting started:** Read [key concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/) and follow the
+  [quick start guide](https://docs.victoriametrics.com/victorialogs/quick-start/).
+- **Community**: [Slack](https://slack.victoriametrics.com/)(join via [Slack Inviter](https://slack.victoriametrics.com/)), [X (Twitter)](https://x.com/VictoriaMetrics), [YouTube](https://www.youtube.com/@VictoriaMetrics). See full list [here](https://docs.victoriametrics.com/victoriametrics/#community-and-contributions).
+- **Changelog**: Project evolves fast - check the [CHANGELOG](https://docs.victoriametrics.com/victorialogs/changelog/), and [How to upgrade](https://docs.victoriametrics.com/victorialogs/#upgrading).
+- **Enterprise support:** [Contact us](mailto:info@victoriametrics.com) for commercial support with additional [enterprise features](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+- **Enterprise releases:** Enterprise releases are publicly available and can be evaluated for free using a [free trial license](https://victoriametrics.com/products/enterprise/trial/).
+- **Security:** we achieved [security certifications](https://victoriametrics.com/security/) for Database Software Development and Software-Based Monitoring Services.
+
 ## Features
 
 VictoriaLogs provides the following features:
@@ -27,7 +41,7 @@ VictoriaLogs provides the following features:
 - It provides easy yet powerful query language, which supports fast full-text search, fast advanced analytics and fast data extraction and transformation at query time.
   See [LogsQL docs](https://docs.victoriametrics.com/victorialogs/logsql/).
 - It provides [built-in web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) for logs' exploration.
-- It provides [Grafana plugin](https://docs.victoriametrics.com/victorialogs/victorialogs-datasource/) for building arbitrary dashboards in Grafana.
+- It provides [Grafana plugin](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) for building arbitrary dashboards in Grafana.
 - It provides [interactive command-line tool for querying VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
 - It can be seamlessly combined with good old Unix tools for log analysis such as `grep`, `less`, `sort`, `jq`, etc.
   See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line) for details.
@@ -60,8 +74,7 @@ to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriamet
   The only option is increasing the limit on [the number of open files in the OS](https://medium.com/@muhammadtriwibowo/set-permanently-ulimit-n-open-files-in-ubuntu-4d61064429a).
 - The recommended filesystem is `ext4`, the recommended persistent storage is [persistent HDD-based disk on GCP](https://cloud.google.com/compute/docs/disks/#pdspecs),
   since it is protected from hardware failures via internal replication and it can be [resized on the fly](https://cloud.google.com/compute/docs/disks/add-persistent-disk#resize_pd).
-  If you plan to store more than 1TB of data on `ext4` partition or plan extending it to more than 16TB,
-  then the following options are recommended to pass to `mkfs.ext4`:
+  If you plan to store more than 1TB of data on `ext4` partition, then the following options are recommended to pass to `mkfs.ext4`:
 
   ```sh
   mkfs.ext4 ... -O 64bit,huge_file,extent -T huge
@@ -189,6 +202,18 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
+## Backfilling
+
+VictoriaLogs accepts logs with timestamps in the time range `[now-retentionPeriod ... now+futureRetention]`,
+where `retentionPeriod` is the value for the `-retentionPeriod` command-line flag and `futureRetention` is the value for the `-futureRetention` command-line flag.
+Sometimes it is needed to reject logs older than the given age. This can be achieved by passing `-maxBackfillAge=d` command-line flag to VictoriaLogs,
+where `d` is the maximum age of logs to be accepted. Older logs are rejected and a sample of these logs is put into VictoriaLogs output logs, so they could be investigated.
+For example, the following command starts VictoriaLogs, which rejects logs older than 1 hour:
+
+```sh
+/path/to/victoria-logs -maxBackfillAge=1h
+```
+
 ## Storage
 
 VictoriaLogs stores all its data in a single directory - `victoria-logs-data`. The path to the directory can be changed via `-storageDataPath` command-line flag.
@@ -199,7 +224,7 @@ For example, the following command starts VictoriaLogs, which stores the data at
 ```
 
 VictoriaLogs automatically creates the `-storageDataPath` directory on the first run if it is missing. VictoriaLogs stores logs
-per every day into a spearate subdirectory (aka per-day partition). See [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) for details.
+per every day into a separate subdirectory (aka per-day partition). See [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) for details.
 
 VictoriaLogs switches to cluster mode if `-storageNode` command-line flag is specified:
 
@@ -224,29 +249,75 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
 - `/internal/partition/detach?name=YYYYMMDD` - detaches the partition directory with the given name `YYYYMMDD` from VictoriaLogs,
   so it is no longer visible for querying and cannot be used for data ingestion.
   The `/internal/partition/detach` endpoint waits until all the concurrently executed queries stop reading the data from the detached partition
-  before returning. This allows safe on-disk manipulions of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
+  before returning. This allows safe on-disk manipulations of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
   Detached partitions are automatically attached after VictoriaLogs restart if the corresponding subdirectories at `<-storageDataPath>/partitions/` aren't removed.
 - `/internal/partition/list` - returns JSON-encoded list of currently active partitions, which can be passed to `/internal/partition/detach` endpoint via `name` query arg.
-- `/internal/partition/snapshot/create?name=YYYYMMDD` - creates a [snapshot](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
-  for the partition for the given day `YYYYMMDD`. The endpoint returns a JSON string with the absolute filesystem path to the created snapshot. It is safe to make backups from
-  the created snapshots according to [these instructions](https://docs.victoriametrics.com/victorialogs/#backup-and-restore). It is safe removing the created snapshots with `rm -rf` command.
+- `/internal/partition/snapshot/create?partition_prefix=<prefix>` - creates [snapshots](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
+  for partitions matching the given `<prefix>`. The `<prefix>` must match the following formats:
+  - `YYYYMMDD` - then the snapshot for the given per-day partition is created.
+  - `YYYYMM` - then snapshots for per-day partitions at the given month are created.
+  - `YYYY` - then snapshots for per-day partitions at the given year are created.
+  If the `partition_prefix` arg is missing then snapshots for all the active per-day partitions are created.
+  The endpoint returns JSON-encoded array with paths to created snapshots. It is safe to make backups from
+  the created snapshots according to [these instructions](https://docs.victoriametrics.com/victorialogs/#backup-and-restore).
   It is recommended removing unneeded snapshots on a regular basis in order to free up storage space occupied by these snapshots.
-- `/internal/partition/snapshot/list` - returns JSON-encoded list of absolute paths to per-day partition snapshots created via `/internal/partition/snapshot/create`.
+  See [how to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
+- `/internal/partition/snapshot/list` - returns JSON-encoded list of paths to per-day partition snapshots created via `/internal/partition/snapshot/create`.
+- `/internal/partition/snapshot/delete?path=<snapshot-path>` - deletes a snapshot created via `/internal/partition/snapshot/create`.
+  The `<snapshot-path>` can be taken from the output of `/internal/partition/snapshot/list`.
+- `/internal/partition/snapshot/delete_stale?max_age=<d>` - deletes snapshots older than `<d>`. For example, `max_age=1d` deletes snapshots older than one day.
 
 These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
-with fast NVMe (SSD) disks, while historical logs are gradully migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
+with fast NVMe (SSD) disks, while historical logs are gradually migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
 This scheme can be implemented with the following simple cron job, which must run once per day:
 
-1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?name=YYYYMMDD` endpoint.
+1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` endpoint.
 1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaMetrics with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
+1. To delete the created snapshot according to [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
 1. To detach the copied partition from the VictoriaLogs with NVMe via `/internal/partition/detach?name=YYYYMMDD` endpoint.
 1. To attach the copied partition to the VictoriaLogs with HDD via `/internal/partition/attach?name=YYYYMMDD` endpoint.
 1. To delete the copied partition directory from the VictoriaLogs with NVMe via `rm -rf <-storageDataPath>/partitions/YYYYMMDD` command.
 
 All the VictoriaLogs instances with NVMe and HDD disks can be queried simultaneously via `vlselect` component of [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/),
 since [single-node VictoriaLogs instances can be a part of cluster](https://docs.victoriametrics.com/victorialogs/cluster/#single-node-and-cluster-mode-duality).
+
+## How to remove snapshots
+
+Snapshots created via [`/internal/partition/snapshot/create`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle)
+can be removed in the following ways:
+
+- By calling `/internal/partition/snapshot/delete?path=<snapshot-path>` HTTP endpoint at `victoria-logs:9428`, where `<snapshot-path>` is the path to snapshot
+  returned by `/internal/partition/snapshot/create` or by `/internal/partition/snapshot/list`.
+- By calling `/internal/partition/snapshot/delete_stale?max_age=<d>` HTTP endpoint at `victoria-logs:9428`,
+  where `<d>` is the maximum age for the snapshot to keep. Older snapshots are deleted.
+  For example, `max_age=1d` drops snapshots older than one day. If `max_age` is missing, then the value from `-snapshotsMaxAge` command-line flag is used.
+- By specifying the maximum age for the snapshot to keep via `-snapshotsMaxAge` command-line flag. Then older snapshots are automatically deleted on a periodic basis.
+
+## Capacity planning
+
+It is recommended leaving the following amounts of spare resource for smooth work of VictoriaLogs:
+
+- 50% of free RAM for reducing the probability of OOM (out of memory) crashes and slowdowns during temporary spikes in workload.
+- 50% of spare CPU for reducing the probability of slowdowns during temporary spikes in workload.
+- At least 20% of free storage space at the directory pointed by the [`-storageDataPath`](https://docs.victoriametrics.com/victorialogs/#storage) command-line flag.
+  Too small amounts of free disk space may result in significant slowdown for both data ingestion and querying
+  because of inability to merge newly created smaller data parts into bigger data parts.
+
+## Logging new streams
+
+VictoriaLogs can log new [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+This is useful during the debugging of high cardinality or churn rate issues for the ingested log streams.
+This functionality can be enabled either on a permanent basis via `-logNewStreams` command-line flag or temporarily for the given number of seconds
+by sending HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
+of new log streams for 10 seconds:
+
+```
+curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
+```
+
+See also [data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
 ## Forced merge
 
@@ -276,6 +347,48 @@ the recently ingested data.
 
 The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
+## How to delete logs
+
+By default VictoriaLogs doesn't allow deleting the [ingested logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+This is good from security PoV - an attacker cannot remove the existing logs. There are cases when it is needed to delete logs
+because of [GDPR compliance](https://en.wikipedia.org/wiki/General_Data_Protection_Regulation) or because some sensitive info is ingested in the logs.
+VictoriaLogs enables HTTP API for deleting logs if `-delete.enable` command-line flag is passed to it.
+The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this case:
+
+- `/delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
+  The `<logsql_filter>` may contain arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
+  For example, request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
+  `{app="nginx"}` [log stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+  When calling this endpoint via `curl`, make sure to URL-encode the `{...}` filter (aka [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)),
+  otherwise `curl` may strip the curly braces and the filter will fail to parse. For example, `{app=nginx}` becomes `%7Bapp%3Dnginx%7D`, so the full request is:
+
+  ```bash
+  curl 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D'
+  ```
+
+  This endpoint returns `{"task_id":"<id>"}` response, where `<id>` is an unique id of the deletion task, which can be used
+  for tracking the status of the deletion operation and for canceling the deletion task.
+  The deletion operation may take significant amounts of time when VictoriaLogs contains terabytes of logs, since the deletion operation
+  rewrites all the stored logs. That's why it isn't recommended to delete logs on a frequent basis - it is intended for rare exceptional cases
+  such as GDPR compliance or removal of accidentally written security-sensitive data.
+
+- `/delete/stop_task?task_id=<id>` - cancels the deletion task with the given `<id>`. If the canceled task was already running,
+  then it doesn't restore already deleted data.
+
+- `/delete/active_tasks` - returns a JSON array with the following information about active deletion tasks:
+  - `task_id` - the `id` of the task
+  - `tenant_ids` - the list of [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy) for the given deletion task
+  - `filter` - the [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters) passed to `/delete/run_task?filter=...`.
+  - `start_time` - the start time of the deletion task.
+
+The logs scheduled for the deletion via `/delete/run_task` endpoint main remain visible until the deletion task is complete.
+The deletion task is complete when the `/delete/active_task` endpoint stops returning it.
+
+If the deletion API must be enabled in [cluster version of VictoriaLogs](https://docs.victoriametrics.com/victorialogs/cluster/),
+then `-delete.enable` command-line flag must be passed to `vlselect` nodes (this enables the deletion API at `vlselect` nodes),
+while `-internaldelete.enable` command-line flag must be passed to `vlstorage` nodes (this enables internal cluster API
+for receiving deletion requests from `vlselect` nodes).
+
 ## High Availability
 
 ### High Availability (HA) Setup with VictoriaLogs Single-Node Instances
@@ -298,9 +411,9 @@ It is recommended to use [vlagent](https://docs.victoriametrics.com/victorialogs
 
 Here are the working examples of HA configuration for VictoriaLogs using Docker Compose:
 
-- [Fluent Bit + VictoriaLogs Single-Node + vmauth](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/fluentbit/jsonline-ha)
-- [Logstash + VictoriaLogs Single-Node + vmauth](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/logstash/jsonline-ha)
-- [Vector + VictoriaLogs Single-Node + vmauth](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/vector/jsonline-ha)
+- [Fluent Bit](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/fluentbit/)
+- [Logstash](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/logstash/)
+- [Vector](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/vector/)
 
 ## Backup and restore
 
@@ -308,8 +421,9 @@ VictoriaLogs stores data into independent per-day partitions. Every partition is
 
 The following steps must be performed to make a backup of the given `YYYYMMDD` partition:
 
-1. To create a snapshot for the given per-day partition via `/internal/partition/snapshot/create?name=YYYYMMDD` HTTP endpoint (see [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) docs).
-   This endpoint returns an absolute filesystem path to the created snapshot - `<path-to-snapshot>`.
+1. To create a snapshot for the given per-day partition via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` HTTP endpoint
+   (see [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) docs).
+   This endpoint returns a JSON array with paths to created snapshots.
 
 1. To backup the created snapshot with [`rsync`](https://en.wikipedia.org/wiki/Rsync):
 
@@ -319,8 +433,11 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 
    The `--delete` option is required in the command above in order to ensures that the backup contains the full copy of the original data without superfluous files.
 
-1. To remove the snapshot with `rm -rf <path-to-snapshot>` command. It is important to remove unneeded snapshots in order to free up storage space.
+   It is possible to make backups from VictoriaLogs snapshots to object storage such as S3 or GCS with the [rclone](https://rclone.org/).
 
+1. To remove the snapshot with `/internal/partition/snapshot/delete?path=<path-to-snapshot>` endpoint.
+   See also [other ways to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
+   It is important to remove unneeded snapshots in order to free up storage space.
 
 The following steps must be performed for restoring the partition data from backup:
 
@@ -343,7 +460,7 @@ It is also possible to use **the disk snapshot** feature provided by the operati
 ## Multitenancy
 
 VictoriaLogs supports multitenancy. A tenant is identified by `(AccountID, ProjectID)` pair, where `AccountID` and `ProjectID` are arbitrary 32-bit unsigned integers.
-The `AccountID` and `ProjectID` fields can be set during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
+The `AccountID` and `ProjectID` can be set during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 and [querying](https://docs.victoriametrics.com/victorialogs/querying/) via `AccountID` and `ProjectID` request headers.
 
 If `AccountID` and/or `ProjectID` request headers aren't set, then the default `0` value is used.
@@ -395,6 +512,7 @@ or similar authorization proxies. See [Security and Load balancing docs](https:/
 
 It is recommended protecting internal HTTP endpoints from unauthorized access:
 
+- [`/internal/log_new_streams`](https://docs.victoriametrics.com/victorialogs/#logging-new-streams) - via `-logNewStreamsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_flush`](https://docs.victoriametrics.com/victorialogs/#forced-flush) - via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_merge`](https://docs.victoriametrics.com/victorialogs/#forced-merge) - via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
@@ -474,463 +592,26 @@ You can define flags using environment variables, and you can also
 reference environment variables as values, allowing you to reuse or dynamically inject configuration values at application startup.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables) for details.
 
+## Server-side timezone
+
+VictoriaLogs uses server-side timezone in the following cases:
+
+- If the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) in the [ingested logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
+  doesn't contain explicit timezone information.
+- If the [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter), [`day_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#day-range-filter)
+  or [`week_range` filter](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) do not contain explicit timezone information.
+
+VictoriaLogs obtains the local timezone from the `TZ` environment variable. It expects valid [IANA Time Zone identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+in the `TZ` environment variable. Set `TZ` environment variable to an empty string - `TZ=""` - for using UTC.
+
 ## List of command-line flags
 
 Pass `-help` to VictoriaLogs in order to see the list of supported command-line flags with their description:
 
-```
-  -blockcache.missesBeforeCaching int
-        The number of cache misses before putting the block into cache. Higher values may reduce indexdb/dataBlocks cache size at the cost of higher CPU and disk read usage (default 2)
-  -datadog.ignoreFields array
-        Comma-separated list of fields to ignore for logs ingested via DataDog protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/#dropping-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -datadog.maxRequestSize size
-        The maximum size in bytes of a single DataDog request
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
-  -datadog.streamFields array
-        Comma-separated list of fields to use as log stream fields for logs ingested via DataDog protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/#stream-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -defaultMsgValue string
-        Default value for _msg field if the ingested log entry doesn't contain it; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field (default "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field")
-  -defaultParallelReaders int
-        Default number of parallel data readers to use for executing every query; higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option (default 32)
-  -elasticsearch.version string
-        Elasticsearch version to report to client (default "8.9.0")
-  -enableTCP6
-        Whether to enable IPv6 for listening and dialing. By default, only IPv4 TCP and UDP are used
-  -envflag.enable
-        Whether to enable reading flags from environment variables in addition to the command line. Command line flag values have priority over values from environment vars. Flags are read only from the command line if this flag isn't set. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables for more details
-  -envflag.prefix string
-        Prefix for environment variables if -envflag.enable is set
-  -eula
-        Deprecated, please use -license or -licenseFile flags instead. By specifying this flag, you confirm that you have an enterprise license and accept the ESA https://victoriametrics.com/legal/esa/ . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-  -filestream.disableFadvise
-        Whether to disable fadvise() syscall when reading large data files. The fadvise() syscall prevents from eviction of recently accessed data from OS page cache during background merges and backups. In some rare cases it is better to disable the syscall if it uses too much CPU
-  -flagsAuthKey value
-        Auth key for /flags endpoint. It must be passed via authKey query arg. It overrides -httpAuth.*
-        Flag value can be read from the given file when using -flagsAuthKey=file:///abs/path/to/file or -flagsAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -flagsAuthKey=http://host/path or -flagsAuthKey=https://host/path
-  -forceFlushAuthKey value
-        authKey, which must be passed in query string to /internal/force_flush . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#forced-flush
-        Flag value can be read from the given file when using -forceFlushAuthKey=file:///abs/path/to/file or -forceFlushAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -forceFlushAuthKey=http://host/path or -forceFlushAuthKey=https://host/path
-  -forceMergeAuthKey value
-        authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#forced-merge
-        Flag value can be read from the given file when using -forceMergeAuthKey=file:///abs/path/to/file or -forceMergeAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -forceMergeAuthKey=http://host/path or -forceMergeAuthKey=https://host/path
-  -fs.disableMmap
-        Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
-  -futureRetention value
-        Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
-        The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
-  -http.connTimeout duration
-        Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
-  -http.disableCORS
-        Disable CORS for all origins (*)
-  -http.disableKeepAlive
-        Whether to disable HTTP keep-alive for incoming connections at -httpListenAddr
-  -http.disableResponseCompression
-        Disable compression of HTTP responses to save CPU resources. By default, compression is enabled to save network bandwidth
-  -http.header.csp string
-        Value for 'Content-Security-Policy' header, recommended: "default-src 'self'"
-  -http.header.frameOptions string
-        Value for 'X-Frame-Options' header
-  -http.header.hsts string
-        Value for 'Strict-Transport-Security' header, recommended: 'max-age=31536000; includeSubDomains'
-  -http.idleConnTimeout duration
-        Timeout for incoming idle http connections (default 1m0s)
-  -http.maxGracefulShutdownDuration duration
-        The maximum duration for a graceful shutdown of the HTTP server. A highly loaded server may require increased value for a graceful shutdown (default 7s)
-  -http.pathPrefix string
-        An optional prefix to add to all the paths handled by http server. For example, if '-http.pathPrefix=/foo/bar' is set, then all the http requests will be handled on '/foo/bar/*' paths. This may be useful for proxied requests. See https://www.robustperception.io/using-external-urls-and-proxies-with-prometheus
-  -http.shutdownDelay duration
-        Optional delay before http server shutdown. During this delay, the server returns non-OK responses from /health page, so load balancers can route new requests to other servers
-  -httpAuth.password value
-        Password for HTTP server's Basic Auth. The authentication is disabled if -httpAuth.username is empty
-        Flag value can be read from the given file when using -httpAuth.password=file:///abs/path/to/file or -httpAuth.password=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -httpAuth.password=http://host/path or -httpAuth.password=https://host/path
-  -httpAuth.username string
-        Username for HTTP server's Basic Auth. The authentication is disabled if empty. See also -httpAuth.password
-  -httpListenAddr array
-        TCP address to listen for incoming http requests. See also -httpListenAddr.useProxyProtocol
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -httpListenAddr.useProxyProtocol array
-        Whether to use proxy protocol for connections accepted at the given -httpListenAddr . See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -inmemoryDataFlushInterval duration
-        The interval for guaranteed saving of in-memory data to disk. The saved data survives unclean shutdowns such as OOM crash, hardware reset, SIGKILL, etc. Bigger intervals may help increase the lifetime of flash storage with limited write cycles (e.g. Raspberry PI). Smaller intervals increase disk IO load. Minimum supported value is 1s (default 5s)
-  -insert.concurrency int
-        The average number of concurrent data ingestion requests, which can be sent to every -storageNode (default 2)
-  -insert.disable
-        Whether to disable /insert/* HTTP endpoints
-  -insert.disableCompression
-        Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
-  -insert.maxFieldsPerLine int
-        The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
-  -insert.maxLineSizeBytes size
-        The maximum size of a single line that can be read by /insert/* handlers. Regardless of this flag, entries above the 2 MB limit are ignored, see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 262144)
-  -insert.maxQueueDuration duration
-        The maximum duration to wait in the queue when -maxConcurrentInserts concurrent insert requests are executed (default 1m0s)
-  -internStringCacheExpireDuration duration
-        The expiry duration for caches for interned strings. See https://en.wikipedia.org/wiki/String_interning . See also -internStringMaxLen and -internStringDisableCache (default 6m0s)
-  -internStringDisableCache
-        Whether to disable caches for interned strings. This may reduce memory usage at the cost of higher CPU usage. See https://en.wikipedia.org/wiki/String_interning . See also -internStringCacheExpireDuration and -internStringMaxLen
-  -internStringMaxLen int
-        The maximum length for strings to intern. A lower limit may save memory at the cost of higher CPU usage. See https://en.wikipedia.org/wiki/String_interning . See also -internStringDisableCache and -internStringCacheExpireDuration (default 500)
-  -internalinsert.disable
-        Whether to disable /internal/insert HTTP endpoint. See https://docs.victoriametrics.com/victorialogs/cluster/#security
-  -internalinsert.maxRequestSize size
-        The maximum size in bytes of a single request, which can be accepted at /internal/insert HTTP endpoint
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
-  -internalselect.disable
-        Whether to disable /internal/select/* HTTP endpoints
-  -internalselect.maxConcurrentRequests int
-        The limit on the number of concurrent requests to /internal/select/* endpoints; other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/ (default 100)
-  -journald.ignoreFields array
-        Comma-separated list of fields to ignore for logs ingested over journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#dropping-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -journald.includeEntryMetadata
-        Include Journald fields with double underscore prefixes
-  -journald.streamFields array
-        Comma-separated list of fields to use as log stream fields for logs ingested over journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#stream-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -journald.tenantID string
-        TenantID for logs ingested via the Journald endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy (default "0:0")
-  -journald.timeField string
-        Field to use as a log timestamp for logs ingested via journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#time-field (default "__REALTIME_TIMESTAMP")
-  -license string
-        License key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
-  -license.forceOffline
-        Whether to enable offline verification for VictoriaMetrics Enterprise license key, which has been passed either via -license or via -licenseFile command-line flag. The issued license key must support offline verification feature. Contact info@victoriametrics.com if you need offline license verification. This flag is available only in Enterprise binaries
-  -licenseFile string
-        Path to file with license key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed inline via -license command-line flag
-  -licenseFile.reloadInterval duration
-        Interval for reloading the license file specified via -licenseFile. See https://victoriametrics.com/products/enterprise/ . This flag is available only in Enterprise binaries (default 1h0m0s)
-  -logIngestedRows
-        Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/ ; see also -logNewStreams
-  -logNewStreams
-        Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields ; see also -logIngestedRows
-  -loggerDisableTimestamps
-        Whether to disable writing timestamps in logs
-  -loggerErrorsPerSecondLimit int
-        Per-second limit on the number of ERROR messages. If more than the given number of errors are emitted per second, the remaining errors are suppressed. Zero values disable the rate limit
-  -loggerFormat string
-        Format for logs. Possible values: default, json (default "default")
-  -loggerJSONFields string
-        Allows renaming fields in JSON formatted logs. Example: "ts:timestamp,msg:message" renames "ts" to "timestamp" and "msg" to "message". Supported fields: ts, level, caller, msg
-  -loggerLevel string
-        Minimum level of errors to log. Possible values: INFO, WARN, ERROR, FATAL, PANIC (default "INFO")
-  -loggerMaxArgLen int
-        The maximum length of a single logged argument. Longer arguments are replaced with 'arg_start..arg_end', where 'arg_start' and 'arg_end' is prefix and suffix of the arg with the length not exceeding -loggerMaxArgLen / 2 (default 5000)
-  -loggerOutput string
-        Output for the logs. Supported values: stderr, stdout (default "stderr")
-  -loggerTimezone string
-        Timezone to use for timestamps in logs. Timezone must be a valid IANA Time Zone. For example: America/New_York, Europe/Berlin, Etc/GMT+3 or Local (default "UTC")
-  -loggerWarnsPerSecondLimit int
-        Per-second limit on the number of WARN messages. If more than the given number of warns are emitted per second, then the remaining warns are suppressed. Zero values disable the rate limit
-  -loki.disableMessageParsing
-        Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields
-  -loki.maxRequestSize size
-        The maximum size in bytes of a single Loki request
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
-  -maxConcurrentInserts int
-        The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 32)
-  -memory.allowedBytes size
-        Allowed size of system memory VictoriaMetrics caches may occupy. This option overrides -memory.allowedPercent if set to a non-zero value. Too low a value may increase the cache miss rate usually resulting in higher CPU and disk IO usage. Too high a value may evict too much data from the OS page cache resulting in higher disk IO usage
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
-  -memory.allowedPercent float
-        Allowed percent of system memory VictoriaMetrics caches may occupy. See also -memory.allowedBytes. Too low a value may increase cache miss rate usually resulting in higher CPU and disk IO usage. Too high a value may evict too much data from the OS page cache which will result in higher disk IO usage (default 60)
-  -metrics.exposeMetadata
-        Whether to expose TYPE and HELP metadata at the /metrics page, which is exposed at -httpListenAddr . The metadata may be needed when the /metrics page is consumed by systems, which require this information. For example, Managed Prometheus in Google Cloud - https://cloud.google.com/stackdriver/docs/managed-prometheus/troubleshooting#missing-metric-type
-  -metricsAuthKey value
-        Auth key for /metrics endpoint. It must be passed via authKey query arg. It overrides -httpAuth.*
-        Flag value can be read from the given file when using -metricsAuthKey=file:///abs/path/to/file or -metricsAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -metricsAuthKey=http://host/path or -metricsAuthKey=https://host/path
-  -mtls array
-        Whether to require valid client certificate for https requests to the corresponding -httpListenAddr . This flag works only if -tls flag is set. See also -mtlsCAFile . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -mtlsCAFile array
-        Optional path to TLS Root CA for verifying client certificates at the corresponding -httpListenAddr when -mtls is enabled. By default the host system TLS Root CA is used for client certificate verification. This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -opentelemetry.maxRequestSize size
-        The maximum size in bytes of a single OpenTelemetry request
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
-  -partitionManageAuthKey value
-        authKey, which must be passed in query string to /internal/partition/* . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle
-        Flag value can be read from the given file when using -partitionManageAuthKey=file:///abs/path/to/file or -partitionManageAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -partitionManageAuthKey=http://host/path or -partitionManageAuthKey=https://host/path
-  -pprofAuthKey value
-        Auth key for /debug/pprof/* endpoints. It must be passed via authKey query arg. It overrides -httpAuth.*
-        Flag value can be read from the given file when using -pprofAuthKey=file:///abs/path/to/file or -pprofAuthKey=file://./relative/path/to/file.
-        Flag value can be read from the given http/https url when using -pprofAuthKey=http://host/path or -pprofAuthKey=https://host/path
-  -pushmetrics.disableCompression
-        Whether to disable request body compression when pushing metrics to every -pushmetrics.url
-  -pushmetrics.extraLabel array
-        Optional labels to add to metrics pushed to every -pushmetrics.url . For example, -pushmetrics.extraLabel='instance="foo"' adds instance="foo" label to all the metrics pushed to every -pushmetrics.url
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -pushmetrics.header array
-        Optional HTTP request header to send to every -pushmetrics.url . For example, -pushmetrics.header='Authorization: Basic foobar' adds 'Authorization: Basic foobar' header to every request to every -pushmetrics.url
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -pushmetrics.interval duration
-        Interval for pushing metrics to every -pushmetrics.url (default 10s)
-  -pushmetrics.url array
-        Optional URL to push metrics exposed at /metrics page. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#push-metrics . By default, metrics exposed at /metrics page aren't pushed to any remote storage
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -retention.maxDiskSpaceUsageBytes size
-        The maximum disk space usage at -storageDataPath before older per-day partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
-  -retention.maxDiskUsagePercent int
-        The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent
-  -retentionPeriod value
-        Log entries with timestamps older than now-retentionPeriod are automatically deleted; log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent
-        The following optional suffixes are supported: s (second), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 7d)
-  -search.allowPartialResponse
-        Whether to allow returning partial responses when some of vlstorage nodes from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses
-  -search.maxConcurrentRequests int
-        The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 16)
-  -search.maxQueryDuration duration
-        The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
-  -search.maxQueryTimeRange duration
-        The maximum time range, which can be set in the query sent to querying APIs. Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits
-  -search.maxQueueDuration duration
-        The maximum time the search request waits for execution when -search.maxConcurrentRequests limit is reached; see also -search.maxQueryDuration (default 10s)
-  -select.disable
-        Whether to disable /select/* HTTP endpoints
-  -select.disableCompression
-        Whether to disable compression for select query responses received from -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
-  -storage.minFreeDiskSpaceBytes size
-        The minimum free disk space at -storageDataPath after which the storage stops accepting new data
-        Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 10000000)
-  -storageDataPath string
-        Path to directory where to store VictoriaLogs data; see https://docs.victoriametrics.com/victorialogs/#storage (default "victoria-logs-data")
-  -storageNode array
-        Comma-separated list of TCP addresses for storage nodes to route the ingested logs to and to send select queries to. If the list is empty, then the ingested logs are stored and queried locally from -storageDataPath
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.bearerToken array
-        Optional bearer auth token to use for the corresponding -storageNode
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.bearerTokenFile array
-        Optional path to bearer token file to use for the corresponding -storageNode. The token is re-read from the file every second
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.password array
-        Optional basic auth password to use for the corresponding -storageNode
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.passwordFile array
-        Optional path to basic auth password to use for the corresponding -storageNode. The file is re-read every second
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.tls array
-        Whether to use TLS (HTTPS) protocol for communicating with the corresponding -storageNode. By default communication is performed via HTTP
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -storageNode.tlsCAFile array
-        Optional path to TLS CA file to use for verifying connections to the corresponding -storageNode. By default, system CA is used
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.tlsCertFile array
-        Optional path to client-side TLS certificate file to use when connecting to the corresponding -storageNode
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.tlsInsecureSkipVerify array
-        Whether to skip tls verification when connecting to the corresponding -storageNode
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -storageNode.tlsKeyFile array
-        Optional path to client-side TLS certificate key to use when connecting to the corresponding -storageNode
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.tlsServerName array
-        Optional TLS server name to use for connections to the corresponding -storageNode. By default, the server name from -storageNode is used
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.username array
-        Optional basic auth username to use for the corresponding -storageNode
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -storageNode.usernameFile array
-        Optional path to basic auth username to use for the corresponding -storageNode. The file is re-read every second
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.compressMethod.tcp array
-        Compression method for syslog messages received at the corresponding -syslog.listenAddr.tcp. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.compressMethod.udp array
-        Compression method for syslog messages received at the corresponding -syslog.listenAddr.udp. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.compressMethod.unix array
-        Compression method for syslog messages received at the corresponding -syslog.listenAddr.unix. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.decolorizeFields.tcp array
-        Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.decolorizeFields.udp array
-        Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.decolorizeFields.unix array
-        Fields to remove ANSI color codes across logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#decolorizing-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.extraFields.tcp array
-        Fields to add to logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.extraFields.udp array
-        Fields to add to logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.extraFields.unix array
-        Fields to add to logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#adding-extra-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.ignoreFields.tcp array
-        Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.ignoreFields.udp array
-        Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.ignoreFields.unix array
-        Fields to ignore at logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#dropping-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.listenAddr.tcp array
-        Comma-separated list of TCP addresses to listen to for Syslog messages. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.listenAddr.udp array
-        Comma-separated list of UDP addresses to listen to for Syslog messages. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.listenAddr.unix array
-        Comma-separated list of Unix socket filepaths to listen to for Syslog messages. Filepaths may be prepended with 'unixgram:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.mtls array
-        Whether to require valid client certificate for https requests to the corresponding -syslog.listenAddr.tcp. This flag works only if -syslog.tls flag is set for the corresponding -syslog.listenAddr.tcp. See also -syslog.mtlsCAFile. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#mtls . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.mtlsCAFile array
-        Optional path to TLS Root CA for verifying client certificates at the corresponding -syslog.listenAddr.tcp when the corresponding -syslog.mtls is enabled. By default the host system TLS Root CA is used for client certificate verification. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#mtls . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.streamFields.tcp array
-        Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.streamFields.udp array
-        Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.streamFields.unix array
-        Fields to use as log stream labels for logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#stream-fields
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tenantID.tcp array
-        TenantID for logs ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tenantID.udp array
-        TenantID for logs ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tenantID.unix array
-        TenantID for logs ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.timezone string
-        Timezone to use when parsing timestamps in RFC3164 syslog messages. Timezone must be a valid IANA Time Zone. For example: America/New_York, Europe/Berlin, Etc/GMT+3 . See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/ (default "Local")
-  -syslog.tls array
-        Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See also -syslog.mtls. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.tlsCertFile array
-        Path to file with TLS certificate for the corresponding -syslog.listenAddr.tcp if the corresponding -syslog.tls is set. Prefer ECDSA certs instead of RSA certs as RSA certs are slower. The provided certificate file is automatically re-read every second, so it can be dynamically updated. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tlsCipherSuites array
-        Optional list of TLS cipher suites for -syslog.listenAddr.tcp if -syslog.tls is set. See the list of supported cipher suites at https://pkg.go.dev/crypto/tls#pkg-constants . See also https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tlsKeyFile array
-        Path to file with TLS key for the corresponding -syslog.listenAddr.tcp if the corresponding -syslog.tls is set. The provided key file is automatically re-read every second, so it can be dynamically updated. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -syslog.tlsMinVersion string
-        The minimum TLS version to use for -syslog.listenAddr.tcp if -syslog.tls is set. Supported values: TLS10, TLS11, TLS12, TLS13. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security (default "TLS13")
-  -syslog.useLocalTimestamp.tcp array
-        Whether to use local timestamp instead of the original timestamp for the ingested syslog messages at the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.useLocalTimestamp.udp array
-        Whether to use local timestamp instead of the original timestamp for the ingested syslog messages at the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.useLocalTimestamp.unix array
-        Whether to use local timestamp instead of the original timestamp for the ingested syslog messages at the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.useRemoteIP.tcp array
-        Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.tcp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.useRemoteIP.udp array
-        Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.udp. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -syslog.useRemoteIP.unix array
-        Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -tls array
-        Whether to enable TLS for incoming HTTP requests at the given -httpListenAddr (aka https). -tlsCertFile and -tlsKeyFile must be set if -tls is set. See also -mtls
-        Supports array of values separated by comma or specified via multiple flags.
-        Empty values are set to false.
-  -tlsAutocertCacheDir string
-        Directory to store TLS certificates issued via Let's Encrypt. Certificates are lost on restarts if this flag isn't set. This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-  -tlsAutocertEmail string
-        Contact email for the issued Let's Encrypt TLS certificates. See also -tlsAutocertHosts and -tlsAutocertCacheDir . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-  -tlsAutocertHosts array
-        Optional hostnames for automatic issuing of Let's Encrypt TLS certificates. These hostnames must be reachable at -httpListenAddr . The -httpListenAddr must listen tcp port 443 . The -tlsAutocertHosts overrides -tlsCertFile and -tlsKeyFile . See also -tlsAutocertEmail and -tlsAutocertCacheDir . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/victoriametrics/enterprise/
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -tlsCertFile array
-        Path to file with TLS certificate for the corresponding -httpListenAddr if -tls is set. Prefer ECDSA certs instead of RSA certs as RSA certs are slower. The provided certificate file is automatically re-read every second, so it can be dynamically updated. See also -tlsAutocertHosts
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -tlsCipherSuites array
-        Optional list of TLS cipher suites for incoming requests over HTTPS if -tls is set. See the list of supported cipher suites at https://pkg.go.dev/crypto/tls#pkg-constants
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -tlsKeyFile array
-        Path to file with TLS key for the corresponding -httpListenAddr if -tls is set. The provided key file is automatically re-read every second, so it can be dynamically updated. See also -tlsAutocertHosts
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -tlsMinVersion array
-        Optional minimum TLS version to use for the corresponding -httpListenAddr if -tls is set. Supported values: TLS10, TLS11, TLS12, TLS13
-        Supports an array of values separated by comma or specified via multiple flags.
-        Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
-  -version
-        Show VictoriaMetrics version
-```
+### Common flags
+These flags are available in both VictoriaLogs OSS and VictoriaLogs Enterprise.
+{{% content "victoria_logs_common_flags.md" %}}
+
+### Enterprise flags
+These flags are available only in [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+{{% content "victoria_logs_enterprise_flags.md" %}}

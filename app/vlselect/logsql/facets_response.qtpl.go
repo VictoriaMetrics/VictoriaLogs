@@ -7,172 +7,182 @@ package logsql
 //line app/vlselect/logsql/facets_response.qtpl:1
 import (
 	"slices"
+	"sort"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/stringsutil"
 )
 
-//line app/vlselect/logsql/facets_response.qtpl:7
+//line app/vlselect/logsql/facets_response.qtpl:10
 import (
 	qtio422016 "io"
 
 	qt422016 "github.com/valyala/quicktemplate"
 )
 
-//line app/vlselect/logsql/facets_response.qtpl:7
+//line app/vlselect/logsql/facets_response.qtpl:10
 var (
 	_ = qtio422016.Copy
 	_ = qt422016.AcquireByteBuffer
 )
 
-//line app/vlselect/logsql/facets_response.qtpl:7
-func StreamFacetsResponse(qw422016 *qt422016.Writer, m map[string][]facetEntry) {
-//line app/vlselect/logsql/facets_response.qtpl:7
-	qw422016.N().S(`{`)
 //line app/vlselect/logsql/facets_response.qtpl:10
+func StreamFacetsResponse(qw422016 *qt422016.Writer, m map[string][]facetEntry) {
+//line app/vlselect/logsql/facets_response.qtpl:10
+	qw422016.N().S(`{`)
+//line app/vlselect/logsql/facets_response.qtpl:13
 	sortedKeys := make([]string, 0, len(m))
 	for k := range m {
 		sortedKeys = append(sortedKeys, k)
 	}
 	slices.Sort(sortedKeys)
 
-//line app/vlselect/logsql/facets_response.qtpl:15
-	qw422016.N().S(`"facets":[`)
-//line app/vlselect/logsql/facets_response.qtpl:17
-	if len(sortedKeys) > 0 {
 //line app/vlselect/logsql/facets_response.qtpl:18
-		streamfacetsLine(qw422016, m, sortedKeys[0])
-//line app/vlselect/logsql/facets_response.qtpl:19
-		for _, k := range sortedKeys[1:] {
-//line app/vlselect/logsql/facets_response.qtpl:19
-			qw422016.N().S(`,`)
+	qw422016.N().S(`"facets":[`)
 //line app/vlselect/logsql/facets_response.qtpl:20
-			streamfacetsLine(qw422016, m, k)
+	if len(sortedKeys) > 0 {
 //line app/vlselect/logsql/facets_response.qtpl:21
-		}
+		streamfacetsLine(qw422016, m, sortedKeys[0])
 //line app/vlselect/logsql/facets_response.qtpl:22
-	}
+		for _, k := range sortedKeys[1:] {
 //line app/vlselect/logsql/facets_response.qtpl:22
-	qw422016.N().S(`]}`)
-//line app/vlselect/logsql/facets_response.qtpl:25
-}
-
-//line app/vlselect/logsql/facets_response.qtpl:25
-func WriteFacetsResponse(qq422016 qtio422016.Writer, m map[string][]facetEntry) {
-//line app/vlselect/logsql/facets_response.qtpl:25
-	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/facets_response.qtpl:25
-	StreamFacetsResponse(qw422016, m)
-//line app/vlselect/logsql/facets_response.qtpl:25
-	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/facets_response.qtpl:25
-}
-
-//line app/vlselect/logsql/facets_response.qtpl:25
-func FacetsResponse(m map[string][]facetEntry) string {
-//line app/vlselect/logsql/facets_response.qtpl:25
-	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/facets_response.qtpl:25
-	WriteFacetsResponse(qb422016, m)
-//line app/vlselect/logsql/facets_response.qtpl:25
-	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/facets_response.qtpl:25
-	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/facets_response.qtpl:25
-	return qs422016
-//line app/vlselect/logsql/facets_response.qtpl:25
-}
-
-//line app/vlselect/logsql/facets_response.qtpl:27
-func streamfacetsLine(qw422016 *qt422016.Writer, m map[string][]facetEntry, k string) {
-//line app/vlselect/logsql/facets_response.qtpl:27
-	qw422016.N().S(`{"field_name":`)
-//line app/vlselect/logsql/facets_response.qtpl:29
-	qw422016.N().Q(k)
-//line app/vlselect/logsql/facets_response.qtpl:29
-	qw422016.N().S(`,"values":[`)
-//line app/vlselect/logsql/facets_response.qtpl:31
-	fes := m[k]
-
-//line app/vlselect/logsql/facets_response.qtpl:32
-	if len(fes) > 0 {
-//line app/vlselect/logsql/facets_response.qtpl:33
-		streamfacetLine(qw422016, fes[0])
-//line app/vlselect/logsql/facets_response.qtpl:34
-		for _, fe := range fes[1:] {
-//line app/vlselect/logsql/facets_response.qtpl:34
 			qw422016.N().S(`,`)
-//line app/vlselect/logsql/facets_response.qtpl:35
-			streamfacetLine(qw422016, fe)
-//line app/vlselect/logsql/facets_response.qtpl:36
+//line app/vlselect/logsql/facets_response.qtpl:23
+			streamfacetsLine(qw422016, m, k)
+//line app/vlselect/logsql/facets_response.qtpl:24
 		}
-//line app/vlselect/logsql/facets_response.qtpl:37
+//line app/vlselect/logsql/facets_response.qtpl:25
 	}
-//line app/vlselect/logsql/facets_response.qtpl:37
+//line app/vlselect/logsql/facets_response.qtpl:25
 	qw422016.N().S(`]}`)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:28
 }
 
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:28
+func WriteFacetsResponse(qq422016 qtio422016.Writer, m map[string][]facetEntry) {
+//line app/vlselect/logsql/facets_response.qtpl:28
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line app/vlselect/logsql/facets_response.qtpl:28
+	StreamFacetsResponse(qw422016, m)
+//line app/vlselect/logsql/facets_response.qtpl:28
+	qt422016.ReleaseWriter(qw422016)
+//line app/vlselect/logsql/facets_response.qtpl:28
+}
+
+//line app/vlselect/logsql/facets_response.qtpl:28
+func FacetsResponse(m map[string][]facetEntry) string {
+//line app/vlselect/logsql/facets_response.qtpl:28
+	qb422016 := qt422016.AcquireByteBuffer()
+//line app/vlselect/logsql/facets_response.qtpl:28
+	WriteFacetsResponse(qb422016, m)
+//line app/vlselect/logsql/facets_response.qtpl:28
+	qs422016 := string(qb422016.B)
+//line app/vlselect/logsql/facets_response.qtpl:28
+	qt422016.ReleaseByteBuffer(qb422016)
+//line app/vlselect/logsql/facets_response.qtpl:28
+	return qs422016
+//line app/vlselect/logsql/facets_response.qtpl:28
+}
+
+//line app/vlselect/logsql/facets_response.qtpl:30
+func streamfacetsLine(qw422016 *qt422016.Writer, m map[string][]facetEntry, k string) {
+//line app/vlselect/logsql/facets_response.qtpl:30
+	qw422016.N().S(`{"field_name":`)
+//line app/vlselect/logsql/facets_response.qtpl:32
+	qw422016.N().Q(k)
+//line app/vlselect/logsql/facets_response.qtpl:32
+	qw422016.N().S(`,"values":[`)
+//line app/vlselect/logsql/facets_response.qtpl:35
+	fes := m[k]
+	sort.Slice(fes, func(i, j int) bool {
+		a, b := &fes[i], &fes[j]
+		if a.hits == b.hits {
+			return a.value < b.value
+		}
+		return stringsutil.LessNatural(b.hits, a.hits)
+	})
+
+//line app/vlselect/logsql/facets_response.qtpl:44
+	if len(fes) > 0 {
+//line app/vlselect/logsql/facets_response.qtpl:45
+		streamfacetLine(qw422016, fes[0])
+//line app/vlselect/logsql/facets_response.qtpl:46
+		for _, fe := range fes[1:] {
+//line app/vlselect/logsql/facets_response.qtpl:46
+			qw422016.N().S(`,`)
+//line app/vlselect/logsql/facets_response.qtpl:47
+			streamfacetLine(qw422016, fe)
+//line app/vlselect/logsql/facets_response.qtpl:48
+		}
+//line app/vlselect/logsql/facets_response.qtpl:49
+	}
+//line app/vlselect/logsql/facets_response.qtpl:49
+	qw422016.N().S(`]}`)
+//line app/vlselect/logsql/facets_response.qtpl:52
+}
+
+//line app/vlselect/logsql/facets_response.qtpl:52
 func writefacetsLine(qq422016 qtio422016.Writer, m map[string][]facetEntry, k string) {
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	streamfacetsLine(qw422016, m, k)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 }
 
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 func facetsLine(m map[string][]facetEntry, k string) string {
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	writefacetsLine(qb422016, m, k)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 	return qs422016
-//line app/vlselect/logsql/facets_response.qtpl:40
+//line app/vlselect/logsql/facets_response.qtpl:52
 }
 
-//line app/vlselect/logsql/facets_response.qtpl:42
+//line app/vlselect/logsql/facets_response.qtpl:54
 func streamfacetLine(qw422016 *qt422016.Writer, fe facetEntry) {
-//line app/vlselect/logsql/facets_response.qtpl:42
+//line app/vlselect/logsql/facets_response.qtpl:54
 	qw422016.N().S(`{"field_value":`)
-//line app/vlselect/logsql/facets_response.qtpl:44
+//line app/vlselect/logsql/facets_response.qtpl:56
 	qw422016.N().Q(fe.value)
-//line app/vlselect/logsql/facets_response.qtpl:44
+//line app/vlselect/logsql/facets_response.qtpl:56
 	qw422016.N().S(`,"hits":`)
-//line app/vlselect/logsql/facets_response.qtpl:45
+//line app/vlselect/logsql/facets_response.qtpl:57
 	qw422016.N().S(fe.hits)
-//line app/vlselect/logsql/facets_response.qtpl:45
+//line app/vlselect/logsql/facets_response.qtpl:57
 	qw422016.N().S(`}`)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 }
 
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 func writefacetLine(qq422016 qtio422016.Writer, fe facetEntry) {
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	streamfacetLine(qw422016, fe)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 }
 
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 func facetLine(fe facetEntry) string {
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	writefacetLine(qb422016, fe)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 	return qs422016
-//line app/vlselect/logsql/facets_response.qtpl:47
+//line app/vlselect/logsql/facets_response.qtpl:59
 }

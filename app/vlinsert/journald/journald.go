@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"slices"
 	"strconv"
@@ -39,7 +40,21 @@ var (
 	journaldTenantID = flag.String("journald.tenantID", "0:0", "TenantID for logs ingested via the Journald endpoint. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy")
 	journaldIncludeEntryMetadata = flag.Bool("journald.includeEntryMetadata", false, "Include Journald fields with double underscore prefixes")
+	journaldUseRemoteIP          = flag.Bool("journald.useRemoteIP", false, "Whether to add the remote IP address as the remote_ip log field for ingested journald messages.")
 )
+
+var tenantID logstorage.TenantID
+
+// MustInit initializes journald parser
+//
+// This function must be called after flag.Parse().
+func MustInit() {
+	t, err := logstorage.ParseTenantID(*journaldTenantID)
+	if err != nil {
+		logger.Panicf("FATAL: cannot parse -journald.tenantID=%q for journald: %s", *journaldTenantID, err)
+	}
+	tenantID = t
+}
 
 func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 	cp, err := insertutil.GetCommonParams(r)
@@ -47,10 +62,6 @@ func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 		return nil, err
 	}
 	if cp.TenantID.AccountID == 0 && cp.TenantID.ProjectID == 0 {
-		tenantID, err := logstorage.ParseTenantID(*journaldTenantID)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse -journald.tenantID=%q for journald: %w", *journaldTenantID, err)
-		}
 		cp.TenantID = tenantID
 	}
 
@@ -58,8 +69,13 @@ func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 		cp.TimeFields = []string{*journaldTimeField}
 	}
 	if len(cp.StreamFields) == 0 {
-		cp.StreamFields = getStreamFields()
+		streamFields := getStreamFields()
+		if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
+			return nil, fmt.Errorf("invalid stream field names in -journald.streamFields=%s: %s", journaldStreamFields, err)
+		}
+		cp.StreamFields = streamFields
 	}
+
 	if len(cp.IgnoreFields) == 0 {
 		cp.IgnoreFields = *journaldIgnoreFields
 	}
@@ -113,8 +129,16 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
+	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
+	if err != nil {
+		errorsTotal.Inc()
+		logger.Errorf("cannot start reading journald request: %s", err)
+		return
+	}
+	defer writeconcurrencylimiter.PutReader(wcr)
+
 	encoding := r.Header.Get("Content-Encoding")
-	reader, err := protoparserutil.GetUncompressedReader(r.Body, encoding)
+	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
 		errorsTotal.Inc()
 		logger.Errorf("cannot decode journald request: %s", err)
@@ -123,7 +147,13 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 
 	lmp := cp.NewLogMessageProcessor("journald", true)
 	streamName := fmt.Sprintf("remoteAddr=%s, requestURI=%q", httpserver.GetQuotedRemoteAddr(r), r.RequestURI)
-	err = processStreamInternal(streamName, reader, lmp, cp)
+
+	remoteIP := ""
+	if *journaldUseRemoteIP {
+		remoteIP = getRemoteIP(r)
+	}
+
+	err = processStreamInternal(streamName, reader, remoteIP, lmp, cp)
 	protoparserutil.PutUncompressedReader(reader)
 	lmp.MustClose()
 	if err != nil {
@@ -149,15 +179,11 @@ var (
 	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/journald/upload"}`)
 )
 
-func processStreamInternal(streamName string, r io.Reader, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
-	wcr := writeconcurrencylimiter.GetReader(r)
-	defer writeconcurrencylimiter.PutReader(wcr)
-
-	lr := insertutil.NewLineReader("journald", wcr)
+func processStreamInternal(streamName string, r io.Reader, remoteIP string, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
+	lr := insertutil.NewLineReader("journald", r)
 
 	for {
-		err := readJournaldLogEntry(streamName, lr, lmp, cp)
-		wcr.DecConcurrency()
+		err := readJournaldLogEntry(streamName, lr, remoteIP, lmp, cp)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -227,7 +253,7 @@ var fieldsBufPool sync.Pool
 // readJournaldLogEntry reads a single log entry in Journald format.
 //
 // See https://systemd.io/JOURNAL_EXPORT_FORMATS/#journal-export-format
-func readJournaldLogEntry(streamName string, lr *insertutil.LineReader, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
+func readJournaldLogEntry(streamName string, lr *insertutil.LineReader, remoteIP string, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
 	var ts int64
 	var name, value string
 
@@ -249,7 +275,10 @@ func readJournaldLogEntry(streamName string, lr *insertutil.LineReader, lmp inse
 				if ts == 0 {
 					ts = time.Now().UnixNano()
 				}
-				lmp.AddRow(ts, fb.fields, nil)
+				if remoteIP != "" {
+					fb.addField("remote_ip", remoteIP)
+				}
+				lmp.AddRow(ts, fb.fields, -1)
 			}
 			return nil
 		}
@@ -375,4 +404,25 @@ func isValidFieldName(s string) bool {
 		}
 	}
 	return true
+}
+
+func getRemoteIP(r *http.Request) string {
+	addr := r.RemoteAddr
+
+	// handle reverse proxies
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		addr, _, _ = strings.Cut(xff, ",")
+		addr = strings.TrimSpace(addr)
+	}
+
+	// http server sets it to IP:port
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+
+	// strip brackets for IPv6 addresses
+	addr = strings.TrimPrefix(addr, "[")
+	addr = strings.TrimSuffix(addr, "]")
+
+	return addr
 }

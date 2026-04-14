@@ -23,6 +23,19 @@ type filterStreamID struct {
 	streamIDsMapOnce sync.Once
 }
 
+func newFilterStreamID(streamIDs []streamID) *filterStreamID {
+	return &filterStreamID{
+		streamIDs: streamIDs,
+	}
+}
+
+func newFilterStreamIDFromQuery(q *Query, qFieldName string) *filterStreamID {
+	return &filterStreamID{
+		q:          q,
+		qFieldName: qFieldName,
+	}
+}
+
 func (fs *filterStreamID) String() string {
 	if fs.q != nil {
 		return "_stream_id:in(" + fs.q.String() + ")"
@@ -56,6 +69,13 @@ func (fs *filterStreamID) initStreamIDsMap() {
 		m[string(k)] = struct{}{}
 	}
 	fs.streamIDsMap = m
+}
+
+func (fs *filterStreamID) matchRow(fields []Field) bool {
+	m := fs.getStreamIDsMap()
+	v := getFieldValueByName(fields, "_stream_id")
+	_, ok := m[v]
+	return ok
 }
 
 func (fs *filterStreamID) applyToBlockResult(br *blockResult, bm *bitmap) {
