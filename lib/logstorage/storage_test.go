@@ -150,7 +150,7 @@ func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
 
 	check := func(qStr string, rowsExpected int) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+		checkQueryResults(t, s, ts, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
 	}
 
 	addRow("same_stream", "before_detach", "before detach")
@@ -211,7 +211,7 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 
 	check := func(qStr string, rowsExpected int) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+		checkQueryResults(t, s, ts, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
 	}
 
 	addRow("same_stream", "before_detach", "before detach")
