@@ -6,12 +6,14 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
+	"github.com/VictoriaMetrics/metrics"
 )
 
 // Processor processes log lines from a single file.
@@ -67,10 +69,16 @@ func Start(checkpointsPath string) *Tailer {
 	}
 }
 
-func (fc *Tailer) StartRead(filepath string, proc Processor) {
+func (fc *Tailer) StartRead(relPath string, proc Processor) {
+	// Use absolute paths to prevent duplicate logs in case the vlagent working directory changes.
+	absPath, err := filepath.Abs(relPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot get absolute path of %q: %s", relPath, err)
+	}
+
 	fc.logFilesLock.Lock()
-	_, ok := fc.logFiles[filepath]
-	fc.logFiles[filepath] = struct{}{}
+	_, ok := fc.logFiles[absPath]
+	fc.logFiles[absPath] = struct{}{}
 	fc.logFilesLock.Unlock()
 	if ok {
 		// Already reading from the file.
@@ -79,7 +87,7 @@ func (fc *Tailer) StartRead(filepath string, proc Processor) {
 	}
 
 	fc.wg.Go(func() {
-		lf := fc.openLogFile(filepath)
+		lf := fc.openLogFile(absPath)
 		fc.process(lf, proc)
 	})
 }
@@ -104,14 +112,14 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 	if !ok {
 		// The file was deleted just after StartRead was called.
 		logger.Warnf("log file %q was deleted before being fully read; "+
-			"this is expected if the Pod was deleted while vlagent was starting", filepath)
+			"this is expected if the file was deleted while vlagent was starting", filepath)
 		return nil, false
 	}
 
 	if inode != cp.Inode {
 		_ = f.Close()
 
-		// When kubelet rotates log files, it keeps the previous log file uncompressed
+		// When kubelet or logrotate rotates log files, it typically keeps the previous log file uncompressed
 		// in the same directory with a different name (typically with a timestamp suffix).
 		// We attempt to find this renamed file to continue reading from our last offset.
 		// See https://github.com/kubernetes/kubernetes/blob/f794aa12d78f5b1f9579ce8a991a116a99a2c43c/pkg/kubelet/logs/container_log_manager.go#L416
@@ -122,7 +130,7 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 			// This means the file was rotated and potentially removed before we could process it.
 			logger.Warnf("skipping log file %q: rotated log file not found (inode=%d); "+
 				"some log lines may have been lost; "+
-				"this typically happens when Pod logs rotate faster than vlagent can process them during startup or downtime; "+
+				"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
 				"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
 				filepath, cp.Inode)
 			return nil, false
@@ -134,8 +142,8 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 		logger.Warnf("skipping log file %q: file content changed unexpectedly (expected fingerprint=%d, got=%d); "+
 			"log file was likely rotated and truncated before vlagent could finish reading; "+
 			"some log lines may have been lost; "+
-			"this typically happens when Pod logs rotate faster than vlagent can process them during startup or downtime; "+
-			"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
+			"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
+			"consider reducing log rotation frequency",
 			filepath, cp.Fingerprint, fp)
 		return nil, false
 	}
@@ -293,7 +301,7 @@ func (fc *Tailer) CleanupCheckpoints() {
 	}
 
 	logger.Warnf("%d log files were deleted before being fully read; "+
-		"this is expected if Pods were deleted while vlagent was restarting; "+
+		"this is expected if files were deleted while vlagent was restarting; "+
 		"an example of such file: %q", len(unusedCheckpoints), unusedCheckpoints[0].Path)
 }
 
@@ -313,11 +321,17 @@ func (fc *Tailer) getUnusedCheckpoints() []checkpoint {
 	return unused
 }
 
-func (fc *Tailer) IsTailing(filepath string) bool {
+func (fc *Tailer) IsTailing(relPath string) bool {
+	// Use absolute paths to prevent duplicate logs in case the vlagent working directory changes.
+	absPath, err := filepath.Abs(relPath)
+	if err != nil {
+		logger.Panicf("FATAL: cannot get absolute path of %q: %s", relPath, err)
+	}
+
 	fc.logFilesLock.Lock()
 	defer fc.logFilesLock.Unlock()
 
-	_, ok := fc.logFiles[filepath]
+	_, ok := fc.logFiles[absPath]
 	return ok
 }
 
@@ -363,3 +377,5 @@ func tryResolveSymlink(symlink string) string {
 	}
 	return resolvedPath
 }
+
+var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")

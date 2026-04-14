@@ -31,127 +31,49 @@ func TestComplexFilters(t *testing.T) {
 	}
 
 	// (foobar AND NOT baz AND (abcdef OR xyz))
-	f := &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-				},
-			},
-		},
-	}
+	f := newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{6})
 
 	// (foobaz AND NOT baz AND (abcdef OR xyz))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobaz",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobaz"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", nil)
 
 	// (foobaz AND NOT baz AND (abcdef OR xyz OR a))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "baz",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "a",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "baz")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+			newFilterPhrase("foo", "a"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{1, 6})
 
 	// (foobaz AND NOT qwert AND (abcdef OR xyz OR a))
-	f = &filterAnd{
-		filters: []filter{
-			&filterPhrase{
-				fieldName: "foo",
-				phrase:    "foobar",
-			},
-			&filterNot{
-				f: &filterPhrase{
-					fieldName: "foo",
-					phrase:    "qwert",
-				},
-			},
-			&filterOr{
-				filters: []filter{
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "abcdef",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "xyz",
-					},
-					&filterPhrase{
-						fieldName: "foo",
-						phrase:    "a",
-					},
-				},
-			},
-		},
-	}
+	f = newFilterAnd([]filter{
+		newFilterPhrase("foo", "foobar"),
+		newFilterNot(newFilterPhrase("foo", "qwert")),
+		newFilterOr([]filter{
+			newFilterPhrase("foo", "abcdef"),
+			newFilterPhrase("foo", "xyz"),
+			newFilterPhrase("foo", "a"),
+		}),
+	})
 	testFilterMatchForColumns(t, columns, f, "foo", []int{1, 3, 6})
 }
 

@@ -53,20 +53,20 @@ type logFile struct {
 	tailSize int
 }
 
-func newLogFile(symlink string) *logFile {
+func newLogFile(filePath string) *logFile {
 	return &logFile{
-		path: symlink,
+		path: filePath,
 	}
 }
 
-func newLogFileFromFile(f *os.File, fingerprint uint64, symlink string) (*logFile, error) {
+func newLogFileFromFile(f *os.File, fingerprint uint64, filePath string) (*logFile, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("cannot get file info of %q: %w", f.Name(), err)
 	}
 	inode := getInode(fi)
 
-	lf := newLogFile(symlink)
+	lf := newLogFile(filePath)
 	lf.file = f
 	lf.inode = inode
 	lf.commitInode = inode
@@ -186,11 +186,7 @@ func (lf *logFile) tryCompleteTail(data []byte) ([]byte, []byte, bool) {
 
 	lf.tailSize += len(tailEnd)
 	if lf.tailSize > maxLogLineSize {
-		// Discard the too large log line.
-		//
-		// This is unexpected in default Kubernetes installations since
-		// containerd splits log lines into 16 KiB chunks by default (criLine.partial will be true for such lines).
-		// See: https://github.com/containerd/containerd/blob/f37f951f5601b309e3b31fadf66991625370f7ba/docs/cri/config.md?plain=1#L399-L402
+		tooLongLinesSkipped.Inc()
 		logger.Warnf("log line from file %q with size %d bytes exceeds maximum allowed size of %d MiB",
 			lf.path, lf.tailSize, maxLogLineSize/1024/1024)
 
@@ -293,16 +289,23 @@ func (lf *logFile) status() logFileStatus {
 		return logFileStatusNotRotated
 	}
 
-	newInode := getInode(stat)
-	if lf.inode == newInode {
+	size := stat.Size()
+	if size == 0 {
+		// The new log file has been created, but an application hasn't switched to it yet.
+		// Consider the file is not rotated, as it may be appended to during the rotation process.
 		return logFileStatusNotRotated
 	}
-	if stat.Size() == 0 {
-		// The file has been created, but Container Runtime hasn't switched to it yet.
-		return logFileStatusNotRotated
+	if size < lf.offset {
+		// The file was truncated.
+		return logFileStatusRotated
 	}
 
-	return logFileStatusRotated
+	newInode := getInode(stat)
+	if lf.inode != newInode {
+		return logFileStatusRotated
+	}
+
+	return logFileStatusNotRotated
 }
 
 func (lf *logFile) setOffset(offset int64) {

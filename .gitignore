@@ -12,6 +12,7 @@
 /victoria-logs-data
 /vlagent-remotewrite-data
 /vlagent-kubernetes-checkpoints.json
+/vlagent-file-checkpoints.json
 .DS_store
 Gemfile.lock
 /_site

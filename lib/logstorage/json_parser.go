@@ -32,6 +32,7 @@ type JSONParser struct {
 	prefixBuf []byte
 
 	preserveKeys    []string
+	fieldPrefix     string
 	maxFieldNameLen int
 }
 
@@ -43,6 +44,7 @@ func (p *JSONParser) reset() {
 
 	p.prefixBuf = p.prefixBuf[:0]
 	p.preserveKeys = nil
+	p.fieldPrefix = ""
 	p.maxFieldNameLen = 0
 }
 
@@ -71,9 +73,11 @@ var parserPool sync.Pool
 //
 // JSON values for keys from the preserveKeys list are preserved without flattening.
 //
+// The given fieldPrefix is added to all the parsed field names.
+//
 // The p.Fields remains valid until the next call to ParseLogMessage() or PutJSONParser().
-func (p *JSONParser) ParseLogMessage(msg []byte, preserveKeys []string) error {
-	return p.parseLogMessage(msg, preserveKeys, maxFieldNameSize)
+func (p *JSONParser) ParseLogMessage(msg []byte, preserveKeys []string, fieldPrefix string) error {
+	return p.parseLogMessage(msg, preserveKeys, fieldPrefix, maxFieldNameSize)
 }
 
 // parseLogMessage parses the given JSON log message msg into p.Fields.
@@ -82,7 +86,7 @@ func (p *JSONParser) ParseLogMessage(msg []byte, preserveKeys []string) error {
 // or its length exceeds maxFieldNameLen.
 //
 // The p.Fields remains valid until the next call to ParseLogMessage() or PutJSONParser().
-func (p *JSONParser) parseLogMessage(msg []byte, preserveKeys []string, maxFieldNameLen int) error {
+func (p *JSONParser) parseLogMessage(msg []byte, preserveKeys []string, fieldPrefix string, maxFieldNameLen int) error {
 	p.reset()
 
 	msgStr := bytesutil.ToUnsafeString(msg)
@@ -94,8 +98,10 @@ func (p *JSONParser) parseLogMessage(msg []byte, preserveKeys []string, maxField
 	if err != nil {
 		return err
 	}
+
 	p.maxFieldNameLen = maxFieldNameLen
 	p.preserveKeys = preserveKeys
+	p.fieldPrefix = fieldPrefix
 	p.appendLogFields(o)
 	return nil
 }
@@ -182,6 +188,7 @@ func (p *JSONParser) appendPreservedLogField(o *fastjson.Object) {
 
 func (p *JSONParser) appendLogField(k, value []byte) {
 	bufLen := len(p.buf)
+	p.buf = append(p.buf, p.fieldPrefix...)
 	p.buf = append(p.buf, p.prefixBuf...)
 	p.buf = append(p.buf, k...)
 	name := p.buf[bufLen:]

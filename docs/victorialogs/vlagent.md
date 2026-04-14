@@ -346,6 +346,256 @@ The `vlagent-data` volume uses `hostPath` so that the checkpoint file and the on
 
 See also: [How to exclude vlagent's own logs from collection](https://docs.victoriametrics.com/victorialogs/vlagent/#excluding-vlagents-own-logs).
 
+## Collect logs from files
+
+`vlagent` can collect text-based logs directly from files on disk using the `-fileCollector.glob` flag.
+This is useful for collecting logs from applications that write to log files, such as nginx, Redis, ClickHouse.
+
+### Quick start
+
+The following command starts `vlagent` to collect logs from the `/path/to/file` file
+and to send the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
+
+```sh
+./vlagent-prod \
+  -fileCollector.glob=/path/to/file \
+  -tmpDataPath=/var/lib/vlagent \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native
+```
+
+By default, `vlagent` uses `hostname` and `file` as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields.
+
+See also ready-to-use `vlagent` configuration examples for the corresponding log source:
+
+- [Collecting nginx logs](https://docs.victoriametrics.com/victorialogs/vlagent/victorialogs/vlagent/#collecting-nginx-logs).
+- [Collecting Redis logs](https://docs.victoriametrics.com/victorialogs/vlagent/victorialogs/vlagent/#collecting-redis-logs).
+- [Collecting ClickHouse logs](https://docs.victoriametrics.com/victorialogs/vlagent/victorialogs/vlagent/#collecting-clickhouse-logs).
+
+### Glob pattern requirements
+
+The `-fileCollector.glob` flag must point to a file or a collection of files with the given suffix (extension), not a directory:
+
+```sh
+# correct
+-fileCollector.glob=/var/log/nginx/access.log
+-fileCollector.glob=/var/log/nginx/*.log
+
+# incorrect - points to a directory
+-fileCollector.glob=/var/log/nginx/
+```
+
+Multiple glob patterns can be specified by repeating the flag:
+
+```sh
+-fileCollector.glob=/var/log/nginx/access.log \
+-fileCollector.glob=/var/log/nginx/error.log
+```
+
+To exclude specific files from collection, use `-fileCollector.excludeGlob`:
+
+```sh
+-fileCollector.glob=/var/log/*/*.log \
+-fileCollector.excludeGlob=/var/log/com.apple*
+```
+
+Double-star (`**`) glob patterns are not supported:
+
+```sh
+# incorrect
+-fileCollector.glob=/var/log/**/*.log
+```
+
+### Log rotation
+
+`vlagent` fully supports the `create` log rotation strategy (the default in `logrotate`).
+When the active log file is renamed, `vlagent` finishes reading it before switching to the new file.
+Rotated files in the same directory are tracked automatically, even after `vlagent` restart.
+
+Example `logrotate` config:
+
+```
+/var/log/myapp/myapp.log {
+    create
+    postrotate
+        kill -USR1 $(cat /var/run/myapp.pid)
+    endscript
+}
+```
+
+Note that the application must handle the signal specified in `postrotate` and reopen its log file in response.
+
+`vlagent` does not fully support the `copytruncate` rotation strategy and does not read compressed (`.gz`) files.
+
+> Note: if you are collecting logs from a well-known application such as nginx, Apache, or PostgreSQL,
+> a `logrotate` config is most likely already preconfigured by the package and located in `/etc/logrotate.d/`.
+
+### Checkpoints
+
+By default, all temporary data such as checkpoints and buffered logs are stored in the directory specified by `-tmpDataPath`:
+
+A custom path for the checkpoint file can be specified via `-fileCollector.checkpointsPath`:
+
+```sh
+-fileCollector.checkpointsPath=/var/lib/vlagent/file-checkpoints.json
+```
+
+### Metadata and fields
+
+By default, `vlagent` attaches the following fields to every log entry collected from files:
+
+- `file` - path to the source file (controlled by `-fileCollector.fileField`)
+- `hostname` - hostname of the machine (controlled by `-fileCollector.hostnameField`)
+
+These fields are also used as [stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.
+Setting either flag to an empty string disables the corresponding field:
+
+```sh
+-fileCollector.fileField=""
+-fileCollector.hostnameField=""
+```
+
+To attach additional fields to all collected logs:
+
+```sh
+-fileCollector.extraFields='{"env":"prod","app":"nginx"}'
+```
+
+To drop specific fields before sending:
+
+```sh
+-fileCollector.ignoreFields=field1,field2
+```
+
+To remove ANSI color codes from specific fields:
+
+```sh
+-fileCollector.decolorizeFields=message
+```
+
+`vlagent` automatically parses JSON log lines and maps well-known fields to
+[`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and
+[`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+
+Default `_msg` fields (first match wins): `message`, `msg`, `log`.  
+Override with `-fileCollector.msgField=field1,field2`.
+
+Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.  
+Override with `-fileCollector.timeField=field1,field2`.
+
+If none of the `_time` fields are found, `vlagent` uses the time the log line was read from disk.
+
+### Collecting nginx logs
+
+The following command starts `vlagent` to collect nginx access and error logs,
+attaches an `app` field to each log entry, uses `hostname` and `app` as stream fields for fast filtering in VictoriaLogs,
+and sends the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
+
+```sh
+./vlagent-prod \
+  -fileCollector.glob="/var/log/nginx/access.log" \
+  -fileCollector.extraFields='{"app":"nginx-access"}' \
+  -fileCollector.glob="/var/log/nginx/error.log" \
+  -fileCollector.extraFields='{"app":"nginx-error"}' \
+  -fileCollector.streamFields=hostname,app \
+  -fileCollector.msgField=request \
+  -tmpDataPath=/var/lib/vlagent \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native
+```
+
+To enable JSON format for nginx access logs, add the following `log_format` directive to the http section of `/etc/nginx/nginx.conf`:
+
+```
+http {
+    log_format json_combined escape=json
+        '{'
+            '"time":"$msec",'
+            '"remote_addr":"$remote_addr",'
+            '"request":"$request",'
+            '"status":"$status",'
+            '"body_bytes_sent":"$body_bytes_sent",'
+            '"http_referer":"$http_referer",'
+            '"http_user_agent":"$http_user_agent"'
+        '}';
+
+    access_log /var/log/nginx/access.log json_combined;
+}
+```
+
+After enabling JSON format, `vlagent` will automatically parse the log entries and map the time field to
+[`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) and the `request` field to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+All other fields will be stored as individual log fields, enabling precise filtering in VictoriaLogs.
+To use a different field as `_msg`, override it with the `-fileCollector.msgField` command-line flag.
+
+### Collecting Redis logs
+
+The following command starts `vlagent` to collect Redis logs, attaches an `app` field to each log entry,
+uses `hostname` and `app` as stream fields for fast filtering in VictoriaLogs,
+and sends the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
+
+```sh
+./vlagent-prod \
+  -fileCollector.glob="/var/log/redis/redis-server.log" \
+  -fileCollector.extraFields='{"app":"redis"}' \
+  -fileCollector.streamFields=hostname,app \
+  -tmpDataPath=/var/lib/vlagent \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native
+```
+
+### Collecting ClickHouse logs
+
+The following command starts `vlagent` to collect ClickHouse server logs,
+attaches an `app` field to each log entry, uses `hostname` and `app` as stream fields for fast filtering in VictoriaLogs,
+and sends the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
+
+```sh
+./vlagent-prod \
+  -fileCollector.glob="/var/log/clickhouse-server/clickhouse-server.log" \
+  -fileCollector.extraFields='{"app":"clickhouse"}' \
+  -fileCollector.streamFields=hostname,app \
+  -fileCollector.timeField=date_time \
+  -tmpDataPath=/var/lib/vlagent \
+  -remoteWrite.url=http://victoria-logs:9428/insert/native
+```
+
+ClickHouse writes all log levels to `clickhouse-server.log` and errors only to `clickhouse-server.err.log`.
+To collect error logs only, replace the glob pattern with the error log path.
+
+ClickHouse rotates its own log files internally based on the `<size>` and `<count>` settings in its server config, without relying on `logrotate`.
+`vlagent` handles this rotation automatically.
+
+To enable JSON format for ClickHouse server logs, add the following `<formatting>` section to the `<logger>` section of `/etc/clickhouse-server/config.xml`:
+
+```xml
+
+<clickhouse>
+    <logger>
+        <level>information</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        # ...
+        <formatting>
+            <type>json</type>
+            <names>
+                <date_time>date_time</date_time>
+                <thread_name>thread_name</thread_name>
+                <thread_id>thread_id</thread_id>
+                <level>level</level>
+                <query_id>query_id</query_id>
+                <logger_name>logger_name</logger_name>
+                <message>message</message>
+                <source_file>source_file</source_file>
+                <source_line>source_line</source_line>
+            </names>
+        </formatting>
+    </logger>
+    # ...
+</clickhouse>
+```
+
+After enabling JSON format, `vlagent` will automatically parse the log entries and map the `timestamp` field to [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+and the `message` field to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+All other fields such as `level` and `logger_name` will be stored as individual log fields, enabling precise filtering in VictoriaLogs.
+
 ## Security and TLS
 
 By default, `vlagent` communicates with remote storage over plain HTTP.

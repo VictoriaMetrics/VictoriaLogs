@@ -32,41 +32,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "other-non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -99,41 +81,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -178,41 +142,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2, 5})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "other-non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -266,41 +212,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 5, 7, 8})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{5})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{5})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -357,41 +285,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "other-non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-exsiting-column",
-		}
+		fe = newFilterEqField("foo", "non-exsiting-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -448,41 +358,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -539,41 +431,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-colun",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-colun", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -630,41 +504,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -721,41 +577,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -806,41 +644,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "other-non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -900,41 +720,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterEqField("foo", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9, 11})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("foo", "baz")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -985,41 +787,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "_msg",
-			otherFieldName: "_msg",
-		}
+		fe := newFilterEqField("_msg", "_msg")
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterEqField{
-			fieldName:      "_msg",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{1, 3, 5, 7})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-exsiting-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-exsiting-column")
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "_msg",
-			otherFieldName: "baz",
-		}
+		fe = newFilterEqField("_msg", "baz")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterEqField{
-			fieldName:      "_msg",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("_msg", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "_msg",
-		}
+		fe = newFilterEqField("non-existing-column", "_msg")
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 	})
 
@@ -1050,41 +834,23 @@ func TestFilterEqField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe := newFilterEqField("foo", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 3, 5})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("non-existing-column", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5})
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "bar",
-		}
+		fe = newFilterEqField("non-existing-column", "bar")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterEqField{
-			fieldName:      "bar",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("bar", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
 		// mismatch
-		fe = &filterEqField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterEqField("foo", "non-existing-column")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterEqField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 

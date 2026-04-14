@@ -94,29 +94,17 @@ func TestFilterJSONArrayContainsAny(t *testing.T) {
 		}
 
 		// match
-		fa := &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"a"},
-		}
+		fa := newFilterJSONArrayContainsAny("foo", []string{"a"})
 		testFilterMatchForColumns(t, columns, fa, "foo", []int{0, 1, 2})
 
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"b"},
-		}
+		fa = newFilterJSONArrayContainsAny("foo", []string{"b"})
 		testFilterMatchForColumns(t, columns, fa, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"c"},
-		}
+		fa = newFilterJSONArrayContainsAny("foo", []string{"c"})
 		testFilterMatchForColumns(t, columns, fa, "foo", nil)
 
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "non-existing-column",
-			values:    []string{"a"},
-		}
+		fa = newFilterJSONArrayContainsAny("non-existing-column", []string{"a"})
 		testFilterMatchForColumns(t, columns, fa, "foo", nil)
 	})
 
@@ -136,23 +124,14 @@ func TestFilterJSONArrayContainsAny(t *testing.T) {
 		}
 
 		// match
-		fa := &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"a"},
-		}
+		fa := newFilterJSONArrayContainsAny("foo", []string{"a"})
 		testFilterMatchForColumns(t, columns, fa, "foo", []int{1, 3})
 
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"b"},
-		}
+		fa = newFilterJSONArrayContainsAny("foo", []string{"b"})
 		testFilterMatchForColumns(t, columns, fa, "foo", []int{2, 3})
 
 		// mismatch
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"c"},
-		}
+		fa = newFilterJSONArrayContainsAny("foo", []string{"c"})
 		testFilterMatchForColumns(t, columns, fa, "foo", nil)
 	})
 
@@ -171,17 +150,11 @@ func TestFilterJSONArrayContainsAny(t *testing.T) {
 		}
 
 		// match
-		fa := &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"apple"},
-		}
+		fa := newFilterJSONArrayContainsAny("foo", []string{"apple"})
 		testFilterMatchForColumns(t, columns, fa, "foo", []int{0, 3})
 
 		// mismatch
-		fa = &filterJSONArrayContainsAny{
-			fieldName: "foo",
-			values:    []string{"pear"},
-		}
+		fa = newFilterJSONArrayContainsAny("foo", []string{"pear"})
 		testFilterMatchForColumns(t, columns, fa, "foo", nil)
 	})
 

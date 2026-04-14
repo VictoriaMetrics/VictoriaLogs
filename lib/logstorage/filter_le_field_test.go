@@ -32,81 +32,41 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterLeField("foo", "baz", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -139,68 +99,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "baz",
-		}
+		fe = newFilterLeField("foo", "baz", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "other-non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -245,82 +172,41 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 3, 4, 5, 6})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -374,82 +260,41 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{5})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 6, 7, 8, 9})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "other-non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -506,76 +351,38 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "baz",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("baz", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-exsiting-column",
-		}
+		fe = newFilterLeField("foo", "non-exsiting-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "non-exsiting-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "non-exsiting-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "other-non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -632,75 +439,38 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "other-non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -757,68 +527,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-colun",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-colun", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-colun",
-			otherFieldName:     "other-non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-colun", "other-non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -875,68 +612,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -993,68 +697,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -1105,68 +776,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "other-non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "other-non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -1226,68 +864,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "foo",
-		}
+		fe := newFilterLeField("foo", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 4, 6, 8, 10})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 3, 5, 7, 9, 11})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("baz", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 
@@ -1338,68 +943,35 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "_msg",
-			otherFieldName: "_msg",
-		}
+		fe := newFilterLeField("_msg", "_msg", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:      "_msg",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("_msg", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:          "_msg",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("_msg", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 2, 4, 6, 8})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "_msg",
-		}
+		fe = newFilterLeField("bar", "_msg", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{1, 3, 5, 7})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-exsiting-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-exsiting-column", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "_msg",
-		}
+		fe = newFilterLeField("non-existing-column", "_msg", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "_msg",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "_msg", true)
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterLeField{
-			fieldName:      "baz",
-			otherFieldName: "_msg",
-		}
+		fe = newFilterLeField("baz", "_msg", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterLeField{
-			fieldName:      "_msg",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("_msg", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "_msg", nil)
 	})
 
@@ -1430,75 +1002,38 @@ func TestFilterLeField(t *testing.T) {
 		}
 
 		// match
-		fe := &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "bar",
-		}
+		fe := newFilterLeField("foo", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 3, 4, 5})
 
-		fe = &filterLeField{
-			fieldName:          "foo",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("foo", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{1, 4})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("bar", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 2, 3, 5})
 
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "foo",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "foo", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("non-existing-column", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "bar",
-		}
+		fe = newFilterLeField("non-existing-column", "bar", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5})
 
-		fe = &filterLeField{
-			fieldName:          "non-existing-column",
-			otherFieldName:     "bar",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("non-existing-column", "bar", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 3, 4, 5})
 
-		fe = &filterLeField{
-			fieldName:      "bar",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("bar", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{2})
 
-		fe = &filterLeField{
-			fieldName:      "non-existing-column",
-			otherFieldName: "foo",
-		}
+		fe = newFilterLeField("non-existing-column", "foo", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", []int{0, 1, 2, 3, 4, 5})
 
 		// mismatch
-		fe = &filterLeField{
-			fieldName:      "foo",
-			otherFieldName: "non-existing-column",
-		}
+		fe = newFilterLeField("foo", "non-existing-column", false)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 
-		fe = &filterLeField{
-			fieldName:          "bar",
-			otherFieldName:     "non-existing-column",
-			excludeEqualValues: true,
-		}
+		fe = newFilterLeField("bar", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
 

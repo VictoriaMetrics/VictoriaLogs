@@ -1489,9 +1489,6 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 	if err != nil {
 		return nil, err
 	}
-	// decrease timestamp by one nanosecond in order to avoid capturing logs belonging
-	// to the first nanosecond at the next period of time (month, week, day, hour, etc.)
-	timestamp--
 
 	currTimestamp := time.Now().UnixNano()
 	if !timeOK {

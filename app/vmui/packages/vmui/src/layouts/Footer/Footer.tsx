@@ -42,7 +42,13 @@ const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
       </a>
     ))}
     <div className="vm-footer__copyright">&copy; {copyrightYears} VictoriaMetrics.</div>
-    {version && <span className="vm-footer__version">&nbsp;Version: {version}</span>}
+    {version && <span className="vm-footer__version">&nbsp;Version:
+      <a
+        href={`https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/${version}`}
+        target="_blank"
+        rel="noreferrer"
+      >{version}</a>
+    </span>}
   </footer>;
 });
 
