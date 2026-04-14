@@ -26,35 +26,20 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "const",
-		}
+		pv := newFilterValueType("foo", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "dict",
-		}
+		pv = newFilterValueType("foo", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "non-existing-type",
-		}
+		pv = newFilterValueType("foo", "non-existing-type")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "bar",
-			valueType: "const",
-		}
+		pv = newFilterValueType("bar", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "",
-			valueType: "const",
-		}
+		pv = newFilterValueType("", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -87,65 +72,35 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "const",
-		}
+		pv := newFilterValueType("foo", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2})
 
-		pv = &filterValueType{
-			fieldName: "",
-			valueType: "const",
-		}
+		pv = newFilterValueType("", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2})
 
-		pv = &filterValueType{
-			fieldName: "_msg",
-			valueType: "const",
-		}
+		pv = newFilterValueType("_msg", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2})
 
-		pv = &filterValueType{
-			fieldName: "other-column",
-			valueType: "const",
-		}
+		pv = newFilterValueType("other-column", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "non-existing-type",
-		}
+		pv = newFilterValueType("foo", "non-existing-type")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "dict",
-		}
+		pv = newFilterValueType("foo", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "",
-		}
+		pv = newFilterValueType("foo", "")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "other-column",
-			valueType: "dict",
-		}
+		pv = newFilterValueType("other-column", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "",
-			valueType: "dict",
-		}
+		pv = newFilterValueType("", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 
-		pv = &filterValueType{
-			fieldName: "bar",
-			valueType: "const",
-		}
+		pv = newFilterValueType("bar", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -166,17 +121,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "dict",
-		}
+		pv := newFilterValueType("foo", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "const",
-		}
+		pv = newFilterValueType("foo", "const")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -200,17 +149,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "string",
-		}
+		pv := newFilterValueType("foo", "string")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "dict",
-		}
+		pv = newFilterValueType("foo", "dict")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -235,17 +178,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "uint8",
-		}
+		pv := newFilterValueType("foo", "uint8")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "string",
-		}
+		pv = newFilterValueType("foo", "string")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -269,17 +206,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "uint16",
-		}
+		pv := newFilterValueType("foo", "uint16")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "uint8",
-		}
+		pv = newFilterValueType("foo", "uint8")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -303,17 +234,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "uint32",
-		}
+		pv := newFilterValueType("foo", "uint32")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "uint16",
-		}
+		pv = newFilterValueType("foo", "uint16")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -336,17 +261,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "uint64",
-		}
+		pv := newFilterValueType("foo", "uint64")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "uint32",
-		}
+		pv = newFilterValueType("foo", "uint32")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -369,17 +288,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "int64",
-		}
+		pv := newFilterValueType("foo", "int64")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "uint64",
-		}
+		pv = newFilterValueType("foo", "uint64")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -402,17 +315,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "float64",
-		}
+		pv := newFilterValueType("foo", "float64")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "uint64",
-		}
+		pv = newFilterValueType("foo", "uint64")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -438,17 +345,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "foo",
-			valueType: "ipv4",
-		}
+		pv := newFilterValueType("foo", "ipv4")
 		testFilterMatchForColumns(t, columns, pv, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "foo",
-			valueType: "string",
-		}
+		pv = newFilterValueType("foo", "string")
 		testFilterMatchForColumns(t, columns, pv, "foo", nil)
 	})
 
@@ -471,17 +372,11 @@ func TestFilterValueType(t *testing.T) {
 		}
 
 		// match
-		pv := &filterValueType{
-			fieldName: "_msg",
-			valueType: "iso8601",
-		}
+		pv := newFilterValueType("_msg", "iso8601")
 		testFilterMatchForColumns(t, columns, pv, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		pv = &filterValueType{
-			fieldName: "_msg",
-			valueType: "string",
-		}
+		pv = newFilterValueType("_msg", "string")
 		testFilterMatchForColumns(t, columns, pv, "_msg", nil)
 	})
 

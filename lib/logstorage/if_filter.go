@@ -27,7 +27,7 @@ func parseIfFilter(lex *lexer) (*ifFilter, error) {
 
 	if lex.isKeyword(")") {
 		lex.nextToken()
-		return newIfFilter(&filterNoop{}), nil
+		return newIfFilter(newFilterNoop()), nil
 	}
 
 	f, err := parseFilter(lex, true)

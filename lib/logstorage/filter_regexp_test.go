@@ -24,35 +24,20 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("0.0"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("0.0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex(`^127\.0\.0\.1$`),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex(`^127\.0\.0\.1$`))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
-		fr = &filterRegexp{
-			fieldName: "non-existing-column",
-			re:        mustCompileRegex("foo.+bar|"),
-		}
+		fr = newFilterRegexp("non-existing-column", mustCompileRegex("foo.+bar|"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo.+bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo.+bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterRegexp{
-			fieldName: "non-existing-column",
-			re:        mustCompileRegex("foo.+bar"),
-		}
+		fr = newFilterRegexp("non-existing-column", mustCompileRegex("foo.+bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -74,23 +59,14 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar|^$"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("foo|bar|^$"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 5, 6})
 
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("27.0"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("27.0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 5, 6, 7})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("bar.+foo"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("bar.+foo"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -116,17 +92,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("(?i)foo|йцу|START.+END|(?-s)zoo.*baz"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("(?i)foo|йцу|START.+END|(?-s)zoo.*baz"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 6, 8, 10})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("qwe.+rty|^$|(?-s)START.+END"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("qwe.+rty|^$|(?-s)START.+END"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -151,17 +121,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("[32][23]?"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("[32][23]?"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 5, 7, 8})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -186,17 +150,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("[32][23]?"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("[32][23]?"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 5, 7, 8})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -221,17 +179,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("[32][23]?"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("[32][23]?"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 5, 7, 8})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -256,17 +208,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("[32][23]?"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("[32][23]?"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 5, 7, 8})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -291,17 +237,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("[32][23]?"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("[32][23]?"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 5, 6, 7, 8})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -327,17 +267,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("127.0.[40].(1|2)"),
-		}
+		fr := newFilterRegexp("foo", mustCompileRegex("127.0.[40].(1|2)"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{2, 4, 5, 6, 7})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "foo",
-			re:        mustCompileRegex("foo|bar|834"),
-		}
+		fr = newFilterRegexp("foo", mustCompileRegex("foo|bar|834"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -360,17 +294,11 @@ func TestFilterRegexp(t *testing.T) {
 		}
 
 		// match
-		fr := &filterRegexp{
-			fieldName: "_msg",
-			re:        mustCompileRegex("2006-[0-9]{2}-.+?(2|5)Z"),
-		}
+		fr := newFilterRegexp("_msg", mustCompileRegex("2006-[0-9]{2}-.+?(2|5)Z"))
 		testFilterMatchForColumns(t, columns, fr, "_msg", []int{1, 4})
 
 		// mismatch
-		fr = &filterRegexp{
-			fieldName: "_msg",
-			re:        mustCompileRegex("^01|04$"),
-		}
+		fr = newFilterRegexp("_msg", mustCompileRegex("^01|04$"))
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
 

@@ -290,6 +290,9 @@ clean-checkers: remove-golangci-lint remove-govulncheck
 test:
 	go test -tags 'synctest' ./lib/... ./app/...
 
+test-386:
+	GOARCH=386 go test -tags 'synctest' ./lib/... ./app/...
+
 test-race:
 	go test -tags 'synctest' -race ./lib/... ./app/...
 

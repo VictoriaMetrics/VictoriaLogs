@@ -26,107 +26,56 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("abc", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("ab", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("ab", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc def", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc def", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("def", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("def", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc def", patternMatcherOptionFull),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc def", patternMatcherOptionFull))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc ", patternMatcherOptionPrefix),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc ", patternMatcherOptionPrefix))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher(" def", patternMatcherOptionSuffix),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher(" def", patternMatcherOptionSuffix))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "other column",
-			pm:        newPatternMatcher("asdfdsf", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("other column", "", newPatternMatcher("asdfdsf", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bc", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bc", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "other column",
-			pm:        newPatternMatcher("sdd", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("other column", "", newPatternMatcher("sdd", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("abc", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("abc", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc", patternMatcherOptionFull),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc", patternMatcherOptionFull))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("def", patternMatcherOptionPrefix),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("def", patternMatcherOptionPrefix))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc", patternMatcherOptionSuffix),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc", patternMatcherOptionSuffix))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -159,89 +108,47 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("abc", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("ab", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("ab", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc de", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc de", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher(" de", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher(" de", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc def", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc def", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "other-column",
-			pm:        newPatternMatcher("x", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("other-column", "", newPatternMatcher("x", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher(" 2 ", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher(" 2 ", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("abc def ", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("abc def ", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("x", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("x", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "other-column",
-			pm:        newPatternMatcher("foo", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("other-column", "", newPatternMatcher("foo", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("x", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("x", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("foo", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("foo", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -262,41 +169,23 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("foobar", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("foobar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("ba", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("ba", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("barz", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("barz", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing column",
-			pm:        newPatternMatcher("foobar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing column", "", newPatternMatcher("foobar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -320,71 +209,38 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("a", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("a", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("НГК", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("НГК", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{8})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("aa a", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("aa a", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("!,", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("!,", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{9})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("aa ax", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("aa ax", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("qwe rty abc", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("qwe rty abc", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("barasdfsz", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("barasdfsz", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("@", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("@", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -409,47 +265,26 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("12", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 5})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("0", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("33", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("33", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("1234", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("1234", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -473,47 +308,26 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("123", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("123", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("0", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("33", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("33", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("123456", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("123456", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -537,47 +351,26 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("123", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("123", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("65536", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("65536", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("33", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("33", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12345678901", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("12345678901", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -600,47 +393,26 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("1234", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("1234", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12345678901", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("12345678901", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("33", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("33", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12345678901234567890", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("12345678901234567890", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -663,101 +435,53 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("123", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("123", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("1234.5678901", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("1234.5678901", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("56789", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("56789", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("-6553", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("-6553", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("65536", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("65536", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("23", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("23", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("7344.8943", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("7344.8943", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("-1234", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("-1234", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("+1234", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("+1234", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("23423", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("23423", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("678911", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("678911", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("33", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("33", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12345678901234567890", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("12345678901234567890", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -783,83 +507,44 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("127.0.0.1", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("foo", "", newPatternMatcher("127.0.0.1", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("12", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("12", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("127.0.0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("127.0.0", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("2.3.", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("2.3.", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("0", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("27.0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("27.0", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("8", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("8", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("127.1", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("127.1", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("27.022", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("27.022", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "foo",
-			pm:        newPatternMatcher("255.255.255.255", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("foo", "", newPatternMatcher("255.255.255.255", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -882,73 +567,41 @@ func TestFilterPatternMatch(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("2006-01-02T15:04:05.005Z", patternMatcherOptionAny),
-		}
+		fp := newFilterPatternMatch("_msg", "", newPatternMatcher("2006-01-02T15:04:05.005Z", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{4})
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("2006-01-0", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("2006-01-0", patternMatcherOptionAny))
+
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("002", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("002", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{1})
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("06", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("06", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPatternMatch{
-			fieldName: "non-existing-column",
-			pm:        newPatternMatcher("", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("non-existing-column", "", newPatternMatcher("", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("bar", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("2006-03-02T15:04:05.005Z", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("2006-03-02T15:04:05.005Z", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("8007", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("8007", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it has different string representation of the timestamp
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("2006-01-02T16:04:05.005+01:00", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("2006-01-02T16:04:05.005+01:00", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it contains too many digits for millisecond part
-		fp = &filterPatternMatch{
-			fieldName: "_msg",
-			pm:        newPatternMatcher("2006-01-02T15:04:05.00500Z", patternMatcherOptionAny),
-		}
+		fp = newFilterPatternMatch("_msg", "", newPatternMatcher("2006-01-02T15:04:05.00500Z", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 	})
 

@@ -236,6 +236,7 @@ func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) 
 								Name:  bytesutil.ToUnsafeString(pair),
 								Value: "no_label_value",
 							})
+							continue
 						}
 						fields = append(fields, logstorage.Field{
 							Name:  bytesutil.ToUnsafeString(pair[:n]),

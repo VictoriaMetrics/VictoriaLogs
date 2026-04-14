@@ -11,7 +11,7 @@ func TestParseJSONRequest_Failure(t *testing.T) {
 		t.Helper()
 
 		tlp := &insertutil.TestLogMessageProcessor{}
-		if err := parseJSONRequest([]byte(s), tlp, nil, nil, false, false); err == nil {
+		if err := parseJSONRequest([]byte(s), tlp, nil, nil, "", false, false); err == nil {
 			t.Fatalf("expecting non-nil error")
 		}
 		if err := tlp.Verify(nil, ""); err != nil {
@@ -62,7 +62,7 @@ func TestParseJSONRequest_Success(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 
-		if err := parseJSONRequest([]byte(s), tlp, nil, nil, false, false); err != nil {
+		if err := parseJSONRequest([]byte(s), tlp, nil, nil, "", false, false); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
@@ -145,12 +145,12 @@ func TestParseJSONRequest_Success(t *testing.T) {
 }
 
 func TestParseJSONRequest_ParseMessage(t *testing.T) {
-	f := func(s string, msgFields, preserveKeys []string, timestampsExpected []int64, resultExpected string) {
+	f := func(s string, msgFields, preserveKeys []string, msgFieldsPrefix string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 
-		if err := parseJSONRequest([]byte(s), tlp, msgFields, preserveKeys, false, true); err != nil {
+		if err := parseJSONRequest([]byte(s), tlp, msgFields, preserveKeys, msgFieldsPrefix, false, true); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
@@ -180,10 +180,38 @@ func TestParseJSONRequest_ParseMessage(t *testing.T) {
 			]
 		}
 	]
-}`, []string{"a", "trace_id"}, nil, []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","user_id":"123"}
+}`, []string{"a", "trace_id"}, nil, "", []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","user_id":"123"}
 {"foo":"bar","a":"b","trace_id":"pqw","_msg":"abc"}
 {"foo":"bar","a":"b","_msg":"{def}"}
 {"x":"y","_msg":"111","parent_id":"abc"}`)
+
+	// With msgFieldsPrefix
+	f(`{
+	"streams": [
+		{
+			"stream": {
+				"foo": "bar",
+				"a": "b"
+			},
+			"values": [
+				["1577836800000000001", "{\"user_id\":\"123\"}"],
+				["1577836900005000002", "abc", {"trace_id":"pqw"}],
+				["1577836900005000003", "{def}"]
+			]
+		},
+		{
+			"stream": {
+				"x": "y"
+			},
+			"values": [
+				["1877836900005000004", "{\"trace_id\":\"111\",\"parent_id\":\"abc\"}"]
+			]
+		}
+	]
+}`, []string{"a", "qwe.trace_id"}, nil, "qwe.", []int64{1577836800000000001, 1577836900005000002, 1577836900005000003, 1877836900005000004}, `{"foo":"bar","a":"b","qwe.user_id":"123"}
+{"foo":"bar","a":"b","trace_id":"pqw","_msg":"abc"}
+{"foo":"bar","a":"b","_msg":"{def}"}
+{"x":"y","_msg":"111","qwe.parent_id":"abc"}`)
 
 	// with preserve keys
 	f(`{
@@ -197,11 +225,11 @@ func TestParseJSONRequest_ParseMessage(t *testing.T) {
 			]
 		}
 	]
-}`, []string{"a", "trace_id"}, []string{"x"}, []int64{1577836800000000001}, `{"x":"y","_msg":"111","parent_id":"abc","x":"{\"a\":123}"}`)
+}`, []string{"a", "trace_id"}, []string{"x"}, "", []int64{1577836800000000001}, `{"x":"y","_msg":"111","parent_id":"abc","x":"{\"a\":123}"}`)
 
 	// with trailing whitespace in the JSON message
 	f(`{"streams":[{"stream":{"foo":"bar2"},"values":[["1577836800000000001","{\"bar\":\"baz\",\"_msg\":\"I am parsed\"}\n"]]}]}`,
-		nil, nil, []int64{1577836800000000001}, `{"foo":"bar2","bar":"baz","_msg":"I am parsed"}`)
+		nil, nil, "", []int64{1577836800000000001}, `{"foo":"bar2","bar":"baz","_msg":"I am parsed"}`)
 	f(`{"streams":[{"stream":{"foo":"bar2"},"values":[["1577836800000000001","{\"bar\":\"baz\",\"_msg\":\"I am parsed\"}\r\n\t  "]]}]}`,
-		nil, nil, []int64{1577836800000000001}, `{"foo":"bar2","bar":"baz","_msg":"I am parsed"}`)
+		nil, nil, "", []int64{1577836800000000001}, `{"foo":"bar2","bar":"baz","_msg":"I am parsed"}`)
 }

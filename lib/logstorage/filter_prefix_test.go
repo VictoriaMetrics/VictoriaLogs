@@ -67,71 +67,38 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc",
-		}
+		fp := newFilterPrefix("foo", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "ab",
-		}
+		fp = newFilterPrefix("foo", "ab")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fp = newFilterPrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "def",
-		}
+		fp = newFilterPrefix("foo", "def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "other column",
-			prefix:    "asdfdsf",
-		}
+		fp = newFilterPrefix("other column", "asdfdsf")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bc",
-		}
+		fp = newFilterPrefix("foo", "bc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "other column",
-			prefix:    "sd",
-		}
+		fp = newFilterPrefix("other column", "sd")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "abc",
-		}
+		fp = newFilterPrefix("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -164,89 +131,47 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc",
-		}
+		fp := newFilterPrefix("foo", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "ab",
-		}
+		fp = newFilterPrefix("foo", "ab")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc de",
-		}
+		fp = newFilterPrefix("foo", "abc de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    " de",
-		}
+		fp = newFilterPrefix("foo", " de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fp = newFilterPrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "other-column",
-			prefix:    "x",
-		}
+		fp = newFilterPrefix("other-column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    " 2 ",
-		}
+		fp = newFilterPrefix("_msg", " 2 ")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "abc def ",
-		}
+		fp = newFilterPrefix("foo", "abc def ")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "x",
-		}
+		fp = newFilterPrefix("foo", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "other-column",
-			prefix:    "foo",
-		}
+		fp = newFilterPrefix("other-column", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "x",
-		}
+		fp = newFilterPrefix("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "foo",
-		}
+		fp = newFilterPrefix("_msg", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -267,41 +192,23 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "foobar",
-		}
+		fp := newFilterPrefix("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 6})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 3, 4, 5, 6})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "ba",
-		}
+		fp = newFilterPrefix("foo", "ba")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "foobar",
-		}
+		fp = newFilterPrefix("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -325,65 +232,35 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp := newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "a",
-		}
+		fp = newFilterPrefix("foo", "a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "НГК",
-		}
+		fp = newFilterPrefix("foo", "НГК")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{8})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "aa a",
-		}
+		fp = newFilterPrefix("foo", "aa a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "!,",
-		}
+		fp = newFilterPrefix("foo", "!,")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{9})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "aa ax",
-		}
+		fp = newFilterPrefix("foo", "aa ax")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "qwe rty abc",
-		}
+		fp = newFilterPrefix("foo", "qwe rty abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "@",
-		}
+		fp = newFilterPrefix("foo", "@")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -408,47 +285,26 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fp := newFilterPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 5})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterPrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3, 4})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterPrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "1234",
-		}
+		fp = newFilterPrefix("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -472,47 +328,26 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterPrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterPrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterPrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "123456",
-		}
+		fp = newFilterPrefix("foo", "123456")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -536,47 +371,26 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterPrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "65536",
-		}
+		fp = newFilterPrefix("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterPrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12345678901",
-		}
+		fp = newFilterPrefix("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -599,47 +413,26 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "1234",
-		}
+		fp := newFilterPrefix("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12345678901",
-		}
+		fp = newFilterPrefix("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterPrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12345678901234567890",
-		}
+		fp = newFilterPrefix("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -662,95 +455,50 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterPrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "1234.5678901",
-		}
+		fp = newFilterPrefix("foo", "1234.5678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "56789",
-		}
+		fp = newFilterPrefix("foo", "56789")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "-6553",
-		}
+		fp = newFilterPrefix("foo", "-6553")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "65536",
-		}
+		fp = newFilterPrefix("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "7344.8943",
-		}
+		fp = newFilterPrefix("foo", "7344.8943")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "-1234",
-		}
+		fp = newFilterPrefix("foo", "-1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "+1234",
-		}
+		fp = newFilterPrefix("foo", "+1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "23",
-		}
+		fp = newFilterPrefix("foo", "23")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "678",
-		}
+		fp = newFilterPrefix("foo", "678")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterPrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12345678901234567890",
-		}
+		fp = newFilterPrefix("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -776,77 +524,41 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "foo",
-			prefix:    "127.0.0.1",
-		}
+		fp := newFilterPrefix("foo", "127.0.0.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fp = newFilterPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "127.0.0",
-		}
+		fp = newFilterPrefix("foo", "127.0.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "2.3.",
-		}
+		fp = newFilterPrefix("foo", "2.3.")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterPrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "8",
-		}
+		fp = newFilterPrefix("foo", "8")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "127.1",
-		}
+		fp = newFilterPrefix("foo", "127.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "27.0",
-		}
+		fp = newFilterPrefix("foo", "27.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "foo",
-			prefix:    "255.255.255.255",
-		}
+		fp = newFilterPrefix("foo", "255.255.255.255")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -869,67 +581,37 @@ func TestFilterPrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T15:04:05.005Z",
-		}
+		fp := newFilterPrefix("_msg", "2006-01-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{4})
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("_msg", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-0",
-		}
+		fp = newFilterPrefix("_msg", "2006-01-0")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "002",
-		}
+		fp = newFilterPrefix("_msg", "002")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{1})
 
 		// mismatch
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "bar",
-		}
+		fp = newFilterPrefix("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-03-02T15:04:05.005Z",
-		}
+		fp = newFilterPrefix("_msg", "2006-03-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "06",
-		}
+		fp = newFilterPrefix("_msg", "06")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it has different string representation of the timestamp
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T16:04:05.005+01:00",
-		}
+		fp = newFilterPrefix("_msg", "2006-01-02T16:04:05.005+01:00")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it contains too many digits for millisecond part
-		fp = &filterPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T15:04:05.00500Z",
-		}
+		fp = newFilterPrefix("_msg", "2006-01-02T15:04:05.00500Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 	})
 

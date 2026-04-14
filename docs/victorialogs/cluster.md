@@ -61,8 +61,8 @@ sequenceDiagram
 
     Note over QC,VL: Query Flow
     QC->>VL: Query via HTTP endpoints
-    VL->>VS1: GET /internal/select/* (HTTP)
-    VL->>VS2: GET /internal/select/* (HTTP)
+    VL->>VS1: POST /internal/select/* (HTTP)
+    VL->>VS2: POST /internal/select/* (HTTP)
     VS1-->>VL: Return local results
     VS2-->>VL: Return local results
     VL->>QC: Processed & aggregated results

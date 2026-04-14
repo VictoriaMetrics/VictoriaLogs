@@ -20,41 +20,23 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fep := newFilterExactPrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "abc d",
-		}
+		fep = newFilterExactPrefix("foo", "abc d")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0})
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "xabc",
-		}
+		fep = newFilterExactPrefix("foo", "xabc")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing column",
-			prefix:    "abc",
-		}
+		fep = newFilterExactPrefix("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -71,41 +53,23 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fep := newFilterExactPrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "ab",
-		}
+		fep = newFilterExactPrefix("foo", "ab")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2})
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "foobar",
-		}
+		fep = newFilterExactPrefix("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing column",
-			prefix:    "x",
-		}
+		fep = newFilterExactPrefix("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -126,29 +90,17 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "foobar",
-		}
+		fep := newFilterExactPrefix("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{1, 5, 6})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "baz",
-		}
+		fep = newFilterExactPrefix("foo", "baz")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing column",
-			prefix:    "foobar",
-		}
+		fep = newFilterExactPrefix("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -172,35 +124,20 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "aa ",
-		}
+		fep := newFilterExactPrefix("foo", "aa ")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{2, 4})
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "aa b",
-		}
+		fep = newFilterExactPrefix("foo", "aa b")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "fobar",
-		}
+		fep = newFilterExactPrefix("foo", "fobar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "non-existing-column",
-			prefix:    "aa",
-		}
+		fep = newFilterExactPrefix("non-existing-column", "aa")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -225,35 +162,20 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fep := newFilterExactPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 5})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "999",
-		}
+		fep = newFilterExactPrefix("foo", "999")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "7",
-		}
+		fep = newFilterExactPrefix("foo", "7")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -278,35 +200,20 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fep := newFilterExactPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 5})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "999",
-		}
+		fep = newFilterExactPrefix("foo", "999")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "7",
-		}
+		fep = newFilterExactPrefix("foo", "7")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -331,35 +238,20 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fep := newFilterExactPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 5})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "99999",
-		}
+		fep = newFilterExactPrefix("foo", "99999")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "7",
-		}
+		fep = newFilterExactPrefix("foo", "7")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -384,35 +276,20 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fep := newFilterExactPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 5, 9})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "1234567890123",
-		}
+		fep = newFilterExactPrefix("foo", "1234567890123")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "7",
-		}
+		fep = newFilterExactPrefix("foo", "7")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -437,47 +314,26 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fep := newFilterExactPrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 9})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "-12",
-		}
+		fep = newFilterExactPrefix("foo", "-12")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{5})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "-",
-		}
+		fep = newFilterExactPrefix("foo", "-")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{5, 7})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "1234567890123",
-		}
+		fep = newFilterExactPrefix("foo", "1234567890123")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "7",
-		}
+		fep = newFilterExactPrefix("foo", "7")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -500,41 +356,23 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fep := newFilterExactPrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 4})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "1234.567",
-		}
+		fep = newFilterExactPrefix("foo", "1234.567")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{4})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "-65536",
-		}
+		fep = newFilterExactPrefix("foo", "-65536")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{3})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "6511",
-		}
+		fep = newFilterExactPrefix("foo", "6511")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -560,29 +398,17 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "127.0.",
-		}
+		fep := newFilterExactPrefix("foo", "127.0.")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{2, 4, 5, 6, 7})
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fep, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "foo",
-			prefix:    "255",
-		}
+		fep = newFilterExactPrefix("foo", "255")
 		testFilterMatchForColumns(t, columns, fep, "foo", nil)
 	})
 
@@ -605,29 +431,17 @@ func TestFilterExactPrefix(t *testing.T) {
 		}
 
 		// match
-		fep := &filterExactPrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T15:04:05",
-		}
+		fep := newFilterExactPrefix("_msg", "2006-01-02T15:04:05")
 		testFilterMatchForColumns(t, columns, fep, "_msg", []int{0, 1, 2})
 
-		fep = &filterExactPrefix{
-			fieldName: "_msg",
-			prefix:    "",
-		}
+		fep = newFilterExactPrefix("_msg", "")
 		testFilterMatchForColumns(t, columns, fep, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fep = &filterExactPrefix{
-			fieldName: "_msg",
-			prefix:    "bar",
-		}
+		fep = newFilterExactPrefix("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fep, "_msg", nil)
 
-		fep = &filterExactPrefix{
-			fieldName: "_msg",
-			prefix:    "0",
-		}
+		fep = newFilterExactPrefix("_msg", "0")
 		testFilterMatchForColumns(t, columns, fep, "_msg", nil)
 	})
 

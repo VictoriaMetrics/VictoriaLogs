@@ -71,71 +71,38 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "abc",
-		}
+		fp := newFilterSubstring("foo", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "ab",
-		}
+		fp = newFilterSubstring("foo", "ab")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "abc def",
-		}
+		fp = newFilterSubstring("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "def",
-		}
+		fp = newFilterSubstring("foo", "def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "other column",
-			substring: "asdfdsf",
-		}
+		fp = newFilterSubstring("other column", "asdfdsf")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bc",
-		}
+		fp = newFilterSubstring("foo", "bc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "other column",
-			substring: "sdd",
-		}
+		fp = newFilterSubstring("other column", "sdd")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "abc",
-		}
+		fp = newFilterSubstring("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -168,89 +135,47 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "abc",
-		}
+		fp := newFilterSubstring("foo", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "ab",
-		}
+		fp = newFilterSubstring("foo", "ab")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "abc de",
-		}
+		fp = newFilterSubstring("foo", "abc de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: " de",
-		}
+		fp = newFilterSubstring("foo", " de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "abc def",
-		}
+		fp = newFilterSubstring("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "other-column",
-			substring: "x",
-		}
+		fp = newFilterSubstring("other-column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: " 2 ",
-		}
+		fp = newFilterSubstring("_msg", " 2 ")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "abc def ",
-		}
+		fp = newFilterSubstring("foo", "abc def ")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "x",
-		}
+		fp = newFilterSubstring("foo", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "other-column",
-			substring: "foo",
-		}
+		fp = newFilterSubstring("other-column", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "x",
-		}
+		fp = newFilterSubstring("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "foo",
-		}
+		fp = newFilterSubstring("_msg", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -271,41 +196,23 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "foobar",
-		}
+		fp := newFilterSubstring("foo", "foobar")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "ba",
-		}
+		fp = newFilterSubstring("foo", "ba")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "barz",
-		}
+		fp = newFilterSubstring("foo", "barz")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "non-existing column",
-			substring: "foobar",
-		}
+		fp = newFilterSubstring("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -329,71 +236,38 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp := newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "a",
-		}
+		fp = newFilterSubstring("foo", "a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "НГК",
-		}
+		fp = newFilterSubstring("foo", "НГК")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{8})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "aa a",
-		}
+		fp = newFilterSubstring("foo", "aa a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "!,",
-		}
+		fp = newFilterSubstring("foo", "!,")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{9})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "aa ax",
-		}
+		fp = newFilterSubstring("foo", "aa ax")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "qwe rty abc",
-		}
+		fp = newFilterSubstring("foo", "qwe rty abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "barasdfsz",
-		}
+		fp = newFilterSubstring("foo", "barasdfsz")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "@",
-		}
+		fp = newFilterSubstring("foo", "@")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -418,47 +292,26 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "12",
-		}
+		fp := newFilterSubstring("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 5})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "0",
-		}
+		fp = newFilterSubstring("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3, 4})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "33",
-		}
+		fp = newFilterSubstring("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "1234",
-		}
+		fp = newFilterSubstring("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -482,47 +335,26 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "123",
-		}
+		fp := newFilterSubstring("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "0",
-		}
+		fp = newFilterSubstring("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "33",
-		}
+		fp = newFilterSubstring("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "123456",
-		}
+		fp = newFilterSubstring("foo", "123456")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -546,47 +378,26 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "123",
-		}
+		fp := newFilterSubstring("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "65536",
-		}
+		fp = newFilterSubstring("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "33",
-		}
+		fp = newFilterSubstring("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "12345678901",
-		}
+		fp = newFilterSubstring("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -609,47 +420,26 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "1234",
-		}
+		fp := newFilterSubstring("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "12345678901",
-		}
+		fp = newFilterSubstring("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "33",
-		}
+		fp = newFilterSubstring("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "12345678901234567890",
-		}
+		fp = newFilterSubstring("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -672,101 +462,53 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "123",
-		}
+		fp := newFilterSubstring("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "1234.5678901",
-		}
+		fp = newFilterSubstring("foo", "1234.5678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "56789",
-		}
+		fp = newFilterSubstring("foo", "56789")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "-6553",
-		}
+		fp = newFilterSubstring("foo", "-6553")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "65536",
-		}
+		fp = newFilterSubstring("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "23",
-		}
+		fp = newFilterSubstring("foo", "23")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "7344.8943",
-		}
+		fp = newFilterSubstring("foo", "7344.8943")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "-1234",
-		}
+		fp = newFilterSubstring("foo", "-1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "+1234",
-		}
+		fp = newFilterSubstring("foo", "+1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "23423",
-		}
+		fp = newFilterSubstring("foo", "23423")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "678911",
-		}
+		fp = newFilterSubstring("foo", "678911")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "33",
-		}
+		fp = newFilterSubstring("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "12345678901234567890",
-		}
+		fp = newFilterSubstring("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -792,83 +534,44 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "foo",
-			substring: "127.0.0.1",
-		}
+		fp := newFilterSubstring("foo", "127.0.0.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "",
-		}
+		fp = newFilterSubstring("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "12",
-		}
+		fp = newFilterSubstring("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "127.0.0",
-		}
+		fp = newFilterSubstring("foo", "127.0.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "2.3.",
-		}
+		fp = newFilterSubstring("foo", "2.3.")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "0",
-		}
+		fp = newFilterSubstring("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "27.0",
-		}
+		fp = newFilterSubstring("foo", "27.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "8",
-		}
+		fp = newFilterSubstring("foo", "8")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "127.1",
-		}
+		fp = newFilterSubstring("foo", "127.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "27.022",
-		}
+		fp = newFilterSubstring("foo", "27.022")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterSubstring{
-			fieldName: "foo",
-			substring: "255.255.255.255",
-		}
+		fp = newFilterSubstring("foo", "255.255.255.255")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -891,73 +594,40 @@ func TestFilterSubstring(t *testing.T) {
 		}
 
 		// match
-		fp := &filterSubstring{
-			fieldName: "_msg",
-			substring: "2006-01-02T15:04:05.005Z",
-		}
+		fp := newFilterSubstring("_msg", "2006-01-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{4})
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "",
-		}
+		fp = newFilterSubstring("_msg", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "2006-01-0",
-		}
+		fp = newFilterSubstring("_msg", "2006-01-0")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "002",
-		}
+		fp = newFilterSubstring("_msg", "002")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{1})
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "06",
-		}
+		fp = newFilterSubstring("_msg", "06")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterSubstring{
-			fieldName: "non-existing-column",
-			substring: "",
-		}
+		fp = newFilterSubstring("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "bar",
-		}
+		fp = newFilterSubstring("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "2006-03-02T15:04:05.005Z",
-		}
+		fp = newFilterSubstring("_msg", "2006-03-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "8007",
-		}
+		fp = newFilterSubstring("_msg", "8007")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it has different string representation of the timestamp
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "2006-01-02T16:04:05.005+01:00",
-		}
+		fp = newFilterSubstring("_msg", "2006-01-02T16:04:05.005+01:00")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it contains too many digits for millisecond part
-		fp = &filterSubstring{
-			fieldName: "_msg",
-			substring: "2006-01-02T15:04:05.00500Z",
-		}
+		fp = newFilterSubstring("_msg", "2006-01-02T15:04:05.00500Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 	})
 

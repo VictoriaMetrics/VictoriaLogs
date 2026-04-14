@@ -12,7 +12,13 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var disableMessageParsing = flag.Bool("loki.disableMessageParsing", false, "Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields")
+var (
+	disableMessageParsing = flag.Bool("loki.disableMessageParsing", false, "Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields; "+
+		"see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message")
+	messageFieldsPrefix = flag.String("loki.messageFieldsPrefix", "", "Optional prefix to add to field names parsed from JSON-encoded log message at Loki protocol; "+
+		"this can be used for avoiding potential clash between the parsed field names and the log stream labels; "+
+		"see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message")
+)
 
 // RequestHandler processes Loki insert requests
 func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
@@ -49,6 +55,11 @@ type commonParams struct {
 	//
 	// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8486
 	parseMessage bool
+
+	// Optional prefix to add to parsed message fields if parseMessage is true.
+	//
+	// This may be needed in order to avoid clashing with stream labels.
+	msgFieldsPrefix string
 }
 
 func getCommonParams(r *http.Request) (*commonParams, error) {
@@ -80,8 +91,14 @@ func getCommonParams(r *http.Request) (*commonParams, error) {
 		parseMessage = !bv
 	}
 
+	msgFieldsPrefix := *messageFieldsPrefix
+	if rv := httputil.GetRequestValue(r, "message_fields_prefix", "VL-Loki-Message-Fields-Prefix"); rv != "" {
+		msgFieldsPrefix = rv
+	}
+
 	return &commonParams{
-		cp:           cp,
-		parseMessage: parseMessage,
+		cp:              cp,
+		parseMessage:    parseMessage,
+		msgFieldsPrefix: msgFieldsPrefix,
 	}, nil
 }
