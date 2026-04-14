@@ -12,16 +12,10 @@
   "__elements": {},
   "__requires": [
     {
-      "type": "panel",
-      "id": "bargauge",
-      "name": "Bar gauge",
-      "version": ""
-    },
-    {
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.3.0"
+      "version": "12.4.3"
     },
     {
       "type": "panel",
@@ -43,6 +37,12 @@
     },
     {
       "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
+    },
+    {
+      "type": "panel",
       "id": "timeseries",
       "name": "Time series",
       "version": ""
@@ -51,7 +51,7 @@
       "type": "datasource",
       "id": "victoriametrics-logs-datasource",
       "name": "VictoriaLogs",
-      "version": "0.24.0"
+      "version": "0.26.3"
     }
   ],
   "annotations": {
@@ -72,8 +72,21 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "links": [],
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "bolt",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Reset Filter",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/${__dashboard.uid}?$var-ds=$ds&var-namespace=$__all&var-container=$__all&var-level=$__all&var-limit=500&var-filter="
+    }
+  ],
   "panels": [
     {
       "collapsed": true,
@@ -83,1196 +96,36 @@
         "x": 0,
         "y": 0
       },
-      "id": 3,
+      "id": 13,
       "panels": [
         {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
           "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              }
-            },
+            "defaults": {},
             "overrides": []
           },
           "gridPos": {
             "h": 4,
-            "w": 2,
+            "w": 24,
             "x": 0,
-            "y": 1
-          },
-          "id": 10,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| stats by (kubernetes.pod_namespace) count()\r\n| stats count()",
-              "legendFormat": "Total",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "Namespace",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 2,
-            "x": 2,
-            "y": 1
-          },
-          "id": 11,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"} kubernetes.pod_labels.app.kubernetes.io/name:=\"$app\"\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| stats by (kubernetes.pod_labels.app.kubernetes.io/name) count()\r\n| count()",
-              "legendFormat": "Total",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "App",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 2,
-            "x": 4,
-            "y": 1
-          },
-          "id": 12,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| stats by (kubernetes.pod_name) count()\r\n| count()",
-              "legendFormat": "Total",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "Pods",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 2,
-            "x": 6,
-            "y": 1
-          },
-          "id": 18,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=$namespace}\r\n| stats by (kubernetes.container_name) count()\r\n| stats count()",
-              "legendFormat": "Total",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "Container",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 8,
-            "y": 1
-          },
-          "id": 13,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "sum"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| stats count()",
-              "legendFormat": "Total",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "Logs",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 13,
-            "x": 11,
             "y": 1
           },
           "id": 14,
           "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "center",
-            "orientation": "vertical",
-            "percentChangeColorMode": "standard",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false,
+              "showMiniMap": false
             },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
+            "content": "- The dashboard filters data by `container name`. The data may not be displayed correctly if several containers have the same name\r\n- The description explicitly specifies a `limit for variables`. It is possible that there are more applications in your cluster and they may not be displayed",
+            "mode": "markdown"
           },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| stats by (log.level) count() total\r\n| sort by(total) desc",
-              "legendFormat": "{{ log.level }}",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "timeFrom": "24h",
-          "title": "Logs by level",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 11,
-            "x": 0,
-            "y": 27
-          },
-          "id": 15,
-          "options": {
-            "displayMode": "gradient",
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "maxVizHeight": 300,
-            "minVizHeight": 16,
-            "minVizWidth": 8,
-            "namePlacement": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showUnfilled": true,
-            "sizing": "auto",
-            "valueMode": "color"
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| stats by (kubernetes.pod_namespace) count() total\r\n| sort by(total) desc \r\n| limit 5",
-              "legendFormat": "{{ kubernetes.pod_namespace }}",
-              "queryType": "stats",
-              "refId": "A"
-            }
-          ],
-          "title": "Top 5 logs by namespace",
-          "type": "bargauge"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 1,
-                "drawStyle": "bars",
-                "fillOpacity": 100,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 3,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "never",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 13,
-            "x": 11,
-            "y": 27
-          },
-          "id": 20,
-          "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull",
-                "sum"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true,
-              "sortBy": "Total",
-              "sortDesc": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| stats by (kubernetes.pod_namespace,kubernetes.pod_labels.app.kubernetes.io/name,kubernetes.container_name) count() logs_total",
-              "legendFormat": "{{ kubernetes.pod_namespace }}/{{ kubernetes.pod_labels.app.kubernetes.io/name }}/{{ kubernetes.container_name }}",
-              "queryType": "statsRange",
-              "refId": "A"
-            }
-          ],
-          "title": "Logs total",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "showValues": false,
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  }
-                ]
-              },
-              "unit": "logs/s"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 24,
-            "x": 0,
-            "y": 35
-          },
-          "id": 17,
-          "options": {
-            "legend": {
-              "calcs": [
-                "lastNotNull",
-                "mean"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true,
-              "sortBy": "Mean",
-              "sortDesc": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| stats by (kubernetes.pod_namespace,kubernetes.pod_labels.app.kubernetes.io/name,kubernetes.container_name) rate() log_rate\r\n| filter log_rate: > 0",
-              "legendFormat": "{{ kubernetes.pod_namespace }}/{{ kubernetes.pod_labels.app.kubernetes.io/name }}/{{ kubernetes.container_name }}",
-              "queryType": "statsRange",
-              "refId": "A"
-            }
-          ],
-          "title": "Logs rate",
-          "type": "timeseries"
+          "pluginVersion": "12.4.2",
+          "title": "",
+          "transparent": true,
+          "type": "text"
         }
       ],
-      "title": "Stats by Namespace ($namespace)",
-      "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 1
-      },
-      "id": 2,
-      "panels": [
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "footer": {
-                  "reducers": []
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Count"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 100
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "right"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 277
-          },
-          "id": 6,
-          "options": {
-            "cellHeight": "sm",
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Count"
-              }
-            ]
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| stats by (kubernetes.pod_labels.app.kubernetes.io/name) count() hits\r\n| sort by (hits) desc\r\n| limit 10",
-              "isApplyExtraFiltersToRootQuery": true,
-              "queryType": "instant",
-              "refId": "A"
-            }
-          ],
-          "title": "Top 10 logs by app",
-          "transformations": [
-            {
-              "id": "extractFields",
-              "options": {
-                "delimiter": ",",
-                "format": "auto",
-                "keepTime": true,
-                "replace": true,
-                "source": "labels"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "Time": 0,
-                  "hits": 2,
-                  "kubernetes.pod_labels.app.kubernetes.io/name": 1
-                },
-                "renameByName": {
-                  "hits": "Count",
-                  "kubernetes.pod_labels.app.kubernetes.io/name": "App"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "footer": {
-                  "reducers": []
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Count"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 100
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "right"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 277
-          },
-          "id": 7,
-          "options": {
-            "cellHeight": "sm",
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Count"
-              }
-            ]
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| stats by (log.level) count() hits\r\n| sort by (hits) desc",
-              "isApplyExtraFiltersToRootQuery": true,
-              "queryType": "instant",
-              "refId": "A"
-            }
-          ],
-          "title": "Logs by level",
-          "transformations": [
-            {
-              "id": "extractFields",
-              "options": {
-                "delimiter": ",",
-                "format": "auto",
-                "keepTime": true,
-                "replace": true,
-                "source": "labels"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "Time": 0,
-                  "hits": 2,
-                  "log.level": 1
-                },
-                "renameByName": {
-                  "hits": "Count",
-                  "log.level": "Level"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "description": "Shows the most common field-value pairs \n\nhttps://docs.victoriametrics.com/victorialogs/logsql/#facets-pipe",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "footer": {
-                  "reducers": []
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Count"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 100
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "right"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 285
-          },
-          "id": 8,
-          "options": {
-            "cellHeight": "sm",
-            "enablePagination": true,
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Count"
-              }
-            ]
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| facets 3\r\n| sort by(hits) desc",
-              "isApplyExtraFiltersToRootQuery": true,
-              "queryType": "instant",
-              "refId": "A"
-            }
-          ],
-          "title": "Top field-value pairs (facets)",
-          "transformations": [
-            {
-              "id": "extractFields",
-              "options": {
-                "delimiter": ",",
-                "format": "auto",
-                "keepTime": true,
-                "replace": true,
-                "source": "labels"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "Time": 0,
-                  "field_name": 1,
-                  "field_value": 2,
-                  "hits": 3
-                },
-                "renameByName": {
-                  "field_name": "Name",
-                  "field_value": "Value",
-                  "hits": "Count"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
-          },
-          "description": "Shows most common log patterns on the time range\n\nhttps://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "footer": {
-                  "reducers": []
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Count"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 100
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "right"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Level"
-                },
-                "properties": [
-                  {
-                    "id": "custom.align",
-                    "value": "right"
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": 100
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 12,
-            "y": 285
-          },
-          "id": 9,
-          "options": {
-            "cellHeight": "sm",
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Count"
-              }
-            ]
-          },
-          "pluginVersion": "12.3.0",
-          "targets": [
-            {
-              "datasource": {
-                "type": "victoriametrics-logs-datasource",
-                "uid": "${DS_VICTORIALOGS}"
-              },
-              "editorMode": "code",
-              "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| collapse_nums prettify\r\n| top 10 by(_msg)",
-              "isApplyExtraFiltersToRootQuery": true,
-              "queryType": "instant",
-              "refId": "A"
-            }
-          ],
-          "title": "Top 10 log patterns (collapse_nums)",
-          "transformations": [
-            {
-              "id": "extractFields",
-              "options": {
-                "delimiter": ",",
-                "format": "auto",
-                "keepTime": false,
-                "replace": false,
-                "source": "labels"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true,
-                  "labels": true
-                },
-                "includeByName": {},
-                "indexByName": {
-                  "Line": 1,
-                  "Time": 0,
-                  "detected_level": 2,
-                  "hits": 3,
-                  "labels": 4
-                },
-                "renameByName": {
-                  "Line": "Message",
-                  "detected_level": "Level",
-                  "hits": "Count"
-                }
-              }
-            }
-          ],
-          "type": "table"
-        }
-      ],
-      "title": "Stats by App ($app)",
+      "title": "Info",
       "type": "row"
     },
     {
@@ -1281,32 +134,22 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 2
+        "y": 1
       },
-      "id": 1,
+      "id": 5,
       "panels": [],
-      "title": "Stats by Container ($container)",
+      "title": "Overview ($namespace)",
       "type": "row"
     },
     {
       "datasource": {
         "type": "victoriametrics-logs-datasource",
-        "uid": "${DS_VICTORIALOGS}"
+        "uid": "${ds}"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "reducers": []
-            },
-            "inspect": false
           },
           "mappings": [],
           "thresholds": {
@@ -1315,105 +158,123 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
-          }
+          },
+          "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Count"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              },
-              {
-                "id": "custom.width",
-                "value": 100
-              },
-              {
-                "id": "custom.align",
-                "value": "right"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 6,
+        "h": 5,
+        "w": 3,
         "x": 0,
-        "y": 3
+        "y": 2
       },
-      "id": 19,
+      "id": 10,
       "options": {
-        "cellHeight": "sm",
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Count"
-          }
-        ]
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "12.3.0",
+      "pluginVersion": "12.4.3",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
+            "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.container_name) count() hits\r\n| sort by (hits) desc",
-          "isApplyExtraFiltersToRootQuery": true,
-          "queryType": "instant",
+          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| stats by (kubernetes.pod_namespace) count()\r\n| count()",
+          "legendFormat": "",
+          "queryType": "stats",
           "refId": "A"
         }
       ],
-      "title": "Logs by container",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "delimiter": ",",
-            "format": "auto",
-            "keepTime": true,
-            "replace": true,
-            "source": "labels"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "includeByName": {},
-            "indexByName": {
-              "Time": 0,
-              "hits": 2,
-              "kubernetes.container_name": 1
-            },
-            "renameByName": {
-              "hits": "Count",
-              "kubernetes.container_name": "Container"
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Namespace",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "victoriametrics-logs-datasource",
-        "uid": "${DS_VICTORIALOGS}"
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 3,
+        "x": 3,
+        "y": 2
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "editorMode": "code",
+          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| stats by (kubernetes.container_name) count()\r\n| count()",
+          "legendFormat": "",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "title": "Container",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${ds}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1473,12 +334,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 5,
         "w": 18,
         "x": 6,
-        "y": 3
+        "y": 2
       },
-      "id": 5,
+      "id": 9,
       "options": {
         "legend": {
           "calcs": [
@@ -1492,19 +353,19 @@
         },
         "tooltip": {
           "hideZeros": false,
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "12.3.0",
+      "pluginVersion": "12.4.3",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
+            "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (log.level) count() \r\n| sort desc",
+          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| stats by (log.level) count()",
           "isApplyExtraFiltersToRootQuery": true,
           "legendFormat": "{{ log.level }}",
           "queryType": "statsRange",
@@ -1517,61 +378,804 @@
     {
       "datasource": {
         "type": "victoriametrics-logs-datasource",
-        "uid": "${DS_VICTORIALOGS}"
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Link",
+                    "url": "/d/${__dashboard.uid}?${ds:queryparam}&var-namespace=${__value.text}&${container:queryparam}&${level:queryparam}&${limit:queryparam}&${filter:queryparam}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 15,
-        "w": 24,
+        "h": 9,
+        "w": 6,
         "x": 0,
-        "y": 10
+        "y": 7
       },
-      "id": 4,
+      "id": 6,
       "options": {
-        "dedupStrategy": "none",
-        "detailsMode": "inline",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "fontSize": "default",
-        "prettifyLogMessage": true,
-        "showControls": true,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "syntaxHighlighting": true,
-        "timestampResolution": "ms",
-        "wrapLogMessage": true
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Count"
+          }
+        ]
       },
-      "pluginVersion": "12.3.0",
+      "pluginVersion": "12.4.3",
       "targets": [
         {
           "datasource": {
             "type": "victoriametrics-logs-datasource",
-            "uid": "${DS_VICTORIALOGS}"
+            "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"}\r\n| format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name\r\n| kubernetes.pod_labels.app.kubernetes.io/name:in($app)\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| limit $limit",
-          "isApplyExtraFiltersToRootQuery": true,
-          "maxLines": 5000,
+          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| top 10 (kubernetes.pod_namespace)",
+          "isApplyExtraFiltersToRootQuery": false,
           "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "Logs raw",
-      "type": "logs"
+      "title": "Top 10 logs by namespace",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "auto",
+            "keepTime": true,
+            "replace": true,
+            "source": "labels"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "hits": 2,
+              "kubernetes.pod_namespace": 1
+            },
+            "renameByName": {
+              "hits": "Count",
+              "kubernetes.container_name": "Name",
+              "kubernetes.pod_namespace": "Name"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "logs/s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 18,
+        "x": 6,
+        "y": 7
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "editorMode": "code",
+          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.pod_namespace) rate() logs_rate\r\n| filter logs_rate: > 0",
+          "isApplyExtraFiltersToRootQuery": false,
+          "legendFormat": "{{kubernetes.pod_namespace}}",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs rate by namespace",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "footer": {
+              "reducers": []
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Name"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Link",
+                    "url": "/d/${__dashboard.uid}?${ds:queryparam}&${namespace:queryparam}&var-container=${__value.text}&${level:queryparam}&${limit:queryparam}&${filter:queryparam}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Count"
+          }
+        ]
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "editorMode": "code",
+          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| top 10 (kubernetes.container_name)",
+          "isApplyExtraFiltersToRootQuery": false,
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 logs by containers",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "delimiter": ",",
+            "format": "auto",
+            "keepTime": true,
+            "replace": true,
+            "source": "labels"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "hits": 2,
+              "kubernetes.container_name": 1
+            },
+            "renameByName": {
+              "hits": "Count",
+              "kubernetes.container_name": "Name",
+              "kubernetes.pod_namespace": "Name"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "logs/s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 18,
+        "x": 6,
+        "y": 16
+      },
+      "id": 17,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Total",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "editorMode": "code",
+          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.container_name) rate() logs_rate\r\n| filter logs_rate: > 0",
+          "isApplyExtraFiltersToRootQuery": false,
+          "legendFormat": "{{kubernetes.container_name}}",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs rate by container",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 4,
+      "panels": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "description": "Shows the most common field-value pairs \n\nhttps://docs.victoriametrics.com/victorialogs/logsql/#facets-pipe",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Count"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "right"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 26
+          },
+          "id": 15,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": true,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Count"
+              }
+            ]
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "${ds}"
+              },
+              "editorMode": "code",
+              "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| facets 5\r\n| sort by(hits) desc",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Top field-value pairs (facets)",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "delimiter": ",",
+                "format": "auto",
+                "keepTime": true,
+                "replace": true,
+                "source": "labels"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "includeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "field_name": "Name",
+                  "field_value": "Value",
+                  "hits": "Count"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "description": "Shows most common log patterns on the time range\n\nhttps://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "footer": {
+                  "reducers": []
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Count"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 100
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "right"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 26
+          },
+          "id": 16,
+          "options": {
+            "cellHeight": "sm",
+            "enablePagination": false,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Count"
+              }
+            ]
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "${ds}"
+              },
+              "editorMode": "code",
+              "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| collapse_nums prettify\r\n| top 10 by(_msg)",
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Top 10 log patterns (collapse_nums)",
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "delimiter": ",",
+                "format": "auto",
+                "keepTime": false,
+                "replace": false,
+                "source": "labels"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "detected_level": true,
+                  "labels": true
+                },
+                "includeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "Line": "Message",
+                  "field_name": "",
+                  "field_value": "",
+                  "hits": "Count"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "${ds}"
+          },
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 16,
+            "w": 24,
+            "x": 0,
+            "y": 34
+          },
+          "id": 3,
+          "options": {
+            "dedupStrategy": "none",
+            "detailsMode": "inline",
+            "enableInfiniteScrolling": false,
+            "enableLogDetails": true,
+            "prettifyLogMessage": true,
+            "showControls": true,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "syntaxHighlighting": true,
+            "timestampResolution": "ms",
+            "unwrappedColumns": false,
+            "wrapLogMessage": true
+          },
+          "pluginVersion": "12.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "victoriametrics-logs-datasource",
+                "uid": "${ds}"
+              },
+              "direction": "desc",
+              "editorMode": "code",
+              "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| sort by (_time) desc\r\n| limit $limit",
+              "isApplyExtraFiltersToRootQuery": true,
+              "legendFormat": "",
+              "maxLines": 5000,
+              "queryType": "instant",
+              "refId": "A"
+            }
+          ],
+          "title": "Logs raw",
+          "type": "logs"
+        }
+      ],
+      "title": "Raw logs ($container)",
+      "type": "row"
     }
   ],
   "preload": false,
   "schemaVersion": 42,
-  "tags": [
-    "kubernetes",
-    "victorialogs"
-  ],
+  "tags": [],
   "templating": {
     "list": [
       {
-        "current": {},
+        "allowCustomValue": false,
+        "current": {
+          "text": "",
+          "value": "${DS_VICTORIALOGS}",
+          "selected": true
+        },
         "label": "DS",
-        "name": "DS_VICTORIALOGS",
+        "name": "ds",
         "options": [],
         "query": "victoriametrics-logs-datasource",
         "refresh": 1,
@@ -1579,13 +1183,14 @@
         "type": "datasource"
       },
       {
+        "allValue": "*",
         "current": {},
         "datasource": {
           "type": "victoriametrics-logs-datasource",
-          "uid": "${DS_VICTORIALOGS}"
+          "uid": "${ds}"
         },
-        "definition": "_stream:{}",
-        "description": "Limit: 50",
+        "definition": "{}",
+        "description": "Limit 50",
         "includeAll": true,
         "label": "NS",
         "multi": true,
@@ -1594,73 +1199,51 @@
         "query": {
           "field": "kubernetes.pod_namespace",
           "limit": 50,
-          "query": "_stream:{}",
+          "query": "{}",
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
         "refresh": 1,
         "regex": "",
+        "regexApplyTo": "value",
         "sort": 1,
         "type": "query"
       },
       {
+        "allValue": "*",
         "current": {},
         "datasource": {
           "type": "victoriametrics-logs-datasource",
-          "uid": "${DS_VICTORIALOGS}"
+          "uid": "${ds}"
         },
-        "definition": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name",
-        "description": "Limit: 50",
+        "definition": "{kubernetes.pod_namespace in($namespace)}",
+        "description": "Limit 100",
         "includeAll": true,
-        "label": "App",
-        "multi": true,
-        "name": "app",
-        "options": [],
-        "query": {
-          "field": "kubernetes.pod_labels.app.kubernetes.io/name",
-          "limit": 50,
-          "query": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name",
-          "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
-          "type": "fieldValue"
-        },
-        "refresh": 1,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "current": {},
-        "datasource": {
-          "type": "victoriametrics-logs-datasource",
-          "uid": "${DS_VICTORIALOGS}"
-        },
-        "definition": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
-        "description": "Limit: 25",
-        "includeAll": true,
-        "label": "Сontainer",
+        "label": "Container",
         "multi": true,
         "name": "container",
         "options": [],
         "query": {
           "field": "kubernetes.container_name",
-          "limit": 25,
-          "query": "_stream:{kubernetes.pod_namespace=$namespace} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
+          "limit": 100,
+          "query": "{kubernetes.pod_namespace in($namespace)}",
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
         "refresh": 1,
         "regex": "",
-        "sort": 1,
+        "regexApplyTo": "value",
         "type": "query"
       },
       {
+        "allValue": "*",
         "allowCustomValue": true,
         "current": {},
         "datasource": {
           "type": "victoriametrics-logs-datasource",
-          "uid": "${DS_VICTORIALOGS}"
+          "uid": "${ds}"
         },
-        "definition": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
+        "definition": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)} | format if (log.level:\"\") \"unknown\" as log.level ",
         "includeAll": true,
         "label": "Level",
         "multi": true,
@@ -1669,12 +1252,13 @@
         "query": {
           "field": "log.level",
           "limit": 25,
-          "query": "_stream:{kubernetes.pod_namespace=\"$namespace\", kubernetes.container_name=\"$container\"} | format if (kubernetes.pod_labels.app.kubernetes.io/name:\"\") \"unknown\" as kubernetes.pod_labels.app.kubernetes.io/name | kubernetes.pod_labels.app.kubernetes.io/name:in($app)",
+          "query": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)} | format if (log.level:\"\") \"unknown\" as log.level ",
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
         "refresh": 1,
         "regex": "",
+        "regexApplyTo": "value",
         "sort": 1,
         "type": "query"
       },
@@ -1684,7 +1268,7 @@
           "text": "500",
           "value": "500"
         },
-        "description": "Limit for raw log",
+        "description": "For logs raw",
         "label": "Limit",
         "name": "limit",
         "options": [
@@ -1710,14 +1294,16 @@
           }
         ],
         "query": "500,1000,2500,5000",
-        "type": "custom"
+        "type": "custom",
+        "valuesFormat": "csv"
       },
       {
         "baseFilters": [],
         "datasource": {
           "type": "victoriametrics-logs-datasource",
-          "uid": "${DS_VICTORIALOGS}"
+          "uid": "${ds}"
         },
+        "description": "For container panels",
         "filters": [],
         "label": "Filter",
         "name": "filter",
@@ -1731,7 +1317,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "VictoriaLogs Explorer - Kubernetes",
+  "title": "VictoriaLogs - Explorer K8S",
   "uid": "lajgcmm",
   "version": 1,
   "weekStart": ""
