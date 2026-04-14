@@ -179,7 +179,6 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 
 	cfg := &StorageConfig{
 		Retention:       365 * 24 * time.Hour,
-		FutureRetention: 365 * 24 * time.Hour,
 	}
 	s := MustOpenStorage(path, cfg)
 
