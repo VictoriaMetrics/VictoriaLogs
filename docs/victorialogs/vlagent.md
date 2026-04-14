@@ -566,7 +566,6 @@ ClickHouse rotates its own log files internally based on the `<size>` and `<coun
 To enable JSON format for ClickHouse server logs, add the following `<formatting>` section to the `<logger>` section of `/etc/clickhouse-server/config.xml`:
 
 ```xml
-
 <clickhouse>
     <logger>
         <level>information</level>
@@ -592,7 +591,7 @@ To enable JSON format for ClickHouse server logs, add the following `<formatting
 </clickhouse>
 ```
 
-After enabling JSON format, `vlagent` will automatically parse the log entries and map the `timestamp` field to [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+After enabling JSON format, `vlagent` will automatically parse the log entries and map the `date_time` field to [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
 and the `message` field to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 All other fields such as `level` and `logger_name` will be stored as individual log fields, enabling precise filtering in VictoriaLogs.
 

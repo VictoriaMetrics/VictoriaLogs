@@ -49,12 +49,30 @@ var tenantID logstorage.TenantID
 //
 // This function must be called after flag.Parse().
 func MustInit() {
+	// Initialize tenantID
 	t, err := logstorage.ParseTenantID(*journaldTenantID)
 	if err != nil {
-		logger.Panicf("FATAL: cannot parse -journald.tenantID=%q for journald: %s", *journaldTenantID, err)
+		logger.Fatalf("cannot parse -journald.tenantID=%s command-line flag: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy", *journaldTenantID, err)
 	}
 	tenantID = t
+
+	// Initialize streamFields
+	streamFields = defaultStreamFields
+	if len(*journaldStreamFields) > 0 {
+		streamFields = *journaldStreamFields
+	}
+	if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
+		logger.Fatalf("invalid stream field names in -journald.streamFields=%s: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#stream-fields", streamFields, err)
+	}
 }
+
+var defaultStreamFields = []string{
+	"_MACHINE_ID",
+	"_HOSTNAME",
+	"_SYSTEMD_UNIT",
+}
+
+var streamFields []string
 
 func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 	cp, err := insertutil.GetCommonParams(r)
@@ -64,36 +82,17 @@ func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 	if cp.TenantID.AccountID == 0 && cp.TenantID.ProjectID == 0 {
 		cp.TenantID = tenantID
 	}
-
 	if !cp.IsTimeFieldSet {
 		cp.TimeFields = []string{*journaldTimeField}
 	}
 	if len(cp.StreamFields) == 0 {
-		streamFields := getStreamFields()
-		if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
-			return nil, fmt.Errorf("invalid stream field names in -journald.streamFields=%s: %s", journaldStreamFields, err)
-		}
 		cp.StreamFields = streamFields
 	}
-
 	if len(cp.IgnoreFields) == 0 {
 		cp.IgnoreFields = *journaldIgnoreFields
 	}
 	cp.MsgFields = []string{"MESSAGE"}
 	return cp, nil
-}
-
-func getStreamFields() []string {
-	if len(*journaldStreamFields) > 0 {
-		return *journaldStreamFields
-	}
-	return defaultStreamFields
-}
-
-var defaultStreamFields = []string{
-	"_MACHINE_ID",
-	"_HOSTNAME",
-	"_SYSTEMD_UNIT",
 }
 
 // RequestHandler processes Journald Export insert requests

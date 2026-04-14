@@ -29,7 +29,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -defaultMsgValue string
      Default value for _msg field if the ingested log entry doesn't contain it; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field (default "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field")
   -defaultParallelReaders int
-     Default number of parallel data readers to use for executing every query; higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option (default 2x CPU cores)
+     Default number of parallel data readers to use for executing every query; higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option (default 32)
   -delete.enable
      Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
   -elasticsearch.version string
@@ -59,7 +59,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
-     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 16x CPU cores, default capped at 256)
+     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 256)
   -futureRetention value
      Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
@@ -184,7 +184,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#backfilling
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 0)
   -maxConcurrentInserts int
-     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 2x CPU cores)
+     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 32)
   -memory.allowedBytes size
      Allowed size of system memory VictoriaMetrics caches may occupy. This option overrides -memory.allowedPercent if set to a non-zero value. Too low a value may increase the cache miss rate usually resulting in higher CPU and disk IO usage. Too high a value may evict too much data from the OS page cache resulting in higher disk IO usage
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
@@ -239,7 +239,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -search.logSlowQueryDuration duration
      Log queries with execution time exceeding this value. Zero disables slow query logging (default 5s)
   -search.maxConcurrentRequests int
-     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default vlselect.getDefaultMaxConcurrentRequests())
+     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 16)
   -search.maxQueryDuration duration
      The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size
@@ -261,6 +261,29 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -snapshotsMaxAge value
      Snapshots are automatically deleted after the given duration if it is set to positive value. Make sure that the backup process has enough time for backing up the snapshot before its' deletion. See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 3d)
+  -splunk.ignoreFields array
+     Comma-separated list of fields to ignore for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#dropping-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.maxRequestSize size
+     The maximum size in bytes of a single Splunk request; see https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/
+     Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -splunk.msgField array
+     Field to use as a log message for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#message-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.preserveJSONKeys array
+     Comma-separated list of JSON keys that should be preserved from flattening when ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/ and https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.streamFields array
+     Comma-separated list of fields to use as log stream fields for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#stream-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.tenantID string
+     TenantID for logs ingested via the Splunk endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#multitenancy (default "0:0")
+  -splunk.timeField string
+     Field to use as a log timestamp for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#time-field (default "time")
   -storage.minFreeDiskSpaceBytes size
      The minimum free disk space at -storageDataPath after which the storage stops accepting new data
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 10000000)
