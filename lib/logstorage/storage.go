@@ -683,14 +683,14 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	fs.MustSyncPath(path)
 
 	des := fs.MustReadDir(partitionsPath)
-	ptws := make([]*partitionWrapper, len(des))
-
-	// Open partitions in parallel. This should improve VictoriaLogs initialization duration
-	// when it opens many partitions.
-	var wg sync.WaitGroup
-	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
-	for idx, de := range des {
+	var partitionNames []string
+	for _, de := range des {
 		fname := de.Name()
+		if strings.HasPrefix(fname, ".") {
+			// Ignore "hidden" entries, which can be automatically created by MacOS (such as .DS_Store).
+			// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/996
+			continue
+		}
 
 		partitionDir := filepath.Join(partitionsPath, fname)
 		if fs.IsPartiallyRemovedDir(partitionDir) {
@@ -699,6 +699,14 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			continue
 		}
 
+		partitionNames = append(partitionNames, fname)
+	}
+
+	// Open partitions in parallel. This should improve VictoriaLogs initialization duration when it opens many partitions.
+	ptws := make([]*partitionWrapper, len(partitionNames))
+	var wg sync.WaitGroup
+	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
+	for idx, fname := range partitionNames {
 		concurrencyLimiterCh <- struct{}{}
 		wg.Go(func() {
 			day, err := getPartitionDayFromName(fname)
