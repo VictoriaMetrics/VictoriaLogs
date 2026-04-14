@@ -347,7 +347,7 @@ func (rs *rows) skipRowsByDropFilter(dropFilter *partitionSearchOptions, dropFil
 		}
 
 		if dropFilterFields.MatchString("_time") {
-			bb.B = marshalTimestampISO8601String(bb.B[:0], srcTimestamp)
+			bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], srcTimestamp)
 			tmpFields.Add("_time", bytesutil.ToUnsafeString(bb.B))
 		}
 

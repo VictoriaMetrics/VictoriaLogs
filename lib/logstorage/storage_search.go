@@ -984,12 +984,8 @@ func hasFilterInWithQueryForFilter(f filter) bool {
 	}
 	visitFunc := func(f filter) bool {
 		switch t := f.(type) {
-		case *filterIn:
-			return t.values.q != nil
-		case *filterContainsAll:
-			return t.values.q != nil
-		case *filterContainsAny:
-			return t.values.q != nil
+		case *filterGeneric:
+			return t.hasFilterInWithQuery()
 		case *filterStreamID:
 			return t.q != nil
 		default:
@@ -1010,12 +1006,12 @@ func hasFilterInWithQueryForPipes(pipes []pipe) bool {
 
 type getFieldValuesFunc func(q *Query, fieldName string) ([]string, error)
 
-func (iff *ifFilter) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (*ifFilter, error) {
+func (iff *ifFilter) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (*ifFilter, error) {
 	if iff == nil {
 		return nil, nil
 	}
 
-	f, err := initFilterInValuesForFilter(cache, iff.f, getFieldValuesFunc)
+	f, err := initFilterInValuesForFilter(cache, iff.f, getFieldValues)
 	if err != nil {
 		return nil, err
 	}
@@ -1025,19 +1021,15 @@ func (iff *ifFilter) initFilterInValues(cache *inValuesCache, getFieldValuesFunc
 	return &iffNew, nil
 }
 
-func initFilterInValuesForFilter(cache *inValuesCache, f filter, getFieldValuesFunc getFieldValuesFunc) (filter, error) {
+func initFilterInValuesForFilter(cache *inValuesCache, f filter, getFieldValues getFieldValuesFunc) (filter, error) {
 	if f == nil {
 		return nil, nil
 	}
 
 	visitFunc := func(f filter) bool {
 		switch t := f.(type) {
-		case *filterIn:
-			return t.values.q != nil
-		case *filterContainsAll:
-			return t.values.q != nil
-		case *filterContainsAny:
-			return t.values.q != nil
+		case *filterGeneric:
+			return t.hasFilterInWithQuery()
 		case *filterStreamID:
 			return t.q != nil
 		default:
@@ -1046,41 +1038,10 @@ func initFilterInValuesForFilter(cache *inValuesCache, f filter, getFieldValuesF
 	}
 	copyFunc := func(f filter) (filter, error) {
 		switch t := f.(type) {
-		case *filterIn:
-			values, err := getValuesForQuery(t.values.q, t.values.qFieldName, cache, getFieldValuesFunc)
-			if err != nil {
-				return nil, fmt.Errorf("cannot obtain unique values for %s: %w", t, err)
-			}
-
-			fiNew := &filterIn{
-				fieldName: t.fieldName,
-			}
-			fiNew.values.values = values
-			return fiNew, nil
-		case *filterContainsAll:
-			values, err := getValuesForQuery(t.values.q, t.values.qFieldName, cache, getFieldValuesFunc)
-			if err != nil {
-				return nil, fmt.Errorf("cannot obtain unique values for %s: %w", t, err)
-			}
-
-			fiNew := &filterContainsAll{
-				fieldName: t.fieldName,
-			}
-			fiNew.values.values = values
-			return fiNew, nil
-		case *filterContainsAny:
-			values, err := getValuesForQuery(t.values.q, t.values.qFieldName, cache, getFieldValuesFunc)
-			if err != nil {
-				return nil, fmt.Errorf("cannot obtain unique values for %s: %w", t, err)
-			}
-
-			fiNew := &filterContainsAny{
-				fieldName: t.fieldName,
-			}
-			fiNew.values.values = values
-			return fiNew, nil
+		case *filterGeneric:
+			return t.initFilterInValues(cache, getFieldValues)
 		case *filterStreamID:
-			values, err := getValuesForQuery(t.q, t.qFieldName, cache, getFieldValuesFunc)
+			values, err := getValuesForQuery(t.q, t.qFieldName, cache, getFieldValues)
 			if err != nil {
 				return nil, fmt.Errorf("cannot obtain unique values for %s: %w", t, err)
 			}
@@ -1094,9 +1055,7 @@ func initFilterInValuesForFilter(cache *inValuesCache, f filter, getFieldValuesF
 				}
 			}
 
-			fsNew := &filterStreamID{
-				streamIDs: streamIDs,
-			}
+			fsNew := newFilterStreamID(streamIDs)
 			return fsNew, nil
 		default:
 			return f, nil
@@ -1105,14 +1064,14 @@ func initFilterInValuesForFilter(cache *inValuesCache, f filter, getFieldValuesF
 	return copyFilter(f, visitFunc, copyFunc)
 }
 
-func getValuesForQuery(q *Query, qFieldName string, cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) ([]string, error) {
+func getValuesForQuery(q *Query, qFieldName string, cache *inValuesCache, getFieldValues getFieldValuesFunc) ([]string, error) {
 	qStr := q.String()
 	values, ok := cache.m[qStr]
 	if ok {
 		return values, nil
 	}
 
-	vs, err := getFieldValuesFunc(q, qFieldName)
+	vs, err := getFieldValues(q, qFieldName)
 	if err != nil {
 		return nil, err
 	}
@@ -1123,10 +1082,10 @@ func getValuesForQuery(q *Query, qFieldName string, cache *inValuesCache, getFie
 	return vs, nil
 }
 
-func initFilterInValuesForPipes(cache *inValuesCache, pipes []pipe, getFieldValuesFunc getFieldValuesFunc) ([]pipe, error) {
+func initFilterInValuesForPipes(cache *inValuesCache, pipes []pipe, getFieldValues getFieldValuesFunc) ([]pipe, error) {
 	pipesNew := make([]pipe, len(pipes))
 	for i, p := range pipes {
-		pNew, err := p.initFilterInValues(cache, getFieldValuesFunc)
+		pNew, err := p.initFilterInValues(cache, getFieldValues)
 		if err != nil {
 			return nil, err
 		}
@@ -1551,11 +1510,9 @@ func initStreamFilters(tenantIDs []TenantID, idb *indexdb, f filter) filter {
 	}
 	copyFunc := func(f filter) (filter, error) {
 		fs := f.(*filterStream)
-		fsNew := &filterStream{
-			f:         fs.f,
-			tenantIDs: tenantIDs,
-			idb:       idb,
-		}
+		fsNew := newFilterStream(fs.f)
+		fsNew.tenantIDs = tenantIDs
+		fsNew.idb = idb
 		return fsNew, nil
 	}
 	f, err := copyFilter(f, visitFunc, copyFunc)
@@ -1908,14 +1865,13 @@ func getCommonStreamFilter(f filter) (*StreamFilter, filter) {
 			sf, ok := filter.(*filterStream)
 			if ok && !sf.f.isEmpty() {
 				// Remove sf from filters, since it doesn't filter out anything then.
-				fa := &filterAnd{
-					filters: append(filters[:i:i], filters[i+1:]...),
-				}
+				filters = append(filters[:i:i], filters[i+1:]...)
+				fa := newFilterAnd(filters)
 				return sf.f, fa
 			}
 		}
 	case *filterStream:
-		return t.f, &filterNoop{}
+		return t.f, newFilterNoop()
 	}
 	return nil, f
 }

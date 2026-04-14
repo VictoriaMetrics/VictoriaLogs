@@ -444,13 +444,14 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 	}
 
 	// Add other const columns
-	csh := br.bs.getColumnsHeader()
+	bs := br.bs
+	csh := bs.getColumnsHeader()
 	for _, cc := range csh.constColumns {
 		if isSpecialColumn(cc.Name) {
 			// Special columns have been added above.
 			continue
 		}
-		if pf.MatchString(cc.Name) {
+		if pf.MatchString(cc.Name) && !bs.isHiddenField(cc.Name) {
 			br.addConstColumn(cc.Name, cc.Value)
 		}
 	}
@@ -463,7 +464,7 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 			// Special columns have been added above.
 			continue
 		}
-		if pf.MatchString(ch.name) {
+		if pf.MatchString(ch.name) && !bs.isHiddenField(ch.name) {
 			br.addColumn(ch)
 		}
 	}
@@ -479,6 +480,8 @@ func isSpecialColumn(c string) bool {
 	}
 	return c == "_time" || c == "_stream" || c == "_stream_id"
 }
+
+var specialColumns = []string{"_msg", "_time", "_stream", "_stream_id"}
 
 // mustInit initializes br with the given bs and bm.
 //
@@ -504,6 +507,8 @@ func (br *blockResult) getMinTimestamp(minTimestamp int64) int64 {
 	if br.bs != nil {
 		th := &br.bs.bsw.bh.timestampsHeader
 		if br.isFull() {
+			// Fast path - all the rows in the br are present, so return the minTimestamp
+			// from blockHeader without the need to read the actual timestamps.
 			return min(minTimestamp, th.minTimestamp)
 		}
 		if minTimestamp <= th.minTimestamp {
@@ -511,8 +516,18 @@ func (br *blockResult) getMinTimestamp(minTimestamp int64) int64 {
 		}
 	}
 
-	// Slow path - need to scan timestamps
 	timestamps := br.getTimestamps()
+	c := br.getColumnByName("_time")
+	if c.isTime {
+		// Slower path - some of the rows in the br are filtered out,
+		// so try obtaining the _time column and return the first timestamp from there.
+		if len(timestamps) > 0 {
+			return min(minTimestamp, timestamps[0])
+		}
+		return minTimestamp
+	}
+
+	// Slow path - need to scan timestamps, since they may be not sorted.
 	for _, timestamp := range timestamps {
 		if timestamp < minTimestamp {
 			minTimestamp = timestamp
@@ -525,6 +540,8 @@ func (br *blockResult) getMaxTimestamp(maxTimestamp int64) int64 {
 	if br.bs != nil {
 		th := &br.bs.bsw.bh.timestampsHeader
 		if br.isFull() {
+			// Fast path - all the rows in the br are present, so return the maxTimestamp
+			// from blockHeader without the need to read the actual timestamps.
 			return max(maxTimestamp, th.maxTimestamp)
 		}
 		if maxTimestamp >= th.maxTimestamp {
@@ -532,8 +549,18 @@ func (br *blockResult) getMaxTimestamp(maxTimestamp int64) int64 {
 		}
 	}
 
-	// Slow path - need to scan timestamps
 	timestamps := br.getTimestamps()
+	c := br.getColumnByName("_time")
+	if c.isTime {
+		// Slower path - some of the rows in the br are filtered out,
+		// so try obtaining the _time column and return the last timestamp from there.
+		if len(timestamps) > 0 {
+			return max(maxTimestamp, timestamps[len(timestamps)-1])
+		}
+		return maxTimestamp
+	}
+
+	// Slow path - need to scan timestamps, since they may be not sorted.
 	for i := len(timestamps) - 1; i >= 0; i-- {
 		if timestamps[i] > maxTimestamp {
 			maxTimestamp = timestamps[i]

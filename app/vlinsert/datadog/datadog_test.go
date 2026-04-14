@@ -56,10 +56,10 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 			"service":"test"
 		}, {
 			"ddsource":"nginx",
-                        "ddtags":"tag1:value1,tag2:value2",
-                        "hostname":"127.0.0.1",
-                        "message":{"message": "nested"},
-                        "service":"test"
+			"ddtags":"tag1:value1,tag2:value2",
+			"hostname":"127.0.0.1",
+			"message":{"message": "nested"},
+			"service":"test"
 		}, {
 			"ddsource":"nginx",
 			"ddtags":"tag1:value1,tag2:value2",
@@ -82,23 +82,30 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 			"ddsource": "nginx",
 			"ddtags":"tag1:value1,tag2:value2,",
 			"hostname":"127.0.0.1",
-                        "message":"xyz",
-                        "service":"test"
-                }, {
+			"message":"xyz",
+			"service":"test"
+		}, {
 			"ddsource":"nginx",
 			"ddtags":",tag1:value1,tag2:value2",
 			"hostname":"127.0.0.1",
-                        "message":"xyz",
-                        "service":"test"
+			"message":"xyz",
+			"service":"test"
+		}, {
+			"ddsource":"nginx",
+			"ddtags":"env:prod,foo",
+			"hostname":"127.0.0.1",
+			"message":"qux",
+			"service":"test"
 		}
 	]`
-	rowsExpected := 7
+	rowsExpected := 8
 	resultExpected := `{"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"bar","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"nested","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"foobar","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"baz","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}
-{"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}`
+{"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}
+{"ddsource":"nginx","env":"prod","foo":"no_label_value","hostname":"127.0.0.1","_msg":"qux","service":"test"}`
 	f(data, rowsExpected, resultExpected)
 }

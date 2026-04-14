@@ -26,53 +26,29 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"abc def", "abc", "foobar"}
+		fi := newFilterInValues("foo", []string{"abc def", "abc", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterIn{
-			fieldName: "other column",
-		}
-		fi.values.values = []string{"asdfdsf", ""}
+		fi = newFilterInValues("other column", []string{"asdfdsf", ""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"", "foo"}
+		fi = newFilterInValues("non-existing-column", []string{"", "foo"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"abc", "def"}
+		fi = newFilterInValues("foo", []string{"abc", "def"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"", "abc"}
+		fi = newFilterInValues("foo", []string{"", "abc"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "other column",
-		}
-		fi.values.values = []string{"sd"}
+		fi = newFilterInValues("other column", []string{"sd"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "non-existing column",
-		}
-		fi.values.values = []string{"abc", "def"}
+		fi = newFilterInValues("non-existing column", []string{"abc", "def"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -89,41 +65,23 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"aaaa", "abc def", "foobar"}
+		fi := newFilterInValues("foo", []string{"aaaa", "abc def", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"", "abc"}
+		fi = newFilterInValues("non-existing-column", []string{"", "abc"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"abc def ", "foobar"}
+		fi = newFilterInValues("foo", []string{"abc def ", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "non-existing column",
-		}
-		fi.values.values = []string{"x"}
+		fi = newFilterInValues("non-existing column", []string{"x"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -144,41 +102,23 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"foobar", "aaaa", "abc", "baz"}
+		fi := newFilterInValues("foo", []string{"foobar", "aaaa", "abc", "baz"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 6})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bbbb", "", "aaaa"}
+		fi = newFilterInValues("foo", []string{"bbbb", "", "aaaa"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar", "aaaa"}
+		fi = newFilterInValues("foo", []string{"bar", "aaaa"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "non-existing column",
-		}
-		fi.values.values = []string{"foobar", "aaaa"}
+		fi = newFilterInValues("non-existing column", []string{"foobar", "aaaa"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -202,35 +142,20 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"a foobar", "aa abc a"}
+		fi := newFilterInValues("foo", []string{"a foobar", "aa abc a"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 6})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"aa a"}
+		fi = newFilterInValues("foo", []string{"aa a"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -255,47 +180,26 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "32"}
+		fi := newFilterInValues("foo", []string{"12", "32"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterInValues("foo", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3, 4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterInValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"1234"}
+		fi = newFilterInValues("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -320,47 +224,26 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "32"}
+		fi := newFilterInValues("foo", []string{"12", "32"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterInValues("foo", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3, 4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterInValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"123456"}
+		fi = newFilterInValues("foo", []string{"123456"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -385,47 +268,26 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "32"}
+		fi := newFilterInValues("foo", []string{"12", "32"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterInValues("foo", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3, 4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterInValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12345678901"}
+		fi = newFilterInValues("foo", []string{"12345678901"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -450,41 +312,23 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "32"}
+		fi := newFilterInValues("foo", []string{"12", "32"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterInValues("foo", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3, 4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterInValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -509,41 +353,23 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "-32"}
+		fi := newFilterInValues("foo", []string{"12", "-32"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 2, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterInValues("foo", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3, 4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterInValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -566,65 +392,35 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"1234", "1", "foobar", "123211"}
+		fi := newFilterInValues("foo", []string{"1234", "1", "foobar", "123211"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 5})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"1234.5678901"}
+		fi = newFilterInValues("foo", []string{"1234.5678901"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{4})
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"-65536"}
+		fi = newFilterInValues("foo", []string{"-65536"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"65536"}
+		fi = newFilterInValues("foo", []string{"65536"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"123"}
+		fi = newFilterInValues("foo", []string{"123"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12345678901234567890"}
+		fi = newFilterInValues("foo", []string{"12345678901234567890"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -650,47 +446,26 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"127.0.0.1", "24.54.1.2", "127.0.4.2"}
+		fi := newFilterInValues("foo", []string{"127.0.0.1", "24.54.1.2", "127.0.4.2"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{2, 4, 5, 6, 7})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"5"}
+		fi = newFilterInValues("foo", []string{"5"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterIn{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"255.255.255.255"}
+		fi = newFilterInValues("foo", []string{"255.255.255.255"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -713,41 +488,23 @@ func TestFilterIn(t *testing.T) {
 		}
 
 		// match
-		fi := &filterIn{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"2006-01-02T15:04:05.005Z", "foobar"}
+		fi := newFilterInValues("_msg", []string{"2006-01-02T15:04:05.005Z", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{4})
 
-		fi = &filterIn{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fi = &filterIn{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterInValues("_msg", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 
-		fi = &filterIn{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{}
+		fi = newFilterInValues("_msg", []string{})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 
-		fi = &filterIn{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterInValues("_msg", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 
-		fi = &filterIn{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"2006-04-02T15:04:05.005Z"}
+		fi = newFilterInValues("_msg", []string{"2006-04-02T15:04:05.005Z"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 	})
 

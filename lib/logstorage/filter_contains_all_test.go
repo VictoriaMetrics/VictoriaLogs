@@ -26,41 +26,23 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"def", "abc"}
+		fi := newFilterContainsAllValues("foo", []string{"def", "abc"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"foo", "abc"}
+		fi = newFilterContainsAllValues("foo", []string{"foo", "abc"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"abc", "def", ""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"abc", "def", ""})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -77,41 +59,23 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"abc", "def", "abc def"}
+		fi := newFilterContainsAllValues("foo", []string{"abc", "def", "abc def"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"abc def", "foobar"}
+		fi = newFilterContainsAllValues("foo", []string{"abc def", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing column",
-		}
-		fi.values.values = []string{"x"}
+		fi = newFilterContainsAllValues("non-existing column", []string{"x"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -132,47 +96,26 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"foobar", "afdf", ""}
+		fi := newFilterContainsAllValues("foo", []string{"foobar", "afdf", ""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar", "aaaa"}
+		fi = newFilterContainsAllValues("foo", []string{"bar", "aaaa"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing column",
-		}
-		fi.values.values = []string{"foobar", "aaaa"}
+		fi = newFilterContainsAllValues("non-existing column", []string{"foobar", "aaaa"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -196,47 +139,26 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"a", "", " ", "foobar"}
+		fi := newFilterContainsAllValues("foo", []string{"a", "", " ", "foobar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 3, 6})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"aa a", "adfwer"}
+		fi = newFilterContainsAllValues("foo", []string{"aa a", "adfwer"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"abc"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"abc"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -261,65 +183,35 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12"}
+		fi := newFilterContainsAllValues("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "12", "", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "12", "", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"0", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterContainsAllValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"12"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -344,65 +236,35 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12"}
+		fi := newFilterContainsAllValues("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterContainsAllValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "0"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"12", "0"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"12", "0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -427,65 +289,35 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12"}
+		fi := newFilterContainsAllValues("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterContainsAllValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "0"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"12"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -510,71 +342,38 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12"}
+		fi := newFilterContainsAllValues("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", ""}
+		fi = newFilterContainsAllValues("foo", []string{"12", ""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"0", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterContainsAllValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"12"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -599,65 +398,35 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12"}
+		fi := newFilterContainsAllValues("foo", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"12", "", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"12", "", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{1, 5})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"0", "12"}
+		fi = newFilterContainsAllValues("foo", []string{"0", "12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"33"}
+		fi = newFilterContainsAllValues("foo", []string{"33"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"12"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"12"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -680,71 +449,38 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"1234"}
+		fi := newFilterContainsAllValues("foo", []string{"1234"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 4})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"1234", "", "1234"}
+		fi = newFilterContainsAllValues("foo", []string{"1234", "", "1234"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 4})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"5678901", ".", "1234"}
+		fi = newFilterContainsAllValues("foo", []string{"5678901", ".", "1234"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{4})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"-65536", "-"}
+		fi = newFilterContainsAllValues("foo", []string{"-65536", "-"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{3})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"655361"}
+		fi = newFilterContainsAllValues("foo", []string{"655361"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -770,53 +506,29 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"127.0.0.1", ".0.0.", "127.0"}
+		fi := newFilterContainsAllValues("foo", []string{"127.0.0.1", ".0.0.", "127.0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{2, 4, 5, 7})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("foo", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("foo", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("foo", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "foo",
-		}
-		fi.values.values = []string{"5", "127"}
+		fi = newFilterContainsAllValues("foo", []string{"5", "127"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-field",
-		}
-		fi.values.values = []string{"0"}
+		fi = newFilterContainsAllValues("non-existing-field", []string{"0"})
 		testFilterMatchForColumns(t, columns, fi, "foo", nil)
 	})
 
@@ -839,53 +551,29 @@ func TestFilterContainsAll(t *testing.T) {
 		}
 
 		// match
-		fi := &filterContainsAll{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"04:05.005Z", "", "2006-01"}
+		fi := newFilterContainsAllValues("_msg", []string{"04:05.005Z", "", "2006-01"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{4})
 
-		fi = &filterContainsAll{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("_msg", []string{})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("_msg", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{}
+		fi = newFilterContainsAllValues("non-existing-column", []string{})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{""}
+		fi = newFilterContainsAllValues("non-existing-column", []string{""})
 		testFilterMatchForColumns(t, columns, fi, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fi = &filterContainsAll{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"bar"}
+		fi = newFilterContainsAllValues("_msg", []string{"bar"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "_msg",
-		}
-		fi.values.values = []string{"2006-04-02T15:04:05.005Z"}
+		fi = newFilterContainsAllValues("_msg", []string{"2006-04-02T15:04:05.005Z"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 
-		fi = &filterContainsAll{
-			fieldName: "non-existing-column",
-		}
-		fi.values.values = []string{"2006"}
+		fi = newFilterContainsAllValues("non-existing-column", []string{"2006"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 	})
 

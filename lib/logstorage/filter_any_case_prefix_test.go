@@ -62,77 +62,41 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "abc",
-		}
+		fp := newFilterAnyCasePrefix("foo", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "ABC",
-		}
+		fp = newFilterAnyCasePrefix("foo", "ABC")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "ab",
-		}
+		fp = newFilterAnyCasePrefix("foo", "ab")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fp = newFilterAnyCasePrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "def",
-		}
+		fp = newFilterAnyCasePrefix("foo", "def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "other column",
-			prefix:    "asdfdSF",
-		}
+		fp = newFilterAnyCasePrefix("other column", "asdfdSF")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bc",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "other column",
-			prefix:    "sd",
-		}
+		fp = newFilterAnyCasePrefix("other column", "sd")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "abc",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -165,89 +129,47 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "Abc",
-		}
+		fp := newFilterAnyCasePrefix("foo", "Abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "AB",
-		}
+		fp = newFilterAnyCasePrefix("foo", "AB")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "abc de",
-		}
+		fp = newFilterAnyCasePrefix("foo", "abc de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    " de",
-		}
+		fp = newFilterAnyCasePrefix("foo", " de")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "abc def",
-		}
+		fp = newFilterAnyCasePrefix("foo", "abc def")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "other-column",
-			prefix:    "x",
-		}
+		fp = newFilterAnyCasePrefix("other-column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    " 2 ",
-		}
+		fp = newFilterAnyCasePrefix("_msg", " 2 ")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "abc def ",
-		}
+		fp = newFilterAnyCasePrefix("foo", "abc def ")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "x",
-		}
+		fp = newFilterAnyCasePrefix("foo", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "other-column",
-			prefix:    "foo",
-		}
+		fp = newFilterAnyCasePrefix("other-column", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "x",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "x")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "foo",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "foo")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -268,41 +190,23 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "FooBar",
-		}
+		fp := newFilterAnyCasePrefix("foo", "FooBar")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 6})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 3, 4, 5, 6})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "ba",
-		}
+		fp = newFilterAnyCasePrefix("foo", "ba")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "foobar",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "foobar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -326,65 +230,35 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp := newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "a",
-		}
+		fp = newFilterAnyCasePrefix("foo", "a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "нГк",
-		}
+		fp = newFilterAnyCasePrefix("foo", "нГк")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "aa a",
-		}
+		fp = newFilterAnyCasePrefix("foo", "aa a")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "!,",
-		}
+		fp = newFilterAnyCasePrefix("foo", "!,")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{9})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "aa ax",
-		}
+		fp = newFilterAnyCasePrefix("foo", "aa ax")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "qwe rty abc",
-		}
+		fp = newFilterAnyCasePrefix("foo", "qwe rty abc")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "@",
-		}
+		fp = newFilterAnyCasePrefix("foo", "@")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -409,47 +283,26 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fp := newFilterAnyCasePrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 5})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterAnyCasePrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3, 4})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "1234",
-		}
+		fp = newFilterAnyCasePrefix("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -473,47 +326,26 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterAnyCasePrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterAnyCasePrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "123456",
-		}
+		fp = newFilterAnyCasePrefix("foo", "123456")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -537,47 +369,26 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterAnyCasePrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "65536",
-		}
+		fp = newFilterAnyCasePrefix("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12345678901",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -600,47 +411,26 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "1234",
-		}
+		fp := newFilterAnyCasePrefix("foo", "1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12345678901",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12345678901234567890",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -663,47 +453,27 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "1234",
-		}
+		fp := newFilterAnyCasePrefix("foo", "1234")
+
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "-12345678901",
-		}
+		fp = newFilterAnyCasePrefix("foo", "-12345678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12345678901234567890",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -726,95 +496,50 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "123",
-		}
+		fp := newFilterAnyCasePrefix("foo", "123")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "1234.5678901",
-		}
+		fp = newFilterAnyCasePrefix("foo", "1234.5678901")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "56789",
-		}
+		fp = newFilterAnyCasePrefix("foo", "56789")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "-6553",
-		}
+		fp = newFilterAnyCasePrefix("foo", "-6553")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "65536",
-		}
+		fp = newFilterAnyCasePrefix("foo", "65536")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{3})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "7344.8943",
-		}
+		fp = newFilterAnyCasePrefix("foo", "7344.8943")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "-1234",
-		}
+		fp = newFilterAnyCasePrefix("foo", "-1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "+1234",
-		}
+		fp = newFilterAnyCasePrefix("foo", "+1234")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "23",
-		}
+		fp = newFilterAnyCasePrefix("foo", "23")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "678",
-		}
+		fp = newFilterAnyCasePrefix("foo", "678")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "33",
-		}
+		fp = newFilterAnyCasePrefix("foo", "33")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12345678901234567890",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12345678901234567890")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -840,77 +565,41 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "127.0.0.1",
-		}
+		fp := newFilterAnyCasePrefix("foo", "127.0.0.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("foo", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "12",
-		}
+		fp = newFilterAnyCasePrefix("foo", "12")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 6, 7, 8, 9})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "127.0.0",
-		}
+		fp = newFilterAnyCasePrefix("foo", "127.0.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{2, 4, 5, 7})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "2.3.",
-		}
+		fp = newFilterAnyCasePrefix("foo", "2.3.")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{0})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "0",
-		}
+		fp = newFilterAnyCasePrefix("foo", "0")
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 2, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("foo", "bar")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "8",
-		}
+		fp = newFilterAnyCasePrefix("foo", "8")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "127.1",
-		}
+		fp = newFilterAnyCasePrefix("foo", "127.1")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "27.0",
-		}
+		fp = newFilterAnyCasePrefix("foo", "27.0")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "foo",
-			prefix:    "255.255.255.255",
-		}
+		fp = newFilterAnyCasePrefix("foo", "255.255.255.255")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
@@ -933,67 +622,37 @@ func TestFilterAnyCasePrefix(t *testing.T) {
 		}
 
 		// match
-		fp := &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02t15:04:05.005z",
-		}
+		fp := newFilterAnyCasePrefix("_msg", "2006-01-02t15:04:05.005z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{4})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-0",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "2006-01-0")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "002",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "002")
 		testFilterMatchForColumns(t, columns, fp, "_msg", []int{1})
 
 		// mismatch
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "bar",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "bar")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "2006-03-02T15:04:05.005Z",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "2006-03-02T15:04:05.005Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "06",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "06")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it has different string representation of the timestamp
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T16:04:05.005+01:00",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "2006-01-02T16:04:05.005+01:00")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
 		// This filter shouldn't match row=4, since it contains too many digits for millisecond part
-		fp = &filterAnyCasePrefix{
-			fieldName: "_msg",
-			prefix:    "2006-01-02T15:04:05.00500Z",
-		}
+		fp = newFilterAnyCasePrefix("_msg", "2006-01-02T15:04:05.00500Z")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 
-		fp = &filterAnyCasePrefix{
-			fieldName: "non-existing-column",
-			prefix:    "",
-		}
+		fp = newFilterAnyCasePrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 	})
 

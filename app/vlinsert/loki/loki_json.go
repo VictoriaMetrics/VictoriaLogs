@@ -41,7 +41,7 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.cp.NewLogMessageProcessor("loki_json", false)
 		useDefaultStreamFields := len(cp.cp.StreamFields) == 0
-		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, cp.cp.PreserveJSONKeys, useDefaultStreamFields, cp.parseMessage)
+		err := parseJSONRequest(data, lmp, cp.cp.MsgFields, cp.cp.PreserveJSONKeys, cp.msgFieldsPrefix, useDefaultStreamFields, cp.parseMessage)
 		lmp.MustClose()
 		return err
 	})
@@ -64,7 +64,7 @@ var (
 	requestJSONDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="json"}`)
 )
 
-func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields, preserveKeys []string, useDefaultStreamFields, parseMessage bool) error {
+func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields, preserveKeys []string, msgFieldsPrefix string, useDefaultStreamFields, parseMessage bool) error {
 	p := parserPool.Get()
 	defer parserPool.Put(p)
 
@@ -165,7 +165,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 			if err != nil {
 				return fmt.Errorf("unexpected log message type for %q; want string", lineA[1])
 			}
-			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg), preserveKeys)
+			allowMsgRenaming := addMsgField(fieldsTmp, msgParser, bytesutil.ToUnsafeString(msg), preserveKeys, msgFieldsPrefix)
 			if allowMsgRenaming {
 				logstorage.RenameField(fieldsTmp.Fields[commonFieldsLen:], msgFields, "_msg")
 			}
@@ -182,7 +182,7 @@ func parseJSONRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields
 	return nil
 }
 
-func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msgOrig string, preserveKeys []string) bool {
+func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msgOrig string, preserveKeys []string, msgFieldsPrefix string) bool {
 	// Log collectors can leave trailing whitespaces, see https://github.com/VictoriaMetrics/VictoriaLogs/issues/1044
 	msg := strings.TrimSpace(msgOrig)
 
@@ -191,7 +191,7 @@ func addMsgField(fs *logstorage.Fields, msgParser *logstorage.JSONParser, msgOri
 		return false
 	}
 
-	if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg), preserveKeys); err != nil {
+	if err := msgParser.ParseLogMessage(bytesutil.ToUnsafeBytes(msg), preserveKeys, msgFieldsPrefix); err != nil {
 		fs.Add("_msg", msgOrig)
 		return false
 	}

@@ -222,6 +222,17 @@ func (app *Vlsingle) Streams(t *testing.T, query string, opts StreamsOpts) strin
 	return app.node.cli.PostFormSuccess(t, url, values)
 }
 
+// Hits sends HTTP POOST request to /select/logsql/hists endpoint and returns the plain response.
+func (app *Vlsingle) Hits(t *testing.T, query string, opts HitsOpts) string {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/hits", app.node.httpListenAddr)
+	return app.node.cli.PostFormSuccess(t, url, values)
+}
+
 // StatsQueryRaw is a test helper function that performs
 // a POST to /select/logsql/stats_query and returns raw body and status code.
 //

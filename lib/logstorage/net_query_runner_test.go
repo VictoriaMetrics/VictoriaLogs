@@ -56,6 +56,7 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`foo | extract_regexp "foo(?P<ip>[^;]+)"`, `foo | extract_regexp "foo(?P<ip>[^;]+)"`, ``)
 	f(`foo | facets`, `foo | facets 18446744073709551615`, `stats by (field_name, field_value) sum(hits) as hits | total_stats by (field_name) count(*) as field_values_count | filter field_values_count:<=1000 | delete field_values_count | sort by (hits desc) partition by (field_name) limit 10 | sort by (field_name, hits desc, field_value) | fields field_name, field_value, hits`)
 	f(`foo | field_names`, `foo | field_names`, `stats by (name) sum(hits) as hits`)
+	f(`foo | field_names as hits`, `foo | field_names as hitss`, `stats by (hitss) sum(hits) as hits | rename hitss as hits`)
 	f(`foo | field_values x`, `foo | field_values x`, `field_values_local x`)
 	f(`foo | fields x, y`, `foo | fields x, y`, ``)
 	f(`foo | filter a:b`, `foo a:b`, ``)

@@ -28,6 +28,7 @@ var (
 // Init initializes vlinsert
 func Init() {
 	syslog.MustInit()
+	journald.MustInit()
 }
 
 // Stop stops vlinsert
@@ -55,6 +56,16 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		}
 		internalinsert.RequestHandler(w, r)
 		return true
+	}
+
+	switch {
+	case strings.HasPrefix(path, "/api/v2/logs") || strings.HasPrefix(path, "/api/v1/validate"):
+		if *disableInsert {
+			httpserver.Errorf(w, r, "requests to /api/v2/logs and /api/v1/validate are disabled with -insert.disable command-line flag")
+			return true
+		}
+
+		return datadog.RequestHandler(path, w, r)
 	}
 
 	return false

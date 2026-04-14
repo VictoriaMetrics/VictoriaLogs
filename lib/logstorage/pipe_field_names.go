@@ -36,10 +36,16 @@ func (pf *pipeFieldNames) String() string {
 }
 
 func (pf *pipeFieldNames) splitToRemoteAndLocal(timestamp int64) (pipe, []pipe) {
-	pStr := fmt.Sprintf("stats by (%s) sum(hits) hits", quoteTokenIfNeeded(pf.resultName))
-	pLocal := mustParsePipe(pStr, timestamp)
+	resultNameLocal := getUniqueResultName(pf.resultName, []string{"hits"})
+	pStr := fmt.Sprintf("stats by (%s) sum(hits) as hits", quoteTokenIfNeeded(resultNameLocal))
+	if resultNameLocal != pf.resultName {
+		pStr += fmt.Sprintf(" | rename %s as %s", quoteTokenIfNeeded(resultNameLocal), quoteTokenIfNeeded(pf.resultName))
+	}
+	psLocal := mustParsePipes(pStr, timestamp)
 
-	return pf, []pipe{pLocal}
+	pRemote := *pf
+	pRemote.resultName = resultNameLocal
+	return &pRemote, psLocal
 }
 
 func (pf *pipeFieldNames) canLiveTail() bool {

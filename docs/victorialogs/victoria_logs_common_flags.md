@@ -54,6 +54,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#forced-merge
      Flag value can be read from the given file when using -forceMergeAuthKey=file:///abs/path/to/file or -forceMergeAuthKey=file://./relative/path/to/file.
      Flag value can be read from the given http/https url when using -forceMergeAuthKey=http://host/path or -forceMergeAuthKey=https://host/path
+  -fs.disableMincore
+     Whether to disable the mincore() syscall for checking mmap()ed files. By default, mincore() is used to detect whether mmap()ed file pages are resident in memory. Disabling mincore() may be needed on older ZFS filesystems (below 2.1.5), since it may trigger ZFS bug. See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10327 for details.
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
@@ -143,6 +145,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      TenantID for logs ingested via the Journald endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy (default "0:0")
   -journald.timeField string
      Field to use as a log timestamp for logs ingested via journald protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#time-field (default "__REALTIME_TIMESTAMP")
+  -journald.useRemoteIP
+     Whether to add the remote IP address as the remote_ip log field for ingested journald messages.
   -logIngestedRows
      Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/ ; see also -logNewStreams
   -logNewStreams
@@ -170,10 +174,12 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -loggerWarnsPerSecondLimit int
      Per-second limit on the number of WARN messages. If more than the given number of warns are emitted per second, then the remaining warns are suppressed. Zero values disable the rate limit
   -loki.disableMessageParsing
-     Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields
+     Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields; see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message
   -loki.maxRequestSize size
      The maximum size in bytes of a single Loki request
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -loki.messageFieldsPrefix string
+     Optional prefix to add to field names parsed from JSON-encoded log message at Loki protocol; this can be used for avoiding potential clash between the parsed field names and the log stream labels; see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message
   -maxBackfillAge value
      Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#backfilling
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 0)
@@ -191,7 +197,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Flag value can be read from the given file when using -metricsAuthKey=file:///abs/path/to/file or -metricsAuthKey=file://./relative/path/to/file.
      Flag value can be read from the given http/https url when using -metricsAuthKey=http://host/path or -metricsAuthKey=https://host/path
   -nativeinsert.maxRequestSize size
-     The maximum size in bytes of a single request, which can be accepted at /insert/native HTTP endpoint
+     The maximum size in bytes of a single request, which can be accepted at /insert/native and /insert/multitenant/native HTTP endpoints
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
   -opentelemetry.maxRequestSize size
      The maximum size in bytes of a single OpenTelemetry request

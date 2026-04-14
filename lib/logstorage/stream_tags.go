@@ -50,13 +50,37 @@ func (st *StreamTags) String() string {
 	return string(b)
 }
 
-func (st *StreamTags) verifyFieldValues(fields []Field) error {
+func (st *StreamTags) verifyCanonicalFieldValues(fields []Field) error {
 	// Verify that the unmarshaled stream tags match the corresponding fields' values.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/38
+
+	prevTagName := ""
 	for _, tag := range st.tags {
-		value := getFieldValueByName(fields, tag.Name)
-		if value != tag.Value {
-			return fmt.Errorf("unexpected value for the stream tag %q; got %q; want %q; streamTags: %s", tag.Name, value, tag.Name, st)
+		tagName := tag.Name
+
+		if err := CheckStreamFieldName(tagName); err != nil {
+			return fmt.Errorf("invalid stream tag name: %s; streamTags: %s", tagName, st)
+		}
+
+		if tagName <= prevTagName {
+			return fmt.Errorf("stream tag names must be sorted; got %q after %q; streamTags: %s", tagName, prevTagName, st)
+		}
+
+		tagValue := tag.Value
+		found := false
+		for _, f := range fields {
+			if f.Name != tagName {
+				continue
+			}
+			if f.Value != tagValue {
+				line := MarshalFieldsToJSON(nil, fields)
+				return fmt.Errorf("unexpected value for the stream tag %q; got %q; want %q; streamTags: %s; fields: %s", tagName, f.Value, tagValue, st, line)
+			}
+			found = true
+		}
+		if !found {
+			line := MarshalFieldsToJSON(nil, fields)
+			return fmt.Errorf("cannot find value for the stream tag %q in fields; want %q; streamTags: %s; fields: %s", tagName, tagValue, st, line)
 		}
 	}
 	return nil

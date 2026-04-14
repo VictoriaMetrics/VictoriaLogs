@@ -51,40 +51,20 @@ func TestFilterIPv6Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::0"),
-			maxValue:  mustParseIPv6("::2"),
-		}
+		fr := newFilterIPv6Range("foo", mustParseIPv6("::0"), mustParseIPv6("::2"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::1"),
-			maxValue:  mustParseIPv6("::1"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::1"), mustParseIPv6("::1"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::2"),
-			maxValue:  mustParseIPv6("::3"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::2"), mustParseIPv6("::3"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv6Range{
-			fieldName: "non-existing-column",
-			minValue:  mustParseIPv6("::0"),
-			maxValue:  mustParseIPv6("::ffff"),
-		}
+		fr = newFilterIPv6Range("non-existing-column", mustParseIPv6("::0"), mustParseIPv6("::ffff"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::2"),
-			maxValue:  mustParseIPv6("::0"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::2"), mustParseIPv6("::0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -106,40 +86,20 @@ func TestFilterIPv6Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::0"),
-			maxValue:  mustParseIPv6("::2"),
-		}
+		fr := newFilterIPv6Range("foo", mustParseIPv6("::0"), mustParseIPv6("::2"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::0"),
-			maxValue:  mustParseIPv6("fff::2"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::0"), mustParseIPv6("fff::2"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 7})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("0.0.0.0"),
-			maxValue:  mustParseIPv6("0.0.0.2"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("0.0.0.0"), mustParseIPv6("0.0.0.2"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{7})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("2001:db8::"),
-			maxValue:  mustParseIPv6("2001:db8::ffff"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("2001:db8::"), mustParseIPv6("2001:db8::ffff"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{3})
 
 		// mismatch
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::3"),
-			maxValue:  mustParseIPv6("::4"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::3"), mustParseIPv6("::4"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -164,26 +124,14 @@ func TestFilterIPv6Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::0"),
-			maxValue:  mustParseIPv6("::2"),
-		}
+		fr := newFilterIPv6Range("foo", mustParseIPv6("::0"), mustParseIPv6("::2"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{2})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("2001:db8::"),
-			maxValue:  mustParseIPv6("2001:db8::ffff"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("2001:db8::"), mustParseIPv6("2001:db8::ffff"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{10})
 
 		// mismatch
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::3"),
-			maxValue:  mustParseIPv6("::4"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::3"), mustParseIPv6("::4"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -209,54 +157,26 @@ func TestFilterIPv6Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("0.0.0.0"),
-			maxValue:  mustParseIPv6("8.0.0.0"),
-		}
+		fr := newFilterIPv6Range("foo", mustParseIPv6("0.0.0.0"), mustParseIPv6("8.0.0.0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::ffff:0:0"),
-			maxValue:  mustParseIPv6("::ffff:800:0"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::ffff:0:0"), mustParseIPv6("::ffff:800:0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("::"),
-			maxValue:  mustParseIPv6("ffff::"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("::"), mustParseIPv6("ffff::"))
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 
 		// mismatch
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("128.0.0.0"),
-			maxValue:  mustParseIPv6("144.0.0.0"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("128.0.0.0"), mustParseIPv6("144.0.0.0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("255.0.0.0"),
-			maxValue:  mustParseIPv6("255.255.255.255"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("255.0.0.0"), mustParseIPv6("255.255.255.255"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("8.0.0.0"),
-			maxValue:  mustParseIPv6("0.0.0.0"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("8.0.0.0"), mustParseIPv6("0.0.0.0"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv6Range{
-			fieldName: "foo",
-			minValue:  mustParseIPv6("2001:db8::"),
-			maxValue:  mustParseIPv6("2001:db8::ffff"),
-		}
+		fr = newFilterIPv6Range("foo", mustParseIPv6("2001:db8::"), mustParseIPv6("2001:db8::ffff"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 

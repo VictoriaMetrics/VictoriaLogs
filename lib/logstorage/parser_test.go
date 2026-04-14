@@ -77,9 +77,9 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	f("options(time_offset=1h) *", math.MinInt64, math.MaxInt64)
 
 	// relative time filter
-	f("_time:1h", -nsecsPerHour*1, 0)
-	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1)
-	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1)
+	f("_time:1h", -nsecsPerHour*1, -1)
+	f("options(time_offset=1h) _time:1h", -nsecsPerHour*2, -nsecsPerHour*1-1)
+	f("options(time_offset=-1h) _time:1h", 0, nsecsPerHour*1-1)
 	f("options(time_offset=1h) _time:offset 1h", math.MinInt64, -nsecsPerHour*2)
 	f("options(time_offset=-1h) _time:offset 1h", math.MinInt64, 0)
 
@@ -102,8 +102,8 @@ func TestApplyOptionTimeOffset(t *testing.T) {
 	f("_time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999)
 	f("options(time_offset=1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999-nsecsPerHour*1)
 	f("options(time_offset=-1h) _time:<2025-07-25T12:00:00Z", math.MinInt64, 1753444799999999999+nsecsPerHour*1)
-	f("options(time_offset=1h) _time:<2h", -nsecsPerHour*3+1, -nsecsPerHour)
-	f("options(time_offset=1h) _time:<=2h", -nsecsPerHour*3, -nsecsPerHour)
+	f("options(time_offset=1h) _time:<2h", -nsecsPerHour*3+1, -nsecsPerHour-1)
+	f("options(time_offset=1h) _time:<=2h", -nsecsPerHour*3, -nsecsPerHour-1)
 }
 
 func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
@@ -123,10 +123,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2-1)
 	ff := q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2)
+		assertQueryRange(q, -nsecsPerHour*8, -nsecsPerHour*2-1)
 	})
 
 	// subquery has its own time_offset
@@ -134,10 +134,10 @@ func TestApplyOptionTimeOffsetToSubqueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2)
+	assertQueryRange(q, -nsecsPerHour*3, -nsecsPerHour*2-1)
 	ff = q.getFinalFilter()
 	visitSubqueriesInFilter(ff, func(q *Query) {
-		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1)
+		assertQueryRange(q, -nsecsPerHour*7, -nsecsPerHour*1-1)
 	})
 }
 
@@ -611,7 +611,7 @@ func TestParseTimeDuration(t *testing.T) {
 		if ft.stringRepr != s {
 			t.Fatalf("unexpected string representation for filterTime; got %q; want %q", ft.stringRepr, s)
 		}
-		duration := time.Duration(ft.maxTimestamp - ft.minTimestamp)
+		duration := time.Duration(ft.maxTimestamp - ft.minTimestamp + 1)
 		if duration != durationExpected {
 			t.Fatalf("unexpected duration; got %s; want %s", duration, durationExpected)
 		}
@@ -859,12 +859,16 @@ func TestParseFilterSequence(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fs, ok := q.f.(*filterSequence)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterSequence; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fs.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fs.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fs, ok := fg.f.(*filterSequence)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterSequence; filter: %s", fg.f, fg.f)
 		}
 		if !reflect.DeepEqual(fs.phrases, phrasesExpected) {
 			t.Fatalf("unexpected phrases\ngot\n%q\nwant\n%q", fs.phrases, phrasesExpected)
@@ -885,12 +889,16 @@ func TestParseFilterIn(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fi, ok := q.f.(*filterIn)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterIn; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fi.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fi.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fi, ok := fg.f.(*filterIn)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterIn; filter: %s", fg.f, fg.f)
 		}
 		if !reflect.DeepEqual(fi.values.values, valuesExpected) {
 			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fi.values.values, valuesExpected)
@@ -929,12 +937,16 @@ func TestParseFilterContainsAll(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fc, ok := q.f.(*filterContainsAll)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterContainsAll; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fc.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fc.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fc, ok := fg.f.(*filterContainsAll)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterContainsAll; filter: %s", fg.f, fg.f)
 		}
 		if !reflect.DeepEqual(fc.values.values, valuesExpected) {
 			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fc.values.values, valuesExpected)
@@ -960,12 +972,16 @@ func TestParseFilterContainsAny(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fc, ok := q.f.(*filterContainsAny)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterContainsAny; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fc.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fc.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fc, ok := fg.f.(*filterContainsAny)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterContainsAny; filter: %s", fg.f, fg.f)
 		}
 		if !reflect.DeepEqual(fc.values.values, valuesExpected) {
 			t.Fatalf("unexpected values\ngot\n%q\nwant\n%q", fc.values.values, valuesExpected)
@@ -991,12 +1007,16 @@ func TestParseFilterIPv4Range(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fr, ok := q.f.(*filterIPv4Range)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterIPv4Range; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fr.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fr, ok := fg.f.(*filterIPv4Range)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterIPv4Range; filter: %s", fg.f, fg.f)
 		}
 		if fr.minValue != minValueExpected {
 			t.Fatalf("unexpected minValue; got %08x; want %08x", fr.minValue, minValueExpected)
@@ -1023,12 +1043,16 @@ func TestParseFilterIPv6Range(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fr, ok := q.f.(*filterIPv6Range)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterIPv6Range; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fr.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fr, ok := fg.f.(*filterIPv6Range)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterIPv6Range; filter: %s", fg.f, fg.f)
 		}
 		minWant := net.ParseIP(minIPExpected).To16()
 		if minWant == nil {
@@ -1062,12 +1086,16 @@ func TestParseFilterStringRange(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fr, ok := q.f.(*filterStringRange)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterStringRange; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fr.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fr, ok := fg.f.(*filterStringRange)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterStringRange; filter: %s", fg.f, fg.f)
 		}
 		if fr.minValue != minValueExpected {
 			t.Fatalf("unexpected minValue; got %q; want %q", fr.minValue, minValueExpected)
@@ -1093,12 +1121,16 @@ func TestParseFilterValueType(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fv, ok := q.f.(*filterValueType)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterValueType; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fv.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fv.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fv, ok := fg.f.(*filterValueType)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterValueType; filter: %s", fg.f, fg.f)
 		}
 		if fv.valueType != valueTypeExpected {
 			t.Fatalf("unexpected valueType; got %q; want %q", fv.valueType, valueTypeExpected)
@@ -1119,12 +1151,16 @@ func TestParseFilterJSONArrayContainsAny(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fa, ok := q.f.(*filterJSONArrayContainsAny)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterJSONArrayContainsAny; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fa.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fa.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fa, ok := fg.f.(*filterJSONArrayContainsAny)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterJSONArrayContainsAny; filter: %s", fg.f, fg.f)
 		}
 		if !reflect.DeepEqual(fa.values, valuesExpected) {
 			t.Fatalf("unexpected values; got %q; want %q", fa.values, valuesExpected)
@@ -1148,9 +1184,16 @@ func TestParseFilterRegexp(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fr, ok := q.f.(*filterRegexp)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterRegexp; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
+		}
+		if fg.fieldName != "_msg" {
+			t.Fatalf("unexpected fieldName; got %q; want _msg", fg.fieldName)
+		}
+		fr, ok := fg.f.(*filterRegexp)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterRegexp; filter: %s", fg.f, fg.f)
 		}
 		if reString := fr.re.String(); reString != reExpected {
 			t.Fatalf("unexpected regexp; got %q; want %q", reString, reExpected)
@@ -1171,12 +1214,16 @@ func TestParseAnyCaseFilterPhrase(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fp, ok := q.f.(*filterAnyCasePhrase)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterAnyCasePhrase; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fp.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fp.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fp, ok := fg.f.(*filterAnyCasePhrase)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterAnyCasePhrase; filter: %s", fg.f, fg.f)
 		}
 		if fp.phrase != phraseExpected {
 			t.Fatalf("unexpected phrase; got %q; want %q", fp.phrase, phraseExpected)
@@ -1197,12 +1244,16 @@ func TestParseAnyCaseFilterPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fp, ok := q.f.(*filterAnyCasePrefix)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterAnyCasePrefix; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fp.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fp.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fp, ok := fg.f.(*filterAnyCasePrefix)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterAnyCasePrefix; filter: %s", fg.f, fg.f)
 		}
 		if fp.prefix != prefixExpected {
 			t.Fatalf("unexpected prefix; got %q; want %q", fp.prefix, prefixExpected)
@@ -1225,12 +1276,16 @@ func TestParseFilterPhrase(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fp, ok := q.f.(*filterPhrase)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterPhrase; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fp.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fp.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fp, ok := fg.f.(*filterPhrase)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterPhrase; filter: %s", fg.f, fg.f)
 		}
 		if fp.phrase != phraseExpected {
 			t.Fatalf("unexpected prefix; got %q; want %q", fp.phrase, phraseExpected)
@@ -1254,12 +1309,16 @@ func TestParseFilterPrefix(t *testing.T) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		switch f := q.f.(type) {
-		case *filterPrefix:
+		case *filterGeneric:
 			if f.fieldName != fieldNameExpected {
 				t.Fatalf("unexpected fieldName; got %q; want %q", f.fieldName, fieldNameExpected)
 			}
-			if f.prefix != prefixExpected {
-				t.Fatalf("unexpected prefix; got %q; want %q", f.prefix, prefixExpected)
+			fp, ok := f.f.(*filterPrefix)
+			if !ok {
+				t.Fatalf("expecting prefix filter; got %T: %q", f.f, f.f)
+			}
+			if fp.prefix != prefixExpected {
+				t.Fatalf("unexpected prefix; got %q; want %q", fp.prefix, prefixExpected)
 			}
 		case *filterNoop:
 			if fieldNameExpected != "" {
@@ -1290,12 +1349,16 @@ func TestParseRangeFilter(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		fr, ok := q.f.(*filterRange)
+		fg, ok := q.f.(*filterGeneric)
 		if !ok {
-			t.Fatalf("unexpected filter type; got %T; want *filterRange; filter: %s", q.f, q.f)
+			t.Fatalf("unexpected filter type; got %T; want *filterGeneric; filter: %s", q.f, q.f)
 		}
-		if fr.fieldName != fieldNameExpected {
-			t.Fatalf("unexpected fieldName; got %q; want %q", fr.fieldName, fieldNameExpected)
+		if fg.fieldName != fieldNameExpected {
+			t.Fatalf("unexpected fieldName; got %q; want %q", fg.fieldName, fieldNameExpected)
+		}
+		fr, ok := fg.f.(*filterRange)
+		if !ok {
+			t.Fatalf("unexpected filter type; got %T; want *filterRange; filter: %s", fg.f, fg.f)
 		}
 		if fr.minValue != minValueExpected {
 			t.Fatalf("unexpected minValue; got %v; want %v", fr.minValue, minValueExpected)
@@ -1680,6 +1743,8 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`-a:eq_field(b)`, `!a:eq_field(b)`)
 	f(`a:!eq_field(b)`, `!a:eq_field(b)`)
 	f(`a:-eq_field(b)`, `!a:eq_field(b)`)
+	f(`*:eq_field(foo)`, `"*":eq_field(foo)`)
+	f(`a*:eq_field(foo)`, `"a*":eq_field(foo)`)
 
 	// le_field filter
 	f("le_field(foo)", "le_field(foo)")
@@ -2344,6 +2409,21 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`foo | filter count`, `foo "count"`)
 	f(`foo | * bar`, `foo bar`)
 	f(`foo | -bar`, `foo !bar`)
+
+	// wildcard field names in filters
+	f("foo*:bar", "foo*:bar")
+	f("f.oo* : bar", "f.oo*:bar")
+	f(`"foo"* : bar`, `foo*:bar`)
+	f(`'foo*' :bar`, `foo*:bar`)
+	f(`"foo:*":bar`, `"foo:*":bar`)
+	f(`*:abc`, `*:abc`)
+	f(`* :abc`, `*:abc`)
+	f(` * : abc`, `*:abc`)
+	f(`a *:foo`, `a *:foo`)
+
+	// These aren't wildcard field names, but just 'match all' filters
+	f(`a * :foo`, `a *:foo`)
+	f(`a * foo`, `a foo`)
 }
 
 func TestParseQuery_Failure(t *testing.T) {
@@ -2369,10 +2449,6 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("NOT")
 	f("not (abc")
 	f("!")
-
-	// wildcard field names in filters
-	f(`*:foo`)
-	f(`foo*:bar`)
 
 	// missing field name
 	f(":foo")
@@ -2551,6 +2627,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_time:week_range[foo")
 	f("_time:week_range[Mon,")
 	f("_time:week_range[Mon,bar")
+	f("_time:week_range[mom,Wed]")
+	f("_time:week_range[Sun,mom]")
 	f("_time:week_range[Mon,Fri")
 	f("_time:week_range[Mon,Fri] offset foobar")
 
@@ -2590,6 +2668,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`eq_field(foo, bar)`)
 	f(`eq_field(foo`)
 	f(`eq_field(foo,`)
+	f(`eq_field(*)`)
+	f(`eq_field(foo*)`)
 
 	// invalid le_field
 	f(`le_field(`)
@@ -4332,6 +4412,7 @@ func TestQuery_AddCountByTimePipe(t *testing.T) {
 	f("*", nsecsPerMinute, 0, nil, "* | stats by (_time:1m) count(*) as hits | sort by (_time)")
 	f("*", nsecsPerMinute, 2*nsecsPerHour, nil, "* | stats by (_time:1m offset 2h) count(*) as hits | sort by (_time)")
 	f("foo bar:baz", nsecsPerMinute, -2*nsecsPerHour, nil, "foo bar:baz | stats by (_time:1m offset -2h) count(*) as hits | sort by (_time)")
+	f("*", nsecsPerMinute, 0, []string{"hits"}, "* | stats by (_time:1m, hits) count(*) as hitss | sort by (_time, hits)")
 
 	// pipes, which do not change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer'", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)
@@ -4596,4 +4677,254 @@ func TestQueryIsFixedOutputFieldsOrder(t *testing.T) {
 	f("* | field_names", true)
 	f("* | field_values x", true)
 	f("* | top x", true)
+}
+
+func TestFilterMatchRow(t *testing.T) {
+	f := func(fStr, rowStr string, resultExpected bool) {
+		t.Helper()
+
+		f, err := ParseFilter(fStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+
+		p := getLogfmtParser()
+		defer putLogfmtParser(p)
+
+		p.parse(rowStr)
+
+		result := f.MatchRow(p.fields)
+		if result != resultExpected {
+			t.Fatalf("unexpected result; got %v; want %v", result, resultExpected)
+		}
+	}
+
+	// basic filters
+	f(`*`, `a=b c=d`, true)
+	f(`foo`, `a=x _msg="a foo bar"`, true)
+	f(`foo`, `a=b c=d`, false)
+	f(`a:=b`, `a=b c=d`, true)
+	f(`c:d`, `a=b c=d`, true)
+	f(`c:foo`, `a=b c=d`, false)
+
+	// field name prefix
+	f(`*:x`, `a=b c=d q="a x" d=qwe`, true)
+	f(`*:abc`, `a=b c=d q="a x" d=qwe`, false)
+	f(`a*:x`, `a=x b=y abc="x qwe"`, true)
+	f(`a*:x`, `a=y b=y abc="x qwe"`, true)
+	f(`a*:foo`, `a=y b=y abc="x qwe"`, false)
+
+	// AND filter
+	f(`_msg:foo a:bar`, `a="x,bar" x=y _msg="foo bar"`, true)
+	f(`_msg:foo a:bax`, `a="x,bar" x=y _msg="foo bar"`, false)
+
+	// i(...) filter
+	f(`i(FoO)`, `_msg=foo`, true)
+	f(`i(FoO)`, `_msg=foobar`, false)
+
+	// i(...*) filter
+	f(`i(FoO*)`, `_msg=foo`, true)
+	f(`_msg:i(FoO*)`, `_msg=foobar`, true)
+	f(`i(FoO*)`, `_msg=zoobar`, false)
+	f(`i(FoO*)`, `a=foobar`, false)
+
+	// contains_all filter
+	f(`a:contains_all(x, y)`, `q=w`, false)
+	f(`a:contains_all(x, y)`, `a="y w x"`, true)
+	f(`a:contains_all(x, y)`, `a="y w"`, false)
+
+	// contains_any filter
+	f(`a:contains_any(x, y)`, `q=w`, false)
+	f(`a:contains_any(x, y)`, `a="y w x"`, true)
+	f(`a:contains_any(x, y)`, `a="y w"`, true)
+	f(`a:contains_any(x, y)`, `a="z w"`, false)
+
+	// contains_common_case filter
+	f(`a:contains_common_case(Error)`, `q=w`, false)
+	f(`a:contains_common_case(Error)`, `a="foo error"`, true)
+	f(`a:contains_common_case(Error)`, `a="foo ERROR bar"`, true)
+	f(`a:contains_common_case(Error)`, `a="foo bar"`, false)
+
+	// day_range filter
+	f(`_time:day_range[10:00, 12:00]`, `_time=2026-03-30T09:59:59.999999999`, false)
+	f(`_time:day_range[10:00, 12:00]`, `_time=2026-03-30T10:00:00`, true)
+	f(`_time:day_range[10:00, 12:00]`, `_time=2026-03-30T11:00:00.123456789`, true)
+	f(`_time:day_range[10:00, 12:00]`, `_time=2026-03-30T12:00:00`, true)
+	f(`_time:day_range[10:00, 12:00]`, `_time=2026-03-30T12:00:00.000000001`, false)
+
+	// eq_field filter
+	f(`a:eq_field(b)`, `foo=bar`, true)
+	f(`a:eq_field(b)`, `foo=bar a=x`, false)
+	f(`a:eq_field(b)`, `foo=bar b=x a=x`, true)
+	f(`a:eq_field(b)`, `foo=bar b=x a=y`, false)
+
+	// equals_common_case filter
+	f(`a:equals_common_case(Error)`, `q=w`, false)
+	f(`a:equals_common_case(Error)`, `a="foo error"`, false)
+	f(`a:equals_common_case(Error)`, `a=error`, true)
+	f(`a:equals_common_case(Error)`, `a=ERROR`, true)
+
+	// =... filter
+	f(`a:=b`, `a=c`, false)
+	f(`a:=b`, `a=b`, true)
+	f(`a:=b`, `a="b c"`, false)
+
+	// =...* filter
+	f(`a:=b*`, `a=c`, false)
+	f(`a:=b*`, `a=b`, true)
+	f(`a:=b*`, `a="b c"`, true)
+	f(`a:=b*`, `a="c b"`, false)
+
+	// in(...) filter
+	f(`a:in(b,c)`, `a=x`, false)
+	f(`a:in(b,c)`, `a=b`, true)
+	f(`a:in(b,c)`, `a="c"`, true)
+	f(`a:in(b,c)`, `a="c foo"`, false)
+
+	// ipv4_range filter
+	f(`a:ipv4_range(127.0.0.0/8)`, `a=foo`, false)
+	f(`a:ipv4_range(127.0.0.0/8)`, `a=127.0.0.0`, true)
+	f(`a:ipv4_range(127.0.0.0/8)`, `a=127.3.5.1`, true)
+	f(`a:ipv4_range(127.0.0.0/8)`, `a=127.255.255.255`, true)
+	f(`a:ipv4_range(127.0.0.0/8)`, `a=128.0.0.0`, false)
+	f(`a:ipv4_range(127.0.0.0/8)`, `a="foo 127.0.0.0"`, false)
+
+	// ipv6_range filter
+	f(`a:ipv6_range("2001:db8::/112")`, `a=foo`, false)
+	f(`a:ipv6_range("2001:db8::/112")`, `a=2001:db8::1`, true)
+	f(`a:ipv6_range("2001:db8::/112")`, `a=2002:db8::1`, false)
+	f(`a:ipv6_range("2001:db8::/112")`, `a="2001:db8::1 foo"`, false)
+
+	// json_array_contains_any filter
+	f(`a:json_array_contains_any(x,y)`, `x=foo`, false)
+	f(`a:json_array_contains_any(x,y)`, `a=foo`, false)
+	f(`a:json_array_contains_any(x,y)`, `a=["foo","bar"]`, false)
+	f(`a:json_array_contains_any(x,y)`, `a=["y","foo","x","bar"]`, true)
+	f(`a:json_array_contains_any(x,y)`, `a=[y,foo,x,bar]`, false)
+
+	// le_field filter
+	f(`a:le_field(b)`, `a=foo b=bar`, false)
+	f(`a:le_field(b)`, `a=bar b=foo`, true)
+	f(`a:le_field(b)`, `b=foo`, true)
+	f(`a:le_field(b)`, `x=y`, true)
+
+	// len_range filter
+	f(`a:len_range(1,2)`, `x=y`, false)
+	f(`a:len_range(1,2)`, `a=y`, true)
+	f(`a:len_range(1,2)`, `a=yx`, true)
+	f(`a:len_range(1,2)`, `a=yxz`, false)
+
+	// not filter
+	f(`-a:b`, `x=y`, true)
+	f(`-a:b`, `a="b c"`, false)
+	f(`-a:b`, `a="x c"`, true)
+
+	// or filter
+	f(`a:(x or y)`, `x=y`, false)
+	f(`a:(x or y)`, `a='w x z'`, true)
+	f(`a:(x or y)`, `a='w z'`, false)
+
+	// pattern_match filter
+	f(`a:pattern_match("x <N> y")`, `foo=bar`, false)
+	f(`a:pattern_match("x <N> y")`, `a=bar`, false)
+	f(`a:pattern_match("x <N> y")`, `a='bar x 10 y q'`, true)
+
+	// pattern_match_full filter
+	f(`a:pattern_match_full("x <N> y")`, `foo=bar`, false)
+	f(`a:pattern_match_full("x <N> y")`, `a=bar`, false)
+	f(`a:pattern_match_full("x <N> y")`, `a='bar x 10 y q'`, false)
+	f(`a:pattern_match_full("x <N> y")`, `a='x 10 y'`, true)
+
+	// pattern_match_prefix filter
+	f(`a:pattern_match_prefix("x <N> y")`, `foo=bar`, false)
+	f(`a:pattern_match_prefix("x <N> y")`, `a=bar`, false)
+	f(`a:pattern_match_prefix("x <N> y")`, `a='bar x 10 y q'`, false)
+	f(`a:pattern_match_prefix("x <N> y")`, `a='x 10 y q'`, true)
+
+	// pattern_match_suffix filter
+	f(`a:pattern_match_suffix("x <N> y")`, `foo=bar`, false)
+	f(`a:pattern_match_suffix("x <N> y")`, `a=bar`, false)
+	f(`a:pattern_match_suffix("x <N> y")`, `a='bar x 10 y q'`, false)
+	f(`a:pattern_match_suffix("x <N> y")`, `a='bar x 10 y'`, true)
+
+	// phrase filter
+	f(`a:"b c"`, `x=y`, false)
+	f(`a:"b c"`, `a='b c'`, true)
+	f(`a:"b c"`, `a='x b c d'`, true)
+	f(`a:"b c"`, `a='x b cat d'`, false)
+
+	// prefix filter
+	f(`a:"b c"*`, `x=y`, false)
+	f(`a:"b c"*`, `a='b c'`, true)
+	f(`a:"b c"*`, `a='x b c d'`, true)
+	f(`a:"b c"*`, `a='x b cat d'`, true)
+	f(`a:"b c"*`, `a='x b zat d'`, false)
+
+	// range filter
+	f(`a:range(1.23, inf)`, `x=y`, false)
+	f(`a:range(1.23, inf)`, `a=1.23`, false)
+	f(`a:range(1.23, inf)`, `a=1.234`, true)
+	f(`a:range(1.23, inf)`, `a=123`, true)
+
+	// ~"..." filter
+	f(`a:~"x.z"`, `q=w`, false)
+	f(`a:~"x.z"`, `a=w`, false)
+	f(`a:~"x.z"`, `a=xyz`, true)
+	f(`a:~"x.z"`, `a='abxyzde'`, true)
+	f(`a:~"x.z"`, `a='abxyxde'`, false)
+
+	// seq(...) filter
+	f(`a:seq(x,y)`, `q=w`, false)
+	f(`a:seq(x,y)`, `a=w`, false)
+	f(`a:seq(x,y)`, `a='z x w y'`, true)
+	f(`a:seq(x,y)`, `a='z x w yy'`, false)
+	f(`a:seq(x,y)`, `a='z y w x'`, false)
+
+	// _stream:... filter
+	f(`_stream:{a=b}`, `_stream={a="b"}`, true)
+	f(`{a=~"b.+"}`, `_stream={a="bcd"}`, true)
+	f(`{a=~"b.+"}`, `_stream={a="abcd"}`, false)
+	f(`{a=~"b.+"}`, `a={a="bcd"}`, false)
+
+	// _stream_id:... filter
+	f(`_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `q=w`, false)
+	f(`_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `_stream_id=123`, false)
+	f(`_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `_stream_id=0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, true)
+	f(`_stream_id:0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `_stream_id=0000007b000001c8302bc96e02e54e5524b3a68ec271e55d`, false)
+	f(`_stream_id:in(0000007b000001c8302bc96e02e54e5524b3a68ec271e55e,1000007b000001c8302bc96e02e54e5524b3a68ec271e55e)`, `_stream_id=0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, true)
+	f(`_stream_id:in(0000007b000001c8302bc96e02e54e5524b3a68ec271e55e,1000007b000001c8302bc96e02e54e5524b3a68ec271e55e)`, `_stream_id=1000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, true)
+	f(`_stream_id:in(0000007b000001c8302bc96e02e54e5524b3a68ec271e55e,1000007b000001c8302bc96e02e54e5524b3a68ec271e55e)`, `_stream_id=0000007b000001c8302bc96e02e54e5524b3a68ec271e55d`, false)
+
+	// string_range filter
+	f(`a:string_range(x,y)`, `q=w`, false)
+	f(`a:string_range(x,y)`, `a=w`, false)
+	f(`a:string_range(x,y)`, `a=x`, true)
+	f(`a:string_range(x,y)`, `a=xsafd`, true)
+	f(`a:string_range(x,y)`, `a=y`, false)
+	f(`a:string_range(x,y)`, `a='foo x'`, false)
+
+	// *...* filter
+	f(`a:*x*`, `q=w`, false)
+	f(`a:*x*`, `a=x`, true)
+	f(`a:*x*`, `a=axbc`, true)
+	f(`a:*x*`, `a='w axbc d'`, true)
+	f(`a:*x*`, `a='w abc d'`, false)
+
+	// _time:... filter
+	f(`_time:2026-03-30`, `q=w`, false)
+	f(`_time:2026-03-30`, `_time=2026-03-30T10:20:30`, true)
+	f(`_time:2026-03-30`, `_time=2026-04-28T10:20:30`, false)
+
+	// value_type filter
+	f(`a:value_type(string)`, `x=y`, false)
+	f(`a:value_type(string)`, `a=y`, true)
+	f(`a:value_type(dict)`, `a=y`, false)
+
+	// week_range filter
+	f(`_time:week_range[Mon, Fri]`, `q=w`, false)
+	f(`_time:week_range[Mon, Fri]`, `_time=foo`, false)
+	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-10T10:20:30`, true)
+	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-11T10:20:30`, false)
+	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-05T10:20:30`, false)
+	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-06T10:20:30`, true)
 }

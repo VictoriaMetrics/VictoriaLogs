@@ -47,40 +47,20 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0x80000000,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0x80000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x7f000001,
-			maxValue:  0x7f000001,
-		}
+		fr = newFilterIPv4Range("foo", 0x7f000001, 0x7f000001)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0x7f000000,
-		}
+		fr = newFilterIPv4Range("foo", 0, 0x7f000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "non-existing-column",
-			minValue:  0,
-			maxValue:  20000,
-		}
+		fr = newFilterIPv4Range("non-existing-column", 0, 20000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x80000000,
-			maxValue:  0,
-		}
+		fr = newFilterIPv4Range("foo", 0x80000000, 0)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -102,40 +82,20 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x7f000000,
-			maxValue:  0x80000000,
-		}
+		fr := newFilterIPv4Range("foo", 0x7f000000, 0x80000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 3, 7})
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0x7f000001,
-		}
+		fr = newFilterIPv4Range("foo", 0, 0x7f000001)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 7})
 
 		// mismatch
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  1000,
-		}
+		fr = newFilterIPv4Range("foo", 0, 1000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x7f000002,
-			maxValue:  0x7f7f0000,
-		}
+		fr = newFilterIPv4Range("foo", 0x7f000002, 0x7f7f0000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x80000000,
-			maxValue:  0x7f000000,
-		}
+		fr = newFilterIPv4Range("foo", 0x80000000, 0x7f000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -159,26 +119,14 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x7f000000,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0x7f000000, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{2})
 
 		// mismatch
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  10000,
-		}
+		fr = newFilterIPv4Range("foo", 0, 10000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0xffffffff,
-			maxValue:  0x7f000000,
-		}
+		fr = newFilterIPv4Range("foo", 0xffffffff, 0x7f000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -203,11 +151,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -232,11 +176,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -261,11 +201,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -290,11 +226,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -319,11 +251,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -348,11 +276,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -378,33 +302,17 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// match
-		fr := &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0,
-			maxValue:  0x08000000,
-		}
+		fr := newFilterIPv4Range("foo", 0, 0x08000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
 
 		// mismatch
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x80000000,
-			maxValue:  0x90000000,
-		}
+		fr = newFilterIPv4Range("foo", 0x80000000, 0x90000000)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0xff000000,
-			maxValue:  0xffffffff,
-		}
+		fr = newFilterIPv4Range("foo", 0xff000000, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterIPv4Range{
-			fieldName: "foo",
-			minValue:  0x08000000,
-			maxValue:  0,
-		}
+		fr = newFilterIPv4Range("foo", 0x08000000, 0)
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -427,11 +335,7 @@ func TestFilterIPv4Range(t *testing.T) {
 		}
 
 		// mismatch
-		fr := &filterIPv4Range{
-			fieldName: "_msg",
-			minValue:  0,
-			maxValue:  0xffffffff,
-		}
+		fr := newFilterIPv4Range("_msg", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
 
