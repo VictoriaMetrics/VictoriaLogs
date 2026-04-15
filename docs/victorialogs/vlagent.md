@@ -43,10 +43,9 @@ Send logs directly to VictoriaLogs when you have a single instance and a stable 
 
 ## Quick Start
 
-Please download and unpack the `vlutils` archive from [releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest) (
-`vlagent` is also available as Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/vlagent/tags)
-and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
+Download `vlagent` - see [How to install vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/#how-to-install-vlagent).
 
+Then pass the following command-line flags to `vlagent`:
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/insert/native`.
   The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
 
@@ -809,6 +808,105 @@ The following command configures `vlagent` to send logs to ClickHouse table `def
   -remoteWrite.basicAuth.password=secret
 ```
 
+## How to install vlagent
+
+The following options are available:
+
+- [To run pre-built binaries](https://docs.victoriametrics.com/victorialogs/vlagent/#pre-built-binaries)
+- [To run Docker image](https://docs.victoriametrics.com/victorialogs/vlagent/#docker-image)
+- [To run in Kubernetes with Helm charts](https://docs.victoriametrics.com/victorialogs/vlagent/#helm-charts)
+- [To run in Kubernetes with VictoriaMetrics Operator (`VLAgent` CRD)](https://docs.victoriametrics.com/operator/resources/vlagent/)
+- [To build `vlagent` from source code](https://docs.victoriametrics.com/victorialogs/vlagent/#building-from-source-code)
+
+See also:
+
+- [How to ingest logs into `vlagent` over HTTP](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
+- [How to collect logs from Kubernetes Pods](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs)
+- [How to collect logs from files](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files)
+- [How to query set up monitoring](https://docs.victoriametrics.com/victorialogs/vlagent/#monitoring)
+
+### Pre-built binaries
+
+Pre-built binaries for `vlagent` are available at the [releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases/) page inside the `vlutils-*` archive.
+Just download the archive for the needed operating system and architecture, unpack it, and run `vlagent-prod` from it.
+
+For Linux, macOS, FreeBSD and OpenBSD you can use the install script,
+which downloads into the current directory:
+
+```sh
+curl -fsSL https://github.com/VictoriaMetrics/VictoriaLogs/tree/v1.50.0/app/vlagent/install.sh | sh
+```
+
+Or download and unpack the archive manually. For example, for Linux/amd64:
+
+```sh
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.50.0/vlutils-linux-amd64-v1.50.0.tar.gz
+tar xzf vlutils-linux-amd64-v1.50.0.tar.gz
+./vlagent-prod -remoteWrite.url http://victoria-logs:9428/insert/native
+```
+
+### Docker image
+
+You can run `vlagent` in a Docker container.
+Here is the command to run vlagent in a Docker container:
+
+```sh
+docker run --rm -it -p 9429:9429 -v ./vlagent-data:/vlagent-data \
+  docker.io/victoriametrics/vlagent:v1.50.0 \
+  -tmpDataPath=vlagent-data \
+  -remoteWrite.url http://victoria-logs:9428/insert/native
+```
+
+### Helm charts
+
+You can run `vlagent` in Kubernetes using
+[victoria-logs-agent](https://docs.victoriametrics.com/helm/victoria-logs-agent/)
+or [victoria-logs-collector](https://docs.victoriametrics.com/helm/victoria-logs-collector/) Helm charts.
+
+### VictoriaMetrics Operator
+
+You can also run vlagent in Kubernetes using [VictoriaMetrics Operator](https://docs.victoriametrics.com/operator/resources/).
+
+- [`VLAgent` CRD](https://docs.victoriametrics.com/operator/resources/vlagent/) declaratively defines a desired `VLAgent` setup to run in a Kubernetes cluster.
+
+### Building from source code
+
+Follow these steps to build `vlagent` from source code:
+
+- Check out the VictoriaLogs source code:
+
+  ```sh
+  git clone https://github.com/VictoriaMetrics/VictoriaLogs
+  cd VictoriaLogs
+  ```
+
+- Check out a specific commit if needed:
+
+  ```sh
+  git checkout <commit-hash-here>
+  ```
+
+- Build `vlagent` (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
+
+  ```sh
+  make vlagent
+  ```
+
+- Run the built binary:
+
+  ```sh
+  bin/vlagent -remoteWrite.url=...
+  ```
+
+An alternative approach is to build `vlagent` inside a Docker builder container. This approach doesn't require Go to be installed,
+but it does require Docker on your computer. See [how to install Docker](https://docs.docker.com/engine/install/):
+
+```sh
+make vlagent-prod
+```
+
+This will build the `vlagent-prod` executable inside the `bin` folder.
+
 ## Monitoring
 
 `vlagent` exports various metrics in Prometheus exposition format at `http://vlagent-host:9429/metrics` page.
@@ -896,44 +994,6 @@ The command for collecting CPU profile waits for 30 seconds before returning.
 The collected profiles may be analyzed with [go tool pprof](https://github.com/google/pprof).
 
 It is safe to share the collected profiles from a security point of view, since they do not contain sensitive information.
-
-## Building from source code
-
-Follow these steps to build `vlagent` from source code:
-
-- Check out the VictoriaLogs source code:
-
-  ```sh
-  git clone https://github.com/VictoriaMetrics/VictoriaLogs
-  cd VictoriaLogs
-  ```
-
-- Check out a specific commit if needed:
-
-  ```sh
-  git checkout <commit-hash-here>
-  ```
-
-- Build `vlagent` (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
-
-  ```sh
-  make vlagent
-  ```
-
-- Run the built binary:
-
-  ```sh
-  bin/vlagent -remoteWrite.url=...
-  ```
-
-An alternative approach is to build `vlagent` inside a Docker builder container. This approach doesn't require Go to be installed,
-but it does require Docker on your computer. See [how to install Docker](https://docs.docker.com/engine/install/):
-
-```sh
-make vlagent-prod
-```
-
-This will build the `vlagent-prod` executable inside the `bin` folder.
 
 ## Advanced usage
 
