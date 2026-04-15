@@ -834,7 +834,7 @@ For Linux, macOS, FreeBSD and OpenBSD you can use the install script,
 which downloads into the current directory:
 
 ```sh
-curl -fsSL https://github.com/VictoriaMetrics/VictoriaLogs/tree/v1.50.0/app/vlagent/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/VictoriaMetrics/VictoriaLogs/v1.50.0/app/vlagent/install.sh | sh
 ```
 
 Or download and unpack the archive manually. For example, for Linux/amd64:
