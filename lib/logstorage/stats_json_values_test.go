@@ -123,6 +123,26 @@ func TestStatsJSONValues(t *testing.T) {
 		},
 	})
 
+	// Test top-k heap without sortFields.
+	f("stats json_values(a,_msg) sort by (a desc) limit 2 as x", [][]Field{
+		{
+			{"a", `1`},
+			{"_msg", `one`},
+		},
+		{
+			{"a", `3`},
+			{"_msg", `three`},
+		},
+		{
+			{"a", `2`},
+			{"_msg", `two`},
+		},
+	}, [][]Field{
+		{
+			{"x", `[{"_msg":"three","a":"3"},{"_msg":"two","a":"2"}]`},
+		},
+	})
+
 	// multiple sorting columns without limit
 	f("stats json_values() sort by (a desc, b) as x", [][]Field{
 		{
