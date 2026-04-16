@@ -10,10 +10,10 @@ tags:
   - logs
 ---
 
-VictoriaLogs implements multiple security layers to ensure data confidentiality and prevent unauthorized access.
+VictoriaLogs implements multiple security layers to help protect data confidentiality and reduce unauthorized access.
 
 It supports [Basic Auth](https://docs.victoriametrics.com/victorialogs/security/#basic-auth)
-and [mTLS](https://docs.victoriametrics.com/victorialogs/security/#mtls) for user authentication and access control.
+and [mTLS](https://docs.victoriametrics.com/victorialogs/security/#mtls) for authentication and access control.
 Traffic between clients and servers can be encrypted using [TLS/SSL](https://docs.victoriametrics.com/victorialogs/security/#tlsssl).
 
 Recommended practices:
@@ -32,7 +32,7 @@ It is recommended to enable Basic Auth when VictoriaLogs is deployed in untruste
 For a full overview of security best practices, see the recommendations listed above.
 
 Basic Auth validates the `Authorization: Basic <base64(user:password)>` HTTP header.
-If the username and password match the values configured in VictoriaLogs, the request is allowed.
+If the username and password match the values configured in the auth layer (for example, VictoriaLogs or an upstream authorization proxy), the request is allowed.
 
 Basic Auth encodes credentials using Base64 encoding, but does not encrypt the transmitted data.
 Always use Basic Auth exclusively over [secure TLS/SSL connections](https://docs.victoriametrics.com/victorialogs/security/#tlsssl).
@@ -51,7 +51,7 @@ To quickly start VictoriaLogs with Basic Auth, run the following command:
 ./victoria-logs -httpAuth.username vlstorage -httpAuth.password secret
 ```
 
-This will start the VictoriaLogs server with Basic authentication on the default port (9428).
+This will start the VictoriaLogs server with Basic authentication on the default port (`9428`).
 
 To test the configuration, you can use `curl`:
 
@@ -59,8 +59,10 @@ To test the configuration, you can use `curl`:
 curl -u vlstorage:secret http://localhost:9428/metrics
 ```
 
-For cluster mode, you need to configure both client authentication (users connecting to your service)
-and internal authentication (communication between VictoriaLogs components):
+This HTTP example is intended for local testing on `localhost`.
+
+For cluster mode, you may configure both client authentication (users connecting to your service)
+and internal authentication (communication between VictoriaLogs components), depending on your network trust boundary and security requirements:
 
 ```sh
 ./victoria-logs -httpListenAddr :9429 \
@@ -70,9 +72,9 @@ and internal authentication (communication between VictoriaLogs components):
 ```
 
 This configuration:
-- Starts a VictoriaLogs server on port 9429 that functions as both vlinsert and vlselect
-- Accepts external requests only from user `vlinsert` with password `top-secret`
-- Connects to vlstorage at localhost:9428 using credentials `vlstorage:secret`
+- Starts a VictoriaLogs server on port `9429` that functions as both vlinsert and vlselect.
+- Accepts requests to this node only from user `vlinsert` with password `top-secret`.
+- Connects to vlstorage at `localhost:9428` using credentials `vlstorage:secret`.
 
 **Security Warning:** Passing passwords directly in command-line arguments is not recommended for production,
 as they may appear in process listings (e.g., `ps aux`)
@@ -116,14 +118,15 @@ Example with vlagent connecting to vlinsert:
 ```sh
 ./vlagent -httpListenAddr :9430 \
     -httpAuth.username vlagent -httpAuth.password file://./path/to/file \
-    -remoteWrite.url http://localhost:9429/internal/insert \
+    -remoteWrite.url http://localhost:9429/insert/native \
     -remoteWrite.basicAuth.username vlinsert -remoteWrite.basicAuth.passwordFile ./path/to/file
 ```
 
-To test that vlagent is properly configured with Basic Auth, you can send a test log entry:
+To test that vlagent is properly configured with Basic Auth, you can send a test log entry
+(use the same password value as configured in `./path/to/file` for `-httpAuth.password`):
 
 ```sh
-curl -u vlagent:secret http://localhost:9430/insert/jsonline -H 'Content-Type: application/json' \
+curl -u "vlagent:$(cat ./path/to/file)" http://localhost:9430/insert/jsonline -H 'Content-Type: application/json' \
     -d '{"_msg":"Hello, VictoriaLogs!"}'
 ```
 
@@ -166,7 +169,7 @@ export VL_remoteWrite_basicAuth_password=top-secret
 
 ./vlagent -envflag.enable -envflag.prefix VL_ \
     -httpListenAddr :9430 \
-    -remoteWrite.url http://localhost:9429/internal/insert
+    -remoteWrite.url http://localhost:9429/insert/native
 ```
 
 To test that vlagent is properly configured with Basic Auth, you can send a test log entry:
@@ -195,13 +198,14 @@ The value from the URL is periodically reloaded, which allows changing the passw
 
 If the HTTP request fails, VictoriaLogs continues using the last successfully retrieved password.
 Errors are logged for troubleshooting.
-If no password has ever been successfully retrieved, all requests will fail with authentication errors.
+If no password has ever been successfully retrieved and `-httpAuth.username` is set, requests protected by Basic Auth will fail with authentication errors.
 
-**Note**: Ensure the URL endpoint is fast and reliable, as slow responses may impact request processing performance.
+**Note**: Ensure the URL endpoint is fast and reliable, because password retrieval from a slow or unstable endpoint can increase request latency during authentication checks.
 
 ## System endpoints
 
-When Basic Auth or mTLS is enabled, the following system endpoints automatically inherit the same authentication requirements:
+When Basic Auth or mTLS is enabled, the following system endpoints inherit the same authentication requirements by default.
+These defaults can be overridden per endpoint with dedicated `*AuthKey` flags.
 
 - [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaMetrics, vmagent, and Prometheus.
   Override authentication using the `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
@@ -219,7 +223,8 @@ When Basic Auth or mTLS is enabled, the following system endpoints automatically
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations including creation and deletion.
   Override authentication using the `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
-Example of accessing the `/metrics` endpoint using a authentication key:
+Example of accessing the `/metrics` endpoint using an authentication key
+(works when `-metricsAuthKey` is configured):
 
 ```sh
 curl 'http://victoria-logs:9428/metrics?authKey=monitoring-secret-key'
@@ -265,7 +270,7 @@ To send data over TLS, simply change the URL scheme from `http` to `https`:
 
 ```sh
 ./vlagent -httpListenAddr :9430 \
-    -remoteWrite.url https://localhost:9428/internal/insert
+    -remoteWrite.url https://localhost:9428/insert/native
 ```
 
 By default, vlagent verifies server certificates using the system's trusted certificate store.
@@ -311,17 +316,18 @@ Let's Encrypt validates domain ownership by performing TLS-ALPN-01 challenges to
 The Let's Encrypt service must be able to reach your VictoriaLogs instance over the public internet on port 443 to complete this validation.
 
 Common troubleshooting steps:
-1. Ensure your server is reachable from the internet on port 443
-1. Confirm that your domain names resolve to your server's public IP address
-1. Use external tools to verify HTTPS connectivity
+1. Ensure your server is reachable from the internet on port 443.
+1. Confirm that your domain names resolve to your server's public IP address.
+1. Use external tools to verify HTTPS connectivity to port 443.
 
 Example connectivity verification:
+
 ```sh
 # Test domain resolution
 nslookup victorialogs.example.com
 
-# Test HTTPS connectivity from an external network
-curl -I https://victorialogs.example.com/.well-known/acme-challenge/test
+# Test HTTPS connectivity from an external network (port 443)
+curl -I https://victorialogs.example.com/
 ```
 
 This functionality can be evaluated for free according to [these docs](https://docs.victoriametrics.com/victoriametrics/enterprise/).
@@ -332,8 +338,9 @@ When connecting to multiple clients (storage nodes or remote write endpoints),
 each connection can have its own configuration.
 
 Configuration Rules:
-- Single flag value: applied to all clients
-- Multiple flag values: each client gets its own value in declaration order
+- Single flag value: applied to all clients.
+- Multiple flag values: each client gets its own value in declaration order.
+- If multiple values are provided but fewer than the number of clients, remaining clients use the flag default/empty value unless explicitly set.
 
 ### Example: Different TLS settings for storage nodes
 
@@ -372,7 +379,7 @@ For the complete list of available flags, refer to [these docs](https://docs.vic
 
 ## mTLS
 
-> This feature requires the [Enterprise version](https://docs.victoriametrics.com/victoriametrics/enterprise/) of VictoriaLogs and vlagent.
+> This feature requires [Enterprise binaries](https://docs.victoriametrics.com/victoriametrics/enterprise/) for components that use mTLS (for example, VictoriaLogs and/or vlagent).
 
 Mutual TLS (mTLS) provides the highest level of security
 by requiring both client and server to present valid certificates for authentication.
@@ -398,7 +405,7 @@ mTLS requires both standard TLS configuration and additional mutual authenticati
 ```
 
 By default, VictoriaLogs verifies client certificates using the system's trusted certificate store.
-If using self-signed certificates, you have two options:
+If using certificates signed by a private CA not present in the system trust store, you have two options:
 1. Install your CA certificate in the system's trusted certificate store.
 1. Specify the CA certificate path manually using `-mtlsCAFile`.
 
@@ -411,8 +418,7 @@ Client components need both server verification and client authentication certif
     -storageNode.tls \
     -storageNode.tlsCAFile /path/to/server-ca.pem \
     -storageNode.tlsCertFile /path/to/client-cert.pem \
-    -storageNode.tlsKeyFile /path/to/client-key.pem \
-    -licenseFile /path/to/license
+    -storageNode.tlsKeyFile /path/to/client-key.pem
 ```
 
 - `-storageNode.tlsCAFile` - CA certificate to verify the server's identity.
@@ -424,11 +430,10 @@ Client components need both server verification and client authentication certif
 vlagent mTLS configuration follows the same pattern:
 
 ```sh
-./vlagent -remoteWrite.url https://vlinsert:9428/internal/insert \
+./vlagent -remoteWrite.url https://vlinsert:9428/insert/native \
     -remoteWrite.tlsCAFile /path/to/server-ca.pem \
     -remoteWrite.tlsCertFile /path/to/client-cert.pem \
-    -remoteWrite.tlsKeyFile /path/to/client-key.pem \
-    -licenseFile /path/to/license
+    -remoteWrite.tlsKeyFile /path/to/client-key.pem
 ```
 
 ### mTLS with different client certificates
@@ -436,7 +441,7 @@ vlagent mTLS configuration follows the same pattern:
 For multiple storage nodes, each client can use its own unique certificate:
 
 ```sh
-./victoria-logs -storageNode.tls -licenseFile /path/to/license \
+./victoria-logs -storageNode.tls \
     -storageNode.tlsCAFile /path/to/server-ca.pem \
     -storageNode vlstorage-1:9428 -storageNode.tlsCertFile /path/to/client1-cert.pem -storageNode.tlsKeyFile /path/to/client1-key.pem \
     -storageNode vlstorage-2:9428 -storageNode.tlsCertFile /path/to/client2-cert.pem -storageNode.tlsKeyFile /path/to/client2-key.pem
@@ -446,9 +451,10 @@ This approach allows for granular access control and easier certificate manageme
 
 ### Certificate reloading
 
-VictoriaLogs automatically reloads all TLS certificates (server certificates, client certificates, and CA certificates)
-periodically without requiring server or client restarts.
-This allows for seamless certificate updates and rotations in production environments.
+VictoriaLogs automatically re-reads TLS certificate files (server certificates, client certificates, and CA certificates)
+without requiring server or client restarts.
+Certificate and TLS config values are cached for up to 1 second and then refreshed for new handshakes/requests,
+which enables seamless certificate rotation in production environments.
 
 The certificate reloading feature works for:
 - Server certificates (`-tlsCertFile` and `-tlsKeyFile`).
@@ -489,6 +495,10 @@ openssl req -new -key server-key.pem -out server.csr -subj "/CN=localhost"
 openssl x509 -req -days 365 -in server.csr -CA ca-cert.pem -CAkey ca-key.pem -out server-cert.pem -CAcreateserial
 ```
 
+> [!NOTE]
+> This minimal example is intended for `localhost` testing.
+> For production (or IP/real hostname access), generate the server certificate with `subjectAltName` (SAN).
+
 Generate client certificate:
 
 ```sh
@@ -512,7 +522,7 @@ Start VictoriaLogs with these certificates:
 ```sh
 ./victoria-logs -tls \
     -tlsCertFile ./server-cert.pem \
-    -tlsKeyFile ./server-key.pem  \
+    -tlsKeyFile ./server-key.pem \
     -mtls \
     -mtlsCAFile ./ca-cert.pem \
     -licenseFile /path/to/license
