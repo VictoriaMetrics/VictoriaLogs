@@ -67,6 +67,8 @@ clients:
   - url: "http://localhost:9428/insert/loki/api/v1/push?_stream_fields=instance,job"
 ```
 
+See also [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details on other supported query args.
+
 ## Ignoring log fields
 
 If some [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) must be skipped
@@ -79,7 +81,15 @@ clients:
 ```
 
 See also [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details on other supported query args.
-There is no need in specifying `_time_field` query arg, since VictoriaLogs automatically extracts timestamp from the ingested Loki data.
+
+## Time field
+
+There is no need in specifying [`_time_field` query arg](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters)
+for reading the [log timestamp](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field),
+since VictoriaLogs automatically extracts timestamp from the ingested Loki data.
+
+VictoriaLogs ignores the `_time` field in the collected logs and warns about this, so drop this field before ingesting logs into VictoriaLogs
+via Loki protocol.
 
 ## Multitenancy
 
