@@ -13,7 +13,6 @@ const SAFE_URL_PROTOCOLS = new Set([
 ]);
 
 const decodeHtmlEntities = (value: string): string => {
-  if (typeof document === "undefined") return value;
   const textarea = document.createElement("textarea");
   textarea.innerHTML = value;
   return textarea.value;
@@ -24,13 +23,11 @@ const isSafeUrl = (url: string): boolean => {
   const normalized = Array.from(decoded)
     .filter((ch) => {
       const code = ch.charCodeAt(0);
-      return !((code <= 0x1f) || code === 0x7f || /\s/.test(ch));
+      return code > 0x1f && code !== 0x7f && !/\s/.test(ch);
     })
-    .join("")
-    .trim();
+    .join("");
   const schemeMatch = normalized.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
-  if (!schemeMatch) return true;
-  return SAFE_URL_PROTOCOLS.has(schemeMatch[1].toLowerCase());
+  return !schemeMatch || SAFE_URL_PROTOCOLS.has(schemeMatch[1].toLowerCase());
 };
 
 marked.use({
