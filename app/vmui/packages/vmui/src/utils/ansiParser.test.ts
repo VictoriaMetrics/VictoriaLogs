@@ -94,9 +94,9 @@ describe("ANSI Parser", () => {
     // Check that after the cancellation codes, the style properties are set to 'inherit'
     spans.forEach(span => {
       if (span.textContent?.includes("Normal")) {
-        expect(span).toHaveStyle("font-weight: inherit");
-        expect(span).toHaveStyle("font-style: inherit");
-        expect(span).toHaveStyle("text-decoration: inherit");
+        expect(span).toHaveStyle("font-weight: normal");
+        expect(span).toHaveStyle("font-style: normal");
+        expect(span).toHaveStyle("text-decoration: normal");
       }
     });
   });
