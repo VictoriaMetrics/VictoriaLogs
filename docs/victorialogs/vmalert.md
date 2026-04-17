@@ -104,8 +104,9 @@ according to the provided `interval`. See [config options for alerting rules](ht
 for more details.
 
 The `expr` query must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) in order to calculate
-some metric over the selected log, and use this metric in alerting threshold. Use [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe)
-for filtering the calculated metric according to the needed threshold:
+some metric over the selected logs, and use this metric in alerting threshold. Use [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe)
+for filtering the calculated metric according to the needed threshold. For example, the following alerting rule fires
+if the number of logs with the `error` or `warn` status in `env=prod` exceeds 10 during the last 5 minutes:
 
 ```yaml
 groups:
@@ -113,10 +114,10 @@ groups:
   type: vlogs
   interval: 5m
   rules:
-  - alert: HasErrorLog
-    expr: 'env:=prod AND status:in(error,warn) | stats by (service, kubernetes.pod) count() as error_logs | filter error_logs:>10'
+  - alert: HasMoreThan10ErrorLogs
+    expr: '{env=prod} status:in(error,warn) | stats count() as error_logs | filter error_logs:>10'
     annotations:
-      description: 'Service {{$labels.service}} (pod {{ index $labels "kubernetes.pod" }}) generated {{$labels.error_logs}} error logs in the last 5 minutes'
+      description: 'Too big number of errors and warnings during the last 5 minutes: {{$value}}'
 ```
 
 It is possible to group the calculated metrics by arbitrary log fields, by using [`stats by (...)` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields).
@@ -126,7 +127,8 @@ for performing additional calculations over the metrics calculated with [`stats`
 
 Use [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) for leaving only the needed metrics.
 
-The following example of alerting rule uses `stats by (...)`, `math` and `fields` pipes:
+The following example of alerting rule uses `stats by (...)`, `math` and `fields` pipes
+for triggering an alert if the number of failed requests exceeds 10% for the given `ip`:
 
 
 ```yaml
@@ -148,7 +150,8 @@ See [config options for recording rules](https://docs.victoriametrics.com/victor
 for more details.
 
 The `expr` query must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) in order to calculate
-some metric over the selected log:
+some metric over the selected logs. For example, the following recording rule calculates the number of logs for `env=test` and `service=nginx`
+per every 5 minute `interval`:
 
 ```yaml
 groups:
@@ -157,7 +160,7 @@ groups:
   interval: 5m
   rules:
   - record: nginxRequestCount
-    expr: 'env:=test service:=nginx | stats count(*) as requests'
+    expr: '{env=test,service=nginx} | stats count(*) as requests'
 ```
 
 It is possible to group the calculated metrics by arbitrary log fields, by using [`stats by (...)` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields).
@@ -167,7 +170,8 @@ for performing additional calculations over the metrics calculated with [`stats`
 
 Use [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) for leaving only the needed metrics.
 
-The following example of recording rule uses `stats by (...)`, `math` and `fields` pipes:
+The following example of recording rule uses `stats by (...)`, `math` and `fields` pipes
+for calculating the share of errors per each `service` per every 5 minute `interval`:
 
 ```yaml
 groups:
@@ -176,7 +180,7 @@ groups:
   interval: 5m
   rules:
   - record: prodErrorsShareByService
-    expr: 'env:=prod | stats by (service) count() as logs_total, count() if (error) errors | math (errors / total) as errors_share | fields service, errors_share'
+    expr: '{env=prod} | stats by (service) count() as logs_total, count() if (error) errors | math (errors / total) as errors_share | fields service, errors_share'
 ```
 
 ## Time filter

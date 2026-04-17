@@ -35,12 +35,10 @@
       }
 
       &_dark {
-        background-color: $color-background-body;
-        opacity: 0.8;
+        background-color: rgba($color-dodger-blue, 0.25);
 
         &:hover {
-          background-color: $color-background-body;
-          opacity: 1;
+          background-color: rgba($color-dodger-blue, 0.3);
         }
       }
     }

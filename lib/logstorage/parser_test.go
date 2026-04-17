@@ -3996,6 +3996,10 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | count() hits, row_any(_msg) msg_sample`, nsecsPerDay, 0, []string{"_time", "msg_sample"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample`)
 	f(`* | count() hits, row_any(_msg) msg_sample | unpack_json from msg_sample fields (_msg) | rm msg_sample`, nsecsPerDay, 0, []string{"_time", "_msg"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample | unpack_json from msg_sample fields (_msg) | delete msg_sample`)
 
+	// limit and offset is allowed for instant queries
+	f(`* | count() hits | limit 10`, 0, 0, []string{}, `* | stats count(*) as hits | limit 10`)
+	f(`* | count() hits | offset 10`, 0, 0, []string{}, `* | stats count(*) as hits | offset 10`)
+
 	// multiple stats pipes and sort pipes
 	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, 0, []string{"_time", "requests"}, `* | stats by (_time:86400000000000, path) count(*) as requests | stats by (_time:86400000000000, requests) count(*) as hits | first by (hits desc) partition by (_time)`)
 

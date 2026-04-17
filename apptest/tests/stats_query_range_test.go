@@ -98,6 +98,10 @@ func TestVlsingleStatsQueryRange_Failure(t *testing.T) {
 	// step must be > 0
 	f(`* | stats count()`, "0s")
 	f(`* | stats count()`, "-5m")
+
+	// limit and offset aren't allowed for range queries
+	f(`* | stats count() q | limit 10`, "5m")
+	f(`* | stats count() q | offset 10`, "5m")
 }
 
 // Verifies that `/select/logsql/stats_query_range` allows `total_stats` with `by (...)` fields,
