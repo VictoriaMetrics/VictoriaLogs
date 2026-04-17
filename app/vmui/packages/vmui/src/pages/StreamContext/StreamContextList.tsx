@@ -37,7 +37,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
     error,
     fetchContextLogs,
     resetContextLogs,
-    abortController
+    abort
   } = useFetchStreamContext();
 
   const streamFields = useMemo(() => {
@@ -47,12 +47,12 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
 
   const handleLoadMoreAfter = () => {
     const target = logsAfter[0];
-    fetchContextLogs({ log: target, linesAfter: loadSize });
+    void fetchContextLogs({ log: target, linesAfter: loadSize });
   };
 
   const handleLoadMoreBefore = () => {
     const target = logsBefore[logsBefore.length - 1];
-    fetchContextLogs({ log: target, linesBefore: loadSize });
+    void fetchContextLogs({ log: target, linesBefore: loadSize });
   };
 
   const handleChangeLoadSize = (limit: number) => {
@@ -65,11 +65,11 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
   };
 
   useEffect(() => {
-    fetchContextLogs({ log, linesBefore: 10, linesAfter: 10 });
+    void fetchContextLogs({ log, linesBefore: 10, linesAfter: 10 });
 
     return () => {
       resetContextLogs();
-      abortController?.abort(); // Abort the fetch request when closing the modal
+      abort(); // Abort the fetch request when closing the modal
     };
   }, []);
 

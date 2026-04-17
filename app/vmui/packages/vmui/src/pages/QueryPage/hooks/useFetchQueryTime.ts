@@ -1,4 +1,4 @@
-import { useCallback, useState } from "preact/compat";
+import { useCallback, useRef, useState } from "preact/compat";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { useTenant } from "../../../hooks/useTenant";
 import { useAppState } from "../../../state/common/StateContext";
@@ -28,14 +28,21 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
   const [isLoading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<ErrorTypes | string>();
 
+  const abortControllerRef = useRef(new AbortController());
+
   const fetchQueryTime = useCallback(async ({ period, query }: {
     period: TimeParams,
     query?: string
   }): Promise<ServerTimeParams | undefined> => {
+    abortControllerRef.current?.abort();
+
     if (!getOverrideValue() || !hasTimeFilter(query)) {
       // No need to fetch, as time filter override is disabled or query has no _time filter
       return;
     }
+
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
 
     const params = new URLSearchParams({
       query: query || defaultQuery || "",
@@ -53,6 +60,7 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
         method: "POST",
         headers: { ...tenant },
         body: params,
+        signal,
       });
 
       if (!response.ok || !response.body) {
@@ -95,5 +103,6 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
     serverPeriod,
     isLoading,
     error,
+    abort: useCallback(() => abortControllerRef.current?.abort(), [])
   };
 };

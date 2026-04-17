@@ -1,5 +1,5 @@
 import { FC, useCallback, useState } from "preact/compat";
-import TextField from "../../../components/Main/TextField/TextField";
+import TextField from "../../Main/TextField/TextField";
 import { useEffect } from "react";
 import { LOGS_MAX_LIMIT } from "../../../constants/logs";
 import { formatNumber } from "../../../utils/number";

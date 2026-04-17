@@ -1,10 +1,10 @@
 import { FC, useEffect, useState, useMemo, useRef } from "preact/compat";
-import { dateFromSeconds, formatDateForNativeInput, getRelativeTime, getUTCByTimezone } from "../../../../utils/time";
+import { dateFromSeconds, formatDateForNativeInput, getUTCByTimezone } from "../../../../utils/time";
 import TimeDurationSelector from "../TimeDurationSelector/TimeDurationSelector";
 import dayjs from "dayjs";
 import { getAppModeEnable } from "../../../../utils/app-mode";
-import { useTimeDispatch, useTimeState } from "../../../../state/time/TimeStateContext";
-import { AlarmIcon, ArrowDownIcon, ClockIcon } from "../../../Main/Icons";
+import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { ArrowDownIcon, ClockIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
 import Popper from "../../../Main/Popper/Popper";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
@@ -17,8 +17,9 @@ import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import DateTimeInput from "../../../Main/DatePicker/DateTimeInput/DateTimeInput";
 import useBoolean from "../../../../hooks/useBoolean";
 import useWindowSize from "../../../../hooks/useWindowSize";
-import usePrevious from "../../../../hooks/usePrevious";
 import { useQueryState } from "../../../../state/query/QueryStateContext";
+import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
+import { RelativeTimeOption } from "../../../../types";
 
 type Props = {
   onOpenSettings?: () => void;
@@ -36,10 +37,14 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const [until, setUntil] = useState<string>();
   const [from, setFrom] = useState<string>();
 
-  const { period: { end, start }, relativeTime, timezone, duration } = useTimeState();
-  const dispatch = useTimeDispatch();
+  const {
+    period: { end, start },
+    relativeTime,
+    setPeriod,
+  } = useTimePeriod();
+
+  const { timezone } = useTimeState();
   const appModeEnable = getAppModeEnable();
-  const prevTimezone = usePrevious(timezone);
 
   const {
     value: openOptions,
@@ -60,8 +65,8 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
     setFrom(formatDateForNativeInput(dateFromSeconds(start)));
   }, [timezone, start]);
 
-  const setDuration = ({ duration, until, id }: {duration: string, until: Date, id: string}) => {
-    dispatch({ type: "SET_RELATIVE_TIME", payload: { duration, until, id } });
+  const setDuration = (nextRelativeTime: RelativeTimeOption) => {
+    setPeriod({ nextRelativeTime });
     handleCloseOptions();
   };
 
@@ -72,8 +77,7 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   }, [start, end, timezone]);
 
   const dateTitle = useMemo(() => {
-    const isRelativeTime = relativeTime && relativeTime !== "none";
-    return isRelativeTime ? relativeTime.replace(/_/g, " ") : `${formatRange.start} - ${formatRange.end}`;
+    return relativeTime ? relativeTime.title : `${formatRange.start} - ${formatRange.end}`;
   }, [relativeTime, formatRange]);
 
   const fromPickerRef = useRef<HTMLDivElement>(null);
@@ -82,15 +86,15 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
 
   const setTimeAndClosePicker = () => {
     if (from && until) {
-      dispatch({ type: "SET_PERIOD", payload: {
-        from: dayjs.tz(from).toDate(),
-        to: dayjs.tz(until).toDate()
-      } });
+      setPeriod({
+        nextPeriod: {
+          from: dayjs.tz(from).toDate(),
+          to: dayjs.tz(until).toDate()
+        }
+      });
     }
     handleCloseOptions();
   };
-
-  const onSwitchToNow = () => dispatch({ type: "RUN_QUERY_TO_NOW" });
 
   const onCancelClick = () => {
     setUntil(formatDateForNativeInput(dateFromSeconds(end)));
@@ -103,23 +107,13 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
     handleCloseOptions();
   };
 
-  useEffect(() => {
-    const value = getRelativeTime({
-      relativeTimeId: relativeTime,
-      defaultDuration: duration,
-      defaultEndInput: dateFromSeconds(end),
-    });
-    if (prevTimezone && timezone !== prevTimezone) {
-      setDuration({ id: value.relativeTimeId, duration: value.duration, until: value.endInput });
-    }
-  }, [timezone, prevTimezone]);
-
   useClickOutside(wrapperRef, (e) => {
     if (isMobile) return;
     const target = e.target as HTMLElement;
+    const isButtonClick = buttonRef.current && buttonRef.current.contains(target);
     const isFromPicker = fromPickerRef?.current && fromPickerRef?.current?.contains(target);
     const isUntilPicker = untilPickerRef?.current && untilPickerRef?.current?.contains(target);
-    if (isFromPicker || isUntilPicker) return;
+    if (isButtonClick || isFromPicker || isUntilPicker) return;
     handleCloseOptions();
   });
 
@@ -211,13 +205,6 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
             <div className="vm-time-selector-left-timezone__title">{activeTimezone.region}</div>
             <div className="vm-time-selector-left-timezone__utc">{activeTimezone.utc}</div>
           </div>
-          <Button
-            variant="text"
-            startIcon={<AlarmIcon />}
-            onClick={onSwitchToNow}
-          >
-            Switch to now
-          </Button>
           <div className="vm-time-selector-left__controls">
             <Button
               color="error"
@@ -235,7 +222,7 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
           </div>
         </div>
         <TimeDurationSelector
-          relativeTime={relativeTime || ""}
+          relativeTime={relativeTime}
           setDuration={setDuration}
         />
       </div>

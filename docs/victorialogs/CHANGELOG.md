@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix browser navigation issues where the UI state didn't update on URL changes. See [#1056](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1056).
+
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 
 Released at 2026-04-14
