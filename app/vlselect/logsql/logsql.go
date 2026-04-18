@@ -231,6 +231,26 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Guard against step values so small they blow up addMissingZeroHits.
+	// That function walks [start, end] by `step` to fill in zero-hit
+	// buckets and calls slices.Contains per tick (O(n) per bucket). A
+	// user-supplied range like [24h ago, now) combined with step=1ns
+	// turns into ~8.64e13 iterations, which pins CPU and climbs memory
+	// until OOM well before the first response byte is written. Cap the
+	// bucket count when the caller set explicit start/end bounds so the
+	// request is rejected up front rather than silently tying up a
+	// goroutine. Data-derived bounds (no start/end args) are left to the
+	// existing row-count path since there is no DoS amplification there
+	// without a user-chosen tiny step.
+	const maxHitsBuckets = 30_000
+	if ca.startAligned != math.MinInt64 && ca.endAligned != math.MaxInt64 && ca.endAligned > ca.startAligned {
+		if (ca.endAligned-ca.startAligned)/step > maxHitsBuckets {
+			httpserver.Errorf(w, r, "step %dns produces more than %d buckets over the selected time range; "+
+				"increase step or narrow the [start, end) window", step, maxHitsBuckets)
+			return
+		}
+	}
+
 	// Obtain offset
 	offset, err := parseDuration(r, "offset", "0s")
 	if err != nil {
