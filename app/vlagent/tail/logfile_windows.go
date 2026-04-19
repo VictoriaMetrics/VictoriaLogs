@@ -9,6 +9,6 @@ import (
 )
 
 func getInode(_ os.FileInfo) uint64 {
-	logger.Panicf("vlagent does not support collecting logs from Kubernetes on Windows")
+	logger.Panicf("vlagent does not support collecting logs from files on Windows")
 	return 0
 }

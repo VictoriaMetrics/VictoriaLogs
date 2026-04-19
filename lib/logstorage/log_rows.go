@@ -327,12 +327,12 @@ func verifyStreamTagsCanonical(streamTagsCanonical string, fields []Field) error
 	src := bytesutil.ToUnsafeBytes(streamTagsCanonical)
 	tail, err := st.UnmarshalCanonicalInplace(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot unmarshal streamTagsCanonical: %w", err)
 	}
 	if len(tail) > 0 {
 		return fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), st)
 	}
-	return st.verifyFieldValues(fields)
+	return st.verifyCanonicalFieldValues(fields)
 }
 
 func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
@@ -394,7 +394,7 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 					invalidStreamTagsLogger.Warnf("cannot parse _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
 					return
 				}
-				if err := st.verifyFieldValues(fields); err != nil {
+				if err := st.verifyCanonicalFieldValues(fields); err != nil {
 					line := MarshalFieldsToJSON(nil, fields)
 					invalidStreamTagsLogger.Warnf("invalid _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
 					return

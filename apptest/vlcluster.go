@@ -199,6 +199,19 @@ func (app *Vlcluster) Streams(t *testing.T, query string, opts StreamsOpts) stri
 	return app.selectNode.cli.PostFormSuccess(t, url, values)
 }
 
+// Hits sends HTTP POST request to /select/logsql/hits endpoint and returns the plain response.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats
+func (app *Vlcluster) Hits(t *testing.T, query string, opts HitsOpts) string {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/hits", app.selectNode.httpListenAddr)
+	return app.selectNode.cli.PostFormSuccess(t, url, values)
+}
+
 // LogsQLQueryRaw sends HTTP POST request to /select/logsql/query endpoint and returns the plain response with status code.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs

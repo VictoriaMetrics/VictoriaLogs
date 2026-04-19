@@ -1,5 +1,9 @@
 @use "src/styles/variables" as *;
 
+html, :root {
+  color-scheme: light dark;
+}
+
 html, body, #root {
   font-family: $font-family-global;
   font-size: $font-size;
@@ -88,7 +92,9 @@ input[type=number]::-webkit-outer-spin-button {
       font-weight: 600;
       padding-bottom: calc($padding-small/2);
       margin-bottom: calc($padding-small/2);
-      border-bottom: 1px solid inherit;
+      border-bottom-width: 1px;
+      border-bottom-style: solid;
+      border-bottom-color: inherit;
     }
 
     &__msg {

@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -110,6 +111,127 @@ func TestStorageMustAddRows(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
+func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention:       365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+
+	addRow := func(stream, marker, msg string) {
+		t.Helper()
+
+		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "stream",
+				Value: stream,
+			},
+			{
+				Name:  "marker",
+				Value: marker,
+			},
+			{
+				Name:  "_msg",
+				Value: msg,
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+
+	check := func(qStr string, rowsExpected int) {
+		t.Helper()
+		checkQueryResults(t, s, ts, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+	}
+
+	addRow("same_stream", "before_detach", "before detach")
+	s.DebugFlush()
+	check(`marker:=before_detach | stats count(*) as rows`, 1)
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	fs.MustRemoveDir(filepath.Join(path, partitionsDirname, partitionName))
+
+	addRow("same_stream", "after_detach", "after detach")
+	s.DebugFlush()
+
+	check(`marker:=after_detach | stats count(*) as rows`, 1)
+	check(`* | stats count(*) as rows`, 1)
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
+func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+
+	addRow := func(stream, marker, msg string) {
+
+		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "stream",
+				Value: stream,
+			},
+			{
+				Name:  "marker",
+				Value: marker,
+			},
+			{
+				Name:  "_msg",
+				Value: msg,
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+
+	check := func(qStr string, rowsExpected int) {
+		t.Helper()
+		checkQueryResults(t, s, ts, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+	}
+
+	addRow("same_stream", "before_detach", "before detach")
+	s.DebugFlush()
+
+	// Populate filterStreamCache with an empty result for new_stream at the old partition.
+	check(`{stream="new_stream"} | stats count(*) as rows`, 0)
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	fs.MustRemoveDir(filepath.Join(path, partitionsDirname, partitionName))
+
+	addRow("new_stream", "after_detach", "after detach")
+	s.DebugFlush()
+
+	check(`{stream="new_stream"} | stats count(*) as rows`, 1)
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
 func TestStorageDeleteTaskOps(t *testing.T) {
 	t.Parallel()
 
@@ -181,12 +303,12 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 
 	check := func(tenantIDs []TenantID, filters string, rowsExpected []string) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, filters, nil, rowsExpected)
+		checkQueryResults(t, s, now, tenantIDs, filters, nil, rowsExpected)
 	}
 
 	deleteRows := func(tenantIDs []TenantID, filters string) {
 		t.Helper()
-		dt := newDeleteTask("task_id_x", tenantIDs, filters, now)
+		dt := newDeleteTask("task_id_x", now, tenantIDs, filters)
 		for !s.processDeleteTask(ctx, dt) {
 			// Unsuccessful attempt because of concurrently executed background merges.
 			// Wait for a bit and try again.
@@ -214,7 +336,7 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	// Verify that all the rows are properly stored across all the tenants
 	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"10500"}`})
 	for i := range allTenantIDs {
-		checkQueryResults(t, s, []TenantID{allTenantIDs[i]}, "* | count(host) rows", nil, []string{`{"rows":"3500"}`})
+		checkQueryResults(t, s, now, []TenantID{allTenantIDs[i]}, "* | count(host) rows", nil, []string{`{"rows":"3500"}`})
 	}
 	check([]TenantID{allTenantIDs[0], allTenantIDs[2]}, "* | count(host) rows", []string{`{"rows":"7000"}`})
 
@@ -302,8 +424,8 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 		},
 	}
 
-	startTime := time.Now().UnixNano() - int64(2*time.Second)
-	rowTimestamp := startTime - int64(500*time.Millisecond)
+	now := time.Now().UnixNano() - int64(2*time.Second)
+	rowTimestamp := now - int64(500*time.Millisecond)
 
 	lr := GetLogRows([]string{"host"}, nil, nil, nil, "")
 	lr.MustAdd(tenantIDs[0], rowTimestamp, []Field{
@@ -322,12 +444,12 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 
 	check := func(qStr string, resultsExpected []string) {
 		t.Helper()
-		checkQueryResults(t, s, tenantIDs, qStr, nil, resultsExpected)
+		checkQueryResults(t, s, now, tenantIDs, qStr, nil, resultsExpected)
 	}
 
 	check(`row_id:=1 | stats count(*) as rows`, []string{`{"rows":"1"}`})
 
-	dt := newDeleteTask("task_id_relative", tenantIDs, `_time:1s row_id:=1`, startTime)
+	dt := newDeleteTask("task_id_relative", now, tenantIDs, `_time:1s row_id:=1`)
 	for !s.processDeleteTask(ctx, dt) {
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -338,10 +460,10 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
-func checkQueryResults(t *testing.T, s *Storage, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
+func checkQueryResults(t *testing.T, s *Storage, now int64, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
 	t.Helper()
 
-	q, err := ParseQuery(qStr)
+	q, err := ParseQueryAtTimestamp(qStr, now)
 	if err != nil {
 		t.Fatalf("cannot parse query %q: %s", qStr, err)
 	}
@@ -439,4 +561,67 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 	PutLogRows(lr)
 
 	s.DebugFlush()
+}
+
+func TestStorageDropStalePartitions(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+
+	cfg := &StorageConfig{
+		Retention: 30 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	expectPartitionsNumber := func(n int) {
+		t.Helper()
+
+		pws := s.getPartitions()
+		defer s.putPartitions(pws)
+
+		if len(pws) != n {
+			t.Fatalf("unexpected number of partitions; got %d; want %d", len(pws), n)
+		}
+	}
+
+	var tenantID TenantID
+	timestamp := time.Now().UnixNano() - 10*nsecsPerDay
+	timestamp -= timestamp % nsecsPerDay
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	for i := range 100 {
+		fields := []Field{
+			{
+				Name:  "_msg",
+				Value: fmt.Sprintf("message #%d", i),
+			},
+		}
+		timestamp += nsecsPerSecond
+		lr.mustAdd(tenantID, timestamp, fields)
+	}
+
+	s.dropStalePartitions()
+	expectPartitionsNumber(0)
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+	s.dropStalePartitions()
+	expectPartitionsNumber(1)
+	s.MustClose()
+
+	// Open the storage with the same retention and verify partitions still exist
+	s = MustOpenStorage(path, cfg)
+	expectPartitionsNumber(1)
+	s.MustClose()
+
+	// Open the storage with smaller retention and drop stale partitions
+	cfg = &StorageConfig{
+		Retention: 24 * time.Hour,
+	}
+	s = MustOpenStorage(path, cfg)
+	s.dropStalePartitions()
+	expectPartitionsNumber(0)
+	s.MustClose()
+
+	// Drop the created data on disk
+	fs.MustRemoveDir(path)
 }

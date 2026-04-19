@@ -9,20 +9,24 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/valyala/fastjson"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 // filterJSONArrayContainsAny matches if the JSON array in the given field contains the given value.
 //
 // Example LogsQL: `tags:json_array_contains_any("prod","dev")`
 type filterJSONArrayContainsAny struct {
-	fieldName string
-	values    []string
+	values []string
 
 	tokensOnce    sync.Once
 	tokenss       [][]string
 	tokensHashess [][]uint64
+}
+
+func newFilterJSONArrayContainsAny(fieldName string, values []string) *filterGeneric {
+	fa := &filterJSONArrayContainsAny{
+		values: values,
+	}
+	return newFilterGeneric(fieldName, fa)
 }
 
 func (fa *filterJSONArrayContainsAny) getTokenss() [][]string {
@@ -55,24 +59,20 @@ func (fa *filterJSONArrayContainsAny) String() string {
 		a[i] = quoteTokenIfNeeded(v)
 	}
 	args := strings.Join(a, ",")
-	return fmt.Sprintf("%sjson_array_contains_any(%s)", quoteFieldNameIfNeeded(fa.fieldName), args)
+	return fmt.Sprintf("json_array_contains_any(%s)", args)
 }
 
-func (fa *filterJSONArrayContainsAny) updateNeededFields(pf *prefixfilter.Filter) {
-	pf.AddAllowFilter(fa.fieldName)
-}
-
-func (fa *filterJSONArrayContainsAny) matchRow(fields []Field) bool {
+func (fa *filterJSONArrayContainsAny) matchRowByField(fields []Field, fieldName string) bool {
 	tokenss := fa.getTokenss()
 
-	v := getFieldValueByName(fields, fa.fieldName)
+	v := getFieldValueByName(fields, fieldName)
 	return matchJSONArrayContainsAny(v, fa.values, tokenss)
 }
 
-func (fa *filterJSONArrayContainsAny) applyToBlockResult(br *blockResult, bm *bitmap) {
+func (fa *filterJSONArrayContainsAny) applyToBlockResultByField(br *blockResult, bm *bitmap, fieldName string) {
 	tokenss := fa.getTokenss()
 
-	c := br.getColumnByName(fa.fieldName)
+	c := br.getColumnByName(fieldName)
 	if c.isConst {
 		v := c.valuesEncoded[0]
 		if !matchJSONArrayContainsAny(v, fa.values, tokenss) {
@@ -112,10 +112,10 @@ func (fa *filterJSONArrayContainsAny) applyToBlockResult(br *blockResult, bm *bi
 	}
 }
 
-func (fa *filterJSONArrayContainsAny) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
+func (fa *filterJSONArrayContainsAny) applyToBlockSearchByField(bs *blockSearch, bm *bitmap, fieldName string) {
 	tokenss := fa.getTokenss()
 
-	v := bs.getConstColumnValue(fa.fieldName)
+	v := bs.getConstColumnValue(fieldName)
 	if v != "" {
 		if !matchJSONArrayContainsAny(v, fa.values, tokenss) {
 			bm.resetBits()
@@ -124,7 +124,7 @@ func (fa *filterJSONArrayContainsAny) applyToBlockSearch(bs *blockSearch, bm *bi
 	}
 
 	// Verify whether filter matches other columns
-	ch := bs.getColumnHeader(fa.fieldName)
+	ch := bs.getColumnHeader(fieldName)
 	if ch == nil {
 		// Fast path - there are no matching columns.
 		bm.resetBits()

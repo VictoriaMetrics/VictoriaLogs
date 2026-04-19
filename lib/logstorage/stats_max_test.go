@@ -5,34 +5,36 @@ import (
 	"testing"
 )
 
-func TestParseStatsFieldMaxSuccess(t *testing.T) {
+func TestParseStatsMaxSuccess(t *testing.T) {
 	f := func(pipeStr string) {
 		t.Helper()
 		expectParseStatsFuncSuccess(t, pipeStr)
 	}
 
-	f(`field_max(foo, bar)`)
+	f(`max(*)`)
+	f(`max(a)`)
+	f(`max(a, b)`)
+	f(`max(a*, b)`)
 }
 
-func TestParseStatsFieldMaxFailure(t *testing.T) {
+func TestParseStatsMaxFailure(t *testing.T) {
 	f := func(pipeStr string) {
 		t.Helper()
 		expectParseStatsFuncFailure(t, pipeStr)
 	}
 
-	f(`field_max`)
-	f(`field_max()`)
-	f(`field_max(x)`)
-	f(`field_max(x, y, z)`)
+	f(`max`)
+	f(`max(a b)`)
+	f(`max(x) y`)
 }
 
-func TestStatsFieldMax(t *testing.T) {
+func TestStatsMax(t *testing.T) {
 	f := func(pipeStr string, rows, rowsExpected [][]Field) {
 		t.Helper()
 		expectPipeResults(t, pipeStr, rows, rowsExpected)
 	}
 
-	f("stats field_max(b, a) as x", [][]Field{
+	f("stats max(*) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -48,11 +50,11 @@ func TestStatsFieldMax(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"x", `3`},
+			{"x", "def"},
 		},
 	})
 
-	f("stats field_max(foo, a) as x", [][]Field{
+	f("stats max(a) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -68,11 +70,11 @@ func TestStatsFieldMax(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"x", ``},
+			{"x", "3"},
 		},
 	})
 
-	f("stats field_max(b, a) as x", [][]Field{
+	f("stats max(a, b) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -89,11 +91,11 @@ func TestStatsFieldMax(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"x", `3`},
+			{"x", "54"},
 		},
 	})
 
-	f("stats field_max(a, b) if (b:*) as x", [][]Field{
+	f("stats max(b) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -109,11 +111,11 @@ func TestStatsFieldMax(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"x", `54`},
+			{"x", "54"},
 		},
 	})
 
-	f("stats by (b) field_max(a, b) if (b:*) as x", [][]Field{
+	f("stats max(c) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `2`},
@@ -121,7 +123,47 @@ func TestStatsFieldMax(t *testing.T) {
 		},
 		{
 			{"_msg", `def`},
-			{"a", `-12.34`},
+			{"a", `1`},
+		},
+		{
+			{"a", `3`},
+			{"b", `54`},
+		},
+	}, [][]Field{
+		{
+			{"x", ""},
+		},
+	})
+
+	f("stats max(a) if (b:*) as x", [][]Field{
+		{
+			{"_msg", `abc`},
+			{"a", `2`},
+			{"b", `3`},
+		},
+		{
+			{"_msg", `def`},
+			{"a", `3432`},
+		},
+		{
+			{"a", `3`},
+			{"b", `54`},
+		},
+	}, [][]Field{
+		{
+			{"x", "3"},
+		},
+	})
+
+	f("stats by (b) max(a) if (b:*) as x", [][]Field{
+		{
+			{"_msg", `abc`},
+			{"a", `2`},
+			{"b", `3`},
+		},
+		{
+			{"_msg", `def`},
+			{"a", `1`},
 			{"b", "3"},
 		},
 		{
@@ -131,15 +173,15 @@ func TestStatsFieldMax(t *testing.T) {
 	}, [][]Field{
 		{
 			{"b", "3"},
-			{"x", `3`},
+			{"x", "2"},
 		},
 		{
 			{"b", ""},
-			{"x", ``},
+			{"x", ""},
 		},
 	})
 
-	f("stats by (a) field_max(b, b) as x", [][]Field{
+	f("stats by (a) max(b) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `1`},
@@ -160,15 +202,45 @@ func TestStatsFieldMax(t *testing.T) {
 	}, [][]Field{
 		{
 			{"a", "1"},
-			{"x", `3`},
+			{"x", "3"},
 		},
 		{
 			{"a", "3"},
-			{"x", `7`},
+			{"x", "7"},
 		},
 	})
 
-	f("stats by (a) field_max(c, a) as x", [][]Field{
+	f("stats by (a) max(*) as x", [][]Field{
+		{
+			{"_msg", `abc`},
+			{"a", `1`},
+			{"b", `3`},
+		},
+		{
+			{"_msg", `def`},
+			{"a", `1`},
+			{"c", "10"},
+		},
+		{
+			{"a", `3`},
+			{"b", `5`},
+		},
+		{
+			{"a", `3`},
+			{"b", `7`},
+		},
+	}, [][]Field{
+		{
+			{"a", "1"},
+			{"x", "def"},
+		},
+		{
+			{"a", "3"},
+			{"x", "7"},
+		},
+	})
+
+	f("stats by (a) max(c) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `1`},
@@ -189,15 +261,15 @@ func TestStatsFieldMax(t *testing.T) {
 	}, [][]Field{
 		{
 			{"a", "1"},
-			{"x", ``},
+			{"x", ""},
 		},
 		{
 			{"a", "3"},
-			{"x", `3`},
+			{"x", "foo"},
 		},
 	})
 
-	f("stats by (a) field_max(b, c) as x", [][]Field{
+	f("stats by (a) max(a, b, c) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `1`},
@@ -211,7 +283,6 @@ func TestStatsFieldMax(t *testing.T) {
 		{
 			{"a", `3`},
 			{"b", `5`},
-			{"c", "foo"},
 		},
 		{
 			{"a", `3`},
@@ -220,15 +291,48 @@ func TestStatsFieldMax(t *testing.T) {
 	}, [][]Field{
 		{
 			{"a", "1"},
-			{"x", ``},
+			{"x", "34"},
 		},
 		{
 			{"a", "3"},
-			{"x", ``},
+			{"x", "7"},
 		},
 	})
 
-	f("stats by (a, b) field_max(c,a) as x", [][]Field{
+	f("stats by (a, b) max(a) as x", [][]Field{
+		{
+			{"_msg", `abc`},
+			{"a", `1`},
+			{"b", `3`},
+		},
+		{
+			{"_msg", `def`},
+			{"a", `1`},
+			{"c", "3"},
+		},
+		{
+			{"a", `3`},
+			{"b", `5`},
+		},
+	}, [][]Field{
+		{
+			{"a", "1"},
+			{"b", "3"},
+			{"x", "1"},
+		},
+		{
+			{"a", "1"},
+			{"b", ""},
+			{"x", "1"},
+		},
+		{
+			{"a", "3"},
+			{"b", "5"},
+			{"x", "3"},
+		},
+	})
+
+	f("stats by (a, b) max(c) as x", [][]Field{
 		{
 			{"_msg", `abc`},
 			{"a", `1`},
@@ -248,23 +352,23 @@ func TestStatsFieldMax(t *testing.T) {
 		{
 			{"a", "1"},
 			{"b", "3"},
-			{"x", ``},
+			{"x", ""},
 		},
 		{
 			{"a", "1"},
 			{"b", ""},
-			{"x", `1`},
+			{"x", "foo"},
 		},
 		{
 			{"a", "3"},
 			{"b", "5"},
-			{"x", `3`},
+			{"x", "4"},
 		},
 	})
 }
 
-func TestStatsFieldMax_ExportImportState(t *testing.T) {
-	f := func(smp *statsFieldMaxProcessor, dataLenExpected int) {
+func TestStatsMax_ExportImportState(t *testing.T) {
+	f := func(smp *statsMaxProcessor, dataLenExpected, stateSizeExpected int) {
 		t.Helper()
 
 		data := smp.exportState(nil, nil)
@@ -273,10 +377,13 @@ func TestStatsFieldMax_ExportImportState(t *testing.T) {
 			t.Fatalf("unexpected dataLen; got %d; want %d", dataLen, dataLenExpected)
 		}
 
-		var smp2 statsFieldMaxProcessor
-		_, err := smp2.importState(data, nil)
+		var smp2 statsMaxProcessor
+		stateSize, err := smp2.importState(data, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
+		}
+		if stateSize != stateSizeExpected {
+			t.Fatalf("unexpected state size; got %d bytes; want %d bytes", stateSize, stateSizeExpected)
 		}
 
 		if !reflect.DeepEqual(smp, &smp2) {
@@ -284,15 +391,15 @@ func TestStatsFieldMax_ExportImportState(t *testing.T) {
 		}
 	}
 
-	var smp statsFieldMaxProcessor
+	var smp statsMaxProcessor
 
 	// zero state
-	f(&smp, 2)
+	f(&smp, 1, 0)
 
 	// non-zero state
-	smp = statsFieldMaxProcessor{
-		max:   "abcded",
-		value: "ilojoerDSF",
+	smp = statsMaxProcessor{
+		max:      "foobar",
+		hasItems: true,
 	}
-	f(&smp, 18)
+	f(&smp, 8, 6)
 }

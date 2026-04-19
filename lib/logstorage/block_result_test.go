@@ -201,7 +201,7 @@ func TestBlockResultMustInitFromRows(t *testing.T) {
 		var rows [][]Field
 		p := GetJSONParser()
 		for _, rowStr := range rowsStr {
-			if err := p.ParseLogMessage([]byte(rowStr), nil); err != nil {
+			if err := p.ParseLogMessage([]byte(rowStr), nil, ""); err != nil {
 				t.Fatalf("cannot parse input row: %s", err)
 			}
 

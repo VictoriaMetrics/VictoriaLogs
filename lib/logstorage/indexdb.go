@@ -583,6 +583,7 @@ func (idb *indexdb) invalidateStreamFilterCache() {
 }
 
 func (idb *indexdb) marshalStreamFilterCacheKey(dst []byte, tenantIDs []TenantID, sf *StreamFilter) []byte {
+	dst = encoding.MarshalUint64(dst, idb.s.partitionCacheGeneration.Load())
 	dst = encoding.MarshalUint32(dst, idb.filterStreamCacheGeneration.Load())
 	dst = encoding.MarshalBytes(dst, bytesutil.ToUnsafeBytes(idb.partitionName))
 	dst = encoding.MarshalVarUint64(dst, uint64(len(tenantIDs)))

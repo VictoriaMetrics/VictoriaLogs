@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: minmax(200px, auto) 1fr;
   gap: calc($padding-global / 2) $padding-global;
-  padding-bottom: ($padding-global / 2);
+  padding-bottom: calc($padding-global / 2);
   font-size: $font-size-small;
   width: clamp(300px, 80vw, 1200px);
   line-height: 1.3;

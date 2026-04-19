@@ -198,7 +198,7 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys
 	p := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(p)
 
-	if err := p.ParseLogMessage(line, preserveKeys); err != nil {
+	if err := p.ParseLogMessage(line, preserveKeys, ""); err != nil {
 		const tailBytes = 128
 		lineTail := line
 		if len(lineTail) > tailBytes {

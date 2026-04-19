@@ -50,33 +50,17 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    20,
-		}
+		fr := newFilterLenRange("foo", 2, 20, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
-		fr = &filterLenRange{
-			fieldName: "non-existing-column",
-			minLen:    0,
-			maxLen:    10,
-		}
+		fr = newFilterLenRange("non-existing-column", 0, 10, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 2})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    3,
-			maxLen:    20,
-		}
+		fr = newFilterLenRange("foo", 3, 20, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "non-existing-column",
-			minLen:    10,
-			maxLen:    20,
-		}
+		fr = newFilterLenRange("non-existing-column", 10, 20, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -97,26 +81,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    3,
-		}
+		fr := newFilterLenRange("foo", 2, 3, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 3})
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    1,
-		}
+		fr = newFilterLenRange("foo", 0, 1, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    20,
-			maxLen:    30,
-		}
+		fr = newFilterLenRange("foo", 20, 30, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -140,19 +112,11 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    3,
-		}
+		fr := newFilterLenRange("foo", 2, 3, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{2, 3, 5})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    100,
-			maxLen:    200,
-		}
+		fr = newFilterLenRange("foo", 100, 200, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -177,26 +141,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 5})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    0,
-		}
+		fr = newFilterLenRange("foo", 0, 0, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    10,
-			maxLen:    10,
-		}
+		fr = newFilterLenRange("foo", 10, 10, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -221,26 +173,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 5})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    0,
-		}
+		fr = newFilterLenRange("foo", 0, 0, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    10,
-			maxLen:    10,
-		}
+		fr = newFilterLenRange("foo", 10, 10, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -265,26 +205,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 5})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    0,
-		}
+		fr = newFilterLenRange("foo", 0, 0, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    10,
-			maxLen:    10,
-		}
+		fr = newFilterLenRange("foo", 10, 10, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -309,26 +237,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 5})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    0,
-		}
+		fr = newFilterLenRange("foo", 0, 0, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    20,
-			maxLen:    20,
-		}
+		fr = newFilterLenRange("foo", 20, 20, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -353,26 +269,14 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2, 5, 6})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    0,
-			maxLen:    0,
-		}
+		fr = newFilterLenRange("foo", 0, 0, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    20,
-			maxLen:    20,
-		}
+		fr = newFilterLenRange("foo", 20, 20, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -397,19 +301,11 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    2,
-			maxLen:    2,
-		}
+		fr := newFilterLenRange("foo", 2, 2, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{1, 2})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    100,
-			maxLen:    200,
-		}
+		fr = newFilterLenRange("foo", 100, 200, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -435,19 +331,11 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "foo",
-			minLen:    3,
-			maxLen:    7,
-		}
+		fr := newFilterLenRange("foo", 3, 7, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", []int{0, 1, 11})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "foo",
-			minLen:    20,
-			maxLen:    30,
-		}
+		fr = newFilterLenRange("foo", 20, 30, "")
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
 
@@ -470,19 +358,11 @@ func TestFilterLenRange(t *testing.T) {
 		}
 
 		// match
-		fr := &filterLenRange{
-			fieldName: "_msg",
-			minLen:    10,
-			maxLen:    30,
-		}
+		fr := newFilterLenRange("_msg", 10, 30, "")
 		testFilterMatchForColumns(t, columns, fr, "_msg", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
 
 		// mismatch
-		fr = &filterLenRange{
-			fieldName: "_msg",
-			minLen:    10,
-			maxLen:    11,
-		}
+		fr = newFilterLenRange("_msg", 10, 11, "")
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
 

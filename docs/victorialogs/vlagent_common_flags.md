@@ -6,7 +6,7 @@ build:
 sitemap:
   disable: true
 ---
-<!-- The file has to be manually updated during feature work in PR, make docs-update-flags command could be used periodically to ensure the flags in sync. -->
+<!-- The file has to be manually updated during feature work in PR, "TAG=... make docs-update-flags" command could be used periodically to ensure the flags in sync with the given release TAG. -->
 ```shellhelp
 
 vlagent collects logs via popular data ingestion protocols and routes it to VictoriaLogs.
@@ -36,6 +36,50 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Whether to enable reading flags from environment variables in addition to the command line. Command line flag values have priority over values from environment vars. Flags are read only from the command line if this flag isn't set. See https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables for more details
   -envflag.prefix string
      Prefix for environment variables if -envflag.enable is set
+  -fileCollector.checkpointsPath string
+     Path to the file where vlagent stores its read position for each collected file. By default, stored in the directory specified by -tmpDataPath. Example: -fileCollector.checkpointsPath=/var/lib/vlagent/file-checkpoints.json
+  -fileCollector.decolorizeFields array
+     Fields to remove ANSI color codes across logs ingested from files
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.excludeGlob array
+     Glob pattern for log files to exclude from collection. Can be specified multiple times. Example: -fileCollector.excludeGlob="/var/log/my_app/*.gz"
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.extraFields array
+     Extra fields in JSON format to add to each log line collected from files. For example, -fileCollector.extraFields='{"app":"nginx", "hostname":"%{HOST}"}'. The "hostname" and "file" fields are injected automatically; see -fileCollector.hostnameField and -fileCollector.fileField for details
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.fileField string
+     Field name used to store the source file path in collected log entries. Set to empty string to disable (default "file")
+  -fileCollector.glob array
+     Glob pattern for log files to collect. Can be specified multiple times. The pattern must match files, not directories. Example: -fileCollector.glob="/var/log/my_app/*.log"
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.hostnameField string
+     Field name used to store the hostname in collected log entries. Set to empty string to disable (default "hostname")
+  -fileCollector.ignoreFields array
+     Fields to ignore across logs ingested from files
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.msgField array
+     Fields that may contain the _msg field. Default: message, msg, log. See https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.refreshInterval duration
+     How often vlagent checks for new files matching the glob pattern (default 10s)
+  -fileCollector.streamFields array
+     Comma-separated list of fields to use as log stream fields for logs ingested from files. Default: -fileCollector.fileField and -fileCollector.hostnameField. See: https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.tenantID array
+     Default tenant ID to use for logs collected from files in format: <accountID>:<projectID>. See https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -fileCollector.timeField array
+     Fields that may contain the _time field. Default: time, timestamp, ts. If none of the specified fields is found in the log line, then the read time will be used. See https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -filestream.disableFadvise
      Whether to disable fadvise() syscall when reading large data files. The fadvise() syscall prevents from eviction of recently accessed data from OS page cache during background merges and backups. In some rare cases it is better to disable the syscall if it uses too much CPU
   -flagsAuthKey value
@@ -47,7 +91,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
-     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 256)
+     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 16x CPU cores, default capped at 256)
   -http.connTimeout duration
      Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
   -http.disableCORS
@@ -131,7 +175,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -kubernetesCollector.excludeFilter string
      Optional LogsQL filter for excluding container logs. The filter is applied to container metadata fields (e.g., kubernetes.pod_namespace, kubernetes.container_name) before reading the log files. This significantly reduces CPU and I/O usage by skipping logs from unwanted containers. See https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs
   -kubernetesCollector.extraFields string
-     Extra fields to add to each log line collected from Kubernetes pods in JSON format. For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'
+     Extra fields in JSON format to add to each log line collected from Kubernetes Pods. For example: -kubernetesCollector.extraFields='{"cluster":"cluster-1","env":"production"}'
   -kubernetesCollector.ignoreFields array
      Fields to ignore across logs ingested from Kubernetes
      Supports an array of values separated by comma or specified via multiple flags.
@@ -183,12 +227,14 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -loggerWarnsPerSecondLimit int
      Per-second limit on the number of WARN messages. If more than the given number of warns are emitted per second, then the remaining warns are suppressed. Zero values disable the rate limit
   -loki.disableMessageParsing
-     Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields
+     Whether to disable automatic parsing of JSON-encoded log fields inside Loki log message into distinct log fields; see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message
   -loki.maxRequestSize size
      The maximum size in bytes of a single Loki request
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -loki.messageFieldsPrefix string
+     Optional prefix to add to field names parsed from JSON-encoded log message at Loki protocol; this can be used for avoiding potential clash between the parsed field names and the log stream labels; see https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/#parsing-log-message
   -maxConcurrentInserts int
-     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 32)
+     The maximum number of concurrent insert requests. Set higher value when clients send data over slow networks. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage. See also -insert.maxQueueDuration (default 2x CPU cores)
   -memory.allowedBytes size
      Allowed size of system memory VictoriaMetrics caches may occupy. This option overrides -memory.allowedPercent if set to a non-zero value. Too low a value may increase the cache miss rate usually resulting in higher CPU and disk IO usage. Too high a value may evict too much data from the OS page cache resulting in higher disk IO usage
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
@@ -293,7 +339,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.queues int
-     The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues isn't enough for sending high volume of collected data to remote storage. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage (default 32)
+     The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues isn't enough for sending high volume of collected data to remote storage. Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage (default 2x CPU cores)
   -remoteWrite.rateLimit array
      Optional rate limit in bytes per second for data sent to the corresponding -remoteWrite.url. By default, the rate limit is disabled. It can be useful for limiting load on remote storage when big amounts of buffered data  (default 0)
      Supports array of values separated by comma or specified via multiple flags.
@@ -346,6 +392,29 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Comma-separated list of flag names with secret values. Values for these flags are hidden in logs and on /metrics page
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.ignoreFields array
+     Comma-separated list of fields to ignore for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#dropping-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.maxRequestSize size
+     The maximum size in bytes of a single Splunk request; see https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/
+     Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -splunk.msgField array
+     Field to use as a log message for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#message-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.preserveJSONKeys array
+     Comma-separated list of JSON keys that should be preserved from flattening when ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/ and https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.streamFields array
+     Comma-separated list of fields to use as log stream fields for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#stream-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.tenantID string
+     TenantID for logs ingested via the Splunk endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#multitenancy (default "0:0")
+  -splunk.timeField string
+     Field to use as a log timestamp for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#time-field (default "time")
   -syslog.compressMethod.tcp array
      Compression method for syslog messages received at the corresponding -syslog.listenAddr.tcp. Supported values: none, gzip, deflate. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression
      Supports an array of values separated by comma or specified via multiple flags.
@@ -433,7 +502,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -syslog.timezone string
      Timezone to use when parsing timestamps in RFC3164 syslog messages. Timezone must be a valid IANA Time Zone. For example: America/New_York, Europe/Berlin, Etc/GMT+3 . See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/ (default "Local")
   -syslog.tls array
-     Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See also -syslog.mtls. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
+     Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to false.
   -syslog.tlsCertFile array
@@ -495,7 +564,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -tmpDataPath string
-     Default path for storing vlagent data; see also -remoteWrite.tmpDataPath and -kubernetesCollector.checkpointsPath
+     Base directory for storing vlagent data. Used as default for -remoteWrite.tmpDataPath, -kubernetesCollector.checkpointsPath, and -fileCollector.checkpointsPath unless those flags are set explicitly
   -version
      Show VictoriaMetrics version
 ```

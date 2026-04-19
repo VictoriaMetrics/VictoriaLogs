@@ -43,48 +43,56 @@ var (
 	journaldUseRemoteIP          = flag.Bool("journald.useRemoteIP", false, "Whether to add the remote IP address as the remote_ip log field for ingested journald messages.")
 )
 
-func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
-	cp, err := insertutil.GetCommonParams(r)
+var tenantID logstorage.TenantID
+
+// MustInit initializes journald parser
+//
+// This function must be called after flag.Parse().
+func MustInit() {
+	// Initialize tenantID
+	t, err := logstorage.ParseTenantID(*journaldTenantID)
 	if err != nil {
-		return nil, err
+		logger.Fatalf("cannot parse -journald.tenantID=%s command-line flag: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy", *journaldTenantID, err)
 	}
-	if cp.TenantID.AccountID == 0 && cp.TenantID.ProjectID == 0 {
-		tenantID, err := logstorage.ParseTenantID(*journaldTenantID)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse -journald.tenantID=%q for journald: %w", *journaldTenantID, err)
-		}
-		cp.TenantID = tenantID
-	}
+	tenantID = t
 
-	if !cp.IsTimeFieldSet {
-		cp.TimeFields = []string{*journaldTimeField}
-	}
-	if len(cp.StreamFields) == 0 {
-		streamFields := getStreamFields()
-		if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
-			return nil, fmt.Errorf("invalid stream field names in -journald.streamFields=%s: %s", journaldStreamFields, err)
-		}
-		cp.StreamFields = streamFields
-	}
-
-	if len(cp.IgnoreFields) == 0 {
-		cp.IgnoreFields = *journaldIgnoreFields
-	}
-	cp.MsgFields = []string{"MESSAGE"}
-	return cp, nil
-}
-
-func getStreamFields() []string {
+	// Initialize streamFields
+	streamFields = defaultStreamFields
 	if len(*journaldStreamFields) > 0 {
-		return *journaldStreamFields
+		streamFields = *journaldStreamFields
 	}
-	return defaultStreamFields
+	if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
+		logger.Fatalf("invalid stream field names in -journald.streamFields=%s: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#stream-fields", streamFields, err)
+	}
 }
 
 var defaultStreamFields = []string{
 	"_MACHINE_ID",
 	"_HOSTNAME",
 	"_SYSTEMD_UNIT",
+}
+
+var streamFields []string
+
+func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
+	cp, err := insertutil.GetCommonParams(r)
+	if err != nil {
+		return nil, err
+	}
+	if cp.TenantID.AccountID == 0 && cp.TenantID.ProjectID == 0 {
+		cp.TenantID = tenantID
+	}
+	if !cp.IsTimeFieldSet {
+		cp.TimeFields = []string{*journaldTimeField}
+	}
+	if len(cp.StreamFields) == 0 {
+		cp.StreamFields = streamFields
+	}
+	if len(cp.IgnoreFields) == 0 {
+		cp.IgnoreFields = *journaldIgnoreFields
+	}
+	cp.MsgFields = []string{"MESSAGE"}
+	return cp, nil
 }
 
 // RequestHandler processes Journald Export insert requests

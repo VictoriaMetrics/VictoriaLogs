@@ -26,52 +26,22 @@ func TestFilterNot(t *testing.T) {
 	}
 
 	// match
-	fn := &filterNot{
-		f: &filterPhrase{
-			fieldName: "foo",
-			phrase:    "",
-		},
-	}
+	fn := newFilterNot(newFilterPhrase("foo", ""))
 	testFilterMatchForColumns(t, columns, fn, "foo", []int{0, 1, 2, 3, 4, 6, 7, 8, 9})
 
-	fn = &filterNot{
-		f: &filterPhrase{
-			fieldName: "foo",
-			phrase:    "a",
-		},
-	}
+	fn = newFilterNot(newFilterPhrase("foo", "a"))
 	testFilterMatchForColumns(t, columns, fn, "foo", []int{5})
 
-	fn = &filterNot{
-		f: &filterPhrase{
-			fieldName: "non-existing-field",
-			phrase:    "foobar",
-		},
-	}
+	fn = newFilterNot(newFilterPhrase("non-existing-field", "foobar"))
 	testFilterMatchForColumns(t, columns, fn, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-	fn = &filterNot{
-		f: &filterPrefix{
-			fieldName: "non-existing-field",
-			prefix:    "",
-		},
-	}
+	fn = newFilterNot(newFilterPrefix("non-existing-field", ""))
 	testFilterMatchForColumns(t, columns, fn, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
 
-	fn = &filterNot{
-		f: &filterPrefix{
-			fieldName: "foo",
-			prefix:    "",
-		},
-	}
+	fn = newFilterNot(newFilterPrefix("foo", ""))
 	testFilterMatchForColumns(t, columns, fn, "foo", []int{5})
 
 	// mismatch
-	fn = &filterNot{
-		f: &filterPhrase{
-			fieldName: "non-existing-field",
-			phrase:    "",
-		},
-	}
+	fn = newFilterNot(newFilterPhrase("non-existing-field", ""))
 	testFilterMatchForColumns(t, columns, fn, "foo", nil)
 }

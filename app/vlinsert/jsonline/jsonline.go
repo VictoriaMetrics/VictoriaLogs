@@ -106,7 +106,7 @@ func readLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []s
 	p := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(p)
 
-	if err := p.ParseLogMessage(line, preserveKeys); err != nil {
+	if err := p.ParseLogMessage(line, preserveKeys, ""); err != nil {
 		return true, fmt.Errorf("%s; line contents: %q", err, line)
 	}
 	ts, err := insertutil.ExtractTimestampFromFields(timeFields, p.Fields)

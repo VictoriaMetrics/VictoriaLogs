@@ -60,7 +60,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Counter
 
 **Labels:**
-- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`
+- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`, `file_logs`
 
 **Description:** Log entries successfully parsed and added to the processing pipeline. Counts all entries that pass initial validation, including debug entries that are processed but not stored when `debug=1` is used.
 
@@ -68,7 +68,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Counter
 
 **Labels:**
-- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`
+- `type`: `jsonline`, `loki`, `elasticsearch`, `datadog`, `opentelemetry`, `journald`, `syslog`, `kubernetes_logs`, `file_logs`
 
 **Description:** Estimated JSON size of ingested log entry fields. Calculated using field name lengths and values to provide consistent volume measurement across different input formats like JSON, Loki, or syslog.
 
