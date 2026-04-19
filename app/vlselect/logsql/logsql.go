@@ -721,8 +721,8 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Initialize IsPartial to unknown for streaming requests (live tail)
-	ca.initializeIsPartialForStreaming()
+	// Streaming requests always return unknown since headers are written before all backends respond
+	atomic.StoreUint32(&ca.qs.IsPartial, 2)
 	ca.writeResponseHeaders(w.Header(), time.Now())
 
 	flusher.Flush()
@@ -1253,8 +1253,8 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	startTime := time.Now()
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
-		// Initialize IsPartial to unknown for streaming requests
-		ca.initializeIsPartialForStreaming()
+		// Streaming requests always return unknown since headers are written before all backends respond
+		atomic.StoreUint32(&ca.qs.IsPartial, 2)
 
 		// Write response headers
 		h := w.Header()
@@ -1458,14 +1458,6 @@ type commonArgs struct {
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
 	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters)
-}
-
-func (ca *commonArgs) initializeIsPartialForStreaming() {
-	// For streaming requests, when allowPartialResponse is enabled,
-	// initialize IsPartial to "unknown" (2) since headers are written before all backends respond.
-	if ca.allowPartialResponse {
-		atomic.StoreUint32(&ca.qs.IsPartial, 2)
-	}
 }
 
 func (ca *commonArgs) updatePerQueryStatsMetrics() {
