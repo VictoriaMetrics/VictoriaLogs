@@ -180,6 +180,13 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		return true
 	}
 
+	if path == "/select/logsql/debug" {
+		logsqlDebugRequests.Inc()
+		// Process debug request without timeout and concurrency limit, since it operates on user-provided sample data
+		logsql.ProcessDebugRequest(ctx, w, r)
+		return true
+	}
+
 	if path == "/select/logsql/tail" {
 		logsqlTailRequests.Inc()
 		// Process live tailing request without timeout, since it is OK to run live tailing requests for very long time.
@@ -484,6 +491,9 @@ var (
 
 	tenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
 	tenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
+
+	logsqlDebugRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/debug"}`)
+	logsqlDebugDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/debug"}`)
 
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
