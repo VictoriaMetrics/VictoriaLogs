@@ -45,9 +45,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix target log rendering in the `Log context` modal. See [#1199](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1199).
 * BUGFIX: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): return `502 Bad Gateway` from [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) when one of `vlstorage` nodes is unavailable in cluster mode. Previously these endpoints could incorrectly return `422 Unprocessable Entity`, which could break retry and failover handling in high-availability setups. See [#1419](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1419).
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): allow `unpack_json` to parse JSON objects starting with spaces. See [#1416](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1416).
-
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly keep the top N logs for [`json_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#json_values-stats) when using `sort by (...) limit N`. Previously, some logs that should have been included in the top N results could be incorrectly dropped from the result. See [#1311](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1311).
-
 
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 

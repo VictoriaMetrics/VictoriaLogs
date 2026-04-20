@@ -123,7 +123,7 @@ func TestStatsJSONValues(t *testing.T) {
 		},
 	})
 
-	// Test top-k heap without sortFields.
+	// top-k path retaining correct rows
 	f("stats json_values(a,_msg) sort by (a desc) limit 2 as x", [][]Field{
 		{
 			{"a", `1`},
