@@ -51,10 +51,11 @@ const FilterSidebarField: FC<Props> = ({
 
   const missingSelectedValues: LogsFieldValues[] = useMemo(() => {
     const missingValues = filtersByName.filter(f => {
-      return !streamValues.some(v => v.value === f.value);
+      return f.value.trim() && !streamValues.some(v => v.value === f.value);
     });
 
     const uniqMissingValues = [...new Set(missingValues.map(f => f.value))];
+
     return uniqMissingValues.map(value => ({ value, hits: 0 }));
   }, [streamValues, filtersByName]);
 
