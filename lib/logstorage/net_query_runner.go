@@ -104,6 +104,14 @@ func splitQueryToRemoteAndLocal(q *Query) (*Query, []pipe) {
 	return qRemote, pipesLocal
 }
 
+// CanStreamAtVlselect returns true if query results can be streamed directly from remote vlstorage nodes at vlselect.
+//
+// This is possible only when the query doesn't require local pipe processing at vlselect.
+func (q *Query) CanStreamAtVlselect() bool {
+	_, pipesLocal := splitQueryToRemoteAndLocal(q)
+	return len(pipesLocal) == 0
+}
+
 func getRemoteAndLocalPipes(q *Query) ([]pipe, []pipe) {
 	timestamp := q.GetTimestamp()
 

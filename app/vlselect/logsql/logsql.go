@@ -1252,9 +1252,12 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}()
 
 	startTime := time.Now()
+	isStreamingQueryRequest := vlstorage.IsStreamingQueryRequest(ca.q)
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
-		// Streaming requests always return unknown since headers are written before all backends respond
-		atomic.StoreUint32(&ca.qs.IsPartial, 2)
+		if isStreamingQueryRequest {
+			// Streaming requests always return unknown since headers are written before all backends respond.
+			atomic.StoreUint32(&ca.qs.IsPartial, 2)
+		}
 
 		// Write response headers
 		h := w.Header()

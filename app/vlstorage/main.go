@@ -564,6 +564,16 @@ func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBloc
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 
+// IsStreamingQueryRequest returns true if query results are streamed directly to vlselect response body.
+//
+// Single-node mode always returns false, since there is no partial response from remote backends there.
+func IsStreamingQueryRequest(q *logstorage.Query) bool {
+	if localStorage != nil {
+		return false
+	}
+	return q.CanStreamAtVlselect()
+}
+
 // GetFieldNames executes qctx and returns field names seen in results.
 //
 // If the filter isn't empty, then only the field names containing the filter substing are returned.
