@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+**Update note 1:** the base Docker image has been changed from Alpine to `scratch`. If you relied on Alpine-specific tools or shell access inside the container, it is recommended to use Alpine-based image directly instead. For debugging in Kubernetes it is recommended to use `kubectl debug`.
+
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
 
 * FEATURE: [alerting](https://docs.victoriametrics.com/victorialogs/vmalert/): add `-vmalert.proxyURL` command-line flag, which allows proxying `/select/vmalert/*` requests from VictoriaLogs to `vmalert`. See [#90](https://github.com/VictoriaMetrics/VictoriaLogs/issues/90).
@@ -33,6 +35,7 @@ according to the following docs:
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): rename field `Query time` to `Hits query` on the Hits chart panel. The change makes it clear duration of which query is displayed.
 * FEATURE: [dashboards/kubernetes-explorer](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/dashboards/victorialogs-kubernetes-explorer.json): add new dashboard for exploring Kubernetes logs via [VictoriaLogs datasource](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) in Grafana. Thanks to @sias32 for [the contribution](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1254)!
 * FEATURE: [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files): enhance glob pattern support with additional syntax: double-star `/**/` for matching nested directories (e.g. `/var/log/**/*.log`), alternatives `{a,b}` for matching multiple specific names (e.g. `{access,error}.log`), character classes `[a-z]` and `?` wildcard for single-character matching. See [#1393](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1393) and [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#glob-pattern-requirements) for the full pattern syntax reference.
+* FEATURE: switch base Docker image from Alpine to `scratch` for VictoriaLogs, `vlagent` and `vlogscli`. The new images contain only CA certificates from `gcr.io/distroless/static`. This reduces the image size and attack surface.
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe) and [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) ignoring JSON arrays preceded by whitespace. See [#1427](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1427).
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): hide sensitive values passed via `-remoteWrite.proxyURL` in `/metrics`, `/flags`, and startup logs. Previously these values could be exposed in plain text. See [#1320](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1320).
