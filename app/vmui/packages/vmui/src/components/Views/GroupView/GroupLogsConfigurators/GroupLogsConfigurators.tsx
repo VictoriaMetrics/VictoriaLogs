@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from "preact/compat";
+import { FC, useMemo } from "preact/compat";
 import useBoolean from "../../../../hooks/useBoolean";
 import { RestartIcon, TuneIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
@@ -9,13 +9,9 @@ import Select from "../../../Main/Select/Select";
 import { useSearchParams } from "react-router-dom";
 import "./style.scss";
 import Switch from "../../../Main/Switch/Switch";
-import TextField from "../../../Main/TextField/TextField";
-import dayjs from "dayjs";
-import Hyperlink from "../../../Main/Hyperlink/Hyperlink";
 import {
   LOGS_DISPLAY_FIELDS,
   LOGS_GROUP_BY,
-  LOGS_DATE_FORMAT,
   LOGS_URL_PARAMS,
   WITHOUT_GROUPING
 } from "../../../../constants/logs";
@@ -27,7 +23,6 @@ const {
   NO_WRAP_LINES,
   COMPACT_GROUP_HEADER,
   DISPLAY_FIELDS,
-  DATE_FORMAT
 } = LOGS_URL_PARAMS;
 
 const title = "Group view settings";
@@ -45,20 +40,15 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   const displayFieldsString = searchParams.get(DISPLAY_FIELDS) || "";
   const displayFields = displayFieldsString ? displayFieldsString.split(",") : [LOGS_DISPLAY_FIELDS];
 
-  const [dateFormat, setDateFormat] = useState(searchParams.get(DATE_FORMAT) || LOGS_DATE_FORMAT);
-  const [errorFormat, setErrorFormat] = useState("");
-
   const [disabledHovers, handleSetDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
 
   const isGroupChanged = groupBy !== LOGS_GROUP_BY;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
-  const isTimeChanged = dateFormat !== LOGS_DATE_FORMAT;
   const hasChanges = [
     isGroupChanged,
     isDisplayFieldsChanged,
     noWrapLines,
     compactGroupHeader,
-    isTimeChanged
   ].some(Boolean);
 
   const logsKeys = useMemo(() => {
@@ -99,24 +89,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
     setSearchParams(searchParams);
   };
 
-  const handleChangeDateFormat = (format: string) => {
-    const date = new Date();
-    if (!dayjs(date, format, true).isValid()) {
-      setErrorFormat("Invalid date format");
-    }
-    setDateFormat(format);
-  };
-
-  const handleSaveAndClose = () => {
-    if (dateFormat === LOGS_DATE_FORMAT) {
-      searchParams.delete(DATE_FORMAT);
-    } else {
-      searchParams.set(DATE_FORMAT, dateFormat);
-    }
-    setSearchParams(searchParams);
-    handleClose();
-  };
-
   const tooltipContent = () => {
     if (!hasChanges) return title;
     return (
@@ -128,7 +100,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
           {isDisplayFieldsChanged && <li>Display fields: {displayFields.length || 1}</li>}
           {noWrapLines && <li>Single-line text is enabled</li>}
           {compactGroupHeader && <li>Compact group header is enabled</li>}
-          {isTimeChanged && <li>Date format: <code>{dateFormat}</code></li>}
         </ul>
       </div>
     );
@@ -150,7 +121,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
       {openModal && (
         <Modal
           title={title}
-          onClose={handleSaveAndClose}
+          onClose={handleClose}
         >
           <div className="vm-group-logs-configurator">
             <div className="vm-group-logs-configurator-item">
@@ -194,31 +165,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
               </Tooltip>
               <span className="vm-group-logs-configurator-item__info">
                 Select fields to display instead of the message (default: <code>{LOGS_DISPLAY_FIELDS}</code>).
-              </span>
-            </div>
-
-            <div className="vm-group-logs-configurator-item">
-              <TextField
-                autofocus
-                label="Date format"
-                value={dateFormat}
-                onChange={handleChangeDateFormat}
-                error={errorFormat}
-              />
-              <Tooltip title={"Reset format"}>
-                <Button
-                  variant="text"
-                  color="primary"
-                  startIcon={<RestartIcon/>}
-                  onClick={() => setDateFormat(LOGS_DATE_FORMAT)}
-                />
-              </Tooltip>
-              <span className="vm-group-logs-configurator-item__info vm-group-logs-configurator-item__info_input">
-                Set the date format (e.g., <code>YYYY-MM-DD HH:mm:ss</code>).
-                Learn more in <Hyperlink
-                  href="https://day.js.org/docs/en/display/format"
-                >this documentation</Hyperlink>. <br/>
-                Your current date format: <code>{dayjs().format(dateFormat || LOGS_DATE_FORMAT)}</code>
               </span>
             </div>
 

@@ -45,13 +45,12 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
   const { timezone } = useTimeState();
 
   const noWrapLines = searchParams.get(LOGS_URL_PARAMS.NO_WRAP_LINES) === "true";
-  const dateFormat = searchParams.get(LOGS_URL_PARAMS.DATE_FORMAT) || LOGS_DATE_FORMAT;
 
   const formattedTime = useMemo(() => {
     if (!log._time) return "";
     // Preserve nanosecond precision when rendering timestamps
-    return formatDateWithNanoseconds(log._time, dateFormat);
-  }, [log._time, timezone, dateFormat]);
+    return formatDateWithNanoseconds(log._time, LOGS_DATE_FORMAT);
+  }, [log._time, timezone]);
 
   const formattedMarkdown = useMemo(() => {
     if (!markdownParsing || !log._msg || !displayFields.includes("_msg")) return "";
