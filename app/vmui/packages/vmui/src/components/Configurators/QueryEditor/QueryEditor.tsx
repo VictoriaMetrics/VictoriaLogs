@@ -35,6 +35,7 @@ export interface QueryEditorProps {
   label: string;
   disabled?: boolean
   includeFunctions?: boolean;
+  ghostText?: string;
 }
 
 const QueryEditor: FC<QueryEditorProps> = ({
@@ -49,7 +50,8 @@ const QueryEditor: FC<QueryEditorProps> = ({
   stats,
   label,
   disabled = false,
-  includeFunctions = true
+  includeFunctions = true,
+  ghostText = ""
 }) => {
   const { autocompleteQuick } = useQueryState();
   const { isMobile } = useDeviceDetect();
@@ -69,6 +71,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const handleSelect = (val: string, caretPosition: number) => {
     onChange(val);
     setCaretPositionInput([caretPosition, caretPosition]);
+    setCaretPositionAutocomplete([caretPosition, caretPosition]);
   };
 
   const handleKeyDown = (e: TextFieldKeyboardEvent) => {
@@ -83,6 +86,16 @@ const QueryEditor: FC<QueryEditorProps> = ({
     const arrowDown = key === "ArrowDown";
     const enter = key === "Enter";
     const isSlash = key === "/";
+
+    if (key === "Tab" && !ctrlKey && !metaKey && !shiftKey && ghostText) {
+      e.preventDefault();
+      const nextValue = `${value}${ghostText}`;
+      const nextCaret = nextValue.length;
+      onChange(nextValue);
+      setCaretPositionInput([nextCaret, nextCaret]);
+      setCaretPositionAutocomplete([nextCaret, nextCaret]);
+      return;
+    }
 
     // prev value from history
     if (arrowUp && ctrlMetaKey) {
@@ -157,6 +170,12 @@ const QueryEditor: FC<QueryEditorProps> = ({
         inputmode={"search"}
         caretPosition={caretPositionInput}
         endIcon={<QueryEditorHotkeysTip/>}
+        overlay={ghostText ? (
+          <div className="vm-query-editor__ghost">
+            <span className="vm-query-editor__ghost-prefix">{value}</span>
+            <span className="vm-query-editor__ghost-suffix">{ghostText}</span>
+          </div>
+        ) : undefined}
       />
       {autocomplete && AutocompleteEl && (
         <AutocompleteEl

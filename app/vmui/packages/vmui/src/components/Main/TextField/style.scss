@@ -14,6 +14,7 @@
   }
 
   &__input,
+  &__overlay,
   &::after {
     font-family: $font-family-monospace;
     width: 100%;
@@ -25,6 +26,12 @@
     grid-area: 1 / 1 / 2 / 2;
     overflow: hidden;
     box-sizing: border-box;
+  }
+
+  &__overlay {
+    pointer-events: none;
+    color: transparent;
+    z-index: 2;
   }
 
   &__label,
@@ -94,6 +101,8 @@
     overflow: hidden;
     background-color: transparent;
     color: $color-text;
+    position: relative;
+    z-index: 1;
 
     &:focus {
       border: 1px solid $color-primary;

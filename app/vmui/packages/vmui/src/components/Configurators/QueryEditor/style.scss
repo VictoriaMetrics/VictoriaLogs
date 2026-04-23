@@ -3,6 +3,24 @@
 .vm-query-editor {
   position: relative;
 
+  &__ghost {
+    pointer-events: none;
+    font-family: $font-family-monospace;
+    line-height: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    user-select: none;
+  }
+
+  &__ghost-prefix {
+    visibility: hidden;
+  }
+
+  &__ghost-suffix {
+    color: $color-text-secondary;
+    opacity: 0.8;
+  }
+
   .marker-detection {
     position: absolute;
     top: 0;

@@ -7,6 +7,7 @@ import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEdit
 import LogsLimitInput from "../LimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete
   from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
+import { getLogsQLGhostText } from "../../../components/Configurators/QueryEditor/LogsQL/syntaxMatch";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
 import QueryHistory from "../../../components/QueryHistory/QueryHistory";
 import useBoolean from "../../../hooks/useBoolean";
@@ -85,6 +86,7 @@ const QueryPageHeader: FC<Props> = ({
       <div className="vm-query-page-header-top">
         <QueryEditor
           value={query}
+          ghostText={getLogsQLGhostText(query)}
           autocomplete={autocomplete || autocompleteQuick}
           autocompleteEl={LogsQueryEditorAutocomplete}
           onArrowUp={createHandlerArrow(-1)}
