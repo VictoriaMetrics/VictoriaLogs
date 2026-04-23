@@ -1,7 +1,6 @@
 import { FC, useEffect } from "preact/compat";
-import { CodeIcon, PlayIcon, SpinnerIcon, WikiIcon } from "../../../components/Main/Icons";
+import { PlayIcon, SpinnerIcon } from "../../../components/Main/Icons";
 import "./style.scss";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
 import LogsLimitInput from "../LimitController/LogsLimitInput";
@@ -16,7 +15,6 @@ import AutocompleteToggle from "../../../components/Configurators/QueryEditor/Au
 import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersReset";
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
-import { LOGS_DOCS_URL } from "../../../constants/logs";
 
 interface Props {
   query: string;
@@ -39,7 +37,6 @@ const QueryPageHeader: FC<Props> = ({
   onChangeLimit,
   onRun,
 }) => {
-  const { isMobile } = useDeviceDetect();
   const { autocomplete, queryHistory, autocompleteQuick } = useQueryState();
   const queryDispatch = useQueryDispatch();
   const setQuickAutocomplete = useQuickAutocomplete();
@@ -107,36 +104,6 @@ const QueryPageHeader: FC<Props> = ({
           <ExtraFiltersReset/>
           <ExtraFiltersCopy/>
         </div>
-        {!isMobile && (
-          <div className="vm-query-page-header-bottom-helpful">
-            <a
-              target="_blank"
-              href={`${LOGS_DOCS_URL}/logsql/`}
-              rel="help noreferrer"
-            >
-              <Button
-                variant="text"
-                color="gray"
-                startIcon={<CodeIcon/>}
-              >
-                LogsQL
-              </Button>
-            </a>
-            <a
-              target="_blank"
-              href={`${LOGS_DOCS_URL}`}
-              rel="help noreferrer"
-            >
-              <Button
-                variant="text"
-                color="gray"
-                startIcon={<WikiIcon/>}
-              >
-                Docs
-              </Button>
-            </a>
-          </div>
-        )}
         <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
         <QueryHistory

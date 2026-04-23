@@ -145,7 +145,7 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
             color="primary"
             startIcon={<ClockIcon/>}
             onClick={toggleOpenOptions}
-            ariaLabel="time range controls"
+            aria-label="time range controls"
           >
             {displayFullDate && <span>{dateTitle}</span>}
           </Button>

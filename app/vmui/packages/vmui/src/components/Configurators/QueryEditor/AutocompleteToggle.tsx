@@ -2,8 +2,10 @@ import { FC } from "preact/compat";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
 import Button from "../../Main/Button/Button";
 import { AutocompleteIcon } from "../../Main/Icons";
+import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 const AutocompleteToggle: FC = () => {
+  const { isMobile } = useDeviceDetect();
   const { autocomplete } = useQueryState();
   const queryDispatch = useQueryDispatch();
 
@@ -18,7 +20,7 @@ const AutocompleteToggle: FC = () => {
       onClick={onChangeAutocomplete}
       startIcon={<AutocompleteIcon/>}
     >
-      Autocomplete: {autocomplete ? "On" : "Off"}
+      {!isMobile && "Autocomplete: "}{autocomplete ? "On" : "Off"}
     </Button>
   );
 };

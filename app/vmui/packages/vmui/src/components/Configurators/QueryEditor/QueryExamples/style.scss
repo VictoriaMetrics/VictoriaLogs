@@ -26,6 +26,12 @@
   &-header {
     grid-column: span 2;
 
+    &-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
     &__title {
       font-weight: 500;
       padding-inline: $padding-small;
