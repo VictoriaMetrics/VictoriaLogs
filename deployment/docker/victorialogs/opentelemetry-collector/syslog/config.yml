@@ -1,8 +1,8 @@
 exporters:
   syslog:
     network: tcp
-    endpoint: victorialogs
-    port: 5410
+    endpoint: vlagent
+    port: 8094
     tls:
       insecure: true
   debug:

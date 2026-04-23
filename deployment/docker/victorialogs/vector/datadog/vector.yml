@@ -25,7 +25,7 @@ sinks:
     type: datadog_logs
     inputs: [parser]
     default_api_key: test
-    endpoint: http://dd-logs:8427
+    endpoint: http://vlagent:9429
     compression: gzip
     request:
       headers:

@@ -334,7 +334,7 @@ func TestStorageRunQuery(t *testing.T) {
 			rowsCount := db.RowsCount()
 			columns := db.GetColumns(false)
 			if len(columns) != 2 {
-				panic(fmt.Errorf("unexpected number of columns; got %d; want 4", len(columns)))
+				panic(fmt.Errorf("unexpected number of columns; got %d; want 2", len(columns)))
 			}
 
 			for i := range rowsCount {
@@ -843,7 +843,7 @@ func TestStorageRunQuery(t *testing.T) {
 			},
 		})
 	})
-	t.Run("union=pipe", func(t *testing.T) {
+	t.Run("union-pipe", func(t *testing.T) {
 		f(t, `{instance=~"host-1.+"} | union ({instance=~"host-2.+"}) | count() hits`, [][]Field{
 			{
 				{"hits", "770"},
