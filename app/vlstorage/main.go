@@ -552,10 +552,10 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+	qOpt, offset, limit, isDesc := qctx.Query.GetTimeSortedNResultsQuery()
 	if qOpt != nil {
 		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedLastNResultsQuery(qctxOpt, offset, limit, writeBlock)
+		return runOptimizedTimeSortedNResultsQuery(qctxOpt, offset, limit, isDesc, writeBlock)
 	}
 
 	if localStorage != nil {

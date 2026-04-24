@@ -3652,15 +3652,15 @@ func TestQueryGetFilterTimeRange(t *testing.T) {
 	f("_time:2024-05-31Z _time:day_range[08:00, 16:00]", 1717113600000000000, 1717199999999999999)
 }
 
-func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
-	f := func(qStr, qOptExpected string, offsetExpected, limitExpected uint64) {
+func TestQueryGetTimeSortedNResultsQuery_Success(t *testing.T) {
+	f := func(qStr, qOptExpected string, offsetExpected, limitExpected uint64, isDescExpected bool) {
 		t.Helper()
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
+		qOpt, offset, limit, isDesc := q.GetTimeSortedNResultsQuery()
 		if qOpt == nil {
 			t.Fatalf("unexpected nil qOpt")
 		}
@@ -3674,33 +3674,43 @@ func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
 		if limit != limitExpected {
 			t.Fatalf("unexpected limit; got %d; want %d", limit, limitExpected)
 		}
+		if isDescExpected != isDesc {
+			t.Fatalf("unexpected isDesc; got %v; want %v", isDesc, isDescExpected)
+		}
 	}
 
-	f("* | sort (_time) desc limit 10", "*", 0, 10)
-	f("* | sort (_time) desc offset 5 limit 10", "*", 5, 10)
-	f("* | sort (_time) desc limit 5 offset 10", "*", 10, 5)
-	f("* | sort by (_time desc) limit 20", "*", 0, 20)
-	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 0, 30)
-	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 0, 5)
-	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 0, 5)
+	f("* | sort (_time) desc limit 10", "*", 0, 10, true)
+	f("* | sort (_time) desc offset 5 limit 10", "*", 5, 10, true)
+	f("* | sort (_time) desc limit 5 offset 10", "*", 10, 5, true)
+	f("* | sort by (_time desc) limit 20", "*", 0, 20, true)
+	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 0, 30, true)
+	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 0, 5, true)
+	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 0, 5, true)
 
 	// fields pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 0, 5)
+	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 0, 5, true)
 
 	// delete pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 0, 5)
+	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 0, 5, true)
 
 	// multiple keep and rm pipes
-	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 0, 5)
+	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 0, 5, true)
 
 	// first pipe
-	f(`* | first 10 (_time desc)`, `*`, 0, 10)
+	f(`* | first 10 (_time desc)`, `*`, 0, 10, true)
 
 	// last pipe
-	f(`* | last 10 (_time)`, `*`, 0, 10)
+	f(`* | last 10 (_time)`, `*`, 0, 10, true)
+
+	// test asc direction
+	f("* | sort (_time) limit 10", "*", 0, 10, false)
+	f("* | sort (_time) asc limit 10", "*", 0, 10, false)
+	f("* | sort (_time desc) desc limit 10", "*", 0, 10, false)
+	f(`* | first 10 (_time)`, `*`, 0, 10, false)
+	f(`* | last 10 (_time desc)`, `*`, 0, 10, false)
 }
 
-func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
+func TestQueryGetTimeSortedNResultsQuery_Failure(t *testing.T) {
 	f := func(qStr string) {
 		t.Helper()
 
@@ -3708,7 +3718,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
+		qOpt, offset, limit, _ := q.GetTimeSortedNResultsQuery()
 		if qOpt != nil {
 			t.Fatalf("unexpected non-nil qOpt: [%s]", qOpt)
 		}
@@ -3732,10 +3742,6 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	// sort by multiple fields
 	f("* | sort (_time desc, x)")
 
-	// sort by _time in ascending order
-	f("* | sort (_time)")
-	f("* | sort (_time desc) desc")
-
 	// missing limit
 	f("* | sort (_time desc)")
 
@@ -3756,12 +3762,6 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	f("* | sort (_time desc) limit 5 | keep x")
 	f("* | sort (_time desc) limit 5 | rm _time, x")
 
-	// first without descending sorting
-	f("* | first 10 (_time)")
-
-	// last without asscending sorting
-	f("* | last 10 (_time desc)")
-
 	// first with sort by foo additionally to _time
 	f("* | first 10 (_time desc, foo)")
 
@@ -3769,7 +3769,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	f("* | last 10 (_time, foo)")
 }
 
-func TestQueryCanReturnLastNResults(t *testing.T) {
+func TestQueryCanReturnTimeSortedNResults(t *testing.T) {
 	f := func(qStr string, resultExpected bool) {
 		t.Helper()
 
@@ -3777,9 +3777,9 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		result := q.CanReturnLastNResults()
+		result := q.CanReturnTimeSortedNResults()
 		if result != resultExpected {
-			t.Fatalf("unexpected result for CanReturnLastNResults(%q); got %v; want %v", qStr, result, resultExpected)
+			t.Fatalf("unexpected result for CanReturnTimeSortedNResults(%q); got %v; want %v", qStr, result, resultExpected)
 		}
 	}
 

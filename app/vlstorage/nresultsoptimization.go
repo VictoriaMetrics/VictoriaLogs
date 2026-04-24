@@ -12,8 +12,37 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
-	rows, err := getLastNQueryResults(qctx, offset+limit)
+type timeSortedRangeOps struct {
+	// When current range has too many matches: narrow to the half nearer the target end
+	narrow func(start, end int64) (int64, int64)
+	// When current range has too few matches: return the adjacent range away from target
+	shift func(start, end int64) (int64, int64)
+}
+
+var descDirOps = timeSortedRangeOps{
+	narrow: func(start, end int64) (int64, int64) {
+		// The number of found rows on the [start ... end) time range exceeds 2*n,
+		// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
+		return start + (end/2 - start/2), end
+	},
+	shift: func(start, end int64) (int64, int64) {
+		d := end/2 - start/2
+		return start - d, start
+	},
+}
+
+var ascDirOps = timeSortedRangeOps{
+	narrow: func(start, end int64) (int64, int64) {
+		return start, end - (end/2 - start/2)
+	},
+	shift: func(start, end int64) (int64, int64) {
+		d := end/2 - start/2
+		return end, end + d
+	},
+}
+
+func runOptimizedTimeSortedNResultsQuery(qctx *logstorage.QueryContext, offset, limit uint64, isDesc bool, writeBlock logstorage.WriteDataBlockFunc) error {
+	rows, err := getTimeSortedNQueryResults(qctx, offset+limit, isDesc)
 	if err != nil {
 		return err
 	}
@@ -39,7 +68,7 @@ func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit 
 	return nil
 }
 
-func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow, error) {
+func getTimeSortedNQueryResults(qctx *logstorage.QueryContext, limit uint64, isDesc bool) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 
 	q := qctx.Query.Clone(timestamp)
@@ -52,8 +81,13 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 
 	if uint64(len(rows)) < 2*limit {
 		// Fast path - the requested time range contains up to 2*limit rows.
-		rows = getLastNRows(rows, limit)
+		rows = getTopNRows(rows, limit, isDesc)
 		return rows, nil
+	}
+
+	ops := ascDirOps
+	if isDesc {
+		ops = descDirOps
 	}
 
 	// Slow path - use binary search for adjusting time range for selecting up to 2*limit rows.
@@ -61,7 +95,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 	if end < math.MaxInt64 {
 		end++
 	}
-	start += end/2 - start/2
+	start, end = ops.narrow(start, end)
 	n := limit
 
 	var rowsFound []logRow
@@ -81,51 +115,49 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 			// Return up to limit rows from the found rows and the last non-empty rows.
 			rowsFound = append(rowsFound, lastNonEmptyRows...)
 			rowsFound = append(rowsFound, rows...)
-			rowsFound = getLastNRows(rowsFound, limit)
+			rowsFound = getTopNRows(rowsFound, limit, isDesc)
 			return rowsFound, nil
 		}
 
 		if uint64(len(rows)) >= 2*n {
-			// The number of found rows on the [start ... end) time range exceeds 2*n,
-			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
-			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
-				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsLastN(qctx, start, end, n)
+			// The number of found rows on the current time range exceeds 2*n,
+			// so search for the rows on the adjusted narrowed time range by a half.
+			if !logstorage.CanApplyTimeSortedNResultsOptimization(start, end) {
+				// It is faster obtaining the top N logs via a direct sort+limit on such a small time range instead of using binary search.
+				rows, err := getLogRowsTopN(qctx, start, end, isDesc, n)
 				if err != nil {
 					return nil, err
 				}
 				rowsFound = append(rowsFound, rows...)
-				rowsFound = getLastNRows(rowsFound, limit)
+				rowsFound = getTopNRows(rowsFound, limit, isDesc)
 				return rowsFound, nil
 			}
-			start += end/2 - start/2
+			start, end = ops.narrow(start, end)
 			lastNonEmptyRows = rows
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
-			// The found rows contains the needed limit rows with the biggest timestamps.
+			// The found rows contain the needed limit rows in the target time direction.
 			rowsFound = append(rowsFound, rows...)
-			rowsFound = getLastNRows(rowsFound, limit)
+			rowsFound = getTopNRows(rowsFound, limit, isDesc)
 			return rowsFound, nil
 		}
 
-		// The number of found rows is below the limit. This means the [start ... end) time range
+		// The number of found rows is below the limit. This means the current time range
 		// doesn't cover the needed logs, so it must be extended.
 		// Append the found rows to rowsFound, adjust n, so it doesn't take into account already found rows
-		// and adjust the time range to search logs at [start-(end/2-start/2) ... start).
+		// and shift the time range via ops.shift to the adjacent non-overlapping range.
 		rowsFound = append(rowsFound, rows...)
 		n -= uint64(len(rows))
 
-		d := end/2 - start/2
-		end = start
-		start -= d
+		start, end = ops.shift(start, end)
 	}
 }
 
-func getLogRowsLastN(qctx *logstorage.QueryContext, start, end int64, n uint64) ([]logRow, error) {
+func getLogRowsTopN(qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)
-	q.AddPipeSortByTimeDesc()
+	q.AddPipeSortByTime(isDesc)
 	q.AddPipeOffsetLimit(0, n)
 	qctxLocal := qctx.WithQuery(q)
 	return getQueryResults(qctxLocal)
@@ -212,16 +244,27 @@ type logRow struct {
 	fields    []logstorage.Field
 }
 
-func getLastNRows(rows []logRow, limit uint64) []logRow {
-	sortLogRows(rows)
+func getTopNRows(rows []logRow, limit uint64, isDesc bool) []logRow {
+	if isDesc {
+		sortLogRowsDesc(rows)
+	} else {
+		sortLogRowsAsc(rows)
+	}
+
 	if uint64(len(rows)) > limit {
 		rows = rows[:limit]
 	}
 	return rows
 }
 
-func sortLogRows(rows []logRow) {
+func sortLogRowsDesc(rows []logRow) {
 	sort.Slice(rows, func(i, j int) bool {
 		return rows[i].timestamp > rows[j].timestamp
+	})
+}
+
+func sortLogRowsAsc(rows []logRow) {
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].timestamp < rows[j].timestamp
 	})
 }

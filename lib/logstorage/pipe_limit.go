@@ -26,7 +26,7 @@ func (pl *pipeLimit) canLiveTail() bool {
 	return false
 }
 
-func (pl *pipeLimit) canReturnLastNResults() bool {
+func (pl *pipeLimit) canReturnTimeSortedNResults() bool {
 	return false
 }
 

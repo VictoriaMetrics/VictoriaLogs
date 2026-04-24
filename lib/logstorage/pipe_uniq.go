@@ -61,7 +61,7 @@ func (pu *pipeUniq) canLiveTail() bool {
 	return false
 }
 
-func (pu *pipeUniq) canReturnLastNResults() bool {
+func (pu *pipeUniq) canReturnTimeSortedNResults() bool {
 	return false
 }
 

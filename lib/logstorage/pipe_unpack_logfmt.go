@@ -57,7 +57,7 @@ func (pu *pipeUnpackLogfmt) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackLogfmt) canReturnLastNResults() bool {
+func (pu *pipeUnpackLogfmt) canReturnTimeSortedNResults() bool {
 	// TODO: verify that the unpacked fields do not overwrite _time with non-timestamp values.
 
 	return true

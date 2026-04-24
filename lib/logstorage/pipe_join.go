@@ -74,7 +74,7 @@ func (pj *pipeJoin) canLiveTail() bool {
 	return true
 }
 
-func (pj *pipeJoin) canReturnLastNResults() bool {
+func (pj *pipeJoin) canReturnTimeSortedNResults() bool {
 	return false
 }
 

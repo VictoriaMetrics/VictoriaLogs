@@ -79,7 +79,7 @@ func (pm *pipeMath) canLiveTail() bool {
 	return true
 }
 
-func (pm *pipeMath) canReturnLastNResults() bool {
+func (pm *pipeMath) canReturnTimeSortedNResults() bool {
 	// TODO: if math clobbers _time field, then it may impossible returning lastN results.
 	// TODO: properly verify this case.
 

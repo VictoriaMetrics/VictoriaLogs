@@ -77,7 +77,7 @@ func (pu *pipeUnion) canLiveTail() bool {
 	return false
 }
 
-func (pu *pipeUnion) canReturnLastNResults() bool {
+func (pu *pipeUnion) canReturnTimeSortedNResults() bool {
 	return false
 }
 

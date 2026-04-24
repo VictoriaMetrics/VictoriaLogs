@@ -618,7 +618,7 @@ func (q *Query) dropPipesUnsafeForHits() {
 }
 
 func isPipeSafeForHits(p pipe) bool {
-	if p.canReturnLastNResults() {
+	if p.canReturnTimeSortedNResults() {
 		return true
 	}
 
@@ -662,14 +662,14 @@ func (q *Query) CloneWithTimeFilter(timestamp, start, end int64) *Query {
 	return qCopy
 }
 
-// GetLastNResultsQuery() returns a query for optimized querying of the last <limit> results with the biggest _time values with an optional <offset>.
+// GetTimeSortedNResultsQuery() returns a query for optimized querying of the <limit> results with the biggest/smallest _time values depending on sort direction of _time, with an optional <offset>.
 //
-// The returned query is nil if q cannot be used for optimized querying of the last N results.
-func (q *Query) GetLastNResultsQuery() (qOpt *Query, offset uint64, limit uint64) {
+// The returned query is nil if q cannot be used for optimized querying of N time-sorted results.
+func (q *Query) GetTimeSortedNResultsQuery() (qOpt *Query, offset uint64, limit uint64, isDesc bool) {
 	start, end := q.GetFilterTimeRange()
-	if !CanApplyLastNResultsOptimization(start, end) {
+	if !CanApplyTimeSortedNResultsOptimization(start, end) {
 		// It is faster to execute the query as is on such a small time range.
-		return nil, 0, 0
+		return nil, 0, 0, false
 	}
 
 	pipes := q.pipes
@@ -688,41 +688,41 @@ func (q *Query) GetLastNResultsQuery() (qOpt *Query, offset uint64, limit uint64
 	}()
 	pipes = pipes[:len(pipes)-len(tailPipes)]
 	if len(pipes) == 0 {
-		return nil, 0, 0
+		return nil, 0, 0, false
 	}
 
 	// The query must end with one of the following pipes in order to be eligible for the optimization:
-	// - 'sort by (_time desc) offset <offset> limit <limit>'
-	// - 'first <limit> by (_time desc)'
-	// - 'last <limit> by (_time)'
+	// - 'sort by (_time <desc/asc>) offset <offset> limit <limit>'
+	// - 'first <limit> by (_time <desc/asc>)'
+	// - 'last <limit> by (_time <desc/asc>)'
 	pLast := pipes[len(pipes)-1]
-	offset, limit, ok := getOffsetLimitFromPipe(pLast)
+	offset, limit, isDesc, ok := getOffsetLimitFromPipe(pLast)
 	if !ok {
-		return nil, 0, 0
+		return nil, 0, 0, false
 	}
 
 	// Remove the `| sort ...` pipe from the query, add tailPipes and verify
-	// whether it can reliably return last N results with the biggest _time values.
+	// whether it can reliably return N results sorted by _time (asc or desc).
 	qCopy := q.Clone(q.GetTimestamp())
 	if len(qCopy.pipes) != len(q.pipes) {
-		return nil, 0, 0
+		return nil, 0, 0, false
 	}
 	qCopy.pipes = qCopy.pipes[:len(pipes)-1]
 	qCopy.pipes = append(qCopy.pipes, tailPipes...)
-	if !qCopy.CanReturnLastNResults() {
-		return nil, 0, 0
+	if !qCopy.CanReturnTimeSortedNResults() {
+		return nil, 0, 0, false
 	}
 
-	// The query is eligible for last N results optimization.
-	return qCopy, offset, limit
+	// The query is eligible for time-sorted N results optimization.
+	return qCopy, offset, limit, isDesc
 }
 
-// CanApplyLastNResultsOptimization returns true if there is sense for applying 'last N' optimization for the query on the time range [start, end]
-func CanApplyLastNResultsOptimization(start, end int64) bool {
+// CanApplyTimeSortedNResultsOptimization returns true if the time-sorted N results optimization is worth applying on the time range [start, end].
+func CanApplyTimeSortedNResultsOptimization(start, end int64) bool {
 	return end/2-start/2 > nsecsPerSecond
 }
 
-func getOffsetLimitFromPipe(p pipe) (uint64, uint64, bool) {
+func getOffsetLimitFromPipe(p pipe) (uint64, uint64, bool, bool) {
 	switch t := p.(type) {
 	case *pipeSort:
 		return getOffsetLimitFromPipeSort(t)
@@ -731,43 +731,40 @@ func getOffsetLimitFromPipe(p pipe) (uint64, uint64, bool) {
 	case *pipeLast:
 		return getOffsetLimitFromPipeSort(t.ps)
 	default:
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 }
 
-func getOffsetLimitFromPipeSort(ps *pipeSort) (uint64, uint64, bool) {
+func getOffsetLimitFromPipeSort(ps *pipeSort) (uint64, uint64, bool, bool) {
 	if ps.limit <= 0 || ps.limit > 50_000 {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if ps.offset > 50_000 {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if ps.rankFieldName != "" {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if len(ps.partitionByFields) > 0 {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if len(ps.byFields) != 1 {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if ps.byFields[0].name != "_time" {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	isDesc := ps.byFields[0].isDesc
 	if ps.isDesc {
 		isDesc = !isDesc
 	}
-	if !isDesc {
-		return 0, 0, false
-	}
-	return ps.offset, ps.limit, true
+	return ps.offset, ps.limit, isDesc, true
 }
 
-// CanReturnLastNResults returns true if time range filter at q can be adjusted for returning the last N results with the biggest _time values.
-func (q *Query) CanReturnLastNResults() bool {
+// CanReturnTimeSortedNResults returns true if time range filter at q can be adjusted for returning N results sorted by _time (asc or desc)
+func (q *Query) CanReturnTimeSortedNResults() bool {
 	for _, p := range q.pipes {
-		if !p.canReturnLastNResults() {
+		if !p.canReturnTimeSortedNResults() {
 			return false
 		}
 	}
@@ -948,9 +945,12 @@ func (q *Query) addExtraFiltersNoSubqueries(filters []filter) {
 	q.optimizeNoSubqueries()
 }
 
-// AddPipeSortByTimeDesc adds `| sort (_time) desc` pipe to q.
-func (q *Query) AddPipeSortByTimeDesc() {
-	s := "sort by (_time) desc"
+// AddPipeSortByTime adds `| sort by (_time)` or `| sort by (_time) desc` pipe to q depending on isDesc.
+func (q *Query) AddPipeSortByTime(isDesc bool) {
+	s := "sort by (_time)"
+	if isDesc {
+		s += " desc"
+	}
 	q.mustAppendPipe(s)
 }
 
@@ -1167,7 +1167,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 				// Skip `stats` pipe, since it is updated with the grouping by `_time` in the addByTimeFieldToStatsPipes() below.
 				continue
 			}
-			if !p.canReturnLastNResults() {
+			if !p.canReturnTimeSortedNResults() {
 				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
 			}
 		}

@@ -56,7 +56,7 @@ func (pu *pipeUnpackSyslog) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackSyslog) canReturnLastNResults() bool {
+func (pu *pipeUnpackSyslog) canReturnTimeSortedNResults() bool {
 	return true
 }
 

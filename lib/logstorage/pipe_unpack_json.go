@@ -66,7 +66,7 @@ func (pu *pipeUnpackJSON) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
+func (pu *pipeUnpackJSON) canReturnTimeSortedNResults() bool {
 	// TODO: verify that the unpacked fields do not overwrite _time with non-timestamp values.
 
 	return true
