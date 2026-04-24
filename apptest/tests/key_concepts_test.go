@@ -293,3 +293,33 @@ func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryRespo
 		}
 	}
 }
+
+// assertLogsQLResponseOrdered is like assertLogsQLResponseEqual, but compares the responses
+// in the order they were returned by the server — no pre-sort. Use this when the test needs
+// to verify ordering (e.g. sort_direction=asc vs desc).
+func assertLogsQLResponseOrdered(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	if len(got.LogLines) != len(want.LogLines) {
+		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(want.LogLines), len(got.LogLines), strings.Join(got.LogLines, "\n"), strings.Join(want.LogLines, "\n"))
+		return
+	}
+	for i := range len(want.LogLines) {
+		gotLine, wantLine := got.LogLines[i], want.LogLines[i]
+		var gotLineJSON map[string]any
+		var wantLineJSON map[string]any
+		if err := json.Unmarshal([]byte(gotLine), &gotLineJSON); err != nil {
+			t.Errorf("cannot parse got line=%q: %s", gotLine, err)
+			return
+		}
+		if err := json.Unmarshal([]byte(wantLine), &wantLineJSON); err != nil {
+			t.Errorf("cannot parse want line=%q: %s", wantLine, err)
+			return
+		}
+		delete(gotLineJSON, "_stream_id")
+		delete(wantLineJSON, "_stream_id")
+		if diff := cmp.Diff(gotLineJSON, wantLineJSON); diff != "" {
+			t.Errorf("unexpected response at index %d (-want, +got):\n%s\n%s\n%s", i, diff, wantLine, gotLine)
+			return
+		}
+	}
+}

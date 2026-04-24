@@ -16,12 +16,13 @@ type QueryOpts struct {
 	AccountID string
 	ProjectID string
 
-	Timeout      string
-	Start        string
-	End          string
-	Limit        string
-	ExtraFilters []string
-	Format       string
+	Timeout       string
+	Start         string
+	End           string
+	Limit         string
+	SortDirection string
+	ExtraFilters  []string
+	Format        string
 }
 
 func (qos *QueryOpts) asURLValues() url.Values {
@@ -30,6 +31,7 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	addNonEmpty(uv, "start", qos.Start)
 	addNonEmpty(uv, "end", qos.End)
 	addNonEmpty(uv, "limit", qos.Limit)
+	addNonEmpty(uv, "sort_direction", qos.SortDirection)
 	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
 	addNonEmpty(uv, "format", qos.Format)
 	return uv
