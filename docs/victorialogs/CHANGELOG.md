@@ -27,8 +27,10 @@ according to the following docs:
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): remove the `Date format` setting and always display timestamps with nanosecond precision. See [#1161](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1161).
 
 * BUGFIX: [Elasticsearch data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/#elasticsearch-bulk-api): properly report log entries exceeding `-insert.maxLineSizeBytes` as failed items in the `_bulk` response, while continuing to ingest valid log entries from the same request. Previously such log entries could be reported as successful `_bulk` items, or reject the whole request with `400 Bad Request` when the too-long log entry was the last line in the request. See [#1363](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1363).
+* BUGFIX: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): hide sensitive values passed via `-remoteWrite.proxyURL` in `/metrics`, `/flags`, and startup logs. Previously these values could be exposed in plain text. See [#1320](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1320).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): sanitize markdown URLs in logs rendered with `markdown parsing` enabled, allowing only `http`, `https`, `mailto`, and `tel` schemes for active links and images. See [#1313](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1313).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve context view highlight visibility in dark theme. The selected log entry is now highlighted with a more visible blue tint instead of barely visible gray background. See [#1196](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1196).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix stream context view where the selected log overlapped transparently with content below when scrolling. See [#1185](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1185).
 
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 
