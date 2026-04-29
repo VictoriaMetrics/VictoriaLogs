@@ -1,17 +1,24 @@
 {% stripspace %}
 
-{% func BulkResponse(n int, tookMs int64) %}
+{% func BulkResponse(results bulkItemResult, tookMs int64) %}
 {
 	"took":{%dl tookMs %},
-	"errors":false,
+	"errors":{% if hasBulkErrors(results) %}true{% else %}false{% endif %},
 	"items":[
-		{% for i := range n %}
+		{% for i, err := range results %}
 		{
 			"create":{
+				{% if err != nil %}
+				"status":413
+				,"error":{
+					"reason":{%q= err.Error() %}
+				}
+				{% else %}
 				"status":201
+				{% endif %}
 			}
 		}
-		{% if i+1 < n %},{% endif %}
+		{% if i+1 < len(results) %},{% endif %}
 		{% endfor %}
 	]
 }
