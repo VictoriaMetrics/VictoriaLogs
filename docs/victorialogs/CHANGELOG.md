@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [cluster ingestion](https://docs.victoriametrics.com/victorialogs/cluster/): relax validation for logs received via the internal protocol by accepting rows where stream fields don't match same-named regular log fields. This helps avoid dropping OpenTelemetry logs with resource and log record field name collisions.
+
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 
 Released at 2026-04-14

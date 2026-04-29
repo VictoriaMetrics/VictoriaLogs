@@ -320,7 +320,7 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 
 var invalidStreamTagsLogger = logger.WithThrottler("invalid_stream_tags", 5*time.Second)
 
-func verifyStreamTagsCanonical(streamTagsCanonical string, fields []Field) error {
+func verifyStreamTagsCanonical(streamTagsCanonical string, _ []Field) error {
 	st := GetStreamTags()
 	defer PutStreamTags(st)
 
@@ -332,7 +332,7 @@ func verifyStreamTagsCanonical(streamTagsCanonical string, fields []Field) error
 	if len(tail) > 0 {
 		return fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), st)
 	}
-	return st.verifyCanonicalFieldValues(fields)
+	return nil
 }
 
 func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
