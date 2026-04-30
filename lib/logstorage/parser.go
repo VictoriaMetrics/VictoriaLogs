@@ -2277,13 +2277,6 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 		}
 	}
 
-	// The phrase is either a search phrase or a search prefix.
-	if !lex.isSkippedSpace && lex.isKeyword("*") {
-		// The phrase is a search prefix in the form `foo*`.
-		lex.nextToken()
-		return newFilterPrefix(fieldName, phrase), nil
-	}
-
 	// The phrase is a search phrase.
 	return newFilterPhrase(fieldName, phrase), nil
 }

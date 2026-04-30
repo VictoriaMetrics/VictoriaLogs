@@ -81,7 +81,7 @@ const Modal: FC<ModalProps> = ({
               color="gray"
               size="small"
               onClick={onClose}
-              ariaLabel="close"
+              aria-label="close"
             >
               <CloseIcon/>
             </Button>

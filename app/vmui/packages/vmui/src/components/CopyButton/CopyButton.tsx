@@ -23,7 +23,7 @@ export const CopyButton: FC<Props> = ({ title, getData, successfulCopiedMessage 
       variant="text"
       startIcon={<CopyIcon/>}
       onClick={handleClick}
-      ariaLabel={title}
+      aria-label={title}
     />
   </Tooltip>;
 };

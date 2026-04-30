@@ -110,7 +110,7 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
           color="gray"
           size="small"
           startIcon={<CalendarIcon/>}
-          ariaLabel="calendar"
+          aria-label="calendar"
         />
       </div>
       <DatePicker

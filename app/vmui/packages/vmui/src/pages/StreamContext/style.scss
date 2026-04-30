@@ -13,18 +13,7 @@
 
   }
 
-  &_modal &__target-row {
-    top: 100px;
-  }
-
   &__target-row {
-    background-color: rgba($color-dodger-blue, 0.15);
-    border-radius: $border-radius-small;
-    position: sticky;
-    top: 59px;
-    bottom: 0;
-    z-index: 1;
-
     .vm-group-logs-row-content {
       padding-block: $padding-small;
       border-radius: $border-radius-small;
@@ -71,7 +60,7 @@
     gap: $padding-large;
     border-bottom: $border-divider;
     background-color: $color-background-block;
-    z-index: 1;
+    z-index: 11;
 
     &_page {
       border-top: $border-divider;
