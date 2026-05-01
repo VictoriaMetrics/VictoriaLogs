@@ -9,6 +9,8 @@ import { useTableLogsPaginate } from "../../../components/Views/TableView/hooks/
 import { ColumnKey, type Column } from "../../../components/Table/types";
 import { OrderDir } from "../../../types";
 
+const DEFAULT_ORDER = { key: "hits", dir: "desc" } as const;
+
 export type OverviewTableProps = {
   tableId: string;
   rows: LogsFieldValues[]
@@ -78,7 +80,7 @@ const OverviewTableBody: FC<Props> = ({
               tableId={tableId}
               rows={rows}
               columns={columns}
-              defaultOrder={defaultOrder || { key: "hits", dir: "desc" }}
+              defaultOrder={defaultOrder ?? DEFAULT_ORDER}
               isActiveRow={detectActiveRow}
               onClickRow={onClickRow}
               paginationOffset={offset}
