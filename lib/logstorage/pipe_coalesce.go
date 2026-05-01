@@ -17,6 +17,7 @@ type pipeCoalesce struct {
 	srcFields    []string
 	dstField     string
 	defaultValue string
+	dstIsSource  bool
 }
 
 func (pc *pipeCoalesce) String() string {
@@ -24,7 +25,12 @@ func (pc *pipeCoalesce) String() string {
 		logger.Panicf("BUG: pipeCoalesce must contain at least one srcField")
 	}
 
-	s := "coalesce(" + strings.Join(pc.srcFields, ", ") + ")"
+	srcFields := make([]string, len(pc.srcFields))
+	for i, f := range pc.srcFields {
+		srcFields[i] = quoteTokenIfNeeded(f)
+	}
+
+	s := "coalesce(" + strings.Join(srcFields, ", ") + ")"
 	if pc.defaultValue != "" {
 		s += " default " + quoteTokenIfNeeded(pc.defaultValue)
 	}
@@ -53,7 +59,9 @@ func (pc *pipeCoalesce) updateNeededFields(pf *prefixfilter.Filter) {
 		pf.AddAllowFilters(pc.srcFields)
 	}
 
-	pf.AddDenyFilter(pc.dstField)
+	if !pc.dstIsSource {
+		pf.AddDenyFilter(pc.dstField)
+	}
 }
 
 func (pc *pipeCoalesce) hasFilterInWithQuery() bool {
@@ -84,7 +92,8 @@ type pipeCoalesceProcessor struct {
 }
 
 type pipeCoalesceProcessorShard struct {
-	rc resultColumn
+	rc         resultColumn
+	srcColumns []*blockResultColumn
 }
 
 func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
@@ -97,14 +106,16 @@ func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard.rc.name = pc.dstField
 
-	srcColumns := make([]*blockResultColumn, len(pc.srcFields))
+	if shard.srcColumns == nil {
+		shard.srcColumns = make([]*blockResultColumn, len(pc.srcFields))
+	}
 	for i, srcField := range pc.srcFields {
-		srcColumns[i] = br.getColumnByName(srcField)
+		shard.srcColumns[i] = br.getColumnByName(srcField)
 	}
 
 	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
 		value := ""
-		for _, srcColumn := range srcColumns {
+		for _, srcColumn := range shard.srcColumns {
 			v := srcColumn.getValueAtRow(br, rowIdx)
 			if v != "" {
 				value = v
@@ -123,6 +134,7 @@ func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
 	br.addResultColumn(shard.rc)
 	pcp.ppNext.writeBlock(workerID, br)
 
+	clear(shard.srcColumns)
 	shard.rc.reset()
 }
 
@@ -200,6 +212,14 @@ func parsePipeCoalesce(lex *lexer) (pipe, error) {
 		srcFields:    srcFields,
 		dstField:     dstField,
 		defaultValue: defaultValue,
+		dstIsSource:  false,
+	}
+
+	for _, src := range pc.srcFields {
+		if src == pc.dstField {
+			pc.dstIsSource = true
+			break
+		}
 	}
 
 	return pc, nil

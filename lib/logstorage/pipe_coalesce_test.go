@@ -16,6 +16,7 @@ func TestParsePipeCoalesceSuccess(t *testing.T) {
 	f(`coalesce(foo, bar) default " " as result`)
 	f(`coalesce(foo, bar) default foobar as result`)
 	f(`coalesce(foo, bar) default "coalesce" as result`)
+	f(`coalesce("foo bar", "foo-bar") as result`)
 }
 
 func TestParsePipeCoalesceFailure(t *testing.T) {
@@ -185,4 +186,14 @@ func TestPipeCoalesceUpdateNeededFields(t *testing.T) {
 	f("coalesce(s1, s2) as d", "s1,f1,f2", "", "f1,f2,s1", "")
 	f("coalesce(s1, s2) as d", "d,f1,f2", "", "f1,f2,s1,s2", "")
 	f("coalesce(s1, s2, s3) as d", "s1,d,f1,f2", "", "f1,f2,s1,s2,s3", "")
+
+	f("coalesce(s1, s2) as s1", "*", "", "*", "")
+	f("coalesce(s1, s2) as s1", "*", "f1,f2", "*", "f1,f2")
+	f("coalesce(s1, s2) as s1", "*", "s1,f1,f2", "*", "f1,f2,s1")
+	f("coalesce(s1, s2) as s1", "f1,f2", "", "f1,f2", "")
+	f("coalesce(s1, s2) as s1", "s1,f1,f2", "", "f1,f2,s1,s2", "")
+	f("coalesce(s1, s2, s3) as s1", "s1,f1,f2", "", "f1,f2,s1,s2,s3", "")
+
+	f("coalesce(s2, s1) as s1", "*", "", "*", "")
+	f("coalesce(s2, s1) as s1", "s1,f1,f2", "", "f1,f2,s1,s2", "")
 }
