@@ -586,7 +586,8 @@ func (q *Query) AddCountByTimePipe(step, off int64, fields []string) {
 		for _, f := range fields {
 			byFieldsStr += ", " + quoteTokenIfNeeded(f)
 		}
-		s := fmt.Sprintf("stats by (%s) count() hits", byFieldsStr)
+		hitsFieldName := getUniqueResultName("hits", fields)
+		s := fmt.Sprintf("stats by (%s) count() %s", byFieldsStr, quoteTokenIfNeeded(hitsFieldName))
 
 		q.mustAppendPipe(s)
 	}
@@ -980,6 +981,13 @@ func (q *Query) AddPipeOffsetLimit(offset, limit uint64) {
 	q.pipes = optimizeOffsetLimitPipes(q.pipes)
 }
 
+func getUniqueResultName(resultName string, byFields []string) string {
+	for slices.Contains(byFields, resultName) {
+		resultName += "s"
+	}
+	return resultName
+}
+
 func (q *Query) mustAppendPipe(s string) {
 	timestamp := q.GetTimestamp()
 	p := mustParsePipe(s, timestamp)
@@ -1215,6 +1223,11 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			// This pipe doesn't change the set of fields.
 		case *pipeFirst, *pipeLast, *pipeSort:
 			// These pipes do not change the set of fields.
+		case *pipeLimit, *pipeOffset:
+			if step > 0 {
+				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individualley per each step; step=%d", p, step)
+			}
+			// limit and offset pipes do not change the set of fields, so they are allowed in instant queries.
 		case *pipeRunningStats:
 			// `| running_stats ...` pipe must contain the same labelFields as the preceding `stats` pipe.
 			//
@@ -2264,13 +2277,6 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 		}
 	}
 
-	// The phrase is either a search phrase or a search prefix.
-	if !lex.isSkippedSpace && lex.isKeyword("*") {
-		// The phrase is a search prefix in the form `foo*`.
-		lex.nextToken()
-		return newFilterPrefix(fieldName, phrase), nil
-	}
-
 	// The phrase is a search phrase.
 	return newFilterPhrase(fieldName, phrase), nil
 }
@@ -3278,6 +3284,8 @@ func getWeekRangeArg(lex *lexer) (time.Weekday, string, error) {
 		day = time.Friday
 	case "sat", "saturday":
 		day = time.Saturday
+	default:
+		return 0, "", fmt.Errorf("cannot parse %q as weekday", argStr)
 	}
 
 	return day, argStr, nil

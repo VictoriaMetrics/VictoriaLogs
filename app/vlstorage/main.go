@@ -35,7 +35,7 @@ var (
 
 	maxDiskSpaceUsageBytes = flagutil.NewBytes("retention.maxDiskSpaceUsageBytes", 0, "The maximum disk space usage at -storageDataPath before older per-day "+
 		"partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod")
-	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent")
+	maxDiskUsagePercent = flag.Int("retention.maxDiskUsagePercent", 0, "The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#percentage-based-disk-space-limit")
 	futureRetention     = flagutil.NewRetentionDuration("futureRetention", "2d", "Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention")
 	maxBackfillAge = flagutil.NewRetentionDuration("maxBackfillAge", "0", "Log entries with timestamps older than now-maxBackfillAge are rejected during data ingestion; "+
@@ -566,7 +566,7 @@ func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBloc
 
 // GetFieldNames executes qctx and returns field names seen in results.
 //
-// If the filter isn't empty, then only the field names containing the filter substing are returned.
+// If the filter isn't empty, then only the field names containing the filter substring are returned.
 func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
 		return localStorage.GetFieldNames(qctx, filter)
@@ -576,7 +576,7 @@ func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.V
 
 // GetFieldValues executes the given qctx and returns unique values for the fieldName seen in results.
 //
-// If the filter isn't empty, then only the field values containing the filter substing are returned.
+// If the filter isn't empty, then only the field values containing the filter substring are returned.
 //
 // If limit > 0, then up to limit unique values are returned.
 func GetFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {

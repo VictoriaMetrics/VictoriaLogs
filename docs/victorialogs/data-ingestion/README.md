@@ -21,6 +21,7 @@ can accept logs from the following log collectors:
 - OpenTelemetry Collector - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/).
 - Journald - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/).
 - DataDog - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/).
+- Splunk - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/).
 
 The ingested logs can be queried according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/).
 

@@ -331,10 +331,13 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 		}
 	}
 
+	severityNumberStr := fb.formatInt(int64(severityNumber))
+	fs.Add("severity_number", severityNumberStr)
+
 	if severityText == "" {
 		severityText = formatSeverity(severityNumber)
 	}
-	fs.Add("severity", severityText)
+	fs.Add("severity_text", severityText)
 
 	var timestamp int64
 	switch {

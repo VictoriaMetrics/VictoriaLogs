@@ -138,6 +138,25 @@ func (fos *StreamsOpts) asURLValues() url.Values {
 	return uv
 }
 
+// HitsOpts contains params used for query VitoriaLogs via /select/logsql/hits
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats
+type HitsOpts struct {
+	Start string
+	End   string
+	Step  string
+	Field string
+}
+
+func (hos *HitsOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start", hos.Start)
+	addNonEmpty(uv, "end", hos.End)
+	addNonEmpty(uv, "step", hos.Step)
+	addNonEmpty(uv, "field", hos.Field)
+	return uv
+}
+
 // FacetsOpts contains params used for querying VictoriaLogs via /select/logsql/facets
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-facets

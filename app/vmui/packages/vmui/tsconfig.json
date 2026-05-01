@@ -15,13 +15,12 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "downlevelIteration": true,
     "noUnusedLocals": true,
     "paths": {
       "react": ["./node_modules/preact/compat/"],
@@ -34,6 +33,6 @@
     "src"
   ],
   "exclude": [
-    "scripts/**/*.ts",
+    "scripts/**/*.ts"
   ]
 }

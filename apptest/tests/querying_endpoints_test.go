@@ -182,6 +182,20 @@ func TestVlsingleFieldValuesResponse(t *testing.T) {
 
 	responseExpected = `{"values":[{"value":"","hits":2}]}`
 	f(query, field, "", true, responseExpected)
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1278
+	records := []string{
+		`{"_time":"2026-03-27T11:54:59Z","hits":"foo"}`,
+		`{"_time":"2026-03-27T11:55:59Z","hits":"bar"}`,
+		`{"_time":"2026-03-27T11:56:59Z","hits":"foo"}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query = "_time:[2026-03-27T11:50:00Z, 2026-03-27T12:00:00Z)"
+	field = "hits"
+	responseExpected = `{"values":[{"value":"foo","hits":2},{"value":"bar","hits":1}]}`
+	f(query, field, "", false, responseExpected)
 }
 
 func TestVlclusterFieldValuesResponse(t *testing.T) {
@@ -244,6 +258,20 @@ func TestVlclusterFieldValuesResponse(t *testing.T) {
 
 	responseExpected = `{"values":[{"value":"","hits":2}]}`
 	f(query, field, "", true, responseExpected)
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1278
+	records := []string{
+		`{"_time":"2026-03-27T11:54:59Z","hits":"foo"}`,
+		`{"_time":"2026-03-27T11:55:59Z","hits":"bar"}`,
+		`{"_time":"2026-03-27T11:56:59Z","hits":"foo"}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query = "_time:[2026-03-27T11:50:00Z, 2026-03-27T12:00:00Z)"
+	field = "hits"
+	responseExpected = `{"values":[{"value":"foo","hits":2},{"value":"bar","hits":1}]}`
+	f(query, field, "", false, responseExpected)
 }
 
 func TestVlsingleStreamFieldNamesResponse(t *testing.T) {

@@ -8,7 +8,7 @@ $padding-smaller: calc($padding-small / 2);
   align-items: center;
   justify-content: flex-start;
   padding-block: $padding-smaller;
-  padding-inline: $padding-small;
+  padding-inline: $padding-global $padding-small;
   gap: $padding-small;
   min-height: 28px;
   border-radius: $border-radius-small;

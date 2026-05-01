@@ -158,7 +158,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               variant="text"
               startIcon={expandAll ? <CollapseIcon/> : <ExpandIcon/>}
               onClick={handleToggleExpandAll}
-              ariaLabel={expandAll ? "Collapse All" : "Expand All"}
+              aria-label={expandAll ? "Collapse All" : "Expand All"}
             />
           </Tooltip>
           <GroupLogsConfigurators logs={logs}/>

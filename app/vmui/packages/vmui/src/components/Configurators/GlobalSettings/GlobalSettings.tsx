@@ -85,7 +85,7 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
           color="primary"
           startIcon={<SettingsIcon/>}
           onClick={handleOpen}
-          ariaLabel="settings"
+          aria-label="settings"
         />
       </Tooltip>
     )}

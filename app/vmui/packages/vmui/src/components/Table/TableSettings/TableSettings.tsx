@@ -31,7 +31,7 @@ const TableSettings: FC<TableSettingsProps> = (props) => {
           variant="text"
           startIcon={<TuneIcon/>}
           onClick={toggleOpenSettings}
-          ariaLabel={title}
+          aria-label={title}
         />
       </Tooltip>
 

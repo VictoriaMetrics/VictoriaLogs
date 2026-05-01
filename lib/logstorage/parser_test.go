@@ -2627,6 +2627,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("_time:week_range[foo")
 	f("_time:week_range[Mon,")
 	f("_time:week_range[Mon,bar")
+	f("_time:week_range[mom,Wed]")
+	f("_time:week_range[Sun,mom]")
 	f("_time:week_range[Mon,Fri")
 	f("_time:week_range[Mon,Fri] offset foobar")
 
@@ -3994,6 +3996,10 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | count() hits, row_any(_msg) msg_sample`, nsecsPerDay, 0, []string{"_time", "msg_sample"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample`)
 	f(`* | count() hits, row_any(_msg) msg_sample | unpack_json from msg_sample fields (_msg) | rm msg_sample`, nsecsPerDay, 0, []string{"_time", "_msg"}, `* | stats by (_time:86400000000000) count(*) as hits, row_any(_msg) as msg_sample | unpack_json from msg_sample fields (_msg) | delete msg_sample`)
 
+	// limit and offset is allowed for instant queries
+	f(`* | count() hits | limit 10`, 0, 0, []string{}, `* | stats count(*) as hits | limit 10`)
+	f(`* | count() hits | offset 10`, 0, 0, []string{}, `* | stats count(*) as hits | offset 10`)
+
 	// multiple stats pipes and sort pipes
 	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, 0, []string{"_time", "requests"}, `* | stats by (_time:86400000000000, path) count(*) as requests | stats by (_time:86400000000000, requests) count(*) as hits | first by (hits desc) partition by (_time)`)
 
@@ -4410,6 +4416,9 @@ func TestQuery_AddCountByTimePipe(t *testing.T) {
 	f("*", nsecsPerMinute, 0, nil, "* | stats by (_time:1m) count(*) as hits | sort by (_time)")
 	f("*", nsecsPerMinute, 2*nsecsPerHour, nil, "* | stats by (_time:1m offset 2h) count(*) as hits | sort by (_time)")
 	f("foo bar:baz", nsecsPerMinute, -2*nsecsPerHour, nil, "foo bar:baz | stats by (_time:1m offset -2h) count(*) as hits | sort by (_time)")
+
+	// Avoid name collision for field=hits. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1278
+	f("*", nsecsPerMinute, 0, []string{"hits"}, "* | stats by (_time:1m, hits) count(*) as hitss | sort by (_time, hits)")
 
 	// pipes, which do not change _time field
 	f("* | extract 'abc<de>fg' | filter de:='qwer'", nsecsPerMinute, 0, nil, `* | extract "abc<de>fg" | filter de:=qwer | stats by (_time:1m) count(*) as hits | sort by (_time)`)

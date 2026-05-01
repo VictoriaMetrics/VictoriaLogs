@@ -32,10 +32,10 @@ var parserPool fastjson.ParserPool
 // RequestHandler processes Datadog insert requests
 func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 	switch path {
-	case "/insert/datadog/api/v1/validate":
+	case "/api/v1/validate", "/insert/datadog/api/v1/validate":
 		fmt.Fprintf(w, `{}`)
 		return true
-	case "/insert/datadog/api/v2/logs":
+	case "/api/v2/logs", "/insert/datadog/api/v2/logs":
 		return datadogLogsIngestion(w, r)
 	default:
 		return false
@@ -236,11 +236,12 @@ func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) 
 								Name:  bytesutil.ToUnsafeString(pair),
 								Value: "no_label_value",
 							})
+						} else {
+							fields = append(fields, logstorage.Field{
+								Name:  bytesutil.ToUnsafeString(pair[:n]),
+								Value: bytesutil.ToUnsafeString(pair[n+1:]),
+							})
 						}
-						fields = append(fields, logstorage.Field{
-							Name:  bytesutil.ToUnsafeString(pair[:n]),
-							Value: bytesutil.ToUnsafeString(pair[n+1:]),
-						})
 					}
 				}
 			default:

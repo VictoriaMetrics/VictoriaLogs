@@ -2,10 +2,8 @@ module github.com/VictoriaMetrics/VictoriaLogs
 
 go 1.26.2
 
-replace github.com/VictoriaMetrics/VictoriaMetrics => github.com/VictoriaMetrics/VictoriaMetrics v1.139.1-0.20260410173714-33d524bf137e
-
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.140.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.140.1-0.20260414051809-8a20ccf21db7
 	github.com/VictoriaMetrics/easyproto v1.2.0
 	github.com/VictoriaMetrics/metrics v1.43.1
 	github.com/cespare/xxhash/v2 v2.3.0

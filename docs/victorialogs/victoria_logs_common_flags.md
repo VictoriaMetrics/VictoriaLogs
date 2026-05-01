@@ -6,7 +6,7 @@ build:
 sitemap:
   disable: true
 ---
-<!-- The file has to be manually updated during feature work in PR, make docs-update-flags command could be used periodically to ensure the flags in sync. -->
+<!-- The file has to be manually updated during feature work in PR, "TAG=... make docs-update-flags" command could be used periodically to ensure the flags in sync with the given release TAG. -->
 ```shellhelp
 
 victoria-logs is a log management and analytics service.
@@ -230,7 +230,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      The maximum disk space usage at -storageDataPath before older per-day partitions are automatically dropped; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage ; see also -retentionPeriod
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
   -retention.maxDiskUsagePercent int
-     The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage-percent
+     The maximum allowed disk usage percentage (1-100) for the filesystem that contains -storageDataPath before older per-day partitions are automatically dropped; mutually exclusive with -retention.maxDiskSpaceUsageBytes; see https://docs.victoriametrics.com/victorialogs/#percentage-based-disk-space-limit
   -retentionPeriod value
      Log entries with timestamps older than now-retentionPeriod are automatically deleted; log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 7d)
@@ -261,6 +261,29 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -snapshotsMaxAge value
      Snapshots are automatically deleted after the given duration if it is set to positive value. Make sure that the backup process has enough time for backing up the snapshot before its' deletion. See https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 3d)
+  -splunk.ignoreFields array
+     Comma-separated list of fields to ignore for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#dropping-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.maxRequestSize size
+     The maximum size in bytes of a single Splunk request; see https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/
+     Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -splunk.msgField array
+     Field to use as a log message for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#message-field
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.preserveJSONKeys array
+     Comma-separated list of JSON keys that should be preserved from flattening when ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/ and https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.streamFields array
+     Comma-separated list of fields to use as log stream fields for logs ingested over Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#stream-fields
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -splunk.tenantID string
+     TenantID for logs ingested via the Splunk endpoint. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#multitenancy (default "0:0")
+  -splunk.timeField string
+     Field to use as a log timestamp for logs ingested via Splunk protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/#time-field (default "time")
   -storage.minFreeDiskSpaceBytes size
      The minimum free disk space at -storageDataPath after which the storage stops accepting new data
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 10000000)

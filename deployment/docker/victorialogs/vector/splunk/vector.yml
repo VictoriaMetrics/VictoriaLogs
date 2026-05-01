@@ -1,0 +1,36 @@
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+sources:
+  docker:
+    type: docker_logs
+  metrics:
+    type: internal_metrics
+transforms:
+  msg_parser:
+    type: remap
+    inputs:
+      - docker
+    source: |
+      .message = parse_json(.message) ?? .message
+sinks:
+  splunk:
+    type: splunk_hec_logs
+    inputs:
+      - msg_parser
+    endpoint: http://vlagent:9429/insert/splunk
+    indexed_fields:
+      - image
+    encoding:
+      codec: json
+    compression: gzip
+    default_token: test
+    healthcheck:
+      enabled: false
+  victoriametrics:
+    type: prometheus_remote_write
+    endpoint: http://victoriametrics:8428/api/v1/write
+    inputs: 
+      - metrics
+    healthcheck:
+      enabled: false

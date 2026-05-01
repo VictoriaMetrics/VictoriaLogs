@@ -6,7 +6,7 @@ build:
 sitemap:
   disable: true
 ---
-<!-- The file has to be manually updated during feature work in PR, make docs-update-flags command could be used periodically to ensure the flags in sync. -->
+<!-- The file has to be manually updated during feature work in PR, "TAG=... make docs-update-flags" command could be used periodically to ensure the flags in sync with the given release TAG. -->
 ```shellhelp
 
 vlogscli is a command-line tool for querying VictoriaLogs.
@@ -31,6 +31,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/querying/vlogscli/
      Prefix for environment variables if -envflag.enable is set
   -filestream.disableFadvise
      Whether to disable fadvise() syscall when reading large data files. The fadvise() syscall prevents from eviction of recently accessed data from OS page cache during background merges and backups. In some rare cases it is better to disable the syscall if it uses too much CPU
+  -fs.disableMincore
+     Whether to disable the mincore() syscall for checking mmap()ed files. By default, mincore() is used to detect whether mmap()ed file pages are resident in memory. Disabling mincore() may be needed on older ZFS filesystems (below 2.1.5), since it may trigger ZFS bug. See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10327 for details.
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
