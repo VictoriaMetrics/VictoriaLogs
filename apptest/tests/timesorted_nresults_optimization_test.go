@@ -9,7 +9,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
-// TestVlsingleTimeSortedNResultsOptimization verifies that last N optimization works correctly.
+// TestVlsingleTimeSortedNResultsOptimization verifies that time-sorted N results optimization works correctly.
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/802#issuecomment-3584878274
 func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {

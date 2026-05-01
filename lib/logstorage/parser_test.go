@@ -3751,7 +3751,7 @@ func TestQueryGetTimeSortedNResultsQuery_Failure(t *testing.T) {
 	// unexpected partition
 	f("* | sort (_time desc) limit 5 partition by (x)")
 
-	// preceding pipes cannot be used for returning last N results with the biggest _time values
+	// preceding pipes cannot be used for returning N results sorted by _time
 	f("* | stats by (_time:hour) count() y | sort (_time desc) limit 5")
 
 	// missing _time field before the sort pipe

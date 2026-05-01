@@ -80,7 +80,7 @@ func (pm *pipeMath) canLiveTail() bool {
 }
 
 func (pm *pipeMath) canReturnTimeSortedNResults() bool {
-	// TODO: if math clobbers _time field, then it may impossible returning lastN results.
+	// TODO: if math clobbers _time field, then time-sorted N results optimization may not be applicable.
 	// TODO: properly verify this case.
 
 	return true
