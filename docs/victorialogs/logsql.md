@@ -564,9 +564,36 @@ This query is equivalent to the following [`exact` filter](https://docs.victoria
 app:="nginx"
 ```
 
+Multiple conditions inside `{...}` are combined with `and` logic by default - a log entry must match all of them:
+
+```logsql
+{app="nginx",env="prod"}
+```
+
+Conditions can also be combined with `or` logic using the `or` keyword - a log entry matches if it satisfies at least one of the conditions:
+
+```logsql
+{env="prod" or environment="prod"}
+```
+
+`and` and `or` conditions can be mixed. `and` has higher precedence than `or`,
+so the following query selects log entries where either (`app="nginx"` and `env="prod"`) or `app="mysql"`:
+
+```logsql
+{app="nginx",env="prod" or app="mysql"}
+```
+
 The stream filter supports `{label in (v1,...,vN)}` and `{label not_in (v1,...,vN)}` syntax.
 It is equivalent to `{label=~"v1|...|vN"}` and `{label!~"v1|...|vN"}` respectively. The `v1`, ..., `vN` are properly escaped inside the regexp.
 For example, `{app in ("nginx", "foo.bar")}` is equivalent to `{app=~"nginx|foo\\.bar"}` - note that the `.` char is properly escaped.
+
+The `in` operator can be combined with `and`/`or` for concise multi-value matching.
+For example, the following query selects log entries where `app` is `nginx` or `mysql` running in `prod` environment,
+or any `app` from the `monitoring` env:
+
+```logsql
+{env="prod",app in ("nginx","mysql") or env="monitoring"}
+```
 
 It is allowed to add `_stream:` prefix in front of `{...}` filter in order to make clear that the filtering is performed
 on the [`_stream` log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
