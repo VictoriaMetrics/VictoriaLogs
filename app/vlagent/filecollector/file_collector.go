@@ -117,10 +117,8 @@ func startRead(argIdx int, filePath string) {
 		return
 	}
 
-	if excludePattern := excludeGlob.GetOptionalArg(argIdx); excludePattern != "" {
-		if ok, _ := filepath.Match(excludePattern, filePath); ok {
-			return
-		}
+	if matchesAnyExcludeGlob(filePath, *excludeGlob) {
+		return
 	}
 
 	if filepath.Ext(filePath) == ".gz" {
@@ -173,4 +171,28 @@ func isGlob(pattern string) bool {
 		return strings.ContainsAny(pattern, "*?[")
 	}
 	return strings.ContainsAny(pattern, `*?[\`)
+}
+
+// matchesAnyExcludeGlob reports whether filePath matches any of the
+// configured -fileCollector.excludeGlob patterns.
+//
+// Previously the matcher only consulted the excludeGlob entry at the same
+// argument index as the matched include glob (via GetOptionalArg). That
+// silently dropped every -fileCollector.excludeGlob beyond the count of
+// -fileCollector.glob flags, which is the bug reported in
+// https://github.com/VictoriaMetrics/VictoriaLogs/issues/1374. Each exclude
+// pattern is now applied to every file path independently.
+//
+// Empty patterns are tolerated and ignored so a stray `-excludeGlob=""`
+// does not reject every file via filepath.Match's empty-pattern semantics.
+func matchesAnyExcludeGlob(filePath string, excludePatterns []string) bool {
+	for _, pattern := range excludePatterns {
+		if pattern == "" {
+			continue
+		}
+		if ok, _ := filepath.Match(pattern, filePath); ok {
+			return true
+		}
+	}
+	return false
 }
