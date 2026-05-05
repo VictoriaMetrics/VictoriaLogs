@@ -1852,6 +1852,8 @@ LogsQL supports the following pipes:
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_values-pipe) extracts the given field
+  from every object inside a JSON array stored at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
 - [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-pipe) returns the last N logs after sorting them
   by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -2727,9 +2729,49 @@ _time:5m | unpack_words _msg as words | json_array_len (words) as words_count | 
 
 See also:
 
+- [`json_array_values` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_values-pipe)
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 - [`first` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#first-pipe)
+
+### json_array_values pipe
+
+`<q> | json_array_values element_field from source_field as result_field` extracts the value of `element_field`
+from every object stored in the JSON array at `source_field`, and writes the resulting JSON array
+into `result_field`, for every log entry returned by `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax).
+
+For example, the following query extracts the `message` field from every object inside the `parts` JSON array
+and stores the resulting JSON array into the `messages` field, across logs for the last 5 minutes:
+
+```logsql
+_time:5m | json_array_values message from parts as messages
+```
+
+Given an input log entry with the `parts` field set to:
+
+```json
+[{"ts":"2026-04-30T10:00:00Z","message":"failed to connect"},{"ts":"2026-04-30T10:00:01Z","message":" to remote storage"},{"ts":"2026-04-30T10:00:02Z","message":": timeout"}]
+```
+
+the resulting `messages` field is:
+
+```json
+["failed to connect"," to remote storage",": timeout"]
+```
+
+Non-string element values are preserved in the resulting JSON array, including numbers, booleans, nested objects and nested arrays.
+Array elements that aren't JSON objects, or that don't contain `element_field`, are skipped.
+If `source_field` is missing or doesn't hold a JSON array, the result is an empty JSON array `[]`.
+
+If `from source_field` is omitted, the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) field is used.
+If `as result_field` is omitted, the result is written to the [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) field.
+
+See also:
+
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
+- [issue #712 (`concat` pipe)](https://github.com/VictoriaMetrics/VictoriaLogs/issues/712)
 
 ### hash pipe
 

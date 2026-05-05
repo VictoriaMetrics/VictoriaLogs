@@ -200,6 +200,7 @@ func initPipeParsers() {
 		"hash":              parsePipeHash,
 		"join":              parsePipeJoin,
 		"json_array_len":    parsePipeJSONArrayLen,
+		"json_array_values": parsePipeJSONArrayValues,
 		"head":              parsePipeLimit,
 		"keep":              parsePipeFields,
 		"last":              parsePipeLast,
