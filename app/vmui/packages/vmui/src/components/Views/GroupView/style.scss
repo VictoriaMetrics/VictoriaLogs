@@ -355,6 +355,20 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         background-color: $color-hover-black;
       }
 
+      &__search-input {
+        padding: 0 calc($padding-global / 2);
+      }
+
+      &__search-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: $padding-large 0;
+        color: $color-text-disabled;
+        text-align: center;
+      }
+
       &-item {
         border-bottom: 1px dashed $border-divider-color;
 
