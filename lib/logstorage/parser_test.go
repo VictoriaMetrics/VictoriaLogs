@@ -2696,6 +2696,7 @@ func TestParseQuery_Failure(t *testing.T) {
 
 	// invalid i
 	f(`i(`)
+	f(`i (foo)`)
 	f(`i(aa`)
 	f(`i(aa, bb)`)
 	f(`i(*`)
@@ -2729,6 +2730,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	// invalid contains_any
 	f(`contains_any`)
 	f(`a:contains_any`)
+	f(`contains_any (foo)`)
 	f(`contains_any(`)
 	f(`contains_any(,)`)
 	f(`contains_any(f, b c)`)
@@ -2763,6 +2765,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`contains_all(x | fields a,b)`)
 
 	// invalid ipv4_range
+	f(`ipv4_range (1.2.3.4, 5.6.7.8)`)
+	f(`ip:ipv4_range (1.2.3.4, 5.6.7.8)`)
 	f(`ipv4_range(`)
 	f(`ipv4_range(foo,bar)`)
 	f(`ipv4_range(1.2.3.4*)`)
@@ -2800,6 +2804,8 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`pattern_match_suffix(`)
 
 	// invalid range
+	f(`range (1,2)`)
+	f(`foo:range (1,2)`)
 	f(`range(`)
 	f(`range(foo,bar)`)
 	f(`range(1"`)
