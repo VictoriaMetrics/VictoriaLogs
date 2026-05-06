@@ -34,6 +34,9 @@ import (
 var (
 	syslogTimezone = flag.String("syslog.timezone", "Local", "Timezone to use when parsing timestamps in RFC3164 syslog messages. Timezone must be a valid IANA Time Zone. "+
 		"For example: America/New_York, Europe/Berlin, Etc/GMT+3 . See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
+	syslogMsgField = flagutil.NewArrayString("syslog.msgField", "Fields to use as the _msg field. "+
+		"Defaults to 'message' for plain syslog and 'cef.name' (name of the event) for CEF-formatted logs. "+
+		"See https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field")
 
 	listenAddrTCP = flagutil.NewArrayString("syslog.listenAddr.tcp", "Comma-separated list of TCP addresses to listen to for Syslog messages. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
@@ -605,14 +608,22 @@ func processLine(line []byte, currentYear int, timezone *time.Location, useLocal
 			p.AddField("hostname", remoteIP)
 		}
 	}
-	logstorage.RenameField(p.Fields, msgFields, "_msg")
+	logstorage.RenameField(p.Fields, getMsgFields(), "_msg")
 	lmp.AddRow(ts, p.Fields, -1)
 
 	return nil
 }
 
 var timeFields = []string{"timestamp"}
-var msgFields = []string{"message"}
+
+var defaultMsgFields = []string{"message", "cef.name"}
+
+func getMsgFields() []string {
+	if len(*syslogMsgField) > 0 {
+		return *syslogMsgField
+	}
+	return defaultMsgFields
+}
 
 var (
 	errorsTotal = metrics.NewCounter(`vl_errors_total{type="syslog"}`)
