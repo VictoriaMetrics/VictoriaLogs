@@ -48,5 +48,4 @@ export const lightPalette = {
   "color-log-hits-bar-3": "#64B5F6",
   "color-log-hits-bar-4": "#E57373",
   "color-log-hits-bar-5": "#8a62f0",
-
 };

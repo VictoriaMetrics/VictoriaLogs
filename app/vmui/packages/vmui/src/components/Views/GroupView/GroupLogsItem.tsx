@@ -1,4 +1,4 @@
-import { FC, memo, useMemo, useCallback, useEffect, useState, ReactNode } from "preact/compat";
+import { FC, memo, ReactNode, useCallback, useEffect, useMemo, useState } from "preact/compat";
 import { Logs } from "../../../api/types";
 import "./style.scss";
 import useBoolean from "../../../hooks/useBoolean";
@@ -19,6 +19,8 @@ import StreamContextButton from "../../../pages/StreamContext/StreamContextButto
 import { useAppState } from "../../../state/common/StateContext";
 import { formatDateWithNanoseconds } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
+import { getLogLevel } from "../../../utils/logLevel";
+import { LOG_LEVEL_COLORS } from "../../../constants/logLevel";
 
 interface Props {
   log: Logs;
@@ -29,7 +31,14 @@ interface Props {
   onItemClick?: (log: Logs) => void;
 }
 
-const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hideGroupButton, className, onItemClick }) => {
+const GroupLogsItem: FC<Props> = ({
+  log,
+  displayFields = [],
+  isContextView,
+  hideGroupButton,
+  className,
+  onItemClick
+}) => {
   const { isDarkTheme } = useAppState();
   const { isMobile } = useDeviceDetect();
 
@@ -45,6 +54,16 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
   const { timezone } = useTimeState();
 
   const noWrapLines = searchParams.get(LOGS_URL_PARAMS.NO_WRAP_LINES) === "true";
+  const [disabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
+
+  const logLevel = useMemo(() => {
+    if (disabledLevelDetection) return null;
+    const level = getLogLevel(log);
+    return {
+      label: level,
+      color: LOG_LEVEL_COLORS[level],
+    };
+  }, [log, disabledLevelDetection, isDarkTheme]);
 
   const formattedTime = useMemo(() => {
     if (!log._time) return "";
@@ -145,6 +164,19 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
         >
           {formattedTime || "timestamp missing"}
         </div>
+        {logLevel && (
+        <Tooltip
+          title="Detected log level. Can be disabled in Group view settings."
+          placement="top-center"
+        >
+          <div
+            className="vm-group-logs-row__level-badge"
+            style={{ color: logLevel.color }}
+          >
+            {logLevel.label}
+          </div>
+        </Tooltip>
+        )}
         <div
           className={classNames({
             "vm-group-logs-row-content__msg": true,
