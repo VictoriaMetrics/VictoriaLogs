@@ -203,7 +203,7 @@
           "refId": "A"
         }
       ],
-      "title": "Namespace",
+      "title": "Namespaces",
       "type": "stat"
     },
     {
@@ -268,7 +268,7 @@
           "refId": "A"
         }
       ],
-      "title": "Container",
+      "title": "Containers",
       "type": "stat"
     },
     {
@@ -340,6 +340,7 @@
         "y": 2
       },
       "id": 9,
+      "interval": "1m",
       "options": {
         "legend": {
           "calcs": [
@@ -354,7 +355,7 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "pluginVersion": "12.4.3",
@@ -372,7 +373,7 @@
           "refId": "A"
         }
       ],
-      "title": "Logs volume",
+      "title": "Logs volume (per $__interval)",
       "type": "timeseries"
     },
     {
@@ -570,7 +571,7 @@
               }
             ]
           },
-          "unit": "logs/s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -581,11 +582,13 @@
         "y": 7
       },
       "id": 12,
+      "interval": "1m",
       "options": {
         "legend": {
           "calcs": [
-            "lastNotNull",
-            "sum"
+            "mean",
+            "max",
+            "min"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -596,7 +599,7 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "pluginVersion": "12.4.3",
@@ -607,14 +610,14 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.pod_namespace) rate() logs_rate\r\n| filter logs_rate: > 0",
+          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.pod_namespace) count() logs_count\r\n| filter logs_count: > 0",
           "isApplyExtraFiltersToRootQuery": false,
           "legendFormat": "{{kubernetes.pod_namespace}}",
           "queryType": "statsRange",
           "refId": "A"
         }
       ],
-      "title": "Logs rate by namespace",
+      "title": "Logs by namespace (per $__interval)",
       "type": "timeseries"
     },
     {
@@ -714,13 +717,13 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| top 10 (kubernetes.container_name)",
+          "expr": "{kubernetes.pod_namespace in($namespace)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| top 50 (kubernetes.container_name)",
           "isApplyExtraFiltersToRootQuery": false,
           "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "Top 10 logs by containers",
+      "title": "Top 50 logs by containers",
       "transformations": [
         {
           "id": "extractFields",
@@ -812,7 +815,7 @@
               }
             ]
           },
-          "unit": "logs/s"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -826,8 +829,9 @@
       "options": {
         "legend": {
           "calcs": [
-            "lastNotNull",
-            "sum"
+            "mean",
+            "max",
+            "min"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -838,7 +842,7 @@
         "tooltip": {
           "hideZeros": false,
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "pluginVersion": "12.4.3",
@@ -849,14 +853,14 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.container_name) rate() logs_rate\r\n| filter logs_rate: > 0",
+          "expr": "{kubernetes.pod_namespace in($namespace), kubernetes.container_name in($container)}\r\n| format if (log.level:\"\") \"unknown\" as log.level\r\n| log.level:in($level)\r\n| stats by (kubernetes.container_name) count() logs_count\r\n| filter logs_count: > 0",
           "isApplyExtraFiltersToRootQuery": false,
           "legendFormat": "{{kubernetes.container_name}}",
           "queryType": "statsRange",
           "refId": "A"
         }
       ],
-      "title": "Logs rate by container",
+      "title": "Logs by container (per $__interval)",
       "type": "timeseries"
     },
     {
@@ -943,7 +947,7 @@
               }
             ]
           },
-          "pluginVersion": "12.4.2",
+          "pluginVersion": "12.4.3",
           "targets": [
             {
               "datasource": {
@@ -1060,7 +1064,7 @@
               }
             ]
           },
-          "pluginVersion": "12.4.2",
+          "pluginVersion": "12.4.3",
           "targets": [
             {
               "datasource": {
@@ -1137,7 +1141,7 @@
             "unwrappedColumns": false,
             "wrapLogMessage": true
           },
-          "pluginVersion": "12.4.2",
+          "pluginVersion": "12.4.3",
           "targets": [
             {
               "datasource": {
@@ -1164,7 +1168,10 @@
   ],
   "preload": false,
   "schemaVersion": 42,
-  "tags": [],
+  "tags": [
+    "kubernetes",
+    "victorialogs"
+  ],
   "templating": {
     "list": [
       {
@@ -1312,12 +1319,12 @@
     ]
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "VictoriaLogs - Explorer K8S",
+  "title": "VictoriaLogs - Explorer for Kubernetes logs",
   "uid": "lajgcmm",
   "version": 1,
   "weekStart": ""
