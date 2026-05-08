@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func BenchmarkReadLinesBigSizeLines(b *testing.B) {
@@ -61,5 +63,9 @@ func (noopProcessor) TryAddLine(_ []byte) bool {
 }
 
 func (noopProcessor) Flush() {}
+
+func (noopProcessor) DebugInfo() []logstorage.Field {
+	return nil
+}
 
 func (noopProcessor) MustClose() {}

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
@@ -18,6 +20,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/filecollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/kubernetescollector"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/targetsstatus"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 )
@@ -32,6 +35,12 @@ var (
 	tmpDataPath = flag.String("tmpDataPath", "", "Base directory for storing vlagent data. "+
 		"Used as default for -remoteWrite.tmpDataPath, -kubernetesCollector.checkpointsPath, "+
 		"and -fileCollector.checkpointsPath unless those flags are set explicitly")
+)
+
+var (
+	//go:embed static
+	staticFiles  embed.FS
+	staticServer = http.FileServer(http.FS(staticFiles))
 )
 
 func main() {
@@ -91,9 +100,17 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		fmt.Fprintf(w, "See docs at <a href='https://docs.victoriametrics.com/victorialogs/vlagent/'>https://docs.victoriametrics.com/victorialogs/vlagent/</a></br>")
 		fmt.Fprintf(w, "Useful endpoints:</br>")
 		httpserver.WriteAPIHelp(w, [][2]string{
+			{"targets", "information about processing files and Kubernetes Pods"},
 			{"metrics", "available service metrics"},
 			{"flags", "command-line flags"},
 		})
+		return true
+	}
+	if r.URL.Path == "/targets" {
+		return targetsstatus.RequestHandler(w, r)
+	}
+	if strings.HasPrefix(r.URL.Path, "/static") {
+		staticServer.ServeHTTP(w, r)
 		return true
 	}
 	return vlinsert.RequestHandler(w, r)

@@ -1,0 +1,51 @@
+{% import "github.com/VictoriaMetrics/VictoriaMetrics/lib/htmlcomponents" %}
+
+{% func TargetsPage(data []targetsData) %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {%= htmlcomponents.CommonHeader() %}
+    <title>vlagent / targets</title>
+</head>
+<body>
+    {%= htmlcomponents.Navbar() %}
+    <div class="container-fluid py-3">
+        <h4 class="mb-3">Targets</h4>
+        {% for _, section := range data %}
+            <h5 class="mt-4 mb-2 pb-1 border-bottom">{%s section.Category %}</h5>
+            {% for _, group := range section.Groups %}
+                <details class="mb-2" open>
+                    <summary class="p-2 bg-light border rounded" id="{%s group.Group %}">
+                        <a href="#{%s group.Group %}" class="text-decoration-none text-dark font-monospace">{%s group.Group %}</a>
+                        <span class="text-secondary fw-normal ms-2">({%d len(group.Targets) %})</span>
+                    </summary>
+                    <div class="ms-3 mt-2">
+                        {% for _, t := range group.Targets %}
+                            <details class="mb-1">
+                                <summary class="font-monospace p-1 border-bottom">{%s t.Preview %}</summary>
+                                <table class="table table-sm table-bordered mt-2">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Field</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for _, field := range t.DebugInfo %}
+                                            <tr>
+                                                <td>{%s field.Name %}</td>
+                                                <td class="font-monospace">{%s field.Value %}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </details>
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</body>
+</html>
+{% endfunc %}

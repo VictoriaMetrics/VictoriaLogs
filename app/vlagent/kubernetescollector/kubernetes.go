@@ -75,6 +75,14 @@ func Init(tmpDataPath string) {
 	logger.Infof("started Kubernetes log collector for node %q", currentNodeName)
 }
 
+// DebugInfo returns debug information of each currently processing file.
+func DebugInfo() [][]logstorage.Field {
+	if collector == nil {
+		return nil
+	}
+	return collector.tailer.DebugInfo()
+}
+
 func Stop() {
 	if collector != nil {
 		collector.stop()

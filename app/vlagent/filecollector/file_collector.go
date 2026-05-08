@@ -15,6 +15,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/tail"
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 var (
@@ -156,6 +157,14 @@ func startRead(argIdx int, filePath string) {
 
 	proc := newProcessor(argIdx, filePath, storage)
 	tailer.StartRead(filePath, proc)
+}
+
+// DebugInfo returns debug information of each currently processing file.
+func DebugInfo() [][]logstorage.Field {
+	if tailer == nil {
+		return nil
+	}
+	return tailer.DebugInfo()
 }
 
 func Stop() {
