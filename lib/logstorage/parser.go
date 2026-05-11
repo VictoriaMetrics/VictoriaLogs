@@ -2323,7 +2323,7 @@ func parseAnyCaseFilter(lex *lexer, fieldName string) (filter, error) {
 	})
 }
 
-func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg string, isPrefiFilter bool) (filter, error)) (filter, error) {
+func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg string, isPrefixFilter bool) (filter, error)) (filter, error) {
 	lexState := lex.backupState()
 
 	funcName := lex.token
@@ -2536,19 +2536,19 @@ func tryParseIPv6CIDR(s string) ([16]byte, [16]byte, bool) {
 func parseFilterContainsAll(lex *lexer, fieldName string) (filter, error) {
 	var fi filterContainsAll
 	fg := newFilterGeneric(fieldName, &fi)
-	return parseInValues(lex, fieldName, fg, &fi.values)
+	return parseInValues(lex, fg, &fi.values)
 }
 
 func parseFilterContainsAny(lex *lexer, fieldName string) (filter, error) {
 	var fi filterContainsAny
 	fg := newFilterGeneric(fieldName, &fi)
-	return parseInValues(lex, fieldName, fg, &fi.values)
+	return parseInValues(lex, fg, &fi.values)
 }
 
 func parseFilterIn(lex *lexer, fieldName string) (filter, error) {
 	var fi filterIn
 	fg := newFilterGeneric(fieldName, &fi)
-	return parseInValues(lex, fieldName, fg, &fi.values)
+	return parseInValues(lex, fg, &fi.values)
 }
 
 func parseFilterContainsCommonCase(lex *lexer, fieldName string) (filter, error) {
@@ -2581,10 +2581,10 @@ func parseFilterEqualsCommonCase(lex *lexer, fieldName string) (filter, error) {
 	return fi, nil
 }
 
-func parseInValues(lex *lexer, fieldName string, f filter, iv *inValues) (filter, error) {
+func parseInValues(lex *lexer, f filter, iv *inValues) (filter, error) {
 	// Try parsing in(arg1, ..., argN) at first
 	lexState := lex.backupState()
-	fi, err := parseFuncArgsPossibleWildcard(lex, fieldName, func(args []string) (filter, error) {
+	fi, err := parseFuncArgsPossibleWildcard(lex, func(args []string) (filter, error) {
 		iv.values = args
 		return f, nil
 	})
@@ -2962,7 +2962,7 @@ func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, 
 	return callback(funcName, args)
 }
 
-func parseFuncArgsPossibleWildcard(lex *lexer, fieldName string, callback func(args []string) (filter, error)) (filter, error) {
+func parseFuncArgsPossibleWildcard(lex *lexer, callback func(args []string) (filter, error)) (filter, error) {
 	funcName := lex.token
 	lex.nextToken()
 
@@ -3669,7 +3669,7 @@ func parseFilterStreamIDIn(lex *lexer) (filter, error) {
 
 	// Try parsing in(arg1, ..., argN) at first
 	lexState := lex.backupState()
-	fs, err := parseFuncArgsPossibleWildcard(lex, "_stream_id", func(args []string) (filter, error) {
+	fs, err := parseFuncArgsPossibleWildcard(lex, func(args []string) (filter, error) {
 		streamIDs := make([]streamID, len(args))
 		for i, arg := range args {
 			if !streamIDs[i].tryUnmarshalFromString(arg) {
