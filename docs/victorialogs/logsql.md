@@ -1853,6 +1853,8 @@ LogsQL supports the following pipes:
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_values`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_values-pipe) extracts values of the given field from JSON objects stored
+  in a JSON array at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
 - [`last`](https://docs.victoriametrics.com/victorialogs/logsql/#last-pipe) returns the last N logs after sorting them
   by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -2744,6 +2746,31 @@ See also:
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 - [`first` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#first-pipe)
+
+### json_array_values pipe
+
+`<q> | json_array_values <field_name> from <src_field> as <dst_field>` extracts values of the given `<field_name>`
+from every JSON object stored in the JSON array at `<src_field>`, and stores the resulting JSON array of strings
+into `<dst_field>`, for every log entry returned by `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax).
+
+The `from <src_field>` part can be omitted - in this case the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) is used.
+The `as <dst_field>` part can be omitted - in this case the result is stored back into `<src_field>`.
+Dotted `<field_name>` such as `user.name` navigates nested JSON objects.
+
+For example, the following query extracts all unique usernames seen across audit events over the last hour:
+
+```logsql
+_time:1h | json_array_values user from events as users | unroll users | uniq by (users)
+```
+
+Where `events` contains entries like `[{"user":"alice","action":"login"},{"user":"bob","action":"logout"}]`,
+and `users` will contain `["alice","bob"]` for each log entry.
+
+See also:
+
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unpack_json` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_json-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 
 ### hash pipe
 
