@@ -5,8 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/easyproto"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // the pushLogsHandler must store log entry with the given args.
@@ -352,6 +354,10 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 	return eventName, timestamp, nil
 }
 
+// maxFieldNameSize is the maximum size in bytes for field name which VictoriaLogs can accept.
+// See https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length
+const maxFieldNameSize = 128
+
 func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) error {
 	// message KeyValue {
 	//   string key = 1;
@@ -369,6 +375,10 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return nil
 	}
 	fieldName := fb.formatSubFieldName(fieldNamePrefix, key)
+	if len(fieldName) > maxFieldNameSize {
+		fieldNameTooLongLogger.Errorf("ignoring OpenTelemetry field %q as it exceeds the maximum length of %d bytes", fieldName, maxFieldNameSize)
+		return nil
+	}
 
 	// Decode value
 	valueData, ok, err := easyproto.GetMessageData(src, 2)
@@ -386,6 +396,8 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 
 	return nil
 }
+
+var fieldNameTooLongLogger = logger.WithThrottler("otel_field_name_too_log", time.Second*5)
 
 func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
 	// message AnyValue {
