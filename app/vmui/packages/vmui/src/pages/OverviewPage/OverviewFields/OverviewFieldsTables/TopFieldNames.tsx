@@ -1,5 +1,4 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchFieldNames } from "../../hooks/useFetchFieldNames";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { LogsFieldValues } from "../../../../api/types";
@@ -13,9 +12,10 @@ import TopRowMenu from "../FieldRowMenu/TopRowMenu";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
+import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
 
 const TopFieldNames: FC = () => {
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
   const { extraParams, addNewFilter } = useExtraFilters();
   const { fieldFilter, setFieldFilter } = useFieldFilter();

@@ -16,7 +16,7 @@ from [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/).
 - **Available**: [Binary releases](https://github.com/VictoriaMetrics/Victorialogs/releases/latest), Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/victoria-logs/) and [Quay](https://quay.io/repository/victoriametrics/victoria-logs), [Source code](https://github.com/VictoriaMetrics/VictoriaLogs).
 - **Deployment types**: [Single-node version](https://docs.victoriametrics.com/victorialogs/) and [Cluster version](https://docs.victoriametrics.com/victorialogs/cluster/) under [Apache License 2.0](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE).
 - **Getting started:** Read [key concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/) and follow the
-  [quick start guide](https://docs.victoriametrics.com/victorialogs/quick-start/).
+  [quick start guide](https://docs.victoriametrics.com/victorialogs/quickstart/).
 - **Community**: [Slack](https://slack.victoriametrics.com/)(join via [Slack Inviter](https://slack.victoriametrics.com/)), [X (Twitter)](https://x.com/VictoriaMetrics), [YouTube](https://www.youtube.com/@VictoriaMetrics). See full list [here](https://docs.victoriametrics.com/victoriametrics/#community-and-contributions).
 - **Changelog**: Project evolves fast - check the [CHANGELOG](https://docs.victoriametrics.com/victorialogs/changelog/), and [How to upgrade](https://docs.victoriametrics.com/victorialogs/#upgrading).
 - **Enterprise support:** [Contact us](mailto:info@victoriametrics.com) for commercial support with additional [enterprise features](https://docs.victoriametrics.com/victoriametrics/enterprise/).

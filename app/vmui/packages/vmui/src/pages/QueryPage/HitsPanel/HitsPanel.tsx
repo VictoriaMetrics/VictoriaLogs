@@ -3,14 +3,14 @@ import "./style.scss";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import classNames from "classnames";
 import { LogHits } from "../../../api/types";
-import { useTimeDispatch } from "../../../state/time/TimeStateContext";
 import { AlignedData } from "uplot";
 import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
-import { TimeParams } from "../../../types";
+import { TimeParams, TimePeriod } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
 import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
+import { useTimePeriod } from "../hooks/useTimePeriod";
 
 interface Props {
   query: string;
@@ -23,9 +23,9 @@ interface Props {
   isOverview?: boolean;
 }
 
-const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
+const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
   const { isMobile } = useDeviceDetect();
-  const timeDispatch = useTimeDispatch();
+  const { setPeriod } = useTimePeriod();
   const [searchParams] = useSearchParams();
   const hideChart = useMemo(() => searchParams.get("hide_chart") === "true", [searchParams]);
 
@@ -40,8 +40,8 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     });
   };
 
-  const fillTimestamps = (timestamps: number[], period: TimeParams) => {
-    const { step, start, end } = period;
+  const fillTimestamps = (timestamps: number[], period: TimeParams, step: string) => {
+    const { start, end } = period;
     if (!step || !timestamps.length) return timestamps;
 
     const stepSec = getSecondsFromDuration(step);
@@ -67,7 +67,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     const tsUniq = Array.from(new Set(ts));
     const tsUnix = tsUniq.map(t => toEpochSeconds(t));
     const tsSorted = tsUnix.sort((a, b) => a - b);
-    return fillTimestamps(tsSorted, { ...period, step: step! });
+    return fillTimestamps(tsSorted, period, step!);
   };
 
   // Intentionally recompute xAxis only when data changes.
@@ -81,8 +81,8 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
 
   const alertData = useHitsChartAlert({ data, error, isLoading, hideChart });
 
-  const setPeriod = ({ from, to }: { from: Date, to: Date }) => {
-    timeDispatch({ type: "SET_PERIOD", payload: { from, to } });
+  const handleSetPeriod = (nextPeriod: TimePeriod) => {
+    setPeriod({ nextPeriod });
   };
 
   return (
@@ -103,7 +103,7 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
           query={query}
           data={data}
           period={period}
-          setPeriod={setPeriod}
+          setPeriod={handleSetPeriod}
           alertData={alertData}
         />
       )}
@@ -111,4 +111,4 @@ const HitsChart: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   );
 };
 
-export default HitsChart;
+export default HitsPanel;

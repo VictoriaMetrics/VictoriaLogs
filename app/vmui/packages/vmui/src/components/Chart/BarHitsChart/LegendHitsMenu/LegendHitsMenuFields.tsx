@@ -5,7 +5,7 @@ import { convertToFieldFilter } from "../../../../utils/logs";
 import { LegendLogHitsMenu } from "../../../../api/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { ExtraFilter, ExtraFilterOperator } from "../../../ExtraFilters/types";
-import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 
 interface Props {
   fields: string[];

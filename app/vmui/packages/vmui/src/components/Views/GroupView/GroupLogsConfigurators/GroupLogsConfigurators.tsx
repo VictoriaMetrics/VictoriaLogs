@@ -113,7 +113,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
             variant="text"
             startIcon={<TuneIcon/>}
             onClick={toggleOpen}
-            ariaLabel={title}
+            aria-label={title}
           />
         </Tooltip>
         {hasChanges && <span className="vm-group-logs-configurator-button__marker"/>}

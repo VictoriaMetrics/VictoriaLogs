@@ -35,7 +35,7 @@ const TableCopyButton: FC<Props> = ({ getData }) => {
       color="gray"
       size="small"
       onClick={handleCopyLog}
-      ariaLabel="Copy log"
+      aria-label="Copy log"
     />
   );
 };

@@ -181,7 +181,7 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
               color="gray"
               startIcon={<CopyIcon/>}
               onClick={handleCopy}
-              ariaLabel="Copy log"
+              aria-label="Copy log"
             />
           </Tooltip>
         </div>

@@ -1,5 +1,4 @@
 import { getFromStorage, saveToStorage } from "../../utils/storage";
-import { getQueryArray } from "../../utils/query-string";
 import { HistoryKey, setQueriesToStorage } from "../../components/QueryHistory/utils";
 import {
   QueryAutocompleteCache,
@@ -14,42 +13,36 @@ export interface QueryHistoryType {
 }
 
 export interface QueryState {
-  query: string[];
   queryHistory: QueryHistoryType[];
   autocomplete: boolean;
   autocompleteQuick: boolean;
   autocompleteCache: QueryAutocompleteCache;
   metricsQLFunctions: AutocompleteOptions[];
   queryHasTimeFilter: boolean;
+  executeQueryTrigger: number;
 }
 
 export type QueryAction =
-  | { type: "SET_QUERY", payload: string[] }
   | { type: "SET_QUERY_HISTORY_BY_INDEX", payload: { value: QueryHistoryType, queryNumber: number } }
   | { type: "SET_QUERY_HISTORY", payload: { key: HistoryKey, history: QueryHistoryType[] } }
   | { type: "TOGGLE_AUTOCOMPLETE" }
   | { type: "SET_AUTOCOMPLETE_QUICK", payload: boolean }
   | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: QueryAutocompleteCacheItem, value: string[] } }
   | { type: "SET_QUERY_HAS_TIME_FILTER", payload: boolean }
+  | { type: "RUN_QUERY"}
 
-const query = getQueryArray();
 export const initialQueryState: QueryState = {
-  query,
-  queryHistory: query.map(q => ({ index: 0, values: [q] })),
+  queryHistory: [],
   autocomplete: getFromStorage("AUTOCOMPLETE") as boolean || false,
   autocompleteQuick: false,
   autocompleteCache: new QueryAutocompleteCache(),
   metricsQLFunctions: [],
   queryHasTimeFilter: false,
+  executeQueryTrigger: 0,
 };
 
 export function reducer(state: QueryState, action: QueryAction): QueryState {
   switch (action.type) {
-    case "SET_QUERY":
-      return {
-        ...state,
-        query: action.payload.map(q => q)
-      };
     case "SET_QUERY_HISTORY":
       setQueriesToStorage(action.payload.key, action.payload.history);
       return {
@@ -83,6 +76,11 @@ export function reducer(state: QueryState, action: QueryAction): QueryState {
       return {
         ...state,
         queryHasTimeFilter: getOverrideValue() ? action.payload : false
+      };
+    case "RUN_QUERY":
+      return {
+        ...state,
+        executeQueryTrigger: state.executeQueryTrigger + 1
       };
     default:
       throw new Error();

@@ -22,6 +22,7 @@ export const LOGS_DATE_FORMAT = `${DATE_TIME_FORMAT}.SSS`;
 
 // URL parameters for the logs page.
 export const LOGS_URL_PARAMS = {
+  QUERY: "query",
   LIMIT: "limit",
   GROUP_BY: "groupBy",
   DISPLAY_FIELDS: "displayFields",

@@ -1,6 +1,5 @@
-import { FC, useMemo, useRef } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useCallback, useState } from "preact/compat";
 import { useFilterSidebarSticky } from "./hooks/useFilterSidebarSticky";
-import { LogsFieldValues } from "../../api/types";
 import LineLoader from "../Main/LineLoader/LineLoader";
 import FilterSidebarField from "./FilterSidebarField/FilterSidebarField";
 import "../Table/TableSettings/style.scss";
@@ -16,13 +15,15 @@ import { ExtraFilter } from "../ExtraFilters/types";
 import FilterSidebarAlert from "./FilterSidebarAlert/FilterSidebarAlert";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import { isStreamFilter } from "../ExtraFilters/utils/isStreamFilter";
+import { useFetchStreamFieldNames } from "../../pages/OverviewPage/hooks/useFetchStreamNames";
+import { useTimePeriod } from "../../pages/QueryPage/hooks/useTimePeriod";
+import { useDebounceCallback } from "../../hooks/useDebounceCallback";
+import { LogsFieldValues } from "../../api/types";
 
 type Props = {
   query: string;
-  streamFieldNames: LogsFieldValues[];
-  loading: boolean;
-  error: string | Error;
   extraFilters: ExtraFilter[];
+  extraParams: URLSearchParams;
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
   onRemoveByField: (field: string) => void;
@@ -30,15 +31,17 @@ type Props = {
 
 const FilterSidebar: FC<Props> = ({
   query,
-  streamFieldNames,
-  loading,
-  error,
   extraFilters,
+  extraParams,
   onAddFilter,
   onRemoveByValue,
   onRemoveByField,
 }) => {
   const { isMobile } = useDeviceDetect();
+  const { getCurrentPeriod } = useTimePeriod();
+
+  const { fetchStreamFieldNames, streamFieldNames, loading, error, abort } = useFetchStreamFieldNames();
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const sidebarRef = useRef<HTMLElement>(null);
   const { height, top } = useFilterSidebarSticky(sidebarRef);
@@ -64,12 +67,33 @@ const FilterSidebar: FC<Props> = ({
       : allFields.toSorted((a, b) => a.hits - b.hits);
   }, [streamFieldNames, missingSelectedFields, isDescOrder]);
 
-  const sidebarStyles: CSSProperties = useMemo(() => {
+  const sidebarStyles: CSSProperties | undefined = useMemo(() => {
+    if (isMobile) return;
+
     const styles: CSSProperties = { top };
     if (width) styles.width = width;
     if (height) styles.height = height;
     return styles;
-  }, [height, top, width]);
+  }, [height, top, width, isMobile]);
+
+
+  const fetchStreams = useCallback(async () => {
+    try {
+      const period = getCurrentPeriod();
+      await fetchStreamFieldNames({ ...period, query, extraParams });
+      setIsLoaded(true);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      throw err;
+    }
+  }, [fetchStreamFieldNames, getCurrentPeriod, query, extraParams.toString()]);
+
+  const debouncedFetchStreams = useDebounceCallback(fetchStreams, 300);
+
+  useEffect(() => {
+    debouncedFetchStreams();
+    return abort;
+  }, [fetchStreams, abort]);
 
   return (
     <section
@@ -78,7 +102,7 @@ const FilterSidebar: FC<Props> = ({
         "vm-filter-sidebar_hidden": !isVisible,
         "vm-filter-sidebar_mobile": isMobile,
       })}
-      style={isMobile ? {} : sidebarStyles}
+      style={sidebarStyles}
       ref={sidebarRef}
     >
       {loading && <LineLoader/>}
@@ -100,7 +124,7 @@ const FilterSidebar: FC<Props> = ({
       />
 
       <FilterSidebarAlert
-        isVisible={!error && !loading && fields.length === 0}
+        isVisible={!error && !loading && fields.length === 0 && isLoaded}
         variant="info"
         title="No stream fields found"
       />

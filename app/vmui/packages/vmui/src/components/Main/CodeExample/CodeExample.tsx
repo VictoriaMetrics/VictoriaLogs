@@ -39,7 +39,7 @@ const CodeExample: FC<{code: string}> = ({ code }) => {
             color="gray"
             onClick={handlerCopy}
             startIcon={isCopied ? <DoneIcon/> : <CopyIcon/>}
-            ariaLabel="close"
+            aria-label="close"
           />
         </Tooltip>
       </div>
