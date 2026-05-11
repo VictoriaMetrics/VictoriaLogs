@@ -373,7 +373,7 @@ See also ready-to-use `vlagent` configuration examples for the corresponding log
 
 ### Glob pattern requirements
 
-The `-fileCollector.glob` flag must point to a file or a collection of files with the given suffix (extension), not a directory:
+The `-fileCollector.glob` flag must point to a file or a collection of files with a given suffix (extension), not a directory:
 
 ```sh
 # correct
@@ -384,12 +384,41 @@ The `-fileCollector.glob` flag must point to a file or a collection of files wit
 -fileCollector.glob=/var/log/nginx/
 ```
 
-Multiple glob patterns can be specified by repeating the flag:
+### Supported pattern syntax
+
+| Pattern          | Description                                                   |
+|------------------|---------------------------------------------------------------|
+| `*`              | Matches any sequence of characters, excluding path separators |
+| `/**/`           | Matches zero or more directories (recursive)                  |
+| `?`              | Matches any single character, excluding path separators       |
+| `[abc]`, `[a-z]` | Character class; prefix with `^` or `!` to negate             |
+| `{a,b,c}`        | Alternatives - matches any one of the comma-separated terms   |
+| `\\c`            | Escaped character literal                                     |
+
+Examples:
 
 ```sh
--fileCollector.glob=/var/log/nginx/access.log \
--fileCollector.glob=/var/log/nginx/error.log
+# any .log file one level deep under /var/log/
+-fileCollector.glob=/var/log/*/*.log
+
+# any .log file at any depth under /var/log/
+-fileCollector.glob=/var/log/**/*.log
+
+# only access.log or error.log
+-fileCollector.glob=/var/log/nginx/{access,error}.log
+
+# files matching exactly one character prefix
+-fileCollector.glob=/var/log/nginx/?.log
 ```
+
+**Note:** The `*` wildcard does not match hidden files (those starting with `.`).
+To collect logs from hidden files, specify the leading dot explicitly:
+
+```sh
+-fileCollector.glob=/var/log/nginx/.*.log
+```
+
+### Excluding files
 
 To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 
@@ -398,11 +427,35 @@ To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 -fileCollector.excludeGlob=/var/log/com.apple*
 ```
 
-Double-star (`**`) glob patterns are not supported:
+### Multiple glob patterns and ordering
+
+Multiple glob patterns can be specified by repeating the flag:
 
 ```sh
-# incorrect
--fileCollector.glob=/var/log/**/*.log
+-fileCollector.glob=/var/log/nginx/access.log \
+-fileCollector.glob=/var/log/nginx/error.log
+```
+
+Patterns are evaluated in the order they are specified.
+If a file is already being collected by an earlier pattern, subsequent patterns will not start collecting it again -
+each file is processed at most once.
+
+Each `-fileCollector.glob` is paired positionally with its corresponding `-fileCollector.excludeGlob` and `-fileCollector.extraFields`.
+The first `glob` pairs with the first `excludeGlob` and the first `extraFields`, the second with the second, and so on.
+Use an empty string `''` as a placeholder when a specific position requires no exclude pattern or extra fields:
+
+```sh
+# Pair 1: all logs except nginx, labeled as "other"
+# nginx logs are excluded here so they are not consumed by this pair
+# and can be picked up by pair 2 with its own extraFields
+-fileCollector.glob='/var/log/*/*.log'
+-fileCollector.excludeGlob='/var/log/nginx/*'
+-fileCollector.extraFields='{"app":"other"}'
+
+# Pair 2: nginx logs, labeled as "nginx_logs"
+-fileCollector.glob='/var/log/nginx/*.log'
+-fileCollector.excludeGlob=''
+-fileCollector.extraFields='{"app":"nginx_logs"}'
 ```
 
 ### Log rotation
