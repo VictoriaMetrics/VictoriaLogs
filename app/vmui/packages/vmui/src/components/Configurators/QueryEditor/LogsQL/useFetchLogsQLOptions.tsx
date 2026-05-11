@@ -4,7 +4,7 @@ import { ContextData, ContextType } from "./types";
 import { FunctionIcon, LabelIcon, MetricIcon, ValueIcon } from "../../../Main/Icons";
 import { AutocompleteOptions } from "../../../Main/Autocomplete/Autocomplete";
 import { useAppState } from "../../../../state/common/StateContext";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import { AUTOCOMPLETE_LIMITS } from "../../../../constants/queryAutocomplete";
 import { LogsFieldValues } from "../../../../api/types";
 import { useLogsDispatch, useLogsState } from "../../../../state/logsPanel/LogsStateContext";
@@ -29,7 +29,7 @@ const icons = {
 
 export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: URLSearchParams) => {
   const { serverUrl } = useAppState();
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { autocompleteCache } = useLogsState();
   const dispatch = useLogsDispatch();
   const tenant = useTenant();

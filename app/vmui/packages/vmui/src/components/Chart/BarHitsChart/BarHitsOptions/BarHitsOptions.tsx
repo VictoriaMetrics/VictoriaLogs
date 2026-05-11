@@ -15,12 +15,12 @@ import Modal from "../../../Main/Modal/Modal";
 import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
 import { WITHOUT_GROUPING } from "../../../../constants/logs";
-import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
 import { humanizeSeconds } from "../../../../utils/time";
 import { generateIntervalsMs } from "../../../../utils/intervals";
+import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 
 interface Props {
   query?: string;
@@ -42,7 +42,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   const { topHits, groupFieldHits, step } = useHitsChartConfig();
 
   const { extraParams } = useExtraFilters();
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
@@ -121,7 +121,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     if (!shouldReset(step.value)) return;
 
     const t = setTimeout(() => {
-      if (shouldReset(step.value)) step.set(defaultStep);
+      if (shouldReset(step.value)) step.set(defaultStep, { replace: true });
     }, 200);
 
     return () => clearTimeout(t);

@@ -1,6 +1,5 @@
 import { FC, useRef } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
-import { useTimeDispatch } from "../../../../state/time/TimeStateContext";
 import { useFetchAccountIds } from "./hooks/useFetchAccountIds";
 import TenantsSelect from "./TenantsSelect";
 import TenantsFields from "./TenantsFields";
@@ -22,7 +21,6 @@ export type TenantType = {
 const Tenants: FC = () => {
   const { accountIds } = useFetchAccountIds();
   const { isMobile } = useDeviceDetect();
-  const timeDispatch = useTimeDispatch();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const accountId = searchParams.get("accountID") || "0";
@@ -41,7 +39,6 @@ const Tenants: FC = () => {
     if (accountId) searchParams.set("accountID", accountId);
     if (projectId) searchParams.set("projectID", projectId);
     setSearchParams(searchParams);
-    timeDispatch({ type: "RUN_QUERY" });
     handleClosePopup();
   };
 

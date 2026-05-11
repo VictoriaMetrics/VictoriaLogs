@@ -23,6 +23,16 @@ export const useFetchStreamFieldNames = () => {
   const dispatch = useOverviewDispatch();
   const tenant = useTenant();
 
+  const cacheRef = useRef({
+    state: streamsFieldNamesState,
+    key: streamsFieldNamesParamsKey,
+  });
+
+  cacheRef.current = {
+    state: streamsFieldNamesState,
+    key: streamsFieldNamesParamsKey,
+  };
+
   const abortRef = useRef<AbortController | null>(null);
 
   const [streamFieldNames, setStreamFieldNames] = useState<LogsFieldValues[]>([]);
@@ -51,8 +61,8 @@ export const useFetchStreamFieldNames = () => {
       const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
       const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
 
-      if (streamsFieldNamesParamsKey === cacheKey) {
-        setStreamFieldNames(streamsFieldNamesState);
+      if (cacheRef.current.key === cacheKey) {
+        setStreamFieldNames(cacheRef.current.state);
         return;
       }
 
@@ -87,7 +97,7 @@ export const useFetchStreamFieldNames = () => {
     } finally {
       setLoading(false);
     }
-  }, [serverUrl, tenant, streamsFieldNamesParamsKey, streamsFieldNamesState, dispatch]);
+  }, [serverUrl, tenant, dispatch]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -97,6 +107,7 @@ export const useFetchStreamFieldNames = () => {
     streamFieldNames,
     loading,
     error,
-    fetchStreamFieldNames
+    fetchStreamFieldNames,
+    abort: useCallback(() => abortRef.current?.abort(), [])
   };
 };

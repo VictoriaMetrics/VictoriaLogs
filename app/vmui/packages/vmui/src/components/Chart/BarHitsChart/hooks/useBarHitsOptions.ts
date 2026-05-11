@@ -3,7 +3,7 @@ import { getAxes, getMinMaxBuffer, handleDestroy, setSelect } from "../../../../
 import uPlot, { AlignedData, Band, Options, Series } from "uplot";
 import { getCssVariable } from "../../../../utils/theme";
 import { useAppState } from "../../../../state/common/StateContext";
-import { MinMax, SetMinMax } from "../../../../types";
+import { MinMax, SetMinMax, TimePeriod } from "../../../../types";
 import { LogHits } from "../../../../api/types";
 import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getColorFromString } from "../../../../utils/color";
@@ -36,7 +36,7 @@ interface UseGetBarHitsOptionsArgs {
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
   timezone: string;
-  setPeriod: (period: { from: Date, to: Date }) => void;
+  setPeriod: (period: TimePeriod) => void;
 }
 
 export const OTHER_HITS_LABEL = "other fields";

@@ -5,7 +5,6 @@ import { ArrowDownIcon, MinusIcon } from "../../Main/Icons";
 import "./style.scss";
 import classNames from "classnames";
 import { useFetchStreamValues } from "../../../pages/OverviewPage/hooks/useFetchStreamValues";
-import { useTimeState } from "../../../state/time/TimeStateContext";
 import LineLoader from "../../Main/LineLoader/LineLoader";
 import { OrderDir } from "../../../types";
 import { ExtraFilter, ExtraFilterOperator } from "../../ExtraFilters/types";
@@ -15,6 +14,7 @@ import Checkbox from "../../Main/Checkbox/Checkbox";
 import { useAppState } from "../../../state/common/StateContext";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { buildExtraFilterParams } from "../../ExtraFilters/utils/buildExtraFilterParams";
+import { useTimePeriod } from "../../../pages/QueryPage/hooks/useTimePeriod";
 
 type Props = {
   field: LogsFieldValues;
@@ -36,7 +36,7 @@ const FilterSidebarField: FC<Props> = ({
   onRemoveByField,
 }) => {
   const { isDarkTheme } = useAppState();
-  const { period } = useTimeState();
+  const { period } = useTimePeriod();
   const [isValuesOpen, setValuesOpen] = useState(false);
   const { fetchStreamValues, streamValues, loading, error, abort } = useFetchStreamValues();
 

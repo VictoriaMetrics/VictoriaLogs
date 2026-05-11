@@ -43,7 +43,7 @@ const mergeLogs = (dir: Direction, setter: Dispatch<SetStateAction<Logs[]>>) =>
   };
 
 export const useFetchStreamContext = () => {
-  const { fetchLogs, isLoading, error, abortController } = useFetchLogs();
+  const { fetchLogs, isLoading, error, abort } = useFetchLogs();
 
   const [logsBefore, setLogsBefore] = useState<Logs[]>([]);
   const [logsAfter, setLogsAfter] = useState<Logs[]>([]);
@@ -101,6 +101,6 @@ export const useFetchStreamContext = () => {
     error,
     fetchContextLogs,
     resetContextLogs,
-    abortController,
+    abort,
   };
 };

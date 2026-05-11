@@ -34,7 +34,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
     error,
     fetchContextLogs,
     resetContextLogs,
-    abortController
+    abort
   } = useFetchStreamContext();
 
   const streamFields = useMemo(() => {
@@ -68,7 +68,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
 
     return () => {
       resetContextLogs();
-      abortController?.abort(); // Abort the fetch request when closing the modal
+      abort(); // Abort the fetch request when closing the modal
     };
   }, []);
 
