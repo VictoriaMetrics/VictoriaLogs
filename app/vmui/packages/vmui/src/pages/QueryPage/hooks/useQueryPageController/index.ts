@@ -131,10 +131,6 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
       isFirstRender.current = false;
     }
 
-    if (!shouldRunLogs && !shouldRunHits) {
-      return;
-    }
-
     const currentTimeFilterKey = getSyncTimeFilterKey(baseTriggers);
     const timeFilterKeyChanged = currentTimeFilterKey !== lastSyncedTimeFilterKeyRef.current;
     const shouldSyncTimeFilter = (isFirstRun || changed.base) && timeFilterKeyChanged;
@@ -156,6 +152,10 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
         return; // wait for next sync with updated period
       }
+    }
+
+    if (!shouldRunLogs && !shouldRunHits) {
+      return;
     }
 
     // Reset time sync marker after successful main flow.
