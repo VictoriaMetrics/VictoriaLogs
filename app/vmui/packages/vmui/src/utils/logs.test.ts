@@ -6,7 +6,7 @@ import {
   getAllStreamKeys,
   convertToFieldFilter,
   calculateTotalHits,
-  isSameLog,
+  isEqualLogByKeys,
   removeExactLog,
 } from "./logs";
 
@@ -121,29 +121,29 @@ describe("utils/logs", () => {
     });
   });
 
-  describe("isSameLog", () => {
+  describe("isEqualLogByKeys", () => {
     it("returns true when _time and all fields are strictly equal", () => {
       const a = { _time: 1, foo: "bar", n: 2 } as unknown as Logs;
       const b = { _time: 1, foo: "bar", n: 2 } as unknown as Logs;
-      expect(isSameLog(a, b)).toBe(true);
+      expect(isEqualLogByKeys(a, b, ["_time", "foo", "n"])).toBe(true);
     });
 
     it("returns false when _time differs", () => {
       const a = { _time: 1, foo: "bar" } as unknown as Logs;
       const b = { _time: 2, foo: "bar" } as unknown as Logs;
-      expect(isSameLog(a, b)).toBe(false);
+      expect(isEqualLogByKeys(a, b, ["_time", "foo"])).toBe(false);
     });
 
     it("returns false when any field differs", () => {
       const a = { _time: 1, foo: "bar" } as unknown as Logs;
       const b = { _time: 1, foo: "baz" } as unknown as Logs;
-      expect(isSameLog(a, b)).toBe(false);
+      expect(isEqualLogByKeys(a, b, ["_time", "foo"])).toBe(false);
     });
 
     it("treats missing vs present field as different", () => {
       const a = { _time: 1, foo: "bar" } as unknown as Logs;
       const b = { _time: 1, foo: "bar", x: 1 } as unknown as Logs;
-      expect(isSameLog(a, b)).toBe(false);
+      expect(isEqualLogByKeys(a, b, ["_time", "foo", "x"])).toBe(false);
     });
   });
 
@@ -158,7 +158,7 @@ describe("utils/logs", () => {
         { _time: 1, foo: "bar", x: 1 } as unknown as Logs, // same content
       ];
 
-      expect(removeExactLog(logs, target)).toEqual([
+      expect(removeExactLog(logs, target, ["_time", "foo", "x"])).toEqual([
         { _time: 1, foo: "bar", x: 2 },
         { _time: 2, foo: "bar", x: 1 },
       ]);
@@ -168,7 +168,7 @@ describe("utils/logs", () => {
       const target = { _time: 9, foo: "x" } as unknown as Logs;
       const logs = [{ _time: 1, foo: "bar" } as unknown as Logs];
 
-      expect(removeExactLog(logs, target)).toEqual([{ _time: 1, foo: "bar" }]);
+      expect(removeExactLog(logs, target, ["_time", "foo"])).toEqual([{ _time: 1, foo: "bar" }]);
     });
   });
 });

@@ -112,12 +112,10 @@ export const sortLogHits = <T extends { label?: string }>(key: keyof T) => (a: T
   return bValue - aValue;
 };
 
-export const isSameLog = (a: Logs, b: Logs): boolean => {
-  if (a._time !== b._time) return false;
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...keys].every(k => a[k] === b[k]);
+export const isEqualLogByKeys = (a: Logs, b: Logs, keys: Array<keyof Logs>): boolean => {
+  return keys.every(key => a[key] === b[key]);
 };
 
-export const removeExactLog = (logs: Logs[], target: Logs): Logs[] => {
-  return logs.filter(log => !isSameLog(log, target));
+export const removeExactLog = (logs: Logs[], target: Logs, keys: Array<keyof Logs>): Logs[] => {
+  return logs.filter(log => !isEqualLogByKeys(log, target, keys));
 };
