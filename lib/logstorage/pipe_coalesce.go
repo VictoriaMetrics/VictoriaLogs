@@ -46,7 +46,7 @@ func (pc *pipeCoalesce) canLiveTail() bool {
 	return true
 }
 
-func (pc *pipeCoalesce) canReturnLastNResults() bool {
+func (pc *pipeCoalesce) canReturnTimeSortedNResults() bool {
 	return pc.dstField != "_time"
 }
 
