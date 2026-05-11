@@ -91,12 +91,12 @@ describe("ANSI Parser", () => {
     const { container } = render(parseAnsiToHtml(input));
     const spans = container.querySelectorAll("span");
 
-    // Check that after the cancellation codes, the style properties are set to 'inherit'
+    // Check that after the cancellation codes, the style properties are set to 'normal'
     spans.forEach(span => {
       if (span.textContent?.includes("Normal")) {
-        expect(span).toHaveStyle("font-weight: inherit");
-        expect(span).toHaveStyle("font-style: inherit");
-        expect(span).toHaveStyle("text-decoration: inherit");
+        expect(span).toHaveStyle("font-weight: normal");
+        expect(span).toHaveStyle("font-style: normal");
+        expect(span).toHaveStyle("text-decoration: normal");
       }
     });
   });

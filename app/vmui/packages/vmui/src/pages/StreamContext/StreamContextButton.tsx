@@ -44,7 +44,7 @@ const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
           color="gray"
           startIcon={<ContextIcon/>}
           onClick={handleClickButton}
-          ariaLabel="show context"
+          aria-label="show context"
         />
       </Tooltip>
       {isOpenContext && (

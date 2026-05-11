@@ -55,6 +55,7 @@ AI and Automation:
 
 * [AI: writing an MCP server for VictoriaLogs](https://itnext.io/ai-writing-an-mcp-server-for-victorialogs-b0c07ab5dda0)
 * [Building a VictoriaLogs MCP Server with Kagent: A Complete Journey from Zero to POC](https://medium.com/@denismarshalltumakov/building-a-victorialogs-mcp-server-with-kagent-a-complete-journey-from-zero-to-poc-a3f49bdc57a9)
+* [Claude Code: creating Kubernetes debugging AI Agent for VictoriaMetrics](https://rtfm.co.ua/en/claude-code-creating-kubernetes-debugging-ai-agent-for-victoriametrics/)
 
 ## Our articles
 

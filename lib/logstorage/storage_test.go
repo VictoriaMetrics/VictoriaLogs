@@ -608,7 +608,7 @@ func TestStorageDropStalePartitions(t *testing.T) {
 	expectPartitionsNumber(1)
 	s.MustClose()
 
-	// Open the storage with the same retention and verify partitions still exsit
+	// Open the storage with the same retention and verify partitions still exist
 	s = MustOpenStorage(path, cfg)
 	expectPartitionsNumber(1)
 	s.MustClose()

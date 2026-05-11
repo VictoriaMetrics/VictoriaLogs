@@ -75,6 +75,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
 
   const streamPairs = (
     <div className="vm-steam-context-header-streams">
+      <b>Stream labels:</b>
       {streamFields.map(streamPair => (
         <GroupLogsHeaderItem
           key={streamPair}

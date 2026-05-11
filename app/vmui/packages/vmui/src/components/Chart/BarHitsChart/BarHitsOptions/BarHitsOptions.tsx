@@ -5,7 +5,7 @@ import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../../Main/Button/Button";
-import { MoreIcon, TipIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
+import { KeyboardIcon, MoreIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 import { useCallback } from "react";
@@ -210,7 +210,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             <Button
               variant="text"
               color="gray"
-              startIcon={<TipIcon/>}
+              startIcon={<KeyboardIcon/>}
             />
           </ShortcutKeys>
         </>
@@ -227,7 +227,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           color="primary"
           startIcon={hideChart ? <VisibilityIcon/> : <VisibilityOffIcon/>}
           onClick={toggleHideChart}
-          ariaLabel="settings"
+          aria-label="settings"
         >
           {hideChart ? "Show chart" : ""}
         </Button>
@@ -240,7 +240,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             color="primary"
             startIcon={<MoreIcon/>}
             onClick={handleToggleList}
-            ariaLabel="settings"
+            aria-label="settings"
           />
           <Modal
             title={"Hits Options"}
