@@ -102,11 +102,12 @@ func (pvp *pipeJSONArrayValuesProcessor) writeBlock(workerID uint, br *blockResu
 	shard.rc.name = pvp.pv.resultField
 
 	c := br.getColumnByName(pvp.pv.fromField)
+	fieldName := pvp.pv.fieldName
 	fieldNameParts := pvp.pv.fieldNameParts
 	if c.isConst {
 		// Fast path for const column
 		v := c.valuesEncoded[0]
-		r := shard.extractValues(v, fieldNameParts)
+		r := shard.extractValues(v, fieldName, fieldNameParts)
 		shard.rc.addValue(r)
 		br.addResultColumnConst(shard.rc)
 	} else {
@@ -115,7 +116,7 @@ func (pvp *pipeJSONArrayValuesProcessor) writeBlock(workerID uint, br *blockResu
 		vEncoded := ""
 		for rowIdx := range values {
 			if rowIdx == 0 || values[rowIdx] != values[rowIdx-1] {
-				vEncoded = shard.extractValues(values[rowIdx], fieldNameParts)
+				vEncoded = shard.extractValues(values[rowIdx], fieldName, fieldNameParts)
 			}
 			shard.rc.addValue(vEncoded)
 		}
@@ -140,7 +141,7 @@ func (shard *pipeJSONArrayValuesProcessorShard) reset() {
 	shard.tmpBuf = shard.tmpBuf[:0]
 }
 
-func (shard *pipeJSONArrayValuesProcessorShard) extractValues(s string, fieldNameParts []string) string {
+func (shard *pipeJSONArrayValuesProcessorShard) extractValues(s, fieldName string, fieldNameParts []string) string {
 	if s == "" || s[0] != '[' {
 		return "[]"
 	}
@@ -164,7 +165,10 @@ func (shard *pipeJSONArrayValuesProcessorShard) extractValues(s string, fieldNam
 		if jso.Type() != fastjson.TypeObject {
 			continue
 		}
-		v := jso.Get(fieldNameParts...)
+		v := jso.Get(fieldName)
+		if v == nil && len(fieldNameParts) > 1 {
+			v = jso.Get(fieldNameParts...)
+		}
 		if v == nil || v.Type() == fastjson.TypeNull {
 			continue
 		}

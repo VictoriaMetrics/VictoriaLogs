@@ -2755,7 +2755,7 @@ into `<dst_field>`, for every log entry returned by `<q>` [query](https://docs.v
 
 The `from <src_field>` part can be omitted - in this case the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) is used.
 The `as <dst_field>` part can be omitted - in this case the result is stored back into `<src_field>`.
-Dotted `<field_name>` such as `user.name` navigates nested JSON objects.
+Dotted `<field_name>` such as `user.name` first looks for a literal key `user.name` in the JSON object, and falls back to navigating nested objects if the literal key is not found.
 
 For example, the following query extracts all unique usernames seen across audit events over the last hour:
 

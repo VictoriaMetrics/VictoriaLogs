@@ -213,15 +213,27 @@ func TestPipeJSONArrayValues(t *testing.T) {
 		},
 	})
 
-	// dotted field name does not match a literal key containing a dot
+	// dotted field name matches literal key containing a dot
 	f(`json_array_values user.name from arr as x`, [][]Field{
 		{
-			{"arr", `[{"user.name":"alice"}]`},
+			{"arr", `[{"user.name":"alice"},{"user.name":"bob"}]`},
 		},
 	}, [][]Field{
 		{
-			{"arr", `[{"user.name":"alice"}]`},
-			{"x", `[]`},
+			{"arr", `[{"user.name":"alice"},{"user.name":"bob"}]`},
+			{"x", `["alice","bob"]`},
+		},
+	})
+
+	// literal key takes priority over nested when both exist
+	f(`json_array_values user.name from arr as x`, [][]Field{
+		{
+			{"arr", `[{"user.name":"literal","user":{"name":"nested"}}]`},
+		},
+	}, [][]Field{
+		{
+			{"arr", `[{"user.name":"literal","user":{"name":"nested"}}]`},
+			{"x", `["literal"]`},
 		},
 	})
 }
