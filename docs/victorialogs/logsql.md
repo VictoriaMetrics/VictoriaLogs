@@ -1858,6 +1858,7 @@ LogsQL supports the following pipes:
 - [`format`](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe) formats output field from input [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`generate_sequence`](https://docs.victoriametrics.com/victorialogs/logsql/#generate_sequence-pipe) generates output logs with messages containing integer sequence.
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_concat`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe) joins JSON array items stored at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into a string using the given delimiter.
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
@@ -2745,6 +2746,35 @@ See also:
 - [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
 
 
+### json_array_concat pipe
+
+The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
+
+For example, the following query joins items of the `tags` JSON array using `,` as delimiter and stores the result back into the `tags` field:
+
+```logsql
+_time:5m | json_array_concat "," from tags
+```
+
+The `as <result_field>` part is optional. If it is missing, then the result is stored in the `<src_field>` specified in `from <src_field>`.
+For example, the following query stores the result into a separate `tags_str` field:
+
+```logsql
+_time:5m | json_array_concat "," from tags as tags_str
+```
+
+The `from <src_field>` part is optional. If it is missing, then the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) is used as the source field.
+
+The `delimiter` is optional. If it is missing, then items are concatenated without any separator.
+
+If `<src_field>` does not contain a valid JSON array, the result is an empty string.
+
+See also:
+
+- [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
+
 ### json_array_len pipe
 
 `<q> | json_array_len(field) as result_field` calculates the length of JSON array at the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -3487,6 +3517,7 @@ _time:5m | split "," as items | unroll items | top 5 (items)
 
 See also:
 
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 
