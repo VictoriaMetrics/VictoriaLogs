@@ -1,6 +1,7 @@
 package opentelemetry
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,7 +15,10 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxRequestSize = flagutil.NewBytes("opentelemetry.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single OpenTelemetry request")
+var (
+	maxRequestSize      = flagutil.NewBytes("opentelemetry.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single OpenTelemetry request")
+	enableFieldPrefixes = flag.Bool("opentelemetry.enableFieldPrefixes", false, "When enabled, prefixes OpenTelemetry fields by source to prevent name collisions: 'resource.*', 'attributes.*', 'body.*'. Disabled by default.")
+)
 
 // RequestHandler processes Opentelemetry insert requests
 func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {

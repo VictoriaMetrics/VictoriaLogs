@@ -376,6 +376,153 @@ func TestPushProtobufRequest(t *testing.T) {
 	f(data, timestampsExpected, resultsExpected)
 }
 
+func TestPushProtobufRequestWithFieldPrefixes(t *testing.T) {
+	*enableFieldPrefixes = true
+	defer func() { *enableFieldPrefixes = false }()
+
+	f := func(src string, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+
+		var rls []resourceLogs
+		dec := json.NewDecoder(strings.NewReader(src))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&rls); err != nil {
+			t.Fatalf("unexpected error when parsing JSON: %s", err)
+		}
+
+		lr := logsData{
+			ResourceLogs: rls,
+		}
+
+		pData := lr.marshalProtobuf(nil)
+		tlp := &insertutil.TestLogMessageProcessor{}
+		if err := pushProtobufRequest(pData, tlp, nil, false); err != nil {
+			t.Fatalf("unexpected error when parsing protobuf data: %s", err)
+		}
+
+		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// scalar body still arrives in _msg
+	data := `[{
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {"stringValue": "hello world"}
+			}]
+		}]
+	}]`
+	timestampsExpected := []int64{1234}
+	resultsExpected := `{"_msg":"hello world","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// resource attributes get "resource." prefix
+	data = `[{
+		"resource": {
+			"attributes": [
+				{"key":"service.name","value":{"stringValue":"mysvc"}},
+				{"key":"host","value":{"stringValue":"node1"}}
+			]
+		},
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {"stringValue": "hello"}
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"resource.service.name":"mysvc","resource.host":"node1","_msg":"hello","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// logRecord attributes get "attributes." prefix
+	data = `[{
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {"stringValue": "hello"},
+				"attributes": [
+					{"key":"service.name","value":{"stringValue":"logsvc"}},
+					{"key":"env","value":{"stringValue":"prod"}}
+				]
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"_msg":"hello","attributes.service.name":"logsvc","attributes.env":"prod","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// body KVList fields get "body." prefix
+	data = `[{
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {
+					"keyValueList": {
+						"values": [
+							{"key":"foo","value":{"stringValue":"bar"}},
+							{"key":"count","value":{"intValue":42}}
+						]
+					}
+				}
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"body.foo":"bar","body.count":"42","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// collision: same key in resource and logRecord attributes maps to distinct prefixed fields;
+	// generated fields such as trace_id, span_id, severity_number, and severity_text remain unprefixed
+	data = `[{
+		"resource": {
+			"attributes": [
+				{"key":"service.name","value":{"stringValue":"resource-svc"}}
+			]
+		},
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {"stringValue": "msg"},
+				"attributes": [
+					{"key":"service.name","value":{"stringValue":"log-svc"}}
+				],
+				"traceID": "4bf92f3577b34da6a3ce929d0e0e4736",
+				"spanID": "00f067aa0ba902b7"
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"resource.service.name":"resource-svc","_msg":"msg","attributes.service.name":"log-svc","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// scope attributes keep their existing "scope.attributes." prefix regardless of the flag
+	data = `[{
+		"scopeLogs": [{
+			"scope": {
+				"name": "mylib",
+				"version": "v1",
+				"attributes": [{"key":"abc","value":{"stringValue":"xyz"}}]
+			},
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"severityNumber": 9,
+				"body": {"stringValue": "hello"}
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"scope.name":"mylib","scope.version":"v1","scope.attributes.abc":"xyz","_msg":"hello","severity_number":"9","severity_text":"Info"}`
+	f(data, timestampsExpected, resultsExpected)
+}
+
 var mp easyproto.MarshalerPool
 
 // logsData represents the corresponding OTEL protobuf message.
