@@ -8,22 +8,19 @@ import Alert from "../../components/Main/Alert/Alert";
 import Button from "../../components/Main/Button/Button";
 import SelectLimit from "../../components/Main/Pagination/SelectLimit/SelectLimit";
 import Switch from "../../components/Main/Switch/Switch";
-import { generatePath, Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { LOGS_URL_PARAMS } from "../../constants/logs";
-import router from "../../router";
-import classNames from "classnames";
 import "./style.scss";
-import { OpenNewIcon } from "../../components/Main/Icons";
 import { getStreamPairs } from "../../utils/logs";
 import GroupLogsHeaderItem from "../../components/Views/GroupView/GroupLogsHeaderItem";
+import Tooltip from "../../components/Main/Tooltip/Tooltip";
 
 interface Props {
   log: Logs;
   displayFields?: string[];
-  isModal?: boolean; // Indicates if the component is used in a modal
 }
 
-const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
+const StreamContextList: FC<Props> = ({ log, displayFields }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const noWrapLines = searchParams.get(LOGS_URL_PARAMS.NO_WRAP_LINES) === "true";
 
@@ -47,11 +44,13 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
 
   const handleLoadMoreAfter = () => {
     const target = logsAfter[0];
+    if (!target) return;
     void fetchContextLogs({ log: target, linesAfter: loadSize });
   };
 
   const handleLoadMoreBefore = () => {
     const target = logsBefore[logsBefore.length - 1];
+    if (!target) return;
     void fetchContextLogs({ log: target, linesBefore: loadSize });
   };
 
@@ -86,39 +85,11 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
   );
 
   return (
-    <div
-      className={classNames({
-        "vm-steam-context": true,
-        "vm-steam-context_modal": isModal,
-      })}
-    >
+    <div className="vm-steam-context">
       {isLoading && <LineLoader/>}
 
-      <div className={classNames("vm-steam-context-header", { "vm-steam-context-header_page": !isModal })}>
-        {!isModal && (
-          <h1 className="vm-modal-content-header__title vm-steam-context-header-title">Log context</h1>
-        )}
+      <div className="vm-steam-context-header">
         {streamPairs}
-        {isModal && (
-          <div className="vm-steam-context-header__link">
-            <Link
-              target="_blank"
-              to={generatePath(router.streamContext, {
-                _stream_id: log._stream_id,
-                _time: log._time,
-              })}
-              rel="noreferrer"
-            >
-              <Button
-                startIcon={<OpenNewIcon/>}
-                variant="text"
-                size="small"
-              >
-                Open in new page
-              </Button>
-            </Link>
-          </div>
-        )}
         <Switch
           label="Wrap lines"
           value={!noWrapLines}
@@ -130,6 +101,13 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
           options={[5, 10, 20, 50, 100]}
           onChange={handleChangeLoadSize}
         />
+        <Tooltip title="Time window where stream_context looks for surrounding logs">
+          <div className="vm-bar-hits-stats__item">
+            Time window
+            <b>1h</b>
+          </div>
+        </Tooltip>
+
       </div>
 
 
@@ -149,9 +127,10 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
           <Button
             onClick={handleLoadMoreAfter}
             disabled={isLoading || !hasMore.after}
+            color={!hasMore.after ? "gray" : "primary"}
             variant={!hasMore.after ? "text" : "contained"}
           >
-            {!hasMore.after ? "no more logs after" : "Load newer logs"}
+            {!hasMore.after ? "No logs after within 1h window" : "Load newer logs"}
           </Button>
         </div>
       )}
@@ -167,6 +146,14 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
           />
         ))}
 
+        <GroupLogsItem
+          isContextView
+          hideGroupButton
+          log={log}
+          displayFields={displayFields}
+          className="vm-steam-context__target-row"
+        />
+
         {logsBefore.map((log, rowN) => (
           <GroupLogsItem
             isContextView
@@ -174,7 +161,6 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
             key={`${rowN}_${log._time}`}
             log={log}
             displayFields={displayFields}
-            className={rowN === 0 ? "vm-steam-context__target-row" : ""}
           />
         ))}
       </div>
@@ -184,9 +170,10 @@ const StreamContextList: FC<Props> = ({ log, displayFields, isModal }) => {
           <Button
             onClick={handleLoadMoreBefore}
             disabled={isLoading || !hasMore.before}
+            color={!hasMore.before ? "gray" : "primary"}
             variant={!hasMore.before ? "text" : "contained"}
           >
-            {!hasMore.before ? "no more logs before" : "Load older logs"}
+            {!hasMore.before ? "No logs before within 1h window" : "Load older logs"}
           </Button>
         </div>
       )}
