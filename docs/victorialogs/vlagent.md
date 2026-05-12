@@ -48,7 +48,7 @@ Please download and unpack the `vlutils` archive from [releases page](https://gi
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/insert/native`.
-  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
+  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victoriametrics/vmagent/#srv-urls) for details.
 
 Example command, which starts `vlagent` for accepting logs over HTTP-based [supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 at the port `9429` and sends the collected logs to VictoriaLogs instance at `victoria-logs-host:9428`:
