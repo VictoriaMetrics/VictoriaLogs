@@ -96,6 +96,33 @@ func TestPipeJSONArrayConcat(t *testing.T) {
 	}, [][]Field{
 		{{"foo", `["a","b","c"]`}, {"result", "a,b,c"}},
 	})
+
+	// default source and result field (_msg)
+	f(`json_array_concat ","`, [][]Field{
+		{{"_msg", `["x","y","z"]`}},
+	}, [][]Field{
+		{{"_msg", "x,y,z"}},
+	})
+
+	// malformed JSON array starting with [
+	f(`json_array_concat "," from foo`, [][]Field{
+		{{"foo", `["a"`}},
+		{{"foo", `[1,`}},
+	}, [][]Field{
+		{{"foo", ""}},
+		{{"foo", ""}},
+	})
+
+	// slow path: multiple rows with different and repeated values
+	f(`json_array_concat "," from foo`, [][]Field{
+		{{"foo", `["a","b"]`}},
+		{{"foo", `["x","y","z"]`}},
+		{{"foo", `["a","b"]`}},
+	}, [][]Field{
+		{{"foo", "a,b"}},
+		{{"foo", "x,y,z"}},
+		{{"foo", "a,b"}},
+	})
 }
 
 func TestPipeJSONArrayConcatUpdateNeededFields(t *testing.T) {
