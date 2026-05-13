@@ -26,7 +26,7 @@ const buildContextQuery = (
 
   if (!_stream_id || !_time) {
     throw new Error("Log must contain _stream_id and _time fields.");
-}
+  }
 
   return `_stream_id:${_stream_id} 
 _time:${toNanoPrecision(_time)} 
