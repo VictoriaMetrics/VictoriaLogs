@@ -6,7 +6,6 @@ import {
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
 import { toNanoPrecision } from "../../../utils/time";
-import { escapeForLogsQLString } from "../../../utils/regexp";
 import { removeExactLog } from "../../../utils/logs";
 import { LOGS_STREAM_CONTEXT_KEYS } from "../../../constants/logs";
 
@@ -23,15 +22,14 @@ const buildContextQuery = (
   dir: Direction,
   lines: number
 ): string => {
-  const { _stream_id, _time, _msg } = log;
+  const { _stream_id, _time } = log;
 
-  if (!_stream_id || !_time || !_msg) {
+  if (!_stream_id || !_time) {
     throw new Error("Log must contain _stream_id, _time and _msg fields.");
   }
 
   return `_stream_id:${_stream_id} 
 _time:${toNanoPrecision(_time)} 
-_msg:="${escapeForLogsQLString(_msg)}" 
 | stream_context ${dir} ${lines}
 | sort by (_time) desc`;
 };

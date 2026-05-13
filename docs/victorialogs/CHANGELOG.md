@@ -38,7 +38,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix stream context view where the selected log overlapped transparently with content below when scrolling. See [#1185](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1185).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix browser navigation issues where the UI state didn't update on URL changes. See [#1056](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1056).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): remove extra empty value in `Stream fields` sidebar when selecting all values within a field. See [#1235](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1235).
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix incorrect stream_context selection for logs with identical timestamps. See [#1199](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1199).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix target log rendering in the `Log context` modal. See [#1199](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1199).
 
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 

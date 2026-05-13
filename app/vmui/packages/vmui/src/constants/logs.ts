@@ -1,7 +1,7 @@
 import { DATE_TIME_FORMAT } from "./date";
 import { getIsMobile } from "../hooks/useDeviceDetect";
 
-export const LOGS_STREAM_CONTEXT_KEYS = ["_stream_id", "_time", "_msg"];
+export const LOGS_STREAM_CONTEXT_KEYS = ["_stream_id", "_time"];
 export const LOGS_DOCS_URL = "https://docs.victoriametrics.com/victorialogs";
 
 export const LOGS_DEFAULT_LIMIT = 50;
