@@ -3,10 +3,12 @@ package tail
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +16,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 // Processor processes log lines from a single file.
@@ -36,13 +40,18 @@ type Processor interface {
 	// ensuring the accumulated state is propagated without waiting for the next line.
 	Flush()
 
+	// DebugInfo returns diagnostic fields describing the processing target.
+	// The returned fields may include metadata such Kubernetes labels,
+	// extra fields, and other implementation-specific details.
+	DebugInfo() []logstorage.Field
+
 	// MustClose releases all resources associated with the Processor and ensures proper cleanup of internal states.
 	// It must be called after the target log file is deleted or vlagent is shutting down.
 	MustClose()
 }
 
 type Tailer struct {
-	logFiles     map[string]struct{}
+	logFiles     map[string]Processor
 	logFilesLock sync.Mutex
 
 	checkpointsDB *checkpointsDB
@@ -63,7 +72,7 @@ func Start(checkpointsPath string) *Tailer {
 	}
 
 	return &Tailer{
-		logFiles:      make(map[string]struct{}),
+		logFiles:      make(map[string]Processor),
 		checkpointsDB: checkpointsDB,
 		stopCh:        make(chan struct{}),
 	}
@@ -77,14 +86,15 @@ func (fc *Tailer) StartRead(relPath string, proc Processor) {
 	}
 
 	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
 	_, ok := fc.logFiles[absPath]
-	fc.logFiles[absPath] = struct{}{}
-	fc.logFilesLock.Unlock()
 	if ok {
 		// Already reading from the file.
 		proc.MustClose()
 		return
 	}
+	fc.logFiles[absPath] = proc
 
 	fc.wg.Go(func() {
 		lf := fc.openLogFile(absPath)
@@ -333,6 +343,57 @@ func (fc *Tailer) IsTailing(relPath string) bool {
 
 	_, ok := fc.logFiles[absPath]
 	return ok
+}
+
+// DebugInfo returns debug information of each currently processing file.
+// The fields include information like file name, Kubernetes labels and more.
+func (fc *Tailer) DebugInfo() [][]logstorage.Field {
+	fc.logFilesLock.Lock()
+	defer fc.logFilesLock.Unlock()
+
+	var targets [][]logstorage.Field
+	for filePath, proc := range fc.logFiles {
+		debugInfo := slices.Clone(proc.DebugInfo())
+
+		n := slices.IndexFunc(debugInfo, func(f logstorage.Field) bool {
+			return f.Name == "file"
+		})
+		if n < 0 {
+			debugInfo = append(debugInfo, logstorage.Field{
+				Name:  "file",
+				Value: filePath,
+			})
+		}
+
+		// Attach checkpoint if exists.
+		cp, ok := fc.checkpointsDB.get(filePath)
+		if ok {
+			debugInfo = append(debugInfo, logstorage.Field{
+				Name:  "file_inode",
+				Value: fmt.Sprintf("%d", cp.Inode),
+			})
+			debugInfo = append(debugInfo, logstorage.Field{
+				Name:  "file_fingerprint",
+				Value: fmt.Sprintf("%d", cp.Fingerprint),
+			})
+			debugInfo = append(debugInfo, logstorage.Field{
+				Name:  "file_offset",
+				Value: fmt.Sprintf("%d", cp.Offset),
+			})
+		}
+
+		slices.SortFunc(debugInfo, func(a, b logstorage.Field) int {
+			return strings.Compare(a.Name, b.Name)
+		})
+
+		targets = append(targets, debugInfo)
+	}
+
+	slices.SortFunc(targets, func(a, b []logstorage.Field) int {
+		return strings.Compare(a[0].Name, b[0].Name)
+	})
+
+	return targets
 }
 
 func (fc *Tailer) Stop() {

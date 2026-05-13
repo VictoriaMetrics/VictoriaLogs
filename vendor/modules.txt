@@ -22,6 +22,7 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/fs
 github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fscore
 github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil
+github.com/VictoriaMetrics/VictoriaMetrics/lib/htmlcomponents
 github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver
 github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/ingestserver

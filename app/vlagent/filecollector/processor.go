@@ -42,6 +42,8 @@ type processor struct {
 	extraFieldsJSONLen int
 	tenantID           logstorage.TenantID
 
+	debugFields []logstorage.Field
+
 	logRows *logstorage.LogRows
 
 	rowsIngestedLocal  int
@@ -73,12 +75,19 @@ func newProcessor(argIdx int, filePath string, storage insertutil.LogRowsStorage
 		sfs = defaultStreamFields
 	}
 
+	debugFields := efs
+	debugFields = append(debugFields, logstorage.Field{
+		Name:  "glob_pattern",
+		Value: glob.GetOptionalArg(argIdx),
+	})
+
 	logRows := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, *insertutil.DefaultMsgValue)
 
 	return &processor{
 		storage:            storage,
 		extraFieldsJSONLen: logstorage.EstimatedJSONRowLen(efs),
 		tenantID:           getTenantID(argIdx),
+		debugFields:        debugFields,
 		logRows:            logRows,
 	}
 }
@@ -151,6 +160,10 @@ func (p *processor) flushMetrics() {
 
 var rowsIngestedTotal = metrics.GetOrCreateCounter(fmt.Sprintf("vl_rows_ingested_total{type=%q}", "file_logs"))
 var bytesIngestedTotal = metrics.GetOrCreateCounter(fmt.Sprintf("vl_bytes_ingested_total{type=%q}", "file_logs"))
+
+func (p *processor) DebugInfo() []logstorage.Field {
+	return p.debugFields
+}
 
 func (p *processor) MustClose() {
 	p.Flush()

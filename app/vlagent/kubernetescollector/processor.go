@@ -65,6 +65,8 @@ type logFileProcessor struct {
 	commonFields        []logstorage.Field
 	commonFieldsJSONLen int
 
+	debugFields []logstorage.Field
+
 	// fieldsBuf is used for constructing log fields from commonFields and the actual log line fields before sending them to VictoriaLogs.
 	fieldsBuf []logstorage.Field
 
@@ -91,12 +93,16 @@ func newLogFileProcessor(storage insertutil.LogRowsStorage, commonFields []logst
 	efs := getExtraFields()
 	lr := logstorage.GetLogRows(sfs, *ignoreFields, *decolorizeFields, efs, *insertutil.DefaultMsgValue)
 
+	debugFields := commonFields
+	debugFields = append(debugFields, efs...)
+
 	return &logFileProcessor{
 		storage:             storage,
 		lr:                  lr,
 		tenantID:            getTenantID(),
 		commonFields:        commonFields,
 		commonFieldsJSONLen: commonFieldsJSONLen,
+		debugFields:         debugFields,
 	}
 }
 
@@ -465,6 +471,10 @@ func (lfp *logFileProcessor) flushMetrics() {
 	bytesIngestedTotal.Add(lfp.bytesIngestedLocal)
 	lfp.rowsIngestedLocal = 0
 	lfp.bytesIngestedLocal = 0
+}
+
+func (lfp *logFileProcessor) DebugInfo() []logstorage.Field {
+	return lfp.debugFields
 }
 
 func (lfp *logFileProcessor) MustClose() {

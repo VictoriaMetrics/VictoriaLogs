@@ -107,6 +107,8 @@ Here is the minimal configuration for `vlagent` to collect logs on the current K
 `vlagent` can send the copies of the collected logs into multiple destinations.
 See [replication and high availability docs](https://docs.victoriametrics.com/victorialogs/vlagent/#replication-and-high-availability) for details.
 
+Visit the `http://vlagent:9429/targets` page to see currently processing Kubernetes Pods and their metadata.
+
 ### Checkpoints
 
 `vlagent` uses checkpoints to persist its reading state across restarts, so logs are not re-sent after a Pod restart.
@@ -192,6 +194,8 @@ Example usage:
 
 This command starts `vlagent` with a filter that excludes logs from pods labeled with `logging.vlagent.io/exclude: true`
 and skips all logs from the `test` and `logging` namespaces.
+
+Visit the `http://vlagent:9429/targets` page to see currently processing Kubernetes Pods and their metadata.
 
 ### Excluding vlagent's own logs
 
@@ -370,6 +374,8 @@ See also ready-to-use `vlagent` configuration examples for the corresponding log
 - [Collecting nginx logs](https://docs.victoriametrics.com/victorialogs/vlagent/#collecting-nginx-logs).
 - [Collecting Redis logs](https://docs.victoriametrics.com/victorialogs/vlagent/#collecting-redis-logs).
 - [Collecting ClickHouse logs](https://docs.victoriametrics.com/victorialogs/vlagent/#collecting-clickhouse-logs).
+
+Visit the `http://vlagent:9429/targets` page to see currently processing files and their metadata.
 
 ### Glob pattern requirements
 

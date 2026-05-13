@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestTailer(t *testing.T) {
@@ -319,6 +321,10 @@ func (p *testProcessor) TryAddLine(line []byte) bool {
 }
 
 func (p *testProcessor) Flush() {}
+
+func (p *testProcessor) DebugInfo() []logstorage.Field {
+	return nil
+}
 
 func (p *testProcessor) MustClose() {}
 
