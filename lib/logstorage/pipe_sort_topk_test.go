@@ -49,6 +49,14 @@ func TestTopkLess(t *testing.T) {
 		}
 	}
 
+	// string time vs string time
+	f(ps, stringRow("2026-04-25T10:00:54Z"), stringRow("2026-04-25T10:01:54Z"), true)
+	f(ps, stringRow("2026-04-25T10:01:54Z"), stringRow("2026-04-25T10:00:54Z"), false)
+
+	// real time vs real time
+	f(ps, timeRow("2026-04-25T10:00:54Z"), timeRow("2026-04-25T10:01:54Z"), true)
+	f(ps, timeRow("2026-04-25T10:01:54Z"), timeRow("2026-04-25T10:00:54Z"), false)
+
 	// string time is smaller than real time
 	f(ps, stringRow("2026-04-25T10:00:54Z"), timeRow("2026-04-25T10:01:54Z"), true)
 	f(ps, timeRow("2026-04-25T10:01:54Z"), stringRow("2026-04-25T10:00:54Z"), false)
