@@ -142,6 +142,7 @@ func (shard *pipeJSONArrayValuesProcessorShard) reset() {
 }
 
 func (shard *pipeJSONArrayValuesProcessorShard) extractValues(s, fieldName string, fieldNameParts []string) string {
+	s = strings.TrimLeft(s, " \t\n\r")
 	if s == "" || s[0] != '[' {
 		return "[]"
 	}

@@ -54,6 +54,18 @@ func TestPipeJSONArrayValues(t *testing.T) {
 		},
 	})
 
+	// leading whitespace before JSON array
+	f(`json_array_values user from arr as x`, [][]Field{
+		{
+			{"arr", `  [{"user":"alice"},{"user":"bob"}]`},
+		},
+	}, [][]Field{
+		{
+			{"arr", `  [{"user":"alice"},{"user":"bob"}]`},
+			{"x", `["alice","bob"]`},
+		},
+	})
+
 	// non-array input
 	f(`json_array_values user from arr as x`, [][]Field{
 		{
