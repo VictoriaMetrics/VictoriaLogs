@@ -340,7 +340,7 @@
         "y": 2
       },
       "id": 9,
-      "interval": "1m",
+      "interval": "$interval",
       "options": {
         "legend": {
           "calcs": [
@@ -582,7 +582,7 @@
         "y": 7
       },
       "id": 12,
-      "interval": "1m",
+      "interval": "$interval",
       "options": {
         "legend": {
           "calcs": [
@@ -826,6 +826,7 @@
         "y": 16
       },
       "id": 17,
+      "interval": "$interval",
       "options": {
         "legend": {
           "calcs": [
@@ -933,7 +934,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 26
+            "y": 50
           },
           "id": 15,
           "options": {
@@ -1050,7 +1051,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 26
+            "y": 50
           },
           "id": 16,
           "options": {
@@ -1123,7 +1124,7 @@
             "h": 16,
             "w": 24,
             "x": 0,
-            "y": 34
+            "y": 58
           },
           "id": 3,
           "options": {
@@ -1131,6 +1132,7 @@
             "detailsMode": "inline",
             "enableInfiniteScrolling": false,
             "enableLogDetails": true,
+            "fontSize": "small",
             "prettifyLogMessage": true,
             "showControls": true,
             "showLabels": false,
@@ -1191,7 +1193,6 @@
         "type": "datasource"
       },
       {
-        "allValue": "*",
         "current": {},
         "datasource": {
           "type": "victoriametrics-logs-datasource",
@@ -1200,7 +1201,7 @@
         "definition": "{}",
         "description": "Limit 50",
         "includeAll": true,
-        "label": "NS",
+        "label": "Namespace",
         "multi": true,
         "name": "namespace",
         "options": [],
@@ -1211,7 +1212,7 @@
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "regexApplyTo": "value",
         "sort": 1,
@@ -1238,7 +1239,7 @@
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "regexApplyTo": "value",
         "type": "query"
@@ -1264,11 +1265,78 @@
           "refId": "VictoriaLogsVariableQueryEditor-VariableQuery",
           "type": "fieldValue"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "regexApplyTo": "value",
         "sort": 1,
         "type": "query"
+      },
+      {
+        "auto": true,
+        "auto_count": 200,
+        "auto_min": "10s",
+        "current": {
+          "text": "$__auto",
+          "value": "$__auto"
+        },
+        "description": "Interval for aggregating logs by time bucket in corresponding panels.",
+        "label": "Interval",
+        "name": "interval",
+        "options": [
+          {
+            "selected": false,
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "selected": false,
+            "text": "10m",
+            "value": "10m"
+          },
+          {
+            "selected": false,
+            "text": "30m",
+            "value": "30m"
+          },
+          {
+            "selected": false,
+            "text": "1h",
+            "value": "1h"
+          },
+          {
+            "selected": false,
+            "text": "6h",
+            "value": "6h"
+          },
+          {
+            "selected": false,
+            "text": "12h",
+            "value": "12h"
+          },
+          {
+            "selected": false,
+            "text": "1d",
+            "value": "1d"
+          },
+          {
+            "selected": false,
+            "text": "7d",
+            "value": "7d"
+          },
+          {
+            "selected": false,
+            "text": "14d",
+            "value": "14d"
+          },
+          {
+            "selected": false,
+            "text": "30d",
+            "value": "30d"
+          }
+        ],
+        "query": "1m,10m,30m,1h,6h,12h,1d,7d,14d,30d",
+        "refresh": 2,
+        "type": "interval"
       },
       {
         "allowCustomValue": false,
