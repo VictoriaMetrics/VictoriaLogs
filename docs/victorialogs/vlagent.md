@@ -707,6 +707,19 @@ according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmaut
 - Use `-remoteWrite.showURL=false` (the default) to prevent sensitive URL parameters such as tokens or passwords
   from appearing in logs and on the debug endpoints like `/metrics` and `/debug/pprof/*`
 
+## SRV URLs
+
+If `vlagent` encounters URLs with `srv+` prefix in hostname (such as `http://srv+some-addr/some/path`), then it resolves `some-addr` [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) record into TCP address with hostname and TCP port, and then use the resulting URL when it needs to connect to it.
+
+SRV URLs are supported in the following places:
+
+* In `-remoteWrite.url` command-line flag. For example, if `victoria-logs` [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) record contains
+  `victoria-logs-host:9428` TCP address, then `-remoteWrite.url=http://srv+victoria-logs/insert/native` is automatically resolved into
+  `-remoteWrite.url=http://victoria-logs-host:9428/api/v1/write`. If the DNS SRV record is resolved into multiple TCP addresses, then `vlagent`
+  uses a randomly chosen address for each connection it establishes to the remote storage.
+
+SRV URLs are useful when HTTP services run on different TCP ports or when their TCP ports can change over time (for instance, after a restart).
+
 ## remote write format
 
 By default, `vlagent` sends logs to the `-remoteWrite.url` with `native` protocol, which is supported by all VictoriaLogs components.
