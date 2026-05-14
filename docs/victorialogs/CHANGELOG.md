@@ -41,6 +41,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): remove extra empty value in `Stream fields` sidebar when selecting all values within a field. See [#1235](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1235).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix target log rendering in the `Log context` modal. See [#1199](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1199).
 * BUGFIX: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): return `502 Bad Gateway` from [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) when one of `vlstorage` nodes is unavailable in cluster mode. Previously these endpoints could incorrectly return `422 Unprocessable Entity`, which could break retry and failover handling in high-availability setups. See [#1419](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1419).
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix the `unpack_json` pipe which fails to parse JSON when it starts with whitespace characters.
 
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 

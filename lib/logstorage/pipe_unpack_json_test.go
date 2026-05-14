@@ -334,6 +334,18 @@ func TestPipeUnpackJSON(t *testing.T) {
 			{"x", `{"z":["bar",123]}`},
 		},
 	})
+
+	// JSON wrapped with spaces
+	f("unpack_json", [][]Field{
+		{
+			{"_msg", `  {  "foo" : "bar"  }  `},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `  {  "foo" : "bar"  }  `},
+			{"foo", "bar"},
+		},
+	})
 }
 
 func TestPipeUnpackJSONUpdateNeededFields(t *testing.T) {
