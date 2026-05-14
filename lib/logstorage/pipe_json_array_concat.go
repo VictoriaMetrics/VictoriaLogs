@@ -132,6 +132,7 @@ func (shard *pipeJSONArrayConcatProcessorShard) reset() {
 }
 
 func (shard *pipeJSONArrayConcatProcessorShard) concat(arrayStr, delimiter string) string {
+	arrayStr = trimJSONWhitespace(arrayStr)
 	if len(arrayStr) == 0 || arrayStr[0] != '[' {
 		return ""
 	}

@@ -104,6 +104,21 @@ func TestPipeJSONArrayConcat(t *testing.T) {
 		{{"_msg", "x,y,z"}},
 	})
 
+	// JSON whitespace around JSON array
+	f(`json_array_concat "," from foo`, [][]Field{
+		{{"foo", `  ["a","b","c"]`}},
+		{{"foo", "\t[\"d\",\"e\",\"f\"]"}},
+		{{"foo", "\n[\"g\",\"h\",\"i\"]"}},
+		{{"foo", "\r[\"j\",\"k\",\"l\"]"}},
+		{{"foo", " \t\n\r[\"m\",\"n\",\"o\"] \r\n\t"}},
+	}, [][]Field{
+		{{"foo", "a,b,c"}},
+		{{"foo", "d,e,f"}},
+		{{"foo", "g,h,i"}},
+		{{"foo", "j,k,l"}},
+		{{"foo", "m,n,o"}},
+	})
+
 	// malformed JSON array starting with [
 	f(`json_array_concat "," from foo`, [][]Field{
 		{{"foo", `["a"`}},
