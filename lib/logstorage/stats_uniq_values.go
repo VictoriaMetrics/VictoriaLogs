@@ -144,9 +144,6 @@ func (sup *statsUniqValuesProcessor) mergeState(_ *chunkedAllocator, sf statsFun
 	}
 
 	src := sfp.(*statsUniqValuesProcessor)
-	if len(src.m) == 0 {
-		return
-	}
 	if len(src.m) > 100_000 {
 		// Postpone merging too big number of items in parallel
 		sup.ms = append(sup.ms, src.m)
