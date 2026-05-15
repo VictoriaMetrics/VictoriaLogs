@@ -1008,7 +1008,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	// Execute the request.
 	startTime := time.Now()
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
-		err = fmt.Errorf("cannot execute query [%s]: %s", ca.q, err)
+		err = fmt.Errorf("cannot execute query [%s]: %w", ca.q, err)
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
@@ -1144,7 +1144,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	// Execute the query
 	startTime := time.Now()
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
-		err = fmt.Errorf("cannot execute query [%s]: %s", ca.q, err)
+		err = fmt.Errorf("cannot execute query [%s]: %w", ca.q, err)
 		httpserver.SendPrometheusError(w, r, err)
 		return
 	}
