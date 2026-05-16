@@ -874,7 +874,8 @@ Use [the official Grafana dashboard for `vlagent` state overview](https://grafan
 Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+We recommend setting up [alerts-vlagent.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 ## Multitenancy

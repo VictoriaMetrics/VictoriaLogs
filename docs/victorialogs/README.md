@@ -91,7 +91,8 @@ See [metrics reference](https://docs.victoriametrics.com/victorialogs/metrics/) 
 
 We recommend installing Grafana dashboard for [VictoriaLogs single-node](https://grafana.com/grafana/dashboards/22084) or [cluster](https://grafana.com/grafana/dashboards/23274).
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+We recommend setting up [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 VictoriaLogs emits its own logs to stdout. It is recommended to investigate these logs during troubleshooting.

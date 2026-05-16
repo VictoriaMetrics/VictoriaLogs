@@ -102,7 +102,7 @@ groups:
             following reason: \"{{ $labels.reason }}\""
 
       - alert: ConcurrentInsertsHitTheLimit
-        expr: avg_over_time(vm_concurrent_insert_current{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m]) >= vm_concurrent_insert_capacity{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}
+        expr: avg_over_time(vm_concurrent_insert_current{job=~".*(victorialogs|vlstorage|vlinsert|vlagent).*"}[1m]) >= vm_concurrent_insert_capacity{job=~".*(victorialogs|vlstorage|vlinsert|vlagent).*"}
         for: 15m
         labels:
           severity: warning
