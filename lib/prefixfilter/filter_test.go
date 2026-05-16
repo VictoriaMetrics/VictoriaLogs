@@ -212,6 +212,22 @@ func TestFilter_MatchString_NilFilter(t *testing.T) {
 	f("foo")
 }
 
+func TestFilter_MatchStringOrWildcard_NilFilter(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		var f *Filter
+		if f.MatchStringOrWildcard(s) {
+			t.Fatalf("unexpected MatchStringOrWildcard(%q) for nil Filter; got true; want false", s)
+		}
+	}
+
+	f("")
+	f("foo")
+	f("*")
+	f("foo*")
+}
+
 func TestFilter_Clone(t *testing.T) {
 	f := func(allow, deny []string) {
 		t.Helper()

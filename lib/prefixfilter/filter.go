@@ -84,6 +84,9 @@ func (f *Filter) MatchAll() bool {
 // s may be either a regular string or a wildcard ending with '*'.
 // If s is a wildcard, then true is returned if at least a single string matching this wildcard matches f.
 func (f *Filter) MatchStringOrWildcard(s string) bool {
+	if f == nil {
+		return false
+	}
 	if !IsWildcardFilter(s) {
 		return f.MatchString(s)
 	}
