@@ -2,6 +2,8 @@ package tests
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
@@ -153,6 +155,37 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 			got = sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
 			assertLogsQLResponseOrdered(t, got, wantAscResponse)
 		}
+
+		selectQueryArgs := apptest.QueryOpts{
+			Start:  start,
+			End:    end,
+			Limit:  "2",
+			Offset: "1",
+		}
+		got := sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
+		wantDescResponse := &apptest.LogsQLQueryResponse{
+			LogLines: []string{
+				ingestRecords[3],
+				ingestRecords[2],
+			},
+		}
+		assertLogsQLResponseOrdered(t, got, wantDescResponse)
+
+		selectQueryArgs = apptest.QueryOpts{
+			Start:         start,
+			End:           end,
+			Limit:         "2",
+			Offset:        "1",
+			SortDirection: "asc",
+		}
+		got = sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
+		wantAscResponse := &apptest.LogsQLQueryResponse{
+			LogLines: []string{
+				ingestRecords[1],
+				ingestRecords[2],
+			},
+		}
+		assertLogsQLResponseOrdered(t, got, wantAscResponse)
 	}
 
 	// Records at the start of the selected time range.
@@ -164,6 +197,36 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 	// Records exactly filling the selected time range.
 	f("2025-01-01T01:00:01Z", "2025-01-01T01:00:05.000000001Z")
 
-	// Records in the middle of a huge time range — exercises binary-search narrow/shift depth.
+	// Records in the middle of a huge time range, which exercises binary-search narrow/shift depth.
 	f("2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z")
+}
+
+func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+	sut := tc.MustStartDefaultVlsingle()
+
+	f := func(name string, opts apptest.QueryOpts) {
+		t.Helper()
+
+		t.Run(name, func(t *testing.T) {
+			response, statusCode := sut.LogsQLQueryRaw(t, "*", opts)
+			if statusCode != http.StatusBadRequest {
+				t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, http.StatusBadRequest, response)
+			}
+			errMsg := `unexpected sort_direction="bad"; expecting 'asc', 'desc' or ''`
+			if !strings.Contains(response, errMsg) {
+				t.Fatalf("unexpected response body\ngot\n%s\nwant to contain\n%s", response, errMsg)
+			}
+		})
+	}
+
+	f("with_limit", apptest.QueryOpts{
+		Limit:         "1",
+		SortDirection: "bad",
+	})
+	f("without_limit", apptest.QueryOpts{
+		SortDirection: "bad",
+	})
 }

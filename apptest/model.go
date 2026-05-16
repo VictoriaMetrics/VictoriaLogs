@@ -20,6 +20,7 @@ type QueryOpts struct {
 	Start         string
 	End           string
 	Limit         string
+	Offset        string
 	SortDirection string
 	ExtraFilters  []string
 	Format        string
@@ -31,6 +32,7 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	addNonEmpty(uv, "start", qos.Start)
 	addNonEmpty(uv, "end", qos.End)
 	addNonEmpty(uv, "limit", qos.Limit)
+	addNonEmpty(uv, "offset", qos.Offset)
 	addNonEmpty(uv, "sort_direction", qos.SortDirection)
 	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
 	addNonEmpty(uv, "format", qos.Format)
