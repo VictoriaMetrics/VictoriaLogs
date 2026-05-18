@@ -709,16 +709,21 @@ according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmaut
 
 ## SRV URLs
 
-If `vlagent` encounters URLs with `srv+` prefix in hostname (such as `http://srv+some-addr/some/path`), then it resolves `some-addr` [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) record into TCP address with hostname and TCP port, and then use the resulting URL when it needs to connect to it.
+[DNS SRVs](https://en.wikipedia.org/wiki/SRV_record) are useful when HTTP services run on different TCP ports or when their TCP ports can change over time (for instance, after a restart).
 
-SRV URLs are supported in the following places:
+`vlagent` supports DNS SRV resolution in `-remoteWrite.url` when the hostname starts with `srv+`. For example, if DNS contains SRV records for `victoria-logs`, then:
 
-* In `-remoteWrite.url` command-line flag. For example, if `victoria-logs` [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) record contains
-  `victoria-logs-host:9428` TCP address, then `-remoteWrite.url=http://srv+victoria-logs/insert/native` is automatically resolved into
-  `-remoteWrite.url=http://victoria-logs-host:9428/api/v1/write`. If the DNS SRV record is resolved into multiple TCP addresses, then `vlagent`
-  uses a randomly chosen address for each connection it establishes to the remote storage.
+```
+`-remoteWrite.url=http://srv+victoria-logs/insert/native`
+```
 
-SRV URLs are useful when HTTP services run on different TCP ports or when their TCP ports can change over time (for instance, after a restart).
+is resolved to one of the returned `target:port` addresses, for example:
+
+```
+`-remoteWrite.url=http://victoria-logs-host:9428/insert/native`
+```
+
+If SRV lookup returns multiple targets, `vlagent` randomly chooses a target per connection.
 
 ## remote write format
 
