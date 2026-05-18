@@ -2,8 +2,10 @@ package elasticsearch
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/golang/snappy"
@@ -20,12 +22,12 @@ func TestReadBulkRequest_Failure(t *testing.T) {
 
 		tlp := &insertutil.TestLogMessageProcessor{}
 		r := bytes.NewBufferString(data)
-		rows, err := readBulkRequest("test", r, "", []string{"_time"}, []string{"_msg"}, nil, tlp)
+		results, err := readBulkRequest("test", r, "", []string{"_time"}, []string{"_msg"}, nil, tlp)
 		if err == nil {
 			t.Fatalf("expecting non-empty error")
 		}
-		if rows != 0 {
-			t.Fatalf("unexpected non-zero rows=%d", rows)
+		if len(results) != 0 {
+			t.Fatalf("unexpected non-zero results=%d", len(results))
 		}
 	}
 	f("foobar")
@@ -35,6 +37,69 @@ func TestReadBulkRequest_Failure(t *testing.T) {
 {}`)
 	f(`{"create":{}}
 foobar`)
+}
+
+func TestReadBulkRequest_TooLongLine(t *testing.T) {
+	f := func(data string, resultsExpected bulkItemResult, timestampsExpected []int64, rowsExpected, responseExpected string) {
+		t.Helper()
+
+		origMaxLineSizeBytes := insertutil.MaxLineSizeBytes.String()
+		if err := insertutil.MaxLineSizeBytes.Set("128"); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		defer func() {
+			if err := insertutil.MaxLineSizeBytes.Set(origMaxLineSizeBytes); err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+		}()
+
+		tlp := &insertutil.TestLogMessageProcessor{}
+		r := bytes.NewBufferString(data)
+		results, err := readBulkRequest("test", r, "", []string{"@timestamp"}, []string{"message"}, nil, tlp)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if len(results) != len(resultsExpected) {
+			t.Fatalf("unexpected results read; got %d; want %d", len(results), len(resultsExpected))
+		}
+		for i, resultExpected := range resultsExpected {
+			if !errors.Is(results[i], resultExpected) {
+				t.Fatalf("unexpected error for result[%d]; got %s; want %s", i, results[i], resultExpected)
+			}
+		}
+		if err := tlp.Verify(timestampsExpected, rowsExpected); err != nil {
+			t.Fatal(err)
+		}
+
+		result := BulkResponse(results, 123)
+		if result != responseExpected {
+			t.Fatalf("unexpected response\ngot\n%s\nwant\n%s", result, responseExpected)
+		}
+	}
+
+	// a too long log message in the middle doesn't prevent parsing the following log messages.
+	data := `{"create":{"_index":"filebeat-8.8.0"}}
+{"@timestamp":"2023-06-06T04:48:11.735Z","message":"foo"}
+{"create":{"_index":"filebeat-8.8.0"}}
+{"message":"` + strings.Repeat("x", 200) + `"}
+{"create":{"_index":"filebeat-8.8.0"}}
+{"@timestamp":"2023-06-06T04:48:12.735Z","message":"bar"}
+`
+	timestampsExpected := []int64{1686026891735000000, 1686026892735000000}
+	rowsExpected := `{"_msg":"foo"}
+{"_msg":"bar"}`
+	responseExpected := `{"took":123,"errors":true,"items":[{"create":{"status":201}},{"create":{"status":413,"error":{"reason":"log line exceeds -insert.maxLineSizeBytes"}}},{"create":{"status":201}}]}`
+	f(data, bulkItemResult{nil, errTooLongLine, nil}, timestampsExpected, rowsExpected, responseExpected)
+
+	// a too long log message at EOF doesn't result in the whole request failure.
+	data = `{"create":{"_index":"filebeat-8.8.0"}}
+{"@timestamp":"2023-06-06T04:48:11.735Z","message":"foo"}
+{"create":{"_index":"filebeat-8.8.0"}}
+{"message":"` + strings.Repeat("x", 200) + `"}`
+	timestampsExpected = []int64{1686026891735000000}
+	rowsExpected = `{"_msg":"foo"}`
+	responseExpected = `{"took":123,"errors":true,"items":[{"create":{"status":201}},{"create":{"status":413,"error":{"reason":"log line exceeds -insert.maxLineSizeBytes"}}}]}`
+	f(data, bulkItemResult{nil, errTooLongLine}, timestampsExpected, rowsExpected, responseExpected)
 }
 
 func TestReadBulkRequest_Success(t *testing.T) {
@@ -47,12 +112,12 @@ func TestReadBulkRequest_Success(t *testing.T) {
 
 		// Read the request without compression
 		r := bytes.NewBufferString(data)
-		rows, err := readBulkRequest("test", r, "", timeFields, msgFields, preserveKeys, tlp)
+		results, err := readBulkRequest("test", r, "", timeFields, msgFields, preserveKeys, tlp)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		if rows != len(timestampsExpected) {
-			t.Fatalf("unexpected rows read; got %d; want %d", rows, len(timestampsExpected))
+		if len(results) != len(timestampsExpected) {
+			t.Fatalf("unexpected results read; got %d; want %d", len(results), len(timestampsExpected))
 		}
 		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
 			t.Fatal(err)
@@ -64,12 +129,12 @@ func TestReadBulkRequest_Success(t *testing.T) {
 			data = compressData(data, encoding)
 		}
 		r = bytes.NewBufferString(data)
-		rows, err = readBulkRequest("test", r, encoding, timeFields, msgFields, preserveKeys, tlp)
+		results, err = readBulkRequest("test", r, encoding, timeFields, msgFields, preserveKeys, tlp)
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		if rows != len(timestampsExpected) {
-			t.Fatalf("unexpected rows read; got %d; want %d", rows, len(timestampsExpected))
+		if len(results) != len(timestampsExpected) {
+			t.Fatalf("unexpected results read; got %d; want %d", len(results), len(timestampsExpected))
 		}
 		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
 			t.Fatalf("verification failure after compression: %s", err)

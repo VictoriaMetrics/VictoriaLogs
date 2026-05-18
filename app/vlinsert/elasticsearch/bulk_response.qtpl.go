@@ -18,52 +18,80 @@ var (
 )
 
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:3
-func StreamBulkResponse(qw422016 *qt422016.Writer, n int, tookMs int64) {
+func StreamBulkResponse(qw422016 *qt422016.Writer, results bulkItemResult, tookMs int64) {
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:3
 	qw422016.N().S(`{"took":`)
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:5
 	qw422016.N().DL(tookMs)
 //line app/vlinsert/elasticsearch/bulk_response.qtpl:5
-	qw422016.N().S(`,"errors":false,"items":[`)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:8
-	for i := range n {
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:8
-		qw422016.N().S(`{"create":{"status":201}}`)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:14
-		if i+1 < n {
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:14
-			qw422016.N().S(`,`)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:14
-		}
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:15
+	qw422016.N().S(`,"errors":`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
+	if hasBulkErrors(results) {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
+		qw422016.N().S(`true`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
+	} else {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
+		qw422016.N().S(`false`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
 	}
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:15
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:6
+	qw422016.N().S(`,"items":[`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:8
+	for i, err := range results {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:8
+		qw422016.N().S(`{"create":{`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:11
+		if err != nil {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:11
+			qw422016.N().S(`"status":413,"error":{"reason":`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:14
+			qw422016.N().Q(err.Error())
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:14
+			qw422016.N().S(`}`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:16
+		} else {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:16
+			qw422016.N().S(`"status":201`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+		}
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+		qw422016.N().S(`}}`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:21
+		if i+1 < len(results) {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:21
+			qw422016.N().S(`,`)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:21
+		}
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:22
+	}
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:22
 	qw422016.N().S(`]}`)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 }
 
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
-func WriteBulkResponse(qq422016 qtio422016.Writer, n int, tookMs int64) {
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
+func WriteBulkResponse(qq422016 qtio422016.Writer, results bulkItemResult, tookMs int64) {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
-	StreamBulkResponse(qw422016, n, tookMs)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
+	StreamBulkResponse(qw422016, results, tookMs)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 }
 
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
-func BulkResponse(n int, tookMs int64) string {
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
+func BulkResponse(results bulkItemResult, tookMs int64) string {
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
-	WriteBulkResponse(qb422016, n, tookMs)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
+	WriteBulkResponse(qb422016, results, tookMs)
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	qs422016 := string(qb422016.B)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 	return qs422016
-//line app/vlinsert/elasticsearch/bulk_response.qtpl:18
+//line app/vlinsert/elasticsearch/bulk_response.qtpl:25
 }

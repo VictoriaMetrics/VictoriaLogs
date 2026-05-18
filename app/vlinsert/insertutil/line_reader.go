@@ -37,6 +37,10 @@ type LineReader struct {
 
 	// eofReached is set to true when all the data is read from r
 	eofReached bool
+
+	// IsTooLongLine is set to true if the last line returned from NextLine
+	// was skipped because it exceeded MaxLineSizeBytes.
+	IsTooLongLine bool
 }
 
 // NewLineReader returns LineReader for r.
@@ -56,6 +60,7 @@ func NewLineReader(name string, r io.Reader) *LineReader {
 // If false is returned, then no more lines left to read from r.
 // Check for Err in this case.
 func (lr *LineReader) NextLine() bool {
+	lr.IsTooLongLine = false
 	for {
 		lr.Line = nil
 		if lr.bufOffset >= len(lr.buf) {
@@ -108,6 +113,7 @@ func (lr *LineReader) readMoreData() bool {
 		logger.Warnf("%s: the line length exceeds -insert.maxLineSizeBytes=%d; skipping it; total skipped bytes=%d; the line snippet=%q",
 			lr.name, MaxLineSizeBytes.IntN(), skippedBytes, lineSnippet)
 		tooLongLinesSkipped.Inc()
+		lr.IsTooLongLine = true
 		return ok
 	}
 

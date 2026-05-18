@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -109,17 +110,17 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		lmp := cp.NewLogMessageProcessor("elasticsearch_bulk", true)
 		encoding := r.Header.Get("Content-Encoding")
 		streamName := fmt.Sprintf("remoteAddr=%s, requestURI=%q", httpserver.GetQuotedRemoteAddr(r), r.RequestURI)
-		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
+		results, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
 		lmp.MustClose()
 		if err != nil {
-			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
+			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", len(results), err, cp.StreamFields)
 			return true
 		}
 
 		tookMs := time.Since(startTime).Milliseconds()
 		bw := bufferedwriter.Get(w)
 		defer bufferedwriter.Put(bw)
-		WriteBulkResponse(bw, n, tookMs)
+		WriteBulkResponse(bw, results, tookMs)
 		_ = bw.Flush()
 
 		// update bulkRequestDuration only for successfully parsed requests
@@ -138,30 +139,41 @@ var (
 	bulkRequestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}`)
 )
 
-func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (int, error) {
+type bulkItemResult []error
+
+func hasBulkErrors(results bulkItemResult) bool {
+	for _, err := range results {
+		if err != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) (bulkItemResult, error) {
 	// See https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
 
 	wcr, err := writeconcurrencylimiter.GetReader(r)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer writeconcurrencylimiter.PutReader(wcr)
 
 	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
-		return 0, fmt.Errorf("cannot decode Elasticsearch protocol data: %w", err)
+		return nil, fmt.Errorf("cannot decode Elasticsearch protocol data: %w", err)
 	}
 	defer protoparserutil.PutUncompressedReader(reader)
 
 	lr := insertutil.NewLineReader(streamName, reader)
 
-	n := 0
+	var results bulkItemResult
 	for {
-		hasMoreLines, err := readBulkLine(lr, timeFields, msgFields, preserveKeys, lmp)
-		if err != nil || !hasMoreLines {
-			return n, err
+		ok, err := readBulkLine(lr, timeFields, msgFields, preserveKeys, lmp)
+		if !ok {
+			return results, err
 		}
-		n++
+		results = append(results, err)
 	}
 }
 
@@ -182,7 +194,11 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys
 	}
 
 	// Decode log message
-	if !lr.NextLine() {
+	ok := lr.NextLine()
+	if lr.IsTooLongLine {
+		return true, errTooLongLine
+	}
+	if !ok {
 		if err := lr.Err(); err != nil {
 			return false, err
 		}
@@ -190,9 +206,7 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys
 	}
 	line = lr.Line
 	if len(line) == 0 {
-		// Special case - the line could be too long, so it was skipped.
-		// Continue parsing next lines.
-		return true, nil
+		return false, fmt.Errorf(`missing log message after the "create" or "index" command`)
 	}
 
 	p := logstorage.GetJSONParser()
@@ -219,6 +233,8 @@ func readBulkLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys
 
 	return true, nil
 }
+
+var errTooLongLine = errors.New("log line exceeds -insert.maxLineSizeBytes")
 
 func extractTimestampFromFields(timeFields []string, fields []logstorage.Field) (int64, error) {
 	for _, timeField := range timeFields {
