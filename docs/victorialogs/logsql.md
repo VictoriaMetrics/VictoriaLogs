@@ -3358,6 +3358,8 @@ Add `desc` after the given log field in order to sort in reverse order of this f
 _time:5m | sort by (request_duration_seconds desc)
 ```
 
+Note that the `NaN` value isn't treated as a numeric value by the `sort` pipe. It is sorted as a regular string, so it can be returned before numeric values when sorting in descending order.
+
 The reverse order can be applied globally via `desc` keyword after `by(...)` clause:
 
 ```logsql
