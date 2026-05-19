@@ -198,7 +198,7 @@ This query skips scanning for [log messages](https://docs.victoriametrics.com/vi
 It inspects only `log.level` and [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) labels.
 This significantly reduces disk read IO and CPU time needed for performing the query.
 
-If you want searching for logs with the `error` word across all the fields, then use `*` instead of log field name:
+If you want to search for logs with the `error` word across all the fields, then use `*` instead of log field name:
 
 ```logsql
 _time:5m | *:error
@@ -321,7 +321,7 @@ Sometimes it is needed to apply the given filter across multiple fields. For exa
 in at least a single field with names starting with `kubernetes.` prefix. Just put `*` to the end of the prefix:
 
 ```logsql
-kunberetes.*:nginx
+kubernetes.*:nginx
 ```
 
 The prefix may be empty. The following filter searches for logs with `nginx` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in at least a single field:
