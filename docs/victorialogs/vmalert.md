@@ -18,6 +18,7 @@ aliases:
 and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats).
 These endpoints return log stats in a format compatible with the [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries).
 This allows using VictoriaLogs as the datasource in vmalert and creating alerting and recording rules via [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
+VictoriaLogs also can proxy `/select/vmalert/*` requests to `vmalert` when `-vmalert.proxyURL` is configured.
 
 > This page provides only integration instructions for vmalert and VictoriaLogs. See the full textbook for vmalert [here](https://docs.victoriametrics.com/victoriametrics/vmalert/).
 
