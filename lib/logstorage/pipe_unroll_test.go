@@ -74,7 +74,7 @@ func TestPipeUnroll(t *testing.T) {
 			{"q", "w"},
 		},
 		{
-			{"a", `  ["x","y"]`},
+			{"a", " \t\n\r[\"x\",\"y\"]"},
 			{"q", "z"},
 		},
 		{
