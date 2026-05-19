@@ -264,7 +264,7 @@ If the filter must be applied to other [log field](https://docs.victoriametrics.
 then its name followed by the colon must be put in front of the filter. For example, if `error` [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) must be applied
 to the `log.level` field, then use `log.level:error` query.
 
-If you want searching across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
+If you want to search across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
 
 Field names and filter args can be put into quotes if they contain special chars, which may clash with LogsQL syntax. LogsQL supports quoting via double quotes `"`,
 single quotes `'` and backticks according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals):
