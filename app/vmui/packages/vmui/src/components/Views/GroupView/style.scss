@@ -138,6 +138,12 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
       font-size: $font-size-logs;
       font-variant-numeric: tabular-nums;
       line-height: 1.2;
+
+      &__time-duplicate {
+        .vm-group-logs-row-content__time {
+          color: $color-warning;
+        }
+      }
     }
   }
 

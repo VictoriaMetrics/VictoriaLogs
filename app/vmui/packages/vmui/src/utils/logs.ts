@@ -116,6 +116,6 @@ export const isEqualLogByKeys = (a: Logs, b: Logs, keys: Array<keyof Logs>): boo
   return keys.every(key => a[key] === b[key]);
 };
 
-export const removeExactLog = (logs: Logs[], target: Logs, keys: Array<keyof Logs>): Logs[] => {
+export const removeLogsByKeys = (logs: Logs[], target: Logs, keys: Array<keyof Logs>): Logs[] => {
   return logs.filter(log => !isEqualLogByKeys(log, target, keys));
 };
