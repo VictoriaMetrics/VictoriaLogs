@@ -115,7 +115,7 @@ groups:
   interval: 5m
   rules:
   - alert: HasMoreThan10ErrorLogs
-    expr: '{env=prod} status:in(error,warn) | stats by (k8s.pod.name) as error_logs | filter error_logs:>10'
+    expr: '{env=prod} status:in(error,warn) | stats by (k8s.pod.name) count() as error_logs | filter error_logs:>10'
     annotations:
       description: 'Too big number of errors and warnings on pod {{ index .Labels "k8s.pod.name" }} during the last 5 minutes: {{$value}}'
 ```
