@@ -197,7 +197,7 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write response
 	WriteFacetsResponse(w, m)
@@ -308,7 +308,7 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write response
 	WriteHitsSeries(w, m)
@@ -448,7 +448,7 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, fieldNames)
@@ -496,7 +496,7 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -530,7 +530,7 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, names)
@@ -578,7 +578,7 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, values)
@@ -616,7 +616,7 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streamIDs)
@@ -654,7 +654,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write results
 	WriteValuesWithHitsJSON(w, streams)
@@ -1028,7 +1028,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write response
 	WriteStatsQueryRangeResponse(w, rows)
@@ -1151,7 +1151,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	h := w.Header()
 
 	h.Set("Content-Type", "application/json")
-	ca.writeResponseHeaders(h, startTime)
+	ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 	// Write response
 	WriteStatsQueryResponse(w, rows)
@@ -1243,6 +1243,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 	}()
 
+	qctx := ca.newQueryContext(ctx)
+	defer ca.updatePerQueryStatsMetrics()
+
 	startTime := time.Now()
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
@@ -1253,7 +1256,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		} else {
 			h.Set("Content-Type", "application/stream+json")
 		}
-		ca.writeResponseHeaders(h, startTime)
+		ca.writeResponseHeaders(h, qctx.QueryStats, startTime)
 
 		if format == "csv" {
 			_, _ = sw.Write(csvHeader)
@@ -1290,9 +1293,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 			}
 		}
 	}
-
-	qctx := ca.newQueryContext(ctx)
-	defer ca.updatePerQueryStatsMetrics()
 
 	// Execute the query
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
@@ -1812,9 +1812,9 @@ func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error
 	return a, nil
 }
 
-func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
+func (ca *commonArgs) writeResponseHeaders(h http.Header, qs *logstorage.QueryStats, startTime time.Time) {
 	// Write request duration
-	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds"}
+	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds", "VL-Partial-Response"}
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
 
 	if len(ca.tenantIDs) == 1 {
@@ -1825,10 +1825,30 @@ func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
 		h.Set("ProjectID", fmt.Sprintf("%d", tenantID.ProjectID))
 	}
 
+	qc := qs.QueryCompleteness
+	h.Set("VL-Partial-Response", getPartialResponseHeaderValue(qc))
+
 	for i, v := range accessControlExposeHeaders {
 		accessControlExposeHeaders[i] = http.CanonicalHeaderKey(v)
 	}
 	h.Set("Access-Control-Expose-Headers", strings.Join(accessControlExposeHeaders, ", "))
+}
+
+func getPartialResponseHeaderValue(qc logstorage.QueryCompleteness) string {
+	switch qc {
+	case logstorage.QueryCompletenessNotSet:
+		// qs is not set, means the response is flushed without waiting full response.
+		// Treat this as "unknown".
+		return "unknown"
+	case logstorage.QueryCompletenessPartial:
+		return "true"
+	case logstorage.QueryCompletenessUnknown:
+		return "unknown"
+	case logstorage.QueryCompletenessComplete:
+		return "false"
+	default:
+		panic(fmt.Errorf("BUG: unexpected QueryCompleteness value %d", qc))
+	}
 }
 
 func parseDuration(r *http.Request, argName, defaultValue string) (int64, error) {

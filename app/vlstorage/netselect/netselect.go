@@ -135,18 +135,15 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	return sn
 }
 
-func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func(db *logstorage.DataBlock)) error {
-	args := sn.getCommonArgs(QueryProtocolVersion, qctx)
-
-	qsLocal := &logstorage.QueryStats{}
-	defer qctx.QueryStats.UpdateAtomic(qsLocal)
-
+func (sn *storageNode) runQuery(ctx context.Context, args url.Values, processBlock func(db *logstorage.DataBlock)) (*logstorage.QueryStats, error) {
 	path := "/internal/select/query"
-	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(qctx.Context, path, args)
+	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer responseBody.Close()
+
+	qs := &logstorage.QueryStats{}
 
 	// read the response
 	var dataLenBuf [8]byte
@@ -157,18 +154,18 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 		if _, err := io.ReadFull(responseBody, dataLenBuf[:]); err != nil {
 			if errors.Is(err, io.EOF) {
 				// The end of response stream
-				return nil
+				return qs, nil
 			}
-			return fmt.Errorf("cannot read block size from %q: %w", reqURL, err)
+			return nil, fmt.Errorf("cannot read block size from %q: %w", reqURL, err)
 		}
 		blockLen := encoding.UnmarshalUint64(dataLenBuf[:])
 		if blockLen > math.MaxInt {
-			return fmt.Errorf("too big data block read from %q: %d bytes; mustn't exceed %v bytes", reqURL, blockLen, math.MaxInt)
+			return nil, fmt.Errorf("too big data block read from %q: %d bytes; mustn't exceed %v bytes", reqURL, blockLen, math.MaxInt)
 		}
 
 		buf = slicesutil.SetLength(buf, int(blockLen))
 		if _, err := io.ReadFull(responseBody, buf); err != nil {
-			return fmt.Errorf("cannot read block with size of %d bytes from %q: %w", blockLen, reqURL, err)
+			return nil, fmt.Errorf("cannot read block with size of %d bytes from %q: %w", blockLen, reqURL, err)
 		}
 
 		src := buf
@@ -177,7 +174,7 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 			var err error
 			buf, err = encoding.DecompressZSTD(buf, buf)
 			if err != nil {
-				return fmt.Errorf("cannot decompress data block: %w", err)
+				return nil, fmt.Errorf("cannot decompress data block: %w", err)
 			}
 			src = buf[bufLen:]
 		}
@@ -187,9 +184,9 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 			src = src[1:]
 
 			if isQueryStatsBlock {
-				tail, err := unmarshalQueryStats(qsLocal, src)
+				tail, err := unmarshalQueryStats(qs, src)
 				if err != nil {
-					return fmt.Errorf("cannot unmarshal query stats received from %q: %w", reqURL, err)
+					return nil, fmt.Errorf("cannot unmarshal query stats received from %q: %w", reqURL, err)
 				}
 				src = tail
 				continue
@@ -197,7 +194,7 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 
 			tail, vb, err := db.UnmarshalInplace(src, valuesBuf[:0])
 			if err != nil {
-				return fmt.Errorf("cannot unmarshal data block received from %q: %w", reqURL, err)
+				return nil, fmt.Errorf("cannot unmarshal data block received from %q: %w", reqURL, err)
 			}
 			valuesBuf = vb
 			src = tail
@@ -435,23 +432,37 @@ func (s *Storage) runQuery(stopCh <-chan struct{}, qctx *logstorage.QueryContext
 	ctxWithCancel, cancel := contextutil.NewStopChanContext(stopCh)
 	defer cancel()
 
-	qctxLocal := qctx.WithContext(ctxWithCancel)
-
 	errs := make([]error, len(s.sns))
+	queryStats := make([]*logstorage.QueryStats, len(s.sns))
 
 	var wg sync.WaitGroup
 	for nodeIdx := range s.sns {
 		wg.Go(func() {
 			sn := s.sns[nodeIdx]
-			err := sn.runQuery(qctxLocal, func(db *logstorage.DataBlock) {
+			args := sn.getCommonArgs(QueryProtocolVersion, qctx)
+			qs, err := sn.runQuery(ctxWithCancel, args, func(db *logstorage.DataBlock) {
 				writeBlock(uint(nodeIdx), db)
 			})
 			errs[nodeIdx] = sn.handleError(ctxWithCancel, cancel, err, qctx.AllowPartialResponse)
+			queryStats[nodeIdx] = qs
 		})
 	}
 	wg.Wait()
 
-	return getFirstError(errs, qctx.AllowPartialResponse)
+	isPartial, err := getPartialResponseError(errs, qctx.AllowPartialResponse)
+	if err != nil {
+		return err
+	}
+	qctx.QueryStats.MergeQueryCompleteness(!isPartial)
+
+	for _, qs := range queryStats {
+		if qs == nil {
+			continue
+		}
+		qctx.QueryStats.UpdateAtomic(qs)
+	}
+
+	return nil
 }
 
 // GetFieldNames executes qctx and returns field names seen in results.
@@ -542,7 +553,7 @@ func (s *Storage) DeleteRunTask(ctx context.Context, taskID string, timestamp in
 	}
 	wg.Wait()
 
-	return getFirstError(errs, allowPartialResponse)
+	return getResponseError(errs)
 }
 
 // DeleteStopTask stops the delete task with the given taskID.
@@ -568,7 +579,7 @@ func (s *Storage) DeleteStopTask(ctx context.Context, taskID string) error {
 	}
 	wg.Wait()
 
-	return getFirstError(errs, allowPartialResponse)
+	return getResponseError(errs)
 }
 
 // DeleteActiveTasks returns the list of active delete tasks started via DeleteRunTask
@@ -594,7 +605,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, allowPartialResponse); err != nil {
+	if err := getResponseError(errs); err != nil {
 		return nil, err
 	}
 
@@ -649,7 +660,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, allowPartialResponse); err != nil {
+	if err := getResponseError(errs); err != nil {
 		return nil, err
 	}
 
@@ -678,9 +689,11 @@ func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64,
 	}
 	wg.Wait()
 
-	if err := getFirstError(errs, qctx.AllowPartialResponse); err != nil {
+	isPartial, err := getPartialResponseError(errs, qctx.AllowPartialResponse)
+	if err != nil {
 		return nil, err
 	}
+	qctx.QueryStats.MergeQueryCompleteness(!isPartial)
 
 	vhs := logstorage.MergeValuesWithHits(results, limit, resetHitsOnLimitExceeded)
 
@@ -779,38 +792,59 @@ func (sn *storageNode) handleError(ctx context.Context, cancel func(), err error
 	return err
 }
 
-func getFirstError(errs []error, allowPartialResponse bool) error {
+// getPartialResponseError returns first non-nil error in errs wrapped in 502 Bad Gateways based on allowPartialResponse.
+//
+// If allowPartialResponse is false, it returns the first non-nil error in errs.
+// If allowPartialResponse is true, it returns (true, nil) if at least one error in errs is nil.
+//
+// errs must be non-empty.
+func getPartialResponseError(errs []error, allowPartialResponse bool) (bool, error) {
 	if len(errs) == 0 {
 		logger.Panicf("BUG: len(errs) must be bigger than 0")
 	}
 
-	if !allowPartialResponse {
-		for _, err := range errs {
-			if err != nil {
-				return newStatusBadGatewayError(err)
-			}
+	var firstErr error
+	for _, err := range errs {
+		if err != nil {
+			firstErr = err
+			break
 		}
-		return nil
+	}
+	if firstErr == nil {
+		// All the vlstorage nodes returned full responses.
+		return false, nil
+	}
+	if !allowPartialResponse {
+		return false, newStatusBadGatewayError(firstErr)
 	}
 
-	// allowPartialResponse == true. Return the error only if all the backends are unavailable
-	// or if some of the backends are improperly configured.
 	for _, err := range errs {
 		if err == nil {
 			// At least a single vlstorage returned full response.
-			return nil
+			return true, nil
 		}
 		if !isUnavailableBackendError(err) {
 			// Return the first error, which isn't related to the backend unavailability, to the client,
 			// since this error may point to configuration issues, which must be fixed ASAP.
 			// Hiding this error would complicate troubleshooting of improperly configured system.
 			err = fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
-			return newStatusBadGatewayError(err)
+			return false, newStatusBadGatewayError(err)
 		}
 	}
 
-	err := fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
-	return newStatusBadGatewayError(err)
+	err := fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", firstErr)
+	return false, newStatusBadGatewayError(err)
+}
+
+// getResponseError returns the first non-nil error in errs.
+//
+// The returned error is wrapped into 502 Bad Gateway status error.
+func getResponseError(errs []error) error {
+	isPartial, err := getPartialResponseError(errs, false)
+	if isPartial {
+		logger.Panicf("BUG: isPartial must be false")
+	}
+	return err
 }
 
 func newStatusBadGatewayError(err error) error {

@@ -44,6 +44,8 @@ type QueryStats struct {
 
 	// BytesProcessedUncompressedValues is the total number of uncompressed values bytes processed during the search.
 	BytesProcessedUncompressedValues uint64
+
+	QueryCompleteness QueryCompleteness
 }
 
 // GetBytesReadTotal returns the total number of bytes read, which is tracked by qs.
@@ -66,6 +68,71 @@ func (qs *QueryStats) UpdateAtomic(src *QueryStats) {
 	atomic.AddUint64(&qs.ValuesRead, src.ValuesRead)
 	atomic.AddUint64(&qs.TimestampsRead, src.TimestampsRead)
 	atomic.AddUint64(&qs.BytesProcessedUncompressedValues, src.BytesProcessedUncompressedValues)
+
+	mergeQueryCompleteness(&qs.QueryCompleteness, &src.QueryCompleteness)
+}
+
+// QueryCompleteness indicates whether a query returned a full or partial result set.
+// Partial result only happen if the `-search.allowPartialResponse` command-line flag or the `allow_partial_response` LogsQL option is set.
+// See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses
+type QueryCompleteness uint32
+
+const (
+	// QueryCompletenessNotSet indicates that the value was not set.
+	// This typically occurs in streaming queries where data is not buffered but flushed periodically without merging a final completeness status.
+	// In this case, it behaves like QueryCompletenessUnknown, except that QueryCompletenessNotSet has a lower priority during a merge than other statuses.
+	QueryCompletenessNotSet QueryCompleteness = 0
+
+	// QueryCompletenessPartial means that at least one storage failed to process the query, and the response contains partially calculated data.
+	QueryCompletenessPartial QueryCompleteness = 1
+
+	// QueryCompletenessUnknown indicates a case where it is impossible to determine whether a query is complete or partial.
+	// This occurs with streaming queries that are not buffered in memory.
+	QueryCompletenessUnknown QueryCompleteness = 2
+
+	// QueryCompletenessComplete means that the query was processed by every storage without errors, and the response is complete.
+	QueryCompletenessComplete QueryCompleteness = 3
+)
+
+func (qs *QueryStats) MergeQueryCompleteness(complete bool) {
+	v := QueryCompletenessComplete
+	if !complete {
+		v = QueryCompletenessPartial
+	}
+	mergeQueryCompleteness(&qs.QueryCompleteness, &v)
+}
+
+func mergeQueryCompleteness(dstPtr, srcPtr *QueryCompleteness) {
+	src := QueryCompleteness(atomic.LoadUint32((*uint32)(srcPtr)))
+	if src == QueryCompletenessNotSet {
+		return
+	}
+	srcPriority := getQueryCompletenessPriority(src)
+
+	for {
+		dst := QueryCompleteness(atomic.LoadUint32((*uint32)(dstPtr)))
+		dstPriority := getQueryCompletenessPriority(dst)
+		if srcPriority <= dstPriority {
+			// src priority is lower, e.g. Partial should not be overridden with Unknown.
+			return
+		}
+		if atomic.CompareAndSwapUint32((*uint32)(dstPtr), uint32(dst), uint32(src)) {
+			return
+		}
+	}
+}
+
+func getQueryCompletenessPriority(qc QueryCompleteness) uint8 {
+	switch qc {
+	case QueryCompletenessPartial:
+		return 3
+	case QueryCompletenessUnknown:
+		return 2
+	case QueryCompletenessComplete:
+		return 1
+	default:
+		return 0
+	}
 }
 
 // UpdateAtomicFromDataBlock adds query stats from db to qs.
@@ -76,9 +143,12 @@ func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 	}
 
 	var errGlobal error
-	getUint64Entry := func(name string) uint64 {
+	getUint64Entry := func(name string, required bool) uint64 {
 		c := db.GetColumnByName(name)
 		if c == nil {
+			if !required {
+				return 0
+			}
 			if errGlobal == nil {
 				errGlobal = fmt.Errorf("cannot find field %q in query stats received from the remote storage", name)
 			}
@@ -89,19 +159,27 @@ func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 		return n
 	}
 
-	qs.BytesReadColumnsHeaders += getUint64Entry("BytesReadColumnsHeaders")
-	qs.BytesReadColumnsHeaderIndexes += getUint64Entry("BytesReadColumnsHeaderIndexes")
-	qs.BytesReadBloomFilters += getUint64Entry("BytesReadBloomFilters")
-	qs.BytesReadValues += getUint64Entry("BytesReadValues")
-	qs.BytesReadTimestamps += getUint64Entry("BytesReadTimestamps")
-	qs.BytesReadBlockHeaders += getUint64Entry("BytesReadBlockHeaders")
+	qs.BytesReadColumnsHeaders += getUint64Entry("BytesReadColumnsHeaders", true)
+	qs.BytesReadColumnsHeaderIndexes += getUint64Entry("BytesReadColumnsHeaderIndexes", true)
+	qs.BytesReadBloomFilters += getUint64Entry("BytesReadBloomFilters", true)
+	qs.BytesReadValues += getUint64Entry("BytesReadValues", true)
+	qs.BytesReadTimestamps += getUint64Entry("BytesReadTimestamps", true)
+	qs.BytesReadBlockHeaders += getUint64Entry("BytesReadBlockHeaders", true)
 
-	qs.BlocksProcessed += getUint64Entry("BlocksProcessed")
-	qs.RowsProcessed += getUint64Entry("RowsProcessed")
-	qs.RowsFound += getUint64Entry("RowsFound")
-	qs.ValuesRead += getUint64Entry("ValuesRead")
-	qs.TimestampsRead += getUint64Entry("TimestampsRead")
-	qs.BytesProcessedUncompressedValues += getUint64Entry("BytesProcessedUncompressedValues")
+	qs.BlocksProcessed += getUint64Entry("BlocksProcessed", true)
+	qs.RowsProcessed += getUint64Entry("RowsProcessed", true)
+	qs.RowsFound += getUint64Entry("RowsFound", true)
+	qs.ValuesRead += getUint64Entry("ValuesRead", true)
+	qs.TimestampsRead += getUint64Entry("TimestampsRead", true)
+	qs.BytesProcessedUncompressedValues += getUint64Entry("BytesProcessedUncompressedValues", true)
+
+	v := QueryCompleteness(getUint64Entry("QueryCompleteness", false))
+	if v == QueryCompletenessNotSet {
+		// We received NotSet, which means a backend flushed the data without waiting for the final status.
+		// Override the value to Unknown to distinguish it from the default value (NotSet).
+		v = QueryCompletenessUnknown
+	}
+	mergeQueryCompleteness(&qs.QueryCompleteness, &v)
 
 	return errGlobal
 }
@@ -119,7 +197,10 @@ func (qs *QueryStats) CreateDataBlock(queryDurationNsecs int64) *DataBlock {
 		})
 	}
 
-	qs.addEntries(addUint64Entry, queryDurationNsecs)
+	qs.addPublicEntries(addUint64Entry, queryDurationNsecs)
+
+	// An internal field that should not be shown to the user.
+	addUint64Entry("QueryCompleteness", uint64(qs.QueryCompleteness))
 
 	return &DataBlock{
 		columns: cs,
@@ -140,14 +221,14 @@ func (qs *QueryStats) writeToPipeProcessor(pp pipeProcessor, queryDurationNsecs 
 		rc.addValue(v)
 	}
 
-	qs.addEntries(addUint64Entry, queryDurationNsecs)
+	qs.addPublicEntries(addUint64Entry, queryDurationNsecs)
 
 	var br blockResult
 	br.setResultColumns(rcs, 1)
 	pp.writeBlock(0, &br)
 }
 
-func (qs *QueryStats) addEntries(addUint64Entry func(name string, value uint64), queryDurationNsecs int64) {
+func (qs *QueryStats) addPublicEntries(addUint64Entry func(name string, value uint64), queryDurationNsecs int64) {
 	addUint64Entry("BytesReadColumnsHeaders", qs.BytesReadColumnsHeaders)
 	addUint64Entry("BytesReadColumnsHeaderIndexes", qs.BytesReadColumnsHeaderIndexes)
 	addUint64Entry("BytesReadBloomFilters", qs.BytesReadBloomFilters)
