@@ -94,7 +94,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
         }
 
         const offset = 54;
-        scrollContainer.scrollTop = scrollContainer.scrollHeight - (previousScrollHeight + previousScrollTop) - offset;
+        scrollContainer.scrollTop = scrollContainer.scrollHeight - previousScrollHeight + previousScrollTop - offset;
       });
     });
   }, [fetchContextLogs, hasMore.after, hasMore.before, isLoadingAfter, isLoadingBefore, logsAfter, logsBefore]);
