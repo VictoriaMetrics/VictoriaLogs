@@ -6,7 +6,7 @@ import {
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
 import {
-  buildContextQuery, getNextTimeWindow, isMaxTimeWindow, mergeContextLogs,
+  appendUniqueContextLogs, buildContextQuery, getNextContextTarget, getNextTimeWindow, isMaxTimeWindow, mergeContextLogs,
   STREAM_CONTEXT_TIME_WINDOW_INITIAL
 } from "../helpers";
 
@@ -42,20 +42,26 @@ export const useFetchStreamContext = () => {
 
   const fetchWithExpandedTimeWindow = async ({ log, dir, lines }: FetchSideParams) => {
     let timeWindow = STREAM_CONTEXT_TIME_WINDOW_INITIAL;
+    let accumulatedData: Logs[] = [];
+    let target = log;
 
     while (true) {
+      const remainingLines = Math.max(lines - accumulatedData.length, 1);
       const data = await fetchLogs({
-        query: buildContextQuery(log, dir, lines, timeWindow),
+        query: buildContextQuery(target, dir, remainingLines, timeWindow),
       });
 
       if (!Array.isArray(data)) {
-        return { data: [], timeWindow };
+        return { data: accumulatedData, timeWindow };
       }
 
-      if (data.length >= lines || isMaxTimeWindow(timeWindow)) {
-        return { data, timeWindow };
+      accumulatedData = appendUniqueContextLogs(accumulatedData, data);
+
+      if (accumulatedData.length >= lines || isMaxTimeWindow(timeWindow)) {
+        return { data: accumulatedData, timeWindow };
       }
 
+      target = getNextContextTarget(data, dir) || target;
       timeWindow = getNextTimeWindow(timeWindow);
     }
   };

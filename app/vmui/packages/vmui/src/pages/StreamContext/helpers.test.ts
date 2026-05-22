@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { Logs } from "../../api/types";
 import { getSecondsFromDuration } from "../../utils/time";
 import {
+  appendUniqueContextLogs,
   buildContextQuery,
+  getNextContextTarget,
   getNextTimeWindow,
   isMaxTimeWindow,
   mergeContextLogs,
@@ -115,6 +117,50 @@ describe("StreamContext helpers", () => {
 
       expect(result).toEqual([prev[0], newerLog]);
       expect(result).not.toContain(target);
+    });
+  });
+
+  describe("appendUniqueContextLogs", () => {
+    it("appends unique logs from expanded time windows", () => {
+      const firstLog = {
+        _stream_id: "stream-id",
+        _time: "2025-01-01T10:00:00.000Z",
+        _msg: "first",
+        _stream: "",
+      } as Logs;
+
+      const secondLog = {
+        _stream_id: "stream-id",
+        _time: "2025-01-01T10:01:00.000Z",
+        _msg: "second",
+        _stream: "",
+      } as Logs;
+
+      expect(appendUniqueContextLogs([firstLog], [firstLog, secondLog])).toEqual([firstLog, secondLog]);
+    });
+  });
+
+  describe("getNextContextTarget", () => {
+    const oldestLog = {
+      _stream_id: "stream-id",
+      _time: "2025-01-01T09:59:00.000Z",
+      _msg: "oldest",
+      _stream: "",
+    } as Logs;
+
+    const newestLog = {
+      _stream_id: "stream-id",
+      _time: "2025-01-01T10:01:00.000Z",
+      _msg: "newest",
+      _stream: "",
+    } as Logs;
+
+    it("uses the newest log as the next target when loading after", () => {
+      expect(getNextContextTarget([oldestLog, newestLog], "after")).toBe(newestLog);
+    });
+
+    it("uses the oldest log as the next target when loading before", () => {
+      expect(getNextContextTarget([oldestLog, newestLog], "before")).toBe(oldestLog);
     });
   });
 });

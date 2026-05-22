@@ -75,6 +75,23 @@ export const mergeContextLogs = (dir: Direction, setter: Dispatch<SetStateAction
     setter(prev => dir === "after" ? prev.concat(filtered) : filtered.concat(prev));
   };
 
+export const getLogDedupKey = (log: Logs): string => {
+  return Object.keys(log)
+    .sort()
+    .map(key => `${key}:${log[key]}`)
+    .join("\u0000");
+};
+
+export const appendUniqueContextLogs = (logs: Logs[], nextLogs: Logs[]): Logs[] => {
+  const seen = new Set(logs.map(getLogDedupKey));
+  const uniqueNextLogs = nextLogs.filter(log => !seen.has(getLogDedupKey(log)));
+  return logs.concat(uniqueNextLogs);
+};
+
+export const getNextContextTarget = (logs: Logs[], dir: Direction): Logs | undefined => {
+  return dir === "after" ? logs[logs.length - 1] : logs[0];
+};
+
 const MIN_LOG_ROW_HEIGHT = 20;
 const INITIAL_LOAD_OVERSCAN = 1.25; // Extra viewport space to ensure initial scroll.
 
