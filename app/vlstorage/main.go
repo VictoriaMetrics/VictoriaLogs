@@ -68,6 +68,8 @@ var (
 
 	storageNodeAddrs = flagutil.NewArrayString("storageNode", "Comma-separated list of TCP addresses for storage nodes to route the ingested logs to and to send select queries to. "+
 		"If the list is empty, then the ingested logs are stored and queried locally from -storageDataPath")
+	storageNodeIdleConnTimeout = flag.Duration("storageNode.idleConnTimeout", 50*time.Second, "Timeout for HTTP keep-alive connections to -storageNode nodes. "+
+		"It is recommended setting this value to values smaller than -http.idleConnTimeout set at -storageNode nodes")
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
@@ -174,10 +176,10 @@ func initNetworkStorage() {
 	}
 
 	logger.Infof("starting insert service for nodes %s", *storageNodeAddrs)
-	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression)
+	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *storageNodeIdleConnTimeout, *insertConcurrency, *insertDisableCompression)
 
 	logger.Infof("initializing select service for nodes %s", *storageNodeAddrs)
-	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *selectDisableCompression)
+	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *storageNodeIdleConnTimeout, *selectDisableCompression)
 
 	logger.Infof("initialized all the network services")
 }

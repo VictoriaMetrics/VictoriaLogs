@@ -303,6 +303,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Optional path to bearer token file to use for the corresponding -storageNode. The token is re-read from the file every second
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
+  -storageNode.idleConnTimeout duration
+     Timeout for HTTP keep-alive connections to -storageNode nodes. It is recommended setting this value to values smaller than -http.idleConnTimeout set at -storageNode nodes (default 50s)
   -storageNode.password array
      Optional basic auth password to use for the corresponding -storageNode
      Supports an array of values separated by comma or specified via multiple flags.

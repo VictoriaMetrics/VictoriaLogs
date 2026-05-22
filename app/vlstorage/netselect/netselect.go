@@ -82,6 +82,8 @@ const (
 type Storage struct {
 	sns []*storageNode
 
+	idleConnTimeout time.Duration
+
 	disableCompression bool
 }
 
@@ -109,6 +111,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr := httputil.NewTransport(false, "vlselect_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
+	tr.IdleConnTimeout = s.idleConnTimeout
 
 	scheme := "http"
 	if isTLS {
@@ -366,8 +369,9 @@ func (sn *storageNode) getRequestURL(path string) string {
 // If disableCompression is set, then uncompressed responses are received from storage nodes.
 //
 // Call MustStop on the returned storage when it is no longer needed.
-func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, disableCompression bool) *Storage {
+func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, idleConnTimeout time.Duration, disableCompression bool) *Storage {
 	s := &Storage{
+		idleConnTimeout:    idleConnTimeout,
 		disableCompression: disableCompression,
 	}
 

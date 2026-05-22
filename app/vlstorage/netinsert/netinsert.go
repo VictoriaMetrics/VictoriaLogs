@@ -36,6 +36,8 @@ const ProtocolVersion = "v1"
 type Storage struct {
 	sns []*storageNode
 
+	idleConnTimeout time.Duration
+
 	disableCompression bool
 
 	srt *streamRowsTracker
@@ -81,6 +83,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr := httputil.NewTransport(false, "vlinsert_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
+	tr.IdleConnTimeout = s.idleConnTimeout
 
 	scheme := "http"
 	if isTLS {
@@ -319,13 +322,14 @@ var zstdBufPool bytesutil.ByteBufferPool
 // If disableCompression is set, then the data is sent uncompressed to the remote storage.
 //
 // Call MustStop on the returned storage when it is no longer needed.
-func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool) *Storage {
+func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, idleConnTimeout time.Duration, concurrency int, disableCompression bool) *Storage {
 	pendingDataBuffers := make(chan *bytesutil.ByteBuffer, concurrency*len(addrs))
 	for range cap(pendingDataBuffers) {
 		pendingDataBuffers <- &bytesutil.ByteBuffer{}
 	}
 
 	s := &Storage{
+		idleConnTimeout:    idleConnTimeout,
 		disableCompression: disableCompression,
 		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
