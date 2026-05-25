@@ -630,7 +630,7 @@ To see how many users per version are active over the last 7 days:
 
 ```logsql
 _time:7d
-| stats by (clien.version) uniq(user.id) users
+| stats by (client.version) count_uniq(user.id) users
 | sort by (users desc)
 ```
 
