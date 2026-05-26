@@ -1,5 +1,4 @@
 import { useCallback, useState } from "preact/compat";
-import { formatDateToUTC } from "../../utils/time";
 import dayjs from "dayjs";
 import { TimeParams } from "../../types";
 import { useFetchLogs } from "../../pages/QueryPage/hooks/useFetchLogs";
@@ -36,7 +35,6 @@ const useDownloadLogs = () => {
       const period: TimeParams = {
         start: dayjs(start).unix(),
         end: dayjs(end).unix(),
-        date: formatDateToUTC(dayjs(end).toDate()),
       };
 
       if (format === "csv") {

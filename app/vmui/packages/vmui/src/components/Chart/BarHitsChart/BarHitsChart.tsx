@@ -2,14 +2,14 @@ import { FC, useMemo, useState } from "preact/compat";
 import "./style.scss";
 import "uplot/dist/uPlot.min.css";
 import { AlignedData } from "uplot";
-import { TimeParams } from "../../../types";
+import { TimeParams, TimePeriod } from "../../../types";
 import { LogHits } from "../../../api/types";
 import { GRAPH_QUERY_MODE, GRAPH_STYLES, GraphOptions } from "./types";
 import BarHitsOptions from "./BarHitsOptions/BarHitsOptions";
 import BarHitsPlot from "./BarHitsPlot/BarHitsPlot";
 import { calculateTotalHits } from "../../../utils/logs";
 import BarHitsStats from "./BarHitsStats/BarHitsStats";
-import { HitsChartAlert } from "../../../pages/QueryPage/HitsChart/hooks/useHitsChartAlert";
+import { HitsChartAlert } from "../../../pages/QueryPage/HitsPanel/hooks/useHitsChartAlert";
 import Alert from "../../Main/Alert/Alert";
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
   durationMs?: number
   isOverview?: boolean;
   alertData: HitsChartAlert;
-  setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
+  setPeriod: (nextPeriod: TimePeriod) => void;
 }
 
 const BarHitsChart: FC<Props> = ({

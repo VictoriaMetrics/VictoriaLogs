@@ -1,5 +1,4 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
 import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useFieldFilter, useStreamFieldFilter } from "../hooks/useFieldFilter";
@@ -16,6 +15,8 @@ import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
+import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
+import { TimePeriod } from "../../../types";
 
 const operator = ExtraFilterOperator.Equals;
 
@@ -27,8 +28,8 @@ const getQueryFromArray = (field: string, values: string[]) => {
 const OverviewLogs:FC = () => {
   const [searchParams] = useSearchParams();
 
-  const { period, relativeTime, duration } = useTimeState();
-  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs();
+  const { period, relativeTime, getUrlParams } = useTimePeriod();
+  const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
   const { extraParams } = useExtraFilters();
   const { fieldFilter, fieldValueFilters } = useFieldFilter();
   const { streamFieldFilter, streamFieldValueFilters } = useStreamFieldFilter();
@@ -68,15 +69,21 @@ const OverviewLogs:FC = () => {
   }, [period, fieldFilter, fieldValueFilters, streamFieldFilter, streamFieldValueFilters, extraParams]);
 
   const linkToLogs = useMemo(() => {
-    const params = new URLSearchParams({
-      query,
-      "g0.range_input": duration,
-      "g0.end_input": period.date,
-      "g0.relative_time": relativeTime || "none",
+    const nextPeriod: TimePeriod = {
+      from: new Date(period.start * 1000),
+      to: new Date(period.end * 1000)
+    };
+
+    const params = new URLSearchParams({ query });
+    const periodOptions = relativeTime ? { nextRelativeTime: relativeTime } : { nextPeriod };
+    const timeParams = getUrlParams(periodOptions);
+
+    timeParams.forEach((value, key) => {
+      params.set(key, value);
     });
 
     return `${router.home}?${params.toString()}`;
-  }, [query, duration, relativeTime]);
+  }, [query, period, relativeTime]);
 
   const handleCopyQuery  = async () => {
     await copyToClipboard(query, "Query has been copied");
@@ -84,10 +91,10 @@ const OverviewLogs:FC = () => {
   };
 
   useEffect(() => {
-    abortController.abort();
+    abort();
     if (hidePreviewLogs) return;
-    fetchLogs({ query, period, limit });
-  }, [query, limit, hidePreviewLogs]);
+    void fetchLogs({ query, period, limit });
+  }, [query, period, limit, hidePreviewLogs]);
 
   useEffect(() => {
     if (copied === null) return;

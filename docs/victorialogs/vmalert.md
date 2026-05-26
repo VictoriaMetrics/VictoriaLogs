@@ -18,6 +18,7 @@ aliases:
 and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats).
 These endpoints return log stats in a format compatible with the [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries).
 This allows using VictoriaLogs as the datasource in vmalert and creating alerting and recording rules via [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
+VictoriaLogs also can proxy `/select/vmalert/*` requests to `vmalert` when `-vmalert.proxyURL` is configured.
 
 > This page provides only integration instructions for vmalert and VictoriaLogs. See the full textbook for vmalert [here](https://docs.victoriametrics.com/victoriametrics/vmalert/).
 
@@ -105,8 +106,7 @@ for more details.
 
 The `expr` query must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) in order to calculate
 some metric over the selected logs, and use this metric in alerting threshold. Use [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe)
-for filtering the calculated metric according to the needed threshold. For example, the following alerting rule fires
-if the number of logs with the `error` or `warn` status in `env=prod` exceeds 10 during the last 5 minutes:
+for filtering the calculated metric according to the needed threshold. For example, the following alerting rule fires if the number of `error` or `warn` logs on a single pod in `env=prod` exceeds 10 during the last 5 minutes:
 
 ```yaml
 groups:
@@ -115,9 +115,9 @@ groups:
   interval: 5m
   rules:
   - alert: HasMoreThan10ErrorLogs
-    expr: '{env=prod} status:in(error,warn) | stats count() as error_logs | filter error_logs:>10'
+    expr: '{env=prod} status:in(error,warn) | stats by (k8s.pod.name) count() as error_logs | filter error_logs:>10'
     annotations:
-      description: 'Too big number of errors and warnings during the last 5 minutes: {{$value}}'
+      description: 'Too big number of errors and warnings on pod {{ index .Labels "k8s.pod.name" }} during the last 5 minutes: {{$value}}'
 ```
 
 It is possible to group the calculated metrics by arbitrary log fields, by using [`stats by (...)` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-fields).
