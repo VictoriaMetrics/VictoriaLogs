@@ -1,5 +1,4 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useState } from "react";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
@@ -17,6 +16,7 @@ import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
 import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 import { OrderDir } from "../../../../types";
+import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
 
 const MODE_CONFIG = {
   top: {
@@ -42,8 +42,8 @@ type Props = {
 }
 
 const TopFieldValues: FC<Props> = ({ scope }) => {
-  const { period } = useTimeState();
-  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs();
+  const { period } = useTimePeriod();
+  const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
   const { extraParams, addNewFilter } = useExtraFilters();
   const { fieldFilter, fieldValueFilters, toggleFieldValueFilter } = useFieldFilter();
   const { streamFieldFilter, streamFieldValueFilters, toggleStreamFieldValueFilter } = useStreamFieldFilter();
@@ -105,9 +105,9 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   useEffect(() => {
     if (!selectedKey) return;
     const query = buildFieldValuesQuery(selectedKey, mode, limit);
-    fetchLogs({ period, extraParams, limit, query });
+    void fetchLogs({ period, extraParams, limit, query });
 
-    return () => abortController.abort();
+    return () => abort();
   }, [period, extraParams.toString(), selectedKey, limit, mode]);
 
   const TableAction = (row: LogsFieldValues) => {

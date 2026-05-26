@@ -1,6 +1,5 @@
 import { FC, useMemo } from "preact/compat";
 import { useFieldFilter, useStreamFieldFilter } from "../../hooks/useFieldFilter";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useEffect } from "react";
@@ -10,6 +9,7 @@ import Alert from "../../../../components/Main/Alert/Alert";
 import { useOverviewState } from "../../../../state/overview/OverviewStateContext";
 import { cardinalityConfig } from "./cardinalityConfig";
 import Tooltip from "../../../../components/Main/Tooltip/Tooltip";
+import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
 
 type Props = {
   scope: "field" | "stream";
@@ -22,8 +22,8 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
   const field = scope === "field" ? fieldFilter : streamFieldFilter;
   const fieldNameList = scope === "field" ? fieldNames : streamsFieldNames;
 
-  const { period } = useTimeState();
-  const { logs, isLoading, error, fetchLogs, abortController } = useFetchLogs();
+  const { period } = useTimePeriod();
+  const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
   const { extraParams } = useExtraFilters();
 
   const targetField = fieldNameList.find(f => f.value === field);
@@ -42,9 +42,9 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
     if (!field) return;
 
     const query = `${field}:* | stats count_uniq(${field}) as distinct`;
-    fetchLogs({ period, extraParams, query });
+    void fetchLogs({ period, extraParams, query });
 
-    return () => abortController.abort();
+    return () => abort();
   }, [period, extraParams.toString(), field, scope]);
 
   if (!field) return null;

@@ -145,6 +145,7 @@ func initLocalStorage() {
 	logger.Infof("opening storage at -storageDataPath=%s", *storageDataPath)
 	startTime := time.Now()
 	localStorage = logstorage.MustOpenStorage(*storageDataPath, cfg)
+	fs.RegisterPathFsMetrics(*storageDataPath)
 
 	var ss logstorage.StorageStats
 	localStorage.UpdateStats(&ss)

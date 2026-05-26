@@ -18,7 +18,7 @@ aliases:
 and [Grafana Alloy](https://grafana.com/docs/alloy/latest/) are default log collectors for Grafana Loki.
 They can be configured to send the collected logs to VictoriaLogs according to the following docs.
 
-Specify [`clients`](https://grafana.com/docs/loki/latest/clients/promtail/configuration/#clients) section in the configuration file
+Specify [`clients`](https://grafana.com/docs/loki/v3.6.x/send-data/promtail/configuration/#clients) section in the configuration file
 for sending the collected logs to [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/):
 
 ```yaml
@@ -95,7 +95,7 @@ via Loki protocol.
 
 By default the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 If you need storing logs in other tenant, then specify the needed tenant via `tenant_id` field
-in the [Loki client configuration](https://grafana.com/docs/loki/latest/clients/promtail/configuration/#clients)
+in the [Loki client configuration](https://grafana.com/docs/loki/v3.6.x/send-data/promtail/configuration/#clients)
 The `tenant_id` must have `AccountID:ProjectID` format, where `AccountID` and `ProjectID` are arbitrary uint32 numbers.
 For example, the following config instructs VictoriaLogs to store logs in the `(AccountID=12, ProjectID=34)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy):
 

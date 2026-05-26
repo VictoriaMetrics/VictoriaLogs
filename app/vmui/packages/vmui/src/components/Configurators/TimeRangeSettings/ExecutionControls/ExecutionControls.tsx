@@ -1,5 +1,4 @@
 import { FC, useEffect, useRef, useState } from "preact/compat";
-import { useTimeDispatch } from "../../../../state/time/TimeStateContext";
 import { getAppModeEnable } from "../../../../utils/app-mode";
 import Button from "../../../Main/Button/Button";
 import { ArrowDownIcon, RefreshIcon, RestartIcon } from "../../../Main/Icons";
@@ -9,6 +8,7 @@ import classNames from "classnames";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import useBoolean from "../../../../hooks/useBoolean";
+import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
 
 interface AutoRefreshOption {
   seconds: number
@@ -33,7 +33,7 @@ const delayOptions: AutoRefreshOption[] = [
 export const ExecutionControls: FC = () => {
   const { isMobile } = useDeviceDetect();
 
-  const dispatch = useTimeDispatch();
+  const dispatch = useQueryDispatch();
   const appModeEnable = getAppModeEnable();
   const [autoRefresh, setAutoRefresh] = useState(false);
 

@@ -1,10 +1,10 @@
 import { FC, useEffect, useState } from "preact/compat";
-import Modal from "../../../components/Main/Modal/Modal";
-import Button from "../../../components/Main/Button/Button";
+import Modal from "../../Main/Modal/Modal";
+import Button from "../../Main/Button/Button";
 import LogsLimitInput from "./LogsLimitInput";
 import "./style.scss";
-import Checkbox from "../../../components/Main/Checkbox/Checkbox";
-import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
+import Checkbox from "../../Main/Checkbox/Checkbox";
+import DownloadLogsModal from "../../DownloadLogs/DownloadLogsModal";
 import { formatNumber } from "../../../utils/number";
 
 type Props = {

@@ -16,20 +16,11 @@ interface UseHitsChartAlertParams {
 
 export const useHitsChartAlert = ({
   data,
-  error,
   isLoading,
   hideChart,
 }: UseHitsChartAlertParams): HitsChartAlert => {
   return useMemo(() => {
     if (isLoading || hideChart) return null;
-
-    if (error) {
-      return {
-        variant: "error",
-        title: "Failed to load hits",
-        message: error,
-      };
-    }
 
     const noData = data.every((d) => d.length === 0);
     if (noData) return null;
@@ -53,5 +44,5 @@ export const useHitsChartAlert = ({
     }
 
     return null;
-  }, [data, error, isLoading, hideChart]);
+  }, [data, isLoading, hideChart]);
 };

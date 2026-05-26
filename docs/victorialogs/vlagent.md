@@ -48,7 +48,7 @@ Please download and unpack the `vlutils` archive from [releases page](https://gi
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/insert/native`.
-  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
+  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victoriametrics/vmagent/#srv-urls) for details.
 
 Example command, which starts `vlagent` for accepting logs over HTTP-based [supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 at the port `9429` and sends the collected logs to VictoriaLogs instance at `victoria-logs-host:9428`:
@@ -373,7 +373,7 @@ See also ready-to-use `vlagent` configuration examples for the corresponding log
 
 ### Glob pattern requirements
 
-The `-fileCollector.glob` flag must point to a file or a collection of files with the given suffix (extension), not a directory:
+The `-fileCollector.glob` flag must point to a file or a collection of files with a given suffix (extension), not a directory:
 
 ```sh
 # correct
@@ -384,12 +384,41 @@ The `-fileCollector.glob` flag must point to a file or a collection of files wit
 -fileCollector.glob=/var/log/nginx/
 ```
 
-Multiple glob patterns can be specified by repeating the flag:
+### Supported pattern syntax
+
+| Pattern          | Description                                                   |
+|------------------|---------------------------------------------------------------|
+| `*`              | Matches any sequence of characters, excluding path separators |
+| `/**/`           | Matches zero or more directories (recursive)                  |
+| `?`              | Matches any single character, excluding path separators       |
+| `[abc]`, `[a-z]` | Character class; prefix with `^` or `!` to negate             |
+| `{a,b,c}`        | Alternatives - matches any one of the comma-separated terms   |
+| `\\c`            | Escaped character literal                                     |
+
+Examples:
 
 ```sh
--fileCollector.glob=/var/log/nginx/access.log \
--fileCollector.glob=/var/log/nginx/error.log
+# any .log file one level deep under /var/log/
+-fileCollector.glob=/var/log/*/*.log
+
+# any .log file at any depth under /var/log/
+-fileCollector.glob=/var/log/**/*.log
+
+# only access.log or error.log
+-fileCollector.glob=/var/log/nginx/{access,error}.log
+
+# files matching exactly one character prefix
+-fileCollector.glob=/var/log/nginx/?.log
 ```
+
+**Note:** The `*` wildcard does not match hidden files (those starting with `.`).
+To collect logs from hidden files, specify the leading dot explicitly:
+
+```sh
+-fileCollector.glob=/var/log/nginx/.*.log
+```
+
+### Excluding files
 
 To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 
@@ -398,11 +427,35 @@ To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 -fileCollector.excludeGlob=/var/log/com.apple*
 ```
 
-Double-star (`**`) glob patterns are not supported:
+### Multiple glob patterns and ordering
+
+Multiple glob patterns can be specified by repeating the flag:
 
 ```sh
-# incorrect
--fileCollector.glob=/var/log/**/*.log
+-fileCollector.glob=/var/log/nginx/access.log \
+-fileCollector.glob=/var/log/nginx/error.log
+```
+
+Patterns are evaluated in the order they are specified.
+If a file is already being collected by an earlier pattern, subsequent patterns will not start collecting it again -
+each file is processed at most once.
+
+Each `-fileCollector.glob` is paired positionally with its corresponding `-fileCollector.excludeGlob` and `-fileCollector.extraFields`.
+The first `glob` pairs with the first `excludeGlob` and the first `extraFields`, the second with the second, and so on.
+Use an empty string `''` as a placeholder when a specific position requires no exclude pattern or extra fields:
+
+```sh
+# Pair 1: all logs except nginx, labeled as "other"
+# nginx logs are excluded here so they are not consumed by this pair
+# and can be picked up by pair 2 with its own extraFields
+-fileCollector.glob='/var/log/*/*.log'
+-fileCollector.excludeGlob='/var/log/nginx/*'
+-fileCollector.extraFields='{"app":"other"}'
+
+# Pair 2: nginx logs, labeled as "nginx_logs"
+-fileCollector.glob='/var/log/nginx/*.log'
+-fileCollector.excludeGlob=''
+-fileCollector.extraFields='{"app":"nginx_logs"}'
 ```
 
 ### Log rotation
@@ -707,6 +760,24 @@ according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmaut
 - Use `-remoteWrite.showURL=false` (the default) to prevent sensitive URL parameters such as tokens or passwords
   from appearing in logs and on the debug endpoints like `/metrics` and `/debug/pprof/*`
 
+## SRV URLs
+
+[DNS SRVs](https://en.wikipedia.org/wiki/SRV_record) are useful when HTTP services run on different TCP ports or when their TCP ports can change over time (for instance, after a restart).
+
+`vlagent` supports DNS SRV resolution in `-remoteWrite.url` when the hostname starts with `srv+`. For example, if DNS contains SRV records for `victoria-logs`, then:
+
+```sh
+-remoteWrite.url=http://srv+victoria-logs/insert/native
+```
+
+When vlagent creates a new TCP connection to the remote endpoint, it resolves the SRV record and uses one of the returned `target:port` addresses, for example:
+
+```sh
+-remoteWrite.url=http://victoria-logs-host:9428/insert/native
+```
+
+If SRV lookup returns multiple targets, `vlagent` randomly chooses a target per connection.
+
 ## remote write format
 
 By default, `vlagent` sends logs to the `-remoteWrite.url` with `native` protocol, which is supported by all VictoriaLogs components.
@@ -821,7 +892,8 @@ Use [the official Grafana dashboard for `vlagent` state overview](https://grafan
 Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+We recommend setting up [alerts-vlagent.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 ## Multitenancy

@@ -27,7 +27,6 @@
     padding: 0 $padding-global;
 
     &-inputs {
-      flex-grow: 1;
       display: grid;
       align-items: flex-start;
       justify-content: stretch;
@@ -58,6 +57,8 @@
     }
 
     &__controls {
+      flex-grow: 1;
+      align-items: flex-end;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: $padding-small;
