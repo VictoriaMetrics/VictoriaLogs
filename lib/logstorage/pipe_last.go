@@ -144,7 +144,7 @@ func parsePipeLastFirst(lex *lexer) (*pipeSort, error) {
 	if lex.isKeyword("rank") {
 		rankFieldName, err := parseRankFieldName(lex)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read rank field name: %s", err)
+			return nil, fmt.Errorf("cannot read rank field name: %w", err)
 		}
 		ps.rankFieldName = rankFieldName
 	}

@@ -16,8 +16,8 @@ type ResponseHits = {
   hits: LogHits[];
 }
 
-interface FetchHitsParams {
-  query?: string;
+export interface FetchHitsParams {
+  query: string;
   period: TimeParams;
   extraParams?: URLSearchParams;
   field?: string;
@@ -30,7 +30,7 @@ interface OptionsParams extends FetchHitsParams {
   signal: AbortSignal;
 }
 
-export const useFetchLogHits = (defaultQuery = "*") => {
+export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [searchParams] = useSearchParams();
@@ -54,7 +54,7 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     }
   }, [serverUrl]);
 
-  const getOptions = ({ query = defaultQuery, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
+  const getOptions = ({ query, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
     const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
     const offsetMinutes = dayjs().tz().utcOffset();
 
@@ -101,7 +101,7 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     return hits;
   };
 
-  const fetchLogHits = useCallback(async (params: FetchHitsParams) => {
+  const fetchHits = useCallback(async (params: FetchHitsParams) => {
     const queryMode = params.queryMode || GRAPH_QUERY_MODE.hits;
 
     abortControllerRef.current.abort();
@@ -157,7 +157,7 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     } finally {
       setIsLoading(prev => ({ ...prev, [id]: false }));
     }
-  }, [getUrl, defaultQuery, tenant]);
+  }, [getUrl, tenant]);
 
   useEffect(() => {
     return () => {
@@ -176,9 +176,9 @@ export const useFetchLogHits = (defaultQuery = "*") => {
     logHits,
     isLoading: Object.values(isLoading).some(s => s),
     error,
-    fetchLogHits,
+    fetchHits,
     durationMs,
-    abortController: abortControllerRef.current
+    abort: useCallback(() => abortControllerRef.current?.abort(), [])
   };
 };
 

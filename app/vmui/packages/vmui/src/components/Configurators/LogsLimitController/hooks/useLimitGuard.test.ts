@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
 import { useLimitGuard } from "./useLimitGuard";
-import type { BeforeFetchResult } from "../hooks/useFetchLogs";
+import type { BeforeFetchResult } from "../../../../pages/QueryPage/hooks/useFetchLogs";
 import {
   LOGS_CONFIRM_THRESHOLD as THRESHOLD,
   LOGS_MAX_LIMIT as MAX,
   LOGS_LIMIT_WARN_DISMISSED_KEY as WARN_KEY,
-} from "../../../constants/logs";
+} from "../../../../constants/logs";
 
 const makeBody = (n: number): URLSearchParams => {
   const p = new URLSearchParams();

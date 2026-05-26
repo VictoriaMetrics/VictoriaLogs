@@ -2997,7 +2997,7 @@ func parseArgsInParens(lex *lexer) ([]string, error) {
 		}
 		arg, err := lex.nextCompoundToken()
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse arg")
+			return nil, fmt.Errorf("cannot parse arg: %w", err)
 		}
 		args = append(args, arg)
 		if lex.isKeyword(")") {
@@ -3035,7 +3035,7 @@ func parseArgsInParensPossibleWildcard(lex *lexer) ([]string, bool, error) {
 		} else {
 			token, err := lex.nextCompoundToken()
 			if err != nil {
-				return nil, false, fmt.Errorf("cannot parse arg")
+				return nil, false, fmt.Errorf("cannot parse arg: %w", err)
 			}
 			arg = token
 		}

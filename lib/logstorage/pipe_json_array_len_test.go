@@ -43,6 +43,9 @@ func TestPipeJSONArrayLen(t *testing.T) {
 			{"baz", "1234567890"},
 		},
 		{
+			{"foo", " \t\n\r[\"a\",\"b\"]"},
+		},
+		{
 			{"foo", `abc`},
 			{"bar", `de`},
 		},
@@ -54,6 +57,10 @@ func TestPipeJSONArrayLen(t *testing.T) {
 			{"foo", `["abcde",2,{"bar":"x,y","z":[1,2]}]`},
 			{"baz", "1234567890"},
 			{"x", "3"},
+		},
+		{
+			{"foo", " \t\n\r[\"a\",\"b\"]"},
+			{"x", "2"},
 		},
 		{
 			{"foo", `abc`},

@@ -5,8 +5,9 @@ import {
 } from "preact/compat";
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
-import { removeExactLog } from "../../../utils/logs";
 import { toNanoPrecision } from "../../../utils/time";
+import { removeExactLog } from "../../../utils/logs";
+import { LOGS_STREAM_CONTEXT_KEYS } from "../../../constants/logs";
 
 type Direction = "before" | "after";
 
@@ -27,17 +28,20 @@ const buildContextQuery = (
     throw new Error("Log must contain _stream_id and _time fields.");
   }
 
-  return `_stream_id:${_stream_id} _time:${toNanoPrecision(_time)} | stream_context ${dir} ${lines} | sort by (_time) desc`;
+  return `_stream_id:${_stream_id} 
+_time:${toNanoPrecision(_time)} 
+| stream_context ${dir} ${lines}
+| sort by (_time) desc`;
 };
 
 const mergeLogs = (dir: Direction, setter: Dispatch<SetStateAction<Logs[]>>) =>
   (fetched: Logs[], target: Logs) => {
-    const filtered =  dir === "after" ? removeExactLog(fetched, target) : fetched;
+    const filtered = removeExactLog(fetched, target, LOGS_STREAM_CONTEXT_KEYS);
     setter(prev => dir === "after" ? filtered.concat(prev) : prev.concat(filtered));
   };
 
 export const useFetchStreamContext = () => {
-  const { fetchLogs, isLoading, error, abortController } = useFetchLogs();
+  const { fetchLogs, isLoading, error, abort } = useFetchLogs();
 
   const [logsBefore, setLogsBefore] = useState<Logs[]>([]);
   const [logsAfter, setLogsAfter] = useState<Logs[]>([]);
@@ -59,8 +63,11 @@ export const useFetchStreamContext = () => {
         query: buildContextQuery(log, dir, lines),
       });
 
-      if (Array.isArray(data) && data.length) {
-        mergeLogs(dir, setter)(data, log);
+      if (Array.isArray(data)) {
+        if (data.length) {
+          mergeLogs(dir, setter)(data, log);
+        }
+
         setHasMore(prev => ({
           ...prev,
           [dir]: data.length >= lines,
@@ -92,6 +99,6 @@ export const useFetchStreamContext = () => {
     error,
     fetchContextLogs,
     resetContextLogs,
-    abortController,
+    abort,
   };
 };

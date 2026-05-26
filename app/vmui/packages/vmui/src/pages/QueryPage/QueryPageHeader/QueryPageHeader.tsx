@@ -3,7 +3,7 @@ import { PlayIcon, SpinnerIcon } from "../../../components/Main/Icons";
 import "./style.scss";
 import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
-import LogsLimitInput from "../LimitController/LogsLimitInput";
+import LogsLimitInput from "../../../components/Configurators/LogsLimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete
   from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
 import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
@@ -44,6 +44,8 @@ const QueryPageHeader: FC<Props> = ({
   const { value: awaitQuery, setValue: setAwaitQuery } = useBoolean(false);
 
   const handleHistoryChange = (step: number) => {
+    if (!queryHistory.length) return;
+
     const { values, index } = queryHistory[0];
     const newIndexHistory = index + step;
     if (newIndexHistory < 0 || newIndexHistory >= values.length) return;

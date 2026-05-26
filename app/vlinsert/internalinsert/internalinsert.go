@@ -102,7 +102,7 @@ func parseData(irp insertutil.InsertRowProcessor, data []byte) error {
 	for len(src) > 0 {
 		tail, err := r.UnmarshalInplace(src)
 		if err != nil {
-			return fmt.Errorf("cannot parse row #%d: %s", i, err)
+			return fmt.Errorf("cannot parse row #%d: %w", i, err)
 		}
 		src = tail
 		i++

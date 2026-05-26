@@ -198,7 +198,7 @@ This query skips scanning for [log messages](https://docs.victoriametrics.com/vi
 It inspects only `log.level` and [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) labels.
 This significantly reduces disk read IO and CPU time needed for performing the query.
 
-If you want searching for logs with the `error` word across all the fields, then use `*` instead of log field name:
+If you want to search for logs with the `error` word across all the fields, then use `*` instead of log field name:
 
 ```logsql
 _time:5m | *:error
@@ -264,7 +264,7 @@ If the filter must be applied to other [log field](https://docs.victoriametrics.
 then its name followed by the colon must be put in front of the filter. For example, if `error` [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) must be applied
 to the `log.level` field, then use `log.level:error` query.
 
-If you want searching across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
+If you want to search across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
 
 Field names and filter args can be put into quotes if they contain special chars, which may clash with LogsQL syntax. LogsQL supports quoting via double quotes `"`,
 single quotes `'` and backticks according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals):
@@ -321,7 +321,7 @@ Sometimes it is needed to apply the given filter across multiple fields. For exa
 in at least a single field with names starting with `kubernetes.` prefix. Just put `*` to the end of the prefix:
 
 ```logsql
-kunberetes.*:nginx
+kubernetes.*:nginx
 ```
 
 The prefix may be empty. The following filter searches for logs with `nginx` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in at least a single field:
@@ -3384,6 +3384,8 @@ Add `desc` after the given log field in order to sort in reverse order of this f
 ```logsql
 _time:5m | sort by (request_duration_seconds desc)
 ```
+
+Note that the `NaN` value isn't treated as a numeric value by the `sort` pipe. It is sorted as a regular string, so it can be returned before numeric values when sorting in descending order.
 
 The reverse order can be applied globally via `desc` keyword after `by(...)` clause:
 
