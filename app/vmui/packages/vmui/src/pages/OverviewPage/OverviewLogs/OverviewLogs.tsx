@@ -86,7 +86,7 @@ const OverviewLogs:FC = () => {
     getTenantSearchParams(searchParams).forEach((val, key) => params.set(key, val));
 
     return `${router.home}?${params.toString()}`;
-  }, [query, period, relativeTime]);
+  }, [query, period, relativeTime, searchParams]);
 
   const handleCopyQuery  = async () => {
     await copyToClipboard(query, "Query has been copied");
