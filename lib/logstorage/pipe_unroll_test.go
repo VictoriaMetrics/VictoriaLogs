@@ -74,6 +74,10 @@ func TestPipeUnroll(t *testing.T) {
 			{"q", "w"},
 		},
 		{
+			{"a", " \t\n\r[\"x\",\"y\"]"},
+			{"q", "z"},
+		},
+		{
 			{"a", "b"},
 			{"c", "d"},
 		},
@@ -101,6 +105,14 @@ func TestPipeUnroll(t *testing.T) {
 		{
 			{"a", "NaN"},
 			{"q", "w"},
+		},
+		{
+			{"a", "x"},
+			{"q", "z"},
+		},
+		{
+			{"a", "y"},
+			{"q", "z"},
 		},
 		{
 			{"a", ""},
@@ -260,5 +272,6 @@ func TestUnpackJSONArray(t *testing.T) {
 	f(`[foo`, nil)
 	f(`[]`, nil)
 	f(`[1]`, []string{"1"})
+	f(" \t\n\r[1,2] \r\n\t", []string{"1", "2"})
 	f(`[1,"foo",["bar",12],{"baz":"x"},NaN,null]`, []string{"1", "foo", `["bar",12]`, `{"baz":"x"}`, "NaN", "null"})
 }

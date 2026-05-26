@@ -10,7 +10,7 @@ import { LegendLogHits, LogHits } from "../../../../api/types";
 import { addSeries, delSeries, setBand } from "../../../../utils/uplot";
 import classNames from "classnames";
 import BarHitsTooltip from "../BarHitsTooltip/BarHitsTooltip";
-import { TimeParams } from "../../../../types";
+import { TimeParams, TimePeriod } from "../../../../types";
 import BarHitsLegend from "../BarHitsLegend/BarHitsLegend";
 import { sortLogHits } from "../../../../utils/logs";
 import { useAppState } from "../../../../state/common/StateContext";
@@ -24,7 +24,7 @@ interface Props {
   totalHits: number;
   data: AlignedData;
   period: TimeParams;
-  setPeriod: ({ from, to }: { from: Date, to: Date }) => void;
+  setPeriod: (nextPeriod: TimePeriod) => void;
   graphOptions: GraphOptions;
 }
 

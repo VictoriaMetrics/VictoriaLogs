@@ -8,7 +8,7 @@ aliases:
 ---
 ###### VictoriaLogs datasource for Grafana
 
-Moved to [victorialogs/integrations/grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/#victorialogs-datasource-for-grafana).
+Moved to [victorialogs/integrations/grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/).
 
 ###### Capabilities
 

@@ -25,6 +25,12 @@ export const pipes: PipeEntry[] = [
     "description": "<div class='vm-markdown'><h4><a href=https://docs.victoriametrics.com/victorialogs/logsql/#blocks_count-pipe target=\"_blank\" rel=\"noreferrer\">blocks_count pipe</a></h4><p><code>&lt;q&gt; | blocks_count</code> <a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#pipes\">pipe</a> counts the number of blocks with logs processed by <code>&lt;q&gt;</code>. This pipe is needed mostly for debugging.</p>\n<p>See also:</p>\n<ul>\n<li><a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#query_stats-pipe\"><code>query_stats</code> pipe</a></li>\n<li><a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#block_stats-pipe\"><code>block_stats</code> pipe</a></li>\n<li><a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe\"><code>len</code> pipe</a></li>\n</ul>\n</div>"
   },
   {
+    "id": "coalesce-pipe",
+    "value": "coalesce",
+    "title": "coalesce pipe",
+    "description": "<div class='vm-markdown'><h4><a href=https://docs.victoriametrics.com/victorialogs/logsql/#coalesce-pipe target=\"_blank\" rel=\"noreferrer\">coalesce pipe</a></h4><p><code>&lt;q&gt; | coalesce(&lt;field1&gt;, ..., &lt;fieldN&gt;) [default &quot;value&quot;] as result_field</code> <a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#pipes\">pipe</a> {{% available_from &quot;#&quot; %}}\nreturns the first non-empty value from the specified list of fields in order, writing the result as <code>result_field</code>. \nIf all source fields are empty, the optional <code>default</code> value is used instead.</p>\n<p>This is useful for handling fields that may exist under different names or for providing fallback values when data is missing.</p>\n<pre><code>_time:5m | coalesce (user_id, username, email) default &quot;anonymous&quot; as user\n</code></pre>\n<p>This checks <code>user_id</code> first, then <code>username</code>, then <code>email</code>, and uses &quot;anonymous&quot; if all three are empty.</p>\n</div>"
+  },
+  {
     "id": "collapse_nums-pipe",
     "value": "collapse_nums",
     "title": "collapse_nums pipe",

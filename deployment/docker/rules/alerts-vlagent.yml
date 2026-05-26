@@ -100,23 +100,3 @@ groups:
           summary: "Persistent Queue (url {{ $labels.url }}) of {{ $labels.instance }} (job:{{ $labels.job }}) will run out of space in 4 hours."
           description: "RemoteWrite destination ({{ $labels.url }}) is unavailable or unable to receive data in a timely manner, so the persistent queue size is growing. 
             Once the available space is exhausted, some samples will be discarded and cause incident. Please check the health of remoteWrite destination ({{ $labels.url }})."
-
-      - alert: RequestErrorsToAPI
-        expr: increase(vl_http_errors_total[5m]) > 0
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Too many errors served for path {{ $labels.path }} (instance {{ $labels.instance }})"
-          description: "Requests to path {{ $labels.path }} are receiving errors.
-            Please verify if clients are sending correct requests."
-
-      - alert: RowsRejectedOnIngestion
-        expr: rate(vl_rows_dropped_total[5m]) > 0
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Some rows are rejected on \"{{ $labels.instance }}\" on ingestion attempt"
-          description: "VictoriaLogs is rejecting to ingest rows on \"{{ $labels.instance }}\" due to the
-            following reason: \"{{ $labels.reason }}\""

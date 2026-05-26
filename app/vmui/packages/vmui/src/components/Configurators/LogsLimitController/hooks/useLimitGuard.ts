@@ -3,9 +3,9 @@ import {
   LOGS_CONFIRM_THRESHOLD,
   LOGS_MAX_LIMIT,
   LOGS_LIMIT_WARN_DISMISSED_KEY,
-} from "../../../constants/logs";
-import { BeforeFetch, BeforeFetchResult } from "../hooks/useFetchLogs";
-import useBoolean from "../../../hooks/useBoolean";
+} from "../../../../constants/logs";
+import { BeforeFetch, BeforeFetchResult } from "../../../../pages/QueryPage/hooks/useFetchLogs";
+import useBoolean from "../../../../hooks/useBoolean";
 
 type Params = {
   setLimit: (value: number) => void;
