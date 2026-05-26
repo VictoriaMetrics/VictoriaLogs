@@ -6,6 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	nethttputil "net/http/httputil"
+	"net/url"
 	"strings"
 	"time"
 
@@ -37,6 +39,7 @@ var (
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
+	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert.")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -56,6 +59,7 @@ func getDefaultMaxConcurrentRequests() int {
 // Init initializes vlselect
 func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
+	initVMAlertProxy()
 
 	internalselect.Init()
 }
@@ -185,6 +189,17 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		// Process live tailing request without timeout, since it is OK to run live tailing requests for very long time.
 		// Also do not apply concurrency limit to tail requests, since these limits are intended for non-tail requests.
 		logsql.ProcessLiveTailRequest(ctx, w, r)
+		return true
+	}
+	if strings.HasPrefix(path, "/select/vmalert/") {
+		vmalertRequests.Inc()
+		if len(*vmalertProxyURL) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "%s", `{"status":"error","msg":"for accessing vmalert flag '-vmalert.proxyURL' must be configured"}`)
+			return true
+		}
+		proxyVMAlertRequests(w, r)
 		return true
 	}
 
@@ -448,6 +463,42 @@ func getMaxQueryDuration(r *http.Request) (time.Duration, error) {
 	return d, nil
 }
 
+func proxyVMAlertRequests(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		err := recover()
+		if err == nil || err == http.ErrAbortHandler {
+			// Suppress http.ErrAbortHandler panic.
+			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1353
+			return
+		}
+		panic(err)
+	}()
+	req := r.Clone(r.Context())
+	req.URL.Path = strings.TrimPrefix(r.URL.Path, "/select")
+	req.Host = vmalertProxyHost
+	vmalertProxy.ServeHTTP(w, req)
+}
+
+// initVMAlertProxy must be called after flag.Parse(), since it uses command-line flags.
+func initVMAlertProxy() {
+	vmalertProxyHost = ""
+	vmalertProxy = nil
+	if len(*vmalertProxyURL) == 0 {
+		return
+	}
+	proxyURL, err := url.Parse(*vmalertProxyURL)
+	if err != nil {
+		logger.Fatalf("cannot parse -vmalert.proxyURL=%q: %s", *vmalertProxyURL, err)
+	}
+	vmalertProxyHost = proxyURL.Host
+	vmalertProxy = nethttputil.NewSingleHostReverseProxy(proxyURL)
+}
+
+var (
+	vmalertProxyHost string
+	vmalertProxy     *nethttputil.ReverseProxy
+)
+
 var (
 	logsqlFacetsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/facets"}`)
 	logsqlFacetsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/facets"}`)
@@ -490,6 +541,8 @@ var (
 
 	// no need to track the duration for query_time_range requests, since they are instant
 	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
+
+	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 
 	// no need to track duration for /delete/* requests, because they are asynchronous
 	deleteRunTaskRequests     = metrics.NewCounter(`vl_http_requests_total{path="/delete/run_task"}`)

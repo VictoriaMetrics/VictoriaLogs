@@ -198,7 +198,7 @@ This query skips scanning for [log messages](https://docs.victoriametrics.com/vi
 It inspects only `log.level` and [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) labels.
 This significantly reduces disk read IO and CPU time needed for performing the query.
 
-If you want searching for logs with the `error` word across all the fields, then use `*` instead of log field name:
+If you want to search for logs with the `error` word across all the fields, then use `*` instead of log field name:
 
 ```logsql
 _time:5m | *:error
@@ -264,7 +264,7 @@ If the filter must be applied to other [log field](https://docs.victoriametrics.
 then its name followed by the colon must be put in front of the filter. For example, if `error` [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) must be applied
 to the `log.level` field, then use `log.level:error` query.
 
-If you want searching across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
+If you want to search across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
 
 Field names and filter args can be put into quotes if they contain special chars, which may clash with LogsQL syntax. LogsQL supports quoting via double quotes `"`,
 single quotes `'` and backticks according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals):
@@ -321,7 +321,7 @@ Sometimes it is needed to apply the given filter across multiple fields. For exa
 in at least a single field with names starting with `kubernetes.` prefix. Just put `*` to the end of the prefix:
 
 ```logsql
-kunberetes.*:nginx
+kubernetes.*:nginx
 ```
 
 The prefix may be empty. The following filter searches for logs with `nginx` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in at least a single field:
@@ -1826,6 +1826,7 @@ LogsQL supports the following pipes:
 
 - [`block_stats`](https://docs.victoriametrics.com/victorialogs/logsql/#block_stats-pipe) returns various stats for the selected blocks with logs.
 - [`blocks_count`](https://docs.victoriametrics.com/victorialogs/logsql/#blocks_count-pipe) counts the number of blocks with logs processed by the query.
+- [`coalesce`](https://docs.victoriametrics.com/victorialogs/logsql/#coalesce-pipe) returns the first non-empty value from the given fields or a default value when all the fields are empty.
 - [`collapse_nums`](https://docs.victoriametrics.com/victorialogs/logsql/#collapse_nums-pipe) replaces all the decimal and hexadecimal numbers with `<N>`
   in the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`copy`](https://docs.victoriametrics.com/victorialogs/logsql/#copy-pipe) copies [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) (alias: `cp`).
@@ -1930,6 +1931,19 @@ See also:
 - [`query_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#query_stats-pipe)
 - [`block_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#block_stats-pipe)
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
+
+### coalesce pipe
+`<q> | coalesce(<field1>, ..., <fieldN>) [default "value"] as result_field` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) {{% available_from "#" %}}
+returns the first non-empty value from the specified list of fields in order, writing the result as `result_field`. 
+If all source fields are empty, the optional `default` value is used instead.
+
+This is useful for handling fields that may exist under different names or for providing fallback values when data is missing.
+
+```
+_time:5m | coalesce (user_id, username, email) default "anonymous" as user
+```
+
+This checks `user_id` first, then `username`, then `email`, and uses "anonymous" if all three are empty.
 
 ### collapse_nums pipe
 
@@ -3343,6 +3357,8 @@ Add `desc` after the given log field in order to sort in reverse order of this f
 ```logsql
 _time:5m | sort by (request_duration_seconds desc)
 ```
+
+Note that the `NaN` value isn't treated as a numeric value by the `sort` pipe. It is sorted as a regular string, so it can be returned before numeric values when sorting in descending order.
 
 The reverse order can be applied globally via `desc` keyword after `by(...)` clause:
 

@@ -24,6 +24,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 - [HTTP Request Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#http-request-metrics)
 - [Data Ingestion Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#data-ingestion-metrics)
+- [Remote Write Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#remote-write-metrics)
 - [Error and Network Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#error-and-network-metrics)
 
 ## HTTP Request Metrics
@@ -172,6 +173,15 @@ These metrics follow the Prometheus exposition format and can be used for monito
 - `url`: remote storage URL
 
 **Description:** Queue write status where 1 means blocked and 0 means accepting data. Becomes 1 when persistent queue reaches `-remoteWrite.maxDiskUsagePerURL` limit, causing new data to be dropped to prevent disk exhaustion.
+
+### vm_fs_info
+**Type:** Gauge
+
+**Labels:**
+- `path`: remote write data directory
+- `fs_type`: filesystem type
+
+**Description:** Filesystem metadata for the remote write persistent queue path. The value is always 1. This metric helps identify filesystem-specific issues during troubleshooting.
 
 ### vlagent_remotewrite_rate_limit_reached_total
 **Type:** Counter

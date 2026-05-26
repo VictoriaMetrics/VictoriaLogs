@@ -16,8 +16,6 @@ export enum DisplayType {
 export interface TimeParams {
   start: number; // timestamp in seconds
   end: number; // timestamp in seconds
-  step?: string; // seconds
-  date: string; // end input date
 }
 
 export interface TimePeriod {
@@ -185,3 +183,8 @@ export interface GroupLogsType {
 }
 
 export type OrderDir = "asc" | "desc";
+
+export interface NavigateOptions {
+  /** Replace the current entry in the history stack instead of pushing a new one */
+  replace?: boolean;
+}

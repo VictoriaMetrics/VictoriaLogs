@@ -1,14 +1,14 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { useFetchLogHits } from "../../QueryPage/hooks/useFetchLogHits";
-import HitsChart from "../../QueryPage/HitsChart/HitsChart";
-import { useTimeState } from "../../../state/time/TimeStateContext";
+import { useFetchHits } from "../../QueryPage/hooks/useFetchHits";
+import HitsPanel from "../../QueryPage/HitsPanel/HitsPanel";
 import { useSearchParams } from "react-router-dom";
 import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
-import { useHitsChartConfig } from "../../QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { useHitsChartConfig } from "../../QueryPage/HitsPanel/hooks/useHitsChartConfig";
+import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 
 const OverviewHits: FC = () => {
   const [searchParams] = useSearchParams();
-  const { period } = useTimeState();
+  const { period } = useTimePeriod();
   const query = "*";
 
   const {
@@ -18,7 +18,7 @@ const OverviewHits: FC = () => {
   } = useHitsChartConfig();
 
   const { extraParams } = useExtraFilters();
-  const { fetchLogHits, ...dataLogHits } = useFetchLogHits();
+  const { fetchHits, ...dataLogHits } = useFetchHits();
 
   const hideChart = useMemo(() => {
     return Boolean(searchParams.get("hide_chart"));
@@ -27,7 +27,7 @@ const OverviewHits: FC = () => {
   useEffect(() => {
     if (hideChart) return;
 
-    fetchLogHits({
+    void fetchHits({
       period,
       extraParams,
       query,
@@ -40,7 +40,7 @@ const OverviewHits: FC = () => {
 
   return (
     <div>
-      <HitsChart
+      <HitsPanel
         isOverview
         {...dataLogHits}
         query={query}
