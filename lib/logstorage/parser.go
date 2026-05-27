@@ -883,10 +883,7 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 
 	q.f = addTimeFilter(q.f, start, end, q.opts.timeOffset)
 
-	// Initialize rate functions with the step calculated from _time:[start, end] filter.
-	// This fixes the bug where rate_sum() doesn't divide by stepSeconds when
-	// time filter is specified via HTTP params instead of LogsQL expression
-	q.initStatsRateFuncsFromTimeFilter()
+	q.initStatsRateFuncStepsNoSubqueries()
 }
 
 func addTimeFilter(f filter, start, end, offset int64) filter {
@@ -1176,8 +1173,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 	// add _time:step to by (...) list at stats pipes.
 	q.addByTimeFieldToStatsPipes(step, offset)
 
-	// propagate the step into rate* funcs at stats pipes.
-	q.initStatsRateFuncs(step)
+	q.initStatsRateFuncStepsNoSubqueries()
 
 	// add 'partition by (_time)' to 'sort', 'first' and 'last' pipes.
 	q.addPartitionByTime(step)
@@ -1829,28 +1825,33 @@ func ParseQueryAtTimestamp(s string, timestamp int64) (*Query, error) {
 		return nil, fmt.Errorf("unexpected unparsed tail after [%s]; context: [%s]; tail: [%s]", q, lex.context(), lex.rawToken+lex.s)
 	}
 	q.optimize()
-	q.initStatsRateFuncsFromTimeFilter()
+	q.initStatsRateFuncSteps()
 
 	return q, nil
 }
 
-func (q *Query) initStatsRateFuncsFromTimeFilter() {
+func (q *Query) initStatsRateFuncSteps() {
+	q.visitSubqueries(func(q *Query) {
+		q.initStatsRateFuncStepsNoSubqueries()
+	})
+}
+
+func (q *Query) initStatsRateFuncStepsNoSubqueries() {
 	start, end := q.GetFilterTimeRange()
+	step := int64(0)
 	if start != math.MinInt64 && end != math.MaxInt64 {
-		step := end - start
+		step = end - start
 
 		// The increment of the step is needed in order to cover the
 		// last nanosecond in the selected time range [start, end].
 		step++
-
-		q.initStatsRateFuncs(step)
 	}
-}
 
-func (q *Query) initStatsRateFuncs(step int64) {
 	for _, p := range q.pipes {
 		if ps, ok := p.(*pipeStats); ok {
-			ps.initRateFuncs(step)
+			if !ps.initRateFuncsFromTimeBucket() {
+				ps.initRateFuncs(step)
+			}
 		}
 	}
 }

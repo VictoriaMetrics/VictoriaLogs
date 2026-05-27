@@ -362,6 +362,83 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 	})
 }
 
+func TestQuery_AddTimeBucket_StepPropagation(t *testing.T) {
+	q, err := ParseQuery(`_time:[2024-12-25T14:56:43Z,2024-12-26T14:56:42.999999999Z] | stats by (_time:1m, path) rate(), rate_sum(x)`)
+	if err != nil {
+		t.Fatalf("unexpected error in ParseQuery(): %s", err)
+	}
+	if len(q.pipes) != 1 {
+		t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+	}
+	ps, ok := q.pipes[0].(*pipeStats)
+	if !ok {
+		t.Fatalf("unexpected pipe; got %T; want pipeStats", q.pipes[0])
+	}
+	if len(ps.funcs) != 2 {
+		t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+	}
+
+	stepSecondsExpected := float64(60)
+	sr, ok := ps.funcs[0].f.(*statsRate)
+	if !ok {
+		t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+	}
+	if sr.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+	}
+
+	srs, ok := ps.funcs[1].f.(*statsRateSum)
+	if !ok {
+		t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+	}
+	if srs.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+	}
+
+	_, err = q.GetStatsLabelsAddGroupingByTime(nsecsPerDay, 0)
+	if err != nil {
+		t.Fatalf("unexpected error in GetStatsLabelsAddGroupingByTime(): %s", err)
+	}
+	stepSecondsExpected = 86400
+	if sr.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate() after adding grouping by time; got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+	}
+	if srs.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate_sum() after adding grouping by time; got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+	}
+
+	stepSecondsExpected = 60
+	q, err = ParseQuery(`_time:[2024-12-25T14:56:43Z,2024-12-26T14:56:42.999999999Z] | join by (x) (* | stats by (_time:1m, x) rate(), rate_sum(x))`)
+	if err != nil {
+		t.Fatalf("unexpected error in ParseQuery(): %s", err)
+	}
+	if len(q.pipes) != 1 {
+		t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+	}
+	pj, ok := q.pipes[0].(*pipeJoin)
+	if !ok {
+		t.Fatalf("unexpected pipe; got %T; want pipeJoin", q.pipes[0])
+	}
+	ps, ok = pj.q.pipes[0].(*pipeStats)
+	if !ok {
+		t.Fatalf("unexpected pipe; got %T; want pipeStats", pj.q.pipes[0])
+	}
+	sr, ok = ps.funcs[0].f.(*statsRate)
+	if !ok {
+		t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+	}
+	if sr.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate() in subquery; got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+	}
+	srs, ok = ps.funcs[1].f.(*statsRateSum)
+	if !ok {
+		t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+	}
+	if srs.stepSeconds != stepSecondsExpected {
+		t.Fatalf("unexpected stepSeconds for rate_sum() in subquery; got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+	}
+}
+
 func TestParseQuery_OptimizeOffsetLimitPipes(t *testing.T) {
 	f := func(s, resultExpected string) {
 		t.Helper()
