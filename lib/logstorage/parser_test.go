@@ -4489,7 +4489,7 @@ func TestTryParseIPv4CIDR_Success(t *testing.T) {
 			t.Fatalf("cannot parse %s as ipv4 CIDR", s)
 		}
 		if minValue != minValueExpected {
-			t.Fatalf("unexpeccted minValue; got %d; want %d", minValue, minValueExpected)
+			t.Fatalf("unexpected minValue; got %d; want %d", minValue, minValueExpected)
 		}
 		if maxValue != maxValueExpected {
 			t.Fatalf("unexpected maxValue; got %d; want %d", maxValue, maxValueExpected)
