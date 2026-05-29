@@ -20,16 +20,17 @@ on:
       - '!app/vmui/Makefile'
       - '.github/workflows/build.yml'
 
-permissions:
-  contents: read
-
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+permissions: {}
+
 jobs:
   build:
     name: Build
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
