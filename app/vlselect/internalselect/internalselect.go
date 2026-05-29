@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -24,8 +25,12 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 100, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
-	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
+var (
+	maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 100, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
+		"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
+	maxReadBodySize = flagutil.NewBytes("internalselect.maxReadRequestBodySize", 10*1024*1024, "The maximum request body size for /internal/select/* endpoints. "+
+		"Requests exceeding this limit will fail, as request parameters may be lost.")
+)
 
 // RequestHandler processes requests to /internal/select/*
 func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -65,6 +70,17 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	if rh == nil {
 		httpserver.Errorf(w, r, "unsupported endpoint requested: %s", path)
 		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, (*maxReadBodySize).N)
+
+	// since we need to get params from request body, it's required to make sure that the body is read correctly.
+	// multipart form is not needed as we don't use it at all in VictoriaLogs.
+	if r.Form == nil {
+		if err := r.ParseForm(); err != nil {
+			httpserver.Errorf(w, r, "cannot parse form: %s", err)
+			return
+		}
 	}
 
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
