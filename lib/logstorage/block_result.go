@@ -268,7 +268,8 @@ func (br *blockResult) mustInitFromRows(rows [][]Field) {
 		// Fast path - all the rows have the same fields
 		fields := rows[0]
 		for i := range fields {
-			name := br.addValue(fields[i].Name)
+			name := getCanonicalColumnName(fields[i].Name)
+			name = br.addValue(name)
 
 			valuesBufLen := len(br.valuesBuf)
 			for _, row := range rows {
@@ -289,7 +290,8 @@ func (br *blockResult) mustInitFromRows(rows [][]Field) {
 	columnIdxs := getColumnIdxs()
 	for _, fields := range rows {
 		for j := range fields {
-			name := br.addValue(fields[j].Name)
+			name := getCanonicalColumnName(fields[j].Name)
+			name = br.addValue(name)
 			if _, ok := columnIdxs[name]; !ok {
 				columnIdxs[name] = len(columnIdxs)
 			}
@@ -315,12 +317,73 @@ func (br *blockResult) mustInitFromRows(rows [][]Field) {
 	// Add values to columns
 	for i := range rows {
 		for _, f := range rows[i] {
-			idx := columnIdxs[f.Name]
+			name := getCanonicalColumnName(f.Name)
+			idx := columnIdxs[name]
 			value := br.addValue(f.Value)
 			cs[idx].valuesEncoded[i] = value
 		}
 	}
 	putColumnIdxs(columnIdxs)
+}
+
+func (br *blockResult) mustInitFromLogRows(lr *LogRows) {
+	br.mustInitFromRows(lr.rows)
+	if br.rowsLen == 0 {
+		return
+	}
+
+	br.timestampsBuf = append(br.timestampsBuf[:0], lr.timestamps...)
+	br.addTimeColumn()
+
+	bb := bbPool.Get()
+	defer bbPool.Put(bb)
+
+	// Initialize the '_stream' column from the canonical form.
+	st := GetStreamTags()
+	valuesBufLen := len(br.valuesBuf)
+	var stream string
+	for i, stc := range lr.streamTagsCanonicals {
+		if i == 0 || lr.streamTagsCanonicals[i-1] != stc {
+			mustUnmarshalStreamTagsInplace(st, stc)
+			bb.Reset()
+			bb.B = st.marshalString(bb.B)
+			stream = bytesutil.ToUnsafeString(bb.B)
+		}
+		br.addValue(stream)
+	}
+	streamValues := br.valuesBuf[valuesBufLen:]
+	br.addResultColumn(resultColumn{name: "_stream", values: streamValues})
+	PutStreamTags(st)
+
+	// Initialize the 'vl_account_id' column.
+	valuesBufLen = len(br.valuesBuf)
+	var vlAccountID string
+	for i := range lr.streamIDs {
+		accountID := lr.streamIDs[i].tenantID.AccountID
+		if i == 0 || lr.streamIDs[i-1].tenantID.AccountID != accountID {
+			bb.Reset()
+			bb.B = strconv.AppendInt(bb.B, int64(accountID), 10)
+			vlAccountID = bytesutil.ToUnsafeString(bb.B)
+		}
+		br.addValue(vlAccountID)
+	}
+	accountIDs := br.valuesBuf[valuesBufLen:]
+	br.addResultColumn(resultColumn{name: "vl_account_id", values: accountIDs})
+
+	// Initialize the 'vl_project_id' column.
+	valuesBufLen = len(br.valuesBuf)
+	var vlProjectID string
+	for i := range lr.streamIDs {
+		projectID := lr.streamIDs[i].tenantID.ProjectID
+		if i == 0 || lr.streamIDs[i-1].tenantID.ProjectID != projectID {
+			bb.Reset()
+			bb.B = strconv.AppendInt(bb.B, int64(projectID), 10)
+			vlProjectID = bytesutil.ToUnsafeString(bb.B)
+		}
+		br.addValue(vlProjectID)
+	}
+	projectIDs := br.valuesBuf[valuesBufLen:]
+	br.addResultColumn(resultColumn{name: "vl_project_id", values: projectIDs})
 }
 
 // setResultColumns sets the given rcs as br columns.
@@ -570,9 +633,15 @@ func (br *blockResult) getMaxTimestamp(maxTimestamp int64) int64 {
 }
 
 func (br *blockResult) getTimestamps() []int64 {
-	if br.rowsLen > 0 && len(br.timestampsBuf) == 0 {
-		br.initTimestamps()
+	if br.rowsLen == 0 {
+		return nil
 	}
+	if len(br.timestampsBuf) == 0 {
+		// Timestamps aren't initialized yet.
+		br.initTimestamps()
+		return br.timestampsBuf
+	}
+	br.ensureTimestampsParsed()
 	return br.timestampsBuf
 }
 
@@ -587,9 +656,18 @@ func (br *blockResult) initTimestamps() {
 		br.initTimestampsInternal(srcTimestamps)
 		return
 	}
+	br.ensureTimestampsParsed()
+}
 
-	// Try decoding timestamps from _time field
+// ensureTimestampsParsed initializes br.timestampsBuf with parsed timestamps from the _time column.
+// If the column cannot be parsed, the buffer is filled with zeros.
+// It is a no-op if the timestamps are already parsed.
+func (br *blockResult) ensureTimestampsParsed() {
 	c := br.getColumnByName("_time")
+	if c.isTime {
+		// Already parsed.
+		return
+	}
 	timestampValues := c.getValues(br)
 	var ok bool
 	br.timestampsBuf, ok = tryParseTimestamps(br.timestampsBuf[:0], timestampValues)
