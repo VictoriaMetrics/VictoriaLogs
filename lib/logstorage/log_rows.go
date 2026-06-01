@@ -823,3 +823,85 @@ func (r *InsertRow) UnmarshalInplace(src []byte) ([]byte, error) {
 
 	return src, nil
 }
+
+func (lr *LogRows) initFromBlockResult(br *blockResult) {
+	lr.ResetKeepSettings()
+	if br.rowsLen == 0 {
+		return
+	}
+
+	ir := GetInsertRow()
+	defer PutInsertRow(ir)
+	st := GetStreamTags()
+	defer PutStreamTags(st)
+	stcBuf := bbPool.Get()
+	defer bbPool.Put(stcBuf)
+
+	timestamps := br.getTimestamps()
+
+	cs := br.getColumns()
+	for i := 0; i < br.rowsLen; i++ {
+		ir.Reset()
+		var (
+			stream    string
+			accountID string
+			projectID string
+		)
+		fields := ir.Fields
+		for _, c := range cs {
+			if c.name == "_time" {
+				// Timestamps initialized above.
+				continue
+			}
+			s := c.getValueAtRow(br, i)
+			switch c.name {
+			case "_stream":
+				stream = s
+			case "vl_account_id":
+				accountID = s
+			case "vl_project_id":
+				projectID = s
+			default:
+				fields = append(fields, Field{
+					Name:  c.name,
+					Value: s,
+				})
+			}
+		}
+		ir.Fields = fields
+		ir.Timestamp = timestamps[i]
+
+		// Initialize StreamTagsCanonical.
+		st.Reset()
+		stcBuf.Reset()
+		if stream != "" {
+			err := st.unmarshalStringInplace(stream)
+			if err != nil {
+				// Fallback to an empty stream.
+				st.Reset()
+			}
+		}
+		stcBuf.B = st.MarshalCanonical(stcBuf.B)
+		ir.StreamTagsCanonical = bytesutil.ToUnsafeString(stcBuf.B)
+
+		// Restore AccountID from vl_account_id.
+		v, err := getUint32FromString(accountID)
+		if err != nil {
+			skipMalformedLogEntryLogger.Errorf("skipping log entry with invalid 'vl_account_id': %s", err)
+			continue
+		}
+		ir.TenantID.AccountID = v
+
+		// Restore ProjectID from vl_project_id.
+		v, err = getUint32FromString(projectID)
+		if err != nil {
+			skipMalformedLogEntryLogger.Errorf("skipping log entry with invalid 'vl_project_id': %s", err)
+			continue
+		}
+		ir.TenantID.ProjectID = v
+
+		lr.MustAddInsertRow(ir)
+	}
+}
+
+var skipMalformedLogEntryLogger = logger.WithThrottler("skip_malformed_log_entry", time.Second*5)
