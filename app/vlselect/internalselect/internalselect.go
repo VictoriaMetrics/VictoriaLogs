@@ -72,16 +72,19 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	// record metrics for valid request paths.
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
+	defer func() {
+		metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
+	}()
 
-	r.Body = http.MaxBytesReader(w, r.Body, (*maxReadBodySize).N)
 	// since we need to get params from request body, it's required to make sure that the body is read correctly.
 	// multipart form is not needed as we don't use it at all in VictoriaLogs.
+	r.Body = http.MaxBytesReader(w, r.Body, (*maxReadBodySize).N)
 	if r.Form == nil {
 		if err := r.ParseForm(); err != nil {
 			metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 			httpserver.Errorf(w, r, "cannot parse form: %s", err)
-			metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
 			return
 		}
 	}
@@ -89,9 +92,8 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
 		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 		httpserver.Errorf(w, r, "%s", err)
-		// The return is skipped intentionally in order to track the duration of failed queries.
+		return
 	}
-	metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
 }
 
 var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter, r *http.Request) error{
