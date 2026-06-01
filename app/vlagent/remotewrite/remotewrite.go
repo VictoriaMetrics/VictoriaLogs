@@ -4,17 +4,23 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envtemplate"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fscore"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/persistentqueue"
 	"github.com/VictoriaMetrics/metrics"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/cespare/xxhash/v2"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage/netinsert"
@@ -33,6 +39,14 @@ var (
 	format = flagutil.NewArrayString("remoteWrite.format", "The data format to use for sending data to the corresponding -remoteWrite.url. "+
 		"Available formats: native, jsonline. Default is native. See https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format")
 
+	transforms = flag.String("remoteWrite.transforms", "", "Path to transformations program, which is applied "+
+		"to all the logs before sending them to -remoteWrite.url. See also -remoteWrite.urlTransforms. "+
+		"The path can be a glob pattern pointing to multiple files, http url or inline content with prefix 'inline:'. "+
+		"See https://docs.victoriametrics.com/victorialogs/vlagent/transformations/")
+	urlTransforms = flagutil.NewArrayString("remoteWrite.urlTransforms", "Path to transformations program for the corresponding -remoteWrite.url. "+
+		"See also -remoteWrite.transforms. The path can be a glob pattern pointing to multiple files, http url or inline content with prefix 'inline:'. "+
+		"See https://docs.victoriametrics.com/victorialogs/vlagent/transformations/")
+
 	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url. "+
 		"If this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
 		"see also -remoteWrite.maxDiskUsagePerURL")
@@ -47,12 +61,19 @@ var (
 // rwctxsGlobal contains statically populated entries when -remoteWrite.url is specified.
 var rwctxsGlobal []*remoteWriteCtx
 
+var globalTransformer *logstorage.Transformer
+
 // Storage implements insertutil.LogRowsStorage interface
 type Storage struct{}
 
 // MustAddRows implements insertutil.LogRowsStorage interface
 func (*Storage) MustAddRows(lr *logstorage.LogRows) {
-	pushToRemoteStorages(lr)
+	if tr := globalTransformer; tr != nil {
+		// globalTransformer will flush the result to pushToRemoteStorages.
+		tr.Transform(lr)
+	} else {
+		pushToRemoteStorages(lr)
+	}
 }
 
 // CanWriteData implements insertutil.LogRowsStorage interface
@@ -99,6 +120,7 @@ func Init(tmpDataPath string) {
 	if len(path) == 0 {
 		path = filepath.Join(tmpDataPath, "vlagent-remotewrite-data")
 	}
+	initGlobalTransformer()
 	initRemoteWriteCtxs(path, *remoteWriteURLs)
 	dropDanglingQueues(path)
 }
@@ -111,6 +133,93 @@ func Stop() {
 		rwctx.mustStop()
 	}
 	rwctxsGlobal = nil
+}
+
+func initGlobalTransformer() {
+	if s := *transforms; s != "" {
+		globalTransformer = loadTransforms(s, pushToRemoteStorages)
+	}
+}
+
+func loadTransforms(s string, flush func(lr *logstorage.LogRows)) *logstorage.Transformer {
+	switch {
+	case strings.HasPrefix(s, "inline:"):
+		content := strings.TrimPrefix(s, "inline:")
+		content = envtemplate.ReplaceString(content)
+		prog, err := logstorage.ParseTransformsProgram(content)
+		if err != nil {
+			logger.Fatalf("FATAL: failed to parse inline transformations: %s", err)
+		}
+		tr := prog.NewTransformer(flush)
+		return tr
+	case isHTTPURL(s):
+		content, err := fscore.ReadFileOrHTTP(s)
+		if err != nil {
+			logger.Fatalf("FATAL: cannot read transformations: %s", err)
+		}
+		content = envtemplate.ReplaceBytes(content)
+		prog, err := logstorage.ParseTransformsProgram(string(content))
+		if err != nil {
+			if len(content) > 4*1024 {
+				content = content[:4*1024]
+				content = append(content, "..."...)
+			}
+			logger.Fatalf("FATAL: failed to parse transformations by URL %q: %s; content: %q", s, err, content)
+		}
+		tr := prog.NewTransformer(flush)
+		return tr
+	default:
+		var globOpts = []doublestar.GlobOption{
+			// Follow traditional shell glob behavior where `*` or a `?` at the start will not match dotfiles by default.
+			// Users can explicitly use `.*` or `.?` syntax to collect logs from the hidden files.
+			doublestar.WithNoHidden(),
+		}
+		files, err := doublestar.FilepathGlob(s, globOpts...)
+		if err != nil {
+			logger.Fatalf("FATAL: cannot process glob pattern %q: %s", s, err)
+		}
+		if len(files) == 0 {
+			logger.Fatalf("FATAL: no files found by glob pattern %q", s)
+		}
+		sort.Strings(files)
+		filesContent := make([]string, len(files))
+		for i, file := range files {
+			data, err := os.ReadFile(file)
+			if err != nil {
+				logger.Fatalf("FATAL: cannot read file with transformations: %s", err)
+			}
+			data = envtemplate.ReplaceBytes(data)
+			filesContent[i] = string(data)
+		}
+
+		// Handle the first file.
+		firstFile := files[0]
+		files = files[1:]
+		firstFileContent := filesContent[0]
+		filesContent = filesContent[1:]
+		prog, err := logstorage.ParseTransformsProgram(firstFileContent)
+		if err != nil {
+			logger.Fatalf("FATAL: cannot parse transformations program by path %q: %s", firstFile, err)
+		}
+
+		// Parse additional content.
+		for i, file := range files {
+			content := filesContent[i]
+			if err := prog.ParseAdditional(content); err != nil {
+				logger.Fatalf("FATAL: cannot parse transformations program by path %q: %s", file, err)
+			}
+		}
+
+		tr := prog.NewTransformer(flush)
+		return tr
+	}
+}
+
+// isHTTPURL checks if a given targetURL is valid and contains a valid http scheme.
+// Copied from fscore.ReadFileOrHTTP.
+func isHTTPURL(targetURL string) bool {
+	parsed, err := url.Parse(targetURL)
+	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != ""
 }
 
 func dropDanglingQueues(tmpDataPath string) {
@@ -147,6 +256,10 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 	if len(urls) == 0 {
 		logger.Panicf("BUG: urls must be non-empty")
 	}
+	if len(urls) < len(*urlTransforms) {
+		logger.Fatalf("FATAL: the number of specified -remoteWrite.urlTransforms flags (%d) exceeds the number of specified -remoteWrite.url flags (%d); "+
+			"use glob patterns to specify multiple transformation files for a single -remoteWrite.url", len(*urlTransforms), len(urls))
+	}
 
 	maxInmemoryBlocks := memory.Allowed() / len(urls) / 10000
 	if maxInmemoryBlocks / *queues > 100 {
@@ -178,12 +291,11 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 func pushToRemoteStorages(lr *logstorage.LogRows) {
 	rwctxs := rwctxsGlobal
 	if len(rwctxs) == 1 {
-		// fast path
+		// Fast path: there is only one remote storage system.
 		rwctxs[0].push(lr)
 		return
 	}
-	// Push log rows to remote storage systems in parallel in order to reduce
-	// the time needed for sending the data to multiple remote storage systems.
+	// Slow path: push lr to remote storage systems in parallel.
 	var wg sync.WaitGroup
 	for _, rwctx := range rwctxs {
 		wg.Go(func() {
@@ -196,6 +308,8 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 type remoteWriteCtx struct {
 	fq *persistentqueue.FastQueue
 	c  *client
+
+	transformer *logstorage.Transformer
 
 	pls        []*pendingLogs
 	plsNextIdx atomic.Uint64
@@ -273,10 +387,27 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 		pls: pls,
 	}
 
+	// Do not use the GetOptionalArg method here
+	// because it returns the same value regardless of argIdx if the flag is set once.
+	urlTrs := *urlTransforms
+	if argIdx < len(urlTrs) && urlTrs[argIdx] != "" {
+		tr := loadTransforms(urlTrs[argIdx], rwctx.pushInternal)
+		rwctx.transformer = tr
+	}
+
 	return rwctx
 }
 
 func (rwctx *remoteWriteCtx) push(lr *logstorage.LogRows) {
+	if tr := rwctx.transformer; tr != nil {
+		// tr will flush the result to pushInternal.
+		tr.Transform(lr)
+	} else {
+		rwctx.pushInternal(lr)
+	}
+}
+
+func (rwctx *remoteWriteCtx) pushInternal(lr *logstorage.LogRows) {
 	pls := rwctx.pls
 	idx := rwctx.plsNextIdx.Add(1) % uint64(len(pls))
 	pls[idx].add(lr)
