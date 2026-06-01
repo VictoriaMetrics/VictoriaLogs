@@ -32,9 +32,9 @@ func TestRequestHandlerSizeLimit(t *testing.T) {
 		}
 	}
 
-	// fits limit
+	// exceed limit
 	f([]byte("0000000000"), "9", true)
 
-	// exceed limit
+	// fits limit
 	f([]byte("0000000000"), "10", false)
 }

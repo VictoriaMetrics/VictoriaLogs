@@ -72,18 +72,20 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, (*maxReadBodySize).N)
+	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 
+	r.Body = http.MaxBytesReader(w, r.Body, (*maxReadBodySize).N)
 	// since we need to get params from request body, it's required to make sure that the body is read correctly.
 	// multipart form is not needed as we don't use it at all in VictoriaLogs.
 	if r.Form == nil {
 		if err := r.ParseForm(); err != nil {
+			metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 			httpserver.Errorf(w, r, "cannot parse form: %s", err)
+			metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
 			return
 		}
 	}
 
-	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
 		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
 		httpserver.Errorf(w, r, "%s", err)
