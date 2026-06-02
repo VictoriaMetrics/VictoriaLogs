@@ -7,36 +7,44 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
-	rows, err := getLastNQueryResults(qctx, offset+limit)
+func runOptimizedLastNResultsQuery(qctxSearch, qctxFinal *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
+	rowsNeeded := offset + limit
+	rows, err := getLastNQueryResults(qctxSearch, rowsNeeded+1)
 	if err != nil {
 		return err
 	}
 	if offset >= uint64(len(rows)) {
 		return nil
 	}
-	rows = rows[offset:]
-
-	var db logstorage.DataBlock
-	var columns []logstorage.BlockColumn
-	var values []string
-	for _, r := range rows {
-		columns = slicesutil.SetLength(columns, len(r.fields))
-		values = slicesutil.SetLength(values, len(r.fields))
-		for j, f := range r.fields {
-			values[j] = f.Value
-			columns[j].Name = f.Name
-			columns[j].Values = values[j : j+1]
-		}
-		db.SetColumns(columns)
-		writeBlock(0, &db)
+	if rowsNeeded > uint64(len(rows)) {
+		rowsNeeded = uint64(len(rows))
 	}
-	return nil
+	if hasDuplicateTimestampsAtLastNRange(rows, offset, rowsNeeded) {
+		return runQueryNoLastNOptimization(qctxFinal, writeBlock)
+	}
+
+	start := rows[rowsNeeded-1].timestamp
+	_, end := qctxFinal.Query.GetFilterTimeRange()
+	qFinal := qctxFinal.Query.CloneWithTimeFilter(qctxFinal.Query.GetTimestamp(), start, end)
+	return runQueryNoLastNOptimization(qctxFinal.WithQuery(qFinal), writeBlock)
+}
+
+func hasDuplicateTimestampsAtLastNRange(rows []logRow, offset, rowsNeeded uint64) bool {
+	if offset > 0 && rows[offset-1].timestamp == rows[offset].timestamp {
+		return true
+	}
+	if uint64(len(rows)) > rowsNeeded && rows[rowsNeeded-1].timestamp == rows[rowsNeeded].timestamp {
+		return true
+	}
+	for i := offset + 1; i < rowsNeeded; i++ {
+		if rows[i-1].timestamp == rows[i].timestamp {
+			return true
+		}
+	}
+	return false
 }
 
 func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow, error) {
