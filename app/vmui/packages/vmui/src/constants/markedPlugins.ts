@@ -51,17 +51,17 @@ const isAllowedMarkdownLink = (href: string): boolean => {
 
 marked.use({
   renderer: {
-    link({ href, title, tokens }) {
+    link({ href, title, tokens, raw }) {
       const text = this.parser.parseInline(tokens);
-      if (!isAllowedMarkdownLink(href)) {
-        return text;
+      if (!raw.startsWith("[") || !isAllowedMarkdownLink(href)) {
+        return escapeHTML(raw);
       }
 
       const titleAttr = title ? ` title="${escapeHTML(title)}"` : "";
       return `<a href="${escapeHTML(href)}"${titleAttr}>${text}</a>`;
     },
-    image({ text }) {
-      return escapeHTML(text);
+    image({ raw }) {
+      return escapeHTML(raw);
     },
   },
   walkTokens(token) {
