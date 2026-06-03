@@ -61,6 +61,9 @@ users:
 
 This config instructs `vmauth` accepting requests for the Basic Auth user `foo` with the password `bar`.
 
+![security-and-lb-search-authorization.webp](security-and-lb-search-authorization.webp)
+{width="600"}
+
 Successfully authenticated requests are proxied (load balanced) to one of the VictoriaLogs instances specified in the `url_prefix` list,
 if these requests match the `src_paths` regexp, i.e. if they start with `/select/` path prefix.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-path) for details about the `src_path`.
@@ -96,6 +99,9 @@ The configuration above enables proxying requests with the path prefix `/cold/se
 and requests with the path prefix `/hot/select/` to the backend at `http://victoria-logs-hot:9428`.
 The backends can be either single-node instances of VictoriaLogs or `vmauth` in front of `vlselect` nodes in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
 See [how to set up `vmauth` in front on multiple `vlselect` nodes](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
+
+![security-and-lb-cluster-routing.webp](security-and-lb-cluster-routing.webp)
+{width="600"}
 
 This approach is useful when applying different retention policies for various types of logs.
 For example, you might store warn-level and higher severity logs in the cold instance/cluster with longer retention,
@@ -139,6 +145,9 @@ unauthorized_user:
 
 This allows building a VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
+
+![security-and-lb-tenant-based-request-proxying.webp](security-and-lb-tenant-based-request-proxying.webp)
+{width="600"}
 
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) on how to setup request routing in `vmauth` by request headers.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
@@ -207,6 +216,8 @@ users:
 
 This configuration allows user `foo` to access 3 different tenants, and user `admin` to access all tenants.
 The user `admin` needs to set the required `AccountID` or `ProjectID` headers, because `vmauth` doesn't set them.
+
+![security-and-lb-proxying-requests-to-the-given-tenants.webp](security-and-lb-proxying-requests-to-the-given-tenants.webp)
 
 In Grafana you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs/`.
 Using the configuration above, you do not need to set the tenant in the Grafana data source settings because `vmauth` overrides it to `AccountID: 1`, `ProjectID: 6`.
@@ -294,6 +305,8 @@ users:
 `extra_filters` and `extra_stream_filters` should be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding) when they include characters that are not URL-safe.
 For example, the query `_stream:{service=frontend-logs}` should be written as `_stream%3A%7Bservice%3Dfrontend-logs%7D`.
 
+![security-and-lb-access-control-inside-a-single-tenant.webp](security-and-lb-access-control-inside-a-single-tenant.webp)
+
 Prefer using `extra_stream_filters` over `extra_filters` whenever possible.
 See [LogsQL performance optimization tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
 
@@ -364,7 +377,7 @@ users:
 
 Below is a diagram of this configuration:
 
-![security-and-lb-tenants.webp](security-and-lb-tenants.webp)
+![security-and-lb-tenant-assignment.webp](security-and-lb-tenant-assignment.webp)
 {width="600"}
 
 See [how to override http request headers before proxying the requests to backends](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers).
