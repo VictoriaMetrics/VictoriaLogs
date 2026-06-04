@@ -412,7 +412,7 @@ For VictoriaMetrics cluster we have to setup the paths a bit different because v
 VictoriaLogs multitenancy doesn't put the tenant information in the path so nothing needs changed for that.
 Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-multitenancy-in-rules) for information on multitenant alerts with VictoriaLogs.
 
-> Note: Vmalert in VictoriaMetrics Enterprise supports multipule tenants nativly and doesn't require this additional configuration.
+> Note: Vmalert in VictoriaMetrics Enterprise supports multiple tenants natively and doesn't require this additional configuration.
 
 ```yaml
     unauthorized_user:
