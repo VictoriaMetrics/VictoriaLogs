@@ -392,8 +392,8 @@ VictoriaMetrics and VictoriaLogs datasources have different query path prefixes,
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) to route requests of different types between datasources.
 See an example of a vmauth config for such routing below:
 
-Vmalert should be configured with `-datasource.url=http://vmauth:8427/` to send queries to vmauth,
-and vmauth will route them to the specified destinations as in the configuration examples below.
+vmalert should be configured with `-datasource.url=http://vmauth:8427/` to send queries to vmauth,
+and vmauth will route them to the specified destinations, as in the configuration examples below.
 
 #### Using VictoriaMetrics Single Node
 ```yaml
@@ -408,8 +408,8 @@ and vmauth will route them to the specified destinations as in the configuration
 ```
 
 #### Using VictoriaMetrics Cluster
-For VictoriaMetrics cluster we have to setup the paths a bit different because vmalert isn't tenant aware.
-VictoriaLogs multitenancy doesn't put the tenant information in the path so nothing needs changed for that.
+For the VictoriaMetrics cluster, we have to set up the paths a bit differently because vmalert isn't tenant-aware.
+VictoriaLogs multitenancy doesn't put the tenant information in the path so nothing needs to be changed.
 Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-multitenancy-in-rules) for information on multitenant alerts with VictoriaLogs.
 
 > Note: Vmalert in VictoriaMetrics Enterprise supports multiple tenants natively and doesn't require this additional configuration.
