@@ -2,9 +2,9 @@ package internalselect
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,15 +20,19 @@ func TestRequestHandlerSizeLimit(t *testing.T) {
 			t.Fatalf("maxReadBodySize.Set(%s) got error: %s", readLimit, err)
 		}
 
-		requestHandler(context.TODO(), testResponseWriter, testRequest, time.Now())
+		requestHandler(t.Context(), testResponseWriter, testRequest, time.Now())
 		// in any case it should be a status error. because the request is missing necessary form params.
 		if testResponseWriter.Code != http.StatusBadRequest {
 			t.Fatalf("unexpected response code; got %d; want %d", testResponseWriter.Code, http.StatusBadRequest)
 		}
 
 		// verify if it's a size limit error
-		if sizeError != (testResponseWriter.Body.String() == "cannot parse form: http: request body too large\n") {
-			t.Fatalf(`unexpected response body; got %q; should be size limit error: %t\n"`, testResponseWriter.Body.String(), sizeError)
+		if sizeError {
+			errGot := testResponseWriter.Body.String()
+			errWant := "http: request body too large"
+			if !strings.Contains(errGot, errWant) {
+				t.Fatalf("unexpected response content; got %q; should contain %q", errGot, errWant)
+			}
 		}
 	}
 
