@@ -2089,7 +2089,7 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 }
 
 func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
-	if lex.isKeyword("|", ")", "") {
+	if lex.isKeywordAny(pipeStopTokens) {
 		return nil, fmt.Errorf("missing query")
 	}
 
@@ -2118,7 +2118,7 @@ func parseFilterOr(lex *lexer, fieldName string) (filter, error) {
 		}
 		filters = append(filters, f)
 		switch {
-		case lex.isKeyword("|", ")", ""):
+		case lex.isKeywordAny(pipeStopTokens):
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
@@ -2139,7 +2139,7 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 		}
 		filters = append(filters, f)
 		switch {
-		case lex.isKeyword("or", "|", ")", ""):
+		case lex.isKeyword("or") || lex.isKeywordAny(pipeStopTokens):
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
@@ -2684,7 +2684,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterGeneric(lex, "*")
 	}
 
-	if lex.isSkippedSpace || lex.isKeyword("", ")", "|") {
+	if lex.isSkippedSpace || lex.isKeywordAny(pipeStopTokens) {
 		// '*' or 'fieldName:*' filter
 		return newFilterPrefix(fieldName, ""), nil
 	}
@@ -2699,7 +2699,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
-	if !lex.isSkippedSpace && !lex.isKeyword("", ")", "|") {
+	if !lex.isSkippedSpace && !lex.isKeywordAny(pipeStopTokens) {
 		return nil, fmt.Errorf("missing whitespace between *%q* and %q", phrase, lex.token)
 	}
 	return newFilterSubstring(fieldName, phrase), nil

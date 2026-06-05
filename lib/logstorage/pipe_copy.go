@@ -126,7 +126,7 @@ func parsePipeCopy(lex *lexer) (pipe, error) {
 		dstFieldFilters = append(dstFieldFilters, dstFieldFilter)
 
 		switch {
-		case lex.isKeyword("|", ")", ""):
+		case lex.isKeywordAny(pipeStopTokens):
 			pc := &pipeCopy{
 				srcFieldFilters: srcFieldFilters,
 				dstFieldFilters: dstFieldFilters,

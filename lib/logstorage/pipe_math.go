@@ -460,7 +460,7 @@ func parsePipeMath(lex *lexer) (pipe, error) {
 		switch {
 		case lex.isKeyword(","):
 			lex.nextToken()
-		case lex.isKeyword("|", ")", ""):
+		case lex.isKeywordAny(pipeStopTokens):
 			if len(mes) == 0 {
 				return nil, fmt.Errorf("missing 'math' expressions")
 			}
@@ -481,7 +481,7 @@ func parseMathEntry(lex *lexer) (*mathEntry, error) {
 	}
 
 	resultField := ""
-	if lex.isKeyword(",", "|", ")", "") {
+	if lex.isKeyword(",") || lex.isKeywordAny(pipeStopTokens) {
 		resultField = me.String()
 	} else {
 		if lex.isKeyword("as") {

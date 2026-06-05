@@ -1389,7 +1389,7 @@ func parsePipeStatsExt(lex *lexer, needStatsKeyword bool) (pipe, error) {
 		}
 		ps.entries = append(ps.entries, e)
 
-		if lex.isKeyword("|", ")", "") {
+		if lex.isKeywordAny(pipeStopTokens) {
 			break
 		}
 		if !lex.isKeyword(",") {
@@ -1442,7 +1442,7 @@ func parseStatsEntry(lex *lexer) (pipeStatsEntry, error) {
 	}
 
 	resultName := ""
-	if lex.isKeyword(",", "|", ")", "") {
+	if lex.isKeyword(",") || lex.isKeywordAny(pipeStopTokens) {
 		resultName = sf.String()
 		if iff != nil {
 			resultName += " " + iff.String()

@@ -112,6 +112,8 @@ func (npp *noopPipeProcessor) flush() error {
 	return nil
 }
 
+var pipeStopTokens = []string{"|", ")", ""}
+
 func parsePipes(lex *lexer) ([]pipe, error) {
 	var pipes []pipe
 	for {

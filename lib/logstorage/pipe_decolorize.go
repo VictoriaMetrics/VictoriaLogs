@@ -72,7 +72,7 @@ func parsePipeDecolorize(lex *lexer) (pipe, error) {
 	lex.nextToken()
 
 	field := "_msg"
-	if !lex.isKeyword("|", ")", "") {
+	if !lex.isKeywordAny(pipeStopTokens) {
 		f, err := parseFieldName(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse field name after 'decolorize': %w", err)
