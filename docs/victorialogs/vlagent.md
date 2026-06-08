@@ -340,9 +340,9 @@ spec:
 
 The `vlagent-data` volume uses `hostPath` so that the checkpoint file and the on-disk buffer survive Pod restarts on the same node.
 
-> **Note**: for Kubernetes in Docker (minikube, kind): mount `/var/log` as a read-only hostPath volume,
-> since container runtime data lives there.
-> In this case `/var/log/pods` and `/var/log/containers` will contain symlinks - do not remove these mounts.
+> **Note**: for Kubernetes in Docker (minikube, kind): `/var/log/containers` and `/var/log/pods`
+> may contain symlinks to container runtime data under `/var/lib`.
+> Mount the corresponding `/var/lib` path as a read-only hostPath volume too if these symlinks cannot be resolved.
 
 See also: [How to exclude vlagent's own logs from collection](https://docs.victoriametrics.com/victorialogs/vlagent/#excluding-vlagents-own-logs).
 
