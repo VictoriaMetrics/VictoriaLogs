@@ -80,7 +80,7 @@ const FilterSidebar: FC<Props> = ({
   const fetchStreams = useCallback(async () => {
     try {
       const period = getCurrentPeriod();
-      await fetchStreamFieldNames({ ...period, query, extraParams });
+      await fetchStreamFieldNames({ period, query, extraParams });
       setIsLoaded(true);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;

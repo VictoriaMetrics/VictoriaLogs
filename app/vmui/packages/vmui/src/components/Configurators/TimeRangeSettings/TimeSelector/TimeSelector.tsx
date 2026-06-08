@@ -1,7 +1,10 @@
 import { FC, useEffect, useState, useMemo, useRef } from "preact/compat";
-import { dateFromSeconds, formatDateForNativeInput, getUTCByTimezone } from "../../../../utils/time";
+import {
+  getUTCByTimezone,
+  nanosToIsoString,
+  vmDate
+} from "../../../../utils/time";
 import TimeDurationSelector from "../TimeDurationSelector/TimeDurationSelector";
-import dayjs from "dayjs";
 import { getAppModeEnable } from "../../../../utils/app-mode";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { ArrowDownIcon, ClockIcon } from "../../../Main/Icons";
@@ -58,11 +61,11 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   }), [timezone]);
 
   useEffect(() => {
-    setUntil(formatDateForNativeInput(dateFromSeconds(end)));
+    handleSetUntil(end);
   }, [timezone, end]);
 
   useEffect(() => {
-    setFrom(formatDateForNativeInput(dateFromSeconds(start)));
+    handleSetFrom(start);
   }, [timezone, start]);
 
   const setDuration = (nextRelativeTime: RelativeTimeOption) => {
@@ -71,8 +74,8 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   };
 
   const formatRange = useMemo(() => {
-    const startFormat = dayjs.tz(dateFromSeconds(start)).format(DATE_TIME_FORMAT);
-    const endFormat = dayjs.tz(dateFromSeconds(end)).format(DATE_TIME_FORMAT);
+    const startFormat = vmDate(nanosToIsoString(start)).nano().format(DATE_TIME_FORMAT);
+    const endFormat = vmDate(nanosToIsoString(end)).nano().format(DATE_TIME_FORMAT);
     return { start: startFormat, end: endFormat };
   }, [start, end, timezone]);
 
@@ -86,20 +89,24 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
 
   const setTimeAndClosePicker = () => {
     if (from && until) {
-      setPeriod({
-        nextPeriod: {
-          from: dayjs.tz(from).toDate(),
-          to: dayjs.tz(until).toDate()
-        }
-      });
+      const nextPeriod = { from: from, to: until };
+      setPeriod({ nextPeriod });
     }
     handleCloseOptions();
   };
 
   const onCancelClick = () => {
-    setUntil(formatDateForNativeInput(dateFromSeconds(end)));
-    setFrom(formatDateForNativeInput(dateFromSeconds(start)));
+    handleSetUntil(end);
+    handleSetFrom(start);
     handleCloseOptions();
+  };
+
+  const handleSetFrom = (start: bigint) => {
+    setFrom(nanosToIsoString(start));
+  };
+
+  const handleSetUntil = (end: bigint) => {
+    setUntil(nanosToIsoString(end));
   };
 
   const handleOpenSettings = () => {

@@ -17,7 +17,7 @@ import Tooltip from "../../Main/Tooltip/Tooltip";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import StreamContextButton from "../../../pages/StreamContext/StreamContextButton";
 import { useAppState } from "../../../state/common/StateContext";
-import { formatDateWithNanoseconds } from "../../../utils/time";
+import { vmDate } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
@@ -49,7 +49,7 @@ const GroupLogsItem: FC<Props> = ({ log, displayFields = [], isContextView, hide
   const formattedTime = useMemo(() => {
     if (!log._time) return "";
     // Preserve nanosecond precision when rendering timestamps
-    return formatDateWithNanoseconds(log._time, LOGS_DATE_FORMAT);
+    return vmDate(log._time).nano().format(LOGS_DATE_FORMAT);
   }, [log._time, timezone]);
 
   const formattedMarkdown = useMemo(() => {

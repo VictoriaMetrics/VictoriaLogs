@@ -8,9 +8,10 @@ import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
 import { TimeParams, TimePeriod } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
 import { useSearchParams } from "react-router-dom";
-import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
+import { getNanosecondsFromDuration, nanosecondsToSeconds, toEpochSeconds } from "../../../utils/time";
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 import { useTimePeriod } from "../hooks/useTimePeriod";
+import { roundToStepPrecision } from "../../../utils/number";
 
 interface Props {
   query: string;
@@ -44,19 +45,25 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     const { start, end } = period;
     if (!step || !timestamps.length) return timestamps;
 
-    const stepSec = getSecondsFromDuration(step);
-    const minTime = start;
-    const maxTime = end;
+    const stepNano = getNanosecondsFromDuration(step);
+    const stepSec = nanosecondsToSeconds(stepNano);
+    const minTime = nanosecondsToSeconds(start);
+    const maxTime = nanosecondsToSeconds(end);
     const anchorUnix = timestamps[0];
 
-    const result: number[] = [anchorUnix];
+    const leftCount = Math.floor((anchorUnix - minTime) / stepSec);
+    const rightCount = Math.floor((maxTime - anchorUnix) / stepSec) + 1; // + right boundary
 
-    for (let unix = anchorUnix - stepSec; unix >= minTime; unix -= stepSec) {
-      result.unshift(unix);
+    const result: number[] = [];
+
+    for (let i = leftCount; i >= 1; i--) {
+      result.push(roundToStepPrecision(anchorUnix - i * stepSec, stepSec));
     }
 
-    for (let unix = anchorUnix + stepSec; unix <= maxTime; unix += stepSec) {
-      result.push(unix);
+    result.push(anchorUnix);
+
+    for (let i = 1; i <= rightCount; i++) {
+      result.push(roundToStepPrecision(anchorUnix + i * stepSec, stepSec));
     }
 
     return result;

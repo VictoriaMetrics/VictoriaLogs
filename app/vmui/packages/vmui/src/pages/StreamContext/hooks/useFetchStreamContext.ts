@@ -5,7 +5,7 @@ import {
 } from "preact/compat";
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
-import { toNanoPrecision } from "../../../utils/time";
+import { vmDate } from "../../../utils/time";
 import { removeExactLog } from "../../../utils/logs";
 import { LOGS_STREAM_CONTEXT_KEYS } from "../../../constants/logs";
 
@@ -29,7 +29,7 @@ const buildContextQuery = (
   }
 
   return `_stream_id:${_stream_id} 
-_time:${toNanoPrecision(_time)} 
+_time:${vmDate(_time).nano().toISOString()} 
 | stream_context ${dir} ${lines}
 | sort by (_time) desc`;
 };
