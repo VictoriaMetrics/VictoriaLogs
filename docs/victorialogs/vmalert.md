@@ -396,6 +396,7 @@ vmalert should be configured with `-datasource.url=http://vmauth:8427/`, so all 
 vmauth routes these requests to VictoriaMetrics or VictoriaLogs according to the request path, as shown in the examples below.
 
 #### Using VictoriaMetrics Single Node
+
 ```yaml
     unauthorized_user:
       url_map:
