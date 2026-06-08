@@ -421,7 +421,7 @@ Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.
       url_map:
         - src_paths:
           - "/api/v1/query.*"
-          url_prefix: "http://victoriametrics:8428/select/<accountID>/prometheus"
+          url_prefix: "http://vmselect:8481/select/<accountID>/prometheus"
         - src_paths:
           - "/select/logsql/.*"
           url_prefix: "http://victorialogs:9428"
