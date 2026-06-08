@@ -3894,6 +3894,17 @@ func needQuoteToken(s string) bool {
 	if isPipeName(sLower) || isStatsFuncName(sLower) {
 		return true
 	}
+
+	// Quote s if its leading token is a reserved keyword, otherwise s cannot be parsed back from
+	// its string representation. E.g. `in.example.com` is parsed as the in() filter and panics in Query.Clone().
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1434
+	firstTok := newLexer(sLower, 0).token
+	if firstTok != sLower {
+		if _, ok := reservedKeywords[firstTok]; ok {
+			return true
+		}
+	}
+
 	for _, r := range s {
 		if !isTokenRune(r) && r != '.' {
 			return true

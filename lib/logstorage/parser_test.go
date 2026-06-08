@@ -3642,6 +3642,13 @@ func TestQueryClone(t *testing.T) {
 	f("_time:5m error | fields foo, bar")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_any(q:w | fields abc)) as ccc")
 	f("ip:in(foo | fields user_ip) bar | stats by (x:1h, y) count(*) if (user_id:contains_all(q:w | fields abc)) as ccc")
+
+	// field values whose leading token is a reserved keyword.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1434
+	f(`domain:"in.example.com"`)
+	f(`domain:"IN.example.com"`)
+	f(`domain:"contains_all.example.com"`)
+	f(`foo:"not.bar"`)
 }
 
 func TestQueryGetFilterTimeRange(t *testing.T) {

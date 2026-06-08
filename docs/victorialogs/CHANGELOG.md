@@ -45,6 +45,7 @@ according to the following docs:
 * BUGFIX: [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): return `502 Bad Gateway` from [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) when one of `vlstorage` nodes is unavailable in cluster mode. Previously these endpoints could incorrectly return `422 Unprocessable Entity`, which could break retry and failover handling in high-availability setups. See [#1419](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1419).
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): allow `unpack_json` to parse JSON objects starting with spaces. See [#1416](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1416).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): preserve the selected tenant while switching between vmui tabs. See [#1447](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1447).
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): properly quote field filter values whose leading token is a reserved keyword such as `in`, so the query can be parsed back from its string representation.  See [#1434](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1434).
 
 ## [v1.50.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.50.0)
 
