@@ -36,7 +36,7 @@ export const getUTCByTimezone = (timezone: string) => {
 };
 
 export const getTimezoneList = (search = "") => {
-  const regexp = new RegExp(search, "i");
+  const normalizedSearch = search.toLowerCase();
 
   return supportedTimezones.reduce((acc: {[key: string]: Timezone[]}, region) => {
     const zone = (region.match(/^(.*?)\//) || [])[1] || "unknown";
@@ -48,7 +48,8 @@ export const getTimezoneList = (search = "") => {
       utc,
       search: `${region} ${utc} ${regionForSearch} ${utcForSearch}`
     };
-    const includeZone = !search || (search && regexp.test(item.search));
+
+    const includeZone = !normalizedSearch || item.search.toLowerCase().includes(normalizedSearch);
 
     if (includeZone && acc[zone]) {
       acc[zone].push(item);
@@ -61,7 +62,9 @@ export const getTimezoneList = (search = "") => {
 };
 
 export const initTimezone = () => {
-  const timezone = getFromStorage("TIMEZONE") as string || getBrowserTimezone().region;
+  const storedTimezone = getFromStorage("TIMEZONE") as string;
+  const isValidStorageTimezone = !!storedTimezone && isValidTimezone(storedTimezone);
+  const timezone = isValidStorageTimezone ? storedTimezone : getBrowserTimezone().region;
   setTimezone(timezone);
   return timezone;
 };

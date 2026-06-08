@@ -141,6 +141,16 @@ describe("Time utils", () => {
       expect(absNanoseconds(-42n)).toBe(42n);
       expect(absNanoseconds(42n)).toBe(42n);
     });
+
+    it("handles small seconds values serialized in scientific notation", () => {
+      expect(secondsToNanoseconds(1e-7)).toBe(100n);
+      expect(secondsToNanoseconds(1e-8)).toBe(10n);
+      expect(secondsToNanoseconds(1e-9)).toBe(1n);
+    });
+
+    it("rejects scientific notation values that cannot be safely converted to nanoseconds", () => {
+      expect(() => secondsToNanoseconds(1e21)).toThrow(RangeError);
+    });
   });
 
   describe("time ranges", () => {

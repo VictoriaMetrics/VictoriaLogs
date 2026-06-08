@@ -14,7 +14,19 @@ export const secondsToNanoseconds = (seconds: number): bigint => {
     throw new RangeError("seconds must be non-negative");
   }
 
-  const [whole, fraction = ""] = String(seconds).split(".");
+  const text = String(seconds);
+
+  if (/[eE]/.test(text)) {
+    const nanos = Math.trunc(seconds * 1e9);
+
+    if (!Number.isSafeInteger(nanos)) {
+      throw new RangeError("seconds is too large to convert safely to nanoseconds");
+    }
+
+    return BigInt(nanos);
+  }
+
+  const [whole, fraction = ""] = text.split(".");
   const nanoFraction = fraction.padEnd(9, "0").slice(0, 9);
 
   return BigInt(whole) * NANOSECONDS_PER_SECOND + BigInt(nanoFraction);
@@ -120,11 +132,15 @@ export const formatDateWithNanoseconds = (
  *
  * @param nanos - Timestamp in nanoseconds as a bigint. Negative values are not supported.
  * @returns ISO timestamp with nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"`.
- * @throws If `nanos` is negative or outside the supported JavaScript Date range.
  */
 export const nanosToIsoString = (nanos: bigint): string => {
-  const ms = nanos / NANOSECONDS_PER_MILLISECOND;
-  const remainingNanos = nanos % NANOSECONDS_PER_MILLISECOND;
+  let ms = nanos / NANOSECONDS_PER_MILLISECOND;
+  let remainingNanos = nanos % NANOSECONDS_PER_MILLISECOND;
+
+  if (remainingNanos < 0n) {
+    ms -= 1n;
+    remainingNanos += NANOSECONDS_PER_MILLISECOND;
+  }
 
   const date = new Date(Number(ms));
 

@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useMemo, useRef } from "preact/compat";
+import { FC, useEffect, useState, useMemo, useRef, useCallback } from "preact/compat";
 import {
   getUTCByTimezone,
   nanosToIsoString,
@@ -23,6 +23,7 @@ import useWindowSize from "../../../../hooks/useWindowSize";
 import { useQueryState } from "../../../../state/query/QueryStateContext";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import { RelativeTimeOption } from "../../../../types";
+import useEventListener from "../../../../hooks/useEventListener";
 
 type Props = {
   onOpenSettings?: () => void;
@@ -95,12 +96,6 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
     handleCloseOptions();
   };
 
-  const onCancelClick = () => {
-    handleSetUntil(end);
-    handleSetFrom(start);
-    handleCloseOptions();
-  };
-
   const handleSetFrom = (start: bigint) => {
     setFrom(nanosToIsoString(start));
   };
@@ -114,6 +109,18 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
     handleCloseOptions();
   };
 
+  const onCancelClick = useCallback(() => {
+    handleSetUntil(end);
+    handleSetFrom(start);
+    handleCloseOptions();
+  }, [end, start]);
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    if (!openOptions) return;
+    if (e.key === "Escape") onCancelClick();
+  }, [openOptions, onCancelClick]);
+
+
   useClickOutside(wrapperRef, (e) => {
     if (isMobile) return;
     const target = e.target as HTMLElement;
@@ -123,6 +130,8 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
     if (isButtonClick || isFromPicker || isUntilPicker) return;
     handleCloseOptions();
   });
+
+  useEventListener("keyup", handleKeyUp);
 
   return <>
     <div ref={buttonRef}>

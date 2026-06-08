@@ -17,6 +17,12 @@ const DURATION_UNITS_IN_NANOS = {
 } as const;
 
 export const getNanosecondsFromDuration = (dur: string): bigint => {
+  const fullRegexp = /^(?:\d+(?:\.\d+)?(?:ns|ms|y|w|d|h|m|s))+$/;
+
+  if (!fullRegexp.test(dur)) {
+    throw new Error(`Invalid duration: "${dur}"`);
+  }
+
   const regexp = /(\d+(?:\.\d+)?)(ns|ms|y|w|d|h|m|s)/g;
 
   return Array.from(dur.matchAll(regexp)).reduce((total, [, value, unit]) => {
