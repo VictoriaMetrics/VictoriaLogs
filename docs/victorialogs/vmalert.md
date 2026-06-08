@@ -414,7 +414,7 @@ For VictoriaMetrics cluster, Prometheus requests must be routed to a tenant-spec
 VictoriaLogs requests can keep the same route, because VictoriaLogs tenant IDs are passed via `AccountID` and `ProjectID` HTTP headers instead of URL path segments.
 Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-multitenancy-in-rules) for information on multitenant alerts with VictoriaLogs.
 
-> Note: Vmalert in VictoriaMetrics Enterprise supports multiple tenants natively and doesn't require this additional configuration.
+> Note: vmalert in VictoriaMetrics Enterprise supports per-group tenants with `-clusterMode`, so it doesn't need this manual VictoriaMetrics cluster path rewrite.
 
 ```yaml
     unauthorized_user:
