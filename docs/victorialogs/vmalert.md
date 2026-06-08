@@ -392,8 +392,8 @@ VictoriaMetrics and VictoriaLogs datasources have different query path prefixes,
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) to route requests of different types between datasources.
 See an example of a vmauth config for such routing below:
 
-vmalert should be configured with `-datasource.url=http://vmauth:8427/` to send queries to vmauth,
-and vmauth will route them to the specified destinations, as in the configuration examples below.
+vmalert should be configured with `-datasource.url=http://vmauth:8427/`, so all datasource requests go through vmauth.
+vmauth routes these requests to VictoriaMetrics or VictoriaLogs according to the request path, as shown in the examples below.
 
 #### Using VictoriaMetrics Single Node
 ```yaml
