@@ -409,8 +409,9 @@ vmauth routes these requests to VictoriaMetrics or VictoriaLogs according to the
 ```
 
 #### Using VictoriaMetrics Cluster
-For the VictoriaMetrics cluster, we have to set up the paths a bit differently because vmalert isn't tenant-aware.
-VictoriaLogs multitenancy doesn't put the tenant information in the path so nothing needs to be changed.
+For VictoriaMetrics cluster, Prometheus requests must be routed to a tenant-specific `vmselect` path, because OSS vmalert doesn't add VictoriaMetrics tenant IDs to the datasource URL automatically.
+
+VictoriaLogs requests can keep the same route, because VictoriaLogs tenant IDs are passed via `AccountID` and `ProjectID` HTTP headers instead of URL path segments.
 Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.com/victorialogs/vmalert/#how-to-use-multitenancy-in-rules) for information on multitenant alerts with VictoriaLogs.
 
 > Note: Vmalert in VictoriaMetrics Enterprise supports multiple tenants natively and doesn't require this additional configuration.
