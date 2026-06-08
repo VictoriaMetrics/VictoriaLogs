@@ -268,7 +268,9 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
   The `<snapshot-path>` can be taken from the output of `/internal/partition/snapshot/list`.
 - `/internal/partition/snapshot/delete_stale?max_age=<d>` - deletes snapshots older than `<d>`. For example, `max_age=1d` deletes snapshots older than one day.
 
-These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+These endpoints can be protected from unauthorized access via `-partitionManageAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
 with fast NVMe (SSD) disks, while historical logs are gradually migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
@@ -318,6 +320,9 @@ of new log streams for 10 seconds:
 curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
 ```
 
+This endpoint can be protected with the `-logNewStreamsAuthKey` command-line flag.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
+
 See also [data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
 ## Forced merge
@@ -333,7 +338,9 @@ merge for September 21, 2024 partition. The call to `/internal/force_merge` retu
 Forced merges may require additional CPU, disk IO and storage space resources. It is unnecessary to run forced merge under normal conditions,
 since VictoriaLogs automatically performs optimal merges in background when new data is ingested into it.
 
-The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## Forced flush
 
@@ -346,7 +353,9 @@ It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a r
 and slows down data ingestion. It is expected that the `/internal/force_flush` is requested in automated tests, which need querying
 the recently ingested data.
 
-The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## How to delete logs
 
@@ -502,21 +511,19 @@ users:
 
 This configuration allows `foo` to use the `/select/.*` and `/insert/.*` endpoints with `AccountID: 1` and `ProjectID: 0`, while `baz` can only use the `/select/.*` endpoint with `AccountID: 2` and `ProjectID: 0`.
 
-See also [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
+See also [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
 ## Security
 
-See [Security on Untrusted Networks](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks)
-for detailed information about VictoriaLogs security features and recommendations.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 ### mTLS
 
-See [mTLS docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
 
 ### Automatic issuing of TLS certificates
 
-See [Automatic TLS certificates docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates)
-for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates) for details.
 
 ## Benchmarks
 

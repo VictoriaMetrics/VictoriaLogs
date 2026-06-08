@@ -2000,6 +2000,12 @@ func TestParseQuery_Success(t *testing.T) {
 	// generate_sequence pipe
 	f(`foo | generate_sequence 123`, `foo | generate_sequence 123`)
 
+	// coalesce pipe
+	f(`foo | coalesce (bar, baz*, foo)`, `foo | coalesce(bar, baz*, foo)`)
+	f(`foo | coalesce (foo, bar, baz*) as _msg`, `foo | coalesce(foo, bar, baz*)`)
+	f(`foo | coalesce (foo, bar, baz*) default 'x'`, `foo | coalesce(foo, bar, baz*) default x`)
+	f(`foo | coalesce (foo, bar, baz*) default 'x' as abc`, `foo | coalesce(foo, bar, baz*) default x as abc`)
+
 	// collapse_nums pipe
 	f(`foo | collapse_nums`, `foo | collapse_nums`)
 	f(`foo | collapse_nums at x`, `foo | collapse_nums at x`)
@@ -2902,6 +2908,10 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | generate_sequence 1, foo`)
 	f(`foo | generate_sequence -1`)
 
+	// invalid coalesce pipe
+	f(`foo | coalesce`)
+	f(`foo | coalesce x`)
+
 	// invalid collapse_nums pipe
 	f(`foo | collapse_nums bar`)
 
@@ -3173,6 +3183,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	// pipe names without whitespace after the pipe name
 	f(`* | block_stats.x`)
 	f(`* | blocks_count.x`)
+	f(`* | coalesce.x`)
 	f(`* | collapse_nums.at x`)
 	f(`* | copy.x as y`)
 	f(`* | decolorize.x`)
@@ -3539,6 +3550,7 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | rm f1, f2 | stats by(f3) count(f4) r1`, `f3,f4`, ``)
 
 	// Verify that fields are correctly tracked before count(*)
+	f(`* | coalesce (x) | count() r1`, ``, ``)
 	f(`* | collapse_nums | count() r1`, ``, ``)
 	f(`* | copy a b, c d | count() r1`, ``, ``)
 	f(`* | decolorize | count() r1`, ``, ``)
@@ -3790,6 +3802,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	// verify all the pipes
 	f("* | blocks_count", false)
 	f("* | block_stats", false)
+	f("* | coalesce (x)", true)
 	f("* | collapse_nums", true)
 	f("* | copy foo bar", true)
 	f("* | copy * as foo*", true)
@@ -3876,6 +3889,7 @@ func TestQueryCanLiveTail(t *testing.T) {
 	}
 
 	f("foo", true)
+	f("* | coalesce (x)", true)
 	f("* | collapse_nums", true)
 	f("* | copy a b", true)
 	f("* | decolorize x", true)
@@ -4004,6 +4018,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, 0, []string{"_time", "requests"}, `* | stats by (_time:86400000000000, path) count(*) as requests | stats by (_time:86400000000000, requests) count(*) as hits | first by (hits desc) partition by (_time)`)
 
 	// pipes, which do not drop or modify _time, are allowed in front of `stats` pipe
+	f("* | coalesce (x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | coalesce(x) | stats by (_time:86400000000000) count(*) as x`)
 	f("* | collapse_nums | count() x", nsecsPerDay, 0, []string{"_time"}, `* | collapse_nums | stats by (_time:86400000000000) count(*) as x`)
 	f("* | copy foo bar | count() x", nsecsPerDay, 0, []string{"_time"}, `* | copy foo as bar | stats by (_time:86400000000000) count(*) as x`)
 	f("*|decolorize|count()x", nsecsPerDay, 0, []string{"_time"}, `* | decolorize | stats by (_time:86400000000000) count(*) as x`)
@@ -4085,6 +4100,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | by (x) count() y | unpack_json from y`)
 	f(`* | by (x) count() y | unpack_json from y fields(z*)`)
 
+	f(`* | by (x) count() | coalesce (x)`)
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
@@ -4251,6 +4267,7 @@ func TestQueryGetStatsLabels_Failure(t *testing.T) {
 	f(`foo | count() | block_stats`)
 	f(`foo | count() | blocks_count`)
 	f(`foo | count() | generate_sequence 123`)
+	f(`foo | count() | coalesce (x, y)`)
 	f(`foo | count() | collapse_nums`)
 	f(`foo | count() | facets`)
 	f(`foo | count() | field_names`)
@@ -4489,7 +4506,7 @@ func TestTryParseIPv4CIDR_Success(t *testing.T) {
 			t.Fatalf("cannot parse %s as ipv4 CIDR", s)
 		}
 		if minValue != minValueExpected {
-			t.Fatalf("unexpeccted minValue; got %d; want %d", minValue, minValueExpected)
+			t.Fatalf("unexpected minValue; got %d; want %d", minValue, minValueExpected)
 		}
 		if maxValue != maxValueExpected {
 			t.Fatalf("unexpected maxValue; got %d; want %d", maxValue, maxValueExpected)

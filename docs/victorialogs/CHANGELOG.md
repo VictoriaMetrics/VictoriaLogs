@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.3. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved).
+* SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
 
 * FEATURE: [alerting](https://docs.victoriametrics.com/victorialogs/vmalert/): add `-vmalert.proxyURL` command-line flag, which allows proxying `/select/vmalert/*` requests from VictoriaLogs to `vmalert`. See [#90](https://github.com/VictoriaMetrics/VictoriaLogs/issues/90).
 * FEATURE: [metrics](https://docs.victoriametrics.com/victorialogs/metrics/): expose filesystem type for storage paths via the `vm_fs_info` metric. This helps identify filesystem-specific issues during troubleshooting. See [#1435](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1435).
@@ -37,7 +37,6 @@ according to the following docs:
 
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe) and [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) ignoring JSON arrays preceded by whitespace. See [#1427](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1427).
 * BUGFIX: [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/): hide sensitive values passed via `-remoteWrite.proxyURL` in `/metrics`, `/flags`, and startup logs. Previously these values could be exposed in plain text. See [#1320](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1320).
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): sanitize markdown URLs in logs rendered with `markdown parsing` enabled, allowing only `http`, `https`, `mailto`, and `tel` schemes for active links and images. See [#1313](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1313).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve context view highlight visibility in dark theme. The selected log entry is now highlighted with a more visible blue tint instead of barely visible gray background. See [#1196](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1196).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix live tab ignoring selected stream filters. See [#1342](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1342).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix stream context view where the selected log overlapped transparently with content below when scrolling. See [#1185](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1185).
@@ -664,7 +663,7 @@ Released at 2025-06-02
 
 Released at 2025-05-30
 
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): correctly handle `sort` pipe in queries — UI now respects the server-defined sort order instead of always sorting by time. See [#8660](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8660).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): correctly handle `sort` pipe in queries - UI now respects the server-defined sort order instead of always sorting by time. See [#8660](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8660).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add alphabetical sorting for record fields in selectors and table view. See [#8438](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8438).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix an issue where queries were not triggered when relative time was selected and the chart was hidden. See [#8983](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8983).
 

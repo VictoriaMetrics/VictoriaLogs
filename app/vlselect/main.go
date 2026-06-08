@@ -31,8 +31,8 @@ var (
 		"limit is reached; see also -search.maxQueryDuration")
 	maxQueryDuration = flag.Duration("search.maxQueryDuration", time.Second*30, "The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg")
 
-	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes; see also -internalselect.disable")
-	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints")
+	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
