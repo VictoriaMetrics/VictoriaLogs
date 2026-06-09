@@ -52,9 +52,9 @@ func TestVlsingleStatsQuery_Success(t *testing.T) {
 	f(`* | stats by (x) count() q, max(x) xmax | math q / xmax as y | sort by (y desc) | keep y, x`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"y","x":"1"},"value":[1735689900,"1"]},{"metric":{"__name__":"y","x":"5"},"value":[1735689900,"0.2"]}]}}`)
 
 	// sort
-	f(`* | stats by (x) count() q | sort by (q desc) limit 1`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
-	f(`* | stats by (x) count() q | first 1 by (q desc)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
-	f(`* | stats by (x) count() q | last 1 by (q)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | sort by (q desc, x) limit 1`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"1"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | first 1 by (q desc, x)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"1"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | last 1 by (q, x)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
 
 	// limit
 	f(`* | stats count() q | limit 10`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
