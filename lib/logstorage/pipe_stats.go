@@ -1840,10 +1840,18 @@ func parseFieldFilter(lex *lexer) (string, error) {
 	return fieldName, nil
 }
 
-func fieldNamesString(fields []string) string {
-	a := make([]string, len(fields))
-	for i, f := range fields {
+func fieldFiltersString(fieldFilters []string) string {
+	a := make([]string, len(fieldFilters))
+	for i, f := range fieldFilters {
 		a[i] = quoteFieldFilterIfNeeded(f)
+	}
+	return strings.Join(a, ", ")
+}
+
+func fieldNamesString(fieldNames []string) string {
+	a := make([]string, len(fieldNames))
+	for i, f := range fieldNames {
+		a[i] = quoteTokenIfNeeded(f)
 	}
 	return strings.Join(a, ", ")
 }

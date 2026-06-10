@@ -4029,12 +4029,12 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 
 	denyFilters := pf.GetDenyFilters()
 	if len(denyFilters) > 0 {
-		qStr += " | delete " + fieldNamesString(denyFilters)
+		qStr += " | delete " + fieldFiltersString(denyFilters)
 	}
 
 	allowFilters := pf.GetAllowFilters()
 	if len(allowFilters) > 0 && !prefixfilter.MatchAll(allowFilters) {
-		qStr += " | fields " + fieldNamesString(allowFilters)
+		qStr += " | fields " + fieldFiltersString(allowFilters)
 	}
 
 	return qStr

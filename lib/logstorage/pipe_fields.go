@@ -20,7 +20,7 @@ func (pf *pipeFields) String() string {
 	if len(pf.fieldFilters) == 0 {
 		logger.Panicf("BUG: pipeFields must contain at least a single field filter")
 	}
-	return "fields " + fieldNamesString(pf.fieldFilters)
+	return "fields " + fieldFiltersString(pf.fieldFilters)
 }
 
 func (pf *pipeFields) splitToRemoteAndLocal(_ int64) (pipe, []pipe) {
@@ -100,7 +100,7 @@ func parsePipeFields(lex *lexer) (pipe, error) {
 	}
 	lex.nextToken()
 
-	fieldFilters, err := parseCommaSeparatedFields(lex)
+	fieldFilters, err := parseCommaSeparatedFieldFilters(lex)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func parsePipeFields(lex *lexer) (pipe, error) {
 	return pf, nil
 }
 
-func parseCommaSeparatedFields(lex *lexer) ([]string, error) {
+func parseCommaSeparatedFieldFilters(lex *lexer) ([]string, error) {
 	var fields []string
 	for {
 		field, err := parseFieldFilter(lex)
@@ -123,4 +123,17 @@ func parseCommaSeparatedFields(lex *lexer) ([]string, error) {
 		}
 		lex.nextToken()
 	}
+}
+
+func parseCommaSeparatedFieldNames(lex *lexer) ([]string, error) {
+	fieldNames, err := parseCommaSeparatedFieldFilters(lex)
+	if err != nil {
+		return nil, err
+	}
+	for _, fieldName := range fieldNames {
+		if prefixfilter.IsWildcardFilter(fieldName) {
+			return nil, fmt.Errorf("the field name %q cannot end with '*'", fieldName)
+		}
+	}
+	return fieldNames, nil
 }
