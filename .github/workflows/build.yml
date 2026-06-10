@@ -31,7 +31,8 @@ jobs:
     name: Build
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    # Runs on dedicated runner with extra resources to increase build speed.
+    runs-on: 'vm-runner'
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
