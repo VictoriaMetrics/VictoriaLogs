@@ -30,6 +30,7 @@ func TestParsePipeJSONArrayConcatFailure(t *testing.T) {
 	f(`json_array_concat from`)
 	f(`json_array_concat "," from *`)
 	f(`json_array_concat "," from foo*`)
+	f(`json_array_concat "," from foo as`)
 	f(`json_array_concat "," from foo as *`)
 	f(`json_array_concat "," from foo as bar*`)
 	f(`json_array_concat "," from foo as bar baz`)

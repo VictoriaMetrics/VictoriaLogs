@@ -200,10 +200,10 @@ func parsePipeJSONArrayConcat(lex *lexer) (pipe, error) {
 	}
 
 	resultField := fromField
-	if lex.isKeyword("as") {
-		lex.nextToken()
-	}
 	if !lex.isKeyword("|", ")", "") {
+		if lex.isKeyword("as") {
+			lex.nextToken()
+		}
 		f, err := parseFieldName(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse result field for 'json_array_concat': %w", err)
