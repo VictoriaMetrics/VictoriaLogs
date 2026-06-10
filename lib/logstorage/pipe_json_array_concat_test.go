@@ -55,6 +55,20 @@ func TestPipeJSONArrayConcat(t *testing.T) {
 		{{"foo", "abc"}},
 	})
 
+	// no "from" keyword
+	f(`json_array_concat "," foo`, [][]Field{
+		{{"foo", `["a","b","c"]`}},
+	}, [][]Field{
+		{{"foo", "a,b,c"}},
+	})
+
+	// no "from" and no "as" keyword
+	f(`json_array_concat "," foo bar`, [][]Field{
+		{{"foo", `["a","b","c"]`}},
+	}, [][]Field{
+		{{"foo", `["a","b","c"]`}, {"bar", "a,b,c"}},
+	})
+
 	// single element
 	f(`json_array_concat "," from foo`, [][]Field{
 		{{"foo", `["only"]`}},
