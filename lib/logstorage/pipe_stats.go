@@ -1812,6 +1812,34 @@ func parseFieldFiltersInParens(lex *lexer) ([]string, error) {
 	}
 }
 
+func parseCommaSeparatedFieldNames(lex *lexer) ([]string, error) {
+	fieldNames, err := parseCommaSeparatedFieldFilters(lex)
+	if err != nil {
+		return nil, err
+	}
+	for _, fieldName := range fieldNames {
+		if prefixfilter.IsWildcardFilter(fieldName) {
+			return nil, fmt.Errorf("the field name %q cannot end with '*'", fieldName)
+		}
+	}
+	return fieldNames, nil
+}
+
+func parseCommaSeparatedFieldFilters(lex *lexer) ([]string, error) {
+	var fields []string
+	for {
+		field, err := parseFieldFilter(lex)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse field name: %w", err)
+		}
+		fields = append(fields, field)
+		if !lex.isKeyword(",") {
+			return fields, nil
+		}
+		lex.nextToken()
+	}
+}
+
 func parseFieldName(lex *lexer) (string, error) {
 	fieldName, err := lex.nextCompoundToken()
 	if err != nil {
