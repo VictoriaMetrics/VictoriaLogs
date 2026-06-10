@@ -1,59 +1,16 @@
 import markedEmoji from "../utils/marked/markedEmoji";
 import { marked } from "marked";
 import emojis from "./emojis";
+import { escapeHTML, isAllowedMarkdownLink, isExplicitInlineMarkdownLink } from "../utils/marked/markedLinks";
 
 // TODO: Dynamically import the emoji map only if the emoji parser is active
 marked.use(markedEmoji({ emojis, renderer: (token) => token.emoji }));
-
-const escapeHTML = (value: string): string => value.replace(/[&<>"']/g, (ch) => {
-  switch (ch) {
-    case "&":
-      return "&amp;";
-    case "<":
-      return "&lt;";
-    case ">":
-      return "&gt;";
-    case "\"":
-      return "&quot;";
-    case "'":
-      return "&#39;";
-    default:
-      return ch;
-  }
-});
-
-const hasInvalidURLChars = (value: string): boolean => {
-  for (const ch of value) {
-    const code = ch.charCodeAt(0);
-    if (code <= 0x20 || code === 0x7f) {
-      return true;
-    }
-  }
-  return false;
-};
-
-const isAllowedMarkdownLink = (href: string): boolean => {
-  if (href === "" || hasInvalidURLChars(href)) {
-    return false;
-  }
-  const lowerHref = href.toLowerCase();
-  if (!lowerHref.startsWith("http://") && !lowerHref.startsWith("https://")) {
-    return false;
-  }
-
-  try {
-    const url = new URL(href);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
 
 marked.use({
   renderer: {
     link({ href, title, tokens, raw }) {
       const text = this.parser.parseInline(tokens);
-      if (!raw.startsWith("[") || !isAllowedMarkdownLink(href)) {
+      if (!isExplicitInlineMarkdownLink(raw) || !isAllowedMarkdownLink(href)) {
         return escapeHTML(raw);
       }
 
@@ -71,6 +28,10 @@ marked.use({
     }
   },
   tokenizer: {
-    code() { return undefined; }
+    // Keep indented/code-like log lines as plain text instead of consuming them as markdown code blocks.
+    code() { return undefined; },
+
+    // Keep reference definitions visible in logs instead of treating them as hidden markdown metadata.
+    def() { return undefined; },
   }
 });

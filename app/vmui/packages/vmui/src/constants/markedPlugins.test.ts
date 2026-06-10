@@ -9,10 +9,25 @@ describe("markedPlugins", () => {
     expect(marked("[title](https://example.com \"a & b\")")).toBe("<p><a href=\"https://example.com\" title=\"a &amp; b\">title</a></p>\n");
   });
 
+  it("escapes HTML in allowed link text while preserving markdown formatting", () => {
+    // noinspection HtmlRequiredAltAttribute,HtmlUnknownTarget,HtmlDeprecatedAttribute
+    expect(marked("[<img src=x onerror=alert(1)>](https://example.com)")).toBe("<p><a href=\"https://example.com\">&lt;img src=x onerror=alert(1)&gt;</a></p>\n");
+    expect(marked("[<svg/onload=alert(1)>](https://example.com)")).toBe("<p><a href=\"https://example.com\">&lt;svg/onload=alert(1)&gt;</a></p>\n");
+    expect(marked("[**bold**](https://example.com)")).toBe("<p><a href=\"https://example.com\"><strong>bold</strong></a></p>\n");
+  });
+
   it("renders auto-links and bare URLs as inert text", () => {
     expect(marked("https://example.com/a")).toBe("<p>https://example.com/a</p>\n");
     expect(marked("<https://example.com/a>")).toBe("<p>&lt;https://example.com/a&gt;</p>\n");
     expect(marked("www.example.com")).toBe("<p>www.example.com</p>\n");
+  });
+
+  it("renders reference-style links as inert text", () => {
+    expect(marked("[ref][id]\n\n[id]: https://example.com")).toBe("<p>[ref][id]</p>\n<p>[id]: https://example.com</p>\n");
+    expect(marked("[collapsed][]\n\n[collapsed]: https://example.com")).toBe("<p>[collapsed][]</p>\n<p>[collapsed]: https://example.com</p>\n");
+    expect(marked("[shortcut]\n\n[shortcut]: https://example.com")).toBe("<p>[shortcut]</p>\n<p>[shortcut]: https://example.com</p>\n");
+    expect(marked("[id]: https://example.com")).toBe("<p>[id]: https://example.com</p>\n");
+    expect(marked("[a\\](b][id)]\n\n[id)]: https://example.com")).toBe("<p>[a](b][id)]</p>\n<p>[id)]: https://example.com</p>\n");
   });
 
   it("renders non-http links as inert text", () => {
@@ -28,6 +43,8 @@ describe("markedPlugins", () => {
   it("rejects URLs with whitespace or control characters instead of normalizing them", () => {
     expect(marked("[space](<https://example.com/a b>)")).toBe("<p>[space](&lt;https://example.com/a b&gt;)</p>\n");
     expect(marked("[tab](<https://example.com/a\tb>)")).toBe("<p>[tab](&lt;https://example.com/a\tb&gt;)</p>\n");
+    expect(marked("[del](<https://example.com/a\u007fb>)")).toBe("<p>[del](&lt;https://example.com/a\u007fb&gt;)</p>\n");
+    expect(marked("[c1](<https://example.com/a\u0085b>)")).toBe("<p>[c1](&lt;https://example.com/a\u0085b&gt;)</p>\n");
     expect(marked("[script](<https://example.com/a b?x=<script>>)")).toBe("<p>[script](&lt;https://example.com/a b?x=&lt;script&gt;>)</p>\n");
     expect(marked("[encoded-space](https://example.com/a%20b)")).toBe("<p><a href=\"https://example.com/a%20b\">encoded-space</a></p>\n");
   });
@@ -38,6 +55,7 @@ describe("markedPlugins", () => {
   });
 
   it("renders raw HTML as text", () => {
+    // noinspection HtmlRequiredAltAttribute,HtmlUnknownTarget,HtmlDeprecatedAttribute
     expect(marked("<img src=x onerror=alert(1)>")).toBe("&lt;img src=x onerror=alert(1)&gt;");
   });
 });
