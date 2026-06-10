@@ -92,8 +92,8 @@ jobs:
       - name: Run tests
         run: GOGC=10 make ${{ matrix.scenario}}
 
-  integration-test:
-    name: integration-test
+  apptest:
+    name: apptest
     needs: [lint, test]
     permissions:
       contents: read
@@ -120,5 +120,5 @@ jobs:
           key: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
           restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-
 
-      - name: Run integration tests
-        run: make integration-test
+      - name: Run apptest
+        run: make apptest

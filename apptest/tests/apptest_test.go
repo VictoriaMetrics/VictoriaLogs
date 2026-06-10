@@ -25,13 +25,13 @@ func TestMain(m *testing.M) {
 func checkBinaryRequirement(path string) {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			panic(fmt.Sprintf("integration test failed: %s not found. please run `make integration-test` to execute integration tests. check how different tests are executed: https://docs.victoriametrics.com/victoriametrics/contributing/#testing", path))
+			panic(fmt.Sprintf("integration test failed: %s not found. please run `make apptest` to execute integration tests. check how different tests are executed: https://docs.victoriametrics.com/victoriametrics/contributing/#testing", path))
 		}
 	}
 }
 
 func checkIntegrationTestEnv() {
-	if os.Getenv("VL_INTEGRATION_TEST") == "" {
-		logger.Warnf("executing integration tests with potential outdated binaries. it's recommended to execute via `make integration-test` command. check this doc for more details: https://docs.victoriametrics.com/victoriametrics/contributing/#testing")
+	if os.Getenv("VL_APPTEST") == "" {
+		logger.Warnf("executing integration tests with potential outdated binaries. it's recommended to execute via `make apptest` command. check this doc for more details: https://docs.victoriametrics.com/victoriametrics/contributing/#testing")
 	}
 }

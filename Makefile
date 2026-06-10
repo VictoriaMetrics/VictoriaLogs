@@ -305,12 +305,9 @@ test-full:
 test-full-386:
 	GOARCH=386 go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
 
-integration-test:
-	$(MAKE) apptest
-
 apptest:
 	$(MAKE) victoria-logs-race vlagent-race vlogscli-race
-	VL_INTEGRATION_TEST=1 go test ./apptest/...
+	VL_APPTEST=1 go test ./apptest/...
 
 benchmark:
 	go test -run=NO_TESTS -bench=. ./lib/...
