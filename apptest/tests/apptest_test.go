@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
 func TestMain(m *testing.M) {
@@ -11,6 +13,9 @@ func TestMain(m *testing.M) {
 	checkBinaryRequirement("../../bin/vlagent-race")
 	checkBinaryRequirement("../../bin/victoria-logs-race")
 	checkBinaryRequirement("../../bin/vlogscli-race")
+
+	// check if the test is run via make command
+	checkIntegrationTestEnv()
 
 	// start the integration test.
 	os.Exit(m.Run())
@@ -22,5 +27,11 @@ func checkBinaryRequirement(path string) {
 		if os.IsNotExist(err) {
 			panic(fmt.Sprintf("integration test failed: %s not found. please run `make integration-test` to execute integration tests. check how different tests are executed: https://docs.victoriametrics.com/victoriametrics/contributing/#testing", path))
 		}
+	}
+}
+
+func checkIntegrationTestEnv() {
+	if os.Getenv("VL_INTEGRATION_TEST") == "" {
+		logger.Warnf("executing integration tests with potential outdated binaries. it's recommended to execute via `make integration-test` command. check this doc for more details: https://docs.victoriametrics.com/victoriametrics/contributing/#testing")
 	}
 }
