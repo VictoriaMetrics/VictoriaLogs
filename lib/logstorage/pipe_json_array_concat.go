@@ -7,6 +7,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
@@ -87,16 +88,16 @@ type pipeJSONArrayConcatProcessor struct {
 	shards atomicutil.Slice[pipeJSONArrayConcatProcessorShard]
 }
 
-func (plp *pipeJSONArrayConcatProcessor) writeBlock(workerID uint, br *blockResult) {
+func (pcp *pipeJSONArrayConcatProcessor) writeBlock(workerID uint, br *blockResult) {
 	if br.rowsLen == 0 {
 		return
 	}
 
-	shard := plp.shards.Get(workerID)
-	shard.rc.name = plp.pc.resultField
+	shard := pcp.shards.Get(workerID)
+	shard.rc.name = pcp.pc.resultField
 
-	c := br.getColumnByName(plp.pc.fromField)
-	delimiter := plp.pc.delimiter
+	c := br.getColumnByName(pcp.pc.fromField)
+	delimiter := pcp.pc.delimiter
 	if c.isConst {
 		// Fast path for const column
 		v := c.valuesEncoded[0]
@@ -116,7 +117,7 @@ func (plp *pipeJSONArrayConcatProcessor) writeBlock(workerID uint, br *blockResu
 		br.addResultColumn(shard.rc)
 	}
 
-	plp.ppNext.writeBlock(workerID, br)
+	pcp.ppNext.writeBlock(workerID, br)
 
 	shard.reset()
 }
@@ -155,7 +156,10 @@ func (shard *pipeJSONArrayConcatProcessorShard) concat(arrayStr, delimiter strin
 			shard.a.b = append(shard.a.b, delimiter...)
 		}
 		if item.Type() == fastjson.TypeString {
-			sb, _ := item.StringBytes()
+			sb, err := item.StringBytes()
+			if err != nil {
+				logger.Panicf("BUG: unexpected error returned from StringBytes(): %s", err)
+			}
 			shard.a.b = append(shard.a.b, sb...)
 		} else {
 			shard.a.b = item.MarshalTo(shard.a.b)
@@ -164,7 +168,7 @@ func (shard *pipeJSONArrayConcatProcessorShard) concat(arrayStr, delimiter strin
 	return bytesutil.ToUnsafeString(shard.a.b[bLen:])
 }
 
-func (plp *pipeJSONArrayConcatProcessor) flush() error {
+func (pcp *pipeJSONArrayConcatProcessor) flush() error {
 	return nil
 }
 
