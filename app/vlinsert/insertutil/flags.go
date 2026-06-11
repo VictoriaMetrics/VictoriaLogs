@@ -18,4 +18,9 @@ var (
 	// DefaultMsgValue is the default value for _msg field if the ingested log entry doesn't contain it.
 	DefaultMsgValue = flag.String("defaultMsgValue", "missing _msg field; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field",
 		"Default value for _msg field if the ingested log entry doesn't contain it; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field")
+
+	discoverLogLevels = flag.Bool("insert.discoverLogLevels", false, "Whether to discover log levels during data ingestion from the fields configured via -insert.logLevelFields. "+
+		"When enabled and the ingested log entry doesn't contain a non-empty level field, VictoriaLogs stores the first recognized log level as level field")
+	logLevelFields = flagutil.NewArrayString("insert.logLevelFields", "Comma-separated list of fields used for discovering log levels when -insert.discoverLogLevels is enabled. "+
+		"Default: level,lvl,log.level,severity,severity_text,SeverityText,detected_level")
 )

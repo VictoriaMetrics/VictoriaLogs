@@ -255,6 +255,7 @@ func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Fiel
 	defer lmp.mu.Unlock()
 
 	lmp.unflushedRows++
+	fields = maybeAddDiscoveredLogLevel(fields)
 	n := logstorage.EstimatedJSONRowLen(fields)
 	lmp.unflushedBytes += n
 
@@ -276,6 +277,78 @@ func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Fiel
 	}
 	if lmp.lr.NeedFlush() {
 		lmp.flushLocked()
+	}
+}
+
+var defaultLogLevelFields = []string{"level", "lvl", "log.level", "severity", "severity_text", "SeverityText", "detected_level"}
+
+func maybeAddDiscoveredLogLevel(fields []logstorage.Field) []logstorage.Field {
+	if !*discoverLogLevels {
+		return fields
+	}
+	if hasNonEmptyLevelField(fields) {
+		return fields
+	}
+
+	logLevelFields := getLogLevelFields()
+	for _, fieldName := range logLevelFields {
+		fieldName = strings.TrimSpace(fieldName)
+		if fieldName == "" {
+			continue
+		}
+		for i := range fields {
+			f := &fields[i]
+			if f.Name != fieldName || f.Value == "" {
+				continue
+			}
+			level, ok := normalizeLogLevel(f.Value)
+			if !ok {
+				continue
+			}
+			return append(fields, logstorage.Field{
+				Name:  "level",
+				Value: level,
+			})
+		}
+	}
+	return fields
+}
+
+func hasNonEmptyLevelField(fields []logstorage.Field) bool {
+	for i := range fields {
+		f := &fields[i]
+		if f.Name == "level" && f.Value != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func getLogLevelFields() []string {
+	if len(*logLevelFields) == 0 {
+		return defaultLogLevelFields
+	}
+	return *logLevelFields
+}
+
+func normalizeLogLevel(s string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "trace", "trace2", "trace3", "trace4":
+		return "trace", true
+	case "debug", "debug2", "debug3", "debug4", "dbg":
+		return "debug", true
+	case "info", "info2", "info3", "info4", "information", "informational":
+		return "info", true
+	case "warn", "warn2", "warn3", "warn4", "warning":
+		return "warn", true
+	case "error", "error2", "error3", "error4", "err":
+		return "error", true
+	case "critical", "crit":
+		return "critical", true
+	case "fatal", "fatal2", "fatal3", "fatal4", "panic":
+		return "fatal", true
+	default:
+		return "", false
 	}
 }
 

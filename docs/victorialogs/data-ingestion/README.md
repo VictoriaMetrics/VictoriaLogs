@@ -335,6 +335,19 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 
 See also [HTTP Query string parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters).
 
+#### Command-line flags
+
+The following command-line flags can additionally change data ingestion behavior:
+
+- `-insert.discoverLogLevels` - if this flag is set, then VictoriaLogs discovers a common `level` field from the configured log level fields
+  when the ingested log entry doesn't already contain a non-empty `level` field. Discovery is disabled by default.
+
+- `-insert.logLevelFields` - comma-separated list of fields to inspect when `-insert.discoverLogLevels` is enabled.
+  The first field containing a recognized log level wins. The default value is `level,lvl,log.level,severity,severity_text,SeverityText,detected_level`.
+  Recognized values are normalized to `trace`, `debug`, `info`, `warn`, `error`, `critical` or `fatal`.
+
+The log level discovery doesn't extract levels from unstructured message bodies. Such extraction may be added in the future.
+
 ## Decolorizing
 
 If the ingested logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code), then it is recommended dropping these color codes before

@@ -2,7 +2,10 @@ package insertutil
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestGetCommonParams_RemoveEmptyTokens(t *testing.T) {
@@ -48,6 +51,152 @@ func TestGetCommonParams_RemoveEmptyTokens(t *testing.T) {
 	f(map[string]string{
 		"VL-Extra-Fields": "a=b,, c=d",
 	}, nil, []string{"_time"}, false, 2)
+}
+
+func TestLogMessageProcessorDiscoverLogLevels(t *testing.T) {
+	discoverLogLevelsOld := *discoverLogLevels
+	logLevelFieldsOld := append([]string(nil), (*logLevelFields)...)
+	defer func() {
+		*discoverLogLevels = discoverLogLevelsOld
+		*logLevelFields = append((*logLevelFields)[:0], logLevelFieldsOld...)
+	}()
+
+	tests := []struct {
+		name           string
+		discover       bool
+		logLevelFields []string
+		fields         []logstorage.Field
+		resultExpected string
+	}{
+		{
+			name:     "disabled by default",
+			discover: false,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "ERROR"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"ERROR"}`,
+		},
+		{
+			name:     "discovers level from severity",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "ERROR"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"ERROR","level":"error"}`,
+		},
+		{
+			name:     "preserves existing level",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "level", Value: "info"},
+				{Name: "severity", Value: "ERROR"},
+			},
+			resultExpected: `{"_msg":"foo","level":"info","severity":"ERROR"}`,
+		},
+		{
+			name:           "uses candidate field priority",
+			discover:       true,
+			logLevelFields: []string{"lvl", "severity"},
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "lvl", Value: "debug"},
+				{Name: "severity", Value: "warn"},
+			},
+			resultExpected: `{"_msg":"foo","lvl":"debug","severity":"warn","level":"debug"}`,
+		},
+		{
+			name:     "normalizes warning",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "WARNING"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"WARNING","level":"warn"}`,
+		},
+		{
+			name:     "normalizes warn",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "Warn"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"Warn","level":"warn"}`,
+		},
+		{
+			name:     "normalizes fatal",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "FATAL"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"FATAL","level":"fatal"}`,
+		},
+		{
+			name:     "skips unrecognized value",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: "banana"},
+			},
+			resultExpected: `{"_msg":"foo","severity":"banana"}`,
+		},
+		{
+			name:     "skips empty candidate value",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "severity", Value: ""},
+			},
+			resultExpected: `{"_msg":"foo"}`,
+		},
+		{
+			name:     "skips row without candidate fields",
+			discover: true,
+			fields: []logstorage.Field{
+				{Name: "_msg", Value: "foo"},
+				{Name: "service", Value: "app"},
+			},
+			resultExpected: `{"_msg":"foo","service":"app"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			*discoverLogLevels = tt.discover
+			*logLevelFields = append((*logLevelFields)[:0], tt.logLevelFields...)
+
+			storage := &testLogRowsStorage{}
+			SetLogRowsStorage(storage)
+
+			cp := &CommonParams{}
+			lmp := cp.NewLogMessageProcessor("test", false)
+			lmp.AddRow(123, tt.fields, -1)
+			lmp.MustClose()
+
+			result := strings.Join(storage.rows, "\n")
+			if result != tt.resultExpected {
+				t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, tt.resultExpected)
+			}
+		})
+	}
+}
+
+type testLogRowsStorage struct {
+	rows []string
+}
+
+func (s *testLogRowsStorage) MustAddRows(lr *logstorage.LogRows) {
+	lr.ForEachRow(func(_ uint64, r *logstorage.InsertRow) {
+		row := logstorage.MarshalFieldsToJSON(nil, r.Fields)
+		s.rows = append(s.rows, string(row))
+	})
+}
+
+func (s *testLogRowsStorage) CanWriteData() error {
+	return nil
 }
 
 func slicesEqual(a, b []string) bool {
