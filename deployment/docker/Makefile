@@ -3,13 +3,13 @@
 DOCKER_REGISTRIES ?= docker.io quay.io
 DOCKER_NAMESPACE ?= victoriametrics
 
-ROOT_IMAGE ?= alpine:3.23.3
-CERTS_IMAGE := alpine:3.23.3
+ROOT_IMAGE ?= gcr.io/distroless/static:latest@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6
+CERTS_IMAGE := gcr.io/distroless/static:latest@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6
 
 GO_BUILDER_IMAGE := golang:1.26.4
 
 BUILDER_IMAGE := local/builder:2.0.0-$(shell echo $(GO_BUILDER_IMAGE) | tr :/ __)-1
-BASE_IMAGE := local/base:1.1.4-$(shell echo $(ROOT_IMAGE) | tr :/ __)-$(shell echo $(CERTS_IMAGE) | tr :/ __)
+BASE_IMAGE := local/base:1.1.4-$(shell echo $(ROOT_IMAGE) | tr :/@ __)
 DOCKER ?= docker
 DOCKER_RUN ?= $(DOCKER) run
 DOCKER_BUILD ?= $(DOCKER) build
@@ -80,10 +80,9 @@ publish-via-docker:
 	$(MAKE_PARALLEL) app-via-docker-linux-amd64 \
 		app-via-docker-linux-arm \
 		app-via-docker-linux-arm64 \
-		app-via-docker-linux-ppc64le \
-		app-via-docker-linux-386
+		app-via-docker-linux-ppc64le
 	$(DOCKER) buildx build \
-		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
+		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le \
 		--build-arg certs_image=$(CERTS_IMAGE) \
 		--build-arg root_image=$(ROOT_IMAGE) \
 		--build-arg APP_NAME=$(APP_NAME) \
