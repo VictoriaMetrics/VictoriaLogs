@@ -364,6 +364,7 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 	defer lmp.mu.Unlock()
 
 	lmp.unflushedRows++
+	r.Fields = maybeAddDiscoveredLogLevel(r.Fields)
 	n := logstorage.EstimatedJSONRowLen(r.Fields)
 	lmp.unflushedBytes += n
 
