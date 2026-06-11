@@ -41,7 +41,7 @@ export const getTimezoneList = (search = "") => {
   return supportedTimezones.reduce((acc: {[key: string]: Timezone[]}, region) => {
     const zone = (region.match(/^(.*?)\//) || [])[1] || "unknown";
     const utc = getUTCByTimezone(region);
-    const utcForSearch = utc.replace(/UTC|0/, "");
+    const utcForSearch = utc.replace(/UTC|0/g, "");
     const regionForSearch = region.replace(/[/_]/g, " ");
     const item = {
       region,

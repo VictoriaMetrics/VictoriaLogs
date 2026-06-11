@@ -21,11 +21,6 @@ export const unixSecondsToDateTime = (ts: number): VmDateInstance => {
   return vmDate(secondsToMilliseconds(ts));
 };
 
-export const dateFromSeconds = (ts: number): Date => {
-  const date = unixSecondsToDateTime(ts);
-  return date.isValid() ? date.toDate() : new Date();
-};
-
 export const timePeriodToTimeParams = ({ from, to }: TimePeriod): TimeParams => {
   return {
     start: vmDate(from).nano().timestamp(),

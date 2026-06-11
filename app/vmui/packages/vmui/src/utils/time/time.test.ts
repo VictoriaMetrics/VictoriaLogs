@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   absNanoseconds,
-  dateFromSeconds,
   getDurationFromMilliseconds,
   getDurationFromNanoseconds,
   getDurationFromPeriod,
@@ -38,7 +37,6 @@ describe("Time utils", () => {
 
     it("converts unix seconds to Date and vmDate instances", () => {
       expect(unixSecondsToDateTime(1710000000.25).toISOString()).toBe("2024-03-09T16:00:00.250Z");
-      expect(dateFromSeconds(1710000000.25).toISOString()).toBe("2024-03-09T16:00:00.250Z");
     });
 
     it("converts between seconds and milliseconds", () => {

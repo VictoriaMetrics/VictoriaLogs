@@ -29,8 +29,6 @@ type VmDateFactory = {
   tz: VmDateTimezone;
 } & typeof dayjs;
 
-const TIMEZONE_SUFFIX_RE = /(Z|[+-]\d{2}:?\d{2})$/;
-
 type NanoSource = {
   value: string;
   raw?: string;
@@ -38,13 +36,6 @@ type NanoSource = {
 
 const getNanoSource = (date: Dayjs, source?: VmDateInput): NanoSource => {
   if (source === "" || !date.isValid()) return { value: "" };
-
-  if (typeof source === "string" && TIMEZONE_SUFFIX_RE.test(source)) {
-    return {
-      value: date.toISOString(),
-      raw: source,
-    };
-  }
 
   if (typeof source === "string") {
     return {
