@@ -13,8 +13,7 @@ import { groupByMultipleKeys } from "../../utils/array";
 import classNames from "classnames";
 import {
   getInitialLogsPerSide,
-  STREAM_CONTEXT_LOAD_SIZE,
-  STREAM_CONTEXT_TIME_WINDOW_MAX
+  STREAM_CONTEXT_LOAD_SIZE
 } from "./helpers";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import { scrollElementToCenter } from "../../utils/dom-geometry";
@@ -192,7 +191,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
       >
         {!error && !hasMore.before && (
           <div className="vm-steam-context__no-load-more">
-            {`No older logs within ${STREAM_CONTEXT_TIME_WINDOW_MAX} window`}
+            {"No older logs"}
           </div>
         )}
 
@@ -256,7 +255,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
 
         {!error && !hasMore.after && (
           <div className="vm-steam-context__no-load-more">
-            {`No newer logs within ${STREAM_CONTEXT_TIME_WINDOW_MAX} window`}
+            {"No newer logs"}
           </div>
         )}
       </div>

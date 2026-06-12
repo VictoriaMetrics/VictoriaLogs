@@ -1,96 +1,55 @@
 import { Logs } from "../../api/types";
-import { getDurationFromMilliseconds, getSecondsFromDuration, toNanoPrecision } from "../../utils/time";
+import { toNanoPrecision } from "../../utils/time";
 import { Direction } from "./hooks/useFetchStreamContext";
 import { Dispatch, SetStateAction } from "preact/compat";
-import { removeLogsByKeys } from "../../utils/logs";
 
 export const STREAM_CONTEXT_LOAD_SIZE = 30;
 
-export const STREAM_CONTEXT_TIME_WINDOW_INITIAL = "1m";
-export const STREAM_CONTEXT_TIME_WINDOW_MAX = "7d";
-export const STREAM_CONTEXT_TIME_WINDOW_MULTIPLIER = 2;
-
-/** Checks max time_window by seconds. */
-export const isMaxTimeWindow = (timeWindow: string): boolean => {
-  return getSecondsFromDuration(timeWindow) >= getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_MAX);
-};
-
-/** Normalizes time_window to whole minutes, hours, or days. */
-const normalizeTimeWindowSeconds = (seconds: number): number => {
-  const minute = 60;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  const maxSeconds = getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_MAX);
-
-  if (seconds >= maxSeconds) return maxSeconds;
-
-  if (seconds >= day) {
-    return Math.floor(seconds / day) * day;
-  }
-
-  if (seconds >= hour) {
-    return Math.floor(seconds / hour) * hour;
-  }
-
-  return Math.floor(seconds / minute) * minute;
-};
-
-/** Returns the next time_window for the stream_context pipe. */
-export const getNextTimeWindow = (currentWindow: string): string => {
-  const currentSeconds = getSecondsFromDuration(currentWindow);
-  const maxSeconds = getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_MAX);
-
-  const nextSeconds = Math.min(
-    currentSeconds * STREAM_CONTEXT_TIME_WINDOW_MULTIPLIER,
-    maxSeconds
-  );
-
-  const normalizedSeconds = normalizeTimeWindowSeconds(nextSeconds);
-
-  return getDurationFromMilliseconds(normalizedSeconds * 1000);
-};
-
-/** Builds a LogsQL query with the stream_context pipe. */
+/** Builds a LogsQL query for loading stream logs around the target timestamp. */
 export const buildContextQuery = (
   log: Logs,
   dir: Direction,
   lines: number,
-  timeWindow: string,
 ): string => {
   const { _stream_id, _time } = log;
+  const sortDir = dir === "before" ? "desc" : "asc";
+  const timeComparator = dir === "before" ? "<=" : ">=";
 
   if (!_stream_id || !_time) {
     throw new Error("Log must contain _stream_id and _time fields.");
   }
 
-  return `_stream_id:${_stream_id}
-_time:${toNanoPrecision(_time)}
-| stream_context ${dir} ${lines} time_window ${timeWindow}`;
+  const streamFilter = `_stream_id:${_stream_id}`;
+  const timeFilter = `_time:${timeComparator}${toNanoPrecision(_time)}`;
+  const sortPipe = `sort by (_time) ${sortDir}`;
+  const limitPipe = `limit ${lines}`;
+
+  return `${streamFilter} ${timeFilter} | ${sortPipe} ${limitPipe}`;
 };
 
-/** Merges fetched logs and removes the target log. */
+const removeAnchorOnce = (logs: Logs[], target: Logs): Logs[] => {
+  let removed = false;
+
+  return logs.filter(log => {
+    const isAnchor = log._stream_id === target._stream_id && log._time === target._time;
+
+    // _stream_id + _time identify the anchor boundary, but not a unique log entry.
+    // Remove a single matching row, so logs with the same timestamp remain visible.
+    if (!removed && isAnchor) {
+      removed = true;
+      return false;
+    }
+
+    return true;
+  });
+};
+
+/** Merges fetched logs and removes a single anchor log. */
 export const mergeContextLogs = (dir: Direction, setter: Dispatch<SetStateAction<Logs[]>>) =>
   (fetched: Logs[], target: Logs) => {
-    const filtered = removeLogsByKeys(fetched, target, ["_stream_id", "_time"]);
+    const filtered = removeAnchorOnce(fetched, target);
     setter(prev => dir === "after" ? prev.concat(filtered) : filtered.concat(prev));
   };
-
-export const getLogDedupKey = (log: Logs): string => {
-  return Object.keys(log)
-    .sort()
-    .map(key => `${key}:${log[key]}`)
-    .join("\u0000");
-};
-
-export const appendUniqueContextLogs = (logs: Logs[], nextLogs: Logs[]): Logs[] => {
-  const seen = new Set(logs.map(getLogDedupKey));
-  const uniqueNextLogs = nextLogs.filter(log => !seen.has(getLogDedupKey(log)));
-  return logs.concat(uniqueNextLogs);
-};
-
-export const getNextContextTarget = (logs: Logs[], dir: Direction): Logs | undefined => {
-  return dir === "after" ? logs[logs.length - 1] : logs[0];
-};
 
 const MIN_LOG_ROW_HEIGHT = 20;
 const INITIAL_LOAD_OVERSCAN = 1.25; // Extra viewport space to ensure initial scroll.

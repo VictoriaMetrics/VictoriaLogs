@@ -5,10 +5,7 @@ import {
 } from "preact/compat";
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
-import {
-  appendUniqueContextLogs, buildContextQuery, getNextContextTarget, getNextTimeWindow, isMaxTimeWindow, mergeContextLogs,
-  STREAM_CONTEXT_TIME_WINDOW_INITIAL
-} from "../helpers";
+import { buildContextQuery, mergeContextLogs } from "../helpers";
 
 export type Direction = "before" | "after";
 
@@ -40,30 +37,18 @@ export const useFetchStreamContext = () => {
     after: false,
   });
 
-  const fetchWithExpandedTimeWindow = async ({ log, dir, lines }: FetchSideParams) => {
-    let timeWindow = STREAM_CONTEXT_TIME_WINDOW_INITIAL;
-    let accumulatedData: Logs[] = [];
-    let target = log;
+  const fetchLogsByTimeRange = async ({ log, dir, lines }: FetchSideParams) => {
+    const data = await fetchLogs({
+      query: buildContextQuery(log, dir, lines),
+    });
 
-    while (true) {
-      const remainingLines = Math.max(lines - accumulatedData.length, 1);
-      const data = await fetchLogs({
-        query: buildContextQuery(target, dir, remainingLines, timeWindow),
-      });
-
-      if (!Array.isArray(data)) {
-        return { data: accumulatedData, timeWindow };
-      }
-
-      accumulatedData = appendUniqueContextLogs(accumulatedData, data);
-
-      if (accumulatedData.length >= lines || isMaxTimeWindow(timeWindow)) {
-        return { data: accumulatedData, timeWindow };
-      }
-
-      target = getNextContextTarget(data, dir) || target;
-      timeWindow = getNextTimeWindow(timeWindow);
+    if (!Array.isArray(data)) {
+      return { data: [] };
     }
+
+    const normalizedData = dir === "before" ? data.toReversed() : data;
+
+    return { data: normalizedData };
   };
 
   const fetchSide = async (params: FetchSideParams) => {
@@ -77,7 +62,7 @@ export const useFetchStreamContext = () => {
     }));
 
     try {
-      const { data } = await fetchWithExpandedTimeWindow(params);
+      const { data } = await fetchLogsByTimeRange(params);
 
       if (data.length) {
         mergeContextLogs(dir, setter)(data, log);

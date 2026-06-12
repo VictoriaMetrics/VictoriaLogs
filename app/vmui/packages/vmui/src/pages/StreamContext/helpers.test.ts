@@ -1,51 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { Logs } from "../../api/types";
-import { getSecondsFromDuration } from "../../utils/time";
 import {
-  appendUniqueContextLogs,
   buildContextQuery,
-  getNextContextTarget,
-  getNextTimeWindow,
-  isMaxTimeWindow,
   mergeContextLogs,
-  STREAM_CONTEXT_TIME_WINDOW_INITIAL,
-  STREAM_CONTEXT_TIME_WINDOW_MAX,
 } from "./helpers";
 
 describe("StreamContext helpers", () => {
-  describe("isMaxTimeWindow", () => {
-    it("checks max time window by seconds", () => {
-      expect(isMaxTimeWindow(STREAM_CONTEXT_TIME_WINDOW_INITIAL)).toBe(false);
-      expect(isMaxTimeWindow(STREAM_CONTEXT_TIME_WINDOW_MAX)).toBe(true);
-
-      const maxSeconds = getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_MAX);
-      expect(isMaxTimeWindow(`${maxSeconds + 1}s`)).toBe(true);
-    });
-  });
-
-  describe("getNextTimeWindow", () => {
-    it("returns a larger time window", () => {
-      const nextTimeWindow = getNextTimeWindow(STREAM_CONTEXT_TIME_WINDOW_INITIAL);
-
-      expect(getSecondsFromDuration(nextTimeWindow)).toBeGreaterThan(
-        getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_INITIAL)
-      );
-    });
-
-    it("normalizes time window on unit boundaries", () => {
-      expect(getNextTimeWindow("32m")).toBe("1h");
-      expect(getNextTimeWindow("16h")).toBe("1d");
-    });
-
-    it("does not exceed max time window", () => {
-      const nextTimeWindow = getNextTimeWindow(STREAM_CONTEXT_TIME_WINDOW_MAX);
-
-      expect(getSecondsFromDuration(nextTimeWindow)).toBe(
-        getSecondsFromDuration(STREAM_CONTEXT_TIME_WINDOW_MAX)
-      );
-    });
-  });
-
   describe("buildContextQuery", () => {
     const log = {
       _stream_id: "stream-id",
@@ -54,19 +14,23 @@ describe("StreamContext helpers", () => {
       _stream: "",
     } as Logs;
 
-    it("builds a stream_context query with time_window", () => {
-      const query = buildContextQuery(log, "before", 10, STREAM_CONTEXT_TIME_WINDOW_INITIAL);
+    it("builds a query for older logs", () => {
+      expect(buildContextQuery(log, "before", 10)).toBe(
+        "_stream_id:stream-id _time:<=2025-01-01T10:00:00.123000000Z | sort by (_time) desc limit 10"
+      );
+    });
 
-      expect(query).toContain("_stream_id:stream-id");
-      expect(query).toContain("_time:2025-01-01T10:00:00.123000000Z");
-      expect(query).toContain(`stream_context before 10 time_window ${STREAM_CONTEXT_TIME_WINDOW_INITIAL}`);
+    it("builds a query for newer logs", () => {
+      expect(buildContextQuery(log, "after", 10)).toBe(
+        "_stream_id:stream-id _time:>=2025-01-01T10:00:00.123000000Z | sort by (_time) asc limit 10"
+      );
     });
 
     it("throws if _stream_id or _time is missing", () => {
-      expect(() => buildContextQuery({ ...log, _stream_id: "" }, "after", 10, STREAM_CONTEXT_TIME_WINDOW_INITIAL))
+      expect(() => buildContextQuery({ ...log, _stream_id: "" }, "after", 10))
         .toThrow("Log must contain _stream_id and _time fields.");
 
-      expect(() => buildContextQuery({ ...log, _time: "" }, "after", 10, STREAM_CONTEXT_TIME_WINDOW_INITIAL))
+      expect(() => buildContextQuery({ ...log, _time: "" }, "after", 10))
         .toThrow("Log must contain _stream_id and _time fields.");
     });
   });
@@ -118,49 +82,35 @@ describe("StreamContext helpers", () => {
       expect(result).toEqual([prev[0], newerLog]);
       expect(result).not.toContain(target);
     });
-  });
 
-  describe("appendUniqueContextLogs", () => {
-    it("appends unique logs from expanded time windows", () => {
-      const firstLog = {
-        _stream_id: "stream-id",
-        _time: "2025-01-01T10:00:00.000Z",
-        _msg: "first",
-        _stream: "",
+    it("removes only the first anchor log when multiple logs share the same timestamp", () => {
+      const setter = vi.fn();
+      const sameTimestampLog = {
+        ...target,
+        _msg: "same timestamp",
       } as Logs;
 
-      const secondLog = {
-        _stream_id: "stream-id",
-        _time: "2025-01-01T10:01:00.000Z",
-        _msg: "second",
-        _stream: "",
+      mergeContextLogs("after", setter)([target, sameTimestampLog, newerLog], target);
+
+      const updater = setter.mock.calls[0][0];
+      const result = updater([]);
+
+      expect(result).toEqual([sameTimestampLog, newerLog]);
+    });
+
+    it("prepends before logs and keeps additional logs with the same timestamp", () => {
+      const setter = vi.fn();
+      const sameTimestampLog = {
+        ...target,
+        _msg: "same timestamp",
       } as Logs;
 
-      expect(appendUniqueContextLogs([firstLog], [firstLog, secondLog])).toEqual([firstLog, secondLog]);
-    });
-  });
+      mergeContextLogs("before", setter)([olderLog, target, sameTimestampLog], target);
 
-  describe("getNextContextTarget", () => {
-    const oldestLog = {
-      _stream_id: "stream-id",
-      _time: "2025-01-01T09:59:00.000Z",
-      _msg: "oldest",
-      _stream: "",
-    } as Logs;
+      const updater = setter.mock.calls[0][0];
+      const result = updater([]);
 
-    const newestLog = {
-      _stream_id: "stream-id",
-      _time: "2025-01-01T10:01:00.000Z",
-      _msg: "newest",
-      _stream: "",
-    } as Logs;
-
-    it("uses the newest log as the next target when loading after", () => {
-      expect(getNextContextTarget([oldestLog, newestLog], "after")).toBe(newestLog);
-    });
-
-    it("uses the oldest log as the next target when loading before", () => {
-      expect(getNextContextTarget([oldestLog, newestLog], "before")).toBe(oldestLog);
+      expect(result).toEqual([olderLog, sameTimestampLog]);
     });
   });
 });
