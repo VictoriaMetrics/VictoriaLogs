@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func BenchmarkLogRowsMustAdd(b *testing.B) {
@@ -83,7 +84,7 @@ func newBenchRows(constFields map[string]string, messages []string) [][]Field {
 	return rows
 }
 
-func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
+func BenchmarkNormalizeStreamTagsCanonical(b *testing.B) {
 	type case_ struct {
 		streamTags string
 		fields     string
@@ -93,7 +94,6 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 			streamTags: `{collector="otel-collector",k8s.namespace.name="play-otel",k8s.pod.name="product-catalog-865cbcbfd5-7zpgl",service.name="product-catalog"}`,
 			fields: `{
     "_msg": "Product Found",
-    "_time": "2026-04-11T08:38:14.974052579Z",
     "app.product.id": "66VCHSJNUP",
     "app.product.name": "Starsense Explorer Refractor Telescope",
     "collector": "otel-collector",
@@ -123,7 +123,6 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 			streamTags: `{collector="vector",kubernetes.container_name="cart",kubernetes.pod_name="cart-b664bfdf7-dxgt7",kubernetes.pod_namespace="play-otel"}`,
 			fields: `{
     "_msg": "      GetCartAsync called with userId=",
-    "_time": "2026-04-11T08:38:14.43448393Z",
     "collector": "vector",
     "file": "/var/log/pods/play-otel_cart-b664bfdf7-dxgt7_db60db4e-01d4-450b-bd9c-9b3cc976d63e/cart/0.log",
     "kubernetes.container_id": "containerd://ece58acd3639c2699975eb947a2ca667d6d9b1a7efe2d832718f87d64353b6a0",
@@ -181,7 +180,6 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 			streamTags: `{collector="vector",kubernetes.container_name="ad",kubernetes.pod_name="ad-75947945cc-2dt89",kubernetes.pod_namespace="play-otel"}`,
 			fields: `{
     "_msg": "2026-04-11 08:38:12 - oteldemo.AdService - Targeted ad request received for [telescopes] trace_id=14ef1b0a5d60477d9cd9d22430510e7f span_id=0326713c147fb495 trace_flags=01 ",
-    "_time": "2026-04-11T08:38:12.648632385Z",
     "collector": "vector",
     "file": "/var/log/pods/play-otel_ad-75947945cc-2dt89_90405091-7da3-4759-8884-9b68dc6caae5/ad/0.log",
     "kubernetes.container_id": "containerd://b1f6223504aceb8c96446d7c56eb7271192fb247e2990fef2208f5e27e2f7fe4",
@@ -237,28 +235,26 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 		},
 	}
 
-	type caseReal struct {
-		streamTagsCanonical string
-		fields              []Field
-	}
-	casesReal := make([]caseReal, len(cases))
-	for i, c := range cases {
-		casesReal[i] = caseReal{
-			streamTagsCanonical: toStreamTagsCanonical(c.streamTags),
-			fields:              toFields(c.fields),
-		}
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	defer PutLogRows(lr)
+	for _, c := range cases {
+		fields := toFields(c.fields)
+		lr.MustAddInsertRow(&InsertRow{
+			StreamTagsCanonical: toStreamTagsCanonical(c.streamTags),
+			Timestamp:           time.Now().UnixNano(),
+			Fields:              fields,
+		})
 	}
 
 	b.ReportAllocs()
-	b.SetBytes(int64(len(casesReal)))
+	b.SetBytes(int64(len(cases)))
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			for _, c := range casesReal {
-				err := verifyStreamTagsCanonical(c.streamTagsCanonical, c.fields)
-				if err != nil {
-					panic(fmt.Errorf("unexpected error: %w", err))
+			lr.ForEachRow(func(_ uint64, r *InsertRow) {
+				if _, err := lr.normalizeStreamTagsCanonical(r.StreamTagsCanonical, r.Fields); err != nil {
+					b.Fatal(err)
 				}
-			}
+			})
 		}
 	})
 }

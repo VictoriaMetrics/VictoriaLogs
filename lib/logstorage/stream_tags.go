@@ -3,6 +3,7 @@ package logstorage
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -50,41 +51,30 @@ func (st *StreamTags) String() string {
 	return string(b)
 }
 
-func (st *StreamTags) verifyCanonicalFieldValues(fields []Field) error {
-	// Verify that the unmarshaled stream tags match the corresponding fields' values.
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/38
-
-	prevTagName := ""
-	for _, tag := range st.tags {
+// normalize synchronizes st with the provided fields and returns true if st was updated.
+// This function updates or keeps tags that exist in fields and removes missing ones.
+func (st *StreamTags) normalize(fields []Field) bool {
+	updated := false
+	tags := st.tags
+	// Start from the end because of the updating tags in the loop.
+	for i := len(tags) - 1; i >= 0; i-- {
+		tag := &tags[i]
 		tagName := tag.Name
-
-		if err := CheckStreamFieldName(tagName); err != nil {
-			return fmt.Errorf("invalid stream tag name: %s; streamTags: %s", tagName, st)
+		n := slices.IndexFunc(fields, func(f Field) bool {
+			return f.Name == tagName
+		})
+		if n < 0 {
+			tags = slices.Delete(tags, i, i+1)
+			updated = true
+			continue
 		}
-
-		if tagName <= prevTagName {
-			return fmt.Errorf("stream tag names must be sorted; got %q after %q; streamTags: %s", tagName, prevTagName, st)
-		}
-		prevTagName = tagName
-
-		tagValue := tag.Value
-		found := false
-		for _, f := range fields {
-			if f.Name != tagName {
-				continue
-			}
-			if f.Value != tagValue {
-				line := MarshalFieldsToJSON(nil, fields)
-				return fmt.Errorf("unexpected value for the stream tag %q; got %q; want %q; streamTags: %s; fields: %s", tagName, f.Value, tagValue, st, line)
-			}
-			found = true
-		}
-		if !found {
-			line := MarshalFieldsToJSON(nil, fields)
-			return fmt.Errorf("cannot find value for the stream tag %q in fields; want %q; streamTags: %s; fields: %s", tagName, tagValue, st, line)
+		if v := fields[n].Value; v != tag.Value {
+			tags[i].Value = v
+			updated = true
 		}
 	}
-	return nil
+	st.tags = tags
+	return updated
 }
 
 func (st *StreamTags) marshalString(dst []byte) []byte {
@@ -113,7 +103,22 @@ func (st *StreamTags) unmarshalStringInplace(s string) error {
 
 	var err error
 	st.tags, err = parseStreamFields(st.tags[:0], s)
-	return err
+	if err != nil {
+		return err
+	}
+
+	prevTagName := ""
+	for i := range st.tags {
+		tagName := st.tags[i].Name
+		if err := CheckStreamFieldName(tagName); err != nil {
+			return fmt.Errorf("invalid stream tag name: %w", err)
+		}
+		if tagName <= prevTagName {
+			return fmt.Errorf("stream tags must be sorted in alphabetical order; got %q which is less or equal than %q", tagName, prevTagName)
+		}
+		prevTagName = tagName
+	}
+	return nil
 }
 
 // Add adds (name:value) tag to st.
@@ -164,6 +169,8 @@ func (st *StreamTags) UnmarshalCanonicalInplace(src []byte) ([]byte, error) {
 		return srcOrig, fmt.Errorf("cannot unmarshal tags len")
 	}
 	src = src[nSize:]
+
+	prevTagName := ""
 	for range n {
 		name, nSize := encoding.UnmarshalBytes(src)
 		if nSize <= 0 {
@@ -179,11 +186,15 @@ func (st *StreamTags) UnmarshalCanonicalInplace(src []byte) ([]byte, error) {
 
 		sName := bytesutil.ToUnsafeString(name)
 		sValue := bytesutil.ToUnsafeString(value)
-		st.Add(sName, sValue)
-	}
 
-	if !sort.IsSorted(st) {
-		return srcOrig, fmt.Errorf("stream tags must be sorted in alphabetical order; got unsorted: %s", st)
+		if err := CheckStreamFieldName(sName); err != nil {
+			return srcOrig, fmt.Errorf("invalid stream tag name: %w", err)
+		}
+		if sName <= prevTagName {
+			return srcOrig, fmt.Errorf("stream tags must be sorted in alphabetical order; got %q which is less or equal than %q", sName, prevTagName)
+		}
+		prevTagName = sName
+		st.Add(sName, sValue)
 	}
 
 	return src, nil
