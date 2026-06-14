@@ -444,7 +444,7 @@ func TestVerifyStreamTagsCanonical_Failure(t *testing.T) {
 		if err := st.unmarshalStringInplace(streamTags); err != nil {
 			t.Fatalf("cannot unmarshal stream tags: %s", err)
 		}
-		streamTagsCanonical := st.MarshalCanonical(nil)
+		streamTagsCanonical := st.marshalCanonicalInternal(nil)
 		PutStreamTags(st)
 
 		p := getLogfmtParser()
@@ -465,4 +465,7 @@ func TestVerifyStreamTagsCanonical_Failure(t *testing.T) {
 
 	// multiple fields with the same name
 	f(`{a="b"}`, `a=b x=y a=c`)
+
+	// tags are not sorted
+	f(`{b="1",a="1"}`, `a=1 b=1`)
 }
