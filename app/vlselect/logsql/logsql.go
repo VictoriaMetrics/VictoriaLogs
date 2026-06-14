@@ -36,6 +36,10 @@ var (
 	maxQueryTimeRange = flagutil.NewExtendedDuration("search.maxQueryTimeRange", "0", "The maximum time range, which can be set in the query sent to querying APIs. "+
 		"Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits")
 
+	maxPointsPerTimeseries = flag.Int("search.maxPointsPerTimeseries", 30_000, "The maximum points per timeseries, which can be returned from /select/logsql/hits and /select/logsql/stats_query_range. "+
+		"This option is useful for limiting the amount of data, which can be plotted on graph. "+
+		"See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits")
+
 	allowPartialResponseFlag = flag.Bool("search.allowPartialResponse", false, "Whether to allow returning partial responses when some of vlstorage nodes "+
 		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
@@ -230,6 +234,10 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		httpserver.Errorf(w, r, "'step' must be bigger than zero")
 		return
 	}
+	if err := validateRangeQuery(ca.q, step); err != nil {
+		httpserver.Errorf(w, r, "%s", err)
+		return
+	}
 
 	// Obtain offset
 	offset, err := parseDuration(r, "offset", "0s")
@@ -314,6 +322,32 @@ func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	// Write response
 	WriteHitsSeries(w, m)
+}
+
+func validateRangeQuery(q *logstorage.Query, step int64) error {
+	if step <= 0 {
+		return fmt.Errorf("step can't be equal to zero")
+	}
+
+	if *maxPointsPerTimeseries <= 0 {
+		return nil
+	}
+
+	start, end := q.GetFilterTimeRange()
+	if start == math.MinInt64 || end == math.MaxInt64 {
+		return fmt.Errorf("missing bounded time range for the given query; provide explicit HTTP start/end args or add _time filter to the query")
+	}
+	if start > end {
+		return nil
+	}
+
+	points := (end-start)/step + 1
+	if points <= 0 || points > int64(*maxPointsPerTimeseries) {
+		return fmt.Errorf("too many points for the given start=%d, end=%d and step=%d: %d; the maximum number of points is %d; see -search.maxPointsPerTimeseries=%d",
+			start, end, step, points, *maxPointsPerTimeseries, *maxPointsPerTimeseries)
+	}
+
+	return nil
 }
 
 func addMissingZeroHits(m map[string]*hitsSeries, start, end, step, offset int64) {
@@ -893,6 +927,11 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
+	if err := validateRangeQuery(ca.q, step); err != nil {
+		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
 	// Obtain offset
 	offset, err := parseDuration(r, "offset", "0s")
 	if err != nil {
@@ -1440,10 +1479,10 @@ type commonArgs struct {
 	// qs contains query execution statistics.
 	qs logstorage.QueryStats
 
-	// startAligned is the start of the selected time range aligned to the given step.
+	// startAligned is the selected time range start aligned to the request step/offset if they are present.
 	startAligned int64
 
-	// endAligned is the aligned end of the selected time range aligned to the given step.
+	// endAligned is the selected time range end aligned to the request step/offset if they are present.
 	endAligned int64
 }
 
@@ -1541,7 +1580,7 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		q.AddTimeFilter(start, end)
 	}
 
-	// Initialize startAligned and endAligned
+	// Initialize startAligned and endAligned.
 	startAligned := int64(math.MinInt64)
 	if startOK {
 		startAligned = start

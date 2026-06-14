@@ -256,10 +256,11 @@ time range grouped by `<step>` buckets with the given optional timezone `<offset
 The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned bucket can contain timestamp smaller than the `<start>`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
-If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+The query must have bounded time range. It can be provided either via the `<start>` and `<end>` args or via [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) inside the query.
 
 The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
+
+The number of returned points per timeseries is limited by the `-search.maxPointsPerTimeseries` command-line flag.
 
 For example, the following command returns per-hour number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) over logs for the last 3 hours:
@@ -559,10 +560,11 @@ The stats is returned in the format compatible with [Prometheus querying API](ht
 The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned interval can be smaller than the `<start>`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
-If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+The query must have bounded time range. It can be provided either via the `<start>` and `<end>` args or via [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) inside the query.
 
 The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
+
+The number of returned points per timeseries is limited by the `-search.maxPointsPerTimeseries` command-line flag.
 
 Note: The `/select/logsql/stats_query_range` endpoint relies on `_time` field for time bucketing
 and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.
@@ -1158,6 +1160,10 @@ VictoriaLogs provides the following options to limit resource usage by the execu
 
 - `-search.maxQueryDuration` command-line flag limits the maximum execution time for a single query. For example, `-search.maxQueryDuration=10s` limits the maximum
   query execution time to 10 seconds. The maximum query duration can be set to lower values via `timeout` query arg, which can be passed to all the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
+
+- `-search.maxPointsPerTimeseries` command-line flag limits the number of points returned per each timeseries from [`/select/logsql/hits`](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+  and [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats). This limit is useful for preventing excessive CPU and memory usage
+  on graph-oriented endpoints. The limit is disabled if it equals to `0`.
 
 - `-search.maxConcurrentRequests` command-line flag limits the number of concurrently executed queries. It isn't recommended setting it to too big values,
   since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`

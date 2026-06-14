@@ -242,6 +242,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Log queries with execution time exceeding this value. Zero disables slow query logging (default 5s)
   -search.maxConcurrentRequests int
      The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default vlselect.getDefaultMaxConcurrentRequests())
+  -search.maxPointsPerTimeseries int
+     The maximum points per timeseries, which can be returned from /select/logsql/hits and /select/logsql/stats_query_range. This option is useful for limiting the amount of data, which can be plotted on graph. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits (default 30000)
   -search.maxQueryDuration duration
      The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size
