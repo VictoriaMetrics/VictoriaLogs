@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
+	"github.com/cespare/xxhash/v2"
 	"github.com/valyala/fastjson"
 	"github.com/valyala/quicktemplate"
 
@@ -777,6 +778,11 @@ type tailProcessor struct {
 
 	perStreamRows  map[string][]logRow
 	lastTimestamps map[string]int64
+	// lastRowHashes contains xxhash fingerprints of rows already emitted at lastTimestamps[streamID].
+	// Used to dedup rows that share the boundary timestamp but differ in content.
+	lastRowHashes map[string]map[uint64]struct{}
+
+	keyBuf []byte
 
 	err error
 }
@@ -789,6 +795,7 @@ func newTailProcessor(cancel func(), needSortFields bool) *tailProcessor {
 
 		perStreamRows:  make(map[string][]logRow),
 		lastTimestamps: make(map[string]int64),
+		lastRowHashes:  make(map[string]map[uint64]struct{}),
 	}
 }
 
@@ -838,6 +845,16 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	}
 }
 
+// hashLogRow returns an xxhash fingerprint of row's fields.
+func (tp *tailProcessor) hashLogRow(row logRow) uint64 {
+	tp.keyBuf = tp.keyBuf[:0]
+	for _, f := range row.fields {
+		tp.keyBuf = encoding.MarshalBytes(tp.keyBuf, bytesutil.ToUnsafeBytes(f.Name))
+		tp.keyBuf = encoding.MarshalBytes(tp.keyBuf, bytesutil.ToUnsafeBytes(f.Value))
+	}
+	return xxhash.Sum64(tp.keyBuf)
+}
+
 func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 	if tp.err != nil {
 		return nil, tp.err
@@ -848,16 +865,47 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 		sortLogRows(rows)
 
 		lastTimestamp, ok := tp.lastTimestamps[streamID]
+		lastHashes := tp.lastRowHashes[streamID]
+
 		if ok {
-			// Skip already written rows
-			for len(rows) > 0 && rows[0].timestamp <= lastTimestamp {
+			// Drop rows already emitted before the boundary timestamp.
+			for len(rows) > 0 && rows[0].timestamp < lastTimestamp {
 				rows = rows[1:]
 			}
+			// Drop rows at the boundary whose exact content was already emitted.
+			filtered := rows[:0]
+			for _, row := range rows {
+				if row.timestamp == lastTimestamp {
+					if _, seen := lastHashes[tp.hashLogRow(row)]; seen {
+						continue
+					}
+				}
+				filtered = append(filtered, row)
+			}
+			rows = filtered
 		}
-		if len(rows) > 0 {
-			resultRows = append(resultRows, rows...)
-			tp.lastTimestamps[streamID] = rows[len(rows)-1].timestamp
+
+		if len(rows) == 0 {
+			continue
 		}
+
+		resultRows = append(resultRows, rows...)
+
+		newLastTS := rows[len(rows)-1].timestamp
+		tp.lastTimestamps[streamID] = newLastTS
+
+		// Reuse the existing hash set when the boundary timestamp does not advance,
+		// so rows already emitted at this timestamp remain excluded. Otherwise reset.
+		hashes := lastHashes
+		if !ok || lastTimestamp != newLastTS {
+			hashes = make(map[uint64]struct{})
+		}
+		for _, row := range rows {
+			if row.timestamp == newLastTS {
+				hashes[tp.hashLogRow(row)] = struct{}{}
+			}
+		}
+		tp.lastRowHashes[streamID] = hashes
 	}
 	clear(tp.perStreamRows)
 
