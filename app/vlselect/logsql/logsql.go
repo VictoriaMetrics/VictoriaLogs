@@ -1210,8 +1210,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	if limit > 0 {
 		// Add '| sort by (_time) <sort_direction> | offset <offset> | limit <limit>' to the end of the query.
 		// This pattern is automatically optimized during query execution - see https://github.com/VictoriaMetrics/VictoriaLogs/issues/96 .
+		isDesc := direction != "asc"
 		if ca.q.CanReturnTimeSortedNResults() {
-			ca.q.AddPipeSortByTime(direction != "asc")
+			ca.q.AddPipeSortByTime(isDesc)
 		}
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}

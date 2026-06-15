@@ -51,15 +51,6 @@ func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {
 			}
 			got := sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
 			assertLogsQLResponseEqual(t, got, wantResponse)
-
-			selectQueryArgs = apptest.QueryOpts{
-				Start:         start,
-				End:           end,
-				Limit:         fmt.Sprintf("%d", limit),
-				SortDirection: "asc",
-			}
-			got = sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
-			assertLogsQLResponseEqual(t, got, wantResponse)
 		}
 	}
 

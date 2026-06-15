@@ -228,11 +228,7 @@ type logRow struct {
 }
 
 func getTopNRows(rows []logRow, limit uint64, isDesc bool) []logRow {
-	if isDesc {
-		sortLogRowsDesc(rows)
-	} else {
-		sortLogRowsAsc(rows)
-	}
+	sortLogRows(rows, isDesc)
 
 	if uint64(len(rows)) > limit {
 		rows = rows[:limit]
@@ -240,14 +236,11 @@ func getTopNRows(rows []logRow, limit uint64, isDesc bool) []logRow {
 	return rows
 }
 
-func sortLogRowsDesc(rows []logRow) {
+func sortLogRows(rows []logRow, isDesc bool) {
 	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].timestamp > rows[j].timestamp
-	})
-}
-
-func sortLogRowsAsc(rows []logRow) {
-	sort.Slice(rows, func(i, j int) bool {
+		if isDesc {
+			return rows[i].timestamp > rows[j].timestamp
+		}
 		return rows[i].timestamp < rows[j].timestamp
 	})
 }
