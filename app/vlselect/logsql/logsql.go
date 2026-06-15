@@ -722,6 +722,10 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	flusher.Flush()
 
 	qctx := ca.newQueryContext(ctxWithCancel)
+	// Live tailing repeatedly queries the most recent data, where new streams are still being
+	// registered. Bypass the stream filter cache so these streams are matched immediately instead
+	// of after the periodic cache invalidation. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1477
+	qctx.DisableStreamFilterCache = true
 	defer ca.updatePerQueryStatsMetrics()
 
 	q := ca.q
@@ -1448,7 +1452,7 @@ type commonArgs struct {
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters)
+	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters, false)
 }
 
 func (ca *commonArgs) updatePerQueryStatsMetrics() {

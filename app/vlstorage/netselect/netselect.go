@@ -276,6 +276,7 @@ func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryConte
 	args.Set("timestamp", fmt.Sprintf("%d", qctx.Query.GetTimestamp()))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))
 	args.Set("allow_partial_response", fmt.Sprintf("%v", qctx.AllowPartialResponse))
+	args.Set("disable_stream_filter_cache", fmt.Sprintf("%v", qctx.DisableStreamFilterCache))
 
 	hiddenFieldsFilters, err := json.Marshal(qctx.HiddenFieldsFilters)
 	if err != nil {

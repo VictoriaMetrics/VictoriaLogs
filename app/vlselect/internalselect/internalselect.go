@@ -419,6 +419,10 @@ type commonParams struct {
 	// Whether to allow partial response when some of vlstorage nodes are unavailable.
 	AllowPartialResponse bool
 
+	// Whether to bypass the stream filter cache to get the most recent data when resolving stream filters. Set for live tailing.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1477
+	DisableStreamFilterCache bool
+
 	// Optional list of log fields or log field prefixes ending with *, which must be hidden during query execution.
 	HiddenFieldsFilters []string
 
@@ -427,7 +431,7 @@ type commonParams struct {
 }
 
 func (cp *commonParams) NewQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
+	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters, cp.DisableStreamFilterCache)
 }
 
 func (cp *commonParams) UpdatePerQueryStatsMetrics() {
@@ -471,14 +475,23 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 		return nil, err
 	}
 
+	disableStreamFilterCache := false
+	if s := r.FormValue("disable_stream_filter_cache"); s != "" {
+		disableStreamFilterCache, err = strconv.ParseBool(s)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse disable_stream_filter_cache=%q as bool: %w", s, err)
+		}
+	}
+
 	cp := &commonParams{
 		TenantIDs: tenantIDs,
 		Query:     q,
 
 		DisableCompression: disableCompression,
 
-		AllowPartialResponse: allowPartialResponse,
-		HiddenFieldsFilters:  hiddenFieldsFilters,
+		AllowPartialResponse:     allowPartialResponse,
+		HiddenFieldsFilters:      hiddenFieldsFilters,
+		DisableStreamFilterCache: disableStreamFilterCache,
 	}
 	return cp, nil
 }

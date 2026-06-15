@@ -1711,5 +1711,5 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 
 func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
-	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
+	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil, false)
 }

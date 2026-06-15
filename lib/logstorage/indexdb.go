@@ -234,12 +234,18 @@ func (idb *indexdb) putIndexSearch(is *indexSearch) {
 }
 
 // searchStreamIDs returns streamIDs for the given tenantIDs and the given stream filters
-func (idb *indexdb) searchStreamIDs(tenantIDs []TenantID, sf *StreamFilter) []streamID {
-	// Try obtaining streamIDs from cache
-	streamIDs, ok := idb.loadStreamIDsFromCache(tenantIDs, sf)
-	if ok {
-		// Fast path - streamIDs found in the cache.
-		return streamIDs
+//
+// If skipCache is set, then the stream filter cache is neither read nor populated. This is needed
+// for live tailing, which must pick up recently registered streams without waiting for the periodic
+// stream filter cache invalidation. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1477
+func (idb *indexdb) searchStreamIDs(tenantIDs []TenantID, sf *StreamFilter, skipCache bool) []streamID {
+	if !skipCache {
+		// Try obtaining streamIDs from cache
+		streamIDs, ok := idb.loadStreamIDsFromCache(tenantIDs, sf)
+		if ok {
+			// Fast path - streamIDs found in the cache.
+			return streamIDs
+		}
 	}
 
 	// Slow path - collect streamIDs from indexdb.
@@ -255,14 +261,16 @@ func (idb *indexdb) searchStreamIDs(tenantIDs []TenantID, sf *StreamFilter) []st
 	idb.putIndexSearch(is)
 
 	// Convert the collected streamIDs from m to sorted slice.
-	streamIDs = make([]streamID, 0, len(m))
+	streamIDs := make([]streamID, 0, len(m))
 	for streamID := range m {
 		streamIDs = append(streamIDs, streamID)
 	}
 	sortStreamIDs(streamIDs)
 
-	// Store the collected streamIDs to cache.
-	idb.storeStreamIDsToCache(tenantIDs, sf, streamIDs)
+	if !skipCache {
+		// Store the collected streamIDs to cache.
+		idb.storeStreamIDsToCache(tenantIDs, sf, streamIDs)
+	}
 
 	return streamIDs
 }

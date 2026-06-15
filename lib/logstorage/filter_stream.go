@@ -23,6 +23,11 @@ type filterStream struct {
 	// This field is initialized just before the search.
 	idb *indexdb
 
+	// skipCache disables the stream filter cache when searching for streamIDs.
+	//
+	// This field is initialized just before the search.
+	skipCache bool
+
 	streamIDsOnce sync.Once
 	streamIDs     map[streamID]struct{}
 }
@@ -47,7 +52,7 @@ func (fs *filterStream) getStreamIDs() map[streamID]struct{} {
 }
 
 func (fs *filterStream) initStreamIDs() {
-	streamIDs := fs.idb.searchStreamIDs(fs.tenantIDs, fs.f)
+	streamIDs := fs.idb.searchStreamIDs(fs.tenantIDs, fs.f, fs.skipCache)
 	m := make(map[streamID]struct{}, len(streamIDs))
 	for i := range streamIDs {
 		m[streamIDs[i]] = struct{}{}

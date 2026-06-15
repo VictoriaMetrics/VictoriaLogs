@@ -58,7 +58,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 		}
 		sortStreamIDs(expectedStreamIDs)
 		for i := range 3 {
-			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf)
+			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf, false)
 			if !reflect.DeepEqual(streamIDs, expectedStreamIDs) {
 				t.Fatalf("unexpected streamIDs on iteration %d; got %v; want %v", i, streamIDs, expectedStreamIDs)
 			}
@@ -72,7 +72,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 		}
 		sf := mustNewTestStreamFilter(`{job="job-0",instance="instance-0"}`)
 		for i := range 3 {
-			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf)
+			streamIDs := idb.searchStreamIDs([]TenantID{tenantID}, sf, false)
 			if len(streamIDs) > 0 {
 				t.Fatalf("unexpected non-empty streamIDs on iteration %d: %d", i, len(streamIDs))
 			}
@@ -251,6 +251,65 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	fs.MustRemoveDir(path)
 
 	closeTestStorage(s)
+}
+
+// TestSearchStreamIDsSkipCache verifies that searchStreamIDs with skipCache=true bypasses a stale
+// stream filter cache, both for reads and writes. This is what lets live tailing pick up streams
+// registered after the cache was populated. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1477
+func TestSearchStreamIDsSkipCache(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	const partitionName = "foobar"
+
+	s := newTestStorage()
+	defer closeTestStorage(s)
+
+	mustCreateIndexdb(path)
+	defer fs.MustRemoveDir(path)
+
+	idb := mustOpenIndexdb(path, partitionName, s)
+	defer mustCloseIndexdb(idb)
+
+	tenantID := TenantID{AccountID: 12, ProjectID: 34}
+	tenantIDs := []TenantID{tenantID}
+
+	registerStream := func(tags map[string]string) streamID {
+		st := GetStreamTags()
+		for k, v := range tags {
+			st.Add(k, v)
+		}
+		streamTagsCanonical := st.MarshalCanonical(nil)
+		PutStreamTags(st)
+		sid := streamID{tenantID: tenantID, id: hash128(streamTagsCanonical)}
+		idb.mustRegisterStream(&sid, string(streamTagsCanonical))
+		return sid
+	}
+
+	sidA := registerStream(map[string]string{"job": "job-0"})
+	registerStream(map[string]string{"job": "job-1"})
+	idb.debugFlush()
+
+	sf := mustNewTestStreamFilter(`{job=~"job-.*"}`)
+
+	// Poison the stream filter cache with a stale result that knows only about stream A,
+	// emulating a new stream (job-1) registered after the cache was populated.
+	idb.storeStreamIDsToCache(tenantIDs, sf, []streamID{sidA})
+
+	// With the cache enabled the stale entry is returned, so stream job-1 is missing.
+	if got := idb.searchStreamIDs(tenantIDs, sf, false); len(got) != 1 {
+		t.Fatalf("expected stale cached result with 1 streamID; got %d: %v", len(got), got)
+	}
+
+	// With the cache bypassed both streams are resolved straight from the index.
+	if got := idb.searchStreamIDs(tenantIDs, sf, true); len(got) != 2 {
+		t.Fatalf("expected fresh result with 2 streamIDs; got %d: %v", len(got), got)
+	}
+
+	// Bypassing the cache must not populate it, so the stale entry is still served afterwards.
+	if got := idb.searchStreamIDs(tenantIDs, sf, false); len(got) != 1 {
+		t.Fatalf("expected stale cached result to remain after skipCache search; got %d: %v", len(got), got)
+	}
 }
 
 func TestGetTenantsIDs(t *testing.T) {
