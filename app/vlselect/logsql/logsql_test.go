@@ -2,7 +2,48 @@ package logsql
 
 import (
 	"testing"
+	"time"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
+
+func TestValidateRangeQuery(t *testing.T) {
+	f := func(qStr string, step int64, expectErr bool) {
+		t.Helper()
+
+		q, err := logstorage.ParseQueryAtTimestamp(qStr, 1_000_000_000_000)
+		if err != nil {
+			t.Fatalf("cannot parse query: %s", err)
+		}
+
+		err = validateRangeQuery(q, step)
+		if !expectErr {
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			return
+		}
+		if err == nil {
+			t.Fatalf("expecting non-nil error")
+		}
+	}
+
+	// Invalid step.
+	f("*", 0, true)
+
+	// Missing bounded time range.
+	f("*", 1, true)
+
+	// Valid ranges within the limit.
+	f("_time:1ns", 1, false)
+	f("_time:30ms", 1_000, false)
+	f("_time:5m", int64(time.Second), false)
+
+	// Too many points.
+	f("_time:30001ns", 1, true)
+	f("_time:24h", 1, true)
+	f("_time:300001ns", 10, true)
+}
 
 func TestParseExtraFilters_Success(t *testing.T) {
 	f := func(s, resultExpected string) {
