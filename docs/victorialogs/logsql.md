@@ -2750,24 +2750,15 @@ See also:
 
 The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
 
-For example, the following query joins items of the `tags` JSON array using `,` as delimiter and stores the result back into the `tags` field:
+For example, the following query joins items of the `tags` JSON array with `,` and stores the result back into the `tags` field:
 
 ```logsql
 _time:5m | json_array_concat "," from tags
 ```
 
-The `as <result_field>` part is optional. If it is missing, then the result is stored in the `<src_field>` specified in `from <src_field>`.
-For example, the following query stores the result into a separate `tags_str` field:
+The `delimiter`, `from <src_field>` and `as <result_field>` parts are optional. The default `delimiter` is an empty string, so items are concatenated without any separator. The default `<src_field>` is the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). The default `<result_field>` is `<src_field>`, so the result is stored in place.
 
-```logsql
-_time:5m | json_array_concat "," from tags as tags_str
-```
-
-The `from <src_field>` part is optional. If it is missing, then the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) is used as the source field.
-
-The `delimiter` is optional. If it is missing, then items are concatenated without any separator.
-
-If `<src_field>` does not contain a valid JSON array, the result is an empty string.
+Non-string array items such as numbers, booleans, objects, arrays and `null` are converted to their JSON string representation before they are joined. For example, `json_array_concat ","` applied to `["foo",42,{"a":1},null]` produces `foo,42,{"a":1},null`. If `<src_field>` is empty, contains an empty array, or isn't a valid JSON array, the result is an empty string.
 
 See also:
 
