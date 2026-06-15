@@ -1,0 +1,8 @@
+/* ... existing content ... */
+
+/* Fix for issue #1473: black borders in light mode with dark browser theme */
+:root {
+  --border-color: #ccc; /* Define a variable for the border color */
+}
+
+/* ... existing content ... */

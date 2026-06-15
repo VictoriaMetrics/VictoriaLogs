@@ -1,0 +1,8 @@
+/* ... existing content ... */
+
+/* Fix for issue #1473: black borders in light mode with dark browser theme */
+input, button {
+  border-color: var(--border-color); /* Use the variable for the border color */
+}
+
+/* ... existing content ... */
