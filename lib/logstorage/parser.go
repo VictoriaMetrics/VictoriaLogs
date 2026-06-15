@@ -226,6 +226,31 @@ func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
 	return nil
 }
 
+func (lex *lexer) isKeywordOrQueryPartTrailer(keywords ...string) bool {
+	if lex.isKeywordAny(keywords) {
+		return true
+	}
+	return lex.isQueryPartTrailer()
+}
+
+func (lex *lexer) isQueryPartTrailer() bool {
+	return lex.isKeywordAny(queryPartTrailers)
+}
+
+var queryPartTrailers = []string{
+	// filters and pipes are delimited by |
+	"|",
+
+	// query finish with )
+	")",
+
+	// query finish with ;
+	";",
+
+	// query finish with EOF
+	"",
+}
+
 func (lex *lexer) isKeyword(keywords ...string) bool {
 	return lex.isKeywordAny(keywords)
 }
@@ -1839,8 +1864,9 @@ func (q *Query) initStatsRateFuncsFromTimeFilter() {
 	if start != math.MinInt64 && end != math.MaxInt64 {
 		step := end - start
 
-		// The increment of the step is needed in order to cover the
-		// last nanosecond in the selected time range [start, end].
+		// The HTTP layer already converted the exclusive end into end-1, and the _time
+		// filter is inclusive ([start, end]). So (end - start) is 1ns short of the real
+		// window, and step++ adds that 1ns back.
 		step++
 
 		q.initStatsRateFuncs(step)
@@ -1923,6 +1949,11 @@ func parseQuery(lex *lexer) (*Query, error) {
 			return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 		}
 		q.pipes = pipes
+	}
+
+	// Skip optional trailing semicolon
+	if lex.isKeyword(";") {
+		lex.nextToken()
 	}
 
 	return &q, nil
@@ -2089,7 +2120,7 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 }
 
 func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
-	if lex.isKeyword("|", ")", "") {
+	if lex.isQueryPartTrailer() {
 		return nil, fmt.Errorf("missing query")
 	}
 
@@ -2118,7 +2149,7 @@ func parseFilterOr(lex *lexer, fieldName string) (filter, error) {
 		}
 		filters = append(filters, f)
 		switch {
-		case lex.isKeyword("|", ")", ""):
+		case lex.isQueryPartTrailer():
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
@@ -2139,7 +2170,7 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 		}
 		filters = append(filters, f)
 		switch {
-		case lex.isKeyword("or", "|", ")", ""):
+		case lex.isKeywordOrQueryPartTrailer("or"):
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
@@ -2152,6 +2183,10 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
+	if lex.isKeyword("") {
+		return nil, fmt.Errorf("unexpected end of query after %q; expecting a filter", lex.prevRawToken)
+	}
+
 	// Verify the previous adjacent token
 	if lex.isKeyword("(") {
 		if err := lex.checkPrevAdjacentToken("|", ":", "(", "!", "-", "not", "and", "or"); err != nil {
@@ -2684,7 +2719,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 		return parseFilterGeneric(lex, "*")
 	}
 
-	if lex.isSkippedSpace || lex.isKeyword("", ")", "|") {
+	if lex.isSkippedSpace || lex.isQueryPartTrailer() {
 		// '*' or 'fieldName:*' filter
 		return newFilterPrefix(fieldName, ""), nil
 	}
@@ -2699,7 +2734,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	}
 	lex.nextToken()
 
-	if !lex.isSkippedSpace && !lex.isKeyword("", ")", "|") {
+	if !lex.isSkippedSpace && !lex.isQueryPartTrailer() {
 		return nil, fmt.Errorf("missing whitespace between *%q* and %q", phrase, lex.token)
 	}
 	return newFilterSubstring(fieldName, phrase), nil

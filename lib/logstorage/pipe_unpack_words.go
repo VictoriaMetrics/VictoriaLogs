@@ -139,7 +139,7 @@ func parsePipeUnpackWords(lex *lexer) (pipe, error) {
 	lex.nextToken()
 
 	srcField := "_msg"
-	if !lex.isKeyword("drop_duplicates", "as", ")", "|", "") {
+	if !lex.isKeywordOrQueryPartTrailer("drop_duplicates", "as") {
 		if lex.isKeyword("from") {
 			lex.nextToken()
 		}
@@ -151,7 +151,7 @@ func parsePipeUnpackWords(lex *lexer) (pipe, error) {
 	}
 
 	dstField := srcField
-	if !lex.isKeyword("drop_duplicates", ")", "|", "") {
+	if !lex.isKeywordOrQueryPartTrailer("drop_duplicates") {
 		if lex.isKeyword("as") {
 			lex.nextToken()
 		}

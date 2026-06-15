@@ -24,9 +24,9 @@ Kubernetes Deployment and Production:
 
 * [VictoriaLogs: an overview, run in Kubernetes, LogsQL, and Grafana](https://itnext.io/victorialogs-an-overview-run-in-kubernetes-logsql-and-grafana-88e0934a5ccd)
 * [Production Kubernetes Logging-VictoriaLogs](https://kiraniyer88.medium.com/production-kubernetes-logging-victorialogs-73ae858aa3e4)
-* [Kubernetes Monitoring — A Complete Solution](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-1-architecture-eb5b998658d5)
-* [Kubernetes Monitoring — A Complete Solution, Part 8: Logging with VictoriaLogs](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-8-logging-with-victorialogs-f17c44461034)
-* [Kubernetes Monitoring — A Complete Solution, Part 9: Talos Linux System Logs with VictoriaLogs and Vector](https://medium.com/@ryanjjacobs/kubernetes-monitoring-a-complete-solution-part-9-talos-linux-system-logs-with-victorialogs-and-65c1f1e44a23)
+* [Kubernetes Monitoring - A Complete Solution](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-1-architecture-eb5b998658d5)
+* [Kubernetes Monitoring - A Complete Solution, Part 8: Logging with VictoriaLogs](https://itnext.io/kubernetes-monitoring-a-complete-solution-part-8-logging-with-victorialogs-f17c44461034)
+* [Kubernetes Monitoring - A Complete Solution, Part 9: Talos Linux System Logs with VictoriaLogs and Vector](https://medium.com/@ryanjjacobs/kubernetes-monitoring-a-complete-solution-part-9-talos-linux-system-logs-with-victorialogs-and-65c1f1e44a23)
 * [VictoriaMetrics: migrating VMSingle and VictoriaLogs data between Kubernetes clusters](https://itnext.io/victoriametrics-migrating-vmsingle-and-victorialogs-data-between-kubernetes-clusters-23d0cba27cda)
 * [VictoriaLogs single server k8s setup gotchas](https://davidhernandez21.github.io/posts/Victorialogs-k8s-stack-gotchas/)
 
@@ -39,7 +39,7 @@ Integration and Data Collection:
 
 Grafana and Visualization:
 
-* [VictoriaLogs: a Grafana dashboard for AWS VPC Flow Logs — migrating from Grafana Loki](https://itnext.io/victorialogs-a-grafana-dashboard-for-aws-vpc-flow-logs-migrating-from-grafana-loki-c0cc0f1c3186)
+* [VictoriaLogs: a Grafana dashboard for AWS VPC Flow Logs - migrating from Grafana Loki](https://itnext.io/victorialogs-a-grafana-dashboard-for-aws-vpc-flow-logs-migrating-from-grafana-loki-c0cc0f1c3186)
 * [VictoriaLogs: creating Recording Rules with VMAlert](https://itnext.io/victorialogs-creating-recording-rules-with-vmalert-f606c2b94c5e)
 
 Architecture and Technical Deep Dives:

@@ -122,12 +122,13 @@ func parsePipes(lex *lexer) ([]pipe, error) {
 		pipes = append(pipes, p)
 
 		switch {
-		case lex.isKeyword("|"):
+		case lex.isQueryPartTrailer():
+			if !lex.isKeyword("|") {
+				return pipes, nil
+			}
 			lex.nextToken()
-		case lex.isKeyword(")", ""):
-			return pipes, nil
 		default:
-			return nil, fmt.Errorf("unexpected token after [%s]: %q; expecting '|' or ')'", pipes[len(pipes)-1], lex.token)
+			return nil, fmt.Errorf("unexpected token after [%s]: %q; expecting '|', ';' or ')'", pipes[len(pipes)-1], lex.token)
 		}
 	}
 }
