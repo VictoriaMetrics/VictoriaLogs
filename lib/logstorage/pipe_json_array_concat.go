@@ -3,11 +3,8 @@ package logstorage
 import (
 	"fmt"
 
-	"github.com/valyala/fastjson"
-
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
@@ -125,45 +122,29 @@ func (pcp *pipeJSONArrayConcatProcessor) writeBlock(workerID uint, br *blockResu
 type pipeJSONArrayConcatProcessorShard struct {
 	a  arena
 	rc resultColumn
+
+	tmpValues  []string
+	tmpValuesA arena
 }
 
 func (shard *pipeJSONArrayConcatProcessorShard) reset() {
 	shard.a.reset()
 	shard.rc.reset()
+
+	shard.tmpValuesA.reset()
+	shard.tmpValues = shard.tmpValues[:0]
 }
 
 func (shard *pipeJSONArrayConcatProcessorShard) concat(arrayStr, delimiter string) string {
-	arrayStr = trimJSONWhitespace(arrayStr)
-	if len(arrayStr) == 0 || arrayStr[0] != '[' {
-		return ""
-	}
-
-	p := jspp.Get()
-	defer jspp.Put(p)
-
-	jsv, err := p.Parse(arrayStr)
-	if err != nil {
-		return ""
-	}
-	jsa, err := jsv.Array()
-	if err != nil || len(jsa) == 0 {
-		return ""
-	}
+	shard.tmpValuesA.reset()
+	shard.tmpValues = unpackJSONArray(shard.tmpValues[:0], &shard.tmpValuesA, arrayStr)
 
 	bLen := len(shard.a.b)
-	for i, item := range jsa {
+	for i, v := range shard.tmpValues {
 		if i > 0 {
 			shard.a.b = append(shard.a.b, delimiter...)
 		}
-		if item.Type() == fastjson.TypeString {
-			sb, err := item.StringBytes()
-			if err != nil {
-				logger.Panicf("BUG: unexpected error returned from StringBytes(): %s", err)
-			}
-			shard.a.b = append(shard.a.b, sb...)
-		} else {
-			shard.a.b = item.MarshalTo(shard.a.b)
-		}
+		shard.a.b = append(shard.a.b, v...)
 	}
 	return bytesutil.ToUnsafeString(shard.a.b[bLen:])
 }
