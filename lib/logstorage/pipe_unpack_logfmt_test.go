@@ -287,6 +287,20 @@ func TestPipeUnpackLogfmt(t *testing.T) {
 			{"x", `z=bar`},
 		},
 	})
+
+	// logfmt with surrounding spaces
+	f("unpack_logfmt", [][]Field{
+		{
+			{"_msg", `   foo=bar a=b   `},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `   foo=bar a=b   `},
+			{"foo", "bar"},
+			{"a", "b"},
+		},
+	})
+
 }
 
 func TestPipeUnpackLogfmtUpdateNeededFields(t *testing.T) {

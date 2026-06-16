@@ -1399,11 +1399,11 @@ func parsePipeStatsExt(lex *lexer, needStatsKeyword bool) (pipe, error) {
 		}
 		ps.entries = append(ps.entries, e)
 
-		if lex.isKeyword("|", ")", "") {
+		if lex.isQueryPartTrailer() {
 			break
 		}
 		if !lex.isKeyword(",") {
-			return nil, fmt.Errorf("unexpected token %q after [%s]; want ',', '|' or ')'", lex.token, e)
+			return nil, fmt.Errorf("unexpected token %q after [%s]; want ',', '|', ';' or ')'", lex.token, e)
 		}
 		lex.nextToken()
 	}
@@ -1452,7 +1452,7 @@ func parseStatsEntry(lex *lexer) (pipeStatsEntry, error) {
 	}
 
 	resultName := ""
-	if lex.isKeyword(",", "|", ")", "") {
+	if lex.isKeyword(",") || lex.isQueryPartTrailer() {
 		resultName = sf.String()
 		if iff != nil {
 			resultName += " " + iff.String()

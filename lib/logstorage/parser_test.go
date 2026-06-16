@@ -270,16 +270,16 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
-			panic(fmt.Errorf("unexpected error in ParseQuery(%q): %s", qStr, err))
+			panic(fmt.Errorf("unexpected error in ParseQuery(%q): %w", qStr, err))
 		}
 
 		tStart, err := time.Parse(time.RFC3339, tStartStr)
 		if err != nil {
-			panic(fmt.Errorf("cannot parse tStartStr=%q: %s", tStartStr, err))
+			panic(fmt.Errorf("cannot parse tStartStr=%q: %w", tStartStr, err))
 		}
 		tEnd, err := time.Parse(time.RFC3339, tEndStr)
 		if err != nil {
-			panic(fmt.Errorf("cannot parse tEndStr=%q: %s", tEndStr, err))
+			panic(fmt.Errorf("cannot parse tEndStr=%q: %w", tEndStr, err))
 		}
 		timestampEnd := adjustEndTimestamp(tEnd.UnixNano(), tEndStr)
 		q.AddTimeFilter(tStart.UnixNano(), timestampEnd)
@@ -2151,6 +2151,12 @@ func TestParseQuery_Success(t *testing.T) {
 	// generate_sequence pipe
 	f(`foo | generate_sequence 123`, `foo | generate_sequence 123`)
 
+	// coalesce pipe
+	f(`foo | coalesce (bar, baz*, foo)`, `foo | coalesce(bar, baz*, foo)`)
+	f(`foo | coalesce (foo, bar, baz*) as _msg`, `foo | coalesce(foo, bar, baz*)`)
+	f(`foo | coalesce (foo, bar, baz*) default 'x'`, `foo | coalesce(foo, bar, baz*) default x`)
+	f(`foo | coalesce (foo, bar, baz*) default 'x' as abc`, `foo | coalesce(foo, bar, baz*) default x as abc`)
+
 	// collapse_nums pipe
 	f(`foo | collapse_nums`, `foo | collapse_nums`)
 	f(`foo | collapse_nums at x`, `foo | collapse_nums at x`)
@@ -2575,6 +2581,106 @@ func TestParseQuery_Success(t *testing.T) {
 	// These aren't wildcard field names, but just 'match all' filters
 	f(`a * :foo`, `a *:foo`)
 	f(`a * foo`, `a foo`)
+
+	// trailing semicolon after filter
+	f("*;", "*")
+	f("*;#comment", "*")
+	f("foo;", "foo")
+	f("foo\n ; \t # comment", "foo")
+	f("a:b;", "a:b")
+	f("a*:b ;", "a*:b")
+	f("a*:b* ;", "a*:b*")
+	f("a* : *b*;", "a*:*b*")
+	f("a:*;", "a:*")
+	f("i(abc);", "i(abc)")
+	f("b : i ( abc ) ; ", "b:i(abc)")
+	f("foo or bar;", "foo or bar")
+	f("foo and bar ;", "foo bar")
+
+	// trailing semicolon after pipe
+	f(`* | block_stats;`, `* | block_stats`)
+	f(`* | blocks_count;`, `* | blocks_count`)
+	f(`* | coalesce (x);`, `* | coalesce(x)`)
+	f(`* | collapse_nums;`, `* | collapse_nums`)
+	f(`* | copy x y;`, `* | copy x as y`)
+	f(`* | decolorize;`, `* | decolorize`)
+	f(`* | delete x;`, `* | delete x`)
+	f(`* | drop_empty_fields;`, `* | drop_empty_fields`)
+	f(`* | extract "a=<b>";`, `* | extract "a=<b>"`)
+	f(`* | extract_regexp "(?P<ip>([0-9]+[.]){3}[0-9]+)";`, `* | extract_regexp "(?P<ip>([0-9]+[.]){3}[0-9]+)"`)
+	f(`* | facets;`, `* | facets`)
+	f(`* | field_names;`, `* | field_names`)
+	f(`* | field_values x;`, `* | field_values x`)
+	f(`* | fields x;`, `* | fields x`)
+	f(`* | a:b;`, `a:b`)
+	f(`* | count() x | filter x:10;`, `* | stats count(*) as x | filter x:10`)
+	f(`* | first;`, `* | first`)
+	f(`* | first 20;`, `* | first 20`)
+	f(`* | first 20 by (x);`, `* | first 20 by (x)`)
+	f(`* | format x;`, `* | format x`)
+	f(`* | format x as y;`, `* | format x as y`)
+	f(`* | generate_sequence 3;`, `* | generate_sequence 3`)
+	f(`* | join by (x) (y;);`, `* | join by (x) (y)`)
+	f(`* | json_array_len x;`, `* | json_array_len(x)`)
+	f(`* | json_array_len x y;`, `* | json_array_len(x) as y`)
+	f(`* | hash(x);`, `* | hash(x)`)
+	f(`* | last;`, `* | last`)
+	f(`* | last 20;`, `* | last 20`)
+	f(`* | last 20 by (x);`, `* | last 20 by (x)`)
+	f(`* | last 20 by (x, y desc);`, `* | last 20 by (x, y desc)`)
+	f(`* | len(x);`, `* | len(x)`)
+	f(`* | len(x) y;`, `* | len(x) as y`)
+	f(`* | limit;`, `* | limit 10`)
+	f(`* | limit 20;`, `* | limit 20`)
+	f(`* | math a+b c;`, `* | math (a + b) as c`)
+	f(`* | offset 10;`, `* | offset 10`)
+	f(`* | pack_json;`, `* | pack_json`)
+	f(`* | pack_json as x;`, `* | pack_json as x`)
+	f(`* | pack_logfmt;`, `* | pack_logfmt`)
+	f(`* | pack_logfmt x;`, `* | pack_logfmt as x`)
+	f(`* | query_stats;`, `* | query_stats`)
+	f(`* | rename x y;`, `* | rename x as y`)
+	f(`* | rename x y, a as b;`, `* | rename x as y, a as b`)
+	f(`* | replace(a, b);`, `* | replace (a, b)`)
+	f(`* | replace(a, b) at x;`, `* | replace (a, b) at x`)
+	f(`* | replace_regexp ("a", "b");`, `* | replace_regexp (a, b)`)
+	f(`* | replace_regexp ("a", "b") at x;`, `* | replace_regexp (a, b) at x`)
+	f(`* | running_stats count() x;`, `* | running_stats count(*) as x`)
+	f(`* | sample 10;`, `* | sample 10`)
+	f(`* | set_stream_fields x;`, `* | set_stream_fields x`)
+	f(`* | sort;`, `* | sort`)
+	f(`* | sort (x);`, `* | sort by (x)`)
+	f(`* | sort (x) limit 10;`, `* | sort by (x) limit 10`)
+	f(`* | split ",";`, `* | split ","`)
+	f(`* | split "," x;`, `* | split "," from x`)
+	f(`* | split "," x y;`, `* | split "," from x as y`)
+	f(`* | stats min(x) a, count();`, `* | stats min(x) as a, count(*) as "count(*)"`)
+	f(`* | count() ; `, `* | stats count(*) as "count(*)"`)
+	f(`* | stream_context after 3;`, `* | stream_context after 3`)
+	f(`* | time_add 1h;`, `* | time_add 1h`)
+	f(`* | top x;`, `* | top by (x)`)
+	f(`* | total_stats count() x;`, `* | total_stats count(*) as x`)
+	f(`* | union (a;);`, `* | union (a)`)
+	f(`* | uniq x;`, `* | uniq by (x)`)
+	f(`* | unpack_json;`, `* | unpack_json`)
+	f(`* | unpack_json x;`, `* | unpack_json from x`)
+	f(`* | unpack_json from x;`, `* | unpack_json from x`)
+	f(`* | unpack_logfmt;`, `* | unpack_logfmt`)
+	f(`* | unpack_logfmt x;`, `* | unpack_logfmt from x`)
+	f(`* | unpack_logfmt from x;`, `* | unpack_logfmt from x`)
+	f(`* | unpack_syslog;`, `* | unpack_syslog`)
+	f(`* | unpack_syslog x;`, `* | unpack_syslog from x`)
+	f(`* | unpack_syslog from x;`, `* | unpack_syslog from x`)
+	f(`* | unpack_words;`, `* | unpack_words`)
+	f(`* | unpack_words x;`, `* | unpack_words from x`)
+	f(`* | unpack_words x y;`, `* | unpack_words from x as y`)
+	f(`* | unpack_words from x y;`, `* | unpack_words from x as y`)
+	f(`* | unpack_words from x as y;`, `* | unpack_words from x as y`)
+	f(`* | unroll x;`, `* | unroll by (x)`)
+	f(`* | unroll (x,y);`, `* | unroll by (x, y)`)
+
+	f(`a:in(x | keep a;);`, `a:in(x | fields a)`)
+	f(`a:in(x | keep a;) | stats count() if (x;) y;`, `a:in(x | fields a) | stats count(*) if (x) as y`)
 }
 
 func TestParseQuery_Failure(t *testing.T) {
@@ -2600,6 +2706,23 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("NOT")
 	f("not (abc")
 	f("!")
+
+	// superflouos text after trailing semicolon
+	f("a or;")
+	f("a and;")
+	f("not;")
+	f("(;")
+	f("a|;")
+	f("a|;count()")
+	f("a;|count()")
+	f(";")
+	f("a;b")
+	f("a:b ; c")
+	f("a:b | count() ; c")
+	f("a*:;")
+	f(`a:in(b;|keep a)`)
+	f(`* | count() if (x |;)`)
+	f(`* | count() if (x | count())`)
 
 	// missing field name
 	f(":foo")
@@ -3053,6 +3176,10 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | generate_sequence 1, foo`)
 	f(`foo | generate_sequence -1`)
 
+	// invalid coalesce pipe
+	f(`foo | coalesce`)
+	f(`foo | coalesce x`)
+
 	// invalid collapse_nums pipe
 	f(`foo | collapse_nums bar`)
 
@@ -3324,6 +3451,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	// pipe names without whitespace after the pipe name
 	f(`* | block_stats.x`)
 	f(`* | blocks_count.x`)
+	f(`* | coalesce.x`)
 	f(`* | collapse_nums.at x`)
 	f(`* | copy.x as y`)
 	f(`* | decolorize.x`)
@@ -3690,6 +3818,7 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | rm f1, f2 | stats by(f3) count(f4) r1`, `f3,f4`, ``)
 
 	// Verify that fields are correctly tracked before count(*)
+	f(`* | coalesce (x) | count() r1`, ``, ``)
 	f(`* | collapse_nums | count() r1`, ``, ``)
 	f(`* | copy a b, c d | count() r1`, ``, ``)
 	f(`* | decolorize | count() r1`, ``, ``)
@@ -3941,6 +4070,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	// verify all the pipes
 	f("* | blocks_count", false)
 	f("* | block_stats", false)
+	f("* | coalesce (x)", true)
 	f("* | collapse_nums", true)
 	f("* | copy foo bar", true)
 	f("* | copy * as foo*", true)
@@ -4027,6 +4157,7 @@ func TestQueryCanLiveTail(t *testing.T) {
 	}
 
 	f("foo", true)
+	f("* | coalesce (x)", true)
 	f("* | collapse_nums", true)
 	f("* | copy a b", true)
 	f("* | decolorize x", true)
@@ -4155,6 +4286,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f(`* | by (path) count() requests | by (requests) count() hits | first (hits desc)`, nsecsPerDay, 0, []string{"_time", "requests"}, `* | stats by (_time:86400000000000, path) count(*) as requests | stats by (_time:86400000000000, requests) count(*) as hits | first by (hits desc) partition by (_time)`)
 
 	// pipes, which do not drop or modify _time, are allowed in front of `stats` pipe
+	f("* | coalesce (x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | coalesce(x) | stats by (_time:86400000000000) count(*) as x`)
 	f("* | collapse_nums | count() x", nsecsPerDay, 0, []string{"_time"}, `* | collapse_nums | stats by (_time:86400000000000) count(*) as x`)
 	f("* | copy foo bar | count() x", nsecsPerDay, 0, []string{"_time"}, `* | copy foo as bar | stats by (_time:86400000000000) count(*) as x`)
 	f("*|decolorize|count()x", nsecsPerDay, 0, []string{"_time"}, `* | decolorize | stats by (_time:86400000000000) count(*) as x`)
@@ -4236,6 +4368,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | by (x) count() y | unpack_json from y`)
 	f(`* | by (x) count() y | unpack_json from y fields(z*)`)
 
+	f(`* | by (x) count() | coalesce (x)`)
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
@@ -4402,6 +4535,7 @@ func TestQueryGetStatsLabels_Failure(t *testing.T) {
 	f(`foo | count() | block_stats`)
 	f(`foo | count() | blocks_count`)
 	f(`foo | count() | generate_sequence 123`)
+	f(`foo | count() | coalesce (x, y)`)
 	f(`foo | count() | collapse_nums`)
 	f(`foo | count() | facets`)
 	f(`foo | count() | field_names`)
@@ -4640,7 +4774,7 @@ func TestTryParseIPv4CIDR_Success(t *testing.T) {
 			t.Fatalf("cannot parse %s as ipv4 CIDR", s)
 		}
 		if minValue != minValueExpected {
-			t.Fatalf("unexpeccted minValue; got %d; want %d", minValue, minValueExpected)
+			t.Fatalf("unexpected minValue; got %d; want %d", minValue, minValueExpected)
 		}
 		if maxValue != maxValueExpected {
 			t.Fatalf("unexpected maxValue; got %d; want %d", maxValue, maxValueExpected)
