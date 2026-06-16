@@ -203,7 +203,7 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
-### Limitation of available disk space
+### Limitations of disk space usage-based retention
 
 Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskUsage*` limit between two checks.
 The disk could reach 100% usage especially when the actual disk size is small, and the ingestion rate is high.
