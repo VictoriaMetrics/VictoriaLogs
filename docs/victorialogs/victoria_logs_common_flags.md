@@ -63,8 +63,6 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -futureRetention value
      Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
-  -vmalert.proxyURL string
-     Optional URL for proxying requests with the /select/vmalert/* path prefix to vmalert;
   -http.connTimeout duration
      Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
   -http.disableCORS
@@ -106,7 +104,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -insert.concurrency int
      The average number of concurrent data ingestion requests, which can be sent to every -storageNode (default 2)
   -insert.disable
-     Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes; see also -internalinsert.disable
+     Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -insert.disableCompression
      Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
   -insert.maxFieldsPerLine int
@@ -125,12 +123,12 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -internaldelete.enable
      Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
   -internalinsert.disable
-     Whether to disable /internal/insert HTTP endpoint. See https://docs.victoriametrics.com/victorialogs/cluster/#security
+     Whether to disable /internal/insert HTTP endpoint. See also -insert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -internalinsert.maxRequestSize size
      The maximum size in bytes of a single request, which can be accepted at /internal/insert HTTP endpoint
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
   -internalselect.disable
-     Whether to disable /internal/select/* HTTP endpoints
+     Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -internalselect.maxConcurrentRequests int
      The limit on the number of concurrent requests to /internal/select/* endpoints; other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/ (default 100)
   -journald.ignoreFields array
@@ -257,7 +255,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -select.disable
-     Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes; see also -internalselect.disable
+     Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -select.disableCompression
      Whether to disable compression for select query responses received from -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
   -snapshotsMaxAge value
@@ -493,4 +491,6 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -version
      Show VictoriaMetrics version
+  -vmalert.proxyURL string
+     Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert
 ```

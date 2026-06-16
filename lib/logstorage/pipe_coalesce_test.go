@@ -17,6 +17,10 @@ func TestParsePipeCoalesceSuccess(t *testing.T) {
 	f(`coalesce(foo, bar) default foobar as result`)
 	f(`coalesce(foo, bar) default "coalesce" as result`)
 	f(`coalesce("foo bar", "foo-bar") as result`)
+
+	// prefix filters
+	f(`coalesce(foo*, bar, baz*)`)
+	f(`coalesce(foo*, bar, baz*) default x as abc`)
 }
 
 func TestParsePipeCoalesceFailure(t *testing.T) {
@@ -27,8 +31,9 @@ func TestParsePipeCoalesceFailure(t *testing.T) {
 
 	f(`coalesce`)
 	f(`coalesce()`)
-	f(`coalesce(foo)`)
-	f(`coalesce(foo, bar)`)
+	f(`coalesce(foo) as`)
+	f(`coalesce(foo) x`)
+	f(`coalesce(foo) as x*`)
 	f(`coalesce foo, bar as result`)
 	f(`coalesce(foo, bar) result`)
 	f(`coalesce(foo, bar) as`)
@@ -43,62 +48,112 @@ func TestPipeCoalesce(t *testing.T) {
 		expectPipeResults(t, pipeStr, rows, rowsExpected)
 	}
 
-	f("coalesce(a, b) as result", [][]Field{
+	// a single value with default value
+	f("coalesce(a) default 'foo'", [][]Field{
+		{
+			{"_msg", `test`},
+			{"b", `value_b`},
+		},
+		{
+			{"a", `value_a`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `foo`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", `value_a`},
+			{"a", `value_a`},
+		},
+	})
+
+	// field prefix
+	f("coalesce(a*, b)", [][]Field{
+		{
+			{"_msg", `test`},
+			{"abc", `value_a`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", `test`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", `test`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `value_a`},
+			{"abc", `value_a`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", `value_b`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", ``},
+		},
+	})
+
+	// multiple values
+	f("coalesce(a, b)", [][]Field{
 		{
 			{"_msg", `test`},
 			{"a", `value_a`},
 			{"b", `value_b`},
 		},
-	}, [][]Field{
+		{
+			{"_msg", `test`},
+			{"b", `value_b`},
+		},
 		{
 			{"_msg", `test`},
 			{"a", `value_a`},
+		},
+		{
+			{"_msg", `test`},
+		},
+	}, [][]Field{
+		{
+			{"_msg", `value_a`},
+			{"a", `value_a`},
 			{"b", `value_b`},
-			{"result", `value_a`},
+		},
+		{
+			{"_msg", `value_b`},
+			{"b", `value_b`},
+		},
+		{
+			{"_msg", `value_a`},
+			{"a", `value_a`},
+		},
+		{
+			{"_msg", ``},
 		},
 	})
 
 	f("coalesce(a, b) as result", [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
 			{"b", `value_b`},
 		},
 	}, [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
 			{"b", `value_b`},
 			{"result", `value_b`},
-		},
-	})
-
-	f("coalesce(a, b) as result", [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", ``},
-			{"b", ``},
-		},
-	}, [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", ``},
-			{"b", ``},
-			{"result", ``},
 		},
 	})
 
 	f(`coalesce(a, b) default "default_value" as result`, [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
-			{"b", ``},
 		},
 	}, [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
-			{"b", ``},
 			{"result", `default_value`},
 		},
 	})
@@ -119,44 +174,15 @@ func TestPipeCoalesce(t *testing.T) {
 	f("coalesce(a, b, c) as result", [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
 			{"b", `value_b`},
 			{"c", `value_c`},
 		},
 	}, [][]Field{
 		{
 			{"_msg", `test`},
-			{"a", ``},
 			{"b", `value_b`},
 			{"c", `value_c`},
 			{"result", `value_b`},
-		},
-	})
-
-	f("coalesce(a) as result", [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", `value_a`},
-		},
-	}, [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", `value_a`},
-			{"result", `value_a`},
-		},
-	})
-
-	f("coalesce(a, b) as a", [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", ``},
-			{"b", `value_b`},
-		},
-	}, [][]Field{
-		{
-			{"_msg", `test`},
-			{"a", `value_b`},
-			{"b", `value_b`},
 		},
 	})
 
@@ -178,22 +204,27 @@ func TestPipeCoalesceUpdateNeededFields(t *testing.T) {
 		expectPipeNeededFields(t, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected)
 	}
 
+	// all the needed fields
 	f("coalesce(s1, s2) as d", "*", "", "*", "d")
+
+	// the destination field intersects with the source field
+	f("coalesce(s1, s2) as s1", "*", "", "*", "")
+
+	// all the needed fields, unneded fields do not intersect with source fields
 	f("coalesce(s1, s2) as d", "*", "f1,f2", "*", "d,f1,f2")
+
+	// all the needed fields, unneeded fields intersect with the source fields
 	f("coalesce(s1, s2) as d", "*", "s1,f1,f2", "*", "d,f1,f2")
+
+	// all the needed fields, unneded field intersects with the destination
 	f("coalesce(s1, s2) as d", "*", "d,f1,f2", "*", "d,f1,f2")
+	f("coalesce(s1, s2) as s1", "*", "s1,f1,f2", "*", "f1,f2,s1")
+
+	// Needed fields do not intersect with the destination
 	f("coalesce(s1, s2) as d", "f1,f2", "", "f1,f2", "")
 	f("coalesce(s1, s2) as d", "s1,f1,f2", "", "f1,f2,s1", "")
+
+	// needed fields intersect with the destination
 	f("coalesce(s1, s2) as d", "d,f1,f2", "", "f1,f2,s1,s2", "")
-	f("coalesce(s1, s2, s3) as d", "s1,d,f1,f2", "", "f1,f2,s1,s2,s3", "")
-
-	f("coalesce(s1, s2) as s1", "*", "", "*", "")
-	f("coalesce(s1, s2) as s1", "*", "f1,f2", "*", "f1,f2")
-	f("coalesce(s1, s2) as s1", "*", "s1,f1,f2", "*", "f1,f2,s1")
-	f("coalesce(s1, s2) as s1", "f1,f2", "", "f1,f2", "")
-	f("coalesce(s1, s2) as s1", "s1,f1,f2", "", "f1,f2,s1,s2", "")
-	f("coalesce(s1, s2, s3) as s1", "s1,f1,f2", "", "f1,f2,s1,s2,s3", "")
-
-	f("coalesce(s2, s1) as s1", "*", "", "*", "")
-	f("coalesce(s2, s1) as s1", "s1,f1,f2", "", "f1,f2,s1,s2", "")
+	f("coalesce(s1, s2*, s3) as d", "s1,d,f1,f2", "", "f1,f2,s1,s2*,s3", "")
 }
