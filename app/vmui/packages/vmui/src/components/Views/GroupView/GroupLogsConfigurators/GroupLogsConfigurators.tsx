@@ -40,7 +40,8 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   const displayFieldsString = searchParams.get(DISPLAY_FIELDS) || "";
   const displayFields = displayFieldsString ? displayFieldsString.split(",") : [LOGS_DISPLAY_FIELDS];
 
-  const [disabledHovers, handleSetDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
+  const [disabledHovers, setDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
+  const [disabledLevelDetection, setDisabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
 
   const isGroupChanged = groupBy !== LOGS_GROUP_BY;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
@@ -168,6 +169,17 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
               </span>
             </div>
 
+            <div className="vm-group-logs-configurator-item">
+              <Switch
+                value={!disabledLevelDetection}
+                onChange={(checked) => setDisabledLevelDetection(!checked)}
+                label="Detect log level"
+              />
+              <span className="vm-group-logs-configurator-item__info">
+                Displays a log level label next to each log entry.
+              </span>
+            </div>
+
             <LogParsingSwitches/>
 
             <div className="vm-group-logs-configurator-item">
@@ -177,7 +189,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
                 label="Single-line message"
               />
               <span className="vm-group-logs-configurator-item__info">
-                Displays message in a single line and truncates it with an ellipsis if it exceeds the available space.
+                Truncates long messages to a single line with an ellipsis.
               </span>
             </div>
 
@@ -195,11 +207,11 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
             <div className="vm-group-logs-configurator-item">
               <Switch
                 value={disabledHovers}
-                onChange={handleSetDisabledHovers}
+                onChange={setDisabledHovers}
                 label="Disable hover effects"
               />
               <span className="vm-group-logs-configurator-item__info">
-                Disable row highlighting on hover to improve performance with large datasets.
+                Disables row highlighting on hover to improve performance with large datasets.
               </span>
             </div>
           </div>

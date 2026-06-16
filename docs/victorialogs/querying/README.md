@@ -209,12 +209,14 @@ which were ingested into VictoriaLogs during the last hour, before starting live
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'start_offset=1h'
 ```
 
-Live tailing delays delivering new logs for one second, so they could be properly delivered from log collectors to VictoriaLogs.
-This delay can be changed via `offset` query arg. For example, the following command delays delivering new logs for 30 seconds:
+Live tailing delays returning new logs for 5 seconds, so they could be properly delivered from log collectors to VictoriaLogs.
+If you see gaps in the logs delivered by live tailing, then increase the `offset` query arg value in order to avoid the gaps.
+For example, the following command delays delivering new logs for 30 seconds:
 
 ```sh
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'offset=30s'
 ```
+
 
 Live tailing checks for new logs every second. The frequency for the check can be changed via `refresh_interval` query arg.
 For example, the following command instructs live tailing to check for new logs every 10 seconds:
@@ -259,7 +261,7 @@ The `<start>` and `<end>` args can contain values in [any supported format](http
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
 For example, the following command returns per-hour number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) over logs for the last 3 hours:
@@ -562,7 +564,7 @@ The `<start>` and `<end>` args can contain values in [any supported format](http
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
 Note: The `/select/logsql/stats_query_range` endpoint relies on `_time` field for time bucketing
 and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.

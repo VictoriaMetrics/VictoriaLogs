@@ -67,6 +67,36 @@ func TestVlsingleStatsQuery_Success(t *testing.T) {
 	f(`* | delete _time | stats count() q `, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
 }
 
+func TestVlclusterStatsQueryRateWithTimeBucket(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlcluster()
+
+	records := []string{
+		`{"_msg":"a","_time":"2025-01-01T00:00:00Z","status":"400","bytes":400}`,
+		`{"_msg":"b","_time":"2025-01-01T00:00:01Z","status":"400","bytes":400}`,
+		`{"_msg":"c","_time":"2025-01-01T00:00:02Z","status":"400","bytes":400}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query := `_time:[2025-01-01T00:00:00Z,2025-01-01T00:00:03Z) status:400 | stats by (_time:1s, status) rate() as logs_rate, rate_sum(bytes) as bytes_rate | sort by (_time, status)`
+	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"400"]}]}}`
+
+	opts := apptest.StatsQueryOpts{
+		Time: "2025-01-01T00:05:03Z",
+	}
+	response, status := sut.StatsQueryRaw(t, query, opts)
+	if status != http.StatusOK {
+		t.Fatalf("unexpected HTTP status=%d; response=%q", status, response)
+	}
+	if response != responseExpected {
+		t.Fatalf("unexpected response\ngot\n%s\nwant\n%s", response, responseExpected)
+	}
+}
+
 func TestVlsingleStatsQuery_Failure(t *testing.T) {
 	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)

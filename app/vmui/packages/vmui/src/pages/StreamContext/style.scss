@@ -1,10 +1,29 @@
 @use "src/styles/variables" as *;
 @use "sass:color";
 
+$modal-header-height: 41px;
+
 .vm-steam-context {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   max-width: 90vw;
   min-width: 90vw;
-  min-height: 220px;
+  height: calc($vh * 90 - ($padding-global * 2) - $modal-header-height);
+  overflow: auto;
+
+  &_mobile {
+    max-width: 100%;
+    height: calc($vh * 100 - ($padding-global * 2) - $modal-header-height);
+  }
+
+  &__modal > .vm-modal-content {
+    overflow: visible;
+
+    .vm-modal-content-body {
+      padding: 0;
+    }
+  }
 
   &__target-row {
     .vm-group-logs-row-content {
@@ -33,18 +52,31 @@
     padding-top: $padding-global;
   }
 
-  &__load-more {
+  &__no-load-more {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: $padding-global;
+    margin-block: $padding-global;
+    border-top: $border-divider;
+    text-align: center;
+    color: $color-text-secondary;
+  }
+
+  &__loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $padding-global;
+    pointer-events: none;
   }
 
   &-header {
     position: sticky;
     top: 0;
+    flex: 0 0 auto;
+    padding-inline: 1px;
     padding: $padding-global;
-    margin: (-$padding-global) (-$padding-global) 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -74,5 +106,19 @@
         text-transform: none;
       }
     }
+
+    &__warning {
+      width: 100%;
+      flex-grow: 1;
+      padding-top: $padding-small;
+      background-color: $color-background-block;
+    }
+  }
+
+  &-rows {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: $padding-global;
   }
 }

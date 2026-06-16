@@ -20,3 +20,15 @@ export const borderBoxToContentSize = (
 
   return Math.max(0, borderBoxSize - sub);
 };
+
+export const scrollElementToCenter = (
+  scrollContainer: HTMLElement,
+  targetElement: HTMLElement,
+) => {
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const targetRect = targetElement.getBoundingClientRect();
+
+  const targetOffset = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+
+  scrollContainer.scrollTop = targetOffset - scrollContainer.clientHeight / 2 + targetElement.clientHeight / 2;
+};

@@ -37,7 +37,8 @@ Then follow these docs:
 - [how to ingest data into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
-The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word), which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word),
+which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 For example, the following query finds all the logs with `error` word:
 
 ```logsql
@@ -253,6 +254,36 @@ _time:5m error | stats count() errors
 ```
 
 See [the list of supported pipes in LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+
+A single query can be split into multiple lines for better readability.
+Queries also can contain comments according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#comments).
+Example multi-line query with comments:
+
+```logsql
+_time:5m
+
+  # calculate per-host number of logs and errors
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+
+  # calculate error rate
+  | math (errors / logs) as error_rate
+
+  # leave only the stats for >10% error rate
+  | filter error_rate:>0.1
+```
+
+The `;` can be put in the end of the query. This is useful for detecting the end of the query. For example, the following query is equivalent to the previous one:
+
+```logsql
+_time:5m
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+  | math (errors / logs) as error_rate
+  | filter error_rate:>0.1;
+```
 
 ## Filters
 
@@ -2490,7 +2521,7 @@ It is allowed to use `where` prefix instead of `filter` prefix for convenience. 
 _time:1h error | stats by (host) count() logs_count | where logs_count:> 1_000
 ```
 
-It is allowed to omit `filter` prefix if the used filters do not clash with [pipe names](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+It is allowed to omit `filter` prefix if the used filters start with the field name followed by `:`.
 So the following query is equivalent to the previous one:
 
 ```logsql

@@ -92,7 +92,7 @@ func (lr *LineReader) Err() error {
 	if lr.err == nil {
 		return nil
 	}
-	return fmt.Errorf("%s: %s", lr.name, lr.err)
+	return fmt.Errorf("%s: %w", lr.name, lr.err)
 }
 
 func (lr *LineReader) readMoreData() bool {
@@ -119,7 +119,7 @@ func (lr *LineReader) readMoreData() bool {
 			lr.eofReached = true
 			return true
 		}
-		lr.err = fmt.Errorf("cannot read the next line: %s", err)
+		lr.err = fmt.Errorf("cannot read the next line: %w", err)
 	}
 	return n > 0
 }
@@ -144,7 +144,7 @@ func (lr *LineReader) skipUntilNextLine() (bool, int) {
 				lr.buf = lr.buf[:0]
 				return true, skipSizeBytes
 			}
-			lr.err = fmt.Errorf("cannot skip the current line: %s", err)
+			lr.err = fmt.Errorf("cannot skip the current line: %w", err)
 			return false, skipSizeBytes
 		}
 		if n := bytes.IndexByte(lr.buf, '\n'); n >= 0 {

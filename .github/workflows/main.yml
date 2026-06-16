@@ -27,7 +27,8 @@ jobs:
     name: lint
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    # Runs on dedicated runner with extra resources since golangci-lint requires extra memory
+    runs-on: 'vm-runner'
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -59,7 +60,8 @@ jobs:
     needs: lint
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    # Runs on dedicated runner with extra resources to increase tests speed.
+    runs-on: 'vm-runner'
 
     strategy:
       matrix:
@@ -97,7 +99,8 @@ jobs:
     needs: [lint, test]
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    # Runs on dedicated runner to isolate app tests from other tests.
+    runs-on: apptest
 
     steps:
       - name: Code checkout

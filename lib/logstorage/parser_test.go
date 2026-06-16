@@ -270,16 +270,16 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
-			panic(fmt.Errorf("unexpected error in ParseQuery(%q): %s", qStr, err))
+			panic(fmt.Errorf("unexpected error in ParseQuery(%q): %w", qStr, err))
 		}
 
 		tStart, err := time.Parse(time.RFC3339, tStartStr)
 		if err != nil {
-			panic(fmt.Errorf("cannot parse tStartStr=%q: %s", tStartStr, err))
+			panic(fmt.Errorf("cannot parse tStartStr=%q: %w", tStartStr, err))
 		}
 		tEnd, err := time.Parse(time.RFC3339, tEndStr)
 		if err != nil {
-			panic(fmt.Errorf("cannot parse tEndStr=%q: %s", tEndStr, err))
+			panic(fmt.Errorf("cannot parse tEndStr=%q: %w", tEndStr, err))
 		}
 		timestampEnd := adjustEndTimestamp(tEnd.UnixNano(), tEndStr)
 		q.AddTimeFilter(tStart.UnixNano(), timestampEnd)
@@ -294,6 +294,38 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 	// Verify step propagation to the query pipes
 	t.Run("query-pipes", func(t *testing.T) {
 		q := newQueryWithTimeFilter(`* | rate(), rate_sum(x)`, tStartStr, tEndStr)
+		if len(q.pipes) != 1 {
+			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+		}
+		ps, ok := q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", q.pipes[0])
+		}
+
+		if len(ps.funcs) != 2 {
+			t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+		}
+
+		sr, ok := ps.funcs[0].f.(*statsRate)
+		if !ok {
+			t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+		}
+		if sr.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+		}
+
+		srs, ok := ps.funcs[1].f.(*statsRateSum)
+		if !ok {
+			t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+		}
+		if srs.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+		}
+	})
+
+	// Verify step propagation when `stats by (...)` groups by a non-_time field
+	t.Run("query-pipes-stats-by-non-time", func(t *testing.T) {
+		q := newQueryWithTimeFilter(`* | stats by (path) rate(), rate_sum(x)`, tStartStr, tEndStr)
 		if len(q.pipes) != 1 {
 			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
 		}
@@ -359,6 +391,125 @@ func TestQuery_AddTimeFilter_StepPropagation(t *testing.T) {
 		if srs.stepSeconds != stepSecondsExpected {
 			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
 		}
+	})
+
+	// Verify step propagation when a subquery's `stats by (...)` groups by a non-_time field
+	t.Run("subquery-pipes-stats-by-non-time", func(t *testing.T) {
+		q := newQueryWithTimeFilter(`* | join on (x) (* | stats by (x) rate(), rate_sum(x))`, tStartStr, tEndStr)
+		if len(q.pipes) != 1 {
+			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+		}
+
+		pj, ok := q.pipes[0].(*pipeJoin)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeJoin", q.pipes[0])
+		}
+
+		ps, ok := pj.q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", pj.q.pipes[0])
+		}
+
+		if len(ps.funcs) != 2 {
+			t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+		}
+
+		sr, ok := ps.funcs[0].f.(*statsRate)
+		if !ok {
+			t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+		}
+		if sr.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+		}
+
+		srs, ok := ps.funcs[1].f.(*statsRateSum)
+		if !ok {
+			t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+		}
+		if srs.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+		}
+	})
+}
+
+func TestQuery_AddTimeBucket_StepPropagation(t *testing.T) {
+	// assertRateSteps verifies that the rate() and rate_sum() funcs in ps have the expected step.
+	assertRateSteps := func(t *testing.T, ps *pipeStats, stepSecondsExpected float64) {
+		t.Helper()
+		if len(ps.funcs) != 2 {
+			t.Fatalf("unexpected number of pipe stats funcs; got %d; want 2", len(ps.funcs))
+		}
+		sr, ok := ps.funcs[0].f.(*statsRate)
+		if !ok {
+			t.Fatalf("unexpected stats func #0; got %T; want statsRate", ps.funcs[0].f)
+		}
+		if sr.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate(); got %v; want %v", sr.stepSeconds, stepSecondsExpected)
+		}
+		srs, ok := ps.funcs[1].f.(*statsRateSum)
+		if !ok {
+			t.Fatalf("unexpected stats func #1; got %T; want statsRateSum", ps.funcs[1].f)
+		}
+		if srs.stepSeconds != stepSecondsExpected {
+			t.Fatalf("unexpected stepSeconds for rate_sum(); got %v; want %v", srs.stepSeconds, stepSecondsExpected)
+		}
+	}
+
+	mustParseStatsPipe := func(t *testing.T, qStr string) *pipeStats {
+		t.Helper()
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error in ParseQuery(%q): %s", qStr, err)
+		}
+		if len(q.pipes) != 1 {
+			t.Fatalf("unexpected number of pipes; got %d; want 1", len(q.pipes))
+		}
+		ps, ok := q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", q.pipes[0])
+		}
+		return ps
+	}
+
+	const timeFilter = `_time:[2024-12-25T14:56:43Z,2024-12-26T14:56:42.999999999Z]`
+
+	// A user-written _time bucket sets the rate step (60s).
+	t.Run("time-bucket-in-stats", func(t *testing.T) {
+		ps := mustParseStatsPipe(t, timeFilter+` | stats by (_time:1m, path) rate(), rate_sum(x)`)
+		assertRateSteps(t, ps, 60)
+	})
+
+	// A range query adds its `step` arg as the rate step (1h, not the 24h range).
+	t.Run("grouping-step-differs-from-range", func(t *testing.T) {
+		q, err := ParseQuery(timeFilter + ` | stats by (path) rate(), rate_sum(x)`)
+		if err != nil {
+			t.Fatalf("unexpected error in ParseQuery(): %s", err)
+		}
+		if _, err := q.GetStatsLabelsAddGroupingByTime(nsecsPerHour, 0); err != nil {
+			t.Fatalf("unexpected error in GetStatsLabelsAddGroupingByTime(): %s", err)
+		}
+		ps, ok := q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", q.pipes[0])
+		}
+		assertRateSteps(t, ps, 3600)
+	})
+
+	// The _time bucket step also applies to rate() inside a subquery (60s).
+	t.Run("subquery-time-bucket", func(t *testing.T) {
+		q, err := ParseQuery(timeFilter + ` | join by (x) (* | stats by (_time:1m, x) rate(), rate_sum(x))`)
+		if err != nil {
+			t.Fatalf("unexpected error in ParseQuery(): %s", err)
+		}
+		pj, ok := q.pipes[0].(*pipeJoin)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeJoin", q.pipes[0])
+		}
+		ps, ok := pj.q.pipes[0].(*pipeStats)
+		if !ok {
+			t.Fatalf("unexpected pipe; got %T; want pipeStats", pj.q.pipes[0])
+		}
+		assertRateSteps(t, ps, 60)
 	})
 }
 
@@ -2283,7 +2434,10 @@ func TestParseQuery_Success(t *testing.T) {
 	// filter pipe
 	f(`* | filter error ip:12.3.4.5 or warn`, `error ip:12.3.4.5 or warn`)
 	f(`foo | stats by (host) count() logs | filter logs:>50 | sort by (logs desc) | limit 10`, `foo | stats by (host) count(*) as logs | filter logs:>50 | sort by (logs desc) limit 10`)
-	f(`* | error`, `error`)
+	f(`* | "error"`, `error`)
+	f(`* | filter error`, `error`)
+	f(`* | -unpack_logfmt`, `!"unpack_logfmt"`)
+	f(`* |~foo`, `~foo`)
 	f(`* | "by"`, `"by"`)
 	f(`* | "stats" *`, `"stats"`)
 	f(`* | * "count"`, `"count"`)
@@ -2384,7 +2538,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`_time:[5m, 10m]OR not(x)`, `_time:[5m,10m] or !x`)
 	f(`(a)and(b)`, `a b`)
 	f(`_time:[5m, 10m]ANd not(x)`, `_time:[5m,10m] !x`)
-	f(`*|(foo)`, `foo`)
+	f(`*|* (foo)`, `foo`)
 	f(`a:(foo)`, `a:foo`)
 	f(`((a))`, `a`)
 	f(`!(a)`, `!a`)
@@ -2392,7 +2546,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`not(a)`, `!a`)
 	f(`a and(b)`, `a b`)
 	f(`a or(b)`, `a or b`)
-	f(`a|foobar`, `a foobar`)
+	f(`a|foo:bar`, `a foo:bar`)
 	f(`a|~b`, `a ~b`)
 	f(`a:~b`, `a:~b`)
 	f(`(~a)`, `~a`)
@@ -2430,6 +2584,106 @@ func TestParseQuery_Success(t *testing.T) {
 	// These aren't wildcard field names, but just 'match all' filters
 	f(`a * :foo`, `a *:foo`)
 	f(`a * foo`, `a foo`)
+
+	// trailing semicolon after filter
+	f("*;", "*")
+	f("*;#comment", "*")
+	f("foo;", "foo")
+	f("foo\n ; \t # comment", "foo")
+	f("a:b;", "a:b")
+	f("a*:b ;", "a*:b")
+	f("a*:b* ;", "a*:b*")
+	f("a* : *b*;", "a*:*b*")
+	f("a:*;", "a:*")
+	f("i(abc);", "i(abc)")
+	f("b : i ( abc ) ; ", "b:i(abc)")
+	f("foo or bar;", "foo or bar")
+	f("foo and bar ;", "foo bar")
+
+	// trailing semicolon after pipe
+	f(`* | block_stats;`, `* | block_stats`)
+	f(`* | blocks_count;`, `* | blocks_count`)
+	f(`* | coalesce (x);`, `* | coalesce(x)`)
+	f(`* | collapse_nums;`, `* | collapse_nums`)
+	f(`* | copy x y;`, `* | copy x as y`)
+	f(`* | decolorize;`, `* | decolorize`)
+	f(`* | delete x;`, `* | delete x`)
+	f(`* | drop_empty_fields;`, `* | drop_empty_fields`)
+	f(`* | extract "a=<b>";`, `* | extract "a=<b>"`)
+	f(`* | extract_regexp "(?P<ip>([0-9]+[.]){3}[0-9]+)";`, `* | extract_regexp "(?P<ip>([0-9]+[.]){3}[0-9]+)"`)
+	f(`* | facets;`, `* | facets`)
+	f(`* | field_names;`, `* | field_names`)
+	f(`* | field_values x;`, `* | field_values x`)
+	f(`* | fields x;`, `* | fields x`)
+	f(`* | a:b;`, `a:b`)
+	f(`* | count() x | filter x:10;`, `* | stats count(*) as x | filter x:10`)
+	f(`* | first;`, `* | first`)
+	f(`* | first 20;`, `* | first 20`)
+	f(`* | first 20 by (x);`, `* | first 20 by (x)`)
+	f(`* | format x;`, `* | format x`)
+	f(`* | format x as y;`, `* | format x as y`)
+	f(`* | generate_sequence 3;`, `* | generate_sequence 3`)
+	f(`* | join by (x) (y;);`, `* | join by (x) (y)`)
+	f(`* | json_array_len x;`, `* | json_array_len(x)`)
+	f(`* | json_array_len x y;`, `* | json_array_len(x) as y`)
+	f(`* | hash(x);`, `* | hash(x)`)
+	f(`* | last;`, `* | last`)
+	f(`* | last 20;`, `* | last 20`)
+	f(`* | last 20 by (x);`, `* | last 20 by (x)`)
+	f(`* | last 20 by (x, y desc);`, `* | last 20 by (x, y desc)`)
+	f(`* | len(x);`, `* | len(x)`)
+	f(`* | len(x) y;`, `* | len(x) as y`)
+	f(`* | limit;`, `* | limit 10`)
+	f(`* | limit 20;`, `* | limit 20`)
+	f(`* | math a+b c;`, `* | math (a + b) as c`)
+	f(`* | offset 10;`, `* | offset 10`)
+	f(`* | pack_json;`, `* | pack_json`)
+	f(`* | pack_json as x;`, `* | pack_json as x`)
+	f(`* | pack_logfmt;`, `* | pack_logfmt`)
+	f(`* | pack_logfmt x;`, `* | pack_logfmt as x`)
+	f(`* | query_stats;`, `* | query_stats`)
+	f(`* | rename x y;`, `* | rename x as y`)
+	f(`* | rename x y, a as b;`, `* | rename x as y, a as b`)
+	f(`* | replace(a, b);`, `* | replace (a, b)`)
+	f(`* | replace(a, b) at x;`, `* | replace (a, b) at x`)
+	f(`* | replace_regexp ("a", "b");`, `* | replace_regexp (a, b)`)
+	f(`* | replace_regexp ("a", "b") at x;`, `* | replace_regexp (a, b) at x`)
+	f(`* | running_stats count() x;`, `* | running_stats count(*) as x`)
+	f(`* | sample 10;`, `* | sample 10`)
+	f(`* | set_stream_fields x;`, `* | set_stream_fields x`)
+	f(`* | sort;`, `* | sort`)
+	f(`* | sort (x);`, `* | sort by (x)`)
+	f(`* | sort (x) limit 10;`, `* | sort by (x) limit 10`)
+	f(`* | split ",";`, `* | split ","`)
+	f(`* | split "," x;`, `* | split "," from x`)
+	f(`* | split "," x y;`, `* | split "," from x as y`)
+	f(`* | stats min(x) a, count();`, `* | stats min(x) as a, count(*) as "count(*)"`)
+	f(`* | count() ; `, `* | stats count(*) as "count(*)"`)
+	f(`* | stream_context after 3;`, `* | stream_context after 3`)
+	f(`* | time_add 1h;`, `* | time_add 1h`)
+	f(`* | top x;`, `* | top by (x)`)
+	f(`* | total_stats count() x;`, `* | total_stats count(*) as x`)
+	f(`* | union (a;);`, `* | union (a)`)
+	f(`* | uniq x;`, `* | uniq by (x)`)
+	f(`* | unpack_json;`, `* | unpack_json`)
+	f(`* | unpack_json x;`, `* | unpack_json from x`)
+	f(`* | unpack_json from x;`, `* | unpack_json from x`)
+	f(`* | unpack_logfmt;`, `* | unpack_logfmt`)
+	f(`* | unpack_logfmt x;`, `* | unpack_logfmt from x`)
+	f(`* | unpack_logfmt from x;`, `* | unpack_logfmt from x`)
+	f(`* | unpack_syslog;`, `* | unpack_syslog`)
+	f(`* | unpack_syslog x;`, `* | unpack_syslog from x`)
+	f(`* | unpack_syslog from x;`, `* | unpack_syslog from x`)
+	f(`* | unpack_words;`, `* | unpack_words`)
+	f(`* | unpack_words x;`, `* | unpack_words from x`)
+	f(`* | unpack_words x y;`, `* | unpack_words from x as y`)
+	f(`* | unpack_words from x y;`, `* | unpack_words from x as y`)
+	f(`* | unpack_words from x as y;`, `* | unpack_words from x as y`)
+	f(`* | unroll x;`, `* | unroll by (x)`)
+	f(`* | unroll (x,y);`, `* | unroll by (x, y)`)
+
+	f(`a:in(x | keep a;);`, `a:in(x | fields a)`)
+	f(`a:in(x | keep a;) | stats count() if (x;) y;`, `a:in(x | fields a) | stats count(*) if (x) as y`)
 }
 
 func TestParseQuery_Failure(t *testing.T) {
@@ -2455,6 +2709,23 @@ func TestParseQuery_Failure(t *testing.T) {
 	f("NOT")
 	f("not (abc")
 	f("!")
+
+	// superflouos text after trailing semicolon
+	f("a or;")
+	f("a and;")
+	f("not;")
+	f("(;")
+	f("a|;")
+	f("a|;count()")
+	f("a;|count()")
+	f(";")
+	f("a;b")
+	f("a:b ; c")
+	f("a:b | count() ; c")
+	f("a*:;")
+	f(`a:in(b;|keep a)`)
+	f(`* | count() if (x |;)`)
+	f(`* | count() if (x | count())`)
 
 	// missing field name
 	f(":foo")
@@ -3229,6 +3500,20 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`* | unpack_syslog.x`)
 	f(`* | unpack_words.x`)
 	f(`* | unroll.x`)
+
+	// incorrect stats functions
+	f(`* | count`)
+	f(`* | count x`)
+	f(`* | count as`)
+	f(`* | by`)
+	f(`* | (x)`)
+	f(`* | by (x)`)
+	f(`* | (x) count`)
+
+	// incorrect pipes
+	f(`* | unpack_word`)
+	f(`* | coalsce(a,b)`)
+	f(`* | unique by (_msg) limit 1`)
 }
 
 func TestQueryGetNeededColumns(t *testing.T) {
@@ -4338,13 +4623,13 @@ func TestQueryHasGlobalTimeFilter(t *testing.T) {
 	f(`* | count()`, false)
 	f(`error OR _time:5m | count()`, false)
 	f(`(_time:5m AND error) OR (_time:5m AND warn) | count()`, false)
-	f(`* | error OR _time:5m | count()`, false)
+	f(`* | "error" OR _time:5m | count()`, false)
 
 	f(`_time:5m | count()`, true)
 	f(`_time:2023-04-25T22:45:59Z | count()`, true)
 	f(`error AND _time:5m | count()`, true)
 	f(`error AND (_time:5m AND warn) | count()`, true)
-	f(`* | error AND _time:5m | count()`, true)
+	f(`* | "error" AND _time:5m | count()`, true)
 }
 
 func TestQuery_AddExtraFilters(t *testing.T) {
