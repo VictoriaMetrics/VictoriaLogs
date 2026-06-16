@@ -170,6 +170,7 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
 		rwctxIdx[i] = i
 	}
+	fs.RegisterPathFsMetrics(tmpDataPath)
 
 	rwctxsGlobal = rwctxs
 }

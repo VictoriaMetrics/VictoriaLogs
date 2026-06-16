@@ -259,7 +259,7 @@ The `<start>` and `<end>` args can contain values in [any supported format](http
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
 For example, the following command returns per-hour number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) over logs for the last 3 hours:
@@ -562,7 +562,7 @@ The `<start>` and `<end>` args can contain values in [any supported format](http
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
 If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
 
-The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#stats-by-time-buckets).
+The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
 Note: The `/select/logsql/stats_query_range` endpoint relies on `_time` field for time bucketing
 and therefore does not allow any pipe to change or remove the `_time` before the `| stats ...` pipe.
@@ -1089,19 +1089,17 @@ All the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/query
 Note that `extra_filters` and `extra_stream_filters` are global constraints. They are unconditionally propagated into all the subqueries
 inside the `query` (for example, queries inside `| join ... (...)`, `| union(...)`, `...:in(<query>)`, etc). This behavior is needed for reliable access control (e.g. restricting queries to a subset of logs) - otherwise it can be bypassed via subqueries.
 
-The `extra_filters` and `extra_stream_filters` values can have the following format:
+The `extra_filters` and `extra_stream_filters` values can also contain JSON object with `"field":"value"` entries. For example:
 
-- JSON object with `"field":"value"` entries. For example, the following JSON applies `namespace:=my-app and env:=prod` filter to the `query`
+- the following JSON applies `namespace:=my-app and env:=prod` filter to the `query`
   passed to [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api): `extra_filters={"namespace":"my-app","env":"prod"}` .
 
-  The following JSON applies `{namespace="my-app",env="prod"}` [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter)
+- the following JSON applies `{namespace="my-app",env="prod"}` [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter)
   to the `query`: `extra_stream_filters={"namespace":"my-app","env":"prod"}` .
 
-  Every JSON entry may contain either a single string value or an array of values. An array of `{"field:["v1","v2",..."vN"]}` values is converted
-  into `field:in(v1, v2, ... vN)` [filter](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter) when passed to `extra_filters`.
-  The same array is converted into `{field=~"v1|v2|...|vN"}` [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
-
-The `extra_filters` may contain also arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters). For example, `extra_filters=foo:~bar%20-baz:x`.
+Every JSON entry may contain either a single string value or an array of values. An array of `{"field:["v1","v2",..."vN"]}` values is converted
+into `field:in(v1, v2, ... vN)` [filter](https://docs.victoriametrics.com/victorialogs/logsql/#multi-exact-filter) when passed to `extra_filters`.
+The same array is converted into `{field in (v1, v2, ..., vN)}` [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
 
 The arg passed to `extra_filters` and `extra_stream_filters` must be properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
@@ -1178,6 +1176,13 @@ Web UI provides the following modes for displaying query results:
 - `Live` - displays [live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) results for the given query.
 
 See also [command line interface](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
+
+### Building web UI from source
+
+Web UI source code is located in the [`app/vmui` folder](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/app/vmui)
+at [VictoriaLogs repository](https://github.com/VictoriaMetrics/VictoriaLogs/).
+Follow [these instructions](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/app/vmui#updating-vmui-embedded-into-victorialogs)
+in order to build Web UI into a js bundle and embed it into VictoriaLogs executable.
 
 ## Visualization in Grafana
 

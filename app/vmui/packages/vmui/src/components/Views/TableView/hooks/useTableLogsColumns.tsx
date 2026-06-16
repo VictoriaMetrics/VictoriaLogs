@@ -1,7 +1,7 @@
 import { Logs } from "../../../../api/types";
 import { useMemo } from "preact/compat";
 import TableCopyButton from "../../../Table/TableCopyButton/TableCopyButton";
-import { formatDateWithNanoseconds } from "../../../../utils/time";
+import { vmDate } from "../../../../utils/time";
 import { LOGS_DATE_FORMAT } from "../../../../constants/logs";
 import { type Column } from "../../../Table/types";
 
@@ -12,7 +12,7 @@ type Options = {
 const getRenderColumnByKey = (key: string): Column<Logs>["render"] => {
   switch (key) {
     case "_time":
-      return (log: Logs) => log._time ? formatDateWithNanoseconds(log._time, LOGS_DATE_FORMAT) : "";
+      return (log: Logs) => log._time ? vmDate(log._time).nano().format(LOGS_DATE_FORMAT) : "";
     default:
       return undefined;
   }

@@ -1,12 +1,12 @@
-import { FC, MouseEvent } from "react";
+import { FC } from "react";
 import Tooltip from "../../components/Main/Tooltip/Tooltip";
 import Button from "../../components/Main/Button/Button";
 import { ContextIcon } from "../../components/Main/Icons";
 import { Logs } from "../../api/types";
 import useBoolean from "../../hooks/useBoolean";
 import Modal from "../../components/Main/Modal/Modal";
-import { useMemo } from "preact/compat";
 import StreamContextList from "./StreamContextList";
+import { LOGS_STREAM_CONTEXT_KEYS } from "../../constants/logs";
 
 interface Props {
   log: Logs;
@@ -14,8 +14,7 @@ interface Props {
 }
 
 const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
-  const requiredFields = ["_stream_id", "_time"];
-  const showContextButton = useMemo(() => requiredFields.every(field => log[field]), [log]);
+  const showContextButton = LOGS_STREAM_CONTEXT_KEYS.every(field => log[field]);
 
   const {
     value: isOpenContext,
@@ -23,7 +22,7 @@ const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
     setFalse: handleCloseContext,
   } = useBoolean(false);
 
-  const handleClickButton = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleClickButton = (e: MouseEvent) => {
     e.stopPropagation();
     handleOpenContext();
   };
@@ -33,7 +32,7 @@ const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
   };
 
   if (!showContextButton) {
-    return null; // Cannot show context without stream ID
+    return null;  // Cannot show context without required anchor fields
   }
 
   return (
@@ -54,7 +53,6 @@ const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
           onClose={handleCloseModal}
         >
           <StreamContextList
-            isModal
             log={log}
             displayFields={displayFields}
           />

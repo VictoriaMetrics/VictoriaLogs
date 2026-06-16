@@ -59,6 +59,43 @@ func TestVlsingleStatsQueryRange_Success(t *testing.T) {
 	f(`* | stats by (x) count() q | last 1 by (q)`, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"__name__":"q","x":"1"},"values":[[1735689600,"1"]]}]}}`)
 }
 
+func TestVlclusterStatsQueryRangeRate(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlcluster()
+
+	records := []string{
+		`{"_msg":"a","_time":"2025-01-01T00:00:00Z","status":"400","bytes":400}`,
+		`{"_msg":"b","_time":"2025-01-01T00:00:01Z","status":"400","bytes":400}`,
+		`{"_msg":"c","_time":"2025-01-01T00:00:02Z","status":"400","bytes":400}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	f := func(query, responseExpected string) {
+		t.Helper()
+
+		opts := apptest.StatsQueryRangeOpts{
+			Start: "2025-01-01T00:00:00Z",
+			End:   "2025-01-01T00:00:03Z",
+			Step:  "1s",
+		}
+		response, status := sut.StatsQueryRangeRaw(t, query, opts)
+		if status != http.StatusOK {
+			t.Fatalf("unexpected HTTP status=%d; response=%q", status, response)
+		}
+		if response != responseExpected {
+			t.Fatalf("unexpected response\ngot\n%s\nwant\n%s", response, responseExpected)
+		}
+	}
+
+	f(`status:400 | stats by (status) count() as logs_total`, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"__name__":"logs_total","status":"400"},"values":[[1735689600,"1"],[1735689601,"1"],[1735689602,"1"]]}]}}`)
+	f(`status:400 | stats by (status) rate() as logs_rate`, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"__name__":"logs_rate","status":"400"},"values":[[1735689600,"1"],[1735689601,"1"],[1735689602,"1"]]}]}}`)
+	f(`status:400 | stats by (status) rate_sum(bytes) as bytes_rate`, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{"__name__":"bytes_rate","status":"400"},"values":[[1735689600,"400"],[1735689601,"400"],[1735689602,"400"]]}]}}`)
+}
+
 func TestVlsingleStatsQueryRange_Failure(t *testing.T) {
 	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)

@@ -11,8 +11,10 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/vmalertproxy"
 	"github.com/VictoriaMetrics/metrics"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlselect/internalselect"
@@ -29,14 +31,15 @@ var (
 		"limit is reached; see also -search.maxQueryDuration")
 	maxQueryDuration = flag.Duration("search.maxQueryDuration", time.Second*30, "The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg")
 
-	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes; see also -internalselect.disable")
-	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints")
+	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
+	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -56,6 +59,9 @@ func getDefaultMaxConcurrentRequests() int {
 // Init initializes vlselect
 func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
+
+	vmalertproxy.Init(*vmalertProxyURL)
+	flagutil.RegisterSecretFlag("vmalert.proxyURL")
 
 	internalselect.Init()
 }
@@ -185,6 +191,19 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		// Process live tailing request without timeout, since it is OK to run live tailing requests for very long time.
 		// Also do not apply concurrency limit to tail requests, since these limits are intended for non-tail requests.
 		logsql.ProcessLiveTailRequest(ctx, w, r)
+		return true
+	}
+	if strings.HasPrefix(path, "/select/vmalert/") {
+		vmalertRequests.Inc()
+		if len(*vmalertProxyURL) == 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "%s", `{"status":"error","msg":"the '-vmalert.proxyURL' command-line flag must be configured; `+
+				`see https://docs.victoriametrics.com/victorialogs/#vmalert"}`)
+			return true
+		}
+		path = strings.TrimPrefix(path, "/select")
+		vmalertproxy.HandleRequest(w, r, path)
 		return true
 	}
 
@@ -490,6 +509,8 @@ var (
 
 	// no need to track the duration for query_time_range requests, since they are instant
 	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
+
+	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 
 	// no need to track duration for /delete/* requests, because they are asynchronous
 	deleteRunTaskRequests     = metrics.NewCounter(`vl_http_requests_total{path="/delete/run_task"}`)

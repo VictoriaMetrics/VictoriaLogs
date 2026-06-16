@@ -1,5 +1,5 @@
-# File contains default list of alerts for various VM components.
-# The following alerts are recommended for use for any VM installation.
+# File contains shared health alerts for VictoriaLogs components.
+# The following alerts are recommended for use for VictoriaLogs installations.
 # The alerts below are just recommendations and may require some updates
 # and threshold calibration according to every specific setup.
 groups:
@@ -81,19 +81,15 @@ groups:
             Logging rate for job \"{{ $labels.job }}\" ({{ $labels.instance }}) is {{ $value }} for last 15m.
             Worth to check logs for specific error messages.
 
-      - alert: ConcurrentInsertsHitTheLimit
-        expr: avg_over_time(vm_concurrent_insert_current{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m]) >= vm_concurrent_insert_capacity{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}
+      - alert: RequestErrorsToAPI
+        expr: increase(vl_http_errors_total[5m]) > 0
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent inserts limit"
-          description: | 
-            The limit of concurrent inserts on instance {{ $labels.instance }} depends on the number of CPUs.
-            Usually, when component constantly hits the limit it is likely the component is overloaded and requires more CPU.
-            In some cases for components like vmagent or vminsert the alert might trigger if there are too many clients
-            making write attempts. If vmagent's or vminsert's CPU usage and network saturation are at normal level, then 
-            it might be worth adjusting `-maxConcurrentInserts` cmd-line flag.
+          summary: "Too many errors served for path {{ $labels.path }} (instance {{ $labels.instance }})"
+          description: "Requests to path {{ $labels.path }} are receiving errors.
+            Please verify if clients are sending correct requests."
 
       - alert: RowsRejectedOnIngestion
         expr: rate(vl_rows_dropped_total[5m]) > 0
@@ -102,23 +98,19 @@ groups:
           severity: warning
         annotations:
           summary: "Some rows are rejected on \"{{ $labels.instance }}\" on ingestion attempt"
-          description: "Ingested rows on instance \"{{ $labels.instance }}\" are rejected due to the
+          description: "VictoriaLogs is rejecting to ingest rows on \"{{ $labels.instance }}\" due to the
             following reason: \"{{ $labels.reason }}\""
 
-      - alert: TooHighQueryLoad
-        expr: increase(vl_concurrent_select_limit_timeout_total[5m]) > 0
+      - alert: ConcurrentInsertsHitTheLimit
+        expr: avg_over_time(vm_concurrent_insert_current{job=~".*(victorialogs|vlstorage|vlinsert|vlagent).*"}[1m]) >= vm_concurrent_insert_capacity{job=~".*(victorialogs|vlstorage|vlinsert|vlagent).*"}
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "Read queries fail with timeout for {{ $labels.job }} on instance {{ $labels.instance }}"
+          summary: "{{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent inserts limit"
           description: |
-            Instance {{ $labels.instance }} ({{ $labels.job }}) is failing to serve read queries during last 15m.
-            Concurrency limit `-search.maxConcurrentRequests` was reached on this instance and extra queries were
-            put into the queue for `-search.maxQueueDuration` interval. But even after waiting in the queue these queries weren't served.
-            This happens if instance is overloaded with the current workload, or datasource is too slow to respond.
-            Possible solutions are the following:
-            * reduce the query load;
-            * increase compute resources or number of replicas;
-            * adjust limits `-search.maxConcurrentRequests` and `-search.maxQueueDuration`.
-            See more at https://docs.victoriametrics.com/victoriametrics/troubleshooting/#slow-queries.
+            The limit of concurrent inserts on instance {{ $labels.instance }} depends on the number of CPUs.
+            Usually, when component constantly hits the limit it is likely the component is overloaded and requires more CPU.
+            In some cases the alert might trigger if there are too many clients making write attempts to the component.
+            If the component's CPU usage and network saturation are at normal level, then
+            it might be worth adjusting `-maxConcurrentInserts` cmd-line flag.

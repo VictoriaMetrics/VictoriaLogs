@@ -37,7 +37,8 @@ VictoriaLogs supports the following data ingestion HTTP APIs:
 - JSON stream API aka [ndjson](https://jsonlines.org/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api).
 - Loki JSON API. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#loki-json-api).
 - OpenTelemetry API. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#opentelemetry-api).
-- Journald export format.
+- Journald export format. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/).
+- Splunk. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/).
 
 VictoriaLogs accepts optional [HTTP parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) at data ingestion HTTP APIs.
 
