@@ -19,7 +19,7 @@ export const WITHOUT_GROUPING = "none";
 // Default values for the logs configurators.
 export const LOGS_GROUP_BY = "_stream";
 export const LOGS_DISPLAY_FIELDS = "_msg";
-export const LOGS_DATE_FORMAT = `${DATE_TIME_FORMAT}.SSS`;
+export const LOGS_DATE_FORMAT = DATE_TIME_FORMAT;
 
 // URL parameters for the logs page.
 export const LOGS_URL_PARAMS = {

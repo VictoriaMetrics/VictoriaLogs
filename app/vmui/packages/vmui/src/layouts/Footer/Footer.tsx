@@ -3,6 +3,7 @@ import { LogoShortIcon } from "../../components/Main/Icons";
 import "./style.scss";
 import { footerLinksToLogs } from "../../constants/footerLinks";
 import useGetVersion from "../../hooks/useGetVersion";
+import { getNowInTimezone } from "../../utils/time";
 
 interface Props {
   links?: {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const Footer: FC<Props> = memo(({ links = footerLinksToLogs }) => {
-  const copyrightYears = `2019-${new Date().getFullYear()}`;
+  const copyrightYears = `2019-${getNowInTimezone().format("YYYY")}`;
   const { version } = useGetVersion();
 
   return <footer

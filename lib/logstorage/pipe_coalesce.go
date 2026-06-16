@@ -2,7 +2,6 @@ package logstorage
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -14,27 +13,23 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#coalesce-pipe
 type pipeCoalesce struct {
-	srcFields    []string
-	dstField     string
-	defaultValue string
-	dstIsSource  bool
+	srcFieldFilters []string
+	dstField        string
+	defaultValue    string
 }
 
 func (pc *pipeCoalesce) String() string {
-	if len(pc.srcFields) == 0 {
+	if len(pc.srcFieldFilters) == 0 {
 		logger.Panicf("BUG: pipeCoalesce must contain at least one srcField")
 	}
 
-	srcFields := make([]string, len(pc.srcFields))
-	for i, f := range pc.srcFields {
-		srcFields[i] = quoteTokenIfNeeded(f)
-	}
-
-	s := "coalesce(" + strings.Join(srcFields, ", ") + ")"
+	s := "coalesce(" + fieldNamesString(pc.srcFieldFilters) + ")"
 	if pc.defaultValue != "" {
 		s += " default " + quoteTokenIfNeeded(pc.defaultValue)
 	}
-	s += " as " + quoteTokenIfNeeded(pc.dstField)
+	if pc.dstField != "_msg" {
+		s += " as " + quoteTokenIfNeeded(pc.dstField)
+	}
 	return s
 }
 
@@ -56,11 +51,8 @@ func (pc *pipeCoalesce) isFixedOutputFieldsOrder() bool {
 
 func (pc *pipeCoalesce) updateNeededFields(pf *prefixfilter.Filter) {
 	if pf.MatchString(pc.dstField) {
-		pf.AddAllowFilters(pc.srcFields)
-	}
-
-	if !pc.dstIsSource {
 		pf.AddDenyFilter(pc.dstField)
+		pf.AddAllowFilters(pc.srcFieldFilters)
 	}
 }
 
@@ -73,7 +65,7 @@ func (pc *pipeCoalesce) initFilterInValues(_ *inValuesCache, _ getFieldValuesFun
 }
 
 func (pc *pipeCoalesce) visitSubqueries(_ func(q *Query)) {
-
+	// nothing to do
 }
 
 func (pc *pipeCoalesce) newPipeProcessor(_ int, _ <-chan struct{}, _ func(), ppNext pipeProcessor) pipeProcessor {
@@ -92,8 +84,9 @@ type pipeCoalesceProcessor struct {
 }
 
 type pipeCoalesceProcessorShard struct {
-	rc         resultColumn
-	srcColumns []*blockResultColumn
+	rc resultColumn
+
+	cs []*blockResultColumn
 }
 
 func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
@@ -104,26 +97,31 @@ func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := pcp.shards.Get(workerID)
 	pc := pcp.pc
 
-	shard.rc.name = pc.dstField
-
-	if shard.srcColumns == nil {
-		shard.srcColumns = make([]*blockResultColumn, len(pc.srcFields))
+	// Initialize shard.cs
+	cs := br.getColumns()
+	for _, ff := range pc.srcFieldFilters {
+		if !prefixfilter.IsWildcardFilter(ff) {
+			c := br.getColumnByName(ff)
+			shard.addColumn(c)
+			continue
+		}
+		for _, c := range cs {
+			if prefixfilter.MatchFilter(ff, c.name) {
+				shard.addColumn(c)
+			}
+		}
 	}
-	for i, srcField := range pc.srcFields {
-		shard.srcColumns[i] = br.getColumnByName(srcField)
-	}
 
-	for rowIdx := 0; rowIdx < br.rowsLen; rowIdx++ {
+	// Fill the shard.rc
+	for rowIdx := range br.rowsLen {
 		value := ""
-		for _, srcColumn := range shard.srcColumns {
-			v := srcColumn.getValueAtRow(br, rowIdx)
+		for _, c := range shard.cs {
+			v := c.getValueAtRow(br, rowIdx)
 			if v != "" {
 				value = v
 				break
 			}
 		}
-
-		// If all source fields are empty, use default value
 		if value == "" {
 			value = pc.defaultValue
 		}
@@ -131,11 +129,27 @@ func (pcp *pipeCoalesceProcessor) writeBlock(workerID uint, br *blockResult) {
 		shard.rc.addValue(value)
 	}
 
+	shard.rc.name = pc.dstField
 	br.addResultColumn(shard.rc)
 	pcp.ppNext.writeBlock(workerID, br)
 
-	clear(shard.srcColumns)
 	shard.rc.reset()
+
+	clear(shard.cs)
+	shard.cs = shard.cs[:0]
+}
+
+func (shard *pipeCoalesceProcessorShard) addColumn(c *blockResultColumn) {
+	// verify whether the given column already exists in shard.cs
+	for _, col := range shard.cs {
+		if col.name == c.name {
+			// Nothing to add - the column already exists
+			return
+		}
+	}
+
+	// Add the column to cs.
+	shard.cs = append(shard.cs, c)
 }
 
 func (pcp *pipeCoalesceProcessor) flush() error {
@@ -149,50 +163,41 @@ func parsePipeCoalesce(lex *lexer) (pipe, error) {
 	}
 	lex.nextToken()
 
-	srcFields, err := parseFieldNamesInParens(lex)
+	srcFieldFilters, err := parseFieldFiltersInParens(lex)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse field names: %w", err)
 	}
 
-	if len(srcFields) == 0 {
+	if len(srcFieldFilters) == 0 {
 		return nil, fmt.Errorf("coalesce requires at least one field name")
 	}
 
 	// Parse optional 'default' keyword and value
-	var defaultValue string
+	defaultValue := ""
 	if lex.isKeyword("default") {
-		lex.nextToken() // Skip the "default" keyword
-		value, err := lex.nextCompoundToken()
+		lex.nextToken()
+		v, err := lex.nextCompoundToken()
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse default value: %w", err)
 		}
-		defaultValue = value
+		defaultValue = v
 	}
 
-	// Parse 'as' keyword
-	if !lex.isKeyword("as") {
-		return nil, fmt.Errorf("expecting 'as' after coalesce(...); got %q", lex.token)
-	}
-	lex.nextToken()
-
-	// Parse destination field name
-	dstField, err := parseFieldName(lex)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse result field name: %w", err)
+	// Parse 'as' token
+	dstField := "_msg"
+	if lex.isKeyword("as") {
+		lex.nextToken()
+		v, err := parseFieldName(lex)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse result field name: %w", err)
+		}
+		dstField = v
 	}
 
 	pc := &pipeCoalesce{
-		srcFields:    srcFields,
-		dstField:     dstField,
-		defaultValue: defaultValue,
-		dstIsSource:  false,
-	}
-
-	for _, src := range pc.srcFields {
-		if src == pc.dstField {
-			pc.dstIsSource = true
-			break
-		}
+		srcFieldFilters: srcFieldFilters,
+		dstField:        dstField,
+		defaultValue:    defaultValue,
 	}
 
 	return pc, nil

@@ -256,7 +256,7 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 			for _, c := range casesReal {
 				err := verifyStreamTagsCanonical(c.streamTagsCanonical, c.fields)
 				if err != nil {
-					panic(fmt.Errorf("unexpected error: %s", err))
+					panic(fmt.Errorf("unexpected error: %w", err))
 				}
 			}
 		}

@@ -48,7 +48,8 @@ Please download and unpack the `vlutils` archive from [releases page](https://gi
 and [Quay](https://quay.io/repository/victoriametrics/vlagent?tab=tags)), then pass the following command-line flags to the `vlagent-prod` binary:
 
 - `-remoteWrite.url` - the VictoriaLogs endpoint for sending the accepted logs to. It must end with `/insert/native`.
-  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address. See [these docs](https://docs.victoriametrics.com/victoriametrics/vmagent/#srv-urls) for details.
+  The `-remoteWrite.url` may refer to [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) address.
+  See [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#srv-urls) for details.
 
 Example command, which starts `vlagent` for accepting logs over HTTP-based [supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/)
 at the port `9429` and sends the collected logs to VictoriaLogs instance at `victoria-logs-host:9428`:
@@ -340,9 +341,10 @@ spec:
 
 The `vlagent-data` volume uses `hostPath` so that the checkpoint file and the on-disk buffer survive Pod restarts on the same node.
 
-> **Note**: for Kubernetes in Docker (minikube, kind): mount `/var/lib` as a read-only hostPath volume,
-> since container runtime data lives there.
-> In this case `/var/log/pods` and `/var/log/containers` will contain symlinks - do not remove these mounts.
+> **Note**: for Kubernetes in Docker (`minikube`, `kind`): `/var/log/containers` and `/var/log/pods`
+> may contain symlinks to data under the container runtime directory.
+> Mount the corresponding data path (e.g., `/var/lib/docker/containers/`) as a read-only `hostPath` volume to resolve these symlinks.
+> See also [the default mounts](https://github.com/VictoriaMetrics/helm-charts/blob/5fcefca5e8afa9d03375486c11be817f631ef1d1/charts/victoria-logs-collector/values.yaml#L266-L284) for the victoria-logs-collector Helm chart.
 
 See also: [How to exclude vlagent's own logs from collection](https://docs.victoriametrics.com/victorialogs/vlagent/#excluding-vlagents-own-logs).
 
@@ -384,7 +386,7 @@ The `-fileCollector.glob` flag must point to a file or a collection of files wit
 -fileCollector.glob=/var/log/nginx/
 ```
 
-### Supported pattern syntax
+#### Supported pattern syntax
 
 | Pattern          | Description                                                   |
 |------------------|---------------------------------------------------------------|
@@ -418,7 +420,7 @@ To collect logs from hidden files, specify the leading dot explicitly:
 -fileCollector.glob=/var/log/nginx/.*.log
 ```
 
-### Excluding files
+#### Excluding files
 
 To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 
@@ -427,7 +429,7 @@ To exclude specific files from collection, use `-fileCollector.excludeGlob`:
 -fileCollector.excludeGlob=/var/log/com.apple*
 ```
 
-### Multiple glob patterns and ordering
+#### Multiple glob patterns and ordering
 
 Multiple glob patterns can be specified by repeating the flag:
 
@@ -762,21 +764,14 @@ according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmaut
 
 ## SRV URLs
 
-[DNS SRVs](https://en.wikipedia.org/wiki/SRV_record) are useful when HTTP services run on different TCP ports or when their TCP ports can change over time (for instance, after a restart).
-
-`vlagent` supports DNS SRV resolution in `-remoteWrite.url` when the hostname starts with `srv+`. For example, if DNS contains SRV records for `victoria-logs`, then:
-
-```sh
--remoteWrite.url=http://srv+victoria-logs/insert/native
-```
-
-When vlagent creates a new TCP connection to the remote endpoint, it resolves the SRV record and uses one of the returned `target:port` addresses, for example:
+`vlagent` supports [DNS SRV](https://en.wikipedia.org/wiki/SRV_record) hostname resolution in the `-remoteWrite.url` command-line flag when the hostname starts with `srv+` prefix.
+For example, the following command instructs `vlagent` to send the data to the TCP address obtained from the `victoria-logs` SRV record:
 
 ```sh
--remoteWrite.url=http://victoria-logs-host:9428/insert/native
+./vlagent -remoteWrite.url=http://srv+victoria-logs/insert/native
 ```
 
-If SRV lookup returns multiple targets, `vlagent` randomly chooses a target per connection.
+If SRV lookup returns multiple targets, `vlagent` randomly chooses a target per every new connection to the remote storage.
 
 ## remote write format
 
@@ -892,7 +887,8 @@ Use [the official Grafana dashboard for `vlagent` state overview](https://grafan
 Graphs on this dashboard contain useful hints - hover the `i` icon at the top left corner of each graph in order to read them.
 If you have suggestions for improvements or have found a bug, please open an issue on GitHub or add a review to the dashboard.
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+We recommend setting up [alerts-vlagent.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlagent.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 ## Multitenancy

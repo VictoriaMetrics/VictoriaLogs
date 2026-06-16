@@ -1,11 +1,15 @@
 import { FC, useLayoutEffect, useMemo, useRef, useState } from "preact/compat";
 import uPlot, { AlignedData } from "uplot";
-import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import classNames from "classnames";
 import { sortLogHits } from "../../../../utils/logs";
 import { formatNumber } from "../../../../utils/number";
 import "./style.scss";
+import {
+  nanosToIsoString,
+  secondsToNanoseconds,
+  vmDate
+} from "../../../../utils/time";
 
 interface Props {
   data: AlignedData;
@@ -27,7 +31,12 @@ type TooltipData = {
   timestamp: string;
 } | undefined;
 
-const timeFormat = (ts: number) => dayjs(ts * 1000).tz().format(DATE_TIME_FORMAT);
+const timeFormat = (ts: number) => {
+  if (!Number.isFinite(ts)) return null;
+
+  const iso = nanosToIsoString(secondsToNanoseconds(ts));
+  return vmDate(iso).nano().format(DATE_TIME_FORMAT);
+};
 
 const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
   const [isTooltipReady, setTooltipReady] = useState(false);
@@ -74,11 +83,15 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
       left: uPlotInst.valToPos?.(time, "x") || 0,
     };
 
+    const startFormat = timeFormat(time);
+    const endFormat = timeFormat(timeNext);
+    const timeRangeFormat = `${startFormat}${endFormat ? ` - ${endFormat}` : ""}`;
+
     return {
       point,
       total,
       values: tooltipItems,
-      timestamp: `${timeFormat(time)} - ${timeFormat(timeNext)}`,
+      timestamp: timeRangeFormat,
     };
   }, [focusDataIdx, uPlotInst, data]);
 
