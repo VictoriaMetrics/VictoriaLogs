@@ -77,3 +77,12 @@ export const getDurationFromPeriod = (p: TimePeriod): string => {
 
   return getDurationFromNanoseconds(end - start);
 };
+
+export function formatRequestDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.max(1, Math.round(ms))}ms`;
+  }
+
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+

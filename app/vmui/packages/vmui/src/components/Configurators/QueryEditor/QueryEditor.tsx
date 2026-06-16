@@ -9,6 +9,7 @@ import { useQueryState } from "../../../state/query/QueryStateContext";
 import debounce from "lodash.debounce";
 import { toggleLineComment } from "./LogsQL/utils";
 import QueryEditorHotkeysTip from "./QueryEditorHotkeysTip";
+import { formatRequestDuration } from "../../../utils/time";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
@@ -62,9 +63,8 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const debouncedSetShowAutocomplete = useRef(debounce(setShowAutocomplete, 500)).current;
 
-  if (stats?.executionTimeMs !== undefined) {
-    label = `${label} (${stats.executionTimeMs || 0}ms)`;
-  }
+  const executionTimeMs = stats?.executionTimeMs;
+  const labelPostfix = executionTimeMs ? ` (${formatRequestDuration(executionTimeMs)})` : "";
 
   const handleSelect = (val: string, caretPosition: number) => {
     onChange(val);
@@ -146,7 +146,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
     >
       <TextField
         value={value}
-        label={label}
+        label={`${label}${labelPostfix}`}
         type={"textarea"}
         autofocus={!isMobile}
         error={error}
