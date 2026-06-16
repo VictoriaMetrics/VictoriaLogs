@@ -363,7 +363,7 @@ The `hits` field in the returned results contains an estimated number of logs wi
 
 ## How to get the number of unique log streams on the given time range?
 
-Use [`count_uniq` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-pipe)
+Use [`count_uniq(...)` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats)
 over [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field.
 For example, the following [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query
 returns the number of unique [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)

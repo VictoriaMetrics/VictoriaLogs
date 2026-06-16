@@ -279,7 +279,7 @@ func (sn *storageNode) doRequest(path string, body io.Reader) error {
 	resp, err := sn.c.Do(req)
 	if err != nil {
 		sn.setDisableTemporarily()
-		return fmt.Errorf("cannot send http request to %s: %s", reqURL, err)
+		return fmt.Errorf("cannot send http request to %s: %w", reqURL, err)
 	}
 	defer resp.Body.Close()
 

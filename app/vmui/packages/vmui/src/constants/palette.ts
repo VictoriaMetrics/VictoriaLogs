@@ -13,7 +13,7 @@ export const darkPalette = {
   "color-text-disabled": "#636e7b",
   "box-shadow": "rgba(0, 0, 0, 0.16) 1px 2px 6px",
   "box-shadow-popper": "rgba(0, 0, 0, 0.2) 0px 2px 8px 0px",
-  "border-divider": "1px solid rgba(99, 110, 123, 0.5)",
+  "border-color": "rgba(99, 110, 123, 0.5)",
   "color-hover-black": "rgba(0, 0, 0, 0.2)",
   // log hits chart colors
   "color-log-hits-bar-0": "rgba(255, 255, 255, 0.18)",
@@ -39,7 +39,7 @@ export const lightPalette = {
   "color-text-disabled": "#A09F9F",
   "box-shadow": "rgba(0, 0, 0, 0.08) 1px 2px 6px",
   "box-shadow-popper": "rgba(0, 0, 0, 0.1) 0px 2px 8px 0px",
-  "border-divider": "1px solid rgba(0, 0, 0, 0.15)",
+  "border-color": "rgba(0, 0, 0, 0.15)",
   "color-hover-black": "rgba(0, 0, 0, 0.06)",
   // log hits chart colors
   "color-log-hits-bar-0": "rgba(0, 0, 0, 0.18)",

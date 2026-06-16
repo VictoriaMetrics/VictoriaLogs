@@ -24,3 +24,8 @@ export const formatPercent = (p: number | null, fractionDigits?: number) => {
   if (p === 0) return "0%";
   return "<0.01%";
 };
+
+export const roundToStepPrecision = (value: number, stepSec: number) => {
+  const decimals = Math.max(0, Math.ceil(-Math.log10(stepSec)) + 2);
+  return Number(value.toFixed(decimals));
+};

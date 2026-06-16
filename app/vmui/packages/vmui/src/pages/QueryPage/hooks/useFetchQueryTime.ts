@@ -1,13 +1,17 @@
-import { useCallback, useState } from "preact/compat";
-import { ErrorTypes, TimeParams } from "../../../types";
+import { useCallback, useRef, useState } from "preact/compat";
+import { ErrorTypes, TimeParams, TimePeriod } from "../../../types";
 import { useTenant } from "../../../hooks/useTenant";
 import { useAppState } from "../../../state/common/StateContext";
-import dayjs from "dayjs";
-import { getDurationFromPeriod, getTimeperiodForDuration } from "../../../utils/time";
+import {
+  isValidDate,
+  timePeriodToTimeParams, vmDate
+} from "../../../utils/time";
 import { getOverrideValue } from "../../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 
-type ResponseTimeRange = {
+export interface ResponseTimeRange {
+  /** ISO 8601 string with up to nanosecond precision */
   start: string;
+  /** ISO 8601 string with up to nanosecond precision */
   end: string;
   hasTimeFilter: boolean;
 }
@@ -28,14 +32,21 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
   const [isLoading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<ErrorTypes | string>();
 
+  const abortControllerRef = useRef(new AbortController());
+
   const fetchQueryTime = useCallback(async ({ period, query }: {
     period: TimeParams,
     query?: string
   }): Promise<ServerTimeParams | undefined> => {
+    abortControllerRef.current?.abort();
+
     if (!getOverrideValue() || !hasTimeFilter(query)) {
       // No need to fetch, as time filter override is disabled or query has no _time filter
       return;
     }
+
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
 
     const params = new URLSearchParams({
       query: query || defaultQuery || "",
@@ -53,6 +64,7 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
         method: "POST",
         headers: { ...tenant },
         body: params,
+        signal,
       });
 
       if (!response.ok || !response.body) {
@@ -63,20 +75,21 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
       }
 
       const { start, end, hasTimeFilter }: ResponseTimeRange = await response.json();
-      const startDate = dayjs(start);
-      const endDate = dayjs(end);
 
-      if (!startDate.isValid() || !endDate.isValid()) {
+      if (!isValidDate(start) || !isValidDate(end)) {
         const text = "Invalid date range";
         setError(text);
         setLoading(false);
         return;
       }
 
-      const timeRange = { from: startDate.toDate(), to: endDate.toDate() };
-      const durationPeriod = getDurationFromPeriod(timeRange);
-      const period = getTimeperiodForDuration(durationPeriod, timeRange.to);
-      const serverPeriod = { ...period, hasTimeFilter };
+      const timePeriod: TimePeriod = {
+        from: vmDate(start).nano().toISOString(),
+        to: vmDate(end).nano().toISOString()
+      };
+
+      const timeParams: TimeParams = timePeriodToTimeParams(timePeriod);
+      const serverPeriod = { ...timeParams, hasTimeFilter };
       setServerPeriod(serverPeriod);
       return serverPeriod;
     } catch (e) {
@@ -95,5 +108,6 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
     serverPeriod,
     isLoading,
     error,
+    abort: useCallback(() => abortControllerRef.current?.abort(), [])
   };
 };
