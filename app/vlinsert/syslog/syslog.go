@@ -455,7 +455,7 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP str
 		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
 		if err != nil {
 			errorsTotal.Inc()
-			return fmt.Errorf("cannot read line #%d: %s", n, err)
+			return fmt.Errorf("cannot read line #%d: %w", n, err)
 		}
 		n++
 	}

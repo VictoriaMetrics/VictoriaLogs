@@ -47,7 +47,7 @@ const ScrollToTopButton: FC<ScrollToTopButtonProps> = ({ className }) => {
           variant="contained"
           color="primary"
           onClick={scrollToTop}
-          ariaLabel="Scroll to top"
+          aria-label="Scroll to top"
           startIcon={<ScrollToTopIcon />}
         />
       </Tooltip>

@@ -27,8 +27,8 @@ const BarHitsStats: FC<Props> = ({ totalHits, isHitsMode, durationMs }) => {
         </p>
       )}
       {durationFormat && (
-      <p className="vm-bar-hits-stats__item">
-        Query time: <b>{durationFormat}</b>
+      <p className="vm-bar-hits-stats__query-time">
+        Hits query ({durationFormat})
       </p>
       )}
     </div>

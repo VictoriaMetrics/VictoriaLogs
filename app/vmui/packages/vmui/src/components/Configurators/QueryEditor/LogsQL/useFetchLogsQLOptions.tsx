@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "preact/compat";
-import dayjs from "dayjs";
 import { ContextData, ContextType } from "./types";
 import { FunctionIcon, LabelIcon, MetricIcon, ValueIcon } from "../../../Main/Icons";
 import { AutocompleteOptions } from "../../../Main/Autocomplete/Autocomplete";
 import { useAppState } from "../../../../state/common/StateContext";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import { AUTOCOMPLETE_LIMITS } from "../../../../constants/queryAutocomplete";
 import { LogsFieldValues } from "../../../../api/types";
 import { useLogsDispatch, useLogsState } from "../../../../state/logsPanel/LogsStateContext";
@@ -29,7 +28,7 @@ const icons = {
 
 export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: URLSearchParams) => {
   const { serverUrl } = useAppState();
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { autocompleteCache } = useLogsState();
   const dispatch = useLogsDispatch();
   const tenant = useTenant();
@@ -42,13 +41,11 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
   const abortControllerRef = useRef(new AbortController());
 
   const getQueryParams = useCallback((params?: Record<string, string>, extra?: URLSearchParams) => {
-    const startDay = dayjs(start * 1000).startOf("day").valueOf() / 1000;
-    const endDay = dayjs(end * 1000).endOf("day").valueOf() / 1000;
     const base = new URLSearchParams({
       ...(params || {}),
       limit: `${AUTOCOMPLETE_LIMITS.queryLimit}`,
-      start: `${startDay}`,
-      end: `${endDay}`
+      start: `${start.toString()}`,
+      end: `${end.toString()}`
     });
 
     return extra?.size ? new URLSearchParams([...base, ...extra]) : base;

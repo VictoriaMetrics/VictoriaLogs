@@ -96,7 +96,7 @@ sinks:
       ignore_fields: log.offset,event.original
 ```
 
-By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/keyconcepts/#multitenancy).
+By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 If you need storing logs in other tenant, then specify the needed tenant via `sinks.vlogs.request.headers` section.
 For example, the following `vector.yaml` config instructs Vector to store the data to `(AccountID=12, ProjectID=34)` tenant:
 

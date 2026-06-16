@@ -72,6 +72,8 @@ func InitSecretFlags() {
 		// remoteWrite.url can contain authentication codes, so hide it at `/metrics` output.
 		flagutil.RegisterSecretFlag("remoteWrite.url")
 	}
+	// remoteWrite.proxyURL can contain credentials in the proxy URL, so hide it too.
+	flagutil.RegisterSecretFlag("remoteWrite.proxyURL")
 	// remoteWrite.headers can contain auth headers such as Authorization and API keys.
 	flagutil.RegisterSecretFlag("remoteWrite.headers")
 }
@@ -168,6 +170,7 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
 		rwctxIdx[i] = i
 	}
+	fs.RegisterPathFsMetrics(tmpDataPath)
 
 	rwctxsGlobal = rwctxs
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "preact/compat";
+import { useState, useMemo, useRef, useEffect } from "preact/compat";
 import { getComparator, stableSort } from "./helpers";
 import { OrderDir } from "../../types";
 import TableHeaderCell from "./TableHeaderCell/TableHeaderCell";
@@ -34,6 +34,11 @@ const Table = <T extends object>({
 
   const [orderBy, setOrderBy] = useState<ColumnKey<T>>(defaultOrder?.key || columns[0]?.key);
   const [orderDir, setOrderDir] = useState<OrderDir>(defaultOrder?.dir || "desc");
+
+  useEffect(() => {
+    setOrderBy(defaultOrder?.key || columns[0]?.key);
+    setOrderDir(defaultOrder?.dir || "desc");
+  }, [defaultOrder?.key, defaultOrder?.dir]);
 
   const sortedList = useMemo(() => {
     const [startIndex, endIndex] = paginationOffset;

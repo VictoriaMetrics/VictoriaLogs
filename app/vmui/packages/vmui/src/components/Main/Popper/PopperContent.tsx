@@ -165,7 +165,7 @@ const PopperContent: FC<PopperContentProps> = ({
             color={variant === "dark" ? "white" : "primary"}
             size="small"
             onClick={handleClickClose}
-            ariaLabel="close"
+            aria-label="close"
           >
             <CloseIcon />
           </Button>

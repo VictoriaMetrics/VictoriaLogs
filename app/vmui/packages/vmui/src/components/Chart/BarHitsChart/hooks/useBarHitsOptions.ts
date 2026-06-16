@@ -3,13 +3,14 @@ import { getAxes, getMinMaxBuffer, handleDestroy, setSelect } from "../../../../
 import uPlot, { AlignedData, Band, Options, Series } from "uplot";
 import { getCssVariable } from "../../../../utils/theme";
 import { useAppState } from "../../../../state/common/StateContext";
-import { MinMax, SetMinMax } from "../../../../types";
+import { MinMax, SetMinMax, TimePeriod } from "../../../../types";
 import { LogHits } from "../../../../api/types";
 import { GraphOptions, GRAPH_STYLES } from "../types";
 import { getColorFromString } from "../../../../utils/color";
 import useBarPaths from "./useBarPaths";
 import useBarClickHooks from "./useBarClickHooks";
 import { Size } from "../../../../hooks/useResizeObserver";
+import { secondsToMilliseconds } from "../../../../utils/time";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -36,7 +37,7 @@ interface UseGetBarHitsOptionsArgs {
   onReadyChart: (u: uPlot) => void;
   graphOptions: GraphOptions;
   timezone: string;
-  setPeriod: (period: { from: Date, to: Date }) => void;
+  setPeriod: (period: TimePeriod) => void;
 }
 
 export const OTHER_HITS_LABEL = "other fields";
@@ -157,7 +158,7 @@ const useBarHitsOptions = ({
     },
     legend: { show: false },
     axes: getAxes([{}, { scale: "y" }]),
-    tzDate: ts => uPlot.tzDate(new Date(Math.round(ts * 1000)), timezone),
+    tzDate: ts => uPlot.tzDate(new Date(Math.round(secondsToMilliseconds(ts))), timezone),
   };
 
   return {

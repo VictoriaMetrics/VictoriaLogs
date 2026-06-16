@@ -1,27 +1,27 @@
 import { explorerTotals } from "../totalsConfig";
 import { useFetchLogs } from "../../../QueryPage/hooks/useFetchLogs";
 import { useEffect, useState } from "preact/compat";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { getPreviousRange } from "../../../../utils/time";
 import { Logs } from "../../../../api/types";
 import { TimeParams } from "../../../../types";
+import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
 
 const statsParts = explorerTotals.map(t => t.statsExpr);
 const query = `* | ${statsParts.join(", ")}`;
 
 export const useFetchTotals = () => {
-  const { period } = useTimeState();
+  const { period } = useTimePeriod();
   const { extraParams } = useExtraFilters();
 
   const [totals, setTotals] = useState<Logs>();
   const [totalsPrev, setTotalsPrev] = useState<Logs>();
   const [periods, setPeriods] = useState<{curr: TimeParams, prev: TimeParams}>();
 
-  const { isLoading, error, fetchLogs, abortController } = useFetchLogs(query, 1);
+  const { isLoading, error, fetchLogs, abort } = useFetchLogs();
 
   useEffect(() => {
-    abortController.abort();
+    abort();
     setTotals(undefined);
     setTotalsPrev(undefined);
 
@@ -30,8 +30,8 @@ export const useFetchTotals = () => {
         const prevPeriod = getPreviousRange(period);
 
         const [currRes, prevRes] = await Promise.all([
-          fetchLogs({ period, extraParams }),
-          fetchLogs({ period: prevPeriod, extraParams }),
+          fetchLogs({ query, limit: 1, period, extraParams }),
+          fetchLogs({ query, limit: 1, period: prevPeriod, extraParams }),
         ]);
 
         const [curr] = (currRes || []) as Logs[];
@@ -45,9 +45,9 @@ export const useFetchTotals = () => {
       }
     }
 
-    fetchTotals();
+    void fetchTotals();
 
-    return () => abortController.abort();
+    return () => abort();
   }, [period, extraParams.toString()]);
 
   return {

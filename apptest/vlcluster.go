@@ -212,6 +212,34 @@ func (app *Vlcluster) Hits(t *testing.T, query string, opts HitsOpts) string {
 	return app.selectNode.cli.PostFormSuccess(t, url, values)
 }
 
+// StatsQueryRaw is a test helper function that performs
+// a POST to /select/logsql/stats_query and returns raw body and status code.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
+func (app *Vlcluster) StatsQueryRaw(t *testing.T, query string, opts StatsQueryOpts) (string, int) {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/stats_query", app.selectNode.httpListenAddr)
+	return app.selectNode.cli.PostForm(t, url, values)
+}
+
+// StatsQueryRangeRaw is a test helper function that performs
+// a POST to /select/logsql/stats_query_range and returns raw body and status code.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
+func (app *Vlcluster) StatsQueryRangeRaw(t *testing.T, query string, opts StatsQueryRangeOpts) (string, int) {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/stats_query_range", app.selectNode.httpListenAddr)
+	return app.selectNode.cli.PostForm(t, url, values)
+}
+
 // LogsQLQueryRaw sends HTTP POST request to /select/logsql/query endpoint and returns the plain response with status code.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs

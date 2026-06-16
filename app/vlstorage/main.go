@@ -145,6 +145,7 @@ func initLocalStorage() {
 	logger.Infof("opening storage at -storageDataPath=%s", *storageDataPath)
 	startTime := time.Now()
 	localStorage = logstorage.MustOpenStorage(*storageDataPath, cfg)
+	fs.RegisterPathFsMetrics(*storageDataPath)
 
 	var ss logstorage.StorageStats
 	localStorage.UpdateStats(&ss)
@@ -566,7 +567,7 @@ func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBloc
 
 // GetFieldNames executes qctx and returns field names seen in results.
 //
-// If the filter isn't empty, then only the field names containing the filter substing are returned.
+// If the filter isn't empty, then only the field names containing the filter substring are returned.
 func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
 		return localStorage.GetFieldNames(qctx, filter)
@@ -576,7 +577,7 @@ func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.V
 
 // GetFieldValues executes the given qctx and returns unique values for the fieldName seen in results.
 //
-// If the filter isn't empty, then only the field values containing the filter substing are returned.
+// If the filter isn't empty, then only the field values containing the filter substring are returned.
 //
 // If limit > 0, then up to limit unique values are returned.
 func GetFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {

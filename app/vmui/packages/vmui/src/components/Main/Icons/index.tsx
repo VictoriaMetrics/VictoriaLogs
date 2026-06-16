@@ -341,17 +341,6 @@ export const TuneIcon = () => (
   </svg>
 );
 
-export const TipIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path
-      d="M7 20h4c0 1.1-.9 2-2 2s-2-.9-2-2zm-2-1h8v-2H5v2zm11.5-9.5c0 3.82-2.66 5.86-3.77 6.5H5.27c-1.11-.64-3.77-2.68-3.77-6.5C1.5 5.36 4.86 2 9 2s7.5 3.36 7.5 7.5zm4.87-2.13L20 8l1.37.63L22 10l.63-1.37L24 8l-1.37-.63L22 6l-.63 1.37zM19 6l.94-2.06L22 3l-2.06-.94L19 0l-.94 2.06L16 3l2.06.94L19 6z"
-    ></path>
-  </svg>
-);
-
 export const ListIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -642,17 +631,6 @@ export const MinusIcon = () => (
   </svg>
 );
 
-export const BoltIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <path
-      d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66s.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21"
-    ></path>
-  </svg>
-);
-
 export const DisabledIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -670,7 +648,7 @@ export const ListAllIcon = () => (
     fill="currentColor"
   >
     <path
-      d="M19 5v14H5V5zm1.1-2H3.9c-.5 0-.9.4-.9.9v16.2c0 .4.4.9.9.9h16.2c.4 0 .9-.5.9-.9V3.9c0-.5-.5-.9-.9-.9M11 7h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6zM7 7h2v2H7zm0 4h2v2H7zm0 4h2v2H7z"
+      d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5m0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5m0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5M7 19h14v-2H7zm0-6h14v-2H7zm0-8v2h14V5z"
     ></path>
   </svg>
 );

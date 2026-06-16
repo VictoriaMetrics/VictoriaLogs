@@ -47,6 +47,9 @@ func TestInitSecretFlags(t *testing.T) {
 	if !flagutil.IsSecretFlag("remotewrite.url") {
 		t.Fatalf("expecting remoteWrite.url to be secret")
 	}
+	if !flagutil.IsSecretFlag("remotewrite.proxyurl") {
+		t.Fatalf("expecting remoteWrite.proxyURL to be secret")
+	}
 	if !flagutil.IsSecretFlag("remotewrite.headers") {
 		t.Fatalf("expecting remoteWrite.headers to be secret")
 	}
@@ -56,6 +59,9 @@ func TestInitSecretFlags(t *testing.T) {
 	InitSecretFlags()
 	if flagutil.IsSecretFlag("remotewrite.url") {
 		t.Fatalf("remoteWrite.url must remain visible when -remoteWrite.showURL is set")
+	}
+	if !flagutil.IsSecretFlag("remotewrite.proxyurl") {
+		t.Fatalf("expecting remoteWrite.proxyURL to remain secret")
 	}
 	if !flagutil.IsSecretFlag("remotewrite.headers") {
 		t.Fatalf("expecting remoteWrite.headers to remain secret")

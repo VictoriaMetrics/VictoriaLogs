@@ -5,7 +5,7 @@ import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../../Main/Button/Button";
-import { MoreIcon, TipIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
+import { KeyboardIcon, MoreIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 import { useCallback } from "react";
@@ -15,12 +15,12 @@ import Modal from "../../../Main/Modal/Modal";
 import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
 import { WITHOUT_GROUPING } from "../../../../constants/logs";
-import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsChart/hooks/useHitsChartConfig";
+import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
-import { humanizeSeconds } from "../../../../utils/time";
+import { getDurationFromMilliseconds } from "../../../../utils/time";
 import { generateIntervalsMs } from "../../../../utils/intervals";
+import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 
 interface Props {
   query?: string;
@@ -42,7 +42,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   const { topHits, groupFieldHits, step } = useHitsChartConfig();
 
   const { extraParams } = useExtraFilters();
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
@@ -65,8 +65,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }), [stacked, cumulative, hideChart, queryMode]);
 
   const intervals = useMemo(() => {
-    const msIntervals = generateIntervalsMs(start, end);
-    return msIntervals.map(ms => humanizeSeconds(ms / 1000));
+    const msIntervals = generateIntervalsMs({ start, end });
+    return msIntervals.map(ms => getDurationFromMilliseconds(ms));
   }, [start, end]);
 
   const defaultStep = intervals[Math.floor(intervals.length / 2)];
@@ -77,7 +77,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }, [fieldNames]);
 
   const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, skipNoiseFields: true, query });
+    const period = { start, end };
+    void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
@@ -121,7 +122,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     if (!shouldReset(step.value)) return;
 
     const t = setTimeout(() => {
-      if (shouldReset(step.value)) step.set(defaultStep);
+      if (shouldReset(step.value)) step.set(defaultStep, { replace: true });
     }, 200);
 
     return () => clearTimeout(t);
@@ -210,7 +211,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             <Button
               variant="text"
               color="gray"
-              startIcon={<TipIcon/>}
+              startIcon={<KeyboardIcon/>}
             />
           </ShortcutKeys>
         </>
@@ -227,7 +228,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           color="primary"
           startIcon={hideChart ? <VisibilityIcon/> : <VisibilityOffIcon/>}
           onClick={toggleHideChart}
-          ariaLabel="settings"
+          aria-label="settings"
         >
           {hideChart ? "Show chart" : ""}
         </Button>
@@ -240,7 +241,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             color="primary"
             startIcon={<MoreIcon/>}
             onClick={handleToggleList}
-            ariaLabel="settings"
+            aria-label="settings"
           />
           <Modal
             title={"Hits Options"}

@@ -1,254 +1,72 @@
-import { FC, useEffect, useMemo, useState } from "preact/compat";
+import { FC, useEffect, useRef, useState } from "preact/compat";
 import QueryPageBody from "./QueryPageBody/QueryPageBody";
-import useStateSearchParams from "../../hooks/useStateSearchParams";
-import useSearchParamsFromObject from "../../hooks/useSearchParamsFromObject";
-import { useFetchLogs } from "./hooks/useFetchLogs";
-import Alert from "../../components/Main/Alert/Alert";
 import QueryPageHeader from "./QueryPageHeader/QueryPageHeader";
 import "./style.scss";
-import { ErrorTypes, TimeParams } from "../../types";
-import { useTimeDispatch, useTimeState } from "../../state/time/TimeStateContext";
-import { getFromStorage, saveToStorage } from "../../utils/storage";
-import HitsChart from "./HitsChart/HitsChart";
-import { useFetchLogHits } from "./hooks/useFetchLogHits";
-import { LOGS_DEFAULT_LIMIT, LOGS_URL_PARAMS } from "../../constants/logs";
-import { getTimeperiodForDuration, relativeTimeOptions } from "../../utils/time";
-import { useSearchParams } from "react-router-dom";
+import { ErrorTypes } from "../../types";
+import HitsPanel from "./HitsPanel/HitsPanel";
 import { useQueryDispatch, useQueryState } from "../../state/query/QueryStateContext";
-import { getUpdatedHistory } from "../../components/QueryHistory/utils";
-import { useDebounceCallback } from "../../hooks/useDebounceCallback";
-import usePrevious from "../../hooks/usePrevious";
 import { useExtraFilters } from "../../components/ExtraFilters/hooks/useExtraFilters";
-import { useHitsChartConfig } from "./HitsChart/hooks/useHitsChartConfig";
-import { useLimitGuard } from "./LimitController/useLimitGuard";
-import LimitConfirmModal from "./LimitController/LimitConfirmModal";
-import { useFetchQueryTime } from "./hooks/useFetchQueryTime";
-import { GRAPH_QUERY_MODE } from "../../components/Chart/BarHitsChart/types";
+import { useHitsChartConfig } from "./HitsPanel/hooks/useHitsChartConfig";
+import { useLimitController } from "../../components/Configurators/LogsLimitController/hooks/useLimitController";
+import { useLimitGuard } from "../../components/Configurators/LogsLimitController/hooks/useLimitGuard";
+import LimitConfirmModal from "../../components/Configurators/LogsLimitController/LimitConfirmModal";
 import FilterSidebar from "../../components/FilterSidebar/FilterSidebar";
-import { useFetchStreamFieldNames } from "../OverviewPage/hooks/useFetchStreamNames";
 import { useFilterSidebarVisible } from "../../components/FilterSidebar/hooks/useFilterSidebarVisible";
 import classNames from "classnames";
 import ExtraFiltersPanel from "../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersPanel";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
-
-const storageLimit = Number(getFromStorage("LOGS_LIMIT"));
-const defaultLimit = isNaN(storageLimit) ? LOGS_DEFAULT_LIMIT : storageLimit;
-
-type FetchFlags = { logs: boolean; hits: boolean };
+import QueryPageAlerts from "./QueryPageAlerts";
+import { useTimePeriod } from "./hooks/useTimePeriod";
+import { useQueryController } from "./hooks/useQueryController";
+import { useQueryPageController } from "./hooks/useQueryPageController";
 
 const QueryPage: FC = () => {
   const { isMobile } = useDeviceDetect();
-  const { queryHistory, queryHasTimeFilter } = useQueryState();
+
+  const { queryHasTimeFilter, executeQueryTrigger } = useQueryState();
   const queryDispatch = useQueryDispatch();
-  const { duration, relativeTime, period: periodState } = useTimeState();
-  const timeDispatch = useTimeDispatch();
-  const { setSearchParamsFromKeys } = useSearchParamsFromObject();
-  const {
-    topHits: { value: topHits },
-    groupFieldHits: { value: groupFieldHits },
-    step: { value: step },
-  } = useHitsChartConfig();
-  const prevTopHits = usePrevious(topHits);
-  const prevGroupFieldHits = usePrevious(groupFieldHits);
-  const prevStep = usePrevious(step);
 
-  const [searchParams] = useSearchParams();
+  const { period, refreshPeriod } = useTimePeriod();
 
-  const hideChart = useMemo(() => Boolean(searchParams.get("hide_chart")), [searchParams]);
-  const prevHideChart = usePrevious(hideChart);
+  const { step: { value: step } } = useHitsChartConfig();
 
-  const hideLogs = useMemo(() => Boolean(searchParams.get("hide_logs")), [searchParams]);
-  const prevHideLogs = usePrevious(hideLogs);
+  const { limit, setLimit } = useLimitController();
+  const { inputQuery, setInputQuery, inputQueryRef, appliedQuery, applyQuery } = useQueryController();
+  const { beforeFetch, modalProps } = useLimitGuard({ setLimit });
+  const  { cancelAll, logsRequestState, hitsRequestState } = useQueryPageController({ query: appliedQuery, beforeFetch });
 
-  const [graphQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
-  const prevGraphMode = usePrevious(graphQueryMode);
+  const isLoading = logsRequestState.isLoading || hitsRequestState.isLoading;
 
-  const [limit, setLimit] = useStateSearchParams(defaultLimit, LOGS_URL_PARAMS.LIMIT);
-  const [query, setQuery] = useStateSearchParams("*", "query");
-  const queryFromParams = searchParams.get("query") || "*";
-
-  const [skipNextPeriodEffect, setSkipNextPeriodEffect] = useState(false);
-
-  const handleChangeLimit = (limit: number) => {
-    setLimit(limit);
-    setSearchParamsFromKeys({ limit });
-    saveToStorage("LOGS_LIMIT", `${limit}`);
-  };
-
-  const { beforeFetch, modalProps } = useLimitGuard({ setLimit: handleChangeLimit });
-
-  const updateHistory = () => {
-    const history = getUpdatedHistory(query, queryHistory[0]);
-    queryDispatch({
-      type: "SET_QUERY_HISTORY",
-      payload: {
-        key: "LOGS_QUERY_HISTORY",
-        history: [history],
-      }
-    });
-  };
-
-  const [isUpdatingQuery, setIsUpdatingQuery] = useState(false);
-  const [period, setPeriod] = useState<TimeParams>(periodState);
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { logs, isLoading, error, fetchLogs, abortController, durationMs: queryDuration, queryParams } = useFetchLogs(query, limit);
-  const { fetchLogHits, ...dataLogHits } = useFetchLogHits(query);
-  const { fetchQueryTime } = useFetchQueryTime(query);
-
   const { extraFilters, extraParams, addNewFilter, removeFilterByValue, removeFilterByField } = useExtraFilters();
-  const { fetchStreamFieldNames, ...dataStreamFields } = useFetchStreamFieldNames();
   const { isVisible: isVisibleFilterSidebar } = useFilterSidebarVisible();
-  const prevIsVisibleFilterSidebar = usePrevious(isVisibleFilterSidebar);
 
-  const fetchData = async (period: TimeParams, flags: FetchFlags) => {
-    if (isVisibleFilterSidebar) {
-      void fetchStreamFieldNames({ ...period, query, extraParams });
-    }
-
-    if (flags.logs) {
-      const isSuccess = await fetchLogs({
-        period,
-        extraParams,
-        beforeFetch
-      });
-      if (!isSuccess) return;
-    }
-
-    if (flags.hits) {
-      await fetchLogHits({
-        period,
-        step,
-        extraParams,
-        field: groupFieldHits,
-        fieldsLimit: topHits,
-        queryMode: graphQueryMode,
-      });
-    }
-  };
-
-  const debouncedFetchLogs = useDebounceCallback(fetchData, 300);
-
-  const getPeriod = () => {
-    const relativeTimeOpts = relativeTimeOptions.find(d => d.id === relativeTime);
-    if (!relativeTimeOpts) return periodState;
-    const { duration, until } = relativeTimeOpts;
-    return getTimeperiodForDuration(duration, until());
-  };
-
-  const handleRunQuery = async () => {
-    if (!query) {
+  const handleUpdateQuery = () => {
+    if (!inputQueryRef.current) {
       setQueryError(ErrorTypes.validQuery);
       return;
     }
     setQueryError("");
 
-    const uiPeriod = getPeriod();
-    const apiPeriod = await fetchQueryTime({ query, period: uiPeriod });
-
-    const newPeriod = apiPeriod ?? uiPeriod;
-
-    queryDispatch({ type: "SET_QUERY_HAS_TIME_FILTER", payload: !!apiPeriod?.hasTimeFilter });
-    if (apiPeriod?.hasTimeFilter) {
-      setSkipNextPeriodEffect(true);
-      timeDispatch({
-        type: "SET_PERIOD",
-        payload: {
-          from: new Date(newPeriod.start * 1000),
-          to: new Date(newPeriod.end * 1000)
-        }
-      });
-    }
-
-    setPeriod(newPeriod);
-    dataLogHits.abortController.abort?.();
-    abortController.abort?.();
-    debouncedFetchLogs(newPeriod, { logs: !hideLogs, hits: !hideChart });
-    setSearchParamsFromKeys({
-      query,
-      "g0.range_input": duration,
-      "g0.end_input": newPeriod.date,
-      "g0.relative_time": relativeTime || "none",
-    });
-    updateHistory();
+    applyQuery();
+    queryDispatch({ type: "RUN_QUERY" });
   };
 
-  const debouncedHandleRunQuery = useDebounceCallback(handleRunQuery, 300);
-
-  const handleUpdateQuery = () => {
-    if (isLoading || dataLogHits.isLoading) {
-      abortController.abort?.();
-      dataLogHits.abortController.abort?.();
+  const handleExecuteQuery = () => {
+    if (isLoading) {
+      cancelAll();
     } else {
-      debouncedHandleRunQuery();
+      handleUpdateQuery();
     }
   };
 
-  useEffect(() => {
-    if (!query) return;
-    if (skipNextPeriodEffect) {
-      setSkipNextPeriodEffect(false);
-      return;
-    }
-    setPeriod(getPeriod());
-    debouncedHandleRunQuery();
-  }, [periodState]);
+  const refreshPeriodRef = useRef(refreshPeriod);
+  refreshPeriodRef.current = refreshPeriod;
 
   useEffect(() => {
-    if (!isUpdatingQuery) return;
-    debouncedHandleRunQuery();
-    setIsUpdatingQuery(false);
-  }, [query, isUpdatingQuery]);
-
-  useEffect(() => {
-    if (hideChart) return;
-    // TODO: refactor effect logic
-    const topChanged = prevTopHits && (topHits !== prevTopHits);
-    const stepChanged = prevStep && (step !== prevStep);
-    const groupChanged = prevGroupFieldHits && (groupFieldHits !== prevGroupFieldHits);
-    const becameVisible = prevHideChart && !hideChart;
-    const queryModeChanged = prevGraphMode && (graphQueryMode !== prevGraphMode);
-
-    if (!(topChanged || groupChanged || becameVisible || queryModeChanged || stepChanged)) return;
-
-    dataLogHits.abortController.abort?.();
-    void fetchLogHits({
-      period,
-      step,
-      extraParams,
-      field: groupFieldHits,
-      fieldsLimit: topHits,
-      queryMode: graphQueryMode,
-    });
-  }, [
-    hideChart,
-    prevHideChart,
-    period,
-    groupFieldHits,
-    prevGroupFieldHits,
-    topHits,
-    prevTopHits,
-    step,
-    prevStep,
-    graphQueryMode,
-    prevGraphMode,
-    fetchLogHits,
-  ]);
-
-  useEffect(() => {
-    if (hideLogs || !prevHideLogs) return;
-    void fetchLogs({ period, beforeFetch, extraParams });
-  }, [hideLogs, prevHideLogs, period, fetchLogs, beforeFetch, extraParams]);
-
-  useEffect(() => {
-    const isEqual = prevIsVisibleFilterSidebar === isVisibleFilterSidebar;
-    if (isEqual) return;
-    void fetchStreamFieldNames({ ...period, query, extraParams });
-  }, [isVisibleFilterSidebar, prevIsVisibleFilterSidebar, fetchStreamFieldNames]);
-
-  useEffect(() => {
-    void handleRunQuery();
-  }, [extraParams.toString()]);
+    refreshPeriodRef.current();
+  }, [executeQueryTrigger]);
 
   return (
     <div
@@ -259,17 +77,19 @@ const QueryPage: FC = () => {
     >
       <LimitConfirmModal
         {...modalProps}
-        queryParams={queryParams}
+        queryParams={logsRequestState.queryParams}
       />
 
-      <FilterSidebar
-        query={queryFromParams}
-        extraFilters={extraFilters}
-        onAddFilter={addNewFilter}
-        onRemoveByValue={removeFilterByValue}
-        onRemoveByField={removeFilterByField}
-        {...dataStreamFields}
-      />
+      {isVisibleFilterSidebar && (
+        <FilterSidebar
+          query={appliedQuery}
+          extraFilters={extraFilters}
+          extraParams={extraParams}
+          onAddFilter={addNewFilter}
+          onRemoveByValue={removeFilterByValue}
+          onRemoveByField={removeFilterByField}
+        />
+      )}
 
       <div className="vm-query-page-content">
         <div
@@ -280,49 +100,39 @@ const QueryPage: FC = () => {
           })}
         >
           <QueryPageHeader
-            query={query}
-            queryDurationMs={hideLogs ? undefined : queryDuration}
+            query={inputQuery}
+            queryDurationMs={logsRequestState.durationMs}
             error={queryError}
             limit={limit}
-            onChange={setQuery}
-            onChangeLimit={handleChangeLimit}
-            onRun={handleUpdateQuery}
-            isLoading={isLoading || dataLogHits.isLoading}
+            onChange={setInputQuery}
+            onChangeLimit={setLimit}
+            onRun={handleExecuteQuery}
+            isLoading={isLoading}
           />
           <ExtraFiltersPanel
             extraFilters={extraFilters}
             onRemove={removeFilterByValue}
           />
         </div>
-        {error && (
-          <Alert
-            title="Failed to load logs"
-            variant="error"
-          >
-            {error}
-          </Alert>
-        )}
-        {queryHasTimeFilter && (
-          <Alert
-            variant="warning"
-            title="Time range overridden by query filter"
-          >
-            Time range is overridden by the query `_time` filter. Remove `_time` from the query to use manual selection.
-            Disable query time override in Settings.
-          </Alert>
-        )}
-        {!error && (
-          <HitsChart
-            {...dataLogHits}
-            query={query}
+
+        <QueryPageAlerts
+          logsError={logsRequestState.error}
+          hitsError={hitsRequestState.error}
+          timeOverridden={queryHasTimeFilter}
+        />
+
+        {!logsRequestState.error && (
+          <HitsPanel
+            {...hitsRequestState}
+            query={appliedQuery}
             period={period}
             step={step}
           />
         )}
         <QueryPageBody
-          data={logs}
-          queryParams={queryParams}
-          isLoading={isLoading}
+          data={logsRequestState.logs}
+          queryParams={logsRequestState.queryParams}
+          isLoading={logsRequestState.isLoading}
         />
       </div>
     </div>
