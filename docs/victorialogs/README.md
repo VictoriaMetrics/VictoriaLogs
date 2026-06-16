@@ -156,10 +156,10 @@ For example, the following command starts VictoriaLogs, which accepts logs with 
 VictoriaLogs can be configured to automatically drop older per-day partitions based on disk space usage using one of two approaches:
 
 > Note that disk space usage is checked at a fixed 10-second interval. Disk usage can go over the limit between two checks.
-> If the disk hits 100% usage, VictoriaLogs switches to read-only mode and cannot drop data as expected. 
-> So it is important to reserve enough free disk space to stop VictoriaLogs from entering read-only mode.
-> 
-> e.g. Run VictoriaLogs with a 20G disk, `-retention.maxDiskUsagePercent=95%` and 100MB/s ingestion rate is a bad idea.
+> If the disk reaches 100% usage, VictoriaLogs switches to read-only mode and cannot drop data as expected.
+> So it is important to reserve enough free disk space to prevent VictoriaLogs from entering read-only mode.
+>
+> For example, running VictoriaLogs on a 20 GB disk with `-retention.maxDiskUsagePercent=95` and an ingestion rate of 100 MB/s is not recommended.
 
 ### Absolute disk space limit
 
