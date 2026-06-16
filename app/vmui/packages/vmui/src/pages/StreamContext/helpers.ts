@@ -1,7 +1,7 @@
 import { Logs } from "../../api/types";
-import { toNanoPrecision } from "../../utils/time";
 import { Direction } from "./hooks/useFetchStreamContext";
 import { Dispatch, SetStateAction } from "preact/compat";
+import { vmDate } from "../../utils/time";
 
 export const STREAM_CONTEXT_LOAD_SIZE = 30;
 
@@ -20,7 +20,7 @@ export const buildContextQuery = (
   }
 
   const streamFilter = `_stream_id:${_stream_id}`;
-  const timeFilter = `_time:${timeComparator}${toNanoPrecision(_time)}`;
+  const timeFilter = `_time:${timeComparator}${vmDate(_time).nano().toISOString()}`;
   const sortPipe = `sort by (_time) ${sortDir}`;
   const limitPipe = `limit ${lines}`;
 
