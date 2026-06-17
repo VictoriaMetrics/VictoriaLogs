@@ -188,7 +188,6 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 	for _, rwctx := range rwctxs {
 		wg.Go(func() {
 			rwctx.push(lr)
-
 		})
 	}
 	wg.Wait()

@@ -220,7 +220,6 @@ func TestPipeUnroll(t *testing.T) {
 			{"q", "abc"},
 		},
 	})
-
 }
 
 func TestPipeUnrollUpdateNeededFields(t *testing.T) {

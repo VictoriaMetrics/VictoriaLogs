@@ -667,8 +667,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 }
 
 func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64, resetHitsOnLimitExceeded bool,
-	callback func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error)) ([]logstorage.ValueWithHits, error) {
-
+	callback func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error),
+) ([]logstorage.ValueWithHits, error) {
 	ctxWithCancel, cancel := context.WithCancel(qctx.Context)
 	defer cancel()
 

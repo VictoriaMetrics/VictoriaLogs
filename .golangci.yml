@@ -2,6 +2,7 @@ version: "2"
 linters:
   enable:
     - errorlint
+    - whitespace
   settings:
     errcheck:
       exclude-functions:

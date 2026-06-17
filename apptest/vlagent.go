@@ -92,7 +92,6 @@ func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
 		time.Sleep(period)
 	}
 	t.Fatalf("timed out while waiting for inserted logs to be flushed to remote storage")
-
 }
 
 // sendBlocking sends the data to remote write url by executing `send` function and
