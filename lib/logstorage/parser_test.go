@@ -3935,6 +3935,12 @@ func TestQueryClone(t *testing.T) {
 	f(`domain:"IN.example.com"`)
 	f(`domain:"contains_all.example.com"`)
 	f(`foo:"not.bar"`)
+
+	// field/value names colliding with the 'from' keyword and with math function names.
+	f(`* | split "from"`)
+	f(`* | math "abs" as x`)
+	f(`* | math ("abs" + 1) as x`)
+	f(`* | math ("round" / 2) as y`)
 }
 
 func TestQueryGetFilterTimeRange(t *testing.T) {

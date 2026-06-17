@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix a `vlselect` crash in [cluster mode](https://docs.victoriametrics.com/victorialogs/cluster/) on some valid queries. This happened when a [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe) operand had the same name as a function (such as `abs`, `round` or `floor`), or when `from` was used as a separator in the [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe). See [#1518](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1518).
+
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 
 Released at 2026-06-17

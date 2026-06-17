@@ -3920,7 +3920,7 @@ func needQuoteToken(s string) bool {
 	if _, ok := reservedKeywords[sLower]; ok {
 		return true
 	}
-	if isPipeName(sLower) || isStatsFuncName(sLower) {
+	if isPipeName(sLower) || isStatsFuncName(sLower) || isMathFuncName(sLower) {
 		return true
 	}
 
@@ -4009,6 +4009,9 @@ var reservedKeywords = func() map[string]struct{} {
 
 		// 'as' is used in various pipes such as `format ... as ...`
 		"as",
+
+		// 'from' is used in various pipes such as `split ... from ...` and `unpack_json from ...`
+		"from",
 	}
 	m := make(map[string]struct{}, len(kws))
 	for _, kw := range kws {
