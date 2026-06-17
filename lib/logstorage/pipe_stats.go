@@ -1595,6 +1595,7 @@ func initStatsFuncParsers() {
 		"sum_len":         parseStatsSumLen,
 		"uniq_values":     parseStatsUniqValues,
 		"values":          parseStatsValues,
+		"lines": 				 parseStatsLines,
 	}
 }
 

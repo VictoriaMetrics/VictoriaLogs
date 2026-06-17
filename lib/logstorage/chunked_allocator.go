@@ -35,6 +35,7 @@ type chunkedAllocator struct {
 	rowMinProcessors           []statsRowMinProcessor
 	sumProcessors              []statsSumProcessor
 	stddevProcessors           []statsStddevProcessor
+	linesProcessors            []statsLinesProcessor
 	sumLenProcessors           []statsSumLenProcessor
 	uniqValuesProcessors       []statsUniqValuesProcessor
 	valuesProcessors           []statsValuesProcessor
@@ -146,6 +147,10 @@ func (a *chunkedAllocator) newStatsStddevProcessor() (p *statsStddevProcessor) {
 
 func (a *chunkedAllocator) newStatsSumProcessor() (p *statsSumProcessor) {
 	return addNewItem(&a.sumProcessors, a)
+}
+
+func (a *chunkedAllocator) newStatsLinesProcessor() (p *statsLinesProcessor) {
+	return addNewItem(&a.linesProcessors, a)
 }
 
 func (a *chunkedAllocator) newStatsSumLenProcessor() (p *statsSumLenProcessor) {
