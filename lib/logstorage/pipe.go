@@ -175,7 +175,9 @@ func isLikelyFilterPipe(lex *lexer) bool {
 	if lex.isQuotedToken() {
 		return true
 	}
-	if lex.isKeyword("*", "-", "~") {
+	if !isWord(lex.token) {
+		// Any token that isn't a word cannot clash with a pipe name,
+		// since all pipe names are words. So treat it as a filter.
 		return true
 	}
 

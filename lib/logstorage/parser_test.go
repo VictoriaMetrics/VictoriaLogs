@@ -2442,6 +2442,13 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | "stats" *`, `"stats"`)
 	f(`* | * "count"`, `"count"`)
 	f(`* | foo:bar AND baz:<10`, `foo:bar baz:<10`)
+	f(`* | !foo`, `!foo`)
+	f(`* | !~"re"`, `!~"re"`)
+	f(`* | !=foo`, `!=foo`)
+	f(`* | =foo`, `=foo`)
+	f(`* | >5`, `>5`)
+	f(`* | <5`, `<5`)
+	f(`* | {host="x"}`, `{host="x"}`)
 
 	// extract pipe
 	f(`* | extract "foo<bar>baz"`, `* | extract "foo<bar>baz"`)
