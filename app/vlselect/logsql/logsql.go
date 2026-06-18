@@ -114,7 +114,7 @@ func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query,
 	}
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse `query` arg: %w; query=%s", err, qStr)
+		return nil, fmt.Errorf("cannot parse `query` arg: %w", err)
 	}
 	return q, nil
 }
