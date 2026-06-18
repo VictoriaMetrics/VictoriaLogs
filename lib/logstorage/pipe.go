@@ -180,6 +180,10 @@ func isLikelyFilterPipe(lex *lexer) bool {
 		// since all pipe names are words. So treat it as a filter.
 		return true
 	}
+	if lex.isKeyword("not") {
+		// 'not' is a logical filter operator rather than a pipe name.
+		return true
+	}
 
 	lexState := lex.backupState()
 	defer lex.restoreState(lexState)
