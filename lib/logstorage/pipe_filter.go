@@ -109,22 +109,19 @@ func (pfp *pipeFilterProcessor) flush() error {
 }
 
 func parsePipeFilter(lex *lexer) (pipe, error) {
-	return parsePipeFilterExt(lex, true)
-}
-
-func parsePipeFilterNoFilterKeyword(lex *lexer) (pipe, error) {
+	if !lex.isKeyword("filter", "where") {
+		return nil, fmt.Errorf("expecting 'filter' or 'where'; got %q", lex.token)
+	}
+	lex.nextToken()
 	return parsePipeFilterExt(lex, false)
 }
 
-func parsePipeFilterExt(lex *lexer, needFilterKeyword bool) (pipe, error) {
-	if needFilterKeyword {
-		if !lex.isKeyword("filter", "where") {
-			return nil, fmt.Errorf("expecting 'filter' or 'where'; got %q", lex.token)
-		}
-		lex.nextToken()
-	}
+func parsePipeFilterNoFilterKeyword(lex *lexer) (pipe, error) {
+	return parsePipeFilterExt(lex, true)
+}
 
-	f, err := parseFilter(lex, needFilterKeyword)
+func parsePipeFilterExt(lex *lexer, strictPhrases bool) (pipe, error) {
+	f, err := parseFilter(lex, strictPhrases)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse 'filter': %w", err)
 	}

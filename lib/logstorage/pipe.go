@@ -156,14 +156,11 @@ func parsePipe(lex *lexer) (pipe, error) {
 	}
 
 	// Try parsing filter pipe without 'filter' keyword
-	lexState := lex.backupState()
 	pf, err := parsePipeFilterNoFilterKeyword(lex)
-	if err == nil {
-		return pf, nil
+	if err != nil {
+		return nil, err
 	}
-	lex.restoreState(lexState)
-
-	return nil, fmt.Errorf("unexpected pipe %q", lex.token)
+	return pf, nil
 }
 
 var pipeParsers map[string]pipeParseFunc

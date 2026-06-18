@@ -2521,7 +2521,7 @@ It is allowed to use `where` prefix instead of `filter` prefix for convenience. 
 _time:1h error | stats by (host) count() logs_count | where logs_count:> 1_000
 ```
 
-It is allowed to omit `filter` prefix if the used filters do not clash with [pipe names](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+It is allowed to omit `filter` prefix if the used filters start with the field name followed by `:`.
 So the following query is equivalent to the previous one:
 
 ```logsql

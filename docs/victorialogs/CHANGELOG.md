@@ -23,6 +23,7 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): `vlstorage` now returns the error and stops processing an `/internal/select/*` request when the request cannot be parsed, instead of continuing to handle it and writing the response twice.
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) parsing without the `filter` prefix, which was introduced in [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0). The previous implementation incorrectly rejected valid filters such as `... | !foo`, `... | {host="x"}`, `... | >5` and `... | =foo`. Now only bare unquoted words without a field name are rejected - e.g. `foo | bar` must be rewritten as `foo bar`, `foo | "bar"`, `foo | _msg:bar` or `foo | filter bar`. See [#1522](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1522).
 
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 

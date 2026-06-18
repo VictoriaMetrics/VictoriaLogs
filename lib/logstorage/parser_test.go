@@ -2434,7 +2434,10 @@ func TestParseQuery_Success(t *testing.T) {
 	// filter pipe
 	f(`* | filter error ip:12.3.4.5 or warn`, `error ip:"12.3.4.5" or warn`)
 	f(`foo | stats by (host) count() logs | filter logs:>50 | sort by (logs desc) | limit 10`, `foo | stats by (host) count(*) as logs | filter logs:>50 | sort by (logs desc) limit 10`)
-	f(`* | error`, `error`)
+	f(`* | "error"`, `error`)
+	f(`* | filter error`, `error`)
+	f(`* | -unpack_logfmt`, `!"unpack_logfmt"`)
+	f(`* |~foo`, `~foo`)
 	f(`* | "by"`, `"by"`)
 	f(`* | "stats" *`, `"stats"`)
 	f(`* | * "count"`, `"count"`)
@@ -2543,7 +2546,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`not(a)`, `!a`)
 	f(`a and(b)`, `a b`)
 	f(`a or(b)`, `a or b`)
-	f(`a|foobar`, `a foobar`)
+	f(`a|foo:bar`, `a foo:bar`)
 	f(`a|~b`, `a ~b`)
 	f(`a:~b`, `a:~b`)
 	f(`(~a)`, `~a`)
@@ -2564,7 +2567,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`foo | filter fields`, `foo "fields"`)
 	f(`foo | filter by`, `foo "by"`)
 	f(`foo | filter count`, `foo "count"`)
-	f(`foo | * bar`, `foo bar`)
+	f(`foo | * "bar"`, `foo bar`)
 	f(`foo | -bar`, `foo !bar`)
 
 	// wildcard field names in filters
@@ -2682,6 +2685,27 @@ func TestParseQuery_Success(t *testing.T) {
 
 	f(`a:in(x | keep a;);`, `a:in(x | fields a)`)
 	f(`a:in(x | keep a;) | stats count() if (x;) y;`, `a:in(x | fields a) | stats count(*) if (x) as y`)
+
+	// edge cases from https://github.com/VictoriaMetrics/VictoriaLogs/issues/1454
+	f(`* | not (field:="value")`, `!field:=value`)
+	f(`* | !(field:="values")`, `!field:="values"`)
+	f(`* | ~"foo"`, `~foo`)
+	f(`* | !"foo"`, `!foo`)
+	f(`* | !~"foo"`, `!~foo`)
+	f(`* | !="foo"`, `!=foo`)
+	f(`* | ="foo"`, `=foo`)
+	f(`* | >"foo"`, `>foo`)
+	f(`* | <"foo"`, `<foo`)
+	f(`* | {foo="bar"}`, `{foo="bar"}`)
+	f(`* | not (rule:="Run shell untrusted" output_fields.proc.pname:="postgres")`, `!(rule:="Run shell untrusted" "output_fields.proc.pname":=postgres)`)
+
+	// strict filter parsing without the `filter` keyword
+	f(`foo | "bar"`, `foo bar`)
+	f(`foo | _msg:bar`, `foo bar`)
+	f(`* | "":"foo" "":bar`, `foo bar`)
+	f(`* | "foo" "bar"`, `foo bar`)
+	f(`* | "foo" and "bar"`, `foo bar`)
+	f(`* | "or" (foo bar)`, `"or" foo bar`)
 }
 
 func TestParseQuery_Failure(t *testing.T) {
@@ -3507,6 +3531,12 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`* | (x)`)
 	f(`* | by (x)`)
 	f(`* | (x) count`)
+
+	// incorrect pipes
+	f(`* | unpack_word`)
+	f(`* | coalsce(a,b)`)
+	f(`* | unique by (_msg) limit 1`)
+	f(`* | "foo" bar`)
 }
 
 func TestQueryGetNeededColumns(t *testing.T) {
@@ -4616,13 +4646,13 @@ func TestQueryHasGlobalTimeFilter(t *testing.T) {
 	f(`* | count()`, false)
 	f(`error OR _time:5m | count()`, false)
 	f(`(_time:5m AND error) OR (_time:5m AND warn) | count()`, false)
-	f(`* | error OR _time:5m | count()`, false)
+	f(`* | "error" OR _time:5m | count()`, false)
 
 	f(`_time:5m | count()`, true)
 	f(`_time:2023-04-25T22:45:59Z | count()`, true)
 	f(`error AND _time:5m | count()`, true)
 	f(`error AND (_time:5m AND warn) | count()`, true)
-	f(`* | error AND _time:5m | count()`, true)
+	f(`* | "error" AND _time:5m | count()`, true)
 }
 
 func TestQuery_AddExtraFilters(t *testing.T) {

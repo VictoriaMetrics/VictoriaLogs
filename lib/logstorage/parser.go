@@ -1928,7 +1928,7 @@ func parseQuery(lex *lexer) (*Query, error) {
 	lex.pushQueryOptions(&q.opts)
 	defer lex.popQueryOptions()
 
-	f, err := parseFilter(lex, true)
+	f, err := parseFilter(lex, false)
 	if err != nil {
 		return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 	}
@@ -2113,12 +2113,12 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 	}
 }
 
-func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
+func parseFilter(lex *lexer, strictPhrases bool) (filter, error) {
 	if lex.isQueryPartTrailer() {
 		return nil, fmt.Errorf("missing query")
 	}
 
-	if !allowPipeKeywords {
+	if strictPhrases {
 		// Verify the first token in the filter doesn't match pipe names.
 		firstToken := strings.ToLower(lex.rawToken)
 		if firstToken == "by" || isPipeName(firstToken) || isStatsFuncName(firstToken) {
@@ -2127,17 +2127,17 @@ func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
 		}
 	}
 
-	fo, err := parseFilterOr(lex, "")
+	fo, err := parseFilterOr(lex, "", strictPhrases)
 	if err != nil {
 		return nil, err
 	}
 	return fo, nil
 }
 
-func parseFilterOr(lex *lexer, fieldName string) (filter, error) {
+func parseFilterOr(lex *lexer, fieldName string, strictPhrases bool) (filter, error) {
 	var filters []filter
 	for {
-		f, err := parseFilterAnd(lex, fieldName)
+		f, err := parseFilterAnd(lex, fieldName, strictPhrases)
 		if err != nil {
 			return nil, err
 		}
@@ -2155,10 +2155,10 @@ func parseFilterOr(lex *lexer, fieldName string) (filter, error) {
 	}
 }
 
-func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
+func parseFilterAnd(lex *lexer, fieldName string, strictPhrases bool) (filter, error) {
 	var filters []filter
 	for {
-		f, err := parseFilterGeneric(lex, fieldName)
+		f, err := parseFilterGeneric(lex, fieldName, strictPhrases)
 		if err != nil {
 			return nil, err
 		}
@@ -2176,7 +2176,7 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 	}
 }
 
-func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
+func parseFilterGeneric(lex *lexer, fieldName string, strictPhrases bool) (filter, error) {
 	if lex.isKeyword("") {
 		return nil, fmt.Errorf("unexpected end of query after %q; expecting a filter", lex.prevRawToken)
 	}
@@ -2267,15 +2267,16 @@ func parseFilterGeneric(lex *lexer, fieldName string) (filter, error) {
 	case lex.isKeyword("_stream"):
 		return parseFilterStream(lex, fieldName)
 	default:
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, strictPhrases)
 	}
 }
 
-func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
+func parseFilterPhrase(lex *lexer, fieldName string, strictPhrases bool) (filter, error) {
 	var stopTokens []string
 	if fieldName == "" {
 		stopTokens = []string{":"}
 	}
+	phraseIsQuoted := lex.isQuotedToken()
 	phrase, err := lex.nextCompoundTokenExt(stopTokens)
 	if err != nil {
 		return nil, err
@@ -2285,7 +2286,10 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 		lex.nextToken()
 		if fieldName == "" && lex.isKeyword(":") {
 			lex.nextToken()
-			return parseFilterGeneric(lex, phrase+"*")
+			return parseFilterGeneric(lex, phrase+"*", false)
+		}
+		if fieldName == "" && !phraseIsQuoted && strictPhrases {
+			return nil, fmt.Errorf("search by prefix %q requires a field name; use %q* or field:%q*", phrase, phrase, phrase)
 		}
 		return newFilterPrefix(fieldName, phrase), nil
 	}
@@ -2302,10 +2306,12 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 		case "_stream":
 			return parseFilterStreamInternal(lex, "_stream")
 		default:
-			return parseFilterGeneric(lex, phrase)
+			return parseFilterGeneric(lex, phrase, false)
 		}
 	}
-
+	if fieldName == "" && !phraseIsQuoted && strictPhrases {
+		return nil, fmt.Errorf("search phrase %q requires a field name; use %q or field:%s", phrase, phrase, phrase)
+	}
 	// The phrase is a search phrase.
 	return newFilterPhrase(fieldName, phrase), nil
 }
@@ -2313,7 +2319,7 @@ func parseFilterPhrase(lex *lexer, fieldName string) (filter, error) {
 func parseFilterParens(lex *lexer, fieldName string) (filter, error) {
 	lex.nextToken()
 
-	f, err := parseFilterOr(lex, fieldName)
+	f, err := parseFilterOr(lex, fieldName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2329,7 +2335,7 @@ func parseFilterParens(lex *lexer, fieldName string) (filter, error) {
 func parseFilterNot(lex *lexer, fieldName string) (filter, error) {
 	lex.nextToken()
 
-	f, err := parseFilterGeneric(lex, fieldName)
+	f, err := parseFilterGeneric(lex, fieldName, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2360,7 +2366,7 @@ func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg str
 
 	if !lex.isKeyword("(") {
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 	lex.nextToken()
 
@@ -2710,7 +2716,7 @@ func parseFilterStar(lex *lexer, fieldName string) (filter, error) {
 	if fieldName == "" && lex.isKeyword(":") {
 		// The '*:something' filter
 		lex.nextToken()
-		return parseFilterGeneric(lex, "*")
+		return parseFilterGeneric(lex, "*", false)
 	}
 
 	if lex.isSkippedSpace || lex.isQueryPartTrailer() {
@@ -2900,7 +2906,7 @@ func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
 		includeMinValue = true
 	default:
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 	lex.nextToken()
 
@@ -2980,7 +2986,7 @@ func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, 
 
 	if !lex.isKeyword("(") {
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 
 	args, err := parseArgsInParens(lex)
@@ -3106,7 +3112,7 @@ func startsWithYear(s string) bool {
 
 func parseFilterTimeGeneric(lex *lexer, fieldName string) (filter, error) {
 	if fieldName != "" {
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 
 	lexState := lex.backupState()
@@ -3114,7 +3120,7 @@ func parseFilterTimeGeneric(lex *lexer, fieldName string) (filter, error) {
 
 	if !lex.isKeyword(":") {
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, "")
+		return parseFilterPhrase(lex, "", false)
 	}
 	lex.nextToken()
 
@@ -3664,7 +3670,7 @@ func stripTimezoneSuffix(s string) string {
 
 func parseFilterStreamID(lex *lexer, fieldName string) (filter, error) {
 	if fieldName != "" {
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 
 	lexState := lex.backupState()
@@ -3672,7 +3678,7 @@ func parseFilterStreamID(lex *lexer, fieldName string) (filter, error) {
 
 	if !lex.isKeyword(":") {
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, "")
+		return parseFilterPhrase(lex, "", false)
 	}
 	lex.nextToken()
 
@@ -3802,14 +3808,14 @@ func parseStreamID(lex *lexer) (streamID, error) {
 
 func parseFilterStream(lex *lexer, fieldName string) (filter, error) {
 	if fieldName != "" {
-		return parseFilterPhrase(lex, fieldName)
+		return parseFilterPhrase(lex, fieldName, false)
 	}
 	lexState := lex.backupState()
 	lex.nextToken()
 
 	if !lex.isKeyword(":") {
 		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, "")
+		return parseFilterPhrase(lex, "", false)
 	}
 	lex.nextToken()
 
