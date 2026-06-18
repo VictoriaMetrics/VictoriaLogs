@@ -23,11 +23,14 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): `vlstorage` now returns the error and stops processing an `/internal/select/*` request when the request cannot be parsed, instead of continuing to handle it and writing the response twice.
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): bump the internal protocol version for the delete endpoints, which switched to multipart encoding in [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0) but kept the previous version. A version mismatch between `vlselect` and `vlstorage` for delete requests is now reported instead of silently mishandled. All cluster components must be upgraded together to use delete.
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) parsing without the `filter` prefix, which was introduced in [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0). The previous implementation incorrectly rejected valid filters such as `... | !foo`, `... | {host="x"}`, `... | >5` and `... | =foo`. Now only bare unquoted words without a field name are rejected - e.g. `foo | bar` must be rewritten as `foo bar`, `foo | "bar"`, `foo | _msg:bar` or `foo | filter bar`. See [#1522](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1522).
 
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 
 Released at 2026-06-17
+
+**Update Note:** [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): disallow using [`filter` pipes](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) without the `filter` prefix if the filter doesn't start with `field_name:` prefix. For example, `foo | bar` is disallowed now. It must be rewritten to one of the following equivalents: `foo bar`, `foo | "bar"`, `foo | _msg:bar` or `foo | filter bar`. This reduces the chances of incorrectly written queries like in the [#1454](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1454). However, this may be a breaking change if you have queries that filter without the `filter` prefix, such as `... | !foo`, `... | {host="x"}`, `... | >5` or `... | =foo` - these now fail with `unexpected pipe` and must add the `filter` prefix (e.g. `... | filter !foo`).
 
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
 

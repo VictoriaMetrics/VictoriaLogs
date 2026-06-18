@@ -66,17 +66,17 @@ const (
 	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteRunTaskProtocolVersion = "v1"
+	DeleteRunTaskProtocolVersion = "v2"
 
 	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/delete/stop_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteStopTaskProtocolVersion = "v1"
+	DeleteStopTaskProtocolVersion = "v2"
 
 	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/delete/active_tasks endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteActiveTasksProtocolVersion = "v1"
+	DeleteActiveTasksProtocolVersion = "v2"
 )
 
 // Storage is a network storage for querying remote storage nodes in the cluster.
