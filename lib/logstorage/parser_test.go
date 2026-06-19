@@ -2686,7 +2686,7 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`a:in(x | keep a;);`, `a:in(x | fields a)`)
 	f(`a:in(x | keep a;) | stats count() if (x;) y;`, `a:in(x | fields a) | stats count(*) if (x) as y`)
 
-	// edge cases from https://github.com/VictoriaMetrics/VictoriaLogs/issues/1454
+	// edge cases from https://github.com/VictoriaMetrics/VictoriaLogs/issues/1522
 	f(`* | not (field:="value")`, `!field:=value`)
 	f(`* | !(field:="values")`, `!field:="values"`)
 	f(`* | ~"foo"`, `~foo`)
