@@ -2442,6 +2442,24 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | "stats" *`, `"stats"`)
 	f(`* | * "count"`, `"count"`)
 	f(`* | foo:bar AND baz:<10`, `foo:bar baz:<10`)
+	// filter pipe without the filter prefix, starting with a non-word token
+	f(`* | !foo`, `!foo`)
+	f(`* | !~"re"`, `!~"re"`)
+	f(`* | !=foo`, `!=foo`)
+	f(`* | =foo`, `=foo`)
+	f(`* | >5`, `>5`)
+	f(`* | <5`, `<5`)
+	f(`* | {host="x"}`, `{host="x"}`)
+	// filter pipe without the filter prefix, starting with the 'not' keyword
+	f(`* | not foo`, `!foo`)
+	f(`* | NOT foo`, `!foo`)
+	f(`* | not foo:bar`, `!foo:bar`)
+	f(`* | not (foo:bar)`, `!foo:bar`)
+	f(`* | not not foo`, `foo`)
+	f(`* | not !foo`, `foo`)
+	f(`* | not foo or bar`, `!foo or bar`)
+	f(`* | not foo and bar`, `!foo bar`)
+	f(`* | "not"`, `"not"`)
 
 	// extract pipe
 	f(`* | extract "foo<bar>baz"`, `* | extract "foo<bar>baz"`)
@@ -2472,6 +2490,14 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | join on (x, y) (foo:bar)`, `* | join by (x, y) (foo:bar)`)
 	f(`* | join (x, y) (foo:bar)`, `* | join by (x, y) (foo:bar)`)
 	f(`* | join by (x) rows({"foo":"bar","baz":"x"},{"a":"b"})`, `* | join by (x) rows({"foo":"bar","baz":"x"},{"a":"b"})`)
+
+	// json_array_concat pipe
+	f(`* | json_array_concat`, `* | json_array_concat`)
+	f(`* | json_array_concat "\n"`, `* | json_array_concat "\n"`)
+	f(`* | json_array_concat "," x`, `* | json_array_concat "," from x`)
+	f(`* | json_array_concat "," from x`, `* | json_array_concat "," from x`)
+	f(`* | json_array_concat "," as y`, `* | json_array_concat "," as y`)
+	f(`* | json_array_concat "," from x as y`, `* | json_array_concat "," from x as y`)
 
 	// json_array_len pipe
 	f(`* | json_array_len x`, `* | json_array_len(x)`)
@@ -2625,6 +2651,10 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | format x as y;`, `* | format x as y`)
 	f(`* | generate_sequence 3;`, `* | generate_sequence 3`)
 	f(`* | join by (x) (y;);`, `* | join by (x) (y)`)
+	f(`* | json_array_concat;`, `* | json_array_concat`)
+	f(`* | json_array_concat ",";`, `* | json_array_concat ","`)
+	f(`* | json_array_concat "," from x;`, `* | json_array_concat "," from x`)
+	f(`* | json_array_concat "," as x;`, `* | json_array_concat "," as x`)
 	f(`* | json_array_len x;`, `* | json_array_len(x)`)
 	f(`* | json_array_len x y;`, `* | json_array_len(x) as y`)
 	f(`* | hash(x);`, `* | hash(x)`)
@@ -3395,6 +3425,16 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | filter (`)
 	f(`foo | filter )`)
 
+	// filter pipe without the filter prefix must reject bare word filters,
+	// since they are likely a mistyped pipe name. See #1454.
+	f(`foo | bar`)
+	f(`foo | foo bar`)
+	f(`foo | and foo`)
+	f(`foo | or foo`)
+	// 'not' is allowed, but it still requires a valid filter after it.
+	f(`foo | not`)
+	f(`foo | not:bar`)
+
 	f(`foo | count`)
 	f(`foo | by`)
 	f(`foo | stats`)
@@ -3472,6 +3512,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`* | format.x as y`)
 	f(`* | generate_sequence.100`)
 	f(`* | join.by(x) (y)`)
+	f(`* | json_array_concat.x`)
 	f(`* | json_array_len.x`)
 	f(`* | hash.x`)
 	f(`* | last.10 by (x)`)
@@ -3895,6 +3936,8 @@ func TestQueryGetNeededColumns(t *testing.T) {
 	f(`* | unroll if (q:w p:a) (a, b) | count() r1`, `a,b,p,q`, ``)
 	f(`* | join on (a, b) (xxx) | count() r1`, `a,b`, ``)
 	f(`* | join by (a) rows({"x":"y"}) | count() r1`, `a`, ``)
+	f(`* | json_array_concat | count() r1`, ``, ``)
+	f(`* | json_array_concat ',' from x as y | count() r1`, ``, ``)
 	f(`* | json_array_len (x) | count() r1`, ``, ``)
 	f(`* | json_array_len (x) y | count() r1`, ``, ``)
 	f(`* | len(a) as b | count() r1`, ``, ``)
@@ -3935,6 +3978,12 @@ func TestQueryClone(t *testing.T) {
 	f(`domain:"IN.example.com"`)
 	f(`domain:"contains_all.example.com"`)
 	f(`foo:"not.bar"`)
+
+	// field/value names colliding with the 'from' keyword and with math function names.
+	f(`* | split "from"`)
+	f(`* | math "abs" as x`)
+	f(`* | math ("abs" + 1) as x`)
+	f(`* | math ("round" / 2) as y`)
 }
 
 func TestQueryGetFilterTimeRange(t *testing.T) {
@@ -4120,6 +4169,8 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | hash(x) as _time", false)
 	f("* | join by (x) (foo)", false)
 	f("* | join by (x) rows({'a':'b'})", false)
+	f("* | json_array_concat", true)
+	f("* | json_array_concat as _time", false)
 	f("* | json_array_len (x)", true)
 	f("* | json_array_len (x) as _time", false)
 	f("* | last 10 (x)", false)
@@ -4227,6 +4278,7 @@ func TestQueryCanLiveTail(t *testing.T) {
 	f("* | unroll by (a)", true)
 	f("* | join by (a) (b)", true)
 	f("* | join by (a) rows({'a':'b'})", true)
+	f("* | json_array_concat", true)
 	f("* | json_array_len (a)", true)
 	f("* | hash(a)", true)
 	f("* | sample 10", true)
@@ -4323,6 +4375,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Success(t *testing.T) {
 	f("* | filter x:y | count() x", nsecsPerDay, 0, []string{"_time"}, `x:y | stats by (_time:86400000000000) count(*) as x`)
 	f("* | format 'x<y>' | count()x", nsecsPerDay, 0, []string{"_time"}, `* | format "x<y>" | stats by (_time:86400000000000) count(*) as x`)
 	f("* | hash(x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | hash(x) | stats by (_time:86400000000000) count(*) as x`)
+	f("* | json_array_concat | count() x", nsecsPerDay, 0, []string{"_time"}, `* | json_array_concat | stats by (_time:86400000000000) count(*) as x`)
 	f("* | json_array_len (x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | json_array_len(x) | stats by (_time:86400000000000) count(*) as x`)
 	f("* | len(x) | count() x", nsecsPerDay, 0, []string{"_time"}, `* | len(x) | stats by (_time:86400000000000) count(*) as x`)
 	f("* | math x+y as z | count() x", nsecsPerDay, 0, []string{"_time"}, `* | math (x + y) as z | stats by (_time:86400000000000) count(*) as x`)
@@ -4413,6 +4466,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f("* | generate_sequence 10 | count()")
 	f("* | hash(x) as _time | count()")
 	f("* | join by (x) (foo) | count()")
+	f("* | json_array_concat as _time | count()")
 	f("* | json_array_len (x) as _time | count()")
 	f("* | last 10 (x) | count()")
 	f("* | len(x) as _time | count()")
@@ -4585,6 +4639,7 @@ func TestQueryGetStatsLabels_Failure(t *testing.T) {
 	f(`foo | count() | unpack_words x`)
 	f(`foo | count() | unroll by (x)`)
 	f(`foo | count() | join by (x) (y)`)
+	f(`foo | count() | json_array_concat`)
 	f(`foo | count() | json_array_len(a)`)
 	f(`foo | count() | len(a)`)
 	f(`foo | count() | hash(a)`)
@@ -4933,7 +4988,6 @@ func TestQueryGetFixedFields_Success(t *testing.T) {
 	f("* | stats by (a, b) count(), sum(x) as y | limit 10 | offset 5", []string{"a", "b", "count(*)", "y"})
 
 	f("* | fields a, b | sort (a) | sort (c,b)", []string{"c", "b", "a"})
-
 }
 
 func TestQueryGetFixedFields_Failure(t *testing.T) {

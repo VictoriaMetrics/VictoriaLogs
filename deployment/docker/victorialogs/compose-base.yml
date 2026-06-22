@@ -11,11 +11,6 @@ services:
       - -journald.ignoreFields=_BOOT_ID,_MACHINE_ID,_SYSTEMD_INVOCATION_ID,_STREAM_ID,_UID
     deploy:
       replicas: 0
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9428/health"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
 
   vmauth:
     image: docker.io/victoriametrics/vmauth:v1.132.0
@@ -25,16 +20,11 @@ services:
     command: -auth.config=/etc/vmauth/vmauth.yml
     ports:
       - '8427:8427'
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8427/health"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
     depends_on:
       victorialogs-1:
-        condition: service_healthy
+        condition: service_started
       victorialogs-2:
-        condition: service_healthy
+        condition: service_started
 
   victorialogs-1:
     extends: .victorialogs
@@ -59,16 +49,11 @@ services:
       - '--remoteWrite.url=http://victorialogs-1:9428/insert/native'
       - '--remoteWrite.url=http://victorialogs-2:9428/insert/native'
       - '--syslog.listenAddr.tcp=0.0.0.0:8094'
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9429/health"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
     depends_on:
       victorialogs-1:
-        condition: service_healthy
+        condition: service_started
       victorialogs-2:
-        condition: service_healthy
+        condition: service_started
 
   victoriametrics:
     image: victoriametrics/victoria-metrics:v1.132.0
@@ -77,11 +62,6 @@ services:
       - -loggerFormat=json
     volumes:
       - victoriametrics:/vmsingle
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8428/health"]
-      interval: 1s
-      timeout: 1s
-      retries: 10
 
 volumes:
   victorialogs-1:

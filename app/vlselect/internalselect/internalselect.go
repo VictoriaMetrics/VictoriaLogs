@@ -68,6 +68,7 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
 	if err := parseRequest(r); err != nil {
 		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
+		return
 	}
 
 	path := r.URL.Path

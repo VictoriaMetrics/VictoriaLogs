@@ -679,8 +679,8 @@ type configs struct {
 }
 
 func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolorizeFieldsArg, extraFieldsArg, tenantIDArg, compressMethodArg *flagutil.ArrayString,
-	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool) (*configs, error) {
-
+	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool,
+) (*configs, error) {
 	streamFieldsStr := streamFieldsArg.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
 	if err != nil {
