@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-**Update note 1:** the base Docker image has been changed from [Alpine](https://www.alpinelinux.org/) to [distroless](https://github.com/googlecontainertools/distroless). For debugging VictoriaLogs containers in Kubernetes it is recommended to use [`kubectl debug`](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_debug/).
+**Update note 1:** the base Docker image has been changed from [Alpine](https://www.alpinelinux.org/) to [distroless](https://github.com/googlecontainertools/distroless) in order to reduce the attack surface. For debugging VictoriaLogs containers in Kubernetes it is recommended to use [`kubectl debug`](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_debug/).
 **Update note 2:** VictoriaLogs no longer provides a Docker image for the `linux/386` platform because the `distroless` base image [doesn't support this platform](https://github.com/GoogleContainerTools/distroless/issues/881). Executable files for `linux/386` platform are still published at [the VictoriaLogs releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases).
 
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
