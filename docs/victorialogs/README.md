@@ -203,6 +203,17 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
+### Limitations of disk space usage-based retention
+
+Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskSpaceUsageBytes` and `-retention.maxDiskUsagePercent` limits between two checks.
+The disk could reach 100% usage especially when the actual disk size is small, and the ingestion rate is high.
+In this case, VictoriaLogs switches to read-only mode and cannot drop data as expected.
+So it is important to reserve enough free disk space to prevent VictoriaLogs from entering read-only mode.
+
+For example, running VictoriaLogs on a 20 GB disk with `-retention.maxDiskUsagePercent=95` and an ingestion rate of 100 MB/s is not recommended.
+
+See also [Capacity planning](https://docs.victoriametrics.com/victorialogs/#capacity-planning), which recommends reserving at least 20% free storage space.
+
 ## Backfilling
 
 VictoriaLogs accepts logs with timestamps in the time range `[now-retentionPeriod ... now+futureRetention]`,
@@ -580,6 +591,18 @@ VictoriaLogs uses server-side timezone in the following cases:
 
 VictoriaLogs obtains the local timezone from the `TZ` environment variable. It expects valid [IANA Time Zone identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 in the `TZ` environment variable. Set `TZ` environment variable to an empty string - `TZ=""` - for using UTC.
+
+## vmalert
+
+VictoriaLogs can proxy requests to [vmalert](https://docs.victoriametrics.com/victorialogs/vmalert/) if the `-vmalert.proxyURL` command-line flag
+is set to vmalert url. For example, the following command instructs proxying `http://victoria-logs:9428/select/vmalert/*` requests to `http://vmalert:8880/vmalert/*`:
+
+```sh
+/path/to/victoria-logs -vmalert.proxyURL=http://vmalert:8880/
+```
+
+This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
+at the `/select/vmalert/*` paths.
 
 ## List of command-line flags
 

@@ -10,7 +10,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
 import useProcessStatsQueryRange from "./useProcessStatsQueryRange";
-import dayjs from "dayjs";
+import { getDefaultTimezoneOffsetMinutes, secondsToMilliseconds } from "../../../utils/time";
 
 type ResponseHits = {
   hits: LogHits[];
@@ -56,14 +56,14 @@ export const useFetchHits = () => {
 
   const getOptions = ({ query, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
     const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
-    const offsetMinutes = dayjs().tz().utcOffset();
+    const offsetMinutes = getDefaultTimezoneOffsetMinutes();
 
     const params = new URLSearchParams({
       query: query.trim(),
       step: step || `${fallbackStepMs}ms`,
       offset: `${offsetMinutes}m`,
-      start: start.toISOString(),
-      end: end.toISOString(),
+      start: start,
+      end: end,
       fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
     });
 
@@ -122,7 +122,7 @@ export const useFetchHits = () => {
       const response = await fetch(url, options);
 
       const duration = response.headers.get("vl-request-duration-seconds");
-      setDurationMs(duration ? Number(duration) * 1000 : undefined);
+      setDurationMs(duration ? secondsToMilliseconds(Number(duration)) : undefined);
 
       if (!response.ok || !response.body) {
         const text = await response.text();

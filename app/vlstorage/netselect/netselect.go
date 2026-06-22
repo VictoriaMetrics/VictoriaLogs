@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,52 +31,52 @@ const (
 	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldNamesProtocolVersion = "v4"
+	FieldNamesProtocolVersion = "v5"
 
 	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldValuesProtocolVersion = "v4"
+	FieldValuesProtocolVersion = "v5"
 
 	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldNamesProtocolVersion = "v4"
+	StreamFieldNamesProtocolVersion = "v5"
 
 	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldValuesProtocolVersion = "v4"
+	StreamFieldValuesProtocolVersion = "v5"
 
 	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamsProtocolVersion = "v4"
+	StreamsProtocolVersion = "v5"
 
 	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamIDsProtocolVersion = "v4"
+	StreamIDsProtocolVersion = "v5"
 
 	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	QueryProtocolVersion = "v4"
+	QueryProtocolVersion = "v5"
 
 	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteRunTaskProtocolVersion = "v1"
+	DeleteRunTaskProtocolVersion = "v2"
 
 	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/delete/stop_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteStopTaskProtocolVersion = "v1"
+	DeleteStopTaskProtocolVersion = "v2"
 
 	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/delete/active_tasks endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteActiveTasksProtocolVersion = "v1"
+	DeleteActiveTasksProtocolVersion = "v2"
 )
 
 // Storage is a network storage for querying remote storage nodes in the cluster.
@@ -321,12 +322,19 @@ func (sn *storageNode) getResponseForPathAndArgs(ctx context.Context, path strin
 
 func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path string, args url.Values) (io.ReadCloser, string, error) {
 	reqURL := sn.getRequestURL(path)
-	reqBody := strings.NewReader(args.Encode())
+
+	// encode args as multipart/form-data in order to avoid the 10MB limit
+	// on the application/x-www-form-urlencoded request body size.
+	// See https://pkg.go.dev/net/http#Request.ParseForm
+	//
+	// This avoids the issue when too long query is sent to vlstorage.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+	reqBody, contentType := newMultipartRequestBody(args)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
 		return nil, "", fmt.Errorf("cannot create a request for %q: %w", reqURL, err)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", contentType)
 	if err := sn.ac.SetHeaders(req, true); err != nil {
 		return nil, "", fmt.Errorf("cannot set auth headers at %q: %w", reqURL, err)
 	}
@@ -355,6 +363,25 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 	}
 
 	return resp.Body, reqURL, nil
+}
+
+func newMultipartRequestBody(args url.Values) (io.Reader, string) {
+	var bb bytesutil.ByteBuffer
+	w := multipart.NewWriter(&bb)
+
+	for k, vs := range args {
+		for _, v := range vs {
+			if err := w.WriteField(k, v); err != nil {
+				logger.Panicf("BUG: cannot create in-memory multipart request body for key=%q, len(value)=%d: %s", k, len(v), err)
+			}
+		}
+	}
+
+	if err := w.Close(); err != nil {
+		logger.Panicf("BUG: cannot close in-memory multipart request body: %s", err)
+	}
+
+	return bb.NewReader(), w.FormDataContentType()
 }
 
 func (sn *storageNode) getRequestURL(path string) string {

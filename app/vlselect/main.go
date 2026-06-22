@@ -6,15 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	nethttputil "net/http/httputil"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/vmalertproxy"
 	"github.com/VictoriaMetrics/metrics"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlselect/internalselect"
@@ -39,7 +39,7 @@ var (
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
-	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert.")
+	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
 )
 
 func getDefaultMaxConcurrentRequests() int {
@@ -59,7 +59,9 @@ func getDefaultMaxConcurrentRequests() int {
 // Init initializes vlselect
 func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
-	initVMAlertProxy()
+
+	vmalertproxy.Init(*vmalertProxyURL)
+	flagutil.RegisterSecretFlag("vmalert.proxyURL")
 
 	internalselect.Init()
 }
@@ -196,10 +198,12 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		if len(*vmalertProxyURL) == 0 {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "%s", `{"status":"error","msg":"for accessing vmalert flag '-vmalert.proxyURL' must be configured"}`)
+			fmt.Fprintf(w, "%s", `{"status":"error","msg":"the '-vmalert.proxyURL' command-line flag must be configured; `+
+				`see https://docs.victoriametrics.com/victorialogs/#vmalert"}`)
 			return true
 		}
-		proxyVMAlertRequests(w, r)
+		path = strings.TrimPrefix(path, "/select")
+		vmalertproxy.HandleRequest(w, r, path)
 		return true
 	}
 
@@ -462,42 +466,6 @@ func getMaxQueryDuration(r *http.Request) (time.Duration, error) {
 	}
 	return d, nil
 }
-
-func proxyVMAlertRequests(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		err := recover()
-		if err == nil || err == http.ErrAbortHandler {
-			// Suppress http.ErrAbortHandler panic.
-			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1353
-			return
-		}
-		panic(err)
-	}()
-	req := r.Clone(r.Context())
-	req.URL.Path = strings.TrimPrefix(r.URL.Path, "/select")
-	req.Host = vmalertProxyHost
-	vmalertProxy.ServeHTTP(w, req)
-}
-
-// initVMAlertProxy must be called after flag.Parse(), since it uses command-line flags.
-func initVMAlertProxy() {
-	vmalertProxyHost = ""
-	vmalertProxy = nil
-	if len(*vmalertProxyURL) == 0 {
-		return
-	}
-	proxyURL, err := url.Parse(*vmalertProxyURL)
-	if err != nil {
-		logger.Fatalf("cannot parse -vmalert.proxyURL=%q: %s", *vmalertProxyURL, err)
-	}
-	vmalertProxyHost = proxyURL.Host
-	vmalertProxy = nethttputil.NewSingleHostReverseProxy(proxyURL)
-}
-
-var (
-	vmalertProxyHost string
-	vmalertProxy     *nethttputil.ReverseProxy
-)
 
 var (
 	logsqlFacetsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/facets"}`)
