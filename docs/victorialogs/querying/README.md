@@ -213,13 +213,12 @@ curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'start_offset=1
 ```
 
 Live tailing delays returning new logs for 5 seconds, so they could be properly delivered from log collectors to VictoriaLogs.
-If you see gaps in the logs delivered by live tailing, then increase the `offset` query arg value in order to avoid the gaps.
+This delay is controlled by the `offset` query arg. If you see gaps in the logs delivered by live tailing, then increase the `offset` value in order to avoid the gaps.
 For example, the following command delays delivering new logs for 30 seconds:
 
 ```sh
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'offset=30s'
 ```
-
 
 Live tailing checks for new logs every second. The frequency for the check can be changed via `refresh_interval` query arg.
 For example, the following command instructs live tailing to check for new logs every 10 seconds:

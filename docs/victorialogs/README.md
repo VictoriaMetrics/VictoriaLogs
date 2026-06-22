@@ -205,7 +205,7 @@ or
 
 ### Limitations of disk space usage-based retention
 
-Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskUsage*` limit between two checks.
+Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskSpaceUsageBytes` and `-retention.maxDiskUsagePercent` limits between two checks.
 The disk could reach 100% usage especially when the actual disk size is small, and the ingestion rate is high.
 In this case, VictoriaLogs switches to read-only mode and cannot drop data as expected.
 So it is important to reserve enough free disk space to prevent VictoriaLogs from entering read-only mode.

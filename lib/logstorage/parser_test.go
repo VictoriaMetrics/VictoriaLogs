@@ -2442,6 +2442,24 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | "stats" *`, `"stats"`)
 	f(`* | * "count"`, `"count"`)
 	f(`* | foo:bar AND baz:<10`, `foo:bar baz:<10`)
+	// filter pipe without the filter prefix, starting with a non-word token
+	f(`* | !foo`, `!foo`)
+	f(`* | !~"re"`, `!~"re"`)
+	f(`* | !=foo`, `!=foo`)
+	f(`* | =foo`, `=foo`)
+	f(`* | >5`, `>5`)
+	f(`* | <5`, `<5`)
+	f(`* | {host="x"}`, `{host="x"}`)
+	// filter pipe without the filter prefix, starting with the 'not' keyword
+	f(`* | not foo`, `!foo`)
+	f(`* | NOT foo`, `!foo`)
+	f(`* | not foo:bar`, `!foo:bar`)
+	f(`* | not (foo:bar)`, `!foo:bar`)
+	f(`* | not not foo`, `foo`)
+	f(`* | not !foo`, `foo`)
+	f(`* | not foo or bar`, `!foo or bar`)
+	f(`* | not foo and bar`, `!foo bar`)
+	f(`* | "not"`, `"not"`)
 
 	// extract pipe
 	f(`* | extract "foo<bar>baz"`, `* | extract "foo<bar>baz"`)
@@ -3394,6 +3412,16 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | filter | sort by (x)`)
 	f(`foo | filter (`)
 	f(`foo | filter )`)
+
+	// filter pipe without the filter prefix must reject bare word filters,
+	// since they are likely a mistyped pipe name. See #1454.
+	f(`foo | bar`)
+	f(`foo | foo bar`)
+	f(`foo | and foo`)
+	f(`foo | or foo`)
+	// 'not' is allowed, but it still requires a valid filter after it.
+	f(`foo | not`)
+	f(`foo | not:bar`)
 
 	f(`foo | count`)
 	f(`foo | by`)

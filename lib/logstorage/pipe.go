@@ -164,7 +164,8 @@ func parsePipe(lex *lexer) (pipe, error) {
 		return pf, nil
 	}
 
-	return nil, fmt.Errorf("unexpected pipe %q", lex.token)
+	return nil, fmt.Errorf("unexpected pipe name %q; probably, 'filter' is missing in front of %q; "+
+		"see https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe", lex.token, lex.token)
 }
 
 func isLikelyStatsPipe(lex *lexer) bool {
@@ -175,7 +176,13 @@ func isLikelyFilterPipe(lex *lexer) bool {
 	if lex.isQuotedToken() {
 		return true
 	}
-	if lex.isKeyword("*", "-", "~") {
+	if !isWord(lex.token) {
+		// Any token that isn't a word cannot clash with a pipe name,
+		// since all pipe names are words. So treat it as a filter.
+		return true
+	}
+	if lex.isKeyword("not") {
+		// 'not' is a logical filter operator rather than a pipe name.
 		return true
 	}
 

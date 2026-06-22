@@ -1928,7 +1928,7 @@ func parseQuery(lex *lexer) (*Query, error) {
 	lex.pushQueryOptions(&q.opts)
 	defer lex.popQueryOptions()
 
-	f, err := parseFilter(lex, true)
+	f, err := parseFilter(lex)
 	if err != nil {
 		return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 	}
@@ -2113,18 +2113,9 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 	}
 }
 
-func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
+func parseFilter(lex *lexer) (filter, error) {
 	if lex.isQueryPartTrailer() {
 		return nil, fmt.Errorf("missing query")
-	}
-
-	if !allowPipeKeywords {
-		// Verify the first token in the filter doesn't match pipe names.
-		firstToken := strings.ToLower(lex.rawToken)
-		if firstToken == "by" || isPipeName(firstToken) || isStatsFuncName(firstToken) {
-			return nil, fmt.Errorf("query filter cannot start with pipe keyword %q; see https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax; "+
-				"please put the first word of the filter into quotes", firstToken)
-		}
 	}
 
 	fo, err := parseFilterOr(lex, "")
@@ -3912,7 +3903,7 @@ func isNumberPrefix(s string) bool {
 }
 
 func needQuoteToken(s string) bool {
-	if s == "." {
+	if !isWord(s) {
 		return true
 	}
 
@@ -3924,11 +3915,6 @@ func needQuoteToken(s string) bool {
 		return true
 	}
 
-	for _, r := range s {
-		if !isTokenRune(r) {
-			return true
-		}
-	}
 	return false
 }
 
