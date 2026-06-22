@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -73,6 +75,8 @@ jobs:
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -94,8 +98,8 @@ jobs:
       - name: Run tests
         run: GOGC=10 make ${{ matrix.scenario}}
 
-  integration-test:
-    name: integration-test
+  apptest:
+    name: apptest
     needs: [lint, test]
     permissions:
       contents: read
@@ -105,6 +109,8 @@ jobs:
     steps:
       - name: Code checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -123,5 +129,5 @@ jobs:
           key: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
           restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-
 
-      - name: Run integration tests
-        run: make integration-test
+      - name: Run apptest
+        run: make apptest

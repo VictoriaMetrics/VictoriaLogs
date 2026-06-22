@@ -13,6 +13,7 @@ import { useFetchQueryTime } from "../useFetchQueryTime";
 import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
 import { useQueryHistory } from "../../../../components/Configurators/QueryEditor/hooks/useQueryHistory";
 import { TimeParams } from "../../../../types";
+import { normalizeTimeParams, timeParamsToDateRange } from "../../../../utils/time";
 
 export type UseQueryPageControllerProps = {
   query: string;
@@ -63,8 +64,9 @@ const getSyncTimeFilterKey = ({ query, period }: BaseTriggers) => {
 };
 
 const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
-  const isStartEqual = prevPeriod.start === nextPeriod.start;
-  const isEndEqual = prevPeriod.end === nextPeriod.end;
+  const normalizeNext = normalizeTimeParams(nextPeriod);
+  const isStartEqual = prevPeriod.start === normalizeNext.start;
+  const isEndEqual = prevPeriod.end === normalizeNext.end;
   return isStartEqual && isEndEqual;
 };
 
@@ -141,12 +143,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
       if (hasTimeFilter && !isSamePeriod) {
         baseTriggers.setPeriod(
-          {
-            nextPeriod: {
-              from: new Date(nextPeriod.start * 1000),
-              to: new Date(nextPeriod.end * 1000),
-            },
-          },
+          { nextPeriod: timeParamsToDateRange(nextPeriod) },
           { replace: true }
         );
 

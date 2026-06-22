@@ -201,6 +201,9 @@ The log fields are returned in alphabetical order unless the query ends with [pi
 which explicitly set the order of the returned fields, such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe)
 or [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
 
+Live tailing preserves the order of returned logs only within a single [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+Logs from different streams may be returned out of order, since the order is tracked per stream.
+
 Live tailing supports returning historical logs, which were ingested into VictoriaLogs before the start of live tailing. Pass `start_offset=<d>` query
 arg to `/select/logsql/tail` where `<d>` is the duration for returning historical logs. For example, the following command returns historical logs
 which were ingested into VictoriaLogs during the last hour, before starting live tailing:
@@ -209,8 +212,9 @@ which were ingested into VictoriaLogs during the last hour, before starting live
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'start_offset=1h'
 ```
 
-Live tailing delays delivering new logs for one second, so they could be properly delivered from log collectors to VictoriaLogs.
-This delay can be changed via `offset` query arg. For example, the following command delays delivering new logs for 30 seconds:
+Live tailing delays returning new logs for 5 seconds, so they could be properly delivered from log collectors to VictoriaLogs.
+This delay is controlled by the `offset` query arg. If you see gaps in the logs delivered by live tailing, then increase the `offset` value in order to avoid the gaps.
+For example, the following command delays delivering new logs for 30 seconds:
 
 ```sh
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'offset=30s'

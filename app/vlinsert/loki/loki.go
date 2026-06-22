@@ -79,7 +79,6 @@ func getCommonParams(r *http.Request) (*commonParams, error) {
 			}
 			cp.TenantID = tenantID
 		}
-
 	}
 
 	parseMessage := !*disableMessageParsing

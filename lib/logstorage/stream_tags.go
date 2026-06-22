@@ -65,6 +65,7 @@ func (st *StreamTags) verifyCanonicalFieldValues(fields []Field) error {
 		if tagName <= prevTagName {
 			return fmt.Errorf("stream tag names must be sorted; got %q after %q; streamTags: %s", tagName, prevTagName, st)
 		}
+		prevTagName = tagName
 
 		tagValue := tag.Value
 		found := false
@@ -136,7 +137,10 @@ func (st *StreamTags) Add(name, value string) {
 // MarshalCanonical marshal st in a canonical way
 func (st *StreamTags) MarshalCanonical(dst []byte) []byte {
 	sort.Sort(st)
+	return st.marshalCanonicalInternal(dst)
+}
 
+func (st *StreamTags) marshalCanonicalInternal(dst []byte) []byte {
 	tags := st.tags
 	dst = encoding.MarshalVarUint64(dst, uint64(len(tags)))
 	for i := range tags {
