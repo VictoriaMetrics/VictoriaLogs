@@ -301,12 +301,21 @@ func (lr *LogRows) NeedFlush() bool {
 
 // MustAddInsertRow adds r to lr.
 func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
-	streamTagsCanonical, err := lr.normalizeStreamTagsCanonical(r.StreamTagsCanonical, r.Fields)
-	if err != nil {
+	st := GetStreamTags()
+	streamTagsCanonical := r.StreamTagsCanonical
+	if err := parseStreamTagsCanonical(st, streamTagsCanonical); err != nil {
 		line := MarshalFieldsToJSON(nil, r.Fields)
 		invalidStreamTagsLogger.Warnf("cannot unmarshal streamTagsCanonical: %s; skipping the log entry; log entry: %s", err, line)
+		PutStreamTags(st)
 		return
 	}
+
+	if st.normalize(r.Fields) {
+		bLen := len(lr.a.b)
+		lr.a.b = st.MarshalCanonical(lr.a.b)
+		streamTagsCanonical = bytesutil.ToUnsafeString(lr.a.b[bLen:])
+	}
+	PutStreamTags(st)
 
 	// Calculate the id for the StreamTags
 	var sid streamID
@@ -319,27 +328,16 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 
 var invalidStreamTagsLogger = logger.WithThrottler("invalid_stream_tags", 5*time.Second)
 
-// normalizeStreamTagsCanonical updates StreamTagsCanonical of given r according to StreamTags.normalize.
-func (lr *LogRows) normalizeStreamTagsCanonical(stc string, fields []Field) (string, error) {
-	st := GetStreamTags()
-	defer PutStreamTags(st)
-
-	src := bytesutil.ToUnsafeBytes(stc)
-	tail, err := st.UnmarshalCanonicalInplace(src)
+func parseStreamTagsCanonical(dst *StreamTags, streamTagsCanonical string) error {
+	src := bytesutil.ToUnsafeBytes(streamTagsCanonical)
+	tail, err := dst.UnmarshalCanonicalInplace(src)
 	if err != nil {
-		return "", fmt.Errorf("cannot unmarshal streamTagsCanonical: %w", err)
+		return fmt.Errorf("cannot unmarshal streamTagsCanonical: %w", err)
 	}
 	if len(tail) > 0 {
-		return "", fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), st)
+		return fmt.Errorf("unexpected tail left after unmarshaling streamTagsCanonical; len(tail)=%d; streamTags: %s", len(tail), dst)
 	}
-
-	if updated := st.normalize(fields); !updated {
-		return stc, nil
-	}
-	bLen := len(lr.a.b)
-	lr.a.b = st.MarshalCanonical(lr.a.b)
-	stcNew := bytesutil.ToUnsafeString(lr.a.b[bLen:])
-	return stcNew, nil
+	return nil
 }
 
 func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
