@@ -359,7 +359,18 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 			responseBody = []byte(err.Error())
 		}
 		_ = resp.Body.Close()
-		return nil, "", fmt.Errorf("unexpected response status code from %q: %d; want %d; response: %q", reqURL, resp.StatusCode, http.StatusOK, responseBody)
+
+		err = fmt.Errorf("unexpected response status code from %q: %d; want %d; response: %q", reqURL, resp.StatusCode, http.StatusOK, responseBody)
+		if resp.StatusCode == http.StatusBadGateway {
+			// Propagate the error to the client if the server returns 502 Bad Gateway,
+			// so the client can retry the request or use a partial responses.
+			// See https://docs.victoriametrics.com/victorialogs/cluster/#high-availability
+			return nil, "", &httpserver.ErrorWithStatusCode{
+				Err:        err,
+				StatusCode: http.StatusBadGateway,
+			}
+		}
+		return nil, "", err
 	}
 
 	return resp.Body, reqURL, nil

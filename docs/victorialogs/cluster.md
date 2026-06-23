@@ -92,9 +92,13 @@ without any delays. This allows performing maintenance tasks for `vlstorage` nod
 Make sure that the remaining `vlstorage` nodes have enough capacity for the increased data ingestion workload, in order to avoid availability problems.
 
 VictoriaLogs cluster returns `502 Bad Gateway` errors for [incoming queries](https://docs.victoriametrics.com/victorialogs/querying/)
-if some of the `vlstorage` nodes are unavailable. This guarantees consistent query responses
+if some of the `vlstorage` nodes are unavailable or expose an internal API version incompatible with `vlselect`. This guarantees consistent query responses
 (e.g. all the stored logs are taken into account during the query) during maintenance tasks at `vlstorage` nodes. Note that all the newly incoming logs are properly stored
 to the remaining `vlstorage` nodes - see the paragraph above, so they become available for querying immediately after all the `vlstorage` nodes return back to the cluster.
+
+A version mismatch usually happens during a rolling upgrade, when some `vlstorage` nodes are upgraded while others aren't.
+The [release notes](https://docs.victoriametrics.com/victorialogs/changelog/) list such incompatibilities, so check them before upgrading.
+The errors stop after all the components are upgraded to compatible versions.
 
 There are practical cases when it is preferred to return partial responses instead of `502 Bad Gateway` errors if some of `vlstorage` nodes are unavailable.
 See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#partial-responses) on how to achieve this.
