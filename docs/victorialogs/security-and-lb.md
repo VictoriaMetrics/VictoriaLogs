@@ -31,6 +31,7 @@ This document contains the following configuration examples for `vmauth`:
 * [How to set up authorization for search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization)
 * [How to set up authorization for data ingestion](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization)
 * [Routing search requests among multiple VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#cluster-routing)
+* [High Availability routing and failover](https://docs.victoriametrics.com/victorialogs/security-and-lb/#high-availability-routing)
 * [Auhtorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
 * [Authorizing per-tenant data ingestion requests](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests)
 * [Proxying requests to the given tenants](https://docs.victoriametrics.com/victorialogs/security-and-lb/#proxying-requests-to-the-given-tenants)
@@ -107,6 +108,33 @@ VictoriaLogs will receive the path without the `/cold/` prefix, allowing it to p
 
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing) on how to route requests to different backends.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) about the `drop_src_path_prefix_parts`.
+
+### High Availability routing
+
+`vmauth` can be configured to provide High Availability across multiple VictoriaLogs clusters by retrying a failed query on another cluster.
+
+In [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) mode, `vlselect` returns the `502 Bad Gateway` status code if some of the `vlstorage` nodes are unavailable,
+or if a `vlstorage` node exposes an internal API version incompatible with `vlselect`, according to [High Availability](https://docs.victoriametrics.com/victorialogs/cluster/#high-availability) docs.
+
+By default, `vmauth` retries only network errors, and it does not retry any HTTP error status codes such as `502 Bad Gateway`.
+To instruct `vmauth` to failover to another cluster when receiving a `502` HTTP status code, set the `retry_status_codes` option:
+
+```yaml
+users:
+  - username: "foo"
+    password: "bar"
+    url_map:
+      - src_paths: ["/select/.*"]
+        url_prefix:
+          - "http://victoria-logs-cluster-1:9428/"
+          - "http://victoria-logs-cluster-2:9428/"
+        # Retry the request on another configured cluster if the current one has unavailable vlstorage node.
+        retry_status_codes: [502]
+```
+
+With this configuration, `vmauth` balances incoming requests between `victoria-logs-cluster-1` and `victoria-logs-cluster-2`.
+If the selected cluster returns a `502` error, `vmauth` transparently retries the same request on another available cluster from the list.
+The number of retries does not exceed the number of backends listed under `url_prefix`.
 
 ### Tenant-based request proxying
 
