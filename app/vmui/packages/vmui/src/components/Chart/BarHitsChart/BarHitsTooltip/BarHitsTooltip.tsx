@@ -1,7 +1,6 @@
 import { FC, useLayoutEffect, useMemo, useRef, useState } from "preact/compat";
 import uPlot, { AlignedData } from "uplot";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
-import classNames from "classnames";
 import { sortLogHits } from "../../../../utils/logs";
 import { formatNumber } from "../../../../utils/number";
 import "./style.scss";
@@ -141,49 +140,38 @@ const BarHitsTooltip: FC<Props> = ({ data, focusDataIdx, uPlotInst }) => {
 
   return (
     <div
-      className={classNames({
-        "vm-chart-tooltip": true,
-        "vm-chart-tooltip_hits": true,
-        "vm-bar-hits-tooltip": true,
-      })}
+      className="vm-chart-tooltip"
       ref={tooltipRef}
       style={tooltipPosition}
     >
-      <div>
+      <div className="vm-chart-tooltip-timestamp">
+        {tooltipData.timestamp}
+      </div>
+
+      <div className="vm-chart-tooltip-data">
         {tooltipData.values.map((item) => (
           <div
-            className="vm-chart-tooltip-data"
+            className="vm-chart-tooltip-data-item"
             key={item.label}
           >
             <span
-              className="vm-chart-tooltip-data__marker"
+              className="vm-chart-tooltip-data-item__marker"
               style={{ background: item.stroke }}
             />
-            <p className="vm-bar-hits-tooltip-item">
-              <span className="vm-bar-hits-tooltip-item__label">{item.label}</span>
-              <span>{item.value && formatNumber(item.value)}</span>
-            </p>
+            <span className="vm-chart-tooltip-data-item__label">{item.label}</span>
+            <span className="vm-chart-tooltip-data-item__value">{item.value && formatNumber(item.value)}</span>
           </div>
         ))}
+
+        {tooltipData.values.length > 1 && (
+          <div className="vm-chart-tooltip-data-item vm-chart-tooltip-data-item_total">
+            <span className="vm-chart-tooltip-data-item__label">Total</span>
+            <span className="vm-chart-tooltip-data-item__value">{formatNumber(tooltipData.total)}</span>
+          </div>
+        )}
       </div>
 
-      {tooltipData.values.length > 1 && (
-        <div className="vm-chart-tooltip-data">
-          <span/>
-          <p className="vm-bar-hits-tooltip-item">
-            <span className="vm-bar-hits-tooltip-item__label">Total</span>
-            <span>{formatNumber(tooltipData.total)}</span>
-          </p>
-        </div>
-      )}
-
-      <div className="vm-chart-tooltip-header">
-        <div className="vm-chart-tooltip-header__title vm-bar-hits-tooltip__date">
-          {tooltipData.timestamp}
-        </div>
-      </div>
-
-      <div className="vm-bar-hits-tooltip-tips">
+      <div className="vm-chart-tooltip-tips">
         Click a bar to set the time range
       </div>
     </div>
