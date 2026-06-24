@@ -226,7 +226,7 @@ if you want to continue learning LogsQL.
 LogsQL treats [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values as sequences of words
 delimited by non-word chars such as whitespace, parens, punctuation chars, etc.
 A token is considered a word if it contains only [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded Unicode letters, digits, and underscores.
-For example, the string `foo_bar (baz_123,"тест")!` is split into three separate words: `foo_bar`, `baz_123`, and `тест`.
+For example, the string `foo_bar (baz-123,"тест")!` is split into the following separate words: `foo_bar`, `baz`, `123`, and `тест`.
 These words are taken into account by full-text search filters such as
 [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter).
