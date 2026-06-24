@@ -36,8 +36,6 @@ const ProtocolVersion = "v1"
 type Storage struct {
 	sns []*storageNode
 
-	idleConnTimeout time.Duration
-
 	disableCompression bool
 
 	srt *streamRowsTracker
@@ -79,11 +77,11 @@ type storageNode struct {
 	isReachable atomic.Bool
 }
 
-func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
+func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, idleConnTimeout time.Duration) *storageNode {
 	tr := httputil.NewTransport(false, "vlinsert_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
-	tr.IdleConnTimeout = s.idleConnTimeout
+	tr.IdleConnTimeout = idleConnTimeout
 
 	scheme := "http"
 	if isTLS {
@@ -329,7 +327,6 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, idle
 	}
 
 	s := &Storage{
-		idleConnTimeout:    idleConnTimeout,
 		disableCompression: disableCompression,
 		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
@@ -337,7 +334,7 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, idle
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
-		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i])
+		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i], idleConnTimeout)
 	}
 	s.sns = sns
 

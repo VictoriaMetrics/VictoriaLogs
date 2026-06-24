@@ -82,8 +82,6 @@ const (
 type Storage struct {
 	sns []*storageNode
 
-	idleConnTimeout time.Duration
-
 	disableCompression bool
 }
 
@@ -107,11 +105,11 @@ type storageNode struct {
 	sendErrors *metrics.Counter
 }
 
-func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
+func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, idleConnTimeout time.Duration) *storageNode {
 	tr := httputil.NewTransport(false, "vlselect_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
-	tr.IdleConnTimeout = s.idleConnTimeout
+	tr.IdleConnTimeout = idleConnTimeout
 
 	scheme := "http"
 	if isTLS {
@@ -371,13 +369,12 @@ func (sn *storageNode) getRequestURL(path string) string {
 // Call MustStop on the returned storage when it is no longer needed.
 func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, idleConnTimeout time.Duration, disableCompression bool) *Storage {
 	s := &Storage{
-		idleConnTimeout:    idleConnTimeout,
 		disableCompression: disableCompression,
 	}
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
-		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i])
+		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i], idleConnTimeout)
 	}
 	s.sns = sns
 
