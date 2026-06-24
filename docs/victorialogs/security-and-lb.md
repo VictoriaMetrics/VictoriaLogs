@@ -62,6 +62,7 @@ users:
 This config instructs `vmauth` accepting requests for the Basic Auth user `foo` with the password `bar`.
 
 ![Using vmauth for load balancing with basic authentication](security-and-lb-search-authorization.webp)
+{width="600px"}
 
 Successfully authenticated requests are proxied (load balanced) to one of the VictoriaLogs instances specified in the `url_prefix` list,
 if these requests match the `src_paths` regexp, i.e. if they start with `/select/` path prefix.
@@ -96,10 +97,12 @@ unauthorized_user:
 
 The configuration above enables proxying requests with the path prefix `/cold/select/` to the backend at `http://victoria-logs-cold:9428`,
 and requests with the path prefix `/hot/select/` to the backend at `http://victoria-logs-hot:9428`.
-The backends can be either single-node instances of VictoriaLogs or `vmauth` in front of `vlselect` nodes in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
-See [how to set up `vmauth` in front on multiple `vlselect` nodes](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
 
 ![Using vmauth to route by path](security-and-lb-cluster-routing.webp)
+{width="600px"}
+
+The backends can be either single-node instances of VictoriaLogs or `vmauth` in front of `vlselect` nodes in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
+See [how to set up `vmauth` in front on multiple `vlselect` nodes](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
 
 This approach is useful when applying different retention policies for various types of logs.
 For example, you might store warn-level and higher severity logs in the cold instance/cluster with longer retention,
@@ -145,6 +148,7 @@ This allows building a VictoriaLogs storage system with distinct per-tenant rete
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
 ![Using vmauth to route by HTTP header](security-and-lb-tenant-based-request-proxying.webp)
+{width="600px"}
 
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) on how to setup request routing in `vmauth` by request headers.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
