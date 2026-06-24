@@ -1,4 +1,4 @@
-import { FC, useRef } from "preact/compat";
+import { FC, useRef, useState } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
 import { useFetchAccountIds } from "./hooks/useFetchAccountIds";
 import TenantsSelect from "./TenantsSelect";
@@ -28,6 +28,7 @@ const Tenants: FC = () => {
   const tenantId = `${accountId}:${projectId}`;
 
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState("");
 
   const {
     value: openPopup,
@@ -47,6 +48,8 @@ const Tenants: FC = () => {
     accountIds,
     accountId,
     projectId,
+    search,
+    onSearch: setSearch,
     onChange,
   };
 

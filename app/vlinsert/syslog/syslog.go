@@ -455,7 +455,7 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP str
 		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
 		if err != nil {
 			errorsTotal.Inc()
-			return fmt.Errorf("cannot read line #%d: %s", n, err)
+			return fmt.Errorf("cannot read line #%d: %w", n, err)
 		}
 		n++
 	}
@@ -679,8 +679,8 @@ type configs struct {
 }
 
 func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolorizeFieldsArg, extraFieldsArg, tenantIDArg, compressMethodArg *flagutil.ArrayString,
-	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool) (*configs, error) {
-
+	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool,
+) (*configs, error) {
 	streamFieldsStr := streamFieldsArg.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
 	if err != nil {

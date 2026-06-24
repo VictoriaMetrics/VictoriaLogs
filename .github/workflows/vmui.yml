@@ -14,23 +14,25 @@ on:
       - 'app/vmui/packages/vmui/**'
       - '.github/workflows/vmui.yml'
 
-permissions:
-  contents: read
-  packages: read
-  pull-requests: read
-  checks: write
-
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+permissions: {}
+
 jobs:
   vmui-checks:
     name: VMUI Checks (lint, test, typecheck)
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          persist-credentials: false
 
       - name: Cache node_modules
         id: cache

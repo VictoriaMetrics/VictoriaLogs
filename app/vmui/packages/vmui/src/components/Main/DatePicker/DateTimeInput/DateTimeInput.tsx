@@ -1,15 +1,16 @@
-import { FC, useEffect, useRef, useState, RefObject, ChangeEvent, KeyboardEvent } from "preact/compat";
+import { FC, useEffect, useRef, useState, RefObject, ChangeEvent, KeyboardEvent, useMemo } from "preact/compat";
 import { CalendarIcon } from "../../Icons";
 import DatePicker from "../DatePicker";
 import Button from "../../Button/Button";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import InputMask from "react-input-mask";
-import dayjs from "dayjs";
 import classNames from "classnames";
 import "./style.scss";
+import { vmDate } from "../../../../utils/time";
 
 const formatStringDate = (val: string) => {
-  return dayjs(val).isValid() ? dayjs.tz(val).format(DATE_TIME_FORMAT) : val;
+  const localDate = vmDate(val);
+  return localDate.isValid() ? localDate.nano().format(DATE_TIME_FORMAT) : val;
 };
 
 interface DateTimeInputProps {
@@ -33,21 +34,30 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
   const [inputRef, setInputRef] = useState<HTMLInputElement | null>(null);
 
   const [maskedValue, setMaskedValue] = useState(formatStringDate(value));
+  const isValidDate = !!maskedValue && vmDate(maskedValue).isValid();
+  const isoValue = useMemo(() => {
+    return isValidDate ? vmDate.tz(maskedValue).nano().toISOString() : "";
+  }, [maskedValue]);
+
+  const datePickerValue = useMemo(() => isValidDate ? vmDate.tz(maskedValue) : vmDate().tz(), [maskedValue]);
+
   const [focusToTime, setFocusToTime] = useState(false);
   const [awaitChangeForEnter, setAwaitChangeForEnter] = useState(false);
-  const error = dayjs(maskedValue).isValid() ? "" : "Invalid date format";
+  const error = isValidDate ? "" : "Invalid date format";
 
   const handleMaskedChange = (e: ChangeEvent<HTMLInputElement>) => {
     setMaskedValue(e.currentTarget.value);
   };
 
   const handleBlur = () => {
-    onChange(maskedValue);
+    if (!isValidDate) return;
+    onChange(isoValue);
   };
 
   const handleKeyUp = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      onChange(maskedValue);
+      if (!isValidDate) return;
+      onChange(isoValue);
       setAwaitChangeForEnter(true);
     }
   };
@@ -88,8 +98,8 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
       <InputMask
         tabIndex={1}
         inputRef={setInputRef}
-        mask="9999-99-99 99:99:99"
-        placeholder="YYYY-MM-DD HH:mm:ss"
+        mask="9999-99-99 99:99:99.999999999"
+        placeholder="YYYY-MM-DD HH:mm:ss.SSSSSSSSS"
         value={maskedValue}
         autoCapitalize={"none"}
         inputMode={"numeric"}
@@ -116,7 +126,7 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
       <DatePicker
         label={pickerLabel}
         ref={pickerRef}
-        date={maskedValue}
+        date={datePickerValue}
         onChange={handleChangeDate}
         targetRef={wrapperRef}
       />

@@ -210,5 +210,4 @@ func TestParseProtobufRequest_ParseMessage(t *testing.T) {
 		}
 	]
 }`, []string{"a", "trace_id"}, []string{"x"}, "", []int64{1577836800000000001}, `{"x":"y","_msg":"432","parent_id":"qwerty","x":"{\"a\":123}"}`)
-
 }

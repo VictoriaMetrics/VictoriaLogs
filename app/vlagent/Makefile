@@ -45,30 +45,6 @@ vlagent-openbsd-amd64-prod:
 vlagent-windows-amd64-prod:
 	APP_NAME=vlagent $(MAKE) app-via-docker-windows-amd64
 
-package-vlagent:
-	APP_NAME=vlagent $(MAKE) package-via-docker
-
-package-vlagent-pure:
-	APP_NAME=vlagent $(MAKE) package-via-docker-pure
-
-package-vlagent-amd64:
-	APP_NAME=vlagent $(MAKE) package-via-docker-amd64
-
-package-vlagent-arm:
-	APP_NAME=vlagent $(MAKE) package-via-docker-arm
-
-package-vlagent-arm64:
-	APP_NAME=vlagent $(MAKE) package-via-docker-arm64
-
-package-vlagent-ppc64le:
-	APP_NAME=vlagent $(MAKE) package-via-docker-ppc64le
-
-package-vlagent-s390x:
-	APP_NAME=vlagent $(MAKE) package-via-docker-s390x
-
-package-vlagent-386:
-	APP_NAME=vlagent $(MAKE) package-via-docker-386
-
 publish-vlagent:
 	APP_NAME=vlagent $(MAKE) publish-via-docker
 

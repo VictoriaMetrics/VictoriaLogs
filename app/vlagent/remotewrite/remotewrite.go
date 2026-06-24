@@ -170,6 +170,7 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
 		rwctxIdx[i] = i
 	}
+	fs.RegisterPathFsMetrics(tmpDataPath)
 
 	rwctxsGlobal = rwctxs
 }
@@ -187,7 +188,6 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 	for _, rwctx := range rwctxs {
 		wg.Go(func() {
 			rwctx.push(lr)
-
 		})
 	}
 	wg.Wait()

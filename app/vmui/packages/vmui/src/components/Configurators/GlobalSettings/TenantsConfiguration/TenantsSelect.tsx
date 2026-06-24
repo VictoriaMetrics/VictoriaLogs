@@ -1,4 +1,4 @@
-import { FC, useState, useMemo } from "preact/compat";
+import { FC, useMemo } from "preact/compat";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import classNames from "classnames";
 import TextField from "../../../Main/TextField/TextField";
@@ -9,13 +9,13 @@ import { LOGS_DOCS_URL } from "../../../../constants/logs";
 interface Props extends TenantType {
   accountIds: string[];
   tenantId: string;
+  search: string;
+  onSearch: (value: string) => void;
   onChange: (tenant: Partial<TenantType>) => void;
 }
 
-const TenantsSelect: FC<Props> = ({ accountIds, tenantId, onChange }) => {
+const TenantsSelect: FC<Props> = ({ accountIds, tenantId, search, onSearch, onChange }) => {
   const { isMobile } = useDeviceDetect();
-
-  const [search, setSearch] = useState("");
 
   const accountIdsFiltered = useMemo(() => {
     if (!search) return accountIds;
@@ -45,7 +45,7 @@ const TenantsSelect: FC<Props> = ({ accountIds, tenantId, onChange }) => {
           autofocus
           label="Search"
           value={search}
-          onChange={setSearch}
+          onChange={onSearch}
           type="search"
         />
       </div>

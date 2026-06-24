@@ -338,6 +338,15 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 ## System Resource Metrics
 
+### vm_fs_info
+**Type:** Gauge
+
+**Labels:**
+- `path`: storage directory
+- `fs_type`: filesystem type
+
+**Description:** Filesystem metadata for the storage path. The value is always 1. This metric helps identify filesystem-specific issues during troubleshooting.
+
 ### vl_free_disk_space_bytes
 **Type:** Gauge
 

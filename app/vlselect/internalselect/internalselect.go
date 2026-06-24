@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
 	"github.com/VictoriaMetrics/metrics"
 
@@ -24,7 +26,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 100, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
+var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
 	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
 
 // RequestHandler processes requests to /internal/select/*
@@ -60,6 +62,15 @@ var concurrencyLimitCh chan struct{}
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
 func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, startTime time.Time) {
+	// Parse request before obtaining the request args from it in order to catch parse errors,
+	// which are silently skipped at r.FormValue() calls inside the request handlers executed below.
+	//
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+	if err := parseRequest(r); err != nil {
+		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
+		return
+	}
+
 	path := r.URL.Path
 	rh := requestHandlers[path]
 	if rh == nil {
@@ -74,6 +85,21 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		// The return is skipped intentionally in order to track the duration of failed queries.
 	}
 	metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
+}
+
+func parseRequest(r *http.Request) error {
+	maxMemory := int64(0.1 * float64(memory.Allowed()))
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data;") {
+		if err := r.ParseMultipartForm(maxMemory); err != nil {
+			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			return fmt.Errorf("cannot parse request args: %w", err)
+		}
+	}
+	return nil
 }
 
 var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter, r *http.Request) error{
@@ -486,8 +512,11 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
 	version := r.FormValue("version")
 	if version != expectedProtocolVersion {
-		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
-			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
+		return &httpserver.ErrorWithStatusCode{
+			Err: fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
+				"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion),
+			StatusCode: http.StatusBadGateway,
+		}
 	}
 	return nil
 }

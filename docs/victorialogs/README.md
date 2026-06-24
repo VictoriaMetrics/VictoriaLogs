@@ -91,7 +91,8 @@ See [metrics reference](https://docs.victoriametrics.com/victorialogs/metrics/) 
 
 We recommend installing Grafana dashboard for [VictoriaLogs single-node](https://grafana.com/grafana/dashboards/22084) or [cluster](https://grafana.com/grafana/dashboards/23274).
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+We recommend setting up [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 VictoriaLogs emits its own logs to stdout. It is recommended to investigate these logs during troubleshooting.
@@ -202,6 +203,17 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
+### Limitations of disk space usage-based retention
+
+Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskSpaceUsageBytes` and `-retention.maxDiskUsagePercent` limits between two checks.
+The disk could reach 100% usage especially when the actual disk size is small, and the ingestion rate is high.
+In this case, VictoriaLogs switches to read-only mode and cannot drop data as expected.
+So it is important to reserve enough free disk space to prevent VictoriaLogs from entering read-only mode.
+
+For example, running VictoriaLogs on a 20 GB disk with `-retention.maxDiskUsagePercent=95` and an ingestion rate of 100 MB/s is not recommended.
+
+See also [Capacity planning](https://docs.victoriametrics.com/victorialogs/#capacity-planning), which recommends reserving at least 20% free storage space.
+
 ## Backfilling
 
 VictoriaLogs accepts logs with timestamps in the time range `[now-retentionPeriod ... now+futureRetention]`,
@@ -267,7 +279,9 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
   The `<snapshot-path>` can be taken from the output of `/internal/partition/snapshot/list`.
 - `/internal/partition/snapshot/delete_stale?max_age=<d>` - deletes snapshots older than `<d>`. For example, `max_age=1d` deletes snapshots older than one day.
 
-These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+These endpoints can be protected from unauthorized access via `-partitionManageAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
 with fast NVMe (SSD) disks, while historical logs are gradually migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
@@ -317,6 +331,9 @@ of new log streams for 10 seconds:
 curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
 ```
 
+This endpoint can be protected with the `-logNewStreamsAuthKey` command-line flag.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
+
 See also [data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
 ## Forced merge
@@ -332,7 +349,9 @@ merge for September 21, 2024 partition. The call to `/internal/force_merge` retu
 Forced merges may require additional CPU, disk IO and storage space resources. It is unnecessary to run forced merge under normal conditions,
 since VictoriaLogs automatically performs optimal merges in background when new data is ingested into it.
 
-The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## Forced flush
 
@@ -345,7 +364,9 @@ It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a r
 and slows down data ingestion. It is expected that the `/internal/force_flush` is requested in automated tests, which need querying
 the recently ingested data.
 
-The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## How to delete logs
 
@@ -501,21 +522,19 @@ users:
 
 This configuration allows `foo` to use the `/select/.*` and `/insert/.*` endpoints with `AccountID: 1` and `ProjectID: 0`, while `baz` can only use the `/select/.*` endpoint with `AccountID: 2` and `ProjectID: 0`.
 
-See also [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
+See also [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
 ## Security
 
-See [Security on Untrusted Networks](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks)
-for detailed information about VictoriaLogs security features and recommendations.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 ### mTLS
 
-See [mTLS docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
 
 ### Automatic issuing of TLS certificates
 
-See [Automatic TLS certificates docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates)
-for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates) for details.
 
 ## Benchmarks
 
@@ -572,6 +591,18 @@ VictoriaLogs uses server-side timezone in the following cases:
 
 VictoriaLogs obtains the local timezone from the `TZ` environment variable. It expects valid [IANA Time Zone identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 in the `TZ` environment variable. Set `TZ` environment variable to an empty string - `TZ=""` - for using UTC.
+
+## vmalert
+
+VictoriaLogs can proxy requests to [vmalert](https://docs.victoriametrics.com/victorialogs/vmalert/) if the `-vmalert.proxyURL` command-line flag
+is set to vmalert url. For example, the following command instructs proxying `http://victoria-logs:9428/select/vmalert/*` requests to `http://vmalert:8880/vmalert/*`:
+
+```sh
+/path/to/victoria-logs -vmalert.proxyURL=http://vmalert:8880/
+```
+
+This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
+at the `/select/vmalert/*` paths.
 
 ## List of command-line flags
 
