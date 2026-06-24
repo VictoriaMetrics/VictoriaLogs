@@ -319,7 +319,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_streams_created_total
 **Type:** Counter
 
-**Description:** New unique combinations of stream fields first encountered during log ingestion. Only counts streams not previously seen since startup, shows growth in stream cardinality and high-cardinality detection.
+**Description:** New unique combinations of stream fields first encountered during log ingestion since the current VictoriaLogs process initialized the currently retained indexdb partitions. Existing stream IDs on disk are not recounted after restart. The value can decrease when an old indexdb partition is rotated out, for example around the daily partition boundary. Because of this it is not strictly monotonic, so avoid Prometheus counter functions such as `rate()` and `increase()` on it: they treat the rotation decrease as a counter reset and report false spikes. Read the raw value or compare it over time instead. Rapid growth shows stream cardinality growth and may help detect high-cardinality issues.
 
 ### vl_indexdb_rows
 **Type:** Gauge

@@ -379,6 +379,6 @@ VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victoria
     The [`vl_rows_dropped_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_rows_dropped_total) metric is incremented for each logged row.
   - By passing `-logIngestedRows` command-line flag to VictoriaLogs. In this case it logs all the ingested data, so it can be investigated later.
 - [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
-  since the last VictoriaLogs restart. If this metric grows rapidly during extended periods of time, then this may lead
+  in currently retained indexdb partitions since the current VictoriaLogs process initialized them. Existing stream IDs on disk are not recounted after a restart. The metric can decrease when an old indexdb partition is rotated out. If this metric grows rapidly during extended periods of time, then this may lead
   to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
   The newly created log streams can be inspected in logs - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).
