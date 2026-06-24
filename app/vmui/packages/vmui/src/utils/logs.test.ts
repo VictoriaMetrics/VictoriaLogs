@@ -7,7 +7,7 @@ import {
   convertToFieldFilter,
   calculateTotalHits,
   isEqualLogByKeys,
-  removeExactLog,
+  removeLogsByKeys,
 } from "./logs";
 
 import { LOGS_GROUP_BY } from "../constants/logs";
@@ -158,7 +158,7 @@ describe("utils/logs", () => {
         { _time: 1, foo: "bar", x: 1 } as unknown as Logs, // same content
       ];
 
-      expect(removeExactLog(logs, target, ["_time", "foo", "x"])).toEqual([
+      expect(removeLogsByKeys(logs, target, ["_time", "foo", "x"])).toEqual([
         { _time: 1, foo: "bar", x: 2 },
         { _time: 2, foo: "bar", x: 1 },
       ]);
@@ -168,7 +168,7 @@ describe("utils/logs", () => {
       const target = { _time: 9, foo: "x" } as unknown as Logs;
       const logs = [{ _time: 1, foo: "bar" } as unknown as Logs];
 
-      expect(removeExactLog(logs, target, ["_time", "foo"])).toEqual([{ _time: 1, foo: "bar" }]);
+      expect(removeLogsByKeys(logs, target, ["_time", "foo"])).toEqual([{ _time: 1, foo: "bar" }]);
     });
   });
 });

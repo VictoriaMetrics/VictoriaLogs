@@ -45,30 +45,6 @@ victoria-logs-openbsd-amd64-prod:
 victoria-logs-windows-amd64-prod:
 	APP_NAME=victoria-logs $(MAKE) app-via-docker-windows-amd64
 
-package-victoria-logs:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker
-
-package-victoria-logs-pure:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-pure
-
-package-victoria-logs-amd64:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-amd64
-
-package-victoria-logs-arm:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-arm
-
-package-victoria-logs-arm64:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-arm64
-
-package-victoria-logs-ppc64le:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-ppc64le
-
-package-victoria-logs-s390x:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-s390x
-
-package-victoria-logs-386:
-	APP_NAME=victoria-logs $(MAKE) package-via-docker-386
-
 publish-victoria-logs:
 	APP_NAME=victoria-logs $(MAKE) publish-via-docker
 
@@ -110,10 +86,3 @@ victoria-logs-windows-amd64:
 
 victoria-logs-pure:
 	APP_NAME=victoria-logs $(MAKE) app-local-pure
-
-run-victoria-logs:
-	mkdir -p victoria-logs-data
-	DOCKER_OPTS='-v $(shell pwd)/victoria-logs-data:/victoria-logs-data' \
-	APP_NAME=victoria-logs \
-	ARGS='' \
-	$(MAKE) run-via-docker

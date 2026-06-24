@@ -114,7 +114,7 @@ func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query,
 	}
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse `query` arg: %w; query=%s", err, qStr)
+		return nil, fmt.Errorf("cannot parse `query` arg [%s]: %w", qStr, err)
 	}
 	return q, nil
 }
@@ -169,7 +169,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		fieldValues := columns[1].Values
 		hits := columns[2].Values
 
-		bb := blockResultPool.Get()
 		for i := range fieldNames {
 			fieldName := strings.Clone(fieldNames[i])
 			fieldValue := strings.Clone(fieldValues[i])
@@ -182,7 +181,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 			})
 			mLock.Unlock()
 		}
-		blockResultPool.Put(bb)
 	}
 
 	qctx := ca.newQueryContext(ctx)

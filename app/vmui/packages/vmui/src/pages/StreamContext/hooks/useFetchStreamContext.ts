@@ -5,11 +5,9 @@ import {
 } from "preact/compat";
 import { Logs } from "../../../api/types";
 import { useFetchLogs } from "../../QueryPage/hooks/useFetchLogs";
-import { toNanoPrecision } from "../../../utils/time";
-import { removeExactLog } from "../../../utils/logs";
-import { LOGS_STREAM_CONTEXT_KEYS } from "../../../constants/logs";
+import { buildContextQuery, mergeContextLogs } from "../helpers";
 
-type Direction = "before" | "after";
+export type Direction = "before" | "after";
 
 interface FetchParams {
   log: Logs;
@@ -17,31 +15,15 @@ interface FetchParams {
   linesAfter?: number;
 }
 
-const buildContextQuery = (
-  log: Logs,
-  dir: Direction,
-  lines: number
-): string => {
-  const { _stream_id, _time } = log;
-
-  if (!_stream_id || !_time) {
-    throw new Error("Log must contain _stream_id and _time fields.");
-  }
-
-  return `_stream_id:${_stream_id} 
-_time:${toNanoPrecision(_time)} 
-| stream_context ${dir} ${lines}
-| sort by (_time) desc`;
-};
-
-const mergeLogs = (dir: Direction, setter: Dispatch<SetStateAction<Logs[]>>) =>
-  (fetched: Logs[], target: Logs) => {
-    const filtered = removeExactLog(fetched, target, LOGS_STREAM_CONTEXT_KEYS);
-    setter(prev => dir === "after" ? filtered.concat(prev) : prev.concat(filtered));
-  };
+interface FetchSideParams {
+  dir: Direction;
+  lines: number;
+  setter: Dispatch<SetStateAction<Logs[]>>;
+  log: Logs;
+}
 
 export const useFetchStreamContext = () => {
-  const { fetchLogs, isLoading, error, abort } = useFetchLogs();
+  const { fetchLogs, error, abort } = useFetchLogs();
 
   const [logsBefore, setLogsBefore] = useState<Logs[]>([]);
   const [logsAfter, setLogsAfter] = useState<Logs[]>([]);
@@ -50,38 +32,60 @@ export const useFetchStreamContext = () => {
     after: true,
   });
 
-  const fetchSide = async (
-    dir: Direction,
-    lines: number,
-    setter: Dispatch<SetStateAction<Logs[]>>,
-    log: Logs
-  ) => {
+  const [isLoading, setIsLoading] = useState<{ before: boolean; after: boolean }>({
+    before: false,
+    after: false,
+  });
+
+  const fetchLogsByTimeRange = async ({ log, dir, lines }: FetchSideParams) => {
+    const data = await fetchLogs({
+      query: buildContextQuery(log, dir, lines),
+    });
+
+    if (!Array.isArray(data)) {
+      return { data: [] };
+    }
+
+    const normalizedData = dir === "before" ? data.toReversed() : data;
+
+    return { data: normalizedData };
+  };
+
+  const fetchSide = async (params: FetchSideParams) => {
+    const { log, lines, dir, setter } = params;
+
     if (lines <= 0) return;
 
+    setIsLoading(prev => ({
+      ...prev,
+      [dir]: true,
+    }));
+
     try {
-      const data = await fetchLogs({
-        query: buildContextQuery(log, dir, lines),
-      });
+      const { data } = await fetchLogsByTimeRange(params);
 
-      if (Array.isArray(data)) {
-        if (data.length) {
-          mergeLogs(dir, setter)(data, log);
-        }
-
-        setHasMore(prev => ({
-          ...prev,
-          [dir]: data.length >= lines,
-        }));
+      if (data.length) {
+        mergeContextLogs(dir, setter)(data, log);
       }
+
+      setHasMore(prev => ({
+        ...prev,
+        [dir]: data.length >= lines,
+      }));
     } catch (err) {
       console.error(`Error fetching ${dir} logs:`, err);
+    } finally {
+      setIsLoading(prev => ({
+        ...prev,
+        [dir]: false,
+      }));
     }
   };
 
   const fetchContextLogs = async ({ log, linesBefore = 0, linesAfter = 0 }: FetchParams) => {
     await Promise.allSettled([
-      fetchSide("before", linesBefore, setLogsBefore, log),
-      fetchSide("after", linesAfter, setLogsAfter, log),
+      fetchSide({ dir: "before", lines: linesBefore, setter: setLogsBefore, log }),
+      fetchSide({ dir: "after", lines: linesAfter, setter: setLogsAfter, log }),
     ]);
   };
 
@@ -89,6 +93,7 @@ export const useFetchStreamContext = () => {
     setLogsBefore([]);
     setLogsAfter([]);
     setHasMore({ before: true, after: true });
+    setIsLoading({ before: false, after: false });
   };
 
   return {

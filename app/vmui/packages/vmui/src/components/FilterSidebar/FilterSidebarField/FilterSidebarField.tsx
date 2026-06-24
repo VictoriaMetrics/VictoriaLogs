@@ -135,8 +135,10 @@ const FilterSidebarField: FC<Props> = ({
     void fetchStreamValues({
       query: r.query,
       field: field.value,
-      start: r.start,
-      end: r.end,
+      period: {
+        start: r.start,
+        end: r.end,
+      },
       extraParams: r.extraParams,
     });
 

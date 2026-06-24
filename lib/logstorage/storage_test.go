@@ -187,7 +187,6 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
 
 	addRow := func(stream, marker, msg string) {
-
 		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
 		lr.mustAdd(TenantID{}, ts, []Field{
 			{

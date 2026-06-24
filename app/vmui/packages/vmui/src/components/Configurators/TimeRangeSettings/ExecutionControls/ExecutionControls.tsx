@@ -9,6 +9,7 @@ import Tooltip from "../../../Main/Tooltip/Tooltip";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import useBoolean from "../../../../hooks/useBoolean";
 import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
+import { secondsToMilliseconds } from "../../../../utils/time";
 
 interface AutoRefreshOption {
   seconds: number
@@ -64,7 +65,7 @@ export const ExecutionControls: FC = () => {
     if (autoRefresh) {
       timer = setInterval(() => {
         dispatch({ type: "RUN_QUERY" });
-      }, delay * 1000) as unknown as number;
+      }, secondsToMilliseconds(delay)) as unknown as number;
     } else {
       setSelectedDelay(delayOptions[0]);
     }

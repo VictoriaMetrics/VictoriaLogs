@@ -52,7 +52,6 @@ func getJSONBody(streams, rows, labels int) []byte {
 			if j < labels-1 {
 				body = append(body, ',')
 			}
-
 		}
 		body = append(body, `}, "values":[`...)
 
@@ -69,7 +68,6 @@ func getJSONBody(streams, rows, labels int) []byte {
 		if i < streams-1 {
 			body = append(body, ',')
 		}
-
 	}
 
 	body = append(body, `]}`...)

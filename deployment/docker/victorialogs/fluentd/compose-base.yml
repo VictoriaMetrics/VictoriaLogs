@@ -10,14 +10,8 @@ services:
     ports:
       - "5140:5140"
       - "24224:24224"
-    healthcheck:
-      test: ["CMD", "nc", "-z", "-n", "-v", "127.0.0.1", "24224"]
-      start_period: 3s
   nginx:
     image: nginx:1.27
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
-      start_period: 3s
     ports:
       - "8080:80"
     logging:
@@ -27,4 +21,4 @@ services:
         labels: com.docker.compose.service
     depends_on:
       fluentd:
-        condition: service_healthy
+        condition: service_started

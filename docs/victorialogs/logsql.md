@@ -37,7 +37,8 @@ Then follow these docs:
 - [how to ingest data into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
-The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word), which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word),
+which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 For example, the following query finds all the logs with `error` word:
 
 ```logsql
@@ -253,6 +254,36 @@ _time:5m error | stats count() errors
 ```
 
 See [the list of supported pipes in LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+
+A single query can be split into multiple lines for better readability.
+Queries also can contain comments according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#comments).
+Example multi-line query with comments:
+
+```logsql
+_time:5m
+
+  # calculate per-host number of logs and errors
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+
+  # calculate error rate
+  | math (errors / logs) as error_rate
+
+  # leave only the stats for >10% error rate
+  | filter error_rate:>0.1
+```
+
+The `;` can be put in the end of the query. This is useful for detecting the end of the query. For example, the following query is equivalent to the previous one:
+
+```logsql
+_time:5m
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+  | math (errors / logs) as error_rate
+  | filter error_rate:>0.1;
+```
 
 ## Filters
 
@@ -1858,6 +1889,7 @@ LogsQL supports the following pipes:
 - [`format`](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe) formats output field from input [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`generate_sequence`](https://docs.victoriametrics.com/victorialogs/logsql/#generate_sequence-pipe) generates output logs with messages containing integer sequence.
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_concat`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe) joins JSON array items stored at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into a string using the given delimiter.
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
@@ -2490,7 +2522,7 @@ It is allowed to use `where` prefix instead of `filter` prefix for convenience. 
 _time:1h error | stats by (host) count() logs_count | where logs_count:> 1_000
 ```
 
-It is allowed to omit `filter` prefix if the used filters do not clash with [pipe names](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+It is allowed to omit `filter` prefix if the used filters start with the field name followed by `:`.
 So the following query is equivalent to the previous one:
 
 ```logsql
@@ -2745,6 +2777,26 @@ See also:
 - [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
 
 
+### json_array_concat pipe
+
+The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
+
+For example, the following query joins items of the `tags` JSON array with `,` and stores the result back into the `tags` field:
+
+```logsql
+_time:5m | json_array_concat "," from tags
+```
+
+The `delimiter`, `from <src_field>` and `as <result_field>` parts are optional. The default `delimiter` is an empty string, so items are concatenated without any separator. The default `<src_field>` is the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). The default `<result_field>` is `<src_field>`, so the result is stored in place.
+
+Non-string array items such as numbers, booleans, objects, arrays and `null` are converted to their JSON string representation before they are joined. For example, `json_array_concat ","` applied to `["foo",42,{"a":1},null]` produces `foo,42,{"a":1},null`. If `<src_field>` is empty, contains an empty array, or isn't a valid JSON array, the result is an empty string.
+
+See also:
+
+- [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
+
 ### json_array_len pipe
 
 `<q> | json_array_len(field) as result_field` calculates the length of JSON array at the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -2760,8 +2812,8 @@ _time:5m | unpack_words _msg as words | json_array_len (words) as words_count | 
 See also:
 
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
-- [`first` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#first-pipe)
 
 ### hash pipe
 
@@ -3487,6 +3539,7 @@ _time:5m | split "," as items | unroll items | top 5 (items)
 
 See also:
 
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 
