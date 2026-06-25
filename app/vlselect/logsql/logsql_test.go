@@ -108,7 +108,8 @@ func TestParseExtraStreamFilters_Failure(t *testing.T) {
 func TestTailProcessorGetTailRows(t *testing.T) {
 	tp := newTailProcessor(func() {}, false)
 
-	const streamID = "test-stream"
+	const streamA = "test-stream-a"
+	const streamB = "test-stream-b"
 	const ts = int64(1e9)
 
 	row := func(timestamp int64, msg string) logRow {
@@ -118,7 +119,7 @@ func TestTailProcessorGetTailRows(t *testing.T) {
 		}
 	}
 
-	f := func(input []logRow, wantMsgs ...string) {
+	f := func(streamID string, input []logRow, wantMsgs ...string) {
 		t.Helper()
 		tp.perStreamRows[streamID] = input
 		got, err := tp.getTailRows()
@@ -139,20 +140,26 @@ func TestTailProcessorGetTailRows(t *testing.T) {
 	}
 
 	// First time: row A is emitted.
-	f([]logRow{row(ts, "A")}, "A")
+	f(streamA, []logRow{row(ts, "A")}, "A")
 
 	// Same timestamp, new content: A is deduped, B is emitted.
-	f([]logRow{row(ts, "A"), row(ts, "B")}, "B")
+	f(streamA, []logRow{row(ts, "A"), row(ts, "B")}, "B")
 
 	// Both seen now: nothing emitted.
-	f([]logRow{row(ts, "A"), row(ts, "B")})
+	f(streamA, []logRow{row(ts, "A"), row(ts, "B")})
 
 	// Empty input: nothing emitted.
-	f(nil)
+	f(streamA, nil)
 
 	// Multiple new timestamps, unsorted input: emitted in chronological order.
-	f([]logRow{row(ts+2, "D"), row(ts+1, "C")}, "C", "D")
+	f(streamA, []logRow{row(ts+2, "D"), row(ts+1, "C")}, "C", "D")
 
 	// Boundary is now ts+2 with D seen: A is dropped (older), D is dropped (duplicate).
-	f([]logRow{row(ts, "A"), row(ts+2, "D")})
+	f(streamA, []logRow{row(ts, "A"), row(ts+2, "D")})
+
+	// Per-stream state: streamB emits A even though streamA already deduped it.
+	f(streamB, []logRow{row(ts, "A")}, "A")
+
+	// streamA is unaffected by streamB and still drops its boundary row D.
+	f(streamA, []logRow{row(ts+2, "D")})
 }

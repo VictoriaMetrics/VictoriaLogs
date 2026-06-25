@@ -780,9 +780,7 @@ type tailProcessor struct {
 	lastTimestamps map[string]int64
 	// lastRowHashes contains xxhash fingerprints of rows already emitted at lastTimestamps[streamID].
 	// Used to dedup rows that share the boundary timestamp but differ in content.
-	lastRowHashes map[string]map[uint64]struct{}
-
-	keyBuf []byte
+	lastRowHashes map[string][]uint64
 
 	err error
 }
@@ -795,7 +793,7 @@ func newTailProcessor(cancel func(), needSortFields bool) *tailProcessor {
 
 		perStreamRows:  make(map[string][]logRow),
 		lastTimestamps: make(map[string]int64),
-		lastRowHashes:  make(map[string]map[uint64]struct{}),
+		lastRowHashes:  make(map[string][]uint64),
 	}
 }
 
@@ -846,13 +844,13 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 }
 
 // hashLogRow returns an xxhash fingerprint of row's fields.
-func (tp *tailProcessor) hashLogRow(row logRow) uint64 {
-	tp.keyBuf = tp.keyBuf[:0]
+func hashLogRow(keyBuf []byte, row *logRow) (uint64, []byte) {
+	keyBuf = keyBuf[:0]
 	for _, f := range row.fields {
-		tp.keyBuf = encoding.MarshalBytes(tp.keyBuf, bytesutil.ToUnsafeBytes(f.Name))
-		tp.keyBuf = encoding.MarshalBytes(tp.keyBuf, bytesutil.ToUnsafeBytes(f.Value))
+		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Name))
+		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Value))
 	}
-	return xxhash.Sum64(tp.keyBuf)
+	return xxhash.Sum64(keyBuf), keyBuf
 }
 
 func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
@@ -861,6 +859,7 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 	}
 
 	var resultRows []logRow
+	var keyBuf []byte
 	for streamID, rows := range tp.perStreamRows {
 		sortLogRows(rows)
 
@@ -868,19 +867,22 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 		lastHashes := tp.lastRowHashes[streamID]
 
 		if ok {
-			// Drop rows already emitted before the boundary timestamp.
-			for len(rows) > 0 && rows[0].timestamp < lastTimestamp {
-				rows = rows[1:]
-			}
-			// Drop rows at the boundary whose exact content was already emitted.
 			filtered := rows[:0]
-			for _, row := range rows {
+			for i := range rows {
+				row := &rows[i]
+				// Ignore everything before the boundary timestamp
+				if row.timestamp < lastTimestamp {
+					continue
+				}
+				// Ignore rows with the same boundary timestamp, same content
 				if row.timestamp == lastTimestamp {
-					if _, seen := lastHashes[tp.hashLogRow(row)]; seen {
+					var h uint64
+					h, keyBuf = hashLogRow(keyBuf, row)
+					if slices.Contains(lastHashes, h) {
 						continue
 					}
 				}
-				filtered = append(filtered, row)
+				filtered = append(filtered, *row)
 			}
 			rows = filtered
 		}
@@ -894,15 +896,18 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 		newLastTS := rows[len(rows)-1].timestamp
 		tp.lastTimestamps[streamID] = newLastTS
 
-		// Reuse the existing hash set when the boundary timestamp does not advance,
-		// so rows already emitted at this timestamp remain excluded. Otherwise reset.
+		// Reuse the existing hashes when the boundary timestamp does not advance,
+		// so rows already emitted at this timestamp remain excluded. Otherwise start a new list.
 		hashes := lastHashes
-		if !ok || lastTimestamp != newLastTS {
-			hashes = make(map[uint64]struct{})
+		if lastTimestamp != newLastTS {
+			hashes = nil
 		}
-		for _, row := range rows {
+		for i := range rows {
+			row := &rows[i]
 			if row.timestamp == newLastTS {
-				hashes[tp.hashLogRow(row)] = struct{}{}
+				var h uint64
+				h, keyBuf = hashLogRow(keyBuf, row)
+				hashes = append(hashes, h)
 			}
 		}
 		tp.lastRowHashes[streamID] = hashes
