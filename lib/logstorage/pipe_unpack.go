@@ -1,11 +1,22 @@
 package logstorage
 
 import (
+	"strings"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
+
+// canReturnLastNResultsAfterUnpack returns false if unpacking may overwrite _time.
+func canReturnLastNResultsAfterUnpack(fieldFilters []string, resultPrefix string) bool {
+	if !strings.HasPrefix("_time", resultPrefix) {
+		return true
+	}
+	fieldName := strings.TrimPrefix("_time", resultPrefix)
+	return !prefixfilter.MatchFilters(fieldFilters, fieldName)
+}
 
 func updateNeededFieldsForUnpackPipe(fromField, outFieldPrefix string, outFieldFilters []string, keepOriginalFields, skipEmptyResults bool, iff *ifFilter, pf *prefixfilter.Filter) {
 	if pf.MatchNothing() {

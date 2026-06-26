@@ -59,8 +59,11 @@ func (pe *pipeExtractRegexp) canLiveTail() bool {
 }
 
 func (pe *pipeExtractRegexp) canReturnLastNResults() bool {
-	// TODO: properly verify that the extracted fields do not overwrite the _time field with non-timestamp values.
-
+	for _, f := range pe.reFields {
+		if f == "_time" {
+			return false
+		}
+	}
 	return true
 }
 

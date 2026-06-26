@@ -88,3 +88,38 @@ func TestVlsingleLastnOptimization(t *testing.T) {
 	}
 	assertLogsQLResponseEqual(t, got, wantResponse)
 }
+
+func TestVlsingleLastnOptimizationWithUnpackedInvalidTime(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+	sut := tc.MustStartDefaultVlsingle()
+
+	sut.JSONLineWrite(t, []string{
+		`{"_msg":"{\"_time\":\"not-a-timestamp\",\"msg\":\"bad\"}","_time":"2025-01-01T01:00:00Z"}`,
+	}, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query := `* | unpack_json | keep _msg, _time | sort by (_time desc) limit 1`
+
+	got := sut.LogsQLQuery(t, query, apptest.QueryOpts{
+		Start: "2025-01-01T01:00:00Z",
+		End:   "2025-01-01T01:00:00.000000001Z",
+	})
+	wantResponse := &apptest.LogsQLQueryResponse{
+		LogLines: []string{
+			`{"_msg":"{\"_time\":\"not-a-timestamp\",\"msg\":\"bad\"}","_time":"not-a-timestamp"}`,
+		},
+	}
+	assertLogsQLResponseEqual(t, got, wantResponse)
+
+	res, statusCode := sut.LogsQLQueryRaw(t, query, apptest.QueryOpts{
+		Start: "2025-01-01T01:00:00Z",
+		End:   "2025-01-01T01:00:03Z",
+	})
+	if statusCode != 200 {
+		t.Fatalf("unexpected response status code for optimized query: %d; response\n%s", statusCode, res)
+	}
+	got = apptest.NewLogsQLQueryResponse(t, res)
+	assertLogsQLResponseEqual(t, got, wantResponse)
+}
