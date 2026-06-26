@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -24,6 +25,7 @@ func BenchmarkTransforms(b *testing.B) {
 			`{"_msg":"a message from iOS", "source": "iOS", "service":"VMUI-iOS"}`,
 			`{"_msg":"a message from Android", "source": "Android", "app":"VMUI-Android"}`,
 		}
+		content = slices.Repeat(content, 256)
 		benchmarkTransforms(b, program, content)
 	})
 
@@ -33,7 +35,9 @@ func BenchmarkTransforms(b *testing.B) {
 			`{"_msg":"level=error msg=\"context canceled\" db_host=127.0.0.1 retry_count=5 time=2026-06-10T11:02:02.000Z"}`,
 			`{"_msg":"not a logfmt-encoded message"}`,
 			`{"_msg":"msg=\"new request\" method=GET path=/login host=example.com status=200 duration=12ms"}`,
+			`{"_msg":"msg=\"new request\" method=POST path=/logsql/query host=vm.com status=200 duration=42ms"}`,
 		}
+		content = slices.Repeat(content, 256)
 		benchmarkTransforms(b, program, content)
 	})
 
@@ -43,7 +47,9 @@ func BenchmarkTransforms(b *testing.B) {
 			`{"payload":"{\"level\":\"error\",\"msg\":\"context canceled\",\"db_host\":\"127.0.0.1\",\"retry_count\":5,\"time\":\"2026-06-10T11:02:02.000Z\"}"}`,
 			`{"payload":"not a json-encoded message"}`,
 			`{"payload":"{\"msg\":\"new request\",\"method\":\"GET\",\"path\":\"/login\",\"host\":\"example.com\",\"status\":200,\"duration\":\"12ms\"}"}`,
+			`{"payload":"{\"msg\":\"new request\",\"method\":\"POST\",\"path\":\"/logsql/query\",\"host\":\"vm.com\",\"status\":200,\"duration\":\"42ms\"}"}`,
 		}
+		content = slices.Repeat(content, 256)
 		benchmarkTransforms(b, program, content)
 	})
 
@@ -152,6 +158,60 @@ func BenchmarkTransforms(b *testing.B) {
 		}
 		benchmarkTransforms(b, program, content)
 	})
+
+	b.Run("drop-all", func(b *testing.B) {
+		program := `if (service:=drop_me) { drop; }`
+		content := []string{`{"service":"drop_me", "_msg":"foo bar baz", "level":"info"}`}
+		content = slices.Repeat(content, 1024)
+		benchmarkTransforms(b, program, content)
+	})
+	b.Run("drop-half", func(b *testing.B) {
+		program := `if (service:=drop_me) { drop; }`
+		content := []string{
+			`{"service":"drop_me", "_msg":"foo bar baz", "level":"info"}`,
+			`{"service":"do_not_drop_me", "_msg":"foo bar baz", "level":"info"}`,
+		}
+		content = slices.Repeat(content, 512)
+		benchmarkTransforms(b, program, content)
+	})
+	b.Run("drop-zero", func(b *testing.B) {
+		program := `if (service:=drop_me) { drop; }`
+		content := []string{
+			`{"service":"do_not_drop_me", "_msg":"foo bar baz", "level":"info"}`,
+		}
+		content = slices.Repeat(content, 1024)
+		benchmarkTransforms(b, program, content)
+	})
+
+	b.Run("normalize-log-level", func(b *testing.B) {
+		program := `
+		do normalize_log_level;
+		
+		block normalize_log_level {
+		  coalesce(level, LEVEL, lvl, log.level, severity, severity_text, SeverityText) as level;
+		  delete LEVEL, lvl, log.level, severity, severity_text, SeverityText;
+		
+		  if (level:"") {
+			# The 'level' field is empty or not set - try to analyze the message content.
+			if (i(error)) {
+			  # '_msg' field contains the word 'error'
+			  format error as level;
+			} else {
+			  format unknown as level;
+			}
+		  }
+		}`
+		content := []string{
+			`{"msg":"foo bar baz", "level":"debug"}`,
+			`{"msg":"foo bar baz", "LEVEL":"info"}`,
+			`{"msg":"foo bar baz", "lvl":"warn"}`,
+			`{"msg":"foo bar baz", "log.level":"error"}`,
+			`{"msg":"foo bar baz", "severity":"panic"}`,
+			`{"msg":"foo bar baz", "severity_text":"fatal"}`,
+		}
+		content = slices.Repeat(content, 256)
+		benchmarkTransforms(b, program, content)
+	})
 }
 
 func benchmarkTransforms(b *testing.B, program string, rows []string) {
@@ -180,8 +240,12 @@ func benchmarkTransforms(b *testing.B, program string, rows []string) {
 	b.ReportAllocs()
 	b.SetBytes(int64(rowsSize))
 	b.RunParallel(func(pb *testing.PB) {
+		lrLocal := GetLogRows(nil, nil, nil, nil, "missing _msg field in a bench")
+		defer PutLogRows(lrLocal)
 		for pb.Next() {
-			transformer.Transform(lr)
+			lr.copyTo(lrLocal)
+			transformer.Transform(lrLocal)
+			lrLocal.ResetKeepSettings()
 		}
 	})
 }

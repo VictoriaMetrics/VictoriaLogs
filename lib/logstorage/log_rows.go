@@ -904,4 +904,14 @@ func (lr *LogRows) initFromBlockResult(br *blockResult) {
 	}
 }
 
+func fieldIndexByName(row []Field, name string) int {
+	name = getCanonicalFieldName(name)
+	for i := range row {
+		if row[i].Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
 var skipMalformedLogEntryLogger = logger.WithThrottler("skip_malformed_log_entry", time.Second*5)
