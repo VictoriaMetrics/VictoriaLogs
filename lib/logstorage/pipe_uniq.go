@@ -9,7 +9,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
@@ -87,21 +86,16 @@ func (pu *pipeUniq) visitSubqueries(_ func(q *Query)) {
 }
 
 func (pu *pipeUniq) newPipeProcessor(concurrency int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.4)
-
 	pup := &pipeUniqProcessor{
 		pu:     pu,
 		stopCh: stopCh,
 		cancel: cancel,
 		ppNext: ppNext,
-
-		maxStateSize: maxStateSize,
 	}
 	pup.shards.Init = func(shard *pipeUniqProcessorShard) {
 		shard.pu = pu
 		shard.m.init(uint(concurrency), pu.filter, &shard.stateSizeBudget)
 	}
-	pup.stateSizeBudget.Store(maxStateSize)
 
 	return pup
 }
@@ -114,8 +108,8 @@ type pipeUniqProcessor struct {
 
 	shards atomicutil.Slice[pipeUniqProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	budgetUsed     atomic.Int64
+	budgetExceeded atomic.Bool
 }
 
 type pipeUniqProcessorShard struct {
@@ -245,16 +239,16 @@ func (pup *pipeUniqProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := pup.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		remaining := pup.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
+		// Reserve more budget for the state size from the global query memory limiter.
+		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
+			if pup.budgetExceeded.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				pup.cancel()
 			}
 			return
 		}
+		pup.budgetUsed.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -264,8 +258,12 @@ func (pup *pipeUniqProcessor) writeBlock(workerID uint, br *blockResult) {
 }
 
 func (pup *pipeUniqProcessor) flush() error {
-	if n := pup.stateSizeBudget.Load(); n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", pup.pu.String(), pup.maxStateSize/(1<<20))
+	defer func() {
+		getQueryMemoryLimiter().Put(uint64(pup.budgetUsed.Load()))
+	}()
+
+	if pup.budgetExceeded.Load() {
+		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pup.pu.String(), pup.budgetUsed.Load()/(1<<20))
 	}
 
 	// merge state across shards in parallel
