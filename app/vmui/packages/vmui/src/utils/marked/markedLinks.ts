@@ -17,18 +17,11 @@ export const escapeHTML = (value: string): string => {
   });
 };
 
-export const hasInvalidURLChars = (value: string): boolean => {
-  for (const ch of value) {
-    const code = ch.charCodeAt(0);
-    if (code <= 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
-      return true;
-    }
-  }
-  return false;
-};
+// Reject control, format/bidi, separator and invisible code points that can spoof the URL.
+const forbiddenURLCharsRegex = /[\p{Cc}\p{Cf}\p{Zs}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/u;
 
 export const isAllowedMarkdownLink = (href: string): boolean => {
-  if (href === "" || hasInvalidURLChars(href)) {
+  if (href === "" || forbiddenURLCharsRegex.test(href)) {
     return false;
   }
 
