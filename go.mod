@@ -1,9 +1,9 @@
 module github.com/VictoriaMetrics/VictoriaLogs
 
-go 1.26.3
+go 1.26.4
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.143.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.145.1-0.20260616130439-5b31a047a5bf
 	github.com/VictoriaMetrics/easyproto v1.2.0
 	github.com/VictoriaMetrics/metrics v1.43.2
 	github.com/bmatcuk/doublestar/v4 v4.10.0
@@ -26,6 +26,6 @@ require (
 	github.com/valyala/gozstd v1.24.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 )

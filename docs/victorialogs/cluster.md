@@ -92,9 +92,13 @@ without any delays. This allows performing maintenance tasks for `vlstorage` nod
 Make sure that the remaining `vlstorage` nodes have enough capacity for the increased data ingestion workload, in order to avoid availability problems.
 
 VictoriaLogs cluster returns `502 Bad Gateway` errors for [incoming queries](https://docs.victoriametrics.com/victorialogs/querying/)
-if some of the `vlstorage` nodes are unavailable. This guarantees consistent query responses
+if some of the `vlstorage` nodes are unavailable or expose an internal API version incompatible with `vlselect`. This guarantees consistent query responses
 (e.g. all the stored logs are taken into account during the query) during maintenance tasks at `vlstorage` nodes. Note that all the newly incoming logs are properly stored
 to the remaining `vlstorage` nodes - see the paragraph above, so they become available for querying immediately after all the `vlstorage` nodes return back to the cluster.
+
+A version mismatch usually happens during a rolling upgrade, when some `vlstorage` nodes are upgraded while others aren't.
+The [release notes](https://docs.victoriametrics.com/victorialogs/changelog/) list such incompatibilities, so check them before upgrading.
+The errors stop after all the components are upgraded to compatible versions.
 
 There are practical cases when it is preferred to return partial responses instead of `502 Bad Gateway` errors if some of `vlstorage` nodes are unavailable.
 See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#partial-responses) on how to achieve this.
@@ -173,7 +177,7 @@ Every `vlstorage` node can be used as a single-node VictoriaLogs instance:
   This allows building multi-level cluster schemes when top-level `vlselect` queries multiple lower-level clusters of VictoriaLogs.
   If you don't want accepting queries from other `vlselect` nodes, then the `vlselect` node with `-internalselect.disable` command-line flag.
 
-See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tlsssl) on how to protect communications between
+See [these docs](https://docs.victoriametrics.com/victorialogs/cluster/#tls) on how to protect communications between
 multiple levels of `vlinsert` and `vlselect` nodes.
 
 ## Security
@@ -210,14 +214,52 @@ in front of the `vlinsert` and `vlselect` nodes.
 
 By default, `vlinsert` and `vlselect` communicate with `vlstorage` via unencrypted HTTP. This is OK if all these components are located
 in the same protected internal network according to [the security recommendations](https://docs.victoriametrics.com/victorialogs/cluster/#security).
-If they communicate over untrusted networks, then TLS and request authorization must be configured.
-See the [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tlsssl) for details.
+If they communicate over untrusted networks (for example, in [multi-level setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup)),
+then it is recommended to switch to HTTPS:
 
-See also [mTLS](https://docs.victoriametrics.com/victorialogs/cluster/#mtls).
+- Specify `-tls`, `-tlsCertFile` and `-tlsKeyFile` command-line flags at `vlstorage`, so it accepts incoming requests
+  over HTTPS instead of HTTP at the corresponding `-httpListenAddr`:
+
+  ```sh
+  ./victoria-logs-prod -httpListenAddr=... -storageDataPath=... -tls -tlsCertFile=/path/to/certfile -tlsKeyFile=/path/to/keyfile
+  ```
+
+- Specify `-storageNode.tls` command-line flag at `vlinsert` and `vlselect`, which communicate with the `vlstorage` over untrusted networks such as the Internet:
+
+  ```sh
+  ./victoria-logs-prod -storageNode=... -storageNode.tls
+  ```
+
+It is also recommended to authorize HTTPS requests to `vlstorage` via Basic Auth:
+
+- Specify `-httpAuth.username` and `-httpAuth.password` command-line flags at `vlstorage`, so it verifies the Basic Auth username + password
+  in HTTPS requests received via `-httpListenAddr`:
+
+  ```sh
+  ./victoria-logs-prod -httpListenAddr=... -storageDataPath=... -tls -tlsCertFile=... -tlsKeyFile=... -httpAuth.username=... -httpAuth.password=...
+  ```
+
+- Specify `-storageNode.username` and `-storageNode.password` command-line flags at `vlinsert` and `vlselect`, which communicate with the `vlstorage` over untrusted networks:
+
+  ```sh
+  ./victoria-logs-prod -storageNode=... -storageNode.tls -storageNode.username=... -storageNode.password=...
+  ```
+
+See also [how to set up mTLS between VictoriaLogs cluster nodes](https://docs.victoriametrics.com/victorialogs/cluster/#mtls).
 
 ### mTLS
 
-See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls).
+[Enterprise version of VictoriaLogs](https://docs.victoriametrics.com/victoriametrics/enterprise/) supports the ability to verify client TLS certificates
+at the `vlstorage` side for TLS connections established from `vlinsert` and `vlselect` nodes (aka [mTLS](https://en.wikipedia.org/wiki/Mutual_authentication#mTLS)).
+See [TLS docs](https://docs.victoriametrics.com/victorialogs/cluster/#tls) for details on how to set up TLS communications between VictoriaLogs cluster nodes.
+
+mTLS authentication can be enabled by passing the `-mtls` command-line flag to the `vlstorage` node in addition to the `-tls` command-line flag.
+In this case it verifies TLS client certificates for connections from `vlinsert` and `vlselect` at the address specified via `-httpListenAddr` command-line flag.
+
+The client TLS certificate must be specified at `vlinsert` and `vlselect` nodes via `-storageNode.tlsCertFile` and `-storageNode.tlsKeyFile` command-line flags.
+
+By default, the system-wide [root CA certificates](https://en.wikipedia.org/wiki/Root_certificate) are used for verifying client TLS certificates.
+The `-mtlsCAFile` command-line flag can be used at `vlstorage` for pointing to custom root CA certificates.
 
 ## Rebalancing
 
@@ -262,8 +304,8 @@ If you want running VictoriaLogs cluster in Kubernetes, then please read [these 
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.50.0/victoria-logs-linux-amd64-v1.50.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.50.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491`

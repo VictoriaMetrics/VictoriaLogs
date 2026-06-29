@@ -10,8 +10,8 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers
     depends_on:
       vmauth:
-        condition: service_healthy
+        condition: service_started
       vlagent:
-        condition: service_healthy
+        condition: service_started
       victoriametrics:
-        condition: service_healthy
+        condition: service_started

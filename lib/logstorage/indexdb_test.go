@@ -308,7 +308,6 @@ func TestGetTenantsIDs(t *testing.T) {
 			for _, sid := range sids {
 				idb.mustRegisterStream(&sid, streamTagsCanonical)
 			}
-
 		}
 	}
 	idb.debugFlush()

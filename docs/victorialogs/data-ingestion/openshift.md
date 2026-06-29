@@ -11,7 +11,7 @@ tags:
 ---
 VictoriaLogs supports two options for ingestion logs using OpenShift native cluster logging operator:
 * using `elasticsearch` output (starting [v6.4.2](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.4/html/release_notes/logging-release-notes#openshift-logging-release-notes-6-4-2-enhancements_logging-release-notes)).
-* using `http` output (starting [v6.5.0](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.5/html/release_notes/logging-release-notes#openshift-logging-release-notes-6-5-0-enhancements_logging-release-notes)).
+* using `http` output (starting [v6.5.0](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.5/html/release_notes/logging-release-notes#logging-release-notes-6-5-0-enhancement_logging-release-notes)).
 
 ## Elasticsearch output
 

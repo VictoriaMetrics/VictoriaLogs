@@ -18,7 +18,7 @@ import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
-import { humanizeSeconds } from "../../../../utils/time";
+import { getDurationFromMilliseconds } from "../../../../utils/time";
 import { generateIntervalsMs } from "../../../../utils/intervals";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 
@@ -65,8 +65,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }), [stacked, cumulative, hideChart, queryMode]);
 
   const intervals = useMemo(() => {
-    const msIntervals = generateIntervalsMs(start, end);
-    return msIntervals.map(ms => humanizeSeconds(ms / 1000));
+    const msIntervals = generateIntervalsMs({ start, end });
+    return msIntervals.map(ms => getDurationFromMilliseconds(ms));
   }, [start, end]);
 
   const defaultStep = intervals[Math.floor(intervals.length / 2)];
@@ -77,7 +77,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }, [fieldNames]);
 
   const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, skipNoiseFields: true, query });
+    const period = { start, end };
+    void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {

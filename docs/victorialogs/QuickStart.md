@@ -38,8 +38,8 @@ Just download the archive for the needed operating system and architecture, unpa
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.50.0/victoria-logs-linux-amd64-v1.50.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.50.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz
 ./victoria-logs-prod -storageDataPath=victoria-logs-data
 ```
 
@@ -62,7 +62,7 @@ Here is the command to run VictoriaLogs in a Docker container:
 
 ```sh
 docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
-  docker.io/victoriametrics/victoria-logs:v1.50.0 -storageDataPath=victoria-logs-data
+  docker.io/victoriametrics/victoria-logs:v1.51.0 -storageDataPath=victoria-logs-data
 ```
 
 See also:
@@ -103,6 +103,10 @@ Follow these steps to build VictoriaLogs from source code:
   ```sh
   git checkout <commit-hash-here>
   ```
+
+- If you build VictoriaLogs from source in order to verify some bugfix or feature in [Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui),
+  then run `make vmui-update` command before the next step. This command requires Docker to be installed on your computer.
+  See [how to install Docker](https://docs.docker.com/engine/install/).
 
 - Build VictoriaLogs (requires Go to be installed on your computer. See [how to install Go](https://golang.org/doc/install)):
 

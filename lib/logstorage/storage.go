@@ -381,7 +381,7 @@ func getSnapshotPaths(ptws []*partitionWrapper) []string {
 func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	snapshotName := filepath.Base(snapshotPath)
 	if err := snapshotutil.Validate(snapshotName); err != nil {
-		return fmt.Errorf("unsupported snapshot name %q at %q: %s", snapshotName, snapshotPath, err)
+		return fmt.Errorf("unsupported snapshot name %q at %q: %w", snapshotName, snapshotPath, err)
 	}
 
 	snapshotDir := filepath.Dir(snapshotPath)

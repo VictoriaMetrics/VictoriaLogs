@@ -82,6 +82,11 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
 
+	// Set the idle connection timeout to the value smaller than the default timeout at the server side
+	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
+	tr.IdleConnTimeout = 5 * time.Second
+
 	scheme := "http"
 	if isTLS {
 		scheme = "https"
