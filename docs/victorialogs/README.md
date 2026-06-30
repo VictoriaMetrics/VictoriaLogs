@@ -288,7 +288,7 @@ with fast NVMe (SSD) disks, while historical logs are gradually migrated to Vict
 This scheme can be implemented with the following simple cron job, which must run once per day:
 
 1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` endpoint.
-1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaMetrics with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
+1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaLogs with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
 1. To delete the created snapshot according to [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
 1. To detach the copied partition from the VictoriaLogs with NVMe via `/internal/partition/detach?name=YYYYMMDD` endpoint.
 1. To attach the copied partition to the VictoriaLogs with HDD via `/internal/partition/attach?name=YYYYMMDD` endpoint.
