@@ -154,18 +154,18 @@ func MustInit() {
 		globalTimezone = time.Local
 	}
 
-	currentYear := time.Now().Year()
+	currentYear := nowInGlobalTZ().Year()
 	globalCurrentYear.Store(int64(currentYear))
 	workersWG.Go(func() {
 		for {
-			now := time.Now().In(globalTimezone)
+			now := nowInGlobalTZ()
 			nextYear := time.Date(now.Year()+1, 1, 1, 0, 0, 0, 0, globalTimezone)
 			nextTick := min(time.Minute, nextYear.Sub(now))
 			select {
 			case <-workersStopCh:
 				return
 			case <-time.After(nextTick):
-				currentYear := time.Now().In(globalTimezone).Year()
+				currentYear := nowInGlobalTZ().Year()
 				globalCurrentYear.Store(int64(currentYear))
 			}
 		}
@@ -181,6 +181,10 @@ var (
 	workersWG     sync.WaitGroup
 	workersStopCh chan struct{}
 )
+
+func nowInGlobalTZ() time.Time {
+	return time.Now().In(globalTimezone)
+}
 
 // MustStop stops syslog parser initialized via MustInit()
 func MustStop() {
