@@ -632,6 +632,10 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 	shard.writeBlock(pcp, br)
 }
 
+func (pcp *pipeStreamContextProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pcp)
+}
+
 func (pcp *pipeStreamContextProcessor) flush() error {
 	n := pcp.stateSizeBudget.Load()
 	if n <= 0 {

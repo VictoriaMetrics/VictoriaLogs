@@ -201,6 +201,10 @@ func (shard *pipeUnrollProcessorShard) writeUnrolledFields(fieldNames []string, 
 	shard.fields = fields
 }
 
+func (pup *pipeUnrollProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pup)
+}
+
 func (pup *pipeUnrollProcessor) flush() error {
 	return nil
 }

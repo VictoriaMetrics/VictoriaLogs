@@ -153,6 +153,10 @@ func getFloat64CompatibleHash(v string) float64 {
 	return float64(h)
 }
 
+func (php *pipeHashProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, php)
+}
+
 func (php *pipeHashProcessor) flush() error {
 	return nil
 }

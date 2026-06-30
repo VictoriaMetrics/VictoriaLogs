@@ -16,7 +16,7 @@ func TestInmemoryPartMustInitFromRows(t *testing.T) {
 	f := func(lrOrig *LogRows, blocksCountExpected int, compressionRateExpected float64) {
 		t.Helper()
 
-		uncompressedSizeBytesExpected := uncompressedRowsSizeBytes(lrOrig.rows)
+		uncompressedSizeBytesExpected := uncompressedFieldsSizeBytes(lrOrig.rows)
 		rowsCountExpected := len(lrOrig.timestamps)
 		minTimestampExpected := int64(math.MaxInt64)
 		maxTimestampExpected := int64(math.MinInt64)
@@ -139,7 +139,7 @@ func TestInmemoryPartInitFromBlockStreamReaders(t *testing.T) {
 		// make a copy of lrs in order to compare the results after merge.
 		var lrExpected logRows
 		for _, lr := range lrs {
-			uncompressedSizeBytesExpected += uncompressedRowsSizeBytes(lr.rows)
+			uncompressedSizeBytesExpected += uncompressedFieldsSizeBytes(lr.rows)
 			rowsCountExpected += len(lr.timestamps)
 			for j, timestamp := range lr.timestamps {
 				if timestamp < minTimestampExpected {
@@ -148,7 +148,7 @@ func TestInmemoryPartInitFromBlockStreamReaders(t *testing.T) {
 				if timestamp > maxTimestampExpected {
 					maxTimestampExpected = timestamp
 				}
-				lrExpected.mustAddRow(lr.streamIDs[j], timestamp, lr.rows[j])
+				lrExpected.mustAddRow(lr.streamIDs[j], timestamp, lr.rows[j].Fields)
 			}
 		}
 

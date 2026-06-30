@@ -145,6 +145,10 @@ func (shard *pipeLenProcessorShard) getEncodedLen(v string) string {
 	return bytesutil.ToUnsafeString(shard.a.b[bLen:])
 }
 
+func (plp *pipeLenProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, plp)
+}
+
 func (plp *pipeLenProcessor) flush() error {
 	return nil
 }

@@ -96,6 +96,10 @@ func (ppp *pipePackProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.rc.reset()
 }
 
+func (ppp *pipePackProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, ppp)
+}
+
 func (ppp *pipePackProcessor) flush() error {
 	return nil
 }

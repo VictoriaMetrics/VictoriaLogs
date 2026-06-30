@@ -105,6 +105,10 @@ func (pfp *pipeFieldValuesLocalProcessor) writeBlock(workerID uint, br *blockRes
 	}
 }
 
+func (pfp *pipeFieldValuesLocalProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pfp)
+}
+
 func (pfp *pipeFieldValuesLocalProcessor) flush() error {
 	pf := pfp.pf.pf
 	shards := pfp.shards.All()

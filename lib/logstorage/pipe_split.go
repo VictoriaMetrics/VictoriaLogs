@@ -122,6 +122,10 @@ func (psp *pipeSplitProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.a.reset()
 }
 
+func (psp *pipeSplitProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeSplitProcessor) flush() error {
 	return nil
 }

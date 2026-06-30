@@ -146,6 +146,10 @@ func (shard *pipeJSONArrayConcatProcessorShard) concat(arrayStr, delimiter strin
 	return bytesutil.ToUnsafeString(shard.a.b[bLen:])
 }
 
+func (pcp *pipeJSONArrayConcatProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pcp)
+}
+
 func (pcp *pipeJSONArrayConcatProcessor) flush() error {
 	return nil
 }

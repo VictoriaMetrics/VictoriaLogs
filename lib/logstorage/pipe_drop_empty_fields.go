@@ -115,6 +115,14 @@ func (pdp *pipeDropEmptyFieldsProcessor) writeBlock(workerID uint, br *blockResu
 	shard.wctx.flush()
 }
 
+func (pdp *pipeDropEmptyFieldsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+	lr.dropEmptyFields()
+	pdp.ppNext.writeLogRows(workerID, lr)
+}
+
 func (pdp *pipeDropEmptyFieldsProcessor) flush() error {
 	return nil
 }

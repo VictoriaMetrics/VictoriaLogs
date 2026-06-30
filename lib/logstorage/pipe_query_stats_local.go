@@ -73,6 +73,10 @@ func (psp *pipeQueryStatsLocalProcessor) writeBlock(_ uint, _ *blockResult) {
 	// Nothing to do - query stats is passed from the remote storage nodes via a side channel.
 }
 
+func (psp *pipeQueryStatsLocalProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeQueryStatsLocalProcessor) flush() error {
 	psp.qs.writeToPipeProcessor(psp.ppNext, psp.queryDurationNsecs)
 	return nil

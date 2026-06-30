@@ -1167,7 +1167,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 	for i, ts := range lr.timestamps {
 		day := ts / nsecsPerDay
 		if day < minAllowedDay {
-			line := MarshalFieldsToJSON(nil, lr.rows[i])
+			line := MarshalFieldsToJSON(nil, lr.rows[i].Fields)
 			tsf := TimeFormatter(ts)
 			minAllowedTsf := TimeFormatter(minAllowedDay * nsecsPerDay)
 			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp=%s; it must be bigger than %s according "+
@@ -1177,7 +1177,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			continue
 		}
 		if day > maxAllowedDay {
-			line := MarshalFieldsToJSON(nil, lr.rows[i])
+			line := MarshalFieldsToJSON(nil, lr.rows[i].Fields)
 			tsf := TimeFormatter(ts)
 			maxAllowedTsf := TimeFormatter(maxAllowedDay * nsecsPerDay)
 			tooBigTimestampLogger.Warnf("skipping log entry with too big timestamp=%s; it must be smaller than %s according "+
@@ -1187,7 +1187,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			continue
 		}
 		if ts < minAllowedTimestamp {
-			line := MarshalFieldsToJSON(nil, lr.rows[i])
+			line := MarshalFieldsToJSON(nil, lr.rows[i].Fields)
 			tsf := TimeFormatter(ts)
 			minAllowedTsf := TimeFormatter(minAllowedTimestamp)
 			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp=%s; it must be bigger than %s according "+
@@ -1202,7 +1202,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			lrPart = GetLogRows(nil, nil, nil, nil, "")
 			m[day] = lrPart
 		}
-		lrPart.mustAddInternal(lr.streamIDs[i], ts, lr.rows[i], lr.streamTagsCanonicals[i])
+		lrPart.mustAddInternal(lr.streamIDs[i], ts, lr.rows[i].Fields, lr.streamTagsCanonicals[i])
 	}
 	for day, lrPart := range m {
 		ptw := s.getPartitionForWriting(day)
@@ -1211,7 +1211,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			ptw.decRef()
 		} else {
 			// the lrPart must contain at least a single row, so log it.
-			line := MarshalFieldsToJSON(nil, lrPart.rows[0])
+			line := MarshalFieldsToJSON(nil, lrPart.rows[0].Fields)
 			inactivePartitionLogger.Warnf("skipping log entry because it cannot be saved into inactive per-day partition; "+
 				"see https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle; log entry %s", line)
 		}

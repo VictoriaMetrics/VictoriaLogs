@@ -327,7 +327,12 @@ func (br *blockResult) mustInitFromRows(rows [][]Field) {
 }
 
 func (br *blockResult) mustInitFromLogRows(lr *LogRows) {
-	br.mustInitFromRows(lr.rows)
+	// TODO: avoid copying
+	rows := make([][]Field, len(lr.rows))
+	for i := range rows {
+		rows[i] = lr.rows[i].Fields
+	}
+	br.mustInitFromRows(rows)
 	if br.rowsLen == 0 {
 		return
 	}

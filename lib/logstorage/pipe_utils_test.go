@@ -71,6 +71,8 @@ func expectPipeResults(t *testing.T, pipeStr string, rows, rowsExpected [][]Fiel
 	pp.flush()
 
 	ppTest.expectRows(t, rowsExpected)
+
+	//pp.writeLogRows()
 }
 
 func newTestBlockResultWriter(workersCount int, ppNext pipeProcessor) *testBlockResultWriter {
@@ -159,6 +161,13 @@ func (pp *testPipeProcessor) writeBlock(_ uint, br *blockResult) {
 		pp.resultRows = append(pp.resultRows, row)
 		pp.resultRowsLock.Unlock()
 	}
+}
+
+func (pp *testPipeProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	br := getBlockResult()
+	defer putBlockResult(br)
+	br.mustInitFromLogRows(lr)
+	pp.writeBlock(workerID, br)
 }
 
 func (pp *testPipeProcessor) flush() error {

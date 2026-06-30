@@ -49,8 +49,6 @@ type Transformer struct {
 }
 
 type transformsProcessorShard struct {
-	br blockResult
-	lr LogRows
 	mu sync.Mutex
 	_  [atomicutil.CacheLineSize]byte
 }
@@ -69,17 +67,13 @@ func (tp *TransformsProgram) NewTransformer(flush func(lr *LogRows)) *Transforme
 	concurrency := cgroup.AvailableCPUs() * 2
 
 	shards := make([]transformsProcessorShard, concurrency)
-	storeResult := func(workerID uint, br *blockResult) {
-		if br.rowsLen == 0 {
+	storeResult := func(workerID uint, lr *LogRows) {
+		if lr.RowsCount() == 0 {
 			return
 		}
-		shard := &shards[workerID]
-		lr := &shard.lr
-		lr.initFromBlockResult(br)
 		flush(lr)
 	}
-	neverStopCh := make(chan struct{})
-	noop := newNoopPipeProcessor(neverStopCh, storeResult)
+	noop := pipeProcessor(noopLogRowsPipeProcessorFunc(storeResult))
 
 	ppSend := noop
 	ppNext := noop
@@ -94,6 +88,23 @@ func (tp *TransformsProgram) NewTransformer(flush func(lr *LogRows)) *Transforme
 	}
 }
 
+type noopLogRowsPipeProcessorFunc func(workerID uint, lr *LogRows)
+
+func (f noopLogRowsPipeProcessorFunc) writeBlock(workerID uint, br *blockResult) {
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	defer PutLogRows(lr)
+	lr.initFromBlockResult(br)
+	f.writeLogRows(workerID, lr)
+}
+
+func (f noopLogRowsPipeProcessorFunc) writeLogRows(workerID uint, lr *LogRows) {
+	f(workerID, lr)
+}
+
+func (noopLogRowsPipeProcessorFunc) flush() error {
+	return nil
+}
+
 // Transform runs the compiled transformations over lr using the given workerID,
 // and calls the flush callback for the result.
 //
@@ -104,10 +115,7 @@ func (t *Transformer) Transform(lr *LogRows) {
 	shard := &t.shards[workerID]
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
-
-	br := &shard.br
-	br.mustInitFromLogRows(lr)
-	t.pp.writeBlock(uint(workerID), br)
+	t.pp.writeLogRows(uint(workerID), lr)
 }
 
 // transformsProgram is a parsed VictoriaLogs transformations program.
@@ -364,6 +372,10 @@ func (tbp *transformBlockProcessor) writeBlock(workerID uint, br *blockResult) {
 	tbp.ppNext.writeBlock(workerID, br)
 }
 
+func (tbp *transformBlockProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	tbp.ppNext.writeLogRows(workerID, lr)
+}
+
 func (tbp *transformBlockProcessor) flush() error {
 	return tbp.ppNext.flush()
 }
@@ -527,6 +539,8 @@ type ifBranchProcessorShard struct {
 	bmUnmatched bitmap
 	brMatched   blockResult
 	brUnmatched blockResult
+	lrMatched   LogRows
+	lrUnmatched LogRows
 }
 
 func (ibp *ifBranchProcessor) writeBlock(workerID uint, br *blockResult) {
@@ -561,6 +575,58 @@ func (ibp *ifBranchProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	ibp.ppMatched.writeBlock(workerID, brMatched)
 	ibp.ppUnmatched.writeBlock(workerID, brUnmatched)
+}
+
+func (ibp *ifBranchProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	// Find first matched and unmatched row
+	firstMatched := -1
+	firstUnmatched := -1
+	f := ibp.f
+	for i := range lr.RowsCount() {
+		row := lr.mustGetRowFields(i)
+		match := f.matchRow(row)
+		if match && firstMatched < 0 {
+			firstMatched = i
+		}
+		if !match && firstUnmatched < 0 {
+			firstUnmatched = i
+		}
+		if firstMatched >= 0 && firstUnmatched >= 0 {
+			break
+		}
+	}
+	if firstMatched < 0 {
+		// All rows unmatched.
+		ibp.ppUnmatched.writeLogRows(workerID, lr)
+		return
+	}
+	if firstUnmatched < 0 {
+		// All rows matched.
+		ibp.ppMatched.writeLogRows(workerID, lr)
+		return
+	}
+
+	shard := ibp.shards.Get(workerID)
+	lrMatched := &shard.lrMatched
+	defer lrMatched.Reset()
+	lrUnmatched := &shard.lrUnmatched
+	defer lrUnmatched.Reset()
+
+	// Split by matched and unmatched.
+	for i := range lr.RowsCount() {
+		row := lr.mustGetRowFields(i)
+		if f.matchRow(row) {
+			lrMatched.appendFromLogRows(lr, i)
+		} else {
+			lrUnmatched.appendFromLogRows(lr, i)
+		}
+	}
+	ibp.ppMatched.writeLogRows(workerID, lrMatched)
+	ibp.ppUnmatched.writeLogRows(workerID, lrUnmatched)
 }
 
 func (ibp *ifBranchProcessor) flush() error {
@@ -677,6 +743,10 @@ type transformDropProcessor struct {
 
 func (t *transformDropProcessor) writeBlock(_ uint, _ *blockResult) {
 	// Drop the block.
+}
+
+func (t *transformDropProcessor) writeLogRows(_ uint, _ *LogRows) {
+	// Drop lr.
 }
 
 func (t *transformDropProcessor) flush() error {

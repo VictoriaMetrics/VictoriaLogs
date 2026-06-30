@@ -80,6 +80,28 @@ type pipeProcessor interface {
 	// cancel() may be called also when the pipeProcessor decides to stop accepting new data, even if there is no any error.
 	writeBlock(workerID uint, br *blockResult)
 
+	// writeLogRows must write the given lr to the given pipeProcessor.
+	//
+	// writeLogRows is called concurrently from worker goroutines.
+	// The workerID is the id of the worker goroutine, which calls writeLogRows.
+	// It is in the range 0 ... workersCount-1 , where workersCount is the number of worker goroutines.
+	// The number of worker goroutines is unknown beforehand (but is usually limited by the number of CPU cores),
+	// so the pipe must dynamically adapt to it. It is recommended using lib/atomicutil.Slice for maintaining per-worker state.
+	//
+	// Unlike writeBlock, which receives data in the columnar representation (*blockResult),
+	// writeLogRows receives data in the row-based representation.
+	// This is useful for pipes that need per-row access to log fields (e.g. streaming, unpacking or row-oriented transformations),
+	// avoiding unnecessary conversion to/from the columnar format.
+	//
+	// It is OK to modify lr contents inside writeLogRows. The caller mustn't rely on lr contents after writeLogRows call.
+	// It is forbidden to hold references to lr after returning from writeLogRows, since the caller may reuse it.
+	//
+	// If any error occurs at writeLogRows, then cancel() must be called by pipeProcessor in order to notify worker goroutines
+	// to stop sending new data. The occurred error must be returned from flush().
+	//
+	// cancel() may be called also when the pipeProcessor decides to stop accepting new data, even if there is no any error.
+	writeLogRows(workerID uint, lr *LogRows)
+
 	// flush must flush all the data accumulated in the pipeProcessor to the next pipeProcessor.
 	//
 	// flush is called after all the worker goroutines are stopped.
@@ -105,6 +127,21 @@ func (npp *noopPipeProcessor) writeBlock(workerID uint, br *blockResult) {
 		return
 	}
 	npp.writeBlockFinal(workerID, br)
+}
+
+func (npp *noopPipeProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, npp)
+}
+
+// writeLogRowsToPipeGeneric is a generic implementation of pipeProcessor's writeLogRows,
+// which converts lr to a blockResult and then calls pp's writeBlock.
+//
+// It can be used by pipes which implement writeBlock, but don't need a specialized row-based writeLogRows implementation.
+func writeLogRowsToPipeGeneric(workerID uint, lr *LogRows, pp pipeProcessor) {
+	br := getBlockResult()
+	defer putBlockResult(br)
+	br.mustInitFromLogRows(lr)
+	pp.writeBlock(workerID, br)
 }
 
 func (npp *noopPipeProcessor) flush() error {

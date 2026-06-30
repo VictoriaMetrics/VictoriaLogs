@@ -75,6 +75,10 @@ func (pgp *pipeGenerateSequenceProcessor) writeBlock(_ uint, _ *blockResult) {
 	pgp.cancel()
 }
 
+func (pgp *pipeGenerateSequenceProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pgp)
+}
+
 func (pgp *pipeGenerateSequenceProcessor) flush() error {
 	rcs := make([]resultColumn, 1)
 	rc := &rcs[0]

@@ -163,7 +163,7 @@ func (pt *partition) mustAddRows(lr *LogRows) {
 				streamTagsCanonical := streamTagsCanonicals[rowIdx]
 				pt.idb.mustRegisterStream(streamID, streamTagsCanonical)
 				if logNewStreams {
-					pt.logNewStream(streamTagsCanonical, lr.rows[rowIdx])
+					pt.logNewStream(streamTagsCanonical, lr.rows[rowIdx].Fields)
 				}
 			}
 			pt.putStreamIDToCache(streamID)

@@ -108,6 +108,10 @@ func (pap *pipeTimeAddProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.buf = shard.buf[:0]
 }
 
+func (pap *pipeTimeAddProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pap)
+}
+
 func (pap *pipeTimeAddProcessor) flush() error {
 	return nil
 }

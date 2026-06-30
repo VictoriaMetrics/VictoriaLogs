@@ -106,6 +106,15 @@ func (prp *pipeRenameProcessor) writeBlock(workerID uint, br *blockResult) {
 	prp.ppNext.writeBlock(workerID, br)
 }
 
+func (prp *pipeRenameProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	lr.renameFieldsByFilters(prp.pr.srcFieldFilters, prp.pr.dstFieldFilters)
+	prp.ppNext.writeLogRows(workerID, lr)
+}
+
 func (prp *pipeRenameProcessor) flush() error {
 	return nil
 }

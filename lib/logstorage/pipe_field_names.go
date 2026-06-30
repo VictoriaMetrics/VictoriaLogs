@@ -167,6 +167,10 @@ func (shard *pipeFieldNamesProcessorShard) updateColumnHits(columnName, filter s
 	*pHits += hits
 }
 
+func (pfp *pipeFieldNamesProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pfp)
+}
+
 func (pfp *pipeFieldNamesProcessor) flush() error {
 	if needStop(pfp.stopCh) {
 		return nil

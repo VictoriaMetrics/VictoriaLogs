@@ -173,6 +173,38 @@ func (pup *pipeUnpackProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.uctx.reset()
 }
 
+func (pup *pipeUnpackProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	iff := pup.iff
+	shard := pup.shards.Get(workerID)
+	uctx := &shard.uctx
+	uctx.init(pup.fieldPrefix)
+
+	for i := 0; i < lr.RowsCount(); i++ {
+		row := lr.mustGetRowFields(i)
+		if iff != nil && !iff.f.matchRow(row) {
+			continue
+		}
+		value := getFieldValueByName(row, pup.fromField)
+		pup.unpackFunc(uctx, value)
+		for _, field := range uctx.fields {
+			if pup.skipEmptyResults && field.Value == "" {
+				continue
+			}
+			if pup.keepOriginalFields && fieldIndexByName(row, field.Name) >= 0 {
+				continue
+			}
+			lr.setFieldValueForRow(i, field.Name, field.Value)
+		}
+		uctx.resetFields()
+	}
+	pup.ppNext.writeLogRows(workerID, lr)
+	shard.uctx.reset()
+}
+
 func (pup *pipeUnpackProcessor) flush() error {
 	return nil
 }

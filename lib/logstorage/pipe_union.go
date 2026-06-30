@@ -124,6 +124,10 @@ func (pup *pipeUnionProcessor) writeBlock(workerID uint, br *blockResult) {
 	pup.ppNext.writeBlock(workerID, br)
 }
 
+func (pup *pipeUnionProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pup)
+}
+
 func (pup *pipeUnionProcessor) flush() error {
 	// execute the query to union
 	ctxWithCancel, cancel := contextutil.NewStopChanContext(pup.stopCh)

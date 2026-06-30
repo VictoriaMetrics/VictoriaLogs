@@ -88,6 +88,10 @@ func (pcp *pipeBlocksCountProcessor) writeBlock(workerID uint, _ *blockResult) {
 	shard.blocksCount++
 }
 
+func (pcp *pipeBlocksCountProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pcp)
+}
+
 func (pcp *pipeBlocksCountProcessor) flush() error {
 	if needStop(pcp.stopCh) {
 		return nil

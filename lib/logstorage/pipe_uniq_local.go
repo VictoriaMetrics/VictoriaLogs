@@ -133,6 +133,10 @@ func getColumnValuess(br *blockResult, fields []string) [][]string {
 	return columnValuess
 }
 
+func (pup *pipeUniqLocalProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pup)
+}
+
 func (pup *pipeUniqLocalProcessor) flush() error {
 	pu := pup.pu.pu
 	shards := pup.shards.All()

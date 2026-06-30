@@ -143,6 +143,10 @@ func (psp *pipeSetStreamFieldsProcessor) writeBlock(workerID uint, br *blockResu
 	shard.rcs[1].reset()
 }
 
+func (psp *pipeSetStreamFieldsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeSetStreamFieldsProcessor) flush() error {
 	return nil
 }

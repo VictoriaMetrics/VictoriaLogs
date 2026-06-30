@@ -219,6 +219,10 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 	shard.writeBlock(br)
 }
 
+func (psp *pipeRunningStatsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeRunningStatsProcessor) flush() error {
 	if n := psp.stateSizeBudget.Load(); n <= 0 {
 		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", psp.ps.String(), psp.maxStateSize/(1<<20))

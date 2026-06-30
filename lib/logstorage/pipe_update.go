@@ -94,6 +94,10 @@ func (pup *pipeUpdateProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.a.reset()
 }
 
+func (pup *pipeUpdateProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pup)
+}
+
 func (pup *pipeUpdateProcessor) flush() error {
 	return nil
 }

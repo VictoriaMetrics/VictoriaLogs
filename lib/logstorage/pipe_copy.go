@@ -97,6 +97,10 @@ func (pcp *pipeCopyProcessor) writeBlock(workerID uint, br *blockResult) {
 	pcp.ppNext.writeBlock(workerID, br)
 }
 
+func (pcp *pipeCopyProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pcp)
+}
+
 func (pcp *pipeCopyProcessor) flush() error {
 	return nil
 }

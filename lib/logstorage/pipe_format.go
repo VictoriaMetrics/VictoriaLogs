@@ -166,6 +166,31 @@ func (pfp *pipeFormatProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.rc.reset()
 }
 
+func (pfp *pipeFormatProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	pf := pfp.pf
+	shard := pfp.shards.Get(workerID)
+	for i := range lr.RowsCount() {
+		row := lr.mustGetRowFields(i)
+		if pf.keepOriginalFields && fieldIndexByName(row, pf.resultField) >= 0 {
+			continue
+		}
+		if pf.iff != nil && !pf.iff.f.matchRow(row) {
+			continue
+		}
+		v := shard.formatFields(pf, row)
+		if pf.skipEmptyResults && v == "" {
+			continue
+		}
+		lr.setFieldValueForRow(i, pf.resultField, v)
+	}
+	pfp.ppNext.writeLogRows(workerID, lr)
+	shard.a.reset()
+}
+
 func (pfp *pipeFormatProcessor) flush() error {
 	return nil
 }
@@ -181,75 +206,99 @@ func (shard *pipeFormatProcessorShard) formatRow(pf *pipeFormat, br *blockResult
 
 		c := br.getColumnByName(step.field)
 		v := c.getValueAtRow(br, rowIdx)
-		switch step.fieldOpt {
-		case "base64decode":
-			result, ok := appendBase64Decode(b, v)
-			if !ok {
-				b = append(b, v...)
-			} else {
-				b = result
-			}
-		case "base64encode":
-			b = appendBase64Encode(b, v)
-		case "duration":
-			nsecs, ok := tryParseInt64(v)
-			if !ok {
-				b = append(b, v...)
-			} else {
-				b = marshalDurationString(b, nsecs)
-			}
-		case "duration_seconds":
-			nsecs, ok := tryParseDuration(v)
-			if !ok {
-				b = append(b, v...)
-			} else {
-				secs := float64(nsecs) / 1e9
-				b = marshalFloat64String(b, secs)
-			}
-		case "hexdecode":
-			b = appendHexDecode(b, v)
-		case "hexencode":
-			b = appendHexEncode(b, v)
-		case "hexnumdecode":
-			b = appendHexUint64Decode(b, v)
-		case "hexnumencode":
-			n, ok := tryParseUint64(v)
-			if !ok {
-				b = append(b, v...)
-			} else {
-				b = appendHexUint64Encode(b, n)
-			}
-		case "ipv4":
-			ipNum, ok := tryParseUint64(v)
-			if !ok || ipNum > math.MaxUint32 {
-				b = append(b, v...)
-			} else {
-				b = marshalIPv4String(b, uint32(ipNum))
-			}
-		case "lc":
-			b = appendLowercase(b, v)
-		case "time":
-			nsecs, ok := timeutil.TryParseUnixTimestamp(v)
-			if !ok {
-				b = append(b, v...)
-			} else {
-				b = marshalTimestampRFC3339NanoString(b, nsecs)
-			}
-		case "q":
-			b = quicktemplate.AppendJSONString(b, v, true)
-		case "uc":
-			b = appendUppercase(b, v)
-		case "urldecode":
-			b = appendURLDecode(b, v)
-		case "urlencode":
-			b = appendURLEncode(b, v)
-		default:
-			b = append(b, v...)
-		}
+		b = appendFormatStepValue(b, v, step.fieldOpt)
 	}
 	shard.a.b = b
-
 	return bytesutil.ToUnsafeString(b[bLen:])
+}
+
+func (shard *pipeFormatProcessorShard) formatFields(pf *pipeFormat, row []Field) string {
+	b := shard.a.b
+	bLen := len(b)
+	for _, step := range pf.steps {
+		b = append(b, step.prefix...)
+		if step.field == "" {
+			continue
+		}
+		v := ""
+		if n := fieldIndexByName(row, step.field); n >= 0 {
+			v = row[n].Value
+		}
+		b = appendFormatStepValue(b, v, step.fieldOpt)
+	}
+	shard.a.b = b
+	return bytesutil.ToUnsafeString(b[bLen:])
+}
+
+// appendFormatStepValue appends the field value v to dst according to the given fieldOpt
+// from the `format` pipe pattern step.
+func appendFormatStepValue(dst []byte, fieldOpt, v string) []byte {
+	switch fieldOpt {
+	case "base64decode":
+		result, ok := appendBase64Decode(dst, v)
+		if !ok {
+			dst = append(dst, v...)
+		} else {
+			dst = result
+		}
+	case "base64encode":
+		dst = appendBase64Encode(dst, v)
+	case "duration":
+		nsecs, ok := tryParseInt64(v)
+		if !ok {
+			dst = append(dst, v...)
+		} else {
+			dst = marshalDurationString(dst, nsecs)
+		}
+	case "duration_seconds":
+		nsecs, ok := tryParseDuration(v)
+		if !ok {
+			dst = append(dst, v...)
+		} else {
+			secs := float64(nsecs) / 1e9
+			dst = marshalFloat64String(dst, secs)
+		}
+	case "hexdecode":
+		dst = appendHexDecode(dst, v)
+	case "hexencode":
+		dst = appendHexEncode(dst, v)
+	case "hexnumdecode":
+		dst = appendHexUint64Decode(dst, v)
+	case "hexnumencode":
+		n, ok := tryParseUint64(v)
+		if !ok {
+			dst = append(dst, v...)
+		} else {
+			dst = appendHexUint64Encode(dst, n)
+		}
+	case "ipv4":
+		ipNum, ok := tryParseUint64(v)
+		if !ok || ipNum > math.MaxUint32 {
+			dst = append(dst, v...)
+		} else {
+			dst = marshalIPv4String(dst, uint32(ipNum))
+		}
+	case "lc":
+		dst = appendLowercase(dst, v)
+	case "time":
+		nsecs, ok := timeutil.TryParseUnixTimestamp(v)
+		if !ok {
+			dst = append(dst, v...)
+		} else {
+			dst = marshalTimestampRFC3339NanoString(dst, nsecs)
+		}
+	case "q":
+		dst = quicktemplate.AppendJSONString(dst, v, true)
+	case "uc":
+		dst = appendUppercase(dst, v)
+	case "urldecode":
+		dst = appendURLDecode(dst, v)
+	case "urlencode":
+		dst = appendURLEncode(dst, v)
+	default:
+		dst = append(dst, v...)
+	}
+	return dst
 }
 
 func parsePipeFormat(lex *lexer) (pipe, error) {

@@ -77,6 +77,15 @@ func (pdp *pipeDeleteProcessor) writeBlock(workerID uint, br *blockResult) {
 	pdp.ppNext.writeBlock(workerID, br)
 }
 
+func (pdp *pipeDeleteProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	lr.deleteFieldsByFilters(pdp.pd.fieldFilters)
+	pdp.ppNext.writeLogRows(workerID, lr)
+}
+
 func (pdp *pipeDeleteProcessor) flush() error {
 	return nil
 }

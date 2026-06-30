@@ -223,6 +223,10 @@ func (pjp *pipeJoinProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.wctx.reset()
 }
 
+func (pjp *pipeJoinProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pjp)
+}
+
 func (pjp *pipeJoinProcessor) flush() error {
 	return nil
 }

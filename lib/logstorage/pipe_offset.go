@@ -89,6 +89,10 @@ func (pop *pipeOffsetProcessor) writeBlock(workerID uint, br *blockResult) {
 	pop.ppNext.writeBlock(workerID, br)
 }
 
+func (pop *pipeOffsetProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pop)
+}
+
 func (pop *pipeOffsetProcessor) flush() error {
 	return nil
 }

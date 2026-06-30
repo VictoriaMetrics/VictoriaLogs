@@ -1124,6 +1124,10 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 	}
 }
 
+func (psp *pipeStatsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeStatsProcessor) flush() error {
 	if psp.err != nil {
 		return psp.err

@@ -378,6 +378,10 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.writeBlock(br)
 }
 
+func (ptp *pipeTopkProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, ptp)
+}
+
 func (ptp *pipeTopkProcessor) flush() error {
 	if n := ptp.stateSizeBudget.Load(); n <= 0 {
 		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", ptp.ps.String(), ptp.maxStateSize/(1<<20))

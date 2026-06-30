@@ -152,6 +152,30 @@ func (shard *pipeCoalesceProcessorShard) addColumn(c *blockResultColumn) {
 	shard.cs = append(shard.cs, c)
 }
 
+func (pcp *pipeCoalesceProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	pc := pcp.pc
+	for i := range lr.RowsCount() {
+		row := lr.mustGetRowFields(i)
+		value := ""
+		for j := range row {
+			field := &row[j]
+			if prefixfilter.MatchFilters(pc.srcFieldFilters, field.Name) {
+				value = field.Value
+				break
+			}
+		}
+		if value == "" && pc.defaultValue != "" {
+			value = pc.defaultValue
+		}
+		lr.setFieldValueForRow(i, pc.dstField, value)
+	}
+	pcp.ppNext.writeLogRows(workerID, lr)
+}
+
 func (pcp *pipeCoalesceProcessor) flush() error {
 	return nil
 }

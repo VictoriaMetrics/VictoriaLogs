@@ -94,6 +94,10 @@ func (psp *pipeQueryStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 	}
 }
 
+func (psp *pipeQueryStatsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeQueryStatsProcessor) flush() error {
 	psp.qs.writeToPipeProcessor(psp.ppNext, psp.queryDurationNsecs)
 	return nil

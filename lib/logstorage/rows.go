@@ -141,6 +141,7 @@ func (f *Field) indexdbUnmarshal(src, buf []byte) ([]byte, []byte, error) {
 }
 
 func getFieldValueByName(fields []Field, name string) string {
+	name = getCanonicalFieldName(name)
 	for _, f := range fields {
 		if f.Name == name {
 			return f.Value

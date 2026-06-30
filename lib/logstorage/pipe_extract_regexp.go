@@ -250,6 +250,10 @@ func (pep *pipeExtractRegexpProcessor) writeBlock(workerID uint, br *blockResult
 	shard.a.reset()
 }
 
+func (pep *pipeExtractRegexpProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pep)
+}
+
 func (pep *pipeExtractRegexpProcessor) flush() error {
 	return nil
 }

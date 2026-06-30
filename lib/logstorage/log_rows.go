@@ -23,7 +23,7 @@ type LogRows struct {
 	a arena
 
 	// fieldsBuf holds all the fields referred by items in LogRows
-	fieldsBuf []Field
+	rowsBuf []Fields
 
 	// streamIDs holds streamIDs for rows added to LogRows
 	streamIDs []streamID
@@ -32,7 +32,7 @@ type LogRows struct {
 	timestamps []int64
 
 	// rows holds fields for rows added to LogRows.
-	rows [][]Field
+	rows []*Fields
 
 	// streamTagsCanonicals holds streamTagsCanonical entries for rows added to LogRows
 	streamTagsCanonicals []string
@@ -54,6 +54,47 @@ type LogRows struct {
 
 	// defaultMsgValue contains default value for missing _msg field
 	defaultMsgValue string
+}
+
+func (lr *LogRows) getRow() *Fields {
+	// Do not use 'append' here, since it zeroes the Fields, which increases memory allocations.
+	lr.rowsBuf = slices.Grow(lr.rowsBuf, 1)
+	lr.rowsBuf = lr.rowsBuf[:len(lr.rowsBuf)+1]
+	row := &lr.rowsBuf[len(lr.rowsBuf)-1]
+	return row
+}
+
+func (lr *LogRows) renameFieldsByFilters(srcColumnFilters, dstColumnFilters []string) {
+	for i, srcFilter := range srcColumnFilters {
+		dstFilter := dstColumnFilters[i]
+		lr.renameFieldsByFilter(srcFilter, dstFilter)
+	}
+}
+
+func (lr *LogRows) renameFieldsByFilter(srcFilter, dstFilter string) {
+	for _, row := range lr.rows {
+		fields := row.Fields
+		for j := range fields {
+			f := &fields[j]
+			name := f.Name
+			if prefixfilter.MatchFilter(srcFilter, name) {
+				aLen := len(lr.a.b)
+				lr.a.b = prefixfilter.AppendReplace(lr.a.b, srcFilter, dstFilter, name)
+				f.Name = bytesutil.ToUnsafeString(lr.a.b[aLen:])
+			}
+		}
+	}
+}
+
+func (lr *LogRows) appendFromLogRows(lrSrc *LogRows, idx int) {
+	lr.streamIDs = append(lr.streamIDs, lrSrc.streamIDs[idx])
+	lr.timestamps = append(lr.timestamps, lrSrc.timestamps[idx])
+	lr.rows = append(lr.rows, lrSrc.rows[idx])
+	lr.streamTagsCanonicals = append(lr.streamTagsCanonicals, lrSrc.streamTagsCanonicals[idx])
+}
+
+func (lr *LogRows) mustGetRowFields(idx int) []Field {
+	return lr.rows[idx].Fields
 }
 
 type logRows struct {
@@ -118,7 +159,7 @@ func (lr *logRows) mustAddRows(src *LogRows) {
 	_ = timestamps[len(rows)-1]
 
 	for i := range rows {
-		lr.mustAddRow(streamIDs[i], timestamps[i], rows[i])
+		lr.mustAddRow(streamIDs[i], timestamps[i], rows[i].Fields)
 	}
 }
 
@@ -235,7 +276,7 @@ func (lr *LogRows) ForEachRow(callback func(streamHash uint64, r *InsertRow)) {
 		r.TenantID = sid.tenantID
 		r.StreamTagsCanonical = lr.streamTagsCanonicals[i]
 		r.Timestamp = timestamp
-		r.Fields = lr.rows[i]
+		r.Fields = lr.rows[i].Fields
 
 		callback(streamHash, r)
 	}
@@ -273,12 +314,6 @@ func (lr *LogRows) RowsCount() int {
 func (lr *LogRows) ResetKeepSettings() {
 	lr.a.reset()
 
-	fb := lr.fieldsBuf
-	for i := range fb {
-		fb[i].Reset()
-	}
-	lr.fieldsBuf = fb[:0]
-
 	sids := lr.streamIDs
 	for i := range sids {
 		sids[i].reset()
@@ -292,6 +327,12 @@ func (lr *LogRows) ResetKeepSettings() {
 
 	clear(lr.rows)
 	lr.rows = lr.rows[:0]
+
+	for i := range lr.rowsBuf {
+		row := &lr.rowsBuf[i]
+		row.Reset()
+	}
+	lr.rowsBuf = lr.rowsBuf[:0]
 }
 
 // NeedFlush returns true if lr contains too much data, so it must be flushed to the storage.
@@ -461,23 +502,18 @@ func (lr *LogRows) mustAddInternal(sid streamID, timestamp int64, fields []Field
 
 	lr.streamIDs = append(lr.streamIDs, sid)
 	lr.timestamps = append(lr.timestamps, timestamp)
+	row := lr.getRow()
+	lr.rows = append(lr.rows, row)
 
-	fieldsLen := len(lr.fieldsBuf)
-	hasMsgField := lr.addFieldsInternal(fields, &lr.ignoreFields, &lr.decolorizeFields, true)
-	if lr.addFieldsInternal(lr.extraFields, nil, nil, false) {
+	hasMsgField := lr.addFieldsToRow(row, fields, &lr.ignoreFields, &lr.decolorizeFields, true)
+	if lr.addFieldsToRow(row, lr.extraFields, nil, nil, false) {
 		hasMsgField = true
 	}
 
 	// Add optional default _msg field
 	if !hasMsgField && lr.defaultMsgValue != "" {
-		lr.fieldsBuf = append(lr.fieldsBuf, Field{
-			Value: lr.defaultMsgValue,
-		})
+		row.Add("", lr.defaultMsgValue)
 	}
-
-	// Add log row fields to lr.rows
-	row := lr.fieldsBuf[fieldsLen:]
-	lr.rows = append(lr.rows, row)
 }
 
 var (
@@ -486,17 +522,16 @@ var (
 	tooLongEntryLogger     = logger.WithThrottler("too_long_entry", 5*time.Second)
 )
 
-func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFields *prefixfilter.Filter, mustCopyFields bool) bool {
+func (lr *LogRows) addFieldsToRow(dst *Fields, fields []Field, ignoreFields, decolorizeFields *prefixfilter.Filter, mustCopyFields bool) bool {
 	if len(fields) == 0 {
 		return false
 	}
 
 	var prevRow []Field
 	if len(lr.rows) > 0 {
-		prevRow = lr.rows[len(lr.rows)-1]
+		prevRow = lr.rows[len(lr.rows)-1].Fields
 	}
 
-	fb := lr.fieldsBuf
 	hasMsgField := false
 	for i := range fields {
 		f := &fields[i]
@@ -530,40 +565,39 @@ func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFie
 			prevField = &prevRow[i]
 		}
 
-		fb = append(fb, Field{})
-		dstField := &fb[len(fb)-1]
-
 		if fieldName == "" {
 			hasMsgField = true
 		}
 
+		var name string
 		if prevField != nil && prevField.Name == fieldName {
-			dstField.Name = prevField.Name
+			name = prevField.Name
 		} else {
 			if mustCopyFields {
-				dstField.Name = lr.a.copyString(fieldName)
+				name = lr.a.copyString(fieldName)
 			} else {
-				dstField.Name = fieldName
+				name = fieldName
 			}
 			prevRow = nil
 		}
+		var value string
 		if prevField != nil && prevField.Value == f.Value {
-			dstField.Value = prevField.Value
+			value = prevField.Value
 		} else {
 			if mustCopyFields {
-				dstField.Value = lr.a.copyString(f.Value)
+				value = lr.a.copyString(f.Value)
 			} else {
-				dstField.Value = f.Value
+				value = f.Value
 			}
 
-			if decolorizeFields.MatchString(fieldName) && hasColorSequences(dstField.Value) {
+			if decolorizeFields.MatchString(fieldName) && hasColorSequences(value) {
 				bLen := len(lr.a.b)
-				lr.a.b = dropColorSequences(lr.a.b, dstField.Value)
-				dstField.Value = bytesutil.ToUnsafeString(lr.a.b[bLen:])
+				lr.a.b = dropColorSequences(lr.a.b, value)
+				value = bytesutil.ToUnsafeString(lr.a.b[bLen:])
 			}
 		}
+		dst.Add(name, value)
 	}
-	lr.fieldsBuf = fb
 
 	return hasMsgField
 }
@@ -592,7 +626,7 @@ func (lr *LogRows) GetRowString(idx int) string {
 	tf := TimeFormatter(lr.timestamps[idx])
 	streamTags := getStreamTagsString(lr.streamTagsCanonicals[idx])
 	var fields []Field
-	fields = append(fields[:0], lr.rows[idx]...)
+	fields = append(fields[:0], lr.rows[idx].Fields...)
 	fields = append(fields, Field{
 		Name:  "_time",
 		Value: tf.String(),
@@ -902,6 +936,93 @@ func (lr *LogRows) initFromBlockResult(br *blockResult) {
 
 		lr.MustAddInsertRow(ir)
 	}
+}
+
+func (lr *LogRows) setFieldValueForRow(idx int, name, value string) {
+	// Handle special fields.
+	if name == "vl_account_id" {
+		v, err := getUint32FromString(value)
+		if err != nil {
+			v = 0
+		}
+		lr.streamIDs[idx].tenantID.AccountID = v
+		return
+	}
+	if name == "vl_project_id" {
+		v, err := getUint32FromString(value)
+		if err != nil {
+			v = 0
+		}
+		lr.streamIDs[idx].tenantID.ProjectID = v
+		return
+	}
+	if name == "_time" {
+		timestamp, ok := TryParseTimestampRFC3339Nano(value)
+		if !ok {
+			timestamp = 0
+		}
+		lr.timestamps[idx] = timestamp
+		return
+	}
+
+	// Handle the row fields.
+	row := lr.rows[idx]
+	n := fieldIndexByName(row.Fields, name)
+	if n >= 0 {
+		row.Fields[n].Name = value
+	} else {
+		row.Fields = append(row.Fields, Field{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
+func (lr *LogRows) deleteFieldsByFilters(fieldsFilter []string) {
+	// Handle special fields.
+	if prefixfilter.MatchFilters(fieldsFilter, "vl_account_id") {
+		for i := range lr.streamIDs {
+			lr.streamIDs[i].tenantID.AccountID = 0
+		}
+	}
+	if prefixfilter.MatchFilters(fieldsFilter, "vl_project_id") {
+		for i := range lr.streamIDs {
+			lr.streamIDs[i].tenantID.ProjectID = 0
+		}
+	}
+	if prefixfilter.MatchFilters(fieldsFilter, "_time") {
+		for i := range lr.timestamps {
+			lr.timestamps[i] = 0
+		}
+	}
+	// Handle rows fields.
+	for _, row := range lr.rows {
+		newFields := row.Fields[:0]
+		for _, field := range row.Fields {
+			if !prefixfilter.MatchFilters(fieldsFilter, field.Name) {
+				newFields = append(newFields, field)
+			}
+		}
+		row.Fields = newFields
+	}
+}
+
+func (lr *LogRows) dropEmptyFields() {
+	for i := range lr.rows {
+		row := lr.rows[i]
+		for j := range row.Fields {
+			value := row.Fields[j].Value
+			if value == "" {
+				row.Fields = append(row.Fields[:j], row.Fields[j+1:]...)
+			}
+		}
+	}
+}
+
+func (lr *LogRows) copyTo(dst *LogRows) {
+	lr.ForEachRow(func(_ uint64, r *InsertRow) {
+		dst.MustAddInsertRow(r)
+	})
 }
 
 func fieldIndexByName(row []Field, name string) int {

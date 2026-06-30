@@ -440,6 +440,10 @@ func (pmp *pipeMathProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.a.reset()
 }
 
+func (pmp *pipeMathProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pmp)
+}
+
 func (pmp *pipeMathProcessor) flush() error {
 	return nil
 }

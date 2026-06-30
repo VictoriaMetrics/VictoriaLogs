@@ -690,7 +690,7 @@ func TestTransformsProgramSetTime(t *testing.T) {
 	f(`format 1970-01-01T12:00:00Z as _time | time_add 1h;`, 1234, 13*nsecsPerHour)
 
 	// Drop the _time field and then modify it.
-	f(`delete _time | time_add 1h;`, 1234, 0)
+	f(`delete _time | time_add 1h;`, 1234, nsecsPerHour)
 }
 
 // TestTransformsProgramSetTimeWithBlockSource ensures blockResult with brSrc correctly restores modified _time column.

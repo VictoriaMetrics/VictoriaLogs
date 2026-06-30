@@ -128,6 +128,10 @@ func (pup *pipeUnpackWordsProcessor) writeBlock(workerID uint, br *blockResult) 
 	shard.a.reset()
 }
 
+func (pup *pipeUnpackWordsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pup)
+}
+
 func (pup *pipeUnpackWordsProcessor) flush() error {
 	return nil
 }

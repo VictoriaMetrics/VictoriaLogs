@@ -90,6 +90,17 @@ func uncompressedRowsSizeBytes(rows [][]Field) uint64 {
 	return n
 }
 
+// uncompressedRowsSizeBytes returns the size of the uncompressed rows.
+//
+// It is assumed that each row is in JSON format.
+func uncompressedFieldsSizeBytes(rows []*Fields) uint64 {
+	n := uint64(0)
+	for _, row := range rows {
+		n += uint64(EstimatedJSONRowLen(row.Fields))
+	}
+	return n
+}
+
 // column contains values for the given field name seen in log entries.
 type column struct {
 	// name is the field name

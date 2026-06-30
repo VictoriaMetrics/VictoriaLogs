@@ -162,6 +162,10 @@ func (shard *pipeJSONArrayLenProcessorShard) getJSONArrayLen(v string) int {
 	return len(shard.tmpValues)
 }
 
+func (plp *pipeJSONArrayLenProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, plp)
+}
+
 func (plp *pipeJSONArrayLenProcessor) flush() error {
 	return nil
 }

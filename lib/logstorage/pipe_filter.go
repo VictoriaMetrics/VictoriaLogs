@@ -104,6 +104,10 @@ func (pfp *pipeFilterProcessor) writeBlock(workerID uint, br *blockResult) {
 	pfp.ppNext.writeBlock(workerID, &shard.br)
 }
 
+func (pfp *pipeFilterProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, pfp)
+}
+
 func (pfp *pipeFilterProcessor) flush() error {
 	return nil
 }

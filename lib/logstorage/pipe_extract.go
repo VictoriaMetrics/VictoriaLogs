@@ -214,6 +214,50 @@ func (pep *pipeExtractProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.a.reset()
 }
 
+func (pep *pipeExtractProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	if lr.RowsCount() == 0 {
+		return
+	}
+
+	pe := pep.pe
+	iff := pe.iff
+	shard := pep.shards.Get(workerID)
+
+	if shard.ptn == nil {
+		shard.ptn = pe.ptn.clone()
+	}
+	ptn := shard.ptn
+
+	for i := range lr.RowsCount() {
+		row := lr.mustGetRowFields(i)
+		if iff != nil && !iff.f.matchRow(row) {
+			continue
+		}
+
+		value := ""
+		if n := fieldIndexByName(row, pe.fromField); n >= 0 {
+			value = row[n].Value
+		}
+
+		ptn.apply(value)
+
+		for i, f := range ptn.fields {
+			v := *f.value
+			if v == "" && pe.skipEmptyResults {
+				continue
+			}
+			if pe.keepOriginalFields && fieldIndexByName(row, f.name) >= 0 {
+				continue
+			}
+			v = shard.a.copyString(v)
+			lr.setFieldValueForRow(i, f.name, v)
+		}
+	}
+
+	pep.ppNext.writeLogRows(workerID, lr)
+	shard.a.reset()
+}
+
 func (pep *pipeExtractProcessor) flush() error {
 	return nil
 }

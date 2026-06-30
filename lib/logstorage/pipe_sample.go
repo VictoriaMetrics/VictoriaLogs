@@ -131,6 +131,10 @@ func (shard *pipeSampleProcessorShard) writeRow(workerID uint, br *blockResult, 
 	shard.br.reset()
 }
 
+func (psp *pipeSampleProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeSampleProcessor) flush() error {
 	return nil
 }

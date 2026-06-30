@@ -118,6 +118,10 @@ func (psp *pipeBlockStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard.wctx.reset()
 }
 
+func (psp *pipeBlockStatsProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, psp)
+}
+
 func (psp *pipeBlockStatsProcessor) flush() error {
 	return nil
 }

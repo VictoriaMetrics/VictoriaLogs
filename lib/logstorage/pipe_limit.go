@@ -102,6 +102,10 @@ func (plp *pipeLimitProcessor) writeBlock(workerID uint, br *blockResult) {
 	plp.cancel()
 }
 
+func (plp *pipeLimitProcessor) writeLogRows(workerID uint, lr *LogRows) {
+	writeLogRowsToPipeGeneric(workerID, lr, plp)
+}
+
 func (plp *pipeLimitProcessor) flush() error {
 	return nil
 }
