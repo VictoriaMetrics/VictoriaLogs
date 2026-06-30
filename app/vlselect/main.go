@@ -264,35 +264,38 @@ func logRequestErrorIfNeeded(ctx context.Context, w http.ResponseWriter, r *http
 
 func incRequestConcurrency(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	startTime := time.Now()
-	stopCh := ctx.Done()
 	select {
 	case concurrencyLimitCh <- struct{}{}:
 		return true
 	default:
 		// Sleep for a while until giving up. This should resolve short bursts in requests.
 		concurrencyLimitReached.Inc()
+		// Limit the time spent waiting for a free concurrency slot by -search.maxQueueDuration,
+		// so a backlog of pending requests cannot pile up for the whole query execution deadline.
+		queueCtx, queueCancel := context.WithTimeout(ctx, *maxQueueDuration)
+		defer queueCancel()
 		select {
 		case concurrencyLimitCh <- struct{}{}:
 			return true
-		case <-stopCh:
-			switch ctx.Err() {
-			case context.Canceled:
+		case <-queueCtx.Done():
+			if ctx.Err() == context.Canceled {
 				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 				requestURI := httpserver.GetRequestURI(r)
 				logger.Infof("client has canceled the pending request after %.3f seconds: remoteAddr=%s, requestURI: %q",
 					time.Since(startTime).Seconds(), remoteAddr, requestURI)
-			case context.DeadlineExceeded:
-				concurrencyLimitTimeout.Inc()
-				err := &httpserver.ErrorWithStatusCode{
-					Err: fmt.Errorf("couldn't start executing the request in %.3f seconds, since -search.maxConcurrentRequests=%d concurrent requests "+
-						"are executed. Possible solutions: to reduce query load; to add more compute resources to the server; "+
-						"to increase -search.maxQueueDuration=%s; to increase -search.maxQueryDuration=%s; to increase -search.maxConcurrentRequests; "+
-						"to pass bigger value to 'timeout' query arg",
-						time.Since(startTime).Seconds(), *maxConcurrentRequests, maxQueueDuration, maxQueryDuration),
-					StatusCode: http.StatusServiceUnavailable,
-				}
-				httpserver.Errorf(w, r, "%s", err)
+				return false
 			}
+			// Either -search.maxQueueDuration or the query execution deadline elapsed while waiting for a free slot.
+			concurrencyLimitTimeout.Inc()
+			err := &httpserver.ErrorWithStatusCode{
+				Err: fmt.Errorf("couldn't start executing the request in %.3f seconds, since -search.maxConcurrentRequests=%d concurrent requests "+
+					"are executed. Possible solutions: to reduce query load; to add more compute resources to the server; "+
+					"to increase -search.maxQueueDuration=%s; to increase -search.maxQueryDuration=%s; to increase -search.maxConcurrentRequests; "+
+					"to pass bigger value to 'timeout' query arg",
+					time.Since(startTime).Seconds(), *maxConcurrentRequests, maxQueueDuration, maxQueryDuration),
+				StatusCode: http.StatusServiceUnavailable,
+			}
+			httpserver.Errorf(w, r, "%s", err)
 			return false
 		}
 	}
