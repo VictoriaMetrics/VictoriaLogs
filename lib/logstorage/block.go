@@ -5,6 +5,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -157,8 +158,12 @@ func (c *column) mustWriteTo(ch *columnHeader, sw *streamWriters) {
 
 	// create and marshal bloom filter for c.values
 	if ch.valueType != valueTypeDict {
+		values := c.values
+		if ch.name == "" {
+			values = truncateMsgValuesForBloom(values)
+		}
 		hashesBuf := encoding.GetUint64s(0)
-		hashesBuf.A = tokenizeHashes(hashesBuf.A[:0], c.values)
+		hashesBuf.A = tokenizeHashes(hashesBuf.A[:0], values)
 		bb.B = bloomFilterMarshalHashes(bb.B[:0], hashesBuf.A)
 		encoding.PutUint64s(hashesBuf)
 	} else {
@@ -172,6 +177,57 @@ func (c *column) mustWriteTo(ch *columnHeader, sw *streamWriters) {
 	}
 	ch.bloomFilterOffset = bloomValuesWriter.bloom.bytesWritten
 	bloomValuesWriter.bloom.MustWrite(bb.B)
+}
+
+func truncateMsgValuesForBloom(values []string) []string {
+	maxChars := BloomFilterMsgMaxChars
+	if maxChars > 0 {
+		needsTruncation := false
+		for _, v := range values {
+			if utf8.RuneCountInString(v) > maxChars {
+				needsTruncation = true
+				break
+			}
+		}
+		if !needsTruncation {
+			return values
+		}
+		result := make([]string, len(values))
+		for i, v := range values {
+			if utf8.RuneCountInString(v) > maxChars {
+				runes := []rune(v)
+				result[i] = string(runes[:maxChars])
+			} else {
+				result[i] = v
+			}
+		}
+		return result
+	}
+
+	maxBytes := BloomFilterMsgMaxBytes
+	if maxBytes <= 0 {
+		return values
+	}
+
+	needsTruncation := false
+	for _, v := range values {
+		if len(v) > maxBytes {
+			needsTruncation = true
+			break
+		}
+	}
+	if !needsTruncation {
+		return values
+	}
+	result := make([]string, len(values))
+	for i, v := range values {
+		if len(v) > maxBytes {
+			result[i] = v[:maxBytes]
+		} else {
+			result[i] = v
+		}
+	}
+	return result
 }
 
 func (b *block) assertValid() {

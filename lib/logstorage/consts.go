@@ -73,3 +73,17 @@ const maxDictSizeBytes = 256
 //
 // it shouldn't exceed 255, since the dict len is marshaled into a single byte.
 const maxDictLen = 8
+
+// BloomFilterMsgMaxBytes limits the _msg field values to at most this many bytes when building bloom filters.
+//
+// Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results.
+// If set to 0, no byte limit is applied.
+// If BloomFilterMsgMaxChars is also set (>0), it takes priority over this limit.
+var BloomFilterMsgMaxBytes int
+
+// BloomFilterMsgMaxChars limits the _msg field values to at most this many characters (runes) when building bloom filters.
+//
+// Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results.
+// If set to 0, no character limit is applied.
+// If both BloomFilterMsgMaxBytes and BloomFilterMsgMaxChars are set, BloomFilterMsgMaxChars takes priority.
+var BloomFilterMsgMaxChars int

@@ -15,6 +15,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
 
   -blockcache.missesBeforeCaching int
      The number of cache misses before putting the block into cache. Higher values may reduce indexdb/dataBlocks cache size at the cost of higher CPU and disk read usage (default 2)
+  -bloomFilterMsgMaxBytes int
+     The maximum number of bytes from _msg field values to use when building bloom filters. Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results. If set to 0, no byte limit is applied. If both -bloomFilterMsgMaxBytes and -bloomFilterMsgMaxChars are set, -bloomFilterMsgMaxChars takes priority
+  -bloomFilterMsgMaxChars int
+     The maximum number of characters (runes) from _msg field values to use when building bloom filters. Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results. If set to 0, no character limit is applied. If both -bloomFilterMsgMaxBytes and -bloomFilterMsgMaxChars are set, this flag takes priority
   -datadog.ignoreFields array
      Comma-separated list of fields to ignore for logs ingested via DataDog protocol. See https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/#dropping-fields
      Supports an array of values separated by comma or specified via multiple flags.

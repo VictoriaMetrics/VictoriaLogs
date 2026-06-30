@@ -56,6 +56,13 @@ var (
 	minFreeDiskSpaceBytes = flagutil.NewBytes("storage.minFreeDiskSpaceBytes", 10e6, "The minimum free disk space at -storageDataPath after which "+
 		"the storage stops accepting new data")
 
+	bloomFilterMsgMaxBytes = flag.Int("bloomFilterMsgMaxBytes", 0, "The maximum number of bytes from _msg field values to use when building bloom filters. "+
+		"Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results. "+
+		"If set to 0, no byte limit is applied. If both -bloomFilterMsgMaxBytes and -bloomFilterMsgMaxChars are set, -bloomFilterMsgMaxChars takes priority")
+	bloomFilterMsgMaxChars = flag.Int("bloomFilterMsgMaxChars", 0, "The maximum number of characters (runes) from _msg field values to use when building bloom filters. "+
+		"Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results. "+
+		"If set to 0, no character limit is applied. If both -bloomFilterMsgMaxBytes and -bloomFilterMsgMaxChars are set, this flag takes priority")
+
 	logNewStreamsAuthKey = flagutil.NewPassword("logNewStreamsAuthKey", "authKey, which must be passed in query string to /internal/log_new_streams . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#logging-new-streams")
 	forceMergeAuthKey = flagutil.NewPassword("forceMergeAuthKey", "authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . "+
@@ -142,6 +149,8 @@ func initLocalStorage() {
 		LogIngestedRows:        *logIngestedRows,
 		MinFreeDiskSpaceBytes:  minFreeDiskSpaceBytes.N,
 	}
+	logstorage.BloomFilterMsgMaxBytes = *bloomFilterMsgMaxBytes
+	logstorage.BloomFilterMsgMaxChars = *bloomFilterMsgMaxChars
 	logger.Infof("opening storage at -storageDataPath=%s", *storageDataPath)
 	startTime := time.Now()
 	localStorage = logstorage.MustOpenStorage(*storageDataPath, cfg)
