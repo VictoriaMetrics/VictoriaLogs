@@ -144,22 +144,6 @@ func MustInit() {
 		})
 	}
 
-	currentYear := time.Now().Year()
-	globalCurrentYear.Store(int64(currentYear))
-	workersWG.Go(func() {
-		ticker := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-workersStopCh:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				currentYear := time.Now().Year()
-				globalCurrentYear.Store(int64(currentYear))
-			}
-		}
-	})
-
 	if *syslogTimezone != "" {
 		tz, err := time.LoadLocation(*syslogTimezone)
 		if err != nil {
@@ -169,6 +153,23 @@ func MustInit() {
 	} else {
 		globalTimezone = time.Local
 	}
+
+	currentYear := time.Now().Year()
+	globalCurrentYear.Store(int64(currentYear))
+	workersWG.Go(func() {
+		for {
+			now := time.Now().In(globalTimezone)
+			nextYear := time.Date(now.Year()+1, 1, 1, 0, 0, 0, 0, globalTimezone)
+			nextTick := min(time.Minute, nextYear.Sub(now))
+			select {
+			case <-workersStopCh:
+				return
+			case <-time.After(nextTick):
+				currentYear := time.Now().In(globalTimezone).Year()
+				globalCurrentYear.Store(int64(currentYear))
+			}
+		}
+	})
 }
 
 var (
