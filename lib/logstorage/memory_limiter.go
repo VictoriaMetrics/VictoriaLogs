@@ -26,11 +26,12 @@ func (ml *memoryLimiter) Get(n uint64) bool {
 
 func (ml *memoryLimiter) Put(n uint64) {
 	ml.mu.Lock()
+	defer ml.mu.Unlock()
+
 	if n > ml.usage {
 		logger.Panicf("BUG: n=%d cannot exceed %d", n, ml.usage)
 	}
 	ml.usage -= n
-	ml.mu.Unlock()
 }
 
 var (
@@ -40,8 +41,20 @@ var (
 
 func getQueryMemoryLimiter() *memoryLimiter {
 	queryMemoryLimiterOnce.Do(func() {
-		// Allocate 90% of allowed memory for query execution.
-		queryMemoryLimiter.MaxSize = uint64(float64(memory.Allowed()) * 0.9)
+		// Allow concurrent queries to use up to 50% of memory.Allowed() for their execution state.
+		//
+		// The other ~25% of memory.Allowed() goes to subsystems this limiter cannot account for:
+		//   - indexdb block caches (lib/mergeset): ~10%. They are capped higher, but VictoriaLogs
+		//     keeps the number of streams low, so in practice they stay small.
+		//   - in-memory parts buffering freshly ingested logs before they are flushed to disk:
+		//     ~10% per active partition (see getMaxInmemoryPartSize).
+		//   - per-block scratch buffers for decoding column values during search: ~3%, bounded by
+		//     the number of concurrent block searches (see partitionSearchConcurrencyLimitCh).
+		//
+		// That leaves the live set around 75% of memory.Allowed(). The Go runtime keeps the heap at
+		// roughly twice the live set under the default GOGC=100, so a higher query share would risk
+		// OOM when heavy queries and ingestion run at the same time.
+		queryMemoryLimiter.MaxSize = uint64(float64(memory.Allowed()) * 0.5)
 	})
 	return &queryMemoryLimiter
 }

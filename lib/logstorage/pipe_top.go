@@ -128,8 +128,8 @@ type pipeTopProcessor struct {
 
 	shards atomicutil.Slice[pipeTopProcessorShard]
 
-	budgetUsed     atomic.Int64
-	budgetExceeded atomic.Bool
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 }
 
 type pipeTopProcessorShard struct {
@@ -276,13 +276,13 @@ func (ptp *pipeTopProcessor) writeBlock(workerID uint, br *blockResult) {
 		// Reserve more budget for the state size from the global query memory limiter.
 		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			if ptp.budgetExceeded.CompareAndSwap(false, true) {
+			if ptp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				ptp.cancel()
 			}
 			return
 		}
-		ptp.budgetUsed.Add(stateSizeBudgetChunk)
+		ptp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -291,11 +291,11 @@ func (ptp *pipeTopProcessor) writeBlock(workerID uint, br *blockResult) {
 
 func (ptp *pipeTopProcessor) flush() error {
 	defer func() {
-		getQueryMemoryLimiter().Put(uint64(ptp.budgetUsed.Load()))
+		getQueryMemoryLimiter().Put(uint64(ptp.memReserved.Load()))
 	}()
 
-	if ptp.budgetExceeded.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", ptp.pt.String(), ptp.budgetUsed.Load()/(1<<20))
+	if ptp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", ptp.pt.String(), ptp.memReserved.Load()/(1<<20))
 	}
 
 	// merge state across shards in parallel

@@ -451,8 +451,8 @@ type pipeStatsProcessor struct {
 
 	shards atomicutil.Slice[pipeStatsProcessorShard]
 
-	budgetUsed     atomic.Int64
-	budgetExceeded atomic.Bool
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 
 	errLock sync.Mutex
 	err     error
@@ -1100,13 +1100,13 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 		// Reserve more budget for the state size from the global query memory limiter.
 		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			if psp.budgetExceeded.CompareAndSwap(false, true) {
+			if psp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				psp.cancel()
 			}
 			return
 		}
-		psp.budgetUsed.Add(stateSizeBudgetChunk)
+		psp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -1119,15 +1119,15 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 
 func (psp *pipeStatsProcessor) flush() error {
 	defer func() {
-		getQueryMemoryLimiter().Put(uint64(psp.budgetUsed.Load()))
+		getQueryMemoryLimiter().Put(uint64(psp.memReserved.Load()))
 	}()
 
 	if psp.err != nil {
 		return psp.err
 	}
 
-	if psp.budgetExceeded.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", psp.ps.String(), psp.budgetUsed.Load()/(1<<20))
+	if psp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", psp.ps.String(), psp.memReserved.Load()/(1<<20))
 	}
 
 	// Merge states across shards in parallel

@@ -126,8 +126,8 @@ type pipeFacetsProcessor struct {
 
 	shards atomicutil.Slice[pipeFacetsProcessorShard]
 
-	budgetUsed     atomic.Int64
-	budgetExceeded atomic.Bool
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 }
 
 type pipeFacetsProcessorShard struct {
@@ -331,13 +331,13 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 		// Reserve more budget for the state size from the global query memory limiter.
 		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			if pfp.budgetExceeded.CompareAndSwap(false, true) {
+			if pfp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				pfp.cancel()
 			}
 			return
 		}
-		pfp.budgetUsed.Add(stateSizeBudgetChunk)
+		pfp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -346,11 +346,11 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 
 func (pfp *pipeFacetsProcessor) flush() error {
 	defer func() {
-		getQueryMemoryLimiter().Put(uint64(pfp.budgetUsed.Load()))
+		getQueryMemoryLimiter().Put(uint64(pfp.memReserved.Load()))
 	}()
 
-	if pfp.budgetExceeded.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pfp.pf.String(), pfp.budgetUsed.Load()/(1<<20))
+	if pfp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pfp.pf.String(), pfp.memReserved.Load()/(1<<20))
 	}
 
 	// merge state across shards

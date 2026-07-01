@@ -120,26 +120,26 @@ type pipeStreamContextProcessor struct {
 
 	shards atomicutil.Slice[pipeStreamContextProcessorShard]
 
-	budgetUsed     atomic.Int64
-	budgetExceeded atomic.Bool
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 }
 
 func (pcp *pipeStreamContextProcessor) reserveMemory(n int) bool {
 	if getQueryMemoryLimiter().Get(uint64(n)) {
-		pcp.budgetUsed.Add(int64(n))
+		pcp.memReserved.Add(int64(n))
 		return true
 	}
 	// The limiter is exhausted. Stop processing data in order to avoid OOM crash.
-	pcp.budgetExceeded.Store(true)
+	pcp.memReserveFailed.Store(true)
 	return false
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitError() error {
-	return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pcp.pc.String(), pcp.budgetUsed.Load()/(1<<20))
+	return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pcp.pc.String(), pcp.memReserved.Load()/(1<<20))
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitForSurroundingLogsError(n int) error {
-	return fmt.Errorf("the query memory pool can't provide more than %dMB for fetching surrounding logs of %d matching logs", pcp.budgetUsed.Load()/(1<<20), n)
+	return fmt.Errorf("the query memory pool can't provide more than %dMB for fetching surrounding logs of %d matching logs", pcp.memReserved.Load()/(1<<20), n)
 }
 
 type timeRange struct {
@@ -307,7 +307,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		mu.Lock()
 		defer mu.Unlock()
 
-		if pcp.budgetExceeded.Load() {
+		if pcp.memReserveFailed.Load() {
 			cancel()
 			return
 		}
@@ -356,7 +356,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 	if err := pcp.pc.runQuery(qctx, writeBlock); err != nil {
 		return nil, err
 	}
-	if pcp.budgetExceeded.Load() {
+	if pcp.memReserveFailed.Load() {
 		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 
@@ -645,7 +645,6 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 			pcp.cancel()
 			return
 		}
-		pcp.budgetUsed.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -657,10 +656,10 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 	// This covers the matching rows accumulated during writeBlock plus any per-stream
 	// memory not released yet when flush returns early on an error.
 	defer func() {
-		getQueryMemoryLimiter().Put(uint64(pcp.budgetUsed.Load()))
+		getQueryMemoryLimiter().Put(uint64(pcp.memReserved.Load()))
 	}()
 
-	if pcp.budgetExceeded.Load() {
+	if pcp.memReserveFailed.Load() {
 		return pcp.memoryLimitError()
 	}
 
@@ -700,7 +699,7 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 	// write output contexts in the ascending order of rows
 	streamIDs := getStreamIDsSortedByMinRowTimestamp(m)
 	for _, streamID := range streamIDs {
-		budgetBefore := pcp.budgetUsed.Load()
+		budgetBefore := pcp.memReserved.Load()
 
 		rows := m[streamID]
 		if len(rows) > pipeStreamContextMaxRowsPerStream {
@@ -730,9 +729,9 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 
 		// Return the memory reserved for fetching the surrounding logs of this stream,
 		// since these logs are already written to the output and aren't needed anymore.
-		streamBudget := pcp.budgetUsed.Load() - budgetBefore
+		streamBudget := pcp.memReserved.Load() - budgetBefore
 		getQueryMemoryLimiter().Put(uint64(streamBudget))
-		pcp.budgetUsed.Add(-streamBudget)
+		pcp.memReserved.Add(-streamBudget)
 	}
 
 	wctx.flush()
