@@ -22,9 +22,10 @@ func (ml *memoryLimiter) Get(n uint64) bool {
 		ml.usage += n
 	}
 	ml.mu.Unlock()
+
 	if !ok {
 		// Count every denied reservation. A single rejected query may bump this more than once,
-		// since its workers keep trying to reserve until the query is cancelled.
+		// since its workers keep trying to reserve until cancellation stops them.
 		queryMemoryLimitReached.Inc()
 	}
 	return ok
@@ -33,6 +34,7 @@ func (ml *memoryLimiter) Get(n uint64) bool {
 func (ml *memoryLimiter) getUsage() uint64 {
 	ml.mu.Lock()
 	defer ml.mu.Unlock()
+
 	return ml.usage
 }
 

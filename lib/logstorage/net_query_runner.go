@@ -23,7 +23,7 @@ type NetQueryRunner struct {
 	// writeBlock is the function for writing the resulting data block.
 	writeBlock writeBlockResultFunc
 
-	// memReserved is the amount of memory reserved by subqueries
+	// memReserved is the amount of memory reserved by subqueries.
 	memReserved uint64
 }
 

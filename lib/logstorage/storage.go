@@ -1004,6 +1004,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 
 	// Initialize subqueries
 	qNew, memReserved, err := initSubqueries(qctx, s.runQuery, false)
+	// Release the reserved memory even on error, since initSubqueries may reserve some before failing.
 	defer getQueryMemoryLimiter().Put(memReserved)
 	if err != nil {
 		logger.Errorf("cannot process delete task with task_id=%q while initializing subqueries: %s; retrying later", dt.TaskID, err)
