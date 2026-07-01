@@ -295,7 +295,7 @@ func (ptp *pipeTopProcessor) flush() error {
 	}()
 
 	if ptp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", ptp.pt.String(), ptp.memReserved.Load()/(1<<20))
+		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", ptp.pt.String())
 	}
 
 	// merge state across shards in parallel

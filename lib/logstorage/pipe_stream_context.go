@@ -135,11 +135,11 @@ func (pcp *pipeStreamContextProcessor) reserveMemory(n int) bool {
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitError() error {
-	return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pcp.pc.String(), pcp.memReserved.Load()/(1<<20))
+	return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pcp.pc.String())
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitForSurroundingLogsError(n int) error {
-	return fmt.Errorf("the query memory pool can't provide more than %dMB for fetching surrounding logs of %d matching logs", pcp.memReserved.Load()/(1<<20), n)
+	return fmt.Errorf("not enough memory in the shared query memory pool for fetching surrounding logs of %d matching logs", n)
 }
 
 type timeRange struct {

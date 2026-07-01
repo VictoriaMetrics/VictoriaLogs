@@ -434,7 +434,7 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, uint64, erro
 	mem := memReserved.Load()
 	if memReserveFailed.Load() {
 		getQueryMemoryLimiter().Put(mem)
-		return nil, 0, fmt.Errorf("cannot load rows for [%s]; the query memory pool can't provide more than %dMB for it", qctx.Query, mem/(1<<20))
+		return nil, 0, fmt.Errorf("cannot load rows for [%s]: not enough memory in the shared query memory pool", qctx.Query)
 	}
 
 	var rows [][]Field

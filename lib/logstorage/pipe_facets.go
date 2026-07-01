@@ -350,7 +350,7 @@ func (pfp *pipeFacetsProcessor) flush() error {
 	}()
 
 	if pfp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", pfp.pf.String(), pfp.memReserved.Load()/(1<<20))
+		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pfp.pf.String())
 	}
 
 	// merge state across shards

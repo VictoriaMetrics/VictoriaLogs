@@ -218,7 +218,7 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	}()
 
 	if psp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]; the query memory pool can't provide more than %dMB for it", psp.ps.String(), psp.memReserved.Load()/(1<<20))
+		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", psp.ps.String())
 	}
 
 	getKeyForRow := func(row []Field) string {

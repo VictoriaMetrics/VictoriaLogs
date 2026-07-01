@@ -1713,3 +1713,96 @@ func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
 	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
 }
+
+func TestStorageRunQueryMemoryLimiter(t *testing.T) {
+	// This test reads and mutates the process-global query memory limiter, so it cannot run in parallel.
+
+	path := t.Name()
+	s := MustOpenStorage(path, &StorageConfig{Retention: 24 * time.Hour})
+	defer func() {
+		s.MustClose()
+		fs.MustRemoveDir(path)
+	}()
+
+	// Fill the storage with several streams, each split across several blocks, so the queries actually
+	// reserve memory: a pipe borrows from the limiter only after it has processed more than one block.
+	const streamsCount = 10
+	const blocksPerStream = 4
+	const rowsPerBlock = 10
+
+	tenantID := TenantID{AccountID: 0, ProjectID: 1}
+	streamTags := []string{"instance"}
+	baseTimestamp := time.Now().UnixNano() - 3600*1e9
+
+	var fields []Field
+	for j := range streamsCount {
+		for k := range blocksPerStream {
+			lr := GetLogRows(streamTags, nil, nil, nil, "")
+			for m := range rowsPerBlock {
+				timestamp := baseTimestamp + int64(m)*1e9 + int64(k)
+				fields = append(fields[:0], Field{
+					Name:  "instance",
+					Value: fmt.Sprintf("host-%d", j),
+				}, Field{
+					Name:  "_msg",
+					Value: fmt.Sprintf("log message %d at block %d", m, k),
+				})
+				lr.mustAdd(tenantID, timestamp, fields)
+			}
+			s.MustAddRows(lr)
+			PutLogRows(lr)
+		}
+	}
+	s.DebugFlush()
+
+	runQuery := func(query string) error {
+		q := mustParseQuery(query)
+		qctx := newTestQueryContext([]TenantID{tenantID}, q)
+		return s.RunQuery(qctx, func(_ uint, _ *DataBlock) {})
+	}
+
+	t.Run("released", func(t *testing.T) {
+		queries := []string{
+			`* | stats by (instance) count() x | join on (instance) (* | stats by (instance) count() y)`,
+			`{instance="host-1"} | union ({instance="host-2"}) | count() hits`,
+			`'log message' | stream_context before 2`,
+		}
+		for _, query := range queries {
+			if err := runQuery(query); err != nil {
+				t.Fatalf("unexpected error for query [%s]: %s", query, err)
+			}
+			if n := getQueryMemoryUsage(); n != 0 {
+				t.Fatalf("unexpected query memory usage after query [%s]; got %d bytes; want 0", query, n)
+			}
+		}
+	})
+
+	t.Run("limit-exceeded", func(t *testing.T) {
+		// Shrink the limiter to zero, so every attempt to reserve memory fails.
+		ml := getQueryMemoryLimiter()
+		origMaxSize := ml.MaxSize
+		ml.MaxSize = 0
+		defer func() {
+			ml.MaxSize = origMaxSize
+		}()
+
+		queries := []string{
+			`* | sort by (_msg)`,
+			`* | stats by (instance) count() x | join on (instance) (*)`,
+			`'log message' | stream_context before 2`,
+		}
+		for _, query := range queries {
+			err := runQuery(query)
+			if err == nil {
+				t.Fatalf("expecting non-nil error for query [%s]", query)
+			}
+			if !strings.Contains(err.Error(), "not enough memory in the shared query memory pool") {
+				t.Fatalf("unexpected error for query [%s]: %s", query, err)
+			}
+		}
+
+		if n := getQueryMemoryUsage(); n != 0 {
+			t.Fatalf("unexpected query memory usage after the queries; got %d bytes; want 0", n)
+		}
+	})
+}
