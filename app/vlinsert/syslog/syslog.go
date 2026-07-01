@@ -492,29 +492,36 @@ func (slr *syslogLineReader) nextLine() bool {
 		return false
 	}
 
-again:
-	prefix, err := slr.br.ReadSlice(' ')
-	if err != nil {
-		if err != io.EOF {
-			slr.err = fmt.Errorf("cannot read message frame prefix: %w", err)
+	// Skip frame delimiters (LF) between messages, including empty lines.
+	for {
+		b, err := slr.br.Peek(1)
+		if err != nil {
+			slr.err = err
 			return false
 		}
-		if len(prefix) == 0 {
+		if b[0] != '\n' {
+			break
+		}
+		if _, err := slr.br.ReadByte(); err != nil {
 			slr.err = err
 			return false
 		}
 	}
-	// skip empty lines
-	for len(prefix) > 0 && prefix[0] == '\n' {
-		prefix = prefix[1:]
-	}
-	if len(prefix) == 0 {
-		// An empty prefix or a prefix with empty lines - try reading yet another prefix.
-		goto again
+
+	// Detect the framing method by the first byte without consuming it.
+	b, err := slr.br.Peek(1)
+	if err != nil {
+		slr.err = err
+		return false
 	}
 
-	if prefix[0] >= '0' && prefix[0] <= '9' {
+	if b[0] >= '0' && b[0] <= '9' {
 		// This is octet-counting method. See https://www.ietf.org/archive/id/draft-gerhards-syslog-plain-tcp-07.html#msgxfer
+		prefix, err := slr.br.ReadSlice(' ')
+		if err != nil {
+			slr.err = fmt.Errorf("cannot read message frame prefix: %w", err)
+			return false
+		}
 		msgLenStr := bytesutil.ToUnsafeString(prefix[:len(prefix)-1])
 		msgLen, err := strconv.ParseUint(msgLenStr, 10, 64)
 		if err != nil {
@@ -534,7 +541,7 @@ again:
 	}
 
 	// This is octet-stuffing method. See https://www.ietf.org/archive/id/draft-gerhards-syslog-plain-tcp-07.html#octet-stuffing-legacy
-	slr.line = append(slr.line[:0], prefix...)
+	slr.line = slr.line[:0]
 	for {
 		line, err := slr.br.ReadSlice('\n')
 		if err == nil {
