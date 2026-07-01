@@ -1771,7 +1771,7 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 			if err := runQuery(query); err != nil {
 				t.Fatalf("unexpected error for query [%s]: %s", query, err)
 			}
-			if n := getQueryMemoryUsage(); n != 0 {
+			if n := getQueryMemoryLimiter().getUsage(); n != 0 {
 				t.Fatalf("unexpected query memory usage after query [%s]; got %d bytes; want 0", query, n)
 			}
 		}
@@ -1801,7 +1801,7 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 			}
 		}
 
-		if n := getQueryMemoryUsage(); n != 0 {
+		if n := getQueryMemoryLimiter().getUsage(); n != 0 {
 			t.Fatalf("unexpected query memory usage after the queries; got %d bytes; want 0", n)
 		}
 	})

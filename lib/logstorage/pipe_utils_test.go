@@ -71,18 +71,11 @@ func expectPipeResults(t *testing.T, pipeStr string, rows, rowsExpected [][]Fiel
 	pp.flush()
 
 	// The pipe must release all the memory it reserved from the query memory limiter.
-	if n := getQueryMemoryUsage(); n != 0 {
+	if n := getQueryMemoryLimiter().getUsage(); n != 0 {
 		t.Fatalf("unexpected query memory usage after pipe [%s]; got %d bytes; want 0", pipeStr, n)
 	}
 
 	ppTest.expectRows(t, rowsExpected)
-}
-
-func getQueryMemoryUsage() uint64 {
-	ml := getQueryMemoryLimiter()
-	ml.mu.Lock()
-	defer ml.mu.Unlock()
-	return ml.usage
 }
 
 func newTestBlockResultWriter(workersCount int, ppNext pipeProcessor) *testBlockResultWriter {
