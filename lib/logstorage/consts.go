@@ -77,6 +77,7 @@ const maxDictLen = 8
 // BloomFilterMsgMaxBytes limits the _msg field values to at most this many bytes when building bloom filters.
 //
 // Only tokens within this prefix are indexed for full-text search; the full _msg value is still stored and displayed in results.
+// The actual prefix may be a few bytes shorter than the limit to avoid splitting a multi-byte UTF-8 character.
 // If set to 0, no byte limit is applied.
 // If BloomFilterMsgMaxChars is also set (>0), it takes priority over this limit.
 var BloomFilterMsgMaxBytes int

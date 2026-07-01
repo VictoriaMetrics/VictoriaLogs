@@ -5,7 +5,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -180,54 +179,71 @@ func (c *column) mustWriteTo(ch *columnHeader, sw *streamWriters) {
 }
 
 func truncateMsgValuesForBloom(values []string) []string {
-	maxChars := BloomFilterMsgMaxChars
-	if maxChars > 0 {
-		needsTruncation := false
-		for _, v := range values {
-			if utf8.RuneCountInString(v) > maxChars {
-				needsTruncation = true
-				break
-			}
-		}
-		if !needsTruncation {
-			return values
-		}
-		result := make([]string, len(values))
-		for i, v := range values {
-			if utf8.RuneCountInString(v) > maxChars {
-				runes := []rune(v)
-				result[i] = string(runes[:maxChars])
-			} else {
-				result[i] = v
-			}
-		}
-		return result
+	if maxChars := BloomFilterMsgMaxChars; maxChars > 0 {
+		return truncateMsgValues(values, func(v string) (string, bool) {
+			return truncateMsgValueByChars(v, maxChars)
+		})
 	}
+	if maxBytes := BloomFilterMsgMaxBytes; maxBytes > 0 {
+		return truncateMsgValues(values, func(v string) (string, bool) {
+			return truncateMsgValueByBytes(v, maxBytes)
+		})
+	}
+	return values
+}
 
-	maxBytes := BloomFilterMsgMaxBytes
-	if maxBytes <= 0 {
-		return values
-	}
-
-	needsTruncation := false
-	for _, v := range values {
-		if len(v) > maxBytes {
-			needsTruncation = true
-			break
-		}
-	}
-	if !needsTruncation {
-		return values
-	}
-	result := make([]string, len(values))
+// truncateMsgValues applies truncate to every value and returns the truncated slice.
+//
+// It returns the original values slice without allocating when nothing needs truncation.
+func truncateMsgValues(values []string, truncate func(v string) (string, bool)) []string {
+	var result []string
 	for i, v := range values {
-		if len(v) > maxBytes {
-			result[i] = v[:maxBytes]
-		} else {
+		vTruncated, isTruncated := truncate(v)
+		if isTruncated {
+			if result == nil {
+				result = make([]string, len(values))
+				copy(result, values[:i])
+			}
+			result[i] = vTruncated
+		} else if result != nil {
 			result[i] = v
 		}
 	}
+	if result == nil {
+		return values
+	}
 	return result
+}
+
+func truncateMsgValueByChars(v string, maxChars int) (string, bool) {
+	// A rune occupies at least one byte, so len(v) <= maxChars guarantees
+	// the value has at most maxChars runes and needs no truncation.
+	// This also covers the empty value and the ASCII fast path.
+	if maxChars <= 0 || len(v) <= maxChars {
+		return v, false
+	}
+
+	charsSeen := 0
+	for i := range v {
+		if charsSeen == maxChars {
+			return v[:i], true
+		}
+		charsSeen++
+	}
+	return v, false
+}
+
+func truncateMsgValueByBytes(v string, maxBytes int) (string, bool) {
+	if maxBytes <= 0 || len(v) <= maxBytes {
+		return v, false
+	}
+
+	// Move the cut point left until it no longer splits a multi-byte UTF-8 rune.
+	n := maxBytes
+	for n > 0 && (v[n]&0xc0) == 0x80 {
+		n--
+	}
+	return v[:n], true
 }
 
 func (b *block) assertValid() {
