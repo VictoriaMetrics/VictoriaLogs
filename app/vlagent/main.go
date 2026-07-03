@@ -110,12 +110,5 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 
 // initSecretFlags manage the default secret flags for vlagent application.
 func initSecretFlags() {
-	if !*remotewrite.ShowRemoteWriteURL {
-		// remoteWrite.url can contain authentication codes, so hide it at `/metrics` output.
-		flagutil.RegisterSecretFlag("remoteWrite.url")
-	}
-	// remoteWrite.proxyURL can contain credentials in the proxy URL, so hide it too.
-	flagutil.RegisterSecretFlag("remoteWrite.proxyURL")
-	// remoteWrite.headers can contain auth headers such as Authorization and API keys.
-	flagutil.RegisterSecretFlag("remoteWrite.headers")
+	remotewrite.InitSecretFlags()
 }
