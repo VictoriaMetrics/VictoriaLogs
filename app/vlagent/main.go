@@ -40,7 +40,7 @@ func main() {
 	flag.Usage = usage
 	envflag.Parse()
 	buildinfo.Init()
-	remotewrite.InitSecretFlags()
+	initSecretFlags()
 	logger.Init()
 
 	listenAddrs := *httpListenAddrs
@@ -106,4 +106,16 @@ vlagent collects logs via popular data ingestion protocols and routes it to Vict
 See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 `
 	flagutil.Usage(s)
+}
+
+// initSecretFlags manage the default secret flags for vlagent application.
+func initSecretFlags() {
+	if !*remotewrite.ShowRemoteWriteURL {
+		// remoteWrite.url can contain authentication codes, so hide it at `/metrics` output.
+		flagutil.RegisterSecretFlag("remoteWrite.url")
+	}
+	// remoteWrite.proxyURL can contain credentials in the proxy URL, so hide it too.
+	flagutil.RegisterSecretFlag("remoteWrite.proxyURL")
+	// remoteWrite.headers can contain auth headers such as Authorization and API keys.
+	flagutil.RegisterSecretFlag("remoteWrite.headers")
 }

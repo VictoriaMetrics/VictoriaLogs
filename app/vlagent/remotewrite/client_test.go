@@ -35,14 +35,14 @@ func TestParseRetryAfterHeader(t *testing.T) {
 }
 
 func TestInitSecretFlags(t *testing.T) {
-	showRemoteWriteURLOrig := *showRemoteWriteURL
+	showRemoteWriteURLOrig := *ShowRemoteWriteURL
 	defer func() {
-		*showRemoteWriteURL = showRemoteWriteURLOrig
+		*ShowRemoteWriteURL = showRemoteWriteURLOrig
 		flagutil.UnregisterAllSecretFlags()
 	}()
 
 	flagutil.UnregisterAllSecretFlags()
-	*showRemoteWriteURL = false
+	*ShowRemoteWriteURL = false
 	InitSecretFlags()
 	if !flagutil.IsSecretFlag("remotewrite.url") {
 		t.Fatalf("expecting remoteWrite.url to be secret")
@@ -55,7 +55,7 @@ func TestInitSecretFlags(t *testing.T) {
 	}
 
 	flagutil.UnregisterAllSecretFlags()
-	*showRemoteWriteURL = true
+	*ShowRemoteWriteURL = true
 	InitSecretFlags()
 	if flagutil.IsSecretFlag("remotewrite.url") {
 		t.Fatalf("remoteWrite.url must remain visible when -remoteWrite.showURL is set")
