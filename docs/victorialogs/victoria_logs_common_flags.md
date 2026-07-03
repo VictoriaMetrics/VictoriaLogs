@@ -109,8 +109,6 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -insert.disableCompression
      Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
-  -insert.drainTimeout duration
-     The maximum duration for draining in-memory buffered data to storage nodes during graceful shutdown before it is dropped (default 10s)
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size

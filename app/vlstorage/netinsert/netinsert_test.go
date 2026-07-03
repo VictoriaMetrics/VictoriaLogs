@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -20,10 +19,6 @@ import (
 )
 
 func TestStorageDrainsPendingDataOnShutdown(t *testing.T) {
-	oldTimeout := *drainTimeout
-	*drainTimeout = 2 * time.Second
-	defer func() { *drainTimeout = oldTimeout }()
-
 	var insertRequests atomic.Int64
 	var receivedBytes atomic.Int64
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
