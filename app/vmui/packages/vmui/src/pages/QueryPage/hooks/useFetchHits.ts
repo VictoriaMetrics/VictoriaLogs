@@ -55,12 +55,12 @@ export const useFetchHits = () => {
   }, [serverUrl]);
 
   const getOptions = ({ query, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
-    const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
+    const { start, end, step: fallbackStep } = getHitsTimeParams(period);
     const offsetMinutes = getDefaultTimezoneOffsetMinutes();
 
     const params = new URLSearchParams({
       query: query.trim(),
-      step: step || `${fallbackStepMs}ms`,
+      step: step || fallbackStep,
       offset: `${offsetMinutes}m`,
       start: start,
       end: end,

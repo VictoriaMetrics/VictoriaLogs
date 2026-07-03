@@ -13,6 +13,7 @@ export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 export const LOGS_LIMIT_HITS = 5;
 
 export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
+export const LOGS_INTERVALS_COUNT = 7;
 
 export const WITHOUT_GROUPING = "none";
 
