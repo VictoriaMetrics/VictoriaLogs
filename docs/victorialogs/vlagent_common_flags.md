@@ -132,6 +132,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      Empty values are set to false.
   -insert.disable
      Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
+  -insert.drainTimeout duration
+     The maximum duration for draining in-memory buffered data to storage nodes during graceful shutdown before it is dropped (default 10s)
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size

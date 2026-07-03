@@ -1,7 +1,9 @@
 package netinsert
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +26,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
+var drainTimeout = flag.Duration("insert.drainTimeout", 10*time.Second, "The maximum duration for draining in-memory buffered data to storage nodes during graceful shutdown before it is dropped")
+
 // the maximum size of a single data block sent to storage node.
 const maxInsertBlockSize = 2 * 1024 * 1024
 
@@ -43,7 +47,14 @@ type Storage struct {
 	pendingDataBuffers chan *bytesutil.ByteBuffer
 
 	stopCh chan struct{}
-	wg     sync.WaitGroup
+
+	// reqCtx is the context used for regular data ingestion requests.
+	// It is canceled when stopCh is closed. The final shutdown flush uses a
+	// separate bounded context instead, so buffered data can still be drained.
+	reqCtx    context.Context
+	reqCancel context.CancelFunc
+
+	wg sync.WaitGroup
 }
 
 type storageNode struct {
@@ -127,15 +138,20 @@ func (sn *storageNode) backgroundFlusher() {
 	for {
 		select {
 		case <-sn.s.stopCh:
-			sn.flushPendingData(true)
+			// sn.s.reqCtx is already canceled by the closed stopCh, so use a fresh
+			// bounded context to drain buffered data to storage nodes during graceful
+			// shutdown instead of dropping it immediately.
+			ctx, cancel := context.WithTimeout(context.Background(), *drainTimeout)
+			sn.flushPendingData(ctx, true)
+			cancel()
 			return
 		case <-t.C:
-			sn.flushPendingData(false)
+			sn.flushPendingData(sn.s.reqCtx, false)
 		}
 	}
 }
 
-func (sn *storageNode) flushPendingData(force bool) {
+func (sn *storageNode) flushPendingData(ctx context.Context, force bool) {
 	sn.pendingDataMu.Lock()
 	if !force && time.Since(sn.pendingDataLastFlush) < time.Second {
 		// nothing to flush
@@ -146,15 +162,15 @@ func (sn *storageNode) flushPendingData(force bool) {
 	pendingData := sn.grabPendingDataForFlushLocked()
 	sn.pendingDataMu.Unlock()
 
-	sn.mustSendInsertRequest(pendingData)
+	sn.mustSendInsertRequest(ctx, pendingData)
 }
 
 func (sn *storageNode) debugFlush() {
 	// Send pending samples to sn.
-	sn.flushPendingData(true)
+	sn.flushPendingData(sn.s.reqCtx, true)
 
 	// Instruct sn to convert the received samples into searchable parts.
-	if err := sn.doRequest("/internal/force_flush", nil); err != nil {
+	if err := sn.doRequest(sn.s.reqCtx, "/internal/force_flush", nil); err != nil {
 		logger.Errorf("cannot convert pending samples into searchable parts: %s", err)
 	}
 }
@@ -183,7 +199,7 @@ func (sn *storageNode) addRow(r *logstorage.InsertRow) {
 	bbPool.Put(bb)
 
 	if pendingData != nil {
-		sn.mustSendInsertRequest(pendingData)
+		sn.mustSendInsertRequest(sn.s.reqCtx, pendingData)
 	}
 }
 
@@ -197,13 +213,13 @@ func (sn *storageNode) grabPendingDataForFlushLocked() *bytesutil.ByteBuffer {
 	return pendingData
 }
 
-func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) {
+func (sn *storageNode) mustSendInsertRequest(ctx context.Context, pendingData *bytesutil.ByteBuffer) {
 	defer func() {
 		pendingData.Reset()
 		sn.s.pendingDataBuffers <- pendingData
 	}()
 
-	err := sn.sendInsertRequest(pendingData)
+	err := sn.sendInsertRequest(ctx, pendingData)
 	if err == nil {
 		return
 	}
@@ -211,12 +227,12 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 	if !errors.Is(err, errTemporarilyDisabled) {
 		logger.Warnf("%s; re-routing the data block to the remaining nodes", err)
 	}
-	for !sn.s.sendInsertRequestToAnyNode(pendingData) {
+	for !sn.s.sendInsertRequestToAnyNode(ctx, pendingData) {
 		logger.Errorf("cannot send pending data to storage nodes, since all of them are unavailable; re-trying to send the data in a second")
 
 		t := timerpool.Get(time.Second)
 		select {
-		case <-sn.s.stopCh:
+		case <-ctx.Done():
 			timerpool.Put(t)
 			logger.Errorf("dropping %d bytes of data, since there are no available storage nodes", pendingData.Len())
 			return
@@ -226,7 +242,7 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 	}
 }
 
-func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) error {
+func (sn *storageNode) sendInsertRequest(ctx context.Context, pendingData *bytesutil.ByteBuffer) error {
 	dataLen := pendingData.Len()
 	if dataLen == 0 {
 		// Nothing to send.
@@ -249,17 +265,14 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		body = pendingData.NewReader()
 	}
 
-	if err := sn.doRequest("/internal/insert", body); err != nil {
+	if err := sn.doRequest(ctx, "/internal/insert", body); err != nil {
 		return fmt.Errorf("cannot send data block with the length %d: %w", pendingData.Len(), err)
 	}
 
 	return nil
 }
 
-func (sn *storageNode) doRequest(path string, body io.Reader) error {
-	ctx, cancel := contextutil.NewStopChanContext(sn.s.stopCh)
-	defer cancel()
-
+func (sn *storageNode) doRequest(ctx context.Context, path string, body io.Reader) error {
 	method := "GET"
 	if body != nil {
 		method = "POST"
@@ -335,6 +348,7 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
 	}
+	s.reqCtx, s.reqCancel = contextutil.NewStopChanContext(s.stopCh)
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
@@ -364,6 +378,7 @@ func (s *Storage) getActiveStreams() int {
 func (s *Storage) MustStop() {
 	close(s.stopCh)
 	s.wg.Wait()
+	s.reqCancel()
 	s.sns = nil
 }
 
@@ -383,12 +398,12 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 	sn.addRow(r)
 }
 
-func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
+func (s *Storage) sendInsertRequestToAnyNode(ctx context.Context, pendingData *bytesutil.ByteBuffer) bool {
 	startIdx := int(fastrand.Uint32n(uint32(len(s.sns))))
 	for i := range s.sns {
 		idx := (startIdx + i) % len(s.sns)
 		sn := s.sns[idx]
-		err := sn.sendInsertRequest(pendingData)
+		err := sn.sendInsertRequest(ctx, pendingData)
 		if err == nil {
 			return true
 		}
