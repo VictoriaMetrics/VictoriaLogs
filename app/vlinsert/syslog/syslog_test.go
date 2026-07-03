@@ -34,8 +34,16 @@ func TestSyslogLineReader_Success(t *testing.T) {
 	f("\n\n\n", nil)
 
 	f("foobar", []string{"foobar"})
-	f("foobar\n", []string{"foobar\n"})
-	f("\n\nfoo\n\nbar\n\n", []string{"foo\n\nbar\n\n"})
+	f("foobar\n", []string{"foobar"})
+	f("\n\nfoo\n\nbar\n\n", []string{"foo", "bar"})
+
+	// An embedded LF splits the message into an extra fragment (")"), which must not
+	// leak into the following message. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1365
+	f("<78>foo bar 0x0001\n)\n<11>next message\n", []string{
+		"<78>foo bar 0x0001",
+		")",
+		"<11>next message",
+	})
 
 	f(`Jun  3 12:08:33 abcd systemd: Starting Update the local ESM caches...`, []string{"Jun  3 12:08:33 abcd systemd: Starting Update the local ESM caches..."})
 

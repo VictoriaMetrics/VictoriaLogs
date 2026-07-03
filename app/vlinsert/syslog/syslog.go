@@ -483,6 +483,22 @@ func (slr *syslogLineReader) Error() error {
 	return slr.err
 }
 
+// peekByte returns the next byte from slr without consuming it.
+//
+// false is returned on error. io.EOF is stored as is, so it is reported as a clean
+// stream end by Error(); any other error is wrapped for consistent diagnostics.
+func (slr *syslogLineReader) peekByte() (byte, bool) {
+	b, err := slr.br.Peek(1)
+	if err != nil {
+		if err != io.EOF {
+			err = fmt.Errorf("cannot read syslog frame: %w", err)
+		}
+		slr.err = err
+		return 0, false
+	}
+	return b[0], true
+}
+
 // nextLine reads the next syslog line from slr and stores it at slr.line.
 //
 // false is returned if the next line cannot be read. Error() must be called in this case
@@ -492,29 +508,32 @@ func (slr *syslogLineReader) nextLine() bool {
 		return false
 	}
 
-again:
-	prefix, err := slr.br.ReadSlice(' ')
-	if err != nil {
-		if err != io.EOF {
+	// Skip frame delimiters (LF) between messages, including empty lines.
+	for {
+		b, ok := slr.peekByte()
+		if !ok {
+			return false
+		}
+		if b != '\n' {
+			break
+		}
+		// The byte is buffered after a successful peek, so Discard cannot fail.
+		_, _ = slr.br.Discard(1)
+	}
+
+	// Detect the framing method by the first byte without consuming it.
+	b, ok := slr.peekByte()
+	if !ok {
+		return false
+	}
+
+	if b >= '0' && b <= '9' {
+		// This is octet-counting method. See https://www.ietf.org/archive/id/draft-gerhards-syslog-plain-tcp-07.html#msgxfer
+		prefix, err := slr.br.ReadSlice(' ')
+		if err != nil {
 			slr.err = fmt.Errorf("cannot read message frame prefix: %w", err)
 			return false
 		}
-		if len(prefix) == 0 {
-			slr.err = err
-			return false
-		}
-	}
-	// skip empty lines
-	for len(prefix) > 0 && prefix[0] == '\n' {
-		prefix = prefix[1:]
-	}
-	if len(prefix) == 0 {
-		// An empty prefix or a prefix with empty lines - try reading yet another prefix.
-		goto again
-	}
-
-	if prefix[0] >= '0' && prefix[0] <= '9' {
-		// This is octet-counting method. See https://www.ietf.org/archive/id/draft-gerhards-syslog-plain-tcp-07.html#msgxfer
 		msgLenStr := bytesutil.ToUnsafeString(prefix[:len(prefix)-1])
 		msgLen, err := strconv.ParseUint(msgLenStr, 10, 64)
 		if err != nil {
@@ -534,7 +553,7 @@ again:
 	}
 
 	// This is octet-stuffing method. See https://www.ietf.org/archive/id/draft-gerhards-syslog-plain-tcp-07.html#octet-stuffing-legacy
-	slr.line = append(slr.line[:0], prefix...)
+	slr.line = slr.line[:0]
 	for {
 		line, err := slr.br.ReadSlice('\n')
 		if err == nil {
