@@ -459,6 +459,53 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
+func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+
+	lr := GetLogRows([]string{"job"}, nil, nil, nil, "")
+	lr.mustAdd(TenantID{}, ts, []Field{
+		{Name: "job", Value: "test"},
+		{Name: "secret_field", Value: "sensitive"},
+		{Name: "_msg", Value: "hello"},
+	})
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	// secret_field is visible in field_names without hidden_fields_filters
+	checkQueryResults(t, s, ts, tenantIDs,
+		`* | field_names | filter name:="secret_field" | stats count(*) as c`,
+		nil,
+		[]string{`{"c":"1"}`},
+	)
+
+	// secret_field must be hidden from field_names when listed in hidden_fields_filters
+	checkQueryResults(t, s, ts, tenantIDs,
+		`* | field_names | filter name:="secret_field" | stats count(*) as c`,
+		[]string{"secret_field"},
+		[]string{`{"c":"0"}`},
+	)
+
+	// same check via the slow path (field_names is not the first pipe)
+	checkQueryResults(t, s, ts, tenantIDs,
+		`* | head 1000 | field_names | filter name:="secret_field" | stats count(*) as c`,
+		[]string{"secret_field"},
+		[]string{`{"c":"0"}`},
+	)
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
 func checkQueryResults(t *testing.T, s *Storage, now int64, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
 	t.Helper()
 
