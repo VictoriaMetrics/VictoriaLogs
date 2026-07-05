@@ -237,9 +237,7 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 
 func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
 	// tenantIDs must be sorted, since block search performs binary search over them.
-	sort.Slice(tenantIDs, func(i, j int) bool {
-		return tenantIDs[i].less(&tenantIDs[j])
-	})
+	SortTenantIDs(tenantIDs)
 
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
@@ -759,9 +757,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	}
 	// Sort tenants, since they are collected from a map with random iteration order.
 	// This provides stable output and a sorted list for callers that rely on it.
-	sort.Slice(tenants, func(i, j int) bool {
-		return tenants[i].less(&tenants[j])
-	})
+	SortTenantIDs(tenants)
 
 	return tenants, nil
 }

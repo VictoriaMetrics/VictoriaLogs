@@ -679,6 +679,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		tenantIDs = append(tenantIDs, tenantID)
 	}
 
+	logstorage.SortTenantIDs(tenantIDs)
 	return tenantIDs, nil
 }
 

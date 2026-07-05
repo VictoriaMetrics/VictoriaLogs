@@ -1394,6 +1394,8 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
 		return
 	}
+	// Return tenants in a deterministic (sorted) order for stable API responses.
+	logstorage.SortTenantIDs(tenants)
 
 	data, err := json.Marshal(tenants)
 	if err != nil {

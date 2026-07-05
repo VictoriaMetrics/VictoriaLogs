@@ -675,12 +675,8 @@ func TestStorageRunQuery(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		sort.Slice(tenantIDs, func(i, j int) bool {
-			return tenantIDs[i].less(&tenantIDs[j])
-		})
-		sort.Slice(allTenantIDs, func(i, j int) bool {
-			return allTenantIDs[i].less(&allTenantIDs[j])
-		})
+		SortTenantIDs(tenantIDs)
+		SortTenantIDs(allTenantIDs)
 		if !reflect.DeepEqual(tenantIDs, allTenantIDs) {
 			t.Fatalf("unexpected GetTenantIDs result; got: %v, want: %v", tenantIDs, allTenantIDs)
 		}
