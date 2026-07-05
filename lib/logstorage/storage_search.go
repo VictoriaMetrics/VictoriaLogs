@@ -681,7 +681,7 @@ func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHit
 	return s.GetFieldValues(qctx, "_stream_id", "", limit)
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs for the given start and end.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -755,10 +755,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	for k := range uniqTenantIDs {
 		tenants = append(tenants, k)
 	}
-	// Sort tenants, since they are collected from a map with random iteration order.
-	// This provides stable output and a sorted list for callers that rely on it.
-	SortTenantIDs(tenants)
 
+	SortTenantIDs(tenants)
 	return tenants, nil
 }
 

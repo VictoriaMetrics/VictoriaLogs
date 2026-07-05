@@ -630,7 +630,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	return tasks, nil
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs for the given start and end.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
