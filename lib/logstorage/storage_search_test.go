@@ -675,7 +675,7 @@ func TestStorageRunQuery(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		SortTenantIDs(tenantIDs)
+		// GetTenantIDs must return tenantIDs in sorted order.
 		SortTenantIDs(allTenantIDs)
 		if !reflect.DeepEqual(tenantIDs, allTenantIDs) {
 			t.Fatalf("unexpected GetTenantIDs result; got: %v, want: %v", tenantIDs, allTenantIDs)
