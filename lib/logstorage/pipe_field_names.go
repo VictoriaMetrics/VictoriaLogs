@@ -142,6 +142,7 @@ func (pfp *pipeFieldNamesProcessor) writeBlock(workerID uint, br *blockResult) {
 func (shard *pipeFieldNamesProcessorShard) updateHits(refs []columnHeaderRef, br *blockResult, filter string, hits uint64) {
 	for _, cr := range refs {
 		columnName := br.bs.getColumnNameByID(cr.columnNameID)
+		columnName = getCanonicalColumnName(columnName)
 		if br.bs.isHiddenField(columnName) {
 			continue
 		}
