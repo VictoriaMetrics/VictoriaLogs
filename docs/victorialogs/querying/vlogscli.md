@@ -109,6 +109,10 @@ thanks to the way how `less` interacts with [`/select/logsql/query`](https://doc
   VictoriaLogs stops query processing and frees up all the associated resources
   after the response stream is closed.
 
+If the `less` command isn't available in `$PATH` (for example, when `vlogscli` runs inside the
+[distroless](https://github.com/GoogleContainerTools/distroless/) Docker image, which doesn't ship `less`),
+`vlogscli` prints the query response directly to stdout without paging.
+
 See also [`less` docs](https://man7.org/linux/man-pages/man1/less.1.html) and
 [command-line integration docs for VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
