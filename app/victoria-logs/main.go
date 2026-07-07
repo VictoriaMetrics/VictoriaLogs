@@ -114,5 +114,5 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
 
 // initSecretFlags manage the default secret flags for victoria-logs application.
 func initSecretFlags() {
-	flagutil.RegisterSecretFlag("vmalert.proxyURL")
+	vlselect.InitSecretFlags()
 }

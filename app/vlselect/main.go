@@ -11,6 +11,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/vmalertproxy"
@@ -40,6 +41,12 @@ var (
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
 )
+
+// InitSecretFlags register secret flags defined under `vlselect` pkg.
+// It has to be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
+func InitSecretFlags() {
+	flagutil.RegisterSecretFlag("vmalert.proxyURL")
+}
 
 func getDefaultMaxConcurrentRequests() int {
 	n := cgroup.AvailableCPUs()
