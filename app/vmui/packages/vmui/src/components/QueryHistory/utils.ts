@@ -3,13 +3,18 @@ import { MAX_QUERIES_HISTORY, MAX_QUERY_FIELDS } from "../../constants/logs";
 import { HistoryStorage, QueryHistoryEntry, QueryHistoryGroup } from "./types";
 import { vmDate } from "../../utils/time";
 import { HISTORY_DATE_FORMAT } from "../../constants/date";
+import { DEFAULT_QUERY } from "../../pages/QueryPage/hooks/useQueryController";
 
 const STORAGE_KEY = "LOGS_QUERY_HISTORY";
 const DEFAULT_HISTORY_TYPE = "QUERY_HISTORY";
 
 const getHistoryStorage = (): HistoryStorage => {
-  const list = getFromStorage(STORAGE_KEY) as string;
-  return list ? JSON.parse(list) : {};
+  try {
+    const list = getFromStorage(STORAGE_KEY) as string;
+    return JSON.parse(list);
+  } catch (e) {
+    return {};
+  }
 };
 
 export const getHistoryFromStorage = (): QueryHistoryEntry[] => {
@@ -25,7 +30,7 @@ export const getHistoryFromStorage = (): QueryHistoryEntry[] => {
 
 export const addQueryToHistoryStorage = (query: string) => {
   const nextQuery = query.trim();
-  if (!nextQuery) return;
+  if (!nextQuery || nextQuery === DEFAULT_QUERY) return;
 
   const storageHistory = getHistoryStorage();
   const storageValues = storageHistory[DEFAULT_HISTORY_TYPE] || [];
@@ -102,7 +107,14 @@ const getHistoryGroupTitle = (entry: QueryHistoryEntry) => {
 export const groupHistoryByDay = (entries: QueryHistoryEntry[]): QueryHistoryGroup[] => {
   const groups = new Map<string, QueryHistoryEntry[]>();
 
-  entries.forEach(entry => {
+  const sortedEntries = entries.toSorted((a, b) => {
+    const aDate = a.lastRunAt || 0;
+    const bDate = b.lastRunAt || 0;
+
+    return bDate - aDate;
+  });
+
+  sortedEntries.forEach(entry => {
     const title = getHistoryGroupTitle(entry);
     const group = groups.get(title) || [];
     group.push(entry);

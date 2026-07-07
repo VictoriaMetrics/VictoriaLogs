@@ -21,7 +21,7 @@ according to the following docs:
 * [How to build vlagent from source code](https://docs.victoriametrics.com/victorialogs/vlagent/#building-from-source-code)
 
 ## tip
-
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add Quick start examples to autocomplete suggestions and show recent query history items alongside field and value suggestions. See [#1498](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1498).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): persist query history in browser local storage and show the last run time for history items. See [#1498](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1498).
 
 * BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): `vlstorage` now returns the error and stops processing an `/internal/select/*` request when the request cannot be parsed, instead of continuing to handle it and writing the response twice.

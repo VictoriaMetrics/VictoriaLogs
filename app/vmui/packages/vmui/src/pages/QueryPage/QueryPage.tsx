@@ -45,11 +45,6 @@ const QueryPage: FC = () => {
   const handleUpdateQuery = (nextQuery?: string) => {
     const queryToApply = (nextQuery ?? inputQueryRef.current).trim() || DEFAULT_QUERY;
 
-    if (!queryToApply) {
-      setQueryError(ErrorTypes.validQuery);
-      return;
-    }
-
     setQueryError("");
 
     applyQuery(queryToApply);

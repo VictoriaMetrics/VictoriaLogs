@@ -1,4 +1,4 @@
-import { ContextData } from "./types";
+import { ContextData } from "../types";
 
 const getStreamFieldQuery = (valueContext: string) => {
   if (valueContext.includes("=")) {

@@ -264,7 +264,7 @@ describe("utils", () => {
       ]);
     });
 
-    it("should keep entries with the same group together", () => {
+    it("should show newer queries above older queries within the same day", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date(2026, 5, 19, 12, 0));
 
@@ -278,8 +278,8 @@ describe("utils", () => {
         {
           title: "Today - Friday, 19 June 2026",
           entries: [
-            { query: "first_query", lastRunAt: firstTimestamp },
             { query: "second_query", lastRunAt: secondTimestamp },
+            { query: "first_query", lastRunAt: firstTimestamp },
           ],
         },
       ]);

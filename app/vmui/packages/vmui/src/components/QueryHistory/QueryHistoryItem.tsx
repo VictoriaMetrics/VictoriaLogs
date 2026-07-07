@@ -42,6 +42,7 @@ const QueryHistoryItem: FC<Props> = ({ entry, onRun, onRemove }) => {
             color="gray"
             onClick={handleRemoveHistory}
             startIcon={<DeleteIcon/>}
+            aria-label="Remove from history"
           />
         </Tooltip>
         <Tooltip title={"Copy query"}>
@@ -51,6 +52,7 @@ const QueryHistoryItem: FC<Props> = ({ entry, onRun, onRemove }) => {
             color="gray"
             onClick={handleCopyQuery}
             startIcon={<CopyIcon/>}
+            aria-label="Copy query"
           />
         </Tooltip>
         <Button
@@ -59,6 +61,7 @@ const QueryHistoryItem: FC<Props> = ({ entry, onRun, onRemove }) => {
           color="primary"
           startIcon={<PlayIcon/>}
           onClick={handleRunQuery}
+          aria-label="Run query"
         >
           Run
         </Button>

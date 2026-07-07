@@ -37,7 +37,7 @@ const QueryPageHeader: FC<Props> = ({
   onChangeLimit,
   onRun,
 }) => {
-  const { autocomplete, autocompleteQuick } = useQueryState();
+  const { autocompleteQuick } = useQueryState();
   const setQuickAutocomplete = useQuickAutocomplete();
 
   const historyIndexRef = useRef<number | null>(null);
@@ -46,7 +46,7 @@ const QueryPageHeader: FC<Props> = ({
     const history = getHistoryFromStorage();
     if (!history.length) return;
 
-    const currentIndex = historyIndexRef.current ?? (step > 0 ? -1 : history.length);
+    const currentIndex = historyIndexRef.current ?? (step > 0 ? -1 : 0);
     const nextIndex = currentIndex + step;
 
     if (nextIndex < 0 || nextIndex >= history.length) return;
@@ -78,7 +78,6 @@ const QueryPageHeader: FC<Props> = ({
       <div className="vm-query-page-header-top">
         <QueryEditor
           value={query}
-          autocomplete={autocomplete || autocompleteQuick}
           autocompleteEl={LogsQueryEditorAutocomplete}
           onArrowUp={createHandlerArrow(1)}
           onArrowDown={createHandlerArrow(-1)}
