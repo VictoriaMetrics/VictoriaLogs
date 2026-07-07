@@ -7,7 +7,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { mergeSearchParams } from "../../../utils/query-string";
 import { TenantType } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
-import { nanosToIsoString, secondsToMilliseconds } from "../../../utils/time";
+import { absNanoseconds, nanosToIsoString, secondsToMilliseconds, secondsToNanoseconds, vmDate } from "../../../utils/time";
 
 export interface FetchLogsParams {
   query: string;
@@ -17,6 +17,13 @@ export interface FetchLogsParams {
   beforeFetch?: BeforeFetch;
   isDownload?: boolean;
 }
+
+export interface AppliedParams {
+  limit?: number;
+  period?: TimeParams;
+}
+
+const APPLIED_RANGE_TOLERANCE_NS = secondsToNanoseconds(5);
 
 export type BeforeFetchResult =
   | { action: "abort"; }
@@ -33,6 +40,7 @@ export const useFetchLogs = () => {
   const [logs, setLogs] = useState<Logs[]>([]);
   const [queryParams, setQueryParams] = useState<Record<string, string>>({});
   const [durationMs, setDurationMs] = useState<number | undefined>();
+  const [appliedParams, setAppliedParams] = useState<AppliedParams | null>(null);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({});
   const [error, setError] = useState<ErrorTypes | string>();
   const abortControllerRef = useRef(new AbortController());
@@ -143,8 +151,11 @@ export const useFetchLogs = () => {
       if (!response.ok || !response.body) {
         setError(text);
         setLogs([]);
+        setAppliedParams(null);
         return false;
       }
+
+      setAppliedParams(computeAppliedParams(response.headers, limit, period));
 
       const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
@@ -184,8 +195,36 @@ export const useFetchLogs = () => {
     error,
     fetchLogs,
     durationMs,
+    appliedParams,
     abort: useCallback(() => abortControllerRef.current?.abort(), [])
   };
+};
+
+const computeAppliedParams = (headers: Headers, limit?: number, period?: TimeParams): AppliedParams | null => {
+  const appliedLimit = headers.get("VL-Applied-Limit");
+  const appliedStart = headers.get("VL-Applied-Start");
+  const appliedEnd = headers.get("VL-Applied-End");
+
+  const result: AppliedParams = {};
+
+  if (appliedLimit) {
+    const appliedLimitNum = Number(appliedLimit);
+    if (Number.isFinite(appliedLimitNum) && appliedLimitNum !== limit) {
+      result.limit = appliedLimitNum;
+    }
+  }
+
+  if (appliedStart && appliedEnd && period) {
+    const start = vmDate(appliedStart).nano().timestamp();
+    const end = vmDate(appliedEnd).nano().timestamp();
+    const rangeChanged = absNanoseconds(start - period.start) > APPLIED_RANGE_TOLERANCE_NS ||
+      absNanoseconds(end - period.end) > APPLIED_RANGE_TOLERANCE_NS;
+    if (rangeChanged) {
+      result.period = { start, end };
+    }
+  }
+
+  return result.limit !== undefined || result.period ? result : null;
 };
 
 const parseLineToJSON = (line: string): Logs | null => {

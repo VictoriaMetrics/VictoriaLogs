@@ -102,6 +102,7 @@ const QueryPage: FC = () => {
           <QueryPageHeader
             query={inputQuery}
             queryDurationMs={logsRequestState.durationMs}
+            appliedParams={logsRequestState.appliedParams}
             error={queryError}
             limit={limit}
             onChange={setInputQuery}

@@ -15,10 +15,14 @@ import AutocompleteToggle from "../../../components/Configurators/QueryEditor/Au
 import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersReset";
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
+import Alert from "../../../components/Main/Alert/Alert";
+import { AppliedParams } from "../hooks/useFetchLogs";
+import { nanosToIsoString } from "../../../utils/time";
 
 interface Props {
   query: string;
   queryDurationMs?: number;
+  appliedParams?: AppliedParams | null;
   limit: number;
   error?: string;
   isLoading: boolean;
@@ -27,9 +31,12 @@ interface Props {
   onRun: () => void;
 }
 
+const formatAppliedTime = (nanos: bigint) => new Date(nanosToIsoString(nanos)).toLocaleString();
+
 const QueryPageHeader: FC<Props> = ({
   query,
   queryDurationMs,
+  appliedParams,
   limit,
   error,
   isLoading,
@@ -100,6 +107,17 @@ const QueryPageHeader: FC<Props> = ({
           onPressEnter={onRun}
         />
       </div>
+      {appliedParams && (appliedParams.period || appliedParams.limit !== undefined) && (
+        <Alert
+          variant="info"
+          title="The server adjusted this query"
+        >
+          {appliedParams.period && (
+            <div>Time range narrowed to {formatAppliedTime(appliedParams.period.start)} – {formatAppliedTime(appliedParams.period.end)}</div>
+          )}
+          {appliedParams.limit !== undefined && <div>Row limit lowered to {appliedParams.limit}</div>}
+        </Alert>
+      )}
       <div className="vm-query-page-header-bottom">
         <div className="vm-query-page-header-bottom-contols">
           <FilterSidebarToggle/>
