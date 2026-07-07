@@ -487,7 +487,7 @@ curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 
 The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
 This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
 
-- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaMetrics, vmagent, and Prometheus.
+- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
   Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - `/flags` - debugging endpoint that shows all active command-line flags.
   Use `-flagsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
