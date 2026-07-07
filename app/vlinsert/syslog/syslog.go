@@ -177,14 +177,14 @@ var (
 	globalTimezone    *time.Location
 )
 
+func nowInGlobalTZ() time.Time {
+	return time.Now().In(globalTimezone)
+}
+
 var (
 	workersWG     sync.WaitGroup
 	workersStopCh chan struct{}
 )
-
-func nowInGlobalTZ() time.Time {
-	return time.Now().In(globalTimezone)
-}
 
 // MustStop stops syslog parser initialized via MustInit()
 func MustStop() {
