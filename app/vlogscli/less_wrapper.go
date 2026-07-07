@@ -17,7 +17,7 @@ func isTerminal() bool {
 	return isatty.IsTerminal(os.Stdout.Fd()) && isatty.IsTerminal(os.Stderr.Fd())
 }
 
-func readWithLess(r io.Reader, disableColors, wrapLongLines bool) error {
+func readWithPager(r io.Reader, disableColors, wrapLongLines bool) error {
 	if !isTerminal() {
 		// Just write everything to stdout if no terminal is available.
 		_, err := io.Copy(os.Stdout, r)
@@ -46,7 +46,7 @@ func readWithLess(r io.Reader, disableColors, wrapLongLines bool) error {
 	// Start 'less' process
 	path, err := exec.LookPath("less")
 	if err != nil {
-		return fmt.Errorf("cannot find 'less' command: %w", err)
+		return readWithBuiltinPager(r)
 	}
 	opts := []string{"less", "-F", "-X"}
 	if !disableColors {
@@ -60,7 +60,7 @@ func readWithLess(r io.Reader, disableColors, wrapLongLines bool) error {
 		Files: []*os.File{pr, os.Stdout, os.Stderr},
 	})
 	if err != nil {
-		return fmt.Errorf("cannot start 'less' process: %w", err)
+		return readWithBuiltinPager(r)
 	}
 
 	// Close pr after 'less' finishes in a parallel goroutine

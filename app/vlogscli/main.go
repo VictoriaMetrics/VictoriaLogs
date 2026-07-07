@@ -327,7 +327,7 @@ func executeQuery(ctx context.Context, output io.Writer, qStr string, outputMode
 		_ = respBody.Close()
 	}()
 
-	if err := readWithLess(respBody, disableColors, wrapLongLines); err != nil {
+	if err := readWithPager(respBody, disableColors, wrapLongLines); err != nil {
 		fmt.Fprintf(output, "error when reading query response: %s\n", err)
 		return
 	}
@@ -486,8 +486,10 @@ func newAuthConfig() *promauth.Config {
 	return ac
 }
 
-var httpClient *http.Client
-var authConfig *promauth.Config
+var (
+	httpClient *http.Client
+	authConfig *promauth.Config
+)
 
 var headers []headerEntry
 
