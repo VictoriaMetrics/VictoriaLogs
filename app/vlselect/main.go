@@ -47,8 +47,6 @@ var (
 func InitSecretFlags() {
 	flagutil.RegisterSecretFlag("vmalert.proxyURL")
 }
-}
-
 func getDefaultMaxConcurrentRequests() int {
 	n := cgroup.AvailableCPUs()
 	if n <= 4 {
