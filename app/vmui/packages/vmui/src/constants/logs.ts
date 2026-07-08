@@ -17,7 +17,7 @@ export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
 export const WITHOUT_GROUPING = "none";
 
 // Default values for the logs configurators.
-export const LOGS_GROUP_BY = "_stream";
+export const LOGS_GROUP_BY = WITHOUT_GROUPING;
 export const LOGS_DISPLAY_FIELDS = "_msg";
 export const LOGS_DATE_FORMAT = DATE_TIME_FORMAT;
 
