@@ -98,7 +98,7 @@ docs-check-links: docs-image
 		--entrypoint /bin/sh \
 		vmdocs-docker-package \
 			-c "yarn install && hugo --minify && yarn run check-links" || exit_code=$$?; \
-			rm -rf $(PWD)/docs/public \
+			rm -rf $(PWD)/docs/public; \
 			exit $$exit_code
 
 docs-update-victoria-logs-flags:
