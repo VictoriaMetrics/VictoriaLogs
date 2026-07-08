@@ -13,23 +13,15 @@ export const quickStartExamples: AutocompleteOptions[] = [
   },
   {
     value: "err*",
-    meta: "Match word prefix",
-  },
-  {
-    value: "(warn OR error OR fatal)",
-    meta: "Match any of the words warn, error or fatal",
-  },
-  {
-    value: "connection AND refused",
-    meta: "Match only if both words are present",
+    meta: "Match prefix",
   },
   {
     value: "\"connection refused\"",
     meta: "Match phrase",
   },
   {
-    value: "error !\"connection refused\"",
-    meta: "Match word if phrase is not present",
+    value: "error !(\"connection refused\" OR reset)",
+    meta: "Match word error, but exclude phrases or words in parentheses",
   },
   {
     value: "level:in(\"error\", \"warn\", \"fatal\")",
@@ -37,11 +29,7 @@ export const quickStartExamples: AutocompleteOptions[] = [
   },
   {
     value: "trace_id:*",
-    meta: "Match non-empty field",
-  },
-  {
-    value: "trace_id:* | fields trace_id, span_id",
-    meta: "Keep only selected fields",
+    meta: "Match entries with non-empty field",
   },
   {
     value: "error | stats by (service.name) count()",
