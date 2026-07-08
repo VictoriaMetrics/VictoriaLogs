@@ -46,7 +46,7 @@ var (
 		"Multiple headers must be delimited by '^^': -remoteWrite.headers='header1:value1^^header2:value2'")
 
 	basicAuthUsername     = flagutil.NewArrayString("remoteWrite.basicAuth.username", "Optional basic auth username to use for the corresponding -remoteWrite.url")
-	basicAuthUsernameFile = flagutil.NewArrayString("remoteWrite.basicAuth.usernameFile", "Optional path to basic auth username to use for the corresponging -remoteWrite.url. "+
+	basicAuthUsernameFile = flagutil.NewArrayString("remoteWrite.basicAuth.usernameFile", "Optional path to basic auth username to use for the corresponding -remoteWrite.url. "+
 		"The file is re-read every second")
 	basicAuthPassword     = flagutil.NewArrayString("remoteWrite.basicAuth.password", "Optional basic auth password to use for the corresponding -remoteWrite.url")
 	basicAuthPasswordFile = flagutil.NewArrayString("remoteWrite.basicAuth.passwordFile", "Optional path to basic auth password to use for the corresponding -remoteWrite.url. "+
