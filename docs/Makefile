@@ -30,6 +30,7 @@ docs-repo-checkout:
 		git clone --depth 1 git@github.com:VictoriaMetrics/vmdocs vmdocs; \
 	fi; \
 	cd vmdocs && git checkout origin/main && rm -rf content/victorialogs && git checkout ./content/victorialogs && git pull && cd ..
+	cp /tmp/linkinator.config.json vmdocs
 
 docs-debug: docs-image
 	docker run \
@@ -85,6 +86,8 @@ FNR==NR {\
 }' "$(1)" "$(2)" >> "$(3)"
 endef
 
+#-v /tmp/linkinator.config.json:/opt/docs/linkinator.config.json \
+
 docs-check-links: docs-image
 	rm -rf $(PWD)/docs/public
 	docker run \
@@ -94,8 +97,9 @@ docs-check-links: docs-image
 		-v $(PWD)/docs/public:/opt/docs/public \
 		--entrypoint /bin/sh \
 		vmdocs-docker-package \
-			-c "yarn install && hugo --minify && yarn run check-links"
-	rm -rf $(PWD)/docs/public
+			-c "yarn install && hugo --minify && yarn run check-links" || exit_code=$$?; \
+			rm -rf $(PWD)/docs/public \
+			exit $$exit_code
 
 docs-update-victoria-logs-flags:
 	# ---- victoria-logs
