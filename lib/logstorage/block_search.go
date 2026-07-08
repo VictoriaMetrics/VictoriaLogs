@@ -235,6 +235,7 @@ func (bs *blockSearch) partFormatVersion() uint {
 }
 
 func (bs *blockSearch) isHiddenField(name string) bool {
+	name = getCanonicalColumnName(name)
 	return bs.bsw.pso.hiddenFieldsFilter.MatchString(name)
 }
 
