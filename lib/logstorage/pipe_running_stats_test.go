@@ -266,6 +266,38 @@ func TestPipeRunningStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	// fractional seconds timestamp sorting bug
+	f("running_stats last(sequence) offset 1 as prev_sequence", [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"sequence", "2"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"sequence", "1"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"sequence", "3"},
+		},
+	}, [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"sequence", "1"},
+			{"prev_sequence", ""},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"sequence", "2"},
+			{"prev_sequence", "1"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"sequence", "3"},
+			{"prev_sequence", "2"},
+		},
+	})
 }
 
 func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {

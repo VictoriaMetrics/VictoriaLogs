@@ -234,7 +234,9 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	}
 
 	type rowWithTimestamp struct {
-		timestamp string
+		timestamp string // raw string for fallback sorting
+		unixNano  int64  // parsed nanoseconds for fast integer comparison
+		isValid   bool   // true if timestamp parsing succeeded
 		fields    []Field
 	}
 
@@ -248,8 +250,11 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 
 			key := getKeyForRow(row)
 			timestamp := getFieldValueByName(row, "_time")
+			unixNano, isValid := TryParseTimestampRFC3339Nano(timestamp)
 			m[key] = append(m[key], rowWithTimestamp{
 				timestamp: timestamp,
+				unixNano:  unixNano,
+				isValid:   isValid,
 				fields:    row,
 			})
 		}
@@ -271,6 +276,21 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	for _, key := range keys {
 		rows := m[key]
 		sort.Slice(rows, func(i, j int) bool {
+			if rows[i].isValid && rows[j].isValid {
+				if rows[i].unixNano == rows[j].unixNano {
+					return rows[i].timestamp < rows[j].timestamp
+				}
+				return rows[i].unixNano < rows[j].unixNano
+			}
+
+			if rows[i].isValid && !rows[j].isValid {
+				return true
+			}
+
+			if !rows[i].isValid && rows[j].isValid {
+				return false
+			}
+
 			return rows[i].timestamp < rows[j].timestamp
 		})
 
