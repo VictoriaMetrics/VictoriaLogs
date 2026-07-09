@@ -478,6 +478,11 @@ in the format compatible with [Prometheus querying API](https://prometheus.io/do
 The `<t>` arg can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<t>` is missing, then it equals to the current time.
 
+The time range for the calculated stats can be additionally limited via optional `start` and `end` query args formatted according to
+[these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats). The `end` arg is exclusive; HTTP time ranges use `[start, end)`.
+If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
 with labels from `by(...)` clause of the `| stats by(...)` pipe.
 
