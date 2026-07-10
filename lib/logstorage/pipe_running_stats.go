@@ -112,6 +112,9 @@ func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
 		}
 	}
 
+	// The _time field is needed unconditionally, since running stats depend on row order.
+	pf.AddAllowFilter("_time")
+
 	// byFields are needed unconditionally, since the output depends on them.
 	for _, bf := range ps.byFields {
 		pf.AddAllowFilter(bf)

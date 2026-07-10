@@ -328,18 +328,18 @@ func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {
 	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "*", "r1,r3", "*", "r1,r2,r3")
 
 	// needed fields do not intersect with stats fields
-	f("running_stats count() r1", "r2", "", "r2", "")
-	f("running_stats count(*) r1", "r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1", "r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "r3", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1", "r2", "", "b1,b2,r2", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "b1,b2,r3", "")
+	f("running_stats count() r1", "r2", "", "_time,r2", "")
+	f("running_stats count(*) r1", "r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1", "r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "_time,r3", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1", "r2", "", "_time,b1,b2,r2", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "_time,b1,b2,r3", "")
 
 	// needed fields intersect with stats fields
-	f("running_stats count() r1", "r1,r2", "", "r2", "")
-	f("running_stats count(*) r1", "r1,r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1", "r1,r2", "", "f1,f2,r2", "")
-	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "f1,f2,r3", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "b1,b2,f1,f2,r2", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "b1,b2,f1,f2,r3", "")
+	f("running_stats count() r1", "r1,r2", "", "_time,r2", "")
+	f("running_stats count(*) r1", "r1,r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1", "r1,r2", "", "_time,f1,f2,r2", "")
+	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "_time,f1,f2,r3", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "_time,b1,b2,f1,f2,r2", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "_time,b1,b2,f1,f2,r3", "")
 }
