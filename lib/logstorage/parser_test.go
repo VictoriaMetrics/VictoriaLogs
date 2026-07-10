@@ -4982,6 +4982,7 @@ func TestQueryGetFixedFields_Success(t *testing.T) {
 
 	f("* | count(), sum(x) as y", []string{"count(*)", "y"})
 	f("* | stats by (a, b) count(), sum(x) as y", []string{"a", "b", "count(*)", "y"})
+	f("* | stats count() as hits | filter hits:>0", []string{"hits"})
 	f("* | stats by (a, b) count(), sum(x) as y | sort by (c desc)", []string{"c", "a", "b", "count(*)", "y"})
 	f("* | stats by (a, b) count(), sum(x) as y | offset 5", []string{"a", "b", "count(*)", "y"})
 	f("* | stats by (a, b) count(), sum(x) as y | limit 10", []string{"a", "b", "count(*)", "y"})

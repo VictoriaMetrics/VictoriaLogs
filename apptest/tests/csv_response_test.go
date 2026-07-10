@@ -62,6 +62,14 @@ stats_pipe,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
 case 2,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
 `
 	f(query, responseExpected)
+
+	// empty result after stats and filter pipes
+	query = `_stream:{service="does-not-exist"} | stats count() as hits | filter hits:> 0`
+	responseExpected = "hits\n"
+	f(query, responseExpected)
+
+	// empty result without fixed fields
+	f("plain-no-match", "")
 }
 
 func TestVlclusterQueryCSVResponse(t *testing.T) {
@@ -118,4 +126,12 @@ stats_pipe,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
 case 2,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
 `
 	f(query, responseExpected)
+
+	// empty result after stats and filter pipes
+	query = `_stream:{service="does-not-exist"} | stats count() as hits | filter hits:> 0`
+	responseExpected = "hits\n"
+	f(query, responseExpected)
+
+	// empty result without fixed fields
+	f("plain-no-match", "")
 }
