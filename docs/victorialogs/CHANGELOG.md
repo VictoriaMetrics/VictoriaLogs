@@ -46,6 +46,7 @@ according to the following docs:
 * BUGFIX: [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/): properly register `vmalert.proxyURL` as a secret flag. Previously, this flag was registered after logger initialization and printed in plaintext on application startup.
 * BUGFIX: [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup): properly return `502 Bad Gateway` HTTP response code when a `vlselect` node queries other `vlselect` nodes and the underlying `vlstorage` is unavailable, as described at [high availability](https://docs.victoriametrics.com/victorialogs/cluster/#high-availability) docs. This allows configuring proper failover schemes to a healthy cluster.
 * BUGFIX: [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants): return tenant ids in a deterministic (sorted) order. Previously the order was random across requests. See [#1575](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1575).
+* BUGFIX: [Syslog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#message-framing): treat every UDP and `SOCK_DGRAM` Unix packet as a single Syslog message by default, so RFC5424 message bodies can contain newline characters. Set `-syslog.framing.udp=newline` or `-syslog.framing.unix=newline` to retain the previous newline-delimited packet behavior. See [#1573](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1573).
 
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 

@@ -42,6 +42,13 @@ var (
 	listenAddrUnix = flagutil.NewArrayString("syslog.listenAddr.unix", "Comma-separated list of Unix socket filepaths to listen to for Syslog messages. "+
 		"Filepaths may be prepended with 'unixgram:'  for listening for SOCK_DGRAM sockets. By default SOCK_STREAM sockets are used. "+
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/")
+	framingUDP = flagutil.NewArrayString("syslog.framing.udp", "Message framing for the corresponding -syslog.listenAddr.udp. "+
+		"Supported values: datagram, newline. The default datagram mode treats every UDP packet as a single Syslog message. "+
+		"The newline mode splits every UDP packet into messages delimited by newline characters. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#message-framing")
+	framingUnix = flagutil.NewArrayString("syslog.framing.unix", "Message framing for SOCK_DGRAM Unix sockets at the corresponding -syslog.listenAddr.unix. "+
+		"Supported values: datagram, newline. The default datagram mode treats every packet as a single Syslog message. "+
+		"The newline mode splits every packet into messages delimited by newline characters. This flag doesn't apply to SOCK_STREAM Unix sockets. "+
+		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#message-framing")
 
 	tlsEnable = flagutil.NewArrayBool("syslog.tls", "Whether to enable TLS for receiving syslog messages at the corresponding -syslog.listenAddr.tcp. "+
 		"The corresponding -syslog.tlsCertFile and -syslog.tlsKeyFile must be set if -syslog.tls is set. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security")
@@ -193,11 +200,14 @@ func runUnixListener(addr string, argIdx int) {
 	if err != nil {
 		logger.Fatalf("cannot parse configs for -syslog.listenAddr.unix=%q: %s", addr, err)
 	}
-
 	laddr := getUnixSocketNetworkAndPath(addr)
 	if laddr.Net == "unix" {
 		runUnixStreamListener(laddr, cfg)
 	} else {
+		cfg.packetFraming, err = parsePacketFraming(framingUnix.GetOptionalArg(argIdx))
+		if err != nil {
+			logger.Fatalf("cannot parse -syslog.framing.unix for -syslog.listenAddr.unix=%q: %s", addr, err)
+		}
 		runUnixPacketListener(laddr, cfg)
 	}
 }
@@ -268,6 +278,10 @@ func runUDPListener(addr string, argIdx int) {
 	cfg, err := getConfigs("udp", argIdx, streamFieldsUDP, ignoreFieldsUDP, decolorizeFieldsUDP, extraFieldsUDP, tenantIDUDP, compressMethodUDP, useLocalTimestampUDP, useRemoteIPUDP)
 	if err != nil {
 		logger.Fatalf("cannot parse configs for -syslog.listenAddr.udp=%q: %s", addr, err)
+	}
+	cfg.packetFraming, err = parsePacketFraming(framingUDP.GetOptionalArg(argIdx))
+	if err != nil {
+		logger.Fatalf("cannot parse -syslog.framing.udp for -syslog.listenAddr.udp=%q: %s", addr, err)
 	}
 
 	doneCh := make(chan struct{})
@@ -356,7 +370,7 @@ func servePacketListener(ln net.PacketConn, cfg *configs) {
 
 				remoteIP := getRemoteIP(remoteAddr, cfg.useRemoteIP)
 
-				if err := processStream(cfg.typ, bb.NewReader(), cfg.compressMethod, cfg.useLocalTimestamp, remoteIP, cp); err != nil {
+				if err := processPacket(cfg.typ, bb.NewReader(), cfg.compressMethod, cfg.packetFraming, cfg.useLocalTimestamp, remoteIP, cp); err != nil {
 					logger.Errorf("syslog: cannot process %s data from %s at %s: %s", cfg.typ, remoteAddr, localAddr, err)
 				}
 			}
@@ -411,7 +425,7 @@ func serveStreamListener(ln net.Listener, cfg *configs) {
 	wg.Wait()
 }
 
-// processStream parses a stream of syslog messages from r and ingests them into vlstorage.
+// processStream ingests syslog messages from r using octet-counting or newline-delimited framing.
 func processStream(protocol string, r io.Reader, compressMethod string, useLocalTimestamp bool, remoteIP string, cp *insertutil.CommonParams) error {
 	if err := insertutil.CanWriteData(); err != nil {
 		return err
@@ -460,6 +474,42 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP str
 		n++
 	}
 	return slr.Error()
+}
+
+// processPacket ingests a datagram as a single syslog message instead of splitting it by newline,
+// unless newline framing is configured.
+func processPacket(protocol string, r io.Reader, compressMethod, packetFraming string, useLocalTimestamp bool, remoteIP string, cp *insertutil.CommonParams) error {
+	if err := insertutil.CanWriteData(); err != nil {
+		return err
+	}
+
+	isStreamMode := packetFraming == packetFramingNewline
+	lmp := cp.NewLogMessageProcessor("syslog_"+protocol, isStreamMode)
+	err := processPacketInternal(r, compressMethod, packetFraming, useLocalTimestamp, remoteIP, lmp)
+	lmp.MustClose()
+
+	return err
+}
+
+func processPacketInternal(r io.Reader, compressMethod, packetFraming string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
+	if packetFraming == packetFramingNewline {
+		return processStreamInternal(r, compressMethod, useLocalTimestamp, remoteIP, lmp)
+	}
+	return processDatagramInternal(r, compressMethod, useLocalTimestamp, remoteIP, lmp)
+}
+
+func processDatagramInternal(r io.Reader, compressMethod string, useLocalTimestamp bool, remoteIP string, lmp insertutil.LogMessageProcessor) error {
+	return protoparserutil.ReadUncompressedData(r, compressMethod, insertutil.MaxLineSizeBytes, func(data []byte) error {
+		if len(data) == 0 {
+			return nil
+		}
+		currentYear := int(globalCurrentYear.Load())
+		err := processLine(data, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
+		if err != nil {
+			errorsTotal.Inc()
+		}
+		return err
+	})
 }
 
 type syslogLineReader struct {
@@ -674,8 +724,26 @@ type configs struct {
 	extraFields       []logstorage.Field
 	tenantID          logstorage.TenantID
 	compressMethod    string
+	packetFraming     string
 	useLocalTimestamp bool
 	useRemoteIP       bool
+}
+
+const (
+	packetFramingDatagram = "datagram"
+	packetFramingNewline  = "newline"
+)
+
+func parsePacketFraming(s string) (string, error) {
+	if s == "" {
+		return packetFramingDatagram, nil
+	}
+	switch s {
+	case packetFramingDatagram, packetFramingNewline:
+		return s, nil
+	default:
+		return "", fmt.Errorf("unsupported framing %q; supported values: %q, %q", s, packetFramingDatagram, packetFramingNewline)
+	}
 }
 
 func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolorizeFieldsArg, extraFieldsArg, tenantIDArg, compressMethodArg *flagutil.ArrayString,

@@ -9,6 +9,39 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 )
 
+func TestProcessPacketInternal_Success(t *testing.T) {
+	f := func(data, packetFraming string, currentYear int, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+
+		MustInit()
+		defer MustStop()
+
+		globalTimezone = time.UTC
+		globalCurrentYear.Store(int64(currentYear))
+
+		tlp := &insertutil.TestLogMessageProcessor{}
+		if err := processPacketInternal(bytes.NewBufferString(data), "", packetFraming, false, "1.2.3.4", tlp); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// packet framing datagram
+	timestamp1 := time.Date(2026, 7, 3, 16, 36, 17, 0, time.UTC).UnixNano()
+	f("<133>1 2026-07-03T16:36:17Z switch.example.com - - - - \r\n  ALARM 12345\r\n  --- END", packetFramingDatagram, 2026, []int64{timestamp1},
+		`{"priority":"133","facility_keyword":"local0","level":"notice","facility":"16","severity":"5","format":"rfc5424","hostname":"switch.example.com","app_name":"-","proc_id":"-","msg_id":"-","_msg":"\r\n  ALARM 12345\r\n  --- END","remote_ip":"1.2.3.4"}`)
+
+	// packet framing newline
+	data := `<133>1 2026-07-03T16:36:17Z host-1 app - - - message-1
+<134>1 2026-07-03T16:36:18Z host-2 app - - - message-2`
+	timestamp2 := time.Date(2026, 7, 3, 16, 36, 18, 0, time.UTC).UnixNano()
+	f(data, packetFramingNewline, 2026, []int64{timestamp1, timestamp2},
+		`{"priority":"133","facility_keyword":"local0","level":"notice","facility":"16","severity":"5","format":"rfc5424","hostname":"host-1","app_name":"app","proc_id":"-","msg_id":"-","_msg":"message-1","remote_ip":"1.2.3.4"}
+{"priority":"134","facility_keyword":"local0","level":"info","facility":"16","severity":"6","format":"rfc5424","hostname":"host-2","app_name":"app","proc_id":"-","msg_id":"-","_msg":"message-2","remote_ip":"1.2.3.4"}`)
+}
+
 func TestSyslogLineReader_Success(t *testing.T) {
 	f := func(data string, linesExpected []string) {
 		t.Helper()
