@@ -257,6 +257,41 @@ func TestPipeTotalStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	// timestamps with a different number of digits after the decimal point
+	f("total_stats first(a) as first_a, last(a) as last_a", [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"a", "middle"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "first"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"a", "last"},
+		},
+	}, [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "first"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"a", "middle"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"a", "last"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+	})
 }
 
 func TestPipeTotalStatsUpdateNeededFields(t *testing.T) {

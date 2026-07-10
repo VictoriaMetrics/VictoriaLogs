@@ -266,6 +266,32 @@ func TestPipeRunningStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	// timestamps with a different number of digits after the decimal point
+	f("running_stats count() as running_count", [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+		},
+	}, [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"running_count", "1"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"running_count", "2"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"running_count", "3"},
+		},
+	})
 }
 
 func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {
