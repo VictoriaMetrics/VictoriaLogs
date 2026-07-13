@@ -123,7 +123,7 @@ func TestStatsJSONValues(t *testing.T) {
 		},
 	})
 
-	// top-k path retaining correct rows
+	// top-k must keep the top rows per 'sort by (...)' when rows > 'limit'
 	f("stats json_values(a,_msg) sort by (a desc) limit 2 as x", [][]Field{
 		{
 			{"a", `1`},
