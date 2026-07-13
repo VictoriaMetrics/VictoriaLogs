@@ -397,7 +397,7 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 	return nil
 }
 
-var fieldNameTooLongLogger = logger.WithThrottler("otel_field_name_too_log", time.Second*5)
+var fieldNameTooLongLogger = logger.WithThrottler("otel_field_name_too_long", time.Second*5)
 
 func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
 	// message AnyValue {
