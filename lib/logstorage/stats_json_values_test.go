@@ -137,6 +137,10 @@ func TestStatsJSONValues(t *testing.T) {
 			{"a", `2`},
 			{"_msg", `two`},
 		},
+		{
+			{"a", `0`},
+			{"_msg", `zero`},
+		},
 	}, [][]Field{
 		{
 			{"x", `[{"_msg":"three","a":"3"},{"_msg":"two","a":"2"}]`},
