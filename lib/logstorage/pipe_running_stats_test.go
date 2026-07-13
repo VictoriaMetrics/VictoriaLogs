@@ -300,6 +300,10 @@ func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {
 		expectPipeNeededFields(t, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected)
 	}
 
+	// no fields are needed
+	f("running_stats count() r1", "", "", "", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1", "", "", "", "")
+
 	// all the needed fields
 	f("running_stats count() r1", "*", "", "*", "r1")
 	f("running_stats count(*) r1", "*", "", "*", "r1")

@@ -103,8 +103,11 @@ func (ps *pipeRunningStats) isFixedOutputFieldsOrder() bool {
 }
 
 func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
-	pfOrig := pf.Clone()
+	if pf.MatchNothing() {
+		return
+	}
 
+	pfOrig := pf.Clone()
 	for _, f := range ps.funcs {
 		pf.AddDenyFilter(f.resultName)
 		if pfOrig.MatchString(f.resultName) {
@@ -112,10 +115,10 @@ func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
 		}
 	}
 
-	// The _time field is needed unconditionally, since running stats depend on row order.
+	// The _time field is needed when the caller needs output fields, since running stats depend on row order.
 	pf.AddAllowFilter("_time")
 
-	// byFields are needed unconditionally, since the output depends on them.
+	// byFields are needed when the caller needs output fields, since the output depends on them.
 	for _, bf := range ps.byFields {
 		pf.AddAllowFilter(bf)
 	}
