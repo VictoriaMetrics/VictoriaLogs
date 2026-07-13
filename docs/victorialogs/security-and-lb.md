@@ -9,110 +9,110 @@ tags:
   - logs
 ---
 
-This document describes how to configure and use vmauth and VictoriaLogs components
-in the context of load balancing, access protection and log visibility management.
+## Security on untrusted networks
 
-To configure secure communication between components in VictoriaLogs cluster mode, see [Security on Untrusted Networks](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks).
+All the VictoriaLogs components must run inside a protected trusted network. Requests from the Internet
+must be properly authorized before being proxied to VictoriaLogs components. It is recommended using
+[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for the request authorization and load balancing.
 
-[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) is an HTTP proxy that provides the following features:
-- Load balancing across configured HTTP backends.
-- Authentication via Basic Auth, Bearer tokens, or mTLS.
-- Access control to specific endpoints or data paths.
-- Easy to configure.
+It is recommended accepting incoming requests at `vmauth` over https in order to guarantee that they cannot be
+read or modified by an attacker when they are transferred over untrusted networks such as Internet.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy) for details.
 
-vmauth is not specifically aware of VictoriaLogs and does not offer any hidden features
-for tighter integration with other VictoriaMetrics components.
-Therefore, you can use any other HTTP proxy such as Nginx, Traefik, Envoy or HAProxy.
+It is recommended authorizing incoming requests via one of the supported methods at `vmauth` according
+to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
 
-However, using vmauth makes it easy to configure authorization and receive [community support](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#community-and-contributions) or [enterprise support](https://victoriametrics.com/support/enterprise-support/)
-from the VictoriaMetrics team if any issues arise.
+See also [how to protect security-sensitive HTTP-based endpoints](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints).
 
-For more detailed information and advanced vmauth configuration, see [vmauth documentation](https://docs.victoriametrics.com/victoriametrics/vmauth/).
+## Vmauth config examples
 
-All configuration examples in this documentation apply to
-[VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/),
-[vlselect](https://docs.victoriametrics.com/victorialogs/cluster/),
-[vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) and
-[vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/)
-since they have the same search/write API.
+This document contains the following configuration examples for `vmauth`:
+
+* [How to set up authorization for search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization)
+* [How to set up authorization for data ingestion](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization)
+* [Routing search requests among multiple VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#cluster-routing)
+* [Auhtorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
+* [Authorizing per-tenant data ingestion requests](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests)
+* [Proxying requests to the given tenants](https://docs.victoriametrics.com/victorialogs/security-and-lb/#proxying-requests-to-the-given-tenants)
+* [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
+* [Access control inside a single tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#access-control-inside-a-single-tenant)
+* [Adding extra fields for the ingested logs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#adding-extra-fields)
 
 ## Search Authorization
 
-For log search, both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
+Both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints,
 which [start with the `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
-When configuring request authorization or load balancing, it is important to allow access to this path prefix.
+When configuring request authorization or load balancing at `vmauth`, it is important to allow access to this path prefix.
 
-Below is an example of a vmauth configuration that:
-- Uses Basic auth for request authentication.
-- Authorizes access to paths starting with `/select/`.
-- Distributes requests between two VictoriaLogs instances: `victoria-logs-1` and `victoria-logs-2`.
+The following [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration can be used for authorizing requests
+to HTTP querying APIs at VictoriaLogs:
 
 ```yaml
 users:
-- username: foo
-  password: bar
+- username: "foo"
+  password: "bar"
   url_map:
   - src_paths: ["/select/.*"]
     url_prefix:
-    - http://victoria-logs-1:9428
-    - http://victoria-logs-2:9428
+    - "http://victoria-logs-1:9428/"
+    - "http://victoria-logs-2:9428/"
 ```
 
-`victoria-logs-1` and `victoria-logs-2` can be either two VictoriaLogs single-node instances with replicated data according to [these docs](https://docs.victoriametrics.com/victorialogs/#high-availability),
+This config instructs `vmauth` accepting requests for the Basic Auth user `foo` with the password `bar`.
+
+Successfully authenticated requests are proxied (load balanced) to one of the VictoriaLogs instances specified in the `url_prefix` list,
+if these requests match the `src_paths` regexp, i.e. if they start with `/select/` path prefix.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-path) for details about the `src_path`.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for details about the load balancing.
+
+`victoria-logs-1:9428` and `victoria-logs-2:9428` can be either two VictoriaLogs single-node instances with replicated data
+according to [these docs](https://docs.victoriametrics.com/victorialogs/#high-availability),
 or `vlselect` instances in the [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
-Enumerate all the `vlselect` instances in the cluster under the `url_prefix` config above in order to spread load among all the available `vlselect` instances.
+Enumerate all the `vlselect` instances in the cluster under the `url_prefix` option above in order to spread load among them.
 
-The diagram below illustrates this architecture in the clustered version of VictoriaLogs:
-
-![security-and-lb-search-auth.webp](security-and-lb-search-auth.webp)
-{width="600"}
-
-Update the connection settings in all clients (like Grafana) after configuring the `vmauth` in order
-to match the selected authentication method and the `vmauth` endpoint.
-
-Important: Requests sent directly to VictoriaLogs bypass `vmauth` and are not authorized.
-To ensure security, it is strongly recommended to restrict network access to VictoriaLogs and prevent direct access from unauthorized clients.
-
-It is recommended to pass the `-insert.disable` command-line flag to dedicated `vlselect` nodes to disable the write API.
-This disables both `/insert/*` and `/internal/insert` endpoints and helps protect against accidental data ingestion via `vlselect` in case of improperly configured log shippers.
-
-For configuration examples using Bearer tokens, Basic auth, and mTLS, see [vmauth/Authorization](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+See also [how to set up authorization for data ingestion at VitoriaLogs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization).
 
 ### Cluster routing
 
-vmauth allows selecting different clusters depending on the request path. For example:
+`vmauth` allows proxying incoming requests to different [VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/cluster/) depending on the request path.
+For example:
 
 ```yaml
 unauthorized_user:
   url_map:
   - src_paths: ["/cold/select/.*"]
-    url_prefix: http://victoria-logs-cold:9428
+    url_prefix: "http://victoria-logs-cold:9428/"
     # drop /cold/ path prefix from the original request before proxying it to url_prefix.
     drop_src_path_prefix_parts: 1
 
   - src_paths: ["/hot/select/.*"]
-    url_prefix: http://victoria-logs-hot:9428
+    url_prefix: "http://victoria-logs-hot:9428/"
     # drop /hot/ path prefix from the original request before proxying it to url_prefix.
     drop_src_path_prefix_parts: 1
 ```
 
-The configuration above enables proxying all requests that start with the path prefix `/cold/select/` to the backend at `http://victoria-logs-cold:9428`,
-and requests with the path prefix `/hot/select/` to the backend located at `http://victoria-logs-hot:9428`.
+The configuration above enables proxying requests with the path prefix `/cold/select/` to the backend at `http://victoria-logs-cold:9428`,
+and requests with the path prefix `/hot/select/` to the backend at `http://victoria-logs-hot:9428`.
+The backends can be either single-node instances of VictoriaLogs or `vmauth` in front of `vlselect` nodes in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
+See [how to set up `vmauth` in front on multiple `vlselect` nodes](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
 
 This approach is useful when applying different retention policies for various types of logs.
 For example, you might store warn-level and higher severity logs in the cold instance/cluster with longer retention,
-while keeping debug-level and higher severity logs only in the hot instance/cluster with shorter retention.
+while keeping debug-level and lower severity logs only in the hot instance/cluster with shorter retention.
 
-The `drop_src_path_prefix_parts` parameter is used to remove the prefix from the path when proxying the request to VictoriaLogs.
+The `drop_src_path_prefix_parts` option is used to remove the prefix from the path when proxying the request to VictoriaLogs.
 For example, if vmauth receives a request to `/cold/select/logsql/query`,
 VictoriaLogs will receive the path without the `/cold/` prefix, allowing it to properly handle the search query.
 
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing) on how to route requests to different backends.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#dropping-request-path-prefix) about the `drop_src_path_prefix_parts`.
+
 ### Tenant-based request proxying
 
-The following `vmauth` config proxies `/select/*` requests with the `AccountID: 0` HTTP header
+The following `vmauth` config proxies `/select/*` requests with the `AccountID: 0` HTTP header ([tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy))
 to the long-term VictoriaLogs instance or cluster, while requests with the `AccountID: 1` HTTP header
-are proxied to the short-term VictoriaLogs instance or cluster.
+are proxied to the short-term VictoriaLogs instance or cluster:
 
 ```yaml
 unauthorized_user:
@@ -123,7 +123,7 @@ unauthorized_user:
   - src_paths: ["/select/.*"]
     src_headers:
     - "AccountID: 0"
-    url_prefix: "http://victoria-logs-longterm:9428"
+    url_prefix: "http://victoria-logs-longterm:9428/"
     headers:
     - "ProjectID: 0"
 
@@ -132,49 +132,50 @@ unauthorized_user:
   - src_paths: ["/select/.*"]
     src_headers:
     - "AccountID: 1"
-    url_prefix: "http://victoria-logs-shortterm:9428"
+    url_prefix: "http://victoria-logs-shortterm:9428/"
     headers:
     - "AccountID: 0"
 ```
 
-See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).
-
 This allows building a VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) on how to setup request routing in `vmauth` by request headers.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
+
+See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).
+
 ### Proxying requests to the given tenants
 
-To properly separate and access data across tenants, two headers must be set when writing logs: `AccountID` and `ProjectID` according to [these docs](https://docs.victoriametrics.com/victorialogs/#multitenancy).
-When querying logs, you must provide the same headers to retrieve the corresponding data.
-
-You can use vmauth to enforce tenant-level access control by automatically setting the required headers after successful authentication.
-For example, the vmauth configuration below overrides tenant headers before proxying requests to VictoriaLogs for user `foo` upon successful authentication:
+`vmauth` allows setting (or overriding) http request headers for proxying requests to the given [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+For example, the following `vmauth` configuration overrides tenant headers to `AccountID: 2`, `ProjectID: 4` before proxying requests to the given VictoriaLogs backend:
 
 ```yaml
 users:
-- username: foo
-  password: bar
+- username: "foo"
+  password: "bar"
   url_map:
   - src_paths: ["/select/.*"]
-    url_prefix: "http://victoria-logs:9428"
+    url_prefix: "http://victoria-logs:9428/"
     headers:
     - "AccountID: 2"
     - "ProjectID: 4"
 ```
 
-If the user sets the `AccountID` or `ProjectID` headers themselves,
-for example through `vmui` or Grafana data source settings, they will be overridden.
+If the user sets the `AccountID` or `ProjectID` headers to other values, these values are overridden by the values from the config above.
 
-A more practical example: if you have many tenants and want to separate them by name,
-vmauth configuration might look like this:
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
+
+A more practical example: if you have many tenants and want to separate them by name encoded in the request path,
+then `vmauth` configuration might look like this:
 
 ```yaml
 users:
-- username: foo
-  password: bar
+- username: "foo"
+  password: "bar"
   url_map:
   - src_paths: ["/my-account/kubernetes-logs/select/.*"]
-    url_prefix: "http://victoria-logs:9428"
+    url_prefix: "http://victoria-logs:9428/"
     headers:
     - "AccountID: 1"
     - "ProjectID: 5"
@@ -182,7 +183,7 @@ users:
     drop_src_path_prefix_parts: 2
 
   - src_paths: ["/my-account/mobile-logs/select/.*"]
-    url_prefix: "http://victoria-logs:9428"
+    url_prefix: "http://victoria-logs:9428/"
     headers:
     - "AccountID: 1"
     - "ProjectID: 6"
@@ -190,85 +191,78 @@ users:
     drop_src_path_prefix_parts: 2
 
   - src_paths: ["/my-account/frontend-logs/select/.*"]
-    url_prefix: "http://victoria-logs:9428"
+    url_prefix: "http://victoria-logs:9428/"
     headers:
     - "AccountID: 1"
     - "ProjectID: 7"
     # drop /my-account/frontend-logs/ path prefix from the original request before proxying it to url_prefix.
     drop_src_path_prefix_parts: 2
 
-- username: admin
-  password: secret
+- username: "admin"
+  password: "secret"
   url_map:
   - src_paths: ["/select/.*"]
-    url_prefix: "http://victoria-logs:9428"
+    url_prefix: "http://victoria-logs:9428/"
 ```
 
 This configuration allows user `foo` to access 3 different tenants, and user `admin` to access all tenants.
-However, user `admin` needs to set the required `AccountID` or `ProjectID` headers themselves, because vmauth will not set them.
+The user `admin` needs to set the required `AccountID` or `ProjectID` headers, because `vmauth` doesn't set them.
 
-In Grafana, you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs`.
-Using the configuration above, you do not need to set the tenant in the data source settings because vmauth will set it.
-Each tenant will have `vmui` at the address `/select/vmui/`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui/`.
+In Grafana you need to create a separate data source for each tenant and user, an example of such an address is: `http://vmauth:8427/my-account/mobile-logs/`.
+Using the configuration above, you do not need to set the tenant in the Grafana data source settings because `vmauth` overrides it to `AccountID: 1`, `ProjectID: 6`.
+Each tenant exposes [`vmui`](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) at `/select/vmui/`, for example: `http://vmauth:8427/my-account/mobile-logs/select/vmui/`.
 
-If you want to restrict users by only one of the fields `AccountID` or `ProjectID`,
+If you want to restrict users by only one of the tenant fields `AccountID` or `ProjectID`,
 it is enough to not specify the corresponding field in the `headers` section.
-For example, the following configuration allows user `my-account-admin` to have access to all `ProjectID`s, but only for one `AccountID`:
+For example, the following configuration allows user `my-account-admin` to have access to all `ProjectID`s, but only for the given `AccountID`:
 
 ```yaml
 users:
-- username: my-account-admin
-  password: foobar
+- username: "my-account-admin"
+  password: "foobar"
   url_map:
-  - src_paths: ["/my-account/select/.*"]
+  - src_paths: ["/select/.*"]
     url_prefix: "http://victoria-logs:9428"
     headers:
     - "AccountID: 1"
-    # drop /my-account/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 1
 ```
 
-To allow unauthenticated access to a specific tenant, define the `unauthorized_user` as shown below:
+To allows unauthenticated access to the specific tenant, define the `unauthorized_user` as shown below:
 
 ```yaml
 unauthorized_user:
   url_map:
-  - src_paths: ["/my-account/frontend-logs/select/.*"]
+  - src_paths: ["/select/.*"]
     url_prefix: "http://victoria-logs:9428"
     headers:
     - "AccountID: 1"
     - "ProjectID: 7"
-    # drop /my-account/frontend-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 2
 ```
-
-This will grant all users access to logs for the specified tenant without additional authentication.
-
-Note that if you don't specify the `AccountID` or `ProjectID` header,
-VictoriaLogs will assume that the corresponding header has a value of 0.
 
 ### Access control inside a single tenant
 
-`VictoriaLogs` can apply extra filters for each request to the select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
+VictoriaLogs can apply extra filters for each request to the select APIs according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters).
 This is useful when you need to give access to a subset of data within a single tenant.
-If you want to hide a subset of data within a tenant, use the HTTP query parameter `extra_filters`.
+If you want hiding a subset of data within a tenant, then specify the HTTP query parameter `extra_filters`
+at the `url_prefix` option according to [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#query-args-handling).
 
-`extra_filters` are enforced globally - they are propagated into all the subqueries inside the provided `query`. This makes it impossible to bypass the restrictions via `join`, `union`, `in(<query>)` and other subqueries.
+`extra_filters` are enforced globally - they are propagated into all the subqueries inside the provided `query`.
+This makes it impossible to bypass the restrictions via `join`, `union`, `in(<query>)` and other [subqueries](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries).
 
 Consider the example below:
 
 ```yaml
 users:
-- username: foo
-  password: bar
+- username: "foo"
+  password: "bar"
   url_map:
   - src_paths: ["/select/.*"]
     url_prefix:
-    - http://victoria-logs-1:9428?extra_filters=password:''
-    - http://victoria-logs-2:9428?extra_filters=password:''
+    - "http://victoria-logs-1:9428/?extra_filters=password:''"
+    - "http://victoria-logs-2:9428/?extra_filters=password:''"
 ```
 
-With this configuration, vmauth will add the [empty filter](https://docs.victoriametrics.com/victorialogs/logsql/#empty-value-filter)
+With this configuration, `vmauth` adds the [empty value filter](https://docs.victoriametrics.com/victorialogs/logsql/#empty-value-filter)
 `password:''` to each request, which means that the `password` field must be empty or missing in the log.
 This is useful in cases when sensitive information has leaked and needs to be hidden.
 
@@ -278,134 +272,102 @@ to each request based on the request path, and routes `/audit-logs` to a separat
 
 ```yaml
 users:
-- username: frontend-logs-viewer
-  password: secret
+- username: "frontend-logs-viewer"
+  password: "secret"
   url_map:
-  - src_paths: ["/frontend-logs/select/.*"]
-    url_prefix: http://victoria-logs:9428?extra_stream_filters=_stream%3A%7Bservice%3Dfrontend-logs%7D
-    # drop /frontend-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 1
+  - src_paths: ["/select/.*"]
+    url_prefix: "http://victoria-logs:9428/?extra_stream_filters=_stream%3A%7Bservice%3Dfrontend-logs%7D"
 
-- username: mobile-logs-viewer
-  password: secret
+- username: "mobile-logs-viewer"
+  password: "secret"
   url_map:
-  - src_paths: ["/mobile-logs/select/.*"]
-    url_prefix: http://victoria-logs:9428?extra_stream_filters=_stream%3A%7Bservice%3Dmobile-logs%7D
-    # drop /mobile-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 1
+  - src_paths: ["/select/.*"]
+    url_prefix: "http://victoria-logs:9428/?extra_stream_filters=_stream%3A%7Bservice%3Dmobile-logs%7D"
 
-- username: audit-logs-viewer
-  password: secret
+- username: "audit-logs-viewer"
+  password: "secret"
   url_map:
-  - src_paths: ["/audit-logs/select/.*"]
-    url_prefix: http://victoria-logs-audit:9428
-    # drop /audit-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 1
+  - src_paths: ["/select/.*"]
+    url_prefix: "http://victoria-logs-audit:9428/"
 ```
 
 `extra_filters` and `extra_stream_filters` should be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding) when they include characters that are not URL-safe.
 For example, the query `_stream:{service=frontend-logs}` should be written as `_stream%3A%7Bservice%3Dfrontend-logs%7D`.
 
 Prefer using `extra_stream_filters` over `extra_filters` whenever possible.
-This can improve search query performance because VictoriaLogs
-processes searches using stream filters faster than regular filters. See [LogsQL performance optimization tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
+See [LogsQL performance optimization tips](https://docs.victoriametrics.com/victorialogs/logsql/#performance-tips).
 
 ## Write Authorization
 
-For log writing, [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
-and [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same write API endpoints
-which [start with the `/insert/` prefix](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis),
-so when configuring write requests, it is important to set this path for request authorization.
+Both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
+and [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same data ingestion API endpoints,
+which [start with the `/insert/` prefix](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis).
+When configuring request authorization or load balancing at `vmauth`, it is important to allow access to this path prefix.
 
-Example vmauth configuration that allows insert requests
-with Basic auth and distributes load between `vlinsert` nodes in the cluster:
+The following [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration can be used for authorizing requests
+to HTTP data ingestion APIs at VictoriaLogs:
 
 ```yaml
 users:
-- username: foo
-  password: bar
+- username: "foo"
+  password: "bar"
   url_map:
   - src_paths: ["/insert/.*"]
     url_prefix:
-    - "http://vlinsert-1:9428"
-    - "http://vlinsert-2:9428"
-    - "http://vlinsert-3:9428"
+    - "http://vlinsert-1:9428/"
+    - "http://vlinsert-2:9428/"
 ```
 
-Note that vmauth cannot replicate data to multiple destinations - it spreads incoming requests among the configured backends.
+This config instructs `vmauth` accepting requests for the Basic Auth user `foo` with the password `bar`.
+
+Successfully authenticated requests are proxied (load balanced) to one of the VictoriaLogs instances specified in the `url_prefix` list,
+if these requests match the `src_paths` regexp, i.e. if they start with `/insert/` path prefix.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-path) for details about the `src_path`.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-balancing) for details about the load balancing.
+
+Enumerate all the `vlinsert` instances in the cluster under the `url_prefix` option above in order to spread load among them.
+
+Note that `vmauth` doesn't replicate data amont the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
 Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replicating the data to multiple VictoriaLogs instances or multiple VictoriaLogs clusters.
 
-If you trust the writing side, for example when collecting logs within your own cluster, you can set
-the [query parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters)
-and [tenant headers](https://docs.victoriametrics.com/victorialogs/#multitenancy) directly on the log shipper side without an extra proxy.
-In such cases, it's usually sufficient to restrict network access so only trusted agents can write to VictoriaLogs.
-
-On the other hand, if you do not trust the writing side, for example, if the logs come from frontend or mobile apps,
-it is very important to secure the write API:
-- Set up a secure HTTPS connection for vmauth (see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy)) and VictoriaLogs (see [Security on Untrusted Networks](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks)).
-- Protect vmauth with anti-DDoS services if needed.
-- Consider the [max_concurrent_requests](https://docs.victoriametrics.com/victoriametrics/vmauth/#concurrency-limiting) parameter to control the number of concurrent write requests.
-- Add [monitoring and alerting for vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#monitoring) to control the load.
-- Write logs from untrusted applications to dedicated VictoriaLogs instances or clusters so that the unpredictable write load does not affect other instances.
-
-It is recommended to pass the `-select.disable` command-line flag to dedicated `vlinsert` nodes in order to disable the search API.
-This disables both `/select/*` and `/internal/select/*` endpoints and secures access to the stored logs in case an attacker has direct network access to `vlinsert`.
-
-For configuration examples using Bearer tokens, Basic auth, and mTLS, see [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+See also [how to set up authorization for search queries at VitoriaLogs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
 
 ### Tenant assignment
 
-vmauth allows redirecting requests to different tenants based on the request path.
-Example vmauth configuration that allows insert requests
-with Basic auth and distributes load between the configured `vlinsert` nodes for three different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy):
+[vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) allows proxying requests to different [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy)
+based on the request path. For example, the following `vmauth` configuration proxies incoming data ingestion requests to different tenants
+depending on the Basic Auth user:
 
 ```yaml
 users:
-- username: kubernetes
-  password: secret
+- username: "kubernetes"
+  password: "secret"
   url_map:
-  - src_paths: ["/my-account/kubernetes-logs/insert/.*"]
+  - src_paths: ["/insert/.*"]
     url_prefix:
-    - "http://vlinsert-1:9428"
-    - "http://vlinsert-2:9428"
+    - "http://vlinsert-1:9428/"
+    - "http://vlinsert-2:9428/"
     headers:
     - "AccountID: 1"
     - "ProjectID: 5"
-    # drop /my-account/kubernetes-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 2
-  max_concurrent_requests: 10
-- username: mobile
-  password: secret
+- username: "frontend"
+  password: "secret"
   url_map:
-  - src_paths: ["/my-account/mobile-logs/insert/.*"]
+  - src_paths: ["/insert/.*"]
     url_prefix:
-    - "http://vlinsert-1:9428"
-    - "http://vlinsert-2:9428"
-    headers:
-    - "AccountID: 1"
-    - "ProjectID: 6"
-    # drop /my-account/mobile-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 2
-  max_concurrent_requests: 10
-- username: frontend
-  password: secret
-  url_map:
-  - src_paths: ["/my-account/frontend-logs/insert/.*"]
-    url_prefix:
-    - "http://vlinsert-1:9428"
-    - "http://vlinsert-2:9428"
+    - "http://vlinsert-1:9428/"
+    - "http://vlinsert-2:9428/"
     headers:
     - "AccountID: 1"
     - "ProjectID: 7"
-    # drop /my-account/frontend-logs/ path prefix from the original request before proxying it to url_prefix.
-    drop_src_path_prefix_parts: 2
-  max_concurrent_requests: 10
 ```
 
-Below is a diagram of this architecture for the clustered version of VictoriaLogs:
+Below is a diagram of this configuration:
 
 ![security-and-lb-tenants.webp](security-and-lb-tenants.webp)
 {width="600"}
+
+See [how to override http request headers before proxying the requests to backends](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers).
 
 ### Tenant-based proxying of data ingestion requests
 
@@ -422,7 +384,7 @@ unauthorized_user:
   - src_paths: ["/insert/.*"]
     src_headers:
     - "AccountID: 0"
-    url_prefix: "http://victoria-logs-longterm:9428"
+    url_prefix: "http://victoria-logs-longterm:9428/"
     headers:
     - "ProjectID: 0"
 
@@ -431,7 +393,7 @@ unauthorized_user:
   - src_paths: ["/insert/.*"]
     src_headers:
     - "AccountID: 1"
-    url_prefix: "http://victoria-logs-shortterm:9428"
+    url_prefix: "http://victoria-logs-shortterm:9428/"
     headers:
     - "AccountID: 0"
 ```
@@ -439,10 +401,15 @@ unauthorized_user:
 This allows building a VictoriaLogs storage system with distinct per-tenant retention configs
 similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#issuecomment-3043557052).
 
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) on how to setup request routing in `vmauth` by request headers.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
+
+See also [tenant-based data search request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying).
 
 ### Adding extra fields
 
-You can use the `extra_fields` parameter in vmauth to automatically add fields to incoming log entries according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
+You can use the `extra_fields` parameter in vmauth to automatically add fields to incoming log entries
+according to [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters).
 This is helpful when the writing side cannot include certain metadata, such as the source service name.
 
 The example below adds a `service` field with the value `frontend-logs` to all the logs received at the `/frontend-logs/insert/*` path.
@@ -450,286 +417,141 @@ It also includes the `_stream_fields` parameter as an example of how to configur
 
 ```yaml
 users:
-- bearer_token: foobar
+- bearer_token: "foobar"
   url_map:
   - src_paths: ["/frontend-logs/insert/.*"]
     url_prefix:
-    - "http://vlinsert-1:9428?extra_fields=service=frontend-logs&_stream_fields=service"
-    - "http://vlinsert-2:9428?extra_fields=service=frontend-logs&_stream_fields=service"
-    - "http://vlinsert-3:9428?extra_fields=service=frontend-logs&_stream_fields=service"
+    - "http://vlinsert-1:9428/?extra_fields=service=frontend-logs&_stream_fields=service"
+    - "http://vlinsert-2:9428/?extra_fields=service=frontend-logs&_stream_fields=service"
     # drop /frontend-logs/ path prefix from the original request before proxying it to url_prefix.
     drop_src_path_prefix_parts: 1
-  max_concurrent_requests: 10
 ```
 
-Any field sent by the application will be overridden by the value set in the `extra_fields`, if defined.
+Any field sent by the application will be overridden by the value set in the `extra_fields`.
 This prevents the log shipper from unexpectedly overriding the provided `extra_fields`.
+See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#query-args-handling) for details.
 
-## Security on Untrusted Networks
+## Basic Auth
 
-It supports [Basic Auth](https://docs.victoriametrics.com/victorialogs/security-and-lb/#basic-auth)
-and [mTLS](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for authentication and access control.
-Traffic between clients and servers can be encrypted using [TLS/SSL](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tlsssl).
+It is recommended to run all the VictoriaLogs components in a secure trusted network, and proxying only the properly authorized requests
+according to [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks). If you still
+want exposing individual VictoriaLogs components to untrusted networks such as Internet, then secure access to them via Basic Auth according to the docs below.
 
-Recommended practices:
+All the VictoriaLogs components support request authentication via [Basic Auth](https://en.wikipedia.org/wiki/Basic_access_authentication)
+for the HTTP requests received at TCP address specified via `-httpListenAddr` command-line flag.
 
-* Deploy all VictoriaLogs components inside a private network, avoid direct Internet exposure.
-* Use vmauth as an authorization proxy and load balancer in front of vlinsert and vlselect for authentication and authorization of data ingestion and querying requests.
-  See [Security and Load Balancing](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for configuration details.
-  For TLS termination proxy setup, see [TLS termination proxy docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy).
-* Protect components exposed to external clients with Basic Auth + TLS or mTLS.
-* Disable read API on vlinsert with the `-select.disable` command-line flag.
-* Disable write API on vlselect with the `-insert.disable` command-line flag.
+Specify the needed username and password via `-httpAuth.username` and `-httpAuth.password` command-line flags in order to enable Basic Auth in any VictoriaLogs component.
 
-### Basic Auth
-
-It is recommended to enable Basic Auth when VictoriaLogs is deployed in untrusted or unsecured networks.
-For a full overview of security best practices, see the recommendations listed above.
-
-Basic Auth validates the `Authorization: Basic <base64(user:password)>` HTTP header.
-If the username and password match the values configured in the auth layer (for example, VictoriaLogs or an upstream authorization proxy), the request is allowed.
-
-Basic Auth encodes credentials using Base64 encoding, but does not encrypt the transmitted data.
-Always use Basic Auth exclusively over [secure TLS/SSL connections](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tlsssl).
-
-Production Security Recommendations:
-
-- TLS encryption: never use Basic Auth over unencrypted HTTP connections.
-- Consider mTLS: implement mutual TLS for certificate-based authentication instead of password-based auth.
-- Regular credential rotation: change passwords periodically and use strong, unique passwords.
-
-#### Quick start
-
-To quickly start VictoriaLogs with Basic Auth, run the following command:
-
-```sh
-./victoria-logs -httpAuth.username vlstorage -httpAuth.password secret
-```
-
-This will start the VictoriaLogs server with Basic authentication on the default port (`9428`).
-
-To test the configuration, you can use `curl`:
-
-```sh
-curl -u vlstorage:secret http://localhost:9428/metrics
-```
-
-This HTTP example is intended for local testing on `localhost`.
-
-For cluster mode, you may configure both client authentication (users connecting to your service)
-and internal authentication (communication between VictoriaLogs components), depending on your network trust boundary and security requirements:
-
-```sh
-./victoria-logs -httpListenAddr :9429 \
-    -httpAuth.username vlinsert -httpAuth.password top-secret \
-    -storageNode localhost:9428 \
-    -storageNode.username vlstorage -storageNode.password secret
-```
-
-This configuration:
-- Starts a VictoriaLogs server on port `9429` that functions as both vlinsert and vlselect.
-- Accepts requests to this node only from user `vlinsert` with password `top-secret`.
-- Connects to vlstorage at `localhost:9428` using credentials `vlstorage:secret`.
+**Important note:** HTTP clients send Basic Auth username and password in plaintext, so they could be read by an attacker
+if the request is transferred over untrusted network such as Internet. Therefore **always** receive Basic Auth requests over https
+and **never** over http. It is recommended to use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for receiving requests over untrusted networks.
+See [how to enable https at vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/#tls-termination-proxy).
 
 **Security Warning:** Passing passwords directly in command-line arguments is not recommended for production,
 as they may appear in process listings (e.g., `ps aux`)
 or debug endpoints (e.g., `http://victoria-logs:9428/debug/pprof/cmdline?debug=1`).
 
-Use one of the safer methods below:
+It is better to provide passwords via files according to [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#providing-password-from-a-file).
 
-* [Providing password from a file](https://docs.victoriametrics.com/victorialogs/security-and-lb/#providing-password-from-a-file).
-* [Providing password via environment variables](https://docs.victoriametrics.com/victorialogs/security-and-lb/#providing-password-via-environment-variables).
-* [Providing password via HTTP/HTTPS](https://docs.victoriametrics.com/victorialogs/security-and-lb/#providing-password-via-httphttps).
+### Providing password from a file
 
-After configuring Basic Auth, update your clients accordingly, such as
-vmauth (see [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks))
-and VictoriaMetrics components (see [these docs](https://docs.victoriametrics.com/victoriametrics/sd_configs/#http-api-client-options)).
-
-#### Providing password from a file
-
-To read passwords from a file instead of command-line arguments, use the `file://` prefix:
+To read passwords from a file instead of command-line arguments, use the `file://` prefix in the corresponding command-line flag:
 
 ```sh
-./victoria-logs -httpAuth.username vlstorage -httpAuth.password file:///absolute/path/to/file
-# or relative path
-./victoria-logs -httpAuth.username vlstorage -httpAuth.password file://./path/to/file
+./victoria-logs -httpAuth.username=vlstorage -httpAuth.password=file:///path/to/file
 ```
 
 The value from the file is periodically reloaded, which allows changing the password without restarting the application.
 
 **Note:** the `-httpAuth.username` command-line flag does not support reading values from a file.
 
-For cluster deployments, you can also use dedicated file-based flags for storage node authentication:
+Example with [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) sending Basic Auth requests to [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/):
 
 ```sh
-./victoria-logs -httpListenAddr :9429 \
-    -httpAuth.username vlinsert -httpAuth.password file://./path/to/file \
-    -storageNode localhost:9428 \
-    -storageNode.usernameFile /path/to/username/file -storageNode.passwordFile /path/to/password/file
-```
-
-Example with vlagent connecting to vlinsert:
-
-```sh
-./vlagent -httpListenAddr :9430 \
-    -httpAuth.username vlagent -httpAuth.password file://./path/to/file \
-    -remoteWrite.url http://localhost:9429/insert/native \
-    -remoteWrite.basicAuth.username vlinsert -remoteWrite.basicAuth.passwordFile ./path/to/file
+./vlagent \
+    -remoteWrite.url=https://vmauth:8427/insert/native \
+    -remoteWrite.basicAuth.username=vlagent \
+    -remoteWrite.basicAuth.passwordFile=/path/to/file
 ```
 
 To test that vlagent is properly configured with Basic Auth, you can send a test log entry
-(use the same password value as configured in `./path/to/file` for `-httpAuth.password`):
+(use the same password value as configured in `/path/to/file` for `-httpAuth.passwordFile`):
 
 ```sh
-curl -u "vlagent:$(cat ./path/to/file)" http://localhost:9430/insert/jsonline -H 'Content-Type: application/json' \
+curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 'Content-Type: application/json' \
     -d '{"_msg":"Hello, VictoriaLogs!"}'
 ```
 
-#### Providing password via environment variables
+## System endpoints
 
-To use environment variables for configuration, enable the feature with `-envflag.enable`.
-Optionally set a custom prefix with `-envflag.prefix`:
+The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
+This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
 
-```sh
-export VL_httpAuth_username=vlstorage
-export VL_httpAuth_password=secret
-
-./victoria-logs -envflag.enable -envflag.prefix VL_
-```
-
-Flag names are converted to environment variables by replacing dots with underscores.
-For example, `-httpAuth.password` becomes `VL_httpAuth_password`.
-
-Environment variables are read only at startup. You must restart VictoriaLogs to pick up changes.
-
-Cluster configuration example:
-
-```sh
-export VL_httpAuth_username=vlinsert
-export VL_httpAuth_password=top-secret
-export VL_storageNode_username=vlstorage
-export VL_storageNode_password=secret
-
-./victoria-logs -envflag.enable -envflag.prefix VL_ \
-    -httpListenAddr :9429 -storageNode localhost:9428
-```
-
-vlagent configuration example:
-
-```sh
-export VL_httpAuth_username=vlagent
-export VL_httpAuth_password=top-top-secret
-export VL_remoteWrite_basicAuth_username=vlinsert
-export VL_remoteWrite_basicAuth_password=top-secret
-
-./vlagent -envflag.enable -envflag.prefix VL_ \
-    -httpListenAddr :9430 \
-    -remoteWrite.url http://localhost:9429/insert/native
-```
-
-To test that vlagent is properly configured with Basic Auth, you can send a test log entry:
-
-```sh
-curl -u vlagent:top-top-secret http://localhost:9430/insert/jsonline -H 'Content-Type: application/json' \
-    -d '{"_msg":"Hello, VictoriaLogs!"}'
-```
-
-See also all supported command-line flags
-for VictoriaLogs (see [these docs](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags))
-and vlagent (see [these docs](https://docs.victoriametrics.com/victorialogs/vlagent/#advanced-usage)).
-
-#### Providing password via HTTP/HTTPS
-
-VictoriaLogs can retrieve passwords from HTTP/HTTPS endpoints for dynamic password management:
-
-```sh
-./victoria-logs -httpAuth.username foo \
-    -httpAuth.password 'https://example.com/victoria-logs/password?example-arg=example-value'
-```
-
-The value from the URL is periodically reloaded, which allows changing the password without restarting the application.
-
-**Note:** the `-httpAuth.username` command-line flag does not support reading values via HTTP/HTTPS.
-
-If the HTTP request fails, VictoriaLogs continues using the last successfully retrieved password.
-Errors are logged for troubleshooting.
-If no password has ever been successfully retrieved and `-httpAuth.username` is set, requests protected by Basic Auth will fail with authentication errors.
-
-**Note**: Ensure the URL endpoint is fast and reliable, because password retrieval from a slow or unstable endpoint can increase request latency during authentication checks.
-
-### System endpoints
-
-When Basic Auth or mTLS is enabled, the following system endpoints inherit the same authentication requirements by default.
-These defaults can be overridden per endpoint with dedicated `*AuthKey` flags.
-
-- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaMetrics, vmagent, and Prometheus.
-  Override authentication using the `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
+  Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - `/flags` - debugging endpoint that shows all active command-line flags.
-  Override authentication using the `-flagsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
-  **Note:** Passwords are hidden in the output for security reasons.
-- [`/debug/pprof/*`](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#profiling) - profiling endpoints for performance analysis (advanced users only).
-  Override authentication using the `-pprofAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+  Use `-flagsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+  **Note:** Passwords are hidden in the output of the `/flags` endpoint for security reasons.
+- [`/debug/pprof/*`](https://docs.victoriametrics.com/victorialogs/#profiling) - profiling endpoints for performance analysis.
+  Use `-pprofAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/log_new_streams`](https://docs.victoriametrics.com/victorialogs/#logging-new-streams) - enables logging new log streams during data ingestion.
-  Override authentication using the `-logNewStreamsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+  Use `-logNewStreamsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_flush`](https://docs.victoriametrics.com/victorialogs/#forced-flush) - forces immediate flushing of in-memory data to disk.
-  Override authentication using the `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+  Use `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/force_merge`](https://docs.victoriametrics.com/victorialogs/#forced-merge) - triggers manual data compaction and merge operations.
-  Override authentication using the `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
-- [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations including creation and deletion.
-  Override authentication using the `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+  Use `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations.
+  Use `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
-Example of accessing the `/metrics` endpoint using an authentication key
-(works when `-metricsAuthKey` is configured):
+These endpoints can be accessed by specifying `authKey` query arg with the value matching the corresponding `-*AuthKey` command-line flag.
+
+For example, if VictoriaLogs is started with the `-metricsAuthKey=top-secret` command-line flag, then the `/metrics` endpoint can be accessed with the following command:
 
 ```sh
-curl 'http://victoria-logs:9428/metrics?authKey=monitoring-secret-key'
+curl 'http://victoria-logs:9428/metrics?authKey=top-secret'
 ```
 
-### TLS/SSL
+Enable HTTPS on the VictoriaLogs components which accept `authKey` in order to prevent from stealing the `authKey` by attackers
+who listen for the requests over untrusted networks such as the Internet.
+See [how to enable TLS](https://docs.victoriametrics.com/victorialogs/security-and-lb/#enabling-tls-on-the-server).
 
-All VictoriaLogs components support TLS encryption for secure communication.
-TLS is disabled by default but can be enabled on both server and client sides.
+## TLS/SSL
 
-#### Enabling TLS on the server
+While all VictoriaLogs components support receiving HTTP requests over TLS (aka HTTPS),
+this isn't needed if the components run in the same trusted private network
+according to [the recommendations](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks).
+Enabling TLS complicates the configuration and slows down communication between components.
 
-To enable TLS encryption, provide the server certificate and private key:
+If you still want enabling TLS between VictoriaLogs components, then read below.
+
+### Enabling TLS on the server
+
+Pass the following command-line flags to VictoriaLogs component in order to enable receiving HTTPS
+requests at the TCP address specified via `-httpListenAddr`:
+
+- `-tls` - this flag instructs enabling TLS
+- `-tlsCertFile` - this flag accepts the path to the server TLS certificate file
+- `-tlsKeyFile` - this flag accepts the path to the key file for the server TLS certificate
+
+For example, the following command starts VictoriaLogs, which accepts HTTPS requests at the default TCP port `9428`:
 
 ```sh
-./victoria-logs -tls -tlsCertFile /path/to/victoria-logs.pem -tlsKeyFile /path/to/victoria-logs-key.pem
+./victoria-logs -tls -tlsCertFile=/path/to/victoria-logs-cert -tlsKeyFile=/path/to/victoria-logs-key
 ```
 
-This starts VictoriaLogs with HTTPS encryption on the default port (9428).
+See also [how to enable mTLS on any VictoriaLogs component](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls).
 
-#### Connecting vlselect and vlinsert to vlstorage with TLS
+### Connecting vlagent to VictoriaLogs with TLS
 
-To connect VictoriaLogs components to a TLS-enabled vlstorage server:
-
-```sh
-./victoria-logs -httpListenAddr :9429 \
-    -storageNode localhost:9428 -storageNode.tls
-```
-
-By default, VictoriaLogs verifies server certificates using the system's trusted certificate store.
-If using self-signed certificates, you have two options:
-1. Install your CA certificate in the system's trusted certificate store.
-1. Specify the CA certificate path manually using `-storageNode.tlsCAFile`.
-
-For testing purposes only, you can disable certificate verification with `-storageNode.tlsInsecureSkipVerify`.
-
-**Security Warning:** Disabling certificate verification eliminates
-protection against man-in-the-middle attacks. Never use this in production.
-
-#### Connecting vlagent to VictoriaLogs with TLS
-
-To send data over TLS, simply change the URL scheme from `http` to `https`:
+To send data over TLS, simply change the URL scheme from `http` to `https` in the `-remoteWrite.url`:
 
 ```sh
-./vlagent -httpListenAddr :9430 \
-    -remoteWrite.url https://localhost:9428/insert/native
+./vlagent -remoteWrite.url=https://localhost:9428/insert/native
 ```
 
 By default, vlagent verifies server certificates using the system's trusted certificate store.
-If using self-signed certificates, you have two options:
+If using self-signed certificates, you have the following options:
+
 1. Install your CA certificate in the system's trusted certificate store.
 1. Specify the CA certificate path manually using `-remoteWrite.tlsCAFile`.
 
@@ -738,7 +560,7 @@ For testing purposes only, you can disable certificate verification with `-remot
 **Security Warning:** Disabling certificate verification eliminates
 protection against man-in-the-middle attacks. Never use this in production.
 
-#### Automatic issuing of TLS certificates
+### Automatic issuing of TLS certificates
 
 All the [VictoriaLogs Enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) components support automatic issuing of TLS certificates
 for public HTTPS server running at `-httpListenAddr` via [Let's Encrypt service](https://letsencrypt.org/).
@@ -762,149 +584,47 @@ Example of starting VictoriaLogs with automatic TLS certificate issuing:
     -tlsAutocertHosts=victorialogs.example.com,logs.example.com \
     -tlsAutocertEmail=admin@example.com \
     -tlsAutocertCacheDir=/path/to/tls-cache \
-    -licenseFile /path/to/license
+    -licenseFile=/path/to/license
 ```
-
-##### The `no viable challenge type found` error
-
-Let's Encrypt validates domain ownership by performing TLS-ALPN-01 challenges to verify you control the specified domains.
-The Let's Encrypt service must be able to reach your VictoriaLogs instance over the public internet on port 443 to complete this validation.
-
-Common troubleshooting steps:
-1. Ensure your server is reachable from the internet on port 443.
-1. Confirm that your domain names resolve to your server's public IP address.
-1. Use external tools to verify HTTPS connectivity to port 443.
-
-Example connectivity verification:
-
-```sh
-# Test domain resolution
-nslookup victorialogs.example.com
-
-# Test HTTPS connectivity from an external network (port 443)
-curl -I https://victorialogs.example.com/
-```
-
-This functionality can be evaluated for free according to [these docs](https://docs.victoriametrics.com/victoriametrics/enterprise/).
-
-### Individual Configuration
-
-When connecting to multiple clients (storage nodes or remote write endpoints),
-each connection can have its own configuration.
-
-Configuration Rules:
-- Single flag value: applied to all clients.
-- Multiple flag values: each client gets its own value in declaration order.
-- If multiple values are provided but fewer than the number of clients, remaining clients use the flag default/empty value unless explicitly set.
-
-#### Example: Different TLS settings for storage nodes
-
-Enable TLS for one storage node while keeping another unencrypted:
-
-```sh
-./victoria-logs -storageNode vlstorage-1:9428 -storageNode.tls \
-    -storageNode vlstorage-2:9428 -storageNode.tls=false
-```
-
-#### Example: Shared username with different passwords
-
-Use the same username for all nodes but different passwords:
-
-```sh
-./victoria-logs -storageNode.username vlselect \
-    -storageNode vlstorage-1:9428 -storageNode.passwordFile /path/to/password-vlstorage-1.txt \
-    -storageNode vlstorage-2:9428 -storageNode.passwordFile /path/to/password-vlstorage-2.txt
-```
-
-#### Example: Mixed authentication methods
-
-Some clients use Bearer tokens while others use Basic Auth:
-
-```sh
-./victoria-logs \
-    -storageNode vlstorage-1:9428 -storageNode.bearerTokenFile /path/to/bearer.txt -storageNode.passwordFile="" -storageNode.username="" \
-    -storageNode vlstorage-2:9428 -storageNode.username vlstorage -storageNode.passwordFile /path/to/password.txt -storageNode.bearerTokenFile=""
-```
-
-**Note:** When mixing authentication methods, explicitly set unused parameters to empty strings (`""`) to avoid configuration conflicts.
-
-The same configuration logic applies to all `-remoteWrite.*` and `-storageNode.*` flags.
-
-For the complete list of available flags, refer to [these docs](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 ### mTLS
 
-> This feature requires [Enterprise binaries](https://docs.victoriametrics.com/victoriametrics/enterprise/) for components that use mTLS (for example, VictoriaLogs and/or vlagent).
+> This feature requires [Enterprise binaries](https://docs.victoriametrics.com/victoriametrics/enterprise/) for VictoriaLogs components that use mTLS.
 
-Mutual TLS (mTLS) provides the highest level of security
-by requiring both client and server to present valid certificates for authentication.
+Mutual TLS ([mTLS](https://en.wikipedia.org/wiki/Mutual_authentication)) requires both client and server to present valid certificates for authentication.
 Unlike standard TLS where only the server authenticates itself, mTLS enables bidirectional authentication.
-
-Production Security Recommendations:
-
-- Implement proper certificate rotation and expiration monitoring
-- Store private keys securely with appropriate file permissions (e.g., 600)
-- Implement certificate revocation procedures for compromised certificates
-- Keep certificates updated before expiration to avoid service disruptions
 
 #### Enabling mTLS on the server
 
-mTLS requires both standard TLS configuration and additional mutual authentication settings:
+mTLS requires both [standard TLS command-line flags for server](https://docs.victoriametrics.com/victorialogs/security-and-lb/#enabling-tls-on-the-server)
+and additional `-mtls` command-line flag:
 
 ```sh
 ./victoria-logs -tls \
-    -tlsCertFile ./victoria-logs.pem \
-    -tlsKeyFile ./victoria-logs-key.pem \
+    -tlsCertFile=./victoria-logs.pem \
+    -tlsKeyFile=./victoria-logs-key.pem \
     -mtls \
-    -licenseFile /path/to/license
+    -licenseFile=/path/to/license
 ```
 
 By default, VictoriaLogs verifies client certificates using the system's trusted certificate store.
 If using certificates signed by a private CA not present in the system trust store, you have two options:
 1. Install your CA certificate in the system's trusted certificate store.
-1. Specify the CA certificate path manually using `-mtlsCAFile`.
-
-#### Connecting vlselect and vlinsert to vlstorage with mTLS
-
-Client components need both server verification and client authentication certificates:
-
-```sh
-./victoria-logs -storageNode vlstorage:9428 \
-    -storageNode.tls \
-    -storageNode.tlsCAFile /path/to/server-ca.pem \
-    -storageNode.tlsCertFile /path/to/client-cert.pem \
-    -storageNode.tlsKeyFile /path/to/client-key.pem
-```
-
-- `-storageNode.tlsCAFile` - CA certificate to verify the server's identity.
-- `-storageNode.tlsCertFile` - client certificate for client authentication.
-- `-storageNode.tlsKeyFile` - private key corresponding to the client certificate.
+1. Specify the CA certificate path manually using `-mtlsCAFile` command-line flag.
 
 #### Connecting vlagent to VictoriaLogs with mTLS
 
-vlagent mTLS configuration follows the same pattern:
+Specify `-remoteWrite.tlsCertFile` and `-remoteWrite.tlsKeyFile` command-line flags for the corresponding `-remoteWrite.url`
+which requires mTLS. Optionally, specify `-remoteWrite.tlsCAFile`:
 
 ```sh
-./vlagent -remoteWrite.url https://vlinsert:9428/insert/native \
-    -remoteWrite.tlsCAFile /path/to/server-ca.pem \
-    -remoteWrite.tlsCertFile /path/to/client-cert.pem \
-    -remoteWrite.tlsKeyFile /path/to/client-key.pem
+./vlagent -remoteWrite.url=https://vlinsert:9428/insert/native \
+    -remoteWrite.tlsCAFile=/path/to/server-ca.pem \
+    -remoteWrite.tlsCertFile=/path/to/client-cert.pem \
+    -remoteWrite.tlsKeyFile=/path/to/client-key.pem
 ```
 
-#### mTLS with different client certificates
-
-For multiple storage nodes, each client can use its own unique certificate:
-
-```sh
-./victoria-logs -storageNode.tls \
-    -storageNode.tlsCAFile /path/to/server-ca.pem \
-    -storageNode vlstorage-1:9428 -storageNode.tlsCertFile /path/to/client1-cert.pem -storageNode.tlsKeyFile /path/to/client1-key.pem \
-    -storageNode vlstorage-2:9428 -storageNode.tlsCertFile /path/to/client2-cert.pem -storageNode.tlsKeyFile /path/to/client2-key.pem
-```
-
-This approach allows for granular access control and easier certificate management in complex deployments.
-
-#### Certificate reloading
+### Certificate reloading
 
 VictoriaLogs automatically re-reads TLS certificate files (server certificates, client certificates, and CA certificates)
 without requiring server or client restarts.
@@ -921,70 +641,3 @@ To update certificates:
 1. VictoriaLogs will automatically detect and load the updated certificates.
 1. New connections will use the updated certificates immediately.
 1. Existing connections will continue using the old certificates until they reconnect.
-
-**Note:** Ensure new certificates are valid and properly signed before replacing the old ones,
-as invalid certificates will cause authentication failures for new connections.
-
-#### Certificate generation example
-
-Create a Certificate Authority (CA):
-
-```sh
-# Generate CA private key
-openssl genrsa -out ca-key.pem 4096
-
-# Generate CA certificate (valid for 1 year)
-openssl req -new -x509 -days 365 -key ca-key.pem -out ca-cert.pem -subj "/CN=VictoriaLogs-CA"
-```
-
-Generate server certificate:
-
-```sh
-# Generate server private key
-openssl genrsa -out server-key.pem 4096
-
-# Create certificate signing request
-openssl req -new -key server-key.pem -out server.csr -subj "/CN=localhost"
-
-# Sign server certificate with CA
-openssl x509 -req -days 365 -in server.csr -CA ca-cert.pem -CAkey ca-key.pem -out server-cert.pem -CAcreateserial
-```
-
-> [!NOTE]
-> This minimal example is intended for `localhost` testing.
-> For production (or IP/real hostname access), generate the server certificate with `subjectAltName` (SAN).
-
-Generate client certificate:
-
-```sh
-# Generate client private key
-openssl genrsa -out client-key.pem 4096
-
-# Create client certificate
-openssl req -new -key client-key.pem -out client.csr -subj "/CN=victoria-logs-client"
-
-# Sign client certificate with CA
-openssl x509 -req -days 365 -in client.csr -CA ca-cert.pem -CAkey ca-key.pem -out client-cert.pem -CAcreateserial
-```
-
-Certificate Files Summary:
-- `ca-cert.pem` - Used for both server and client certificate verification
-- `server-cert.pem` + `server-key.pem` - Server certificate and key
-- `client-cert.pem` + `client-key.pem` - Client certificate and key
-
-Start VictoriaLogs with these certificates:
-
-```sh
-./victoria-logs -tls \
-    -tlsCertFile ./server-cert.pem \
-    -tlsKeyFile ./server-key.pem \
-    -mtls \
-    -mtlsCAFile ./ca-cert.pem \
-    -licenseFile /path/to/license
-```
-
-Test the connection using `curl`:
-
-```sh
-curl --cacert ./ca-cert.pem --key ./client-key.pem --cert ./client-cert.pem https://localhost:9428/metrics
-```

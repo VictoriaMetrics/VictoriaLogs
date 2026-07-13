@@ -142,6 +142,9 @@ func (pfp *pipeFieldNamesProcessor) writeBlock(workerID uint, br *blockResult) {
 func (shard *pipeFieldNamesProcessorShard) updateHits(refs []columnHeaderRef, br *blockResult, filter string, hits uint64) {
 	for _, cr := range refs {
 		columnName := br.bs.getColumnNameByID(cr.columnNameID)
+		if br.bs.isHiddenField(columnName) {
+			continue
+		}
 		shard.updateColumnHits(columnName, filter, hits)
 	}
 }
@@ -264,7 +267,7 @@ func parsePipeFieldNames(lex *lexer) (pipe, error) {
 			return nil, fmt.Errorf("cannot parse result name for 'field_names': %w", err)
 		}
 		resultName = name
-	} else if !lex.isKeyword("", "|") {
+	} else if !lex.isQueryPartTrailer() {
 		name, err := parseFieldName(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse result name for 'field_names': %w", err)

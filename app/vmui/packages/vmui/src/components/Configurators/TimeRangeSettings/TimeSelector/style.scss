@@ -2,7 +2,7 @@
 
 .vm-time-selector {
   display: grid;
-  grid-template-columns: repeat(2, 230px);
+  grid-template-columns: 280px 230px;
   padding: $padding-global 0;
 
   &_mobile {

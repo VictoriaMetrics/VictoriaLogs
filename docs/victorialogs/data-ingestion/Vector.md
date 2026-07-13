@@ -145,7 +145,7 @@ sinks:
 
 Replace `your_input` with the name of the `inputs` section, which collects logs. See [these docs](https://vector.dev/docs/reference/configuration/sources/) for details.
 
-Substitute the `localhost:9428` address inside `endpoints` section with the real TCP address of VictoriaLogs.
+Substitute the `localhost:9428` address inside the `uri` with the real TCP address of VictoriaLogs.
 
 See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details on parameters specified
 in the query args of the uri (`_stream_fields`, `_msg_field` and `_time_field`).

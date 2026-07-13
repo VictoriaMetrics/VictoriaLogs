@@ -15,6 +15,10 @@ func TestParsePipeSplitSuccess(t *testing.T) {
 	f(`split "-" as bar`)
 	f(`split ";" from foo`)
 	f(`split ". " from foo as bar`)
+
+	// separator and fields named like the 'from' keyword
+	f(`split "from"`)
+	f(`split "," from "from"`)
 }
 
 func TestParsePipeSplitFailure(t *testing.T) {

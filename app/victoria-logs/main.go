@@ -34,6 +34,7 @@ func main() {
 	flag.Usage = usage
 	envflag.Parse()
 	buildinfo.Init()
+	initSecretFlags()
 	logger.Init()
 
 	listenAddrs := *httpListenAddrs
@@ -109,4 +110,9 @@ victoria-logs is a log management and analytics service.
 See the docs at https://docs.victoriametrics.com/victorialogs/
 `
 	flagutil.Usage(s)
+}
+
+// initSecretFlags manage the default secret flags for victoria-logs application.
+func initSecretFlags() {
+	vlselect.InitSecretFlags()
 }

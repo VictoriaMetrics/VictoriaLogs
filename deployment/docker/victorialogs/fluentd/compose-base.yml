@@ -1,5 +1,5 @@
 include:
- - ../compose-base.yml
+  - ../compose-base.yml
 services:
   fluentd:
     build: .
@@ -15,9 +15,6 @@ services:
       start_period: 3s
   nginx:
     image: nginx:1.27
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost"]
-      start_period: 3s
     ports:
       - "8080:80"
     logging:

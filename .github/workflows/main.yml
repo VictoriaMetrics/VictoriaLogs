@@ -16,20 +16,24 @@ on:
       - 'go.*'
       - '.github/workflows/main.yml'
 
-permissions:
-  contents: read
-
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+permissions: {}
+
 jobs:
   lint:
     name: lint
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Runs on dedicated runner with extra resources since golangci-lint requires extra memory
+    runs-on: 'vm-runner'
     steps:
       - name: Code checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -56,7 +60,10 @@ jobs:
   test:
     name: test
     needs: lint
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Runs on dedicated runner with extra resources to increase tests speed.
+    runs-on: 'vm-runner'
 
     strategy:
       matrix:
@@ -67,7 +74,9 @@ jobs:
 
     steps:
       - name: Code checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -89,14 +98,19 @@ jobs:
       - name: Run tests
         run: GOGC=10 make ${{ matrix.scenario}}
 
-  integration-test:
-    name: integration-test
+  apptest:
+    name: apptest
     needs: [lint, test]
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Runs on dedicated runner to isolate app tests from other tests.
+    runs-on: apptest
 
     steps:
       - name: Code checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         id: go
@@ -115,5 +129,5 @@ jobs:
           key: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-${{ hashFiles('go.sum', 'Makefile', 'app/**/Makefile') }}
           restore-keys: go-artifacts-${{ runner.os }}-${{ matrix.scenario }}-${{ steps.go.outputs.go-version }}-
 
-      - name: Run integration tests
-        run: make integration-test
+      - name: Run apptest
+        run: make apptest

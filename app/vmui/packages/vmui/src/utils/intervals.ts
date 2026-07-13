@@ -1,29 +1,45 @@
+import { nanosecondsToMilliseconds } from "./time";
+import { TimeParams } from "../types";
+
 const TARGET_BARS = 96;
 
 // Seven log2 offsets around the base interval.
 const SCALE_POWERS = [-3, -2, -1, 0, 1, 2, 3] as const;
 
-// For ranges >= 1 minute, do not use intervals below 500 ms.
+const SUBMILLISECOND_INTERVALS_MS = [
+  0.001,
+  0.002,
+  0.005,
+  0.01,
+  0.02,
+  0.05,
+  0.1,
+  0.2,
+  0.5,
+] as const;
+
 const SUBSECOND_CUTOFF_RANGE_MS = 60_000;
 const MIN_INTERVAL_FOR_LONG_RANGES_MS = 500;
+const MIN_INTERVAL_MS = SUBMILLISECOND_INTERVALS_MS[0];
 
 // Precompute once at module load.
 const NICE_INTERVALS_MS = buildNiceIntervalsMs();
 
 /**
- * Input: start/end in UNIX seconds.
+ * Input: start/end in UNIX nanoseconds.
  * Output: 7 ascending intervals in milliseconds.
  * Returns [] for invalid or zero-length ranges.
  */
-export function generateIntervalsMs(start: number, end: number): number[] {
-  const rangeMs = Math.abs(end - start) * 1000;
+export function generateIntervalsMs({ start, end }: TimeParams): number[] {
+  const rangeMs = nanosecondsToMilliseconds(end - start);
+
   if (!Number.isFinite(rangeMs) || rangeMs <= 0) return [];
 
-  const minNice =
-    rangeMs >= SUBSECOND_CUTOFF_RANGE_MS ? MIN_INTERVAL_FOR_LONG_RANGES_MS : 1;
+  const minNice = rangeMs >= SUBSECOND_CUTOFF_RANGE_MS
+    ? MIN_INTERVAL_FOR_LONG_RANGES_MS
+    : MIN_INTERVAL_MS;
 
-  const nice =
-    minNice <= 1 ? NICE_INTERVALS_MS : NICE_INTERVALS_MS.filter((v) => v >= minNice);
+  const nice = NICE_INTERVALS_MS.filter((v) => v >= minNice);
 
   const base = snapToNice(rangeMs / TARGET_BARS, nice);
   const picked = SCALE_POWERS.map((p) => snapToNice(base * 2 ** p, nice));
@@ -54,6 +70,10 @@ function buildNiceIntervalsMs(): number[] {
   ] as const;
 
   const intervals = new Set<number>();
+
+  for (const value of SUBMILLISECOND_INTERVALS_MS) {
+    intervals.add(value);
+  }
 
   // Base intervals: 1/2/5/10/15/30 * unit.
   for (const unit of baseUnits) {

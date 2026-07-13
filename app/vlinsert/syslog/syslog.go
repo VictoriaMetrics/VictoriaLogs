@@ -144,22 +144,6 @@ func MustInit() {
 		})
 	}
 
-	currentYear := time.Now().Year()
-	globalCurrentYear.Store(int64(currentYear))
-	workersWG.Go(func() {
-		ticker := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-workersStopCh:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				currentYear := time.Now().Year()
-				globalCurrentYear.Store(int64(currentYear))
-			}
-		}
-	})
-
 	if *syslogTimezone != "" {
 		tz, err := time.LoadLocation(*syslogTimezone)
 		if err != nil {
@@ -169,12 +153,33 @@ func MustInit() {
 	} else {
 		globalTimezone = time.Local
 	}
+
+	currentYear := nowInGlobalTZ().Year()
+	globalCurrentYear.Store(int64(currentYear))
+	workersWG.Go(func() {
+		for {
+			now := nowInGlobalTZ()
+			nextYear := time.Date(now.Year()+1, 1, 1, 0, 0, 0, 0, globalTimezone)
+			nextTick := min(time.Minute, nextYear.Sub(now))
+			select {
+			case <-workersStopCh:
+				return
+			case <-time.After(nextTick):
+				currentYear := nowInGlobalTZ().Year()
+				globalCurrentYear.Store(int64(currentYear))
+			}
+		}
+	})
 }
 
 var (
 	globalCurrentYear atomic.Int64
 	globalTimezone    *time.Location
 )
+
+func nowInGlobalTZ() time.Time {
+	return time.Now().In(globalTimezone)
+}
 
 var (
 	workersWG     sync.WaitGroup
@@ -455,7 +460,7 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP str
 		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
 		if err != nil {
 			errorsTotal.Inc()
-			return fmt.Errorf("cannot read line #%d: %s", n, err)
+			return fmt.Errorf("cannot read line #%d: %w", n, err)
 		}
 		n++
 	}
@@ -679,8 +684,8 @@ type configs struct {
 }
 
 func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolorizeFieldsArg, extraFieldsArg, tenantIDArg, compressMethodArg *flagutil.ArrayString,
-	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool) (*configs, error) {
-
+	useLocalTimestampArg, useRemoteIPArg *flagutil.ArrayBool,
+) (*configs, error) {
 	streamFieldsStr := streamFieldsArg.GetOptionalArg(argIdx)
 	streamFields, err := parseFieldsList(streamFieldsStr)
 	if err != nil {

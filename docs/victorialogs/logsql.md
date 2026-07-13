@@ -37,7 +37,8 @@ Then follow these docs:
 - [how to ingest data into VictoriaLogs](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
-The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word), which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+The simplest LogsQL query is just a [word](https://docs.victoriametrics.com/victorialogs/logsql/#word),
+which must be found in the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 For example, the following query finds all the logs with `error` word:
 
 ```logsql
@@ -223,8 +224,9 @@ if you want to continue learning LogsQL.
 #### Word
 
 LogsQL treats [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values as sequences of words
-delimited by non-word chars such as whitespace, parens, punctuation chars, etc. For example, the `foo: (bar,"тест")!` string
-is split into `foo`, `bar` and `тест` words. Words can contain [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded Unicode letters and digits.
+delimited by non-word chars such as whitespace, parens, punctuation chars (except underscores), etc.
+A token is considered a word if it contains only [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded Unicode letters, digits, and underscores.
+For example, the string `foo_bar (baz-123,"тест45")!` is split into the following separate words: `foo_bar`, `baz`, `123`, and `тест45`.
 These words are taken into account by full-text search filters such as
 [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter).
@@ -242,8 +244,8 @@ Tip: try [`*` filter](https://docs.victoriametrics.com/victorialogs/logsql/#any-
 Do not worry - this doesn't crash VictoriaLogs, even if the query selects trillions of logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line)
 if you are curious why.
 
-In addition to filters, LogsQL query may contain an arbitrary mix of optional actions for processing the selected logs. These actions are delimited by `|`
-and are known as [`pipes`](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+In addition to filters, LogsQL query may contain an arbitrary mix of optional actions for processing the selected logs in sequence.
+These actions are delimited by `|` and are known as [`pipes`](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
 For example, the following query uses [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe) for returning
 the number of [log messages](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) for the last 5 minutes:
@@ -253,6 +255,36 @@ _time:5m error | stats count() errors
 ```
 
 See [the list of supported pipes in LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+
+A single query can be split into multiple lines for better readability.
+Queries also can contain comments according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#comments).
+Example multi-line query with comments:
+
+```logsql
+_time:5m
+
+  # calculate per-host number of logs and errors
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+
+  # calculate error rate
+  | math (errors / logs) as error_rate
+
+  # leave only the stats for >10% error rate
+  | filter error_rate:>0.1
+```
+
+The `;` can be put in the end of the query. This is useful for detecting the end of the query. For example, the following query is equivalent to the previous one:
+
+```logsql
+_time:5m
+  | stats by (host)
+      count() logs,
+      count() if (error) errors
+  | math (errors / logs) as error_rate
+  | filter error_rate:>0.1;
+```
 
 ## Filters
 
@@ -264,7 +296,8 @@ If the filter must be applied to other [log field](https://docs.victoriametrics.
 then its name followed by the colon must be put in front of the filter. For example, if `error` [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) must be applied
 to the `log.level` field, then use `log.level:error` query.
 
-If you want to search across multiple fields with names starting with some prefix, then see [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
+VictoriaLogs supports searching across multiple fields with names starting with some prefix
+according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields).
 
 Field names and filter args can be put into quotes if they contain special chars, which may clash with LogsQL syntax. LogsQL supports quoting via double quotes `"`,
 single quotes `'` and backticks according to [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#string-literals):
@@ -274,6 +307,12 @@ single quotes `'` and backticks according to [these docs](https://docs.victoriam
 ```
 
 If in doubt, it is recommended quoting field names and filter args.
+
+If the LogsQL query is automatically built from third-party input, then all such input must be properly quoted before putting it into the query,
+in order to avoid syntax breakage and various security issues.
+
+If multiple filters are applied to the same log field, then LogsQL provides shorter syntax when the given field is mentioned only once.
+For example, `(field:foo OR field:bar) AND field:~"a.+b"` can be replaced with `field:((foo OR -bar) AND ~"a.+b")`.
 
 The list of LogsQL filters:
 
@@ -1851,6 +1890,7 @@ LogsQL supports the following pipes:
 - [`format`](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe) formats output field from input [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`generate_sequence`](https://docs.victoriametrics.com/victorialogs/logsql/#generate_sequence-pipe) generates output logs with messages containing integer sequence.
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_concat`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe) joins JSON array items stored at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into a string using the given delimiter.
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
@@ -1933,17 +1973,28 @@ See also:
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
 
 ### coalesce pipe
-`<q> | coalesce(<field1>, ..., <fieldN>) [default "value"] as result_field` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) {{% available_from "#" %}}
-returns the first non-empty value from the specified list of fields in order, writing the result as `result_field`. 
+
+`<q> | coalesce(<field1>, ..., <fieldN>) [default "value"] [as result_field]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes)
+returns the first non-empty value from the specified list of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
+and stores the result in the `result_field`.
+If the `result_field` isn't set, then the first non-empty value is stored into [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 If all source fields are empty, the optional `default` value is used instead.
 
 This is useful for handling fields that may exist under different names or for providing fallback values when data is missing.
 
-```
+For example, the following query selects logs for the last 5 minutes and stores the first non-empty value among `user_id`, `username` and `email` log fields
+into the `user` field. If all the `user_id`, `username` and `email` fields are empty, then `user` field is set to `anonymous`:
+
+```logsql
 _time:5m | coalesce (user_id, username, email) default "anonymous" as user
 ```
 
-This checks `user_id` first, then `username`, then `email`, and uses "anonymous" if all three are empty.
+The `coalesce(...)` can accept field prefixes ending with `*`. In this case an arbitrary non-empty field with the given prefix is returned.
+For example, the following query sets the `u` field to an arbitrary non-empty field which starts with `user` prefix:
+
+```logsql
+_time:5m | coalesce (user*) as u
+```
 
 ### collapse_nums pipe
 
@@ -2472,7 +2523,7 @@ It is allowed to use `where` prefix instead of `filter` prefix for convenience. 
 _time:1h error | stats by (host) count() logs_count | where logs_count:> 1_000
 ```
 
-It is allowed to omit `filter` prefix if the used filters do not clash with [pipe names](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+It is allowed to omit `filter` prefix if the used filters start with the field name followed by `:`.
 So the following query is equivalent to the previous one:
 
 ```logsql
@@ -2581,7 +2632,7 @@ Numeric fields can be transformed into the following string representation at `f
 
 - [RFC3339 time](https://www.rfc-editor.org/rfc/rfc3339) - by adding `time:` in front of the corresponding field name
   containing [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time).
-  The numeric timestamp can be in seconds, milliseconds, microseconds, or nanoseconds — the precision is automatically detected based on the value.
+  The numeric timestamp can be in seconds, milliseconds, microseconds, or nanoseconds - the precision is automatically detected based on the value.
   Both integer and floating-point values are supported.
   For example, `format "time=<time:timestamp>"`.
 
@@ -2660,7 +2711,7 @@ This pipe works in the following way:
 1. If the `<q2>` results have matching rows, then for each matching row the input row is extended
    with new fields seen at the matching row, and the result is sent to the output.
 
-This logic is similar to `LEFT JOIN` in SQL. For example, the following query returns the number of per-user logs across two applications — `app1` and `app2` (see
+This logic is similar to `LEFT JOIN` in SQL. For example, the following query returns the number of per-user logs across two applications - `app1` and `app2` (see
 [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) for details on the `{...}` filter):
 
 ```logsql
@@ -2727,6 +2778,26 @@ See also:
 - [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
 
 
+### json_array_concat pipe
+
+The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
+
+For example, the following query joins items of the `tags` JSON array with `,` and stores the result back into the `tags` field:
+
+```logsql
+_time:5m | json_array_concat "," from tags
+```
+
+The `delimiter`, `from <src_field>` and `as <result_field>` parts are optional. The default `delimiter` is an empty string, so items are concatenated without any separator. The default `<src_field>` is the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). The default `<result_field>` is `<src_field>`, so the result is stored in place.
+
+Non-string array items such as numbers, booleans, objects, arrays and `null` are converted to their JSON string representation before they are joined. For example, `json_array_concat ","` applied to `["foo",42,{"a":1},null]` produces `foo,42,{"a":1},null`. If `<src_field>` is empty, contains an empty array, or isn't a valid JSON array, the result is an empty string.
+
+See also:
+
+- [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
+
 ### json_array_len pipe
 
 `<q> | json_array_len(field) as result_field` calculates the length of JSON array at the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -2742,8 +2813,8 @@ _time:5m | unpack_words _msg as words | json_array_len (words) as words_count | 
 See also:
 
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
-- [`first` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#first-pipe)
 
 ### hash pipe
 
@@ -3469,6 +3540,7 @@ _time:5m | split "," as items | unroll items | top 5 (items)
 
 See also:
 
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 
