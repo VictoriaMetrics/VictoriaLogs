@@ -111,6 +111,11 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
 
+	// Set the idle connection timeout to the value smaller than the default timeout at the server side
+	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
+	tr.IdleConnTimeout = 5 * time.Second
+
 	scheme := "http"
 	if isTLS {
 		scheme = "https"
@@ -625,7 +630,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	return tasks, nil
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs for the given start and end.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -674,6 +679,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		tenantIDs = append(tenantIDs, tenantID)
 	}
 
+	logstorage.SortTenantIDs(tenantIDs)
 	return tenantIDs, nil
 }
 

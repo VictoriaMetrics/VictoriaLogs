@@ -667,7 +667,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgsWithConfig(r, true)
+	ca, err := parseCommonArgsExt(r, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -1454,10 +1454,15 @@ func (ca *commonArgs) updatePerQueryStatsMetrics() {
 }
 
 func parseCommonArgs(r *http.Request) (*commonArgs, error) {
-	return parseCommonArgsWithConfig(r, false)
+	return parseCommonArgsExt(r, false)
 }
 
-func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*commonArgs, error) {
+// parseCommonArgsExt parses commonArgs from r.
+//
+// If skipMaxQueryTimeRangeCheck is set, then the query time range isn't limited by -search.maxQueryTimeRange.
+// This is used by live tailing, since it processes only newly ingested logs
+// and doesn't scan historical data even if the query contains a wide time filter.
+func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
@@ -1567,7 +1572,7 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxRangeCheck {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start

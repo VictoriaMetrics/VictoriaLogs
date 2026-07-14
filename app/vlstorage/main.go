@@ -665,7 +665,7 @@ func DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
 	return netstorageSelect.DeleteActiveTasks(ctx)
 }
 
-// GetTenantIDs returns tenantIDs from the storage by the given start and end.
+// GetTenantIDs returns sorted tenantIDs from the storage by the given start and end.
 func GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	if localStorage != nil {
 		return localStorage.GetTenantIDs(ctx, start, end)

@@ -14,6 +14,7 @@ tags:
 All the VictoriaLogs components must run inside a protected trusted network. Requests from the Internet
 must be properly authorized before being proxied to VictoriaLogs components. It is recommended using
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for the request authorization and load balancing.
+See [routing and security in the VictoriaLogs architecture](https://victoriametrics.com/blog/victorialogs-architecture-basics/#routing--security) for the big picture.
 
 It is recommended accepting incoming requests at `vmauth` over https in order to guarantee that they cannot be
 read or modified by an attacker when they are transferred over untrusted networks such as Internet.
@@ -45,6 +46,7 @@ Both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints,
 which [start with the `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
 When configuring request authorization or load balancing at `vmauth`, it is important to allow access to this path prefix.
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for how these two deployment modes compare.
 
 The following [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration can be used for authorizing requests
 to HTTP querying APIs at VictoriaLogs:
@@ -515,7 +517,7 @@ curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 
 The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
 This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
 
-- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaMetrics, vmagent, and Prometheus.
+- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
   Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - `/flags` - debugging endpoint that shows all active command-line flags.
   Use `-flagsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).

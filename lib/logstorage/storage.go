@@ -443,7 +443,7 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 // DeleteRunTask starts deletion of logs according to the given filter f for the given tenantIDs.
 //
 // The taskID must contain a unique id of the task. It is used for tracking the task at the list returned by DeleteActiveTasks().
-// The timestamp must contain the timestamp in seconds when the task is started.
+// The timestamp must contain the timestamp in nanoseconds when the task is started.
 func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int64, tenantIDs []TenantID, f *Filter) error {
 	// Register the task in the list of active delete tasks, so it survives application restarts and crashes.
 	dt := newDeleteTask(taskID, timestamp, tenantIDs, f.String())

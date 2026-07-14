@@ -32,6 +32,7 @@ See [quick start guide](https://docs.victoriametrics.com/victorialogs/cluster/#q
 ## Architecture
 
 VictoriaLogs in cluster mode is composed of three main components: `vlinsert`, `vlselect`, and `vlstorage`.
+See [how these components fit together](https://victoriametrics.com/blog/victorialogs-architecture-basics/#components) for the big picture.
 
 - `vlinsert` accepts logs via [all supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It distributes (shards) incoming logs evenly across the `vlstorage` nodes specified in the `-storageNode` command-line flag.
@@ -154,7 +155,8 @@ so there is little practical sense in relying on automatic data recovery from th
 
 ## Single-node and cluster mode duality
 
-A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture):
+A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for the big picture on when to choose each:
 
 - It accepts data ingestion requests from `vlinsert` via `/internal/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
   This endpoint can be disabled via `-internalinsert.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
@@ -185,7 +187,7 @@ multiple levels of `vlinsert` and `vlselect` nodes.
 All the [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/#architecture) components must run in a protected internal network
 without direct access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
-See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details, and [routing & security](https://victoriametrics.com/blog/victorialogs-architecture-basics/#routing--security) for the big picture.
 
 It is possible to disallow access to `/internal/insert` endpoint and `/internal/select/*` endpoints by running VictoriaLogs with `-internalinsert.disable`
 and `-internalselect.disable` command-line flags.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,13 @@ func (tid *TenantID) less(a *TenantID) bool {
 		return tid.AccountID < a.AccountID
 	}
 	return tid.ProjectID < a.ProjectID
+}
+
+// SortTenantIDs sorts tenantIDs in place in ascending order.
+func SortTenantIDs(tenantIDs []TenantID) {
+	sort.Slice(tenantIDs, func(i, j int) bool {
+		return tenantIDs[i].less(&tenantIDs[j])
+	})
 }
 
 func (tid *TenantID) marshalString(dst []byte) []byte {
