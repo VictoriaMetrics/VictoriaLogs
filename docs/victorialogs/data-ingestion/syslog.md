@@ -42,11 +42,15 @@ VictoriaLogs can accept logs from the following syslog collectors:
 - [Rsyslog](https://www.rsyslog.com/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#rsyslog).
 - [Syslog-ng](https://www.syslog-ng.com/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#syslog-ng).
 
-Multiple logs in Syslog format can be ingested via a single TCP connection or via a single UDP packet - just put every log on a separate line
-and delimit them with `\n` char.
+Multiple logs in Syslog format can be ingested via a single TCP connection by putting every log on a separate line and delimiting them with `\n` char.
+
+By default, every UDP packet is treated as a single Syslog message according to [RFC 5426](https://www.rfc-editor.org/rfc/rfc5426.html#section-3.1).
+Every `SOCK_DGRAM` Unix packet is handled in the same way. This preserves newline characters inside the message.
+See [message framing](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#message-framing)
+for how to ingest multiple newline-delimited messages from a single packet.
 
 VictoriaLogs automatically extracts the following [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
-from the received Syslog lines:
+from the received Syslog messages:
 
 - [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) - log timestamp. See also [log timestamps](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps)
 - [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) - the `MESSAGE` field from the supported syslog formats above
@@ -55,8 +59,8 @@ from the received Syslog lines:
 - `level` - string representation of the log level according to the `<PRI>` field value
 - `priority`, `facility` and `severity` - these fields are extracted from `<PRI>` field
 - `facility_keyword` - string representation of the `facility` field according to [these docs](https://en.wikipedia.org/wiki/Syslog#Facility)
-- `format` - this field is set to either `rfc3164` or `rfc5424` depending on the format of the parsed syslog line
-- `msg_id` - `MSGID` field from log line in `RFC5424` format.
+- `format` - this field is set to either `rfc3164` or `rfc5424` depending on the parsed Syslog message format
+- `msg_id` - `MSGID` field from a Syslog message in `RFC5424` format.
 
 The `[STRUCTURED-DATA]` is parsed into fields with the `SD-ID.param1`, `SD-ID.param2`, ..., `SD-ID.paramN` names and the corresponding values
 according to [the specification](https://datatracker.ietf.org/doc/html/rfc5424#section-6.3).
@@ -82,6 +86,7 @@ curl http://localhost:9428/select/logsql/query -d 'query=_time:5m'
 See also:
 
 - [Log timestamps](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#log-timestamps)
+- [Message framing](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#message-framing)
 - [Security](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#security)
 - [Compression](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#compression)
 - [Multitenancy](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#multitenancy)
@@ -92,6 +97,16 @@ See also:
 - [Capturing remote ip address](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address)
 - [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 - [How to query VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
+
+## Message framing
+
+By default, every packet received at `-syslog.listenAddr.udp` or at a `unixgram:` address in `-syslog.listenAddr.unix` is treated as a single Syslog message.
+This allows the message to contain newline characters.
+
+Set `-syslog.framing.udp=newline` for the corresponding UDP listen address in order to split every received UDP packet into multiple Syslog messages
+at newline characters. Set `-syslog.framing.unix=newline` to enable the same behavior for the corresponding `unixgram:` address.
+The framing flags are arrays, so each listen address can use an independent mode. The supported values are `datagram` and `newline`.
+The framing flags do not apply to TCP or `SOCK_STREAM` Unix sockets.
 
 ## Log timestamps
 
