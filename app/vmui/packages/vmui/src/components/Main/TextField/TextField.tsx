@@ -33,6 +33,7 @@ interface TextFieldProps {
   helperText?: string
   inputmode?: "search" | "text" | "email" | "tel" | "url" | "none" | "numeric" | "decimal"
   caretPosition?: [number, number]
+  overlay?: ReactNode
   onChange?: (value: string) => void
   onEnter?: () => void
   onKeyDown?: (e: TextFieldKeyboardEvent) => void
@@ -56,6 +57,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     autofocus = false,
     inputmode = "text",
     caretPosition,
+    overlay,
     onChange,
     onEnter,
     onKeyDown,
@@ -169,6 +171,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     >
       {startIcon && <div className="vm-text-field__icon-start">{startIcon}</div>}
       {endIcon && <div className="vm-text-field__icon-end">{endIcon}</div>}
+      {overlay && <div className="vm-text-field__overlay">{overlay}</div>}
       {type === "textarea"
         ? (
           <textarea
