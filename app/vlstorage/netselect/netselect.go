@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -30,52 +31,52 @@ const (
 	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldNamesProtocolVersion = "v4"
+	FieldNamesProtocolVersion = "v5"
 
 	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldValuesProtocolVersion = "v4"
+	FieldValuesProtocolVersion = "v5"
 
 	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldNamesProtocolVersion = "v4"
+	StreamFieldNamesProtocolVersion = "v5"
 
 	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldValuesProtocolVersion = "v4"
+	StreamFieldValuesProtocolVersion = "v5"
 
 	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamsProtocolVersion = "v4"
+	StreamsProtocolVersion = "v5"
 
 	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamIDsProtocolVersion = "v4"
+	StreamIDsProtocolVersion = "v5"
 
 	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	QueryProtocolVersion = "v4"
+	QueryProtocolVersion = "v5"
 
 	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteRunTaskProtocolVersion = "v1"
+	DeleteRunTaskProtocolVersion = "v2"
 
 	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/delete/stop_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteStopTaskProtocolVersion = "v1"
+	DeleteStopTaskProtocolVersion = "v2"
 
 	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/delete/active_tasks endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	DeleteActiveTasksProtocolVersion = "v1"
+	DeleteActiveTasksProtocolVersion = "v2"
 )
 
 // Storage is a network storage for querying remote storage nodes in the cluster.
@@ -109,6 +110,11 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr := httputil.NewTransport(false, "vlselect_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
+
+	// Set the idle connection timeout to the value smaller than the default timeout at the server side
+	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
+	tr.IdleConnTimeout = 5 * time.Second
 
 	scheme := "http"
 	if isTLS {
@@ -321,12 +327,19 @@ func (sn *storageNode) getResponseForPathAndArgs(ctx context.Context, path strin
 
 func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path string, args url.Values) (io.ReadCloser, string, error) {
 	reqURL := sn.getRequestURL(path)
-	reqBody := strings.NewReader(args.Encode())
+
+	// encode args as multipart/form-data in order to avoid the 10MB limit
+	// on the application/x-www-form-urlencoded request body size.
+	// See https://pkg.go.dev/net/http#Request.ParseForm
+	//
+	// This avoids the issue when too long query is sent to vlstorage.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+	reqBody, contentType := newMultipartRequestBody(args)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
 		return nil, "", fmt.Errorf("cannot create a request for %q: %w", reqURL, err)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", contentType)
 	if err := sn.ac.SetHeaders(req, true); err != nil {
 		return nil, "", fmt.Errorf("cannot set auth headers at %q: %w", reqURL, err)
 	}
@@ -334,14 +347,10 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 	// send the request to the storage node
 	resp, err := sn.c.Do(req)
 	if err != nil {
-		// Wrap the error into httpserver.ErrorWithStatusCode in order to return the proper status code to the client.
-		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/576
-		//
-		// This is also used by isUnavailableBackendError() function in order to differentiate unavailable backend errors
-		// from improper configuration errors.
-		return nil, "", &httpserver.ErrorWithStatusCode{
-			Err:        fmt.Errorf("cannot connect to storage node at %q: %w", reqURL, err),
-			StatusCode: http.StatusBadGateway,
+		// the errUnavailableBackend is used by isUnavailableBackendError() function in order to differentiate
+		// unavailable backend errors from configuration errors at vlstorage, wich return non-200 status code.
+		return nil, "", &errUnavailableBackend{
+			err: fmt.Errorf("cannot connect to storage node at %q: %w", reqURL, err),
 		}
 	}
 
@@ -351,10 +360,31 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 			responseBody = []byte(err.Error())
 		}
 		_ = resp.Body.Close()
-		return nil, "", fmt.Errorf("unexpected response status code from %q: %d; want %d; response: %q", reqURL, resp.StatusCode, http.StatusOK, responseBody)
+
+		err = fmt.Errorf("unexpected response status code from %q: %d; want %d; response: %q", reqURL, resp.StatusCode, http.StatusOK, responseBody)
+		return nil, "", err
 	}
 
 	return resp.Body, reqURL, nil
+}
+
+func newMultipartRequestBody(args url.Values) (io.Reader, string) {
+	var bb bytesutil.ByteBuffer
+	w := multipart.NewWriter(&bb)
+
+	for k, vs := range args {
+		for _, v := range vs {
+			if err := w.WriteField(k, v); err != nil {
+				logger.Panicf("BUG: cannot create in-memory multipart request body for key=%q, len(value)=%d: %s", k, len(v), err)
+			}
+		}
+	}
+
+	if err := w.Close(); err != nil {
+		logger.Panicf("BUG: cannot close in-memory multipart request body: %s", err)
+	}
+
+	return bb.NewReader(), w.FormDataContentType()
 }
 
 func (sn *storageNode) getRequestURL(path string) string {
@@ -587,7 +617,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	return tasks, nil
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs for the given start and end.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -636,12 +666,13 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		tenantIDs = append(tenantIDs, tenantID)
 	}
 
+	logstorage.SortTenantIDs(tenantIDs)
 	return tenantIDs, nil
 }
 
 func (s *Storage) getValuesWithHits(qctx *logstorage.QueryContext, limit uint64, resetHitsOnLimitExceeded bool,
-	callback func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error)) ([]logstorage.ValueWithHits, error) {
-
+	callback func(ctx context.Context, sn *storageNode) ([]logstorage.ValueWithHits, error),
+) ([]logstorage.ValueWithHits, error) {
 	ctxWithCancel, cancel := context.WithCancel(qctx.Context)
 	defer cancel()
 
@@ -768,7 +799,7 @@ func getFirstError(errs []error, allowPartialResponse bool) error {
 	if !allowPartialResponse {
 		for _, err := range errs {
 			if err != nil {
-				return err
+				return newStatusBadGatewayError(err)
 			}
 		}
 		return nil
@@ -785,17 +816,42 @@ func getFirstError(errs []error, allowPartialResponse bool) error {
 			// Return the first error, which isn't related to the backend unavailability, to the client,
 			// since this error may point to configuration issues, which must be fixed ASAP.
 			// Hiding this error would complicate troubleshooting of improperly configured system.
-			return fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
+			err = fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
+			return newStatusBadGatewayError(err)
 		}
 	}
 
-	return fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
+	err := fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
+	return newStatusBadGatewayError(err)
+}
+
+func newStatusBadGatewayError(err error) error {
+	return &httpserver.ErrorWithStatusCode{
+		Err:        err,
+		StatusCode: http.StatusBadGateway,
+	}
 }
 
 func isUnavailableBackendError(err error) bool {
-	// It is expected that unavailable backend errors are wrapped into httpserver.ErrorWithStatusCode.
-	var es *httpserver.ErrorWithStatusCode
-	return errors.As(err, &es)
+	// It is expected that unavailable backend errors are wrapped into errUnavailableBackend
+	_, ok := errors.AsType[*errUnavailableBackend](err)
+	return ok
+}
+
+type errUnavailableBackend struct {
+	err error
+}
+
+// Unwrap returns e.Err.
+//
+// This is used by standard errors package. See https://golang.org/pkg/errors
+func (e *errUnavailableBackend) Unwrap() error {
+	return e.err
+}
+
+// Error implements error interface.
+func (e *errUnavailableBackend) Error() string {
+	return e.err.Error()
 }
 
 func unmarshalValuesWithHits(qctx *logstorage.QueryContext, src []byte) ([]logstorage.ValueWithHits, error) {

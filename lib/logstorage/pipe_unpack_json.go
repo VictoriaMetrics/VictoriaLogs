@@ -41,7 +41,7 @@ func (pu *pipeUnpackJSON) String() string {
 		s += " from " + quoteTokenIfNeeded(pu.fromField)
 	}
 	if !prefixfilter.MatchAll(pu.fieldFilters) {
-		s += " fields (" + fieldNamesString(pu.fieldFilters) + ")"
+		s += " fields (" + fieldFiltersString(pu.fieldFilters) + ")"
 	}
 	if len(pu.preserveKeys) > 0 {
 		s += " preserve_keys (" + fieldNamesString(pu.preserveKeys) + ")"
@@ -160,7 +160,7 @@ func parsePipeUnpackJSON(lex *lexer) (pipe, error) {
 	}
 
 	fromField := "_msg"
-	if !lex.isKeyword("fields", "preserve_keys", "result_prefix", "keep_original_fields", "skip_empty_results", ")", "|", "") {
+	if !lex.isKeyword("fields", "preserve_keys", "result_prefix", "keep_original_fields", "skip_empty_results") && !lex.isQueryPartTrailer() {
 		if lex.isKeyword("from") {
 			lex.nextToken()
 		}

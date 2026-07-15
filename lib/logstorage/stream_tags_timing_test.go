@@ -19,7 +19,7 @@ func BenchmarkCheckStreamFieldNames(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			if err := CheckStreamFieldNames(fieldNames); err != nil {
-				panic(fmt.Errorf("unexpected error: %s", err))
+				panic(fmt.Errorf("unexpected error: %w", err))
 			}
 		}
 	})

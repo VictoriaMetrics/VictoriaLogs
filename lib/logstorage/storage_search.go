@@ -236,6 +236,9 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 }
 
 func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
+	// tenantIDs must be sorted, since block search performs binary search over them.
+	SortTenantIDs(tenantIDs)
+
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
 		return streamIDs[i].less(&streamIDs[j])
@@ -678,7 +681,7 @@ func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHit
 	return s.GetFieldValues(qctx, "_stream_id", "", limit)
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs for the given start and end.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -753,6 +756,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 		tenants = append(tenants, k)
 	}
 
+	SortTenantIDs(tenants)
 	return tenants, nil
 }
 
@@ -1347,7 +1351,6 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 			putBlockSearch(bs)
 			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
-
 		})
 	}
 
@@ -1601,7 +1604,6 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 
 			putBlockSearch(bs)
 			putBitmap(bm)
-
 		})
 	}
 

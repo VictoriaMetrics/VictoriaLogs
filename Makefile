@@ -14,7 +14,7 @@ endif
 GO_BUILDINFO = -X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GOLANGCI_LINT_VERSION := 2.9.0
+GOLANGCI_LINT_VERSION := 2.12.2
 
 .PHONY: $(MAKECMDGOALS)
 
@@ -37,11 +37,6 @@ publish: \
 	publish-victoria-logs \
 	publish-vlagent \
 	publish-vlogscli
-
-package: \
-	package-victoria-logs \
-	package-vlagent \
-	package-vlogscli
 
 vlutils: \
 	vlagent \
@@ -305,9 +300,6 @@ test-full:
 test-full-386:
 	GOARCH=386 go test -tags 'synctest' -coverprofile=coverage.txt -covermode=atomic ./lib/... ./app/...
 
-integration-test:
-	$(MAKE) apptest
-
 apptest:
 	$(MAKE) victoria-logs-race vlagent-race vlogscli-race
 	go test ./apptest/...
@@ -349,7 +341,7 @@ golangci-lint: install-golangci-lint
 	golangci-lint run
 
 install-golangci-lint:
-	which golangci-lint && (golangci-lint --version | grep -q $(GOLANGCI_LINT_VERSION)) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v$(GOLANGCI_LINT_VERSION)
+	which golangci-lint && (golangci-lint --version | grep -q $(GOLANGCI_LINT_VERSION)) || curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v$(GOLANGCI_LINT_VERSION)
 
 remove-golangci-lint:
 	rm -rf `which golangci-lint`
