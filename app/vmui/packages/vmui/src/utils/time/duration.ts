@@ -2,7 +2,7 @@
 // https://prometheus.io/docs/prometheus/latest/querying/basics/#float-literals-and-time-durations
 import { TimePeriod } from "../../types";
 import { vmDate } from "./vmDate";
-import { absNanoseconds, NANOSECONDS_PER_MILLISECOND } from "./nano";
+import { absNanoseconds, NANOSECONDS_PER_MILLISECOND, nanosecondsToMilliseconds } from "./nano";
 import { timePeriodToTimeParams } from "./convert";
 
 const DURATION_UNITS_IN_NANOS = {
@@ -36,6 +36,11 @@ export const getNanosecondsFromDuration = (dur: string): bigint => {
 
     return total + whole + fraction;
   }, 0n);
+};
+
+export const getMillisecondsFromDuration = (dur: string): number => {
+  const nanos = getNanosecondsFromDuration(dur);
+  return nanosecondsToMilliseconds(nanos);
 };
 
 export const getDurationFromMilliseconds = (ms: number): string => {

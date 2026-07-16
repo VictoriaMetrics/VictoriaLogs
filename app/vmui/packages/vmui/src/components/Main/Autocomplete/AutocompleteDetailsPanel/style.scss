@@ -1,22 +1,18 @@
 @use "src/styles/variables" as *;
 
 .vm-autocomplete-details-panel {
-  max-width: 420px;
-  min-width: 360px;
-  padding: $padding-global;
+  width: clamp(360px, 30vw, 420px);
+  flex: 0 0 clamp(360px, 30vw, 420px);
   background-color: $color-background-block;
   border-left: $border-divider;
   overflow-wrap: anywhere;
-
-  &__type {
-    color: $color-text-secondary;
-    margin-bottom: $padding-small;
-  }
+  padding: calc($padding-small / 2);
 
   &__description {
     max-height: 260px;
     overflow: auto;
     overscroll-behavior: none;
     font-size: $font-size-small;
+    padding: 0 $padding-global $padding-global;
   }
 }
