@@ -16,7 +16,8 @@ func TestVlclusterRerouting(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
-	// start a special cluster with unavailable addrs
+	// start a special cluster. it runs with 2 fake addresses, plus the auto-attached 3 real addresses.
+	// it should reroute data as some storage nodes are unavailable.
 	sut := tc.MustStartVlclusterWithFlags([]string{"-storageNode=0.0.0.0:99999,0.0.0.0:99998"}, nil, nil)
 
 	// ingest 1000 * 100 logs across storages.
@@ -33,10 +34,9 @@ func TestVlclusterRerouting(t *testing.T) {
 		sut.ForceFlush(t)
 	}
 
-	// check the distribution.
+	// check the distribution. it should be 1000 * 100 -> 3 healthy storages, with 10% threshold.
 	//
-	// by default vlcluster starts 3 storage nodes. there's no need to complicate the test code so just hardcode
-	// the number when verifying the result.
+	// there's no need to complicate the test code so just hardcode the server count to 3 when verifying the result.
 	expectCountPerNode := float64(logPerBatch*BatchCount) / 3
 	for i := 0; i < 3; i++ {
 		sn := sut.StorageNode(i)
