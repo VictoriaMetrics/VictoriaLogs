@@ -159,9 +159,10 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 	t.Fatalf("timed out while waiting for inserted rows to be sent to remote storage")
 }
 
-// RemoteWriteRequests sums up the total number of remote write requests for the given remote write URL.
+// RemoteWriteRequests returns the number of successful remote write requests for the given URL.
 func (app *Vlagent) RemoteWriteRequests(t *testing.T, url string) int {
-	re := regexp.MustCompile(fmt.Sprintf("vlagent_remotewrite_requests_total{.*url=%q.*}", url))
+	metricName := fmt.Sprintf(`vlagent_remotewrite_requests_total{url=%q, status_code="2XX"}`, url)
+	re := regexp.MustCompile(`^` + regexp.QuoteMeta(metricName) + ` `)
 	total := 0.0
 	for _, v := range app.GetMetricsByRegexp(t, re) {
 		total += v
