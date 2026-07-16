@@ -383,6 +383,9 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 	sn.addRow(r)
 }
 
+// sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable.
+// to simplify the test mocking we have “ to mock the whole logic.
+// it's necessary to keep the logic here and there in sync to verify the case.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
 	startIdx := int(fastrand.Uint32n(uint32(len(s.sns))))
 	for i := range s.sns {

@@ -1,9 +1,13 @@
 package netinsert
 
 import (
+	"errors"
 	"fmt"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/valyala/fastrand"
 	"math"
 	"math/rand"
+	"strconv"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
@@ -54,4 +58,50 @@ func TestStreamRowsTracker(t *testing.T) {
 	streamsCount = 1000
 	nodesCount = 9
 	f(rowsCount, streamsCount, nodesCount)
+}
+
+func TestSendInsertRequestToAnyNode(t *testing.T) bool {
+	// build the default nodes
+	nodeCount := 21
+	sns := make([]mockStorageNode, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		sns[i] = mockStorageNode{
+			addr:      strconv.Itoa(i),
+			available: true,
+			count:     0,
+		}
+	}
+
+	mockSendInsertRequestToAnyNode()
+}
+
+func mockSendInsertRequestToAnyNode(sns []mockStorageNode) bool {
+	startIdx := int(fastrand.Uint32n(uint32(len(sns))))
+	for i := range sns {
+		idx := (startIdx + i) % len(sns)
+		sn := sns[idx]
+		err := sn.sendInsertRequest()
+		if err == nil {
+			return true
+		}
+		if !errors.Is(err, errTemporarilyDisabled) {
+			logger.Warnf("cannot send pending data to the storage node %q: %s; trying to send it to another storage node", sn.addr, err)
+		}
+	}
+	return false
+}
+
+type mockStorageNode struct {
+	addr      string
+	available bool
+
+	// count represents the ingested log count
+	count int
+}
+
+func (m *mockStorageNode) sendInsertRequest() error {
+	if m.available {
+		m.count++
+	}
+	return errTemporarilyDisabled
 }
