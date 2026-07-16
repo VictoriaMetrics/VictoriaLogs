@@ -145,6 +145,7 @@ export const ExecutionControls: FC = () => {
     >
       <div
         className={classNames({
+          "vm-list": true,
           "vm-execution-controls-list": true,
           "vm-execution-controls-list_mobile": isMobile,
         })}

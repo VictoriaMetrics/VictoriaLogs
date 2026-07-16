@@ -640,7 +640,7 @@ func (idb *indexdb) storeStreamIDsToCache(tenantIDs []TenantID, sf *StreamFilter
 	bbPool.Put(bb)
 }
 
-func (idb *indexdb) searchTenants() []TenantID {
+func (idb *indexdb) getTenantIDs() []TenantID {
 	is := idb.getIndexSearch()
 	defer idb.putIndexSearch(is)
 

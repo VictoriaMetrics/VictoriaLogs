@@ -81,7 +81,15 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
 		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
+
+		// Return the error with 502 status code to vlselect, so it properly propagates the status code to the client,
+		// even if returning partial responses is enabled via -search.allowPartialResponse command-line flag.
+		err = &httpserver.ErrorWithStatusCode{
+			Err:        err,
+			StatusCode: http.StatusBadGateway,
+		}
 		httpserver.Errorf(w, r, "%s", err)
+
 		// The return is skipped intentionally in order to track the duration of failed queries.
 	}
 	metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
@@ -512,11 +520,8 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
 	version := r.FormValue("version")
 	if version != expectedProtocolVersion {
-		return &httpserver.ErrorWithStatusCode{
-			Err: fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
-				"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion),
-			StatusCode: http.StatusBadGateway,
-		}
+		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
+			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
 	}
 	return nil
 }

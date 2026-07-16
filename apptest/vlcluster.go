@@ -253,6 +253,11 @@ func (app *Vlcluster) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts)
 	return app.selectNode.cli.PostForm(t, url, values)
 }
 
+// StorageNode returns the i-th storage node, allowing direct log ingestion that bypasses the insert node.
+func (app *Vlcluster) StorageNode(i int) *Vlsingle {
+	return app.storageNodes[i]
+}
+
 // String returns the string representation of the app state.
 func (app *Vlcluster) String() string {
 	return "Vlcluster"
