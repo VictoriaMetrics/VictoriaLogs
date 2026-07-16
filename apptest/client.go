@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -198,6 +199,36 @@ func (app *ServesMetrics) GetMetricsByPrefix(t *testing.T, prefix string) []floa
 	}
 	for _, metric := range strings.Split(metrics, "\n") {
 		if !strings.HasPrefix(metric, prefix) {
+			continue
+		}
+
+		parts := strings.Split(metric, " ")
+		if len(parts) < 2 {
+			t.Fatalf("unexpected record format: got %q, want metric name and value separated by a space", metric)
+		}
+
+		value, err := strconv.ParseFloat(parts[len(parts)-1], 64)
+		if err != nil {
+			t.Fatalf("could not parse metric value %s: %v", metric, err)
+		}
+
+		values = append(values, value)
+	}
+	return values
+}
+
+// GetMetricsByRegexp retrieves the values of all metrics that match re.
+func (app *ServesMetrics) GetMetricsByRegexp(t *testing.T, re *regexp.Regexp) []float64 {
+	t.Helper()
+
+	values := []float64{}
+
+	metrics, statusCode := app.cli.Get(t, app.metricsURL)
+	if statusCode != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d, want %d", statusCode, http.StatusOK)
+	}
+	for _, metric := range strings.Split(metrics, "\n") {
+		if !re.MatchString(metric) {
 			continue
 		}
 

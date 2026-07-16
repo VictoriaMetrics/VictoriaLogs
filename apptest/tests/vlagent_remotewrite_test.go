@@ -147,12 +147,17 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		"-remoteWrite.tmpDataPath=" + fmt.Sprintf("%s/%s-%d", os.TempDir(), vlagentInstance, time.Now().UnixNano()),
 	}
 	vlagent := tc.MustStartVlagent(vlagentInstance, vlagentRemoteWriteURLs, vlagentFlags)
+	vlagentRemoteWriteMetricURLs := []string{
+		"1:" + vlagentRemoteWriteURLs[0],
+		"2:" + vlagentRemoteWriteURLs[1],
+	}
 
 	// ingest data and check if it properly replicated to the vlsingles
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs, []int{1, 1})
 
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -175,6 +180,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1:], []int{2})
 
 	// check alive storage received data
 	wantLogLines = []string{
