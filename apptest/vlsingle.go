@@ -271,3 +271,7 @@ func (app *Vlsingle) HTTPAddr() string {
 func (app *Vlsingle) String() string {
 	return fmt.Sprintf("{app: %s storageDataPath: %q httpListenAddr: %q}", app.node.app, app.storageDataPath, app.node.httpListenAddr)
 }
+
+func (app *Vlsingle) GetIntMetrics(t *testing.T,  metricName string) int {
+	return app.node.GetIntMetric(t, metricName)
+}

@@ -186,12 +186,22 @@ func (tc *TestCase) MustStartVlagent(instance string, remoteWriteURLs []string, 
 	return app
 }
 
-// MustStartVlcluster starts Vlcluster with default settings
+// MustStartDefaultVlcluster starts Vlcluster with default settings
 func (tc *TestCase) MustStartDefaultVlcluster() *Vlcluster {
 	tc.t.Helper()
 
 	instance := "vlcluster"
-	app := MustStartVlcluster(tc.t, instance, nil, tc.cli)
+	app := MustStartVlcluster(tc.t, instance, nil, nil, nil, tc.cli)
+	tc.addApp(instance, app)
+	return app
+}
+
+// MustStartVlclusterWithFlags starts Vlcluster with insert and storage flags.
+func (tc *TestCase) MustStartVlclusterWithFlags(insertFlags, selectFlags, storageFlags []string) *Vlcluster {
+	tc.t.Helper()
+
+	instance := "vlcluster-with-flags"
+	app := MustStartVlcluster(tc.t, instance, insertFlags, selectFlags, storageFlags, tc.cli)
 	tc.addApp(instance, app)
 	return app
 }
