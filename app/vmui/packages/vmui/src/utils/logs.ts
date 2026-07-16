@@ -3,6 +3,7 @@ import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../components/Chart/BarHitsChart/hooks/useBarHitsOptions";
 import { nanosecondsToMilliseconds, nanosToIsoString } from "./time";
+import { getDefaultIntervalOption } from "./intervals";
 
 export const getStreamPairs = (stream: string): string[] => {
   const s = stream.trim();
@@ -82,8 +83,8 @@ type HitsTimeParams = {
   start: string;
   /** ISO 8601 string with up to nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"` */
   end: string;
-  /** Step size in milliseconds. */
-  step: number;
+  /** Step size. */
+  step: string;
 }
 
 export const getHitsTimeParams = (period: TimeParams): HitsTimeParams => {
@@ -91,7 +92,7 @@ export const getHitsTimeParams = (period: TimeParams): HitsTimeParams => {
   const end = nanosToIsoString(period.end);
 
   const totalMs = Math.max(1, nanosecondsToMilliseconds(period.end - period.start));
-  const step = totalMs / LOGS_BAR_COUNT_DEFAULT;
+  const step = getDefaultIntervalOption(period)?.duration || `${totalMs / LOGS_BAR_COUNT_DEFAULT}ms`;
 
   return { start, end, step };
 };

@@ -237,7 +237,7 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 
 func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
 	// tenantIDs must be sorted, since block search performs binary search over them.
-	SortTenantIDs(tenantIDs)
+	sortTenantIDs(tenantIDs)
 
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
@@ -681,7 +681,7 @@ func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHit
 	return s.GetFieldValues(qctx, "_stream_id", "", limit)
 }
 
-// GetTenantIDs returns sorted tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs on the given [start..end] time range.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -690,7 +690,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	workersCount := cgroup.AvailableCPUs()
 	stopCh := ctx.Done()
 
-	tenantIDByWorker := make([][]TenantID, workersCount)
+	tenantIDsByWorker := make([][]TenantID, workersCount)
 
 	// spin up workers
 	var wg sync.WaitGroup
@@ -702,8 +702,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
 					continue
 				}
-				tenantIDs := pt.idb.searchTenants()
-				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
+				tenantIDs := pt.idb.getTenantIDs()
+				tenantIDsByWorker[workerID] = append(tenantIDsByWorker[workerID], tenantIDs...)
 			}
 		})
 	}
@@ -744,20 +744,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 		ptw.decRef()
 	}
 
-	uniqTenantIDs := make(map[TenantID]struct{})
-	for _, tenantIDs := range tenantIDByWorker {
-		for _, tenantID := range tenantIDs {
-			uniqTenantIDs[tenantID] = struct{}{}
-		}
-	}
-
-	tenants := make([]TenantID, 0, len(uniqTenantIDs))
-	for k := range uniqTenantIDs {
-		tenants = append(tenants, k)
-	}
-
-	SortTenantIDs(tenants)
-	return tenants, nil
+	tenantIDs := MergeTenantIDs(tenantIDsByWorker)
+	return tenantIDs, nil
 }
 
 func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, error) {

@@ -47,8 +47,27 @@ func (tid *TenantID) less(a *TenantID) bool {
 	return tid.ProjectID < a.ProjectID
 }
 
-// SortTenantIDs sorts tenantIDs in place in ascending order.
-func SortTenantIDs(tenantIDs []TenantID) {
+// MergeTenantIDs merges tenantIDss into a single sorted list without duplicates.
+func MergeTenantIDs(tenantIDss [][]TenantID) []TenantID {
+	uniqTenantIDs := make(map[TenantID]struct{})
+	for _, tenantIDs := range tenantIDss {
+		for _, tenantID := range tenantIDs {
+			uniqTenantIDs[tenantID] = struct{}{}
+		}
+	}
+
+	tenantIDs := make([]TenantID, 0, len(uniqTenantIDs))
+	for k := range uniqTenantIDs {
+		tenantIDs = append(tenantIDs, k)
+	}
+
+	sortTenantIDs(tenantIDs)
+
+	return tenantIDs
+}
+
+// sortTenantIDs sorts tenantIDs in place in ascending order.
+func sortTenantIDs(tenantIDs []TenantID) {
 	sort.Slice(tenantIDs, func(i, j int) bool {
 		return tenantIDs[i].less(&tenantIDs[j])
 	})
