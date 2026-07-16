@@ -56,8 +56,8 @@ and unpack it. It contains a single `victoria-logs-prod` binary.
 For example, on Linux with `amd64` architecture:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz
 ```
 
 The binary is self-contained and requires no installation - it is ready to run as is.
@@ -179,8 +179,8 @@ Just download the archive for the needed operating system and architecture, unpa
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz
 ./victoria-logs-prod -storageDataPath=victoria-logs-data
 ```
 
@@ -203,7 +203,7 @@ Here is the command to run VictoriaLogs in a Docker container:
 
 ```sh
 docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
-  docker.io/victoriametrics/victoria-logs:v1.51.0 -storageDataPath=victoria-logs-data
+  docker.io/victoriametrics/victoria-logs:v1.52.0 -storageDataPath=victoria-logs-data
 ```
 
 See also:

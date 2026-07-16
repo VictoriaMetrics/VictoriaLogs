@@ -2,7 +2,7 @@ version: "3"
 
 services:
   vlogs:
-    image: docker.io/victoriametrics/victoria-logs:v1.51.0
+    image: docker.io/victoriametrics/victoria-logs:v1.52.0
     volumes:
       - vlogs:/vlogs
     ports:

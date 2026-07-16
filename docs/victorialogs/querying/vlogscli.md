@@ -29,8 +29,8 @@ or from docker images at [Docker Hub](https://hub.docker.com/r/victoriametrics/v
 ### Running `vlogscli` from release binary
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/vlutils-linux-amd64-v1.51.0.tar.gz
-tar xzf vlutils-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/vlutils-linux-amd64-v1.52.0.tar.gz
+tar xzf vlutils-linux-amd64-v1.52.0.tar.gz
 ./vlogscli-prod
 ```
 
