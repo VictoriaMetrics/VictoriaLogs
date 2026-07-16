@@ -470,7 +470,7 @@ type availableBuffer struct {
 	idx []int
 }
 
-// reset must be call before using it
+// reset must be called before using it.
 func (ab *availableBuffer) reset() {
 	ab.idx = ab.idx[:0]
 }

@@ -96,7 +96,7 @@ func mockSendInsertRequestToAnyNodeShuffle(sns []*mockStorageNode) bool {
 	})
 
 	for _, idx := range availableIdx {
-		sn := sns[availableIdx[idx]]
+		sn := sns[idx]
 		err := sn.sendInsertRequest()
 		if err == nil {
 			return true
