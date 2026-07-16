@@ -441,6 +441,18 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
           }
         }
 
+        &__icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          max-width: 20px;
+          min-width: 20px;
+          padding: 4px;
+          aspect-ratio: 1;
+          color: $color-text-secondary;
+          margin-left: calc($padding-small / 2);
+        }
+
         &__key,
         &__value {
           vertical-align: top;

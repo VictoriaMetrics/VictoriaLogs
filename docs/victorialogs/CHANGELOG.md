@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): visually distinguish stream fields in expanded log entries and active filters, and automatically use [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) for include and exclude actions on stream fields. See [#1607](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1607).
+
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
 Released at 2026-07-16

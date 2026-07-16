@@ -7,6 +7,7 @@ import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import TextField from "../../Main/TextField/TextField";
 import { SearchIcon } from "../../Main/Icons";
+import { getStreamKeys } from "../../../utils/logs";
 
 interface Props {
   log: Logs;
@@ -23,6 +24,11 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
     const searchLower = search.toLowerCase();
     return key.toLowerCase().includes(searchLower) || String(value).toLowerCase().includes(searchLower);
   }), [rawEntries, search]);
+
+  const streamFields = useMemo(() => {
+    if (!log._stream) return [];
+    return getStreamKeys(log._stream);
+  }, [log]);
 
   const [disabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
 
@@ -59,6 +65,7 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
               key={key}
               field={key}
               value={value}
+              isStreamField={streamFields.includes(key) || key === "_stream"}
               hideGroupButton={hideGroupButton}
             />
         ))}

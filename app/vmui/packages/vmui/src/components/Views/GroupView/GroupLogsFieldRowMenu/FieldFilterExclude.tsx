@@ -6,16 +6,17 @@ import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 interface Props {
   field: string;
   value: string;
+  isStreamField: boolean;
   onClose: () => void;
 }
 
-const FieldFilterExclude: FC<Props> = ({ field, value, onClose }) => {
+const FieldFilterExclude: FC<Props> = ({ field, value, isStreamField, onClose }) => {
   const { extraFilters, addNewFilter, removeFilterByValue } = useExtraFilters();
   const filtersByValue = extraFilters.filter(f => f.field === field && f.value === value);
   const isExcludeFilter = filtersByValue.some(f => f.operator === ExtraFilterOperator.NotEquals);
 
   const handleClickFilter = () => {
-    const newFilter = { field, value, operator: ExtraFilterOperator.NotEquals };
+    const newFilter = { field, value, operator: ExtraFilterOperator.NotEquals, isStream: isStreamField };
     if (isExcludeFilter) {
       // If the same filter already exists, we remove it by setting the value to an empty string
       removeFilterByValue(field, value);
