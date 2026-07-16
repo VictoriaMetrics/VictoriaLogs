@@ -14,7 +14,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timerpool"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/vmalertproxy"
 	"github.com/VictoriaMetrics/metrics"
 
@@ -44,7 +43,8 @@ var (
 )
 
 // InitSecretFlags registers secret flags defined under `vlselect` pkg.
-// It has to be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
+//
+// It must be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
 func InitSecretFlags() {
 	flagutil.RegisterSecretFlag("vmalert.proxyURL")
 }
@@ -223,7 +223,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 
-	if !incRequestConcurrency(w, r, d) {
+	if !incRequestConcurrency(ctxWithTimeout, w, r) {
 		return true
 	}
 	defer decRequestConcurrency()
@@ -268,41 +268,44 @@ func logRequestErrorIfNeeded(ctx context.Context, w http.ResponseWriter, r *http
 	}
 }
 
-func incRequestConcurrency(w http.ResponseWriter, r *http.Request, queryDuration time.Duration) bool {
+func incRequestConcurrency(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
 	select {
 	case concurrencyLimitCh <- struct{}{}:
+		// Fast path - there is a free slot in the concurrency limiter for executing the request.
 		return true
 	default:
-	}
+		// Slow path - there are no free slots in the concurrency limiter for executing the request.
+		// Wait for up to *maxQueueDuration for the query execution.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, *maxQueueDuration)
+		defer cancel()
 
-	startTime := time.Now()
+		startTime := time.Now()
 
-	concurrencyLimitReached.Inc()
-	t := timerpool.Get(min(queryDuration, *maxQueueDuration))
-	defer timerpool.Put(t)
-	select {
-	case concurrencyLimitCh <- struct{}{}:
-		return true
-	case <-r.Context().Done():
-		// The client has closed the connection while the request was queued.
-		remoteAddr := httpserver.GetQuotedRemoteAddr(r)
-		requestURI := httpserver.GetRequestURI(r)
-		logger.Infof("client has canceled the pending request after %.3f seconds: remoteAddr=%s, requestURI: %q",
-			time.Since(startTime).Seconds(), remoteAddr, requestURI)
-		return false
-	case <-t.C:
-		// Either -search.maxQueueDuration or the query execution deadline elapsed while waiting for a free slot.
-		concurrencyLimitTimeout.Inc()
-		err := &httpserver.ErrorWithStatusCode{
-			Err: fmt.Errorf("couldn't start executing the request in %.3f seconds, since -search.maxConcurrentRequests=%d concurrent requests "+
-				"are executed. Possible solutions: to reduce query load; to add more compute resources to the server; "+
-				"to increase -search.maxQueueDuration=%s; to increase -search.maxQueryDuration=%s; to increase -search.maxConcurrentRequests; "+
-				"to pass bigger value to 'timeout' query arg",
-				time.Since(startTime).Seconds(), *maxConcurrentRequests, maxQueueDuration, maxQueryDuration),
-			StatusCode: http.StatusServiceUnavailable,
+		concurrencyLimitReached.Inc()
+		select {
+		case concurrencyLimitCh <- struct{}{}:
+			return true
+		case <-ctxWithTimeout.Done():
+			switch ctxWithTimeout.Err() {
+			case context.Canceled:
+				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+				requestURI := httpserver.GetRequestURI(r)
+				logger.Infof("client has canceled the pending request after %.3f seconds: remoteAddr=%s, requestURI: %q",
+					time.Since(startTime).Seconds(), remoteAddr, requestURI)
+			case context.DeadlineExceeded:
+				concurrencyLimitTimeout.Inc()
+				err := &httpserver.ErrorWithStatusCode{
+					Err: fmt.Errorf("couldn't start executing the request in %.3f seconds, since -search.maxConcurrentRequests=%d concurrent requests "+
+						"are executed. Possible solutions: to reduce query load; to add more compute resources to the server; "+
+						"to increase -search.maxQueueDuration=%s; to increase -search.maxQueryDuration=%s; to increase -search.maxConcurrentRequests; "+
+						"to pass bigger value to 'timeout' query arg",
+						time.Since(startTime).Seconds(), *maxConcurrentRequests, maxQueueDuration, maxQueryDuration),
+					StatusCode: http.StatusServiceUnavailable,
+				}
+				httpserver.Errorf(w, r, "%s", err)
+			}
+			return false
 		}
-		httpserver.Errorf(w, r, "%s", err)
-		return false
 	}
 }
 
