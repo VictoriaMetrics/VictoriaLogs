@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/valyala/fastrand"
+	"github.com/cespare/xxhash/v2"
 	"math"
 	"math/rand"
-	"strconv"
 	"testing"
-
-	"github.com/cespare/xxhash/v2"
 )
 
 func TestStreamRowsTracker(t *testing.T) {
@@ -60,35 +57,38 @@ func TestStreamRowsTracker(t *testing.T) {
 	f(rowsCount, streamsCount, nodesCount)
 }
 
-func TestSendInsertRequestToAnyNode(t *testing.T) bool {
-	// build the default nodes
-	nodeCount := 21
-	sns := make([]mockStorageNode, nodeCount)
-	for i := 0; i < nodeCount; i++ {
-		sns[i] = mockStorageNode{
-			addr:      strconv.Itoa(i),
-			available: true,
-			count:     0,
+// TestSendInsertRequestToAnyNode test the uniformity when rerouting happen.
+func TestSendInsertRequestToAnyNode(t *testing.T) {
+	f := func(nodeCount int, unhealthyNodes []int, threshold float64) {
+		// build the default nodes
+		sns, unhealthyNodeIdx := buildStorageNodeSlice(nodeCount, unhealthyNodes)
+
+		// do re-routing test
+		total := 100000
+		for i := 0; i < total; i++ {
+			if !mockSendInsertRequestToAnyNode(sns) {
+				t.Fatalf("fail to reroute data to any node")
+			}
 		}
+
+		checkUniformity(t, sns, unhealthyNodeIdx, total, threshold)
 	}
 
-	mockSendInsertRequestToAnyNode()
-}
+	// 2 nodes, 1 down, all should go to the other one, so deviation should be 0
+	f(2, []int{0}, 0)
 
-func mockSendInsertRequestToAnyNode(sns []mockStorageNode) bool {
-	startIdx := int(fastrand.Uint32n(uint32(len(sns))))
-	for i := range sns {
-		idx := (startIdx + i) % len(sns)
-		sn := sns[idx]
-		err := sn.sendInsertRequest()
-		if err == nil {
-			return true
-		}
-		if !errors.Is(err, errTemporarilyDisabled) {
-			logger.Warnf("cannot send pending data to the storage node %q: %s; trying to send it to another storage node", sn.addr, err)
-		}
-	}
-	return false
+	// 10 nodes, random unhealthy nodes
+	f(10, []int{1, 4, 7, 8}, 0.1)
+
+	// 10 nodes, all unhealthy nodes are at the tail
+	f(10, []int{6, 7, 8, 9}, 0.1)
+
+	// 10 nodes, 8 down
+	f(10, []int{0, 1, 2, 3, 4, 5, 6, 7}, 0.1)
+
+	// 50 nodes
+	f(50, []int{0, 1, 2, 3, 4, 5, 6, 7}, 0.1)
+
 }
 
 type mockStorageNode struct {
@@ -102,6 +102,66 @@ type mockStorageNode struct {
 func (m *mockStorageNode) sendInsertRequest() error {
 	if m.available {
 		m.count++
+		return nil
 	}
 	return errTemporarilyDisabled
+}
+
+// mockSendInsertRequestToAnyNode is to test sendInsertRequestToAnyNode and their logic must be in sync.
+func mockSendInsertRequestToAnyNode(sns []*mockStorageNode) bool {
+	shuffleIdx := getShuffleBuf(len(sns))
+	defer putShuffleBuf(shuffleIdx)
+
+	rand.Shuffle(len(shuffleIdx.idx), func(i, j int) {
+		shuffleIdx.idx[i], shuffleIdx.idx[j] = shuffleIdx.idx[j], shuffleIdx.idx[i]
+	})
+
+	for _, idx := range shuffleIdx.idx {
+		sn := sns[idx]
+		err := sn.sendInsertRequest()
+		if err == nil {
+			return true
+		}
+		if !errors.Is(err, errTemporarilyDisabled) {
+			logger.Warnf("cannot send pending data to the storage node %q: %s; trying to send it to another storage node", sn.addr, err)
+		}
+	}
+	return false
+}
+
+func buildStorageNodeSlice(nodeCount int, unhealthyNodes []int) ([]*mockStorageNode, map[int]bool) {
+	unhealthyNodeIdx := make(map[int]bool, len(unhealthyNodes))
+	for _, idx := range unhealthyNodes {
+		unhealthyNodeIdx[idx] = true
+	}
+
+	sns := make([]*mockStorageNode, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		sns[i] = &mockStorageNode{
+			addr:      fmt.Sprintf("node-%d", i),
+			available: !unhealthyNodeIdx[i],
+			count:     0,
+		}
+	}
+
+	return sns, unhealthyNodeIdx
+}
+
+func checkUniformity(t *testing.T, sns []*mockStorageNode, unhealthyNodeIdx map[int]bool, total int, threshold float64) {
+	// check uniformity
+	expectCountPerNode := float64(total) / float64(len(sns)-len(unhealthyNodeIdx))
+	for _, sn := range sns {
+		if !sn.available {
+			if sn.count != 0 {
+				t.Fatalf("unhealthy node %s shouldn't ingest data, but ingested %d", sn.addr, sn.count)
+			}
+			continue
+		}
+
+		deviation := math.Abs(1.0 - float64(sn.count)/expectCountPerNode)
+		if deviation > threshold {
+			t.Fatalf("uneven distribution from rerouting when some nodes are unhealthy. total: %d, healthy node: %d, expect count: %.1f, actual count: %d, deviation: %.3f",
+				total, len(sns)-len(unhealthyNodeIdx), expectCountPerNode, sn.count, deviation)
+		}
+	}
 }

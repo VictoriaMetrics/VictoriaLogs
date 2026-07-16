@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): shuffle the order of storage nodes before rerouting data buffers to them. Previously, data belonging to unhealthy nodes was always rerouted to the next node in the order defined by CLI flags, resulting in unbalanced load. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
+
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
 Released at 2026-07-16

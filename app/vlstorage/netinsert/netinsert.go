@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -384,12 +385,18 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 }
 
 // sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable.
-// to simplify the test mocking we have “ to mock the whole logic.
-// it's necessary to keep the logic here and there in sync to verify the case.
+//
+// To simplify the test we have `mockSendInsertRequestToAnyNode` to mock the logic.
+// the logic here MUST sync to `mockSendInsertRequestToAnyNode` as well.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
-	startIdx := int(fastrand.Uint32n(uint32(len(s.sns))))
-	for i := range s.sns {
-		idx := (startIdx + i) % len(s.sns)
+	shuffleIdx := getShuffleBuf(len(s.sns))
+	defer putShuffleBuf(shuffleIdx)
+
+	rand.Shuffle(len(shuffleIdx.idx), func(i, j int) {
+		shuffleIdx.idx[i], shuffleIdx.idx[j] = shuffleIdx.idx[j], shuffleIdx.idx[i]
+	})
+
+	for _, idx := range shuffleIdx.idx {
 		sn := s.sns[idx]
 		err := sn.sendInsertRequest(pendingData)
 		if err == nil {
@@ -445,4 +452,38 @@ func (srt *streamRowsTracker) getNodeIdx(streamHash uint64) uint64 {
 	// dependency between the order of the ingested logs and the number of storage nodes,
 	// which may lead to non-uniform distribution of logs among storage nodes.
 	return uint64(fastrand.Uint32n(uint32(srt.nodesCount)))
+}
+
+// shuffleBuf holds a reusable index slice for sendInsertRequestToAnyNode.
+type shuffleBuf struct {
+	idx []uint64
+}
+
+// reset must be call before using it
+func (si *shuffleBuf) reset(n int) {
+	if cap(si.idx) < n {
+		si.idx = make([]uint64, n)
+	} else {
+		si.idx = si.idx[:n]
+	}
+
+	for i := range si.idx {
+		si.idx[i] = uint64(i)
+	}
+}
+
+var shuffleBufPool = sync.Pool{
+	New: func() any {
+		return &shuffleBuf{}
+	},
+}
+
+func getShuffleBuf(n int) *shuffleBuf {
+	buf := shuffleBufPool.Get().(*shuffleBuf)
+	buf.reset(n)
+	return buf
+}
+
+func putShuffleBuf(buf *shuffleBuf) {
+	shuffleBufPool.Put(buf)
 }
