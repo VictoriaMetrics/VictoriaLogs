@@ -10588,7 +10588,7 @@
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
-        "regex": "/^(?<value>.*)-(?:vlinsert|vlstorage|vlselect|insert|storage|select)$/",
+        "regex": "/^(?:(?:(?:vl)?(?:insert|storage|select))(?:internal)?-)?(?<value>.+?)(?:-(?:(?:vl)?(?:insert|storage|select)))?$/",
         "type": "query"
       },
       {
@@ -10597,14 +10597,14 @@
           "type": "prometheus",
           "uid": "$DS_PROMETHEUS"
         },
-        "definition": "label_values(vm_app_version{job=~\"$job\", job=~\"$cluster.*\"}, job)",
+        "definition": "label_values(vm_app_version{job=~\"$job\", job=~\".*$cluster.*\"}, job)",
         "includeAll": true,
         "multi": true,
         "name": "job_cluster",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(vm_app_version{job=~\"$job\", job=~\"$cluster.*\"}, job)",
+          "query": "label_values(vm_app_version{job=~\"$job\", job=~\".*$cluster.*\"}, job)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -10717,7 +10717,7 @@
   "timezone": "",
   "title": "VictoriaLogs - cluster",
   "uid": "XqCOFEX4z",
-  "version": 5,
+  "version": 6,
   "weekStart": "",
   "id": null
 }

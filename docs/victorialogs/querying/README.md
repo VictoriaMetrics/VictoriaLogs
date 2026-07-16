@@ -168,7 +168,7 @@ if `format=csv` query arg is passed to this endpoint.
 Performance tip: it is recommended specifying the list of log fields to return via [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe)
 or via [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). If the query doesn't end with these pipes, then VictoriaLogs
 automatically detects the list of fields to return in CSV format across all the selected logs. This may take additional time, since it requires additional scanning
-for the selected logs.
+for the selected logs. See [how VictoriaLogs stores each field as a separate column](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for why selecting fewer fields reads less data.
 
 ### Live tailing
 
