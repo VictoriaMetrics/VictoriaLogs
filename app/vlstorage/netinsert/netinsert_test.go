@@ -88,7 +88,6 @@ func TestSendInsertRequestToAnyNode(t *testing.T) {
 
 	// 50 nodes
 	f(50, []int{0, 1, 2, 3, 4, 5, 6, 7}, 0.1)
-
 }
 
 type mockStorageNode struct {
