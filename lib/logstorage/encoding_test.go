@@ -104,43 +104,52 @@ Apr 28 13:48:01 localhost kernel: [36020.499859] CPU2: Package temperature/speed
 }
 
 func TestMarshalUnmarshalUint64Block(t *testing.T) {
-	f := func(a []uint64) {
+	f := func(dst, src []uint64) {
 		t.Helper()
 
-		data := marshalUint64Block(nil, a)
+		data := marshalUint64Block(nil, src)
 
-		result, tail, err := unmarshalUint64Block(nil, data, uint64(len(a)))
+		var resultExpected []uint64
+		resultExpected = append(resultExpected, dst...)
+		resultExpected = append(resultExpected, src...)
+
+		result, tail, err := unmarshalUint64Block(dst, data, uint64(len(src)))
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if len(tail) != 0 {
 			t.Fatalf("unexpected non-nil tail with len=%d: %X", len(tail), tail)
 		}
-		if !reflect.DeepEqual(a, result) {
-			t.Fatalf("unexpected result\ngot\n%d\nwant\n%d", result, a)
+		if !reflect.DeepEqual(result, resultExpected) {
+			t.Fatalf("unexpected result\ngot\n%d\nwant\n%d", result, resultExpected)
 		}
 	}
 
 	// empty block
-	f(nil)
+	f(nil, nil)
+	f([]uint64{10, 20}, nil)
 
 	// uint8
-	f([]uint64{1})
-	f([]uint64{1, 1, 1})
-	f([]uint64{1, 2, 3})
+	f(nil, []uint64{1})
+	f([]uint64{10, 20}, []uint64{1})
+	f([]uint64{10, 20}, []uint64{1, 1, 1})
+	f([]uint64{10, 20}, []uint64{1, 2, 3})
 
 	// uint16
-	f([]uint64{1234})
-	f([]uint64{1234, 1234, 1234})
-	f([]uint64{1234, 34, 234})
+	f(nil, []uint64{1234})
+	f([]uint64{10, 20}, []uint64{1234})
+	f([]uint64{10, 20}, []uint64{1234, 1234, 1234})
+	f([]uint64{10, 20}, []uint64{1234, 34, 234})
 
 	// uint32
-	f([]uint64{1234 << 16})
-	f([]uint64{1234 << 16, 1234 << 16, 1234 << 16})
-	f([]uint64{1234 << 16, 1234<<16 + 1, 1234<<16 + 2})
+	f(nil, []uint64{1234 << 16})
+	f([]uint64{10, 20}, []uint64{1234 << 16})
+	f([]uint64{10, 20}, []uint64{1234 << 16, 1234 << 16, 1234 << 16})
+	f([]uint64{10, 20}, []uint64{1234 << 16, 1234<<16 + 1, 1234<<16 + 2})
 
 	// uint64
-	f([]uint64{1234 << 32})
-	f([]uint64{1234 << 32, 1234 << 32, 1234 << 32})
-	f([]uint64{1234 << 32, 1234<<32 + 1, 1234<<32 + 2})
+	f(nil, []uint64{1234 << 32})
+	f([]uint64{10, 20}, []uint64{1234 << 32})
+	f([]uint64{10, 20}, []uint64{1234 << 32, 1234 << 32, 1234 << 32})
+	f([]uint64{10, 20}, []uint64{1234 << 32, 1234<<32 + 1, 1234<<32 + 2})
 }

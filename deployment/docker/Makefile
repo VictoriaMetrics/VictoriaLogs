@@ -5,7 +5,7 @@ DOCKER_NAMESPACE ?= victoriametrics
 
 ROOT_IMAGE ?= gcr.io/distroless/static:latest@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6
 
-GO_BUILDER_IMAGE := golang:1.26.4
+GO_BUILDER_IMAGE := golang:1.26.5
 
 BUILDER_IMAGE := local/builder:2.0.0-$(shell echo $(GO_BUILDER_IMAGE) | tr :/ __)-1
 DOCKER ?= docker

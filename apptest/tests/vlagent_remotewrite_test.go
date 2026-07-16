@@ -19,13 +19,12 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 
 	// test data ingestion into
 	const instance = "vlsingle"
-	const r1Port = "50425"
 	sutFlags := []string{
-		"-httpListenAddr=127.0.0.1:" + r1Port,
 		"-storageDataPath=" + tc.Dir() + "/" + instance,
 	}
 
 	sut := tc.MustStartVlsingle(instance, sutFlags)
+	sutFlags = append(sutFlags, "-httpListenAddr="+sut.HTTPAddr())
 	remoteWriteURL := fmt.Sprintf("http://%s/insert/native", sut.HTTPAddr())
 
 	vlagent := tc.MustStartDefaultVlagent([]string{remoteWriteURL})
@@ -126,22 +125,19 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 
 	const (
 		instanceReplica0 = "vlsingle-0"
-		vlsinglePortR0   = "53541"
 		instanceReplica1 = "vlsingle-1"
-		vlsinglePortR1   = "53124"
 		vlagentInstance  = "vlagent"
 	)
 	sutFlagsR0 := []string{
-		"-httpListenAddr=127.0.0.1:" + vlsinglePortR0,
 		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica0),
 	}
 	sutFlagsR1 := []string{
-		"-httpListenAddr=127.0.0.1:" + vlsinglePortR1,
 		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica1),
 	}
 
 	sutR0 := tc.MustStartVlsingle(instanceReplica0, sutFlagsR0)
 	sutR1 := tc.MustStartVlsingle(instanceReplica1, sutFlagsR1)
+	sutFlagsR0 = append(sutFlagsR0, "-httpListenAddr="+sutR0.HTTPAddr())
 
 	vlagentRemoteWriteURLs := []string{
 		fmt.Sprintf("http://%s/insert/native", sutR0.HTTPAddr()),
