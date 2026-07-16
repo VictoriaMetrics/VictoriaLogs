@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): shuffle the order of storage nodes before rerouting data buffers to them. Previously, data belonging to unhealthy nodes was always rerouted to the next node in the order defined by CLI flags, resulting in unbalanced load. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
+* FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): skip unavailable storage nodes when rerouting occurs. Previously, data was rerouted across all nodes following the `-storageNode` order with a random starting offset. This caused uneven load distribution, as healthy nodes adjacent to offline nodes would consistently receive more data. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 

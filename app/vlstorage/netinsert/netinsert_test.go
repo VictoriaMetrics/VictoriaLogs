@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/cespare/xxhash/v2"
+	"github.com/valyala/fastrand"
 	"math"
 	"math/rand"
 	"testing"
@@ -91,15 +92,15 @@ func TestSendInsertRequestToAnyNode(t *testing.T) {
 }
 
 type mockStorageNode struct {
-	addr      string
-	available bool
+	addr        string
+	isReachable bool
 
 	// count represents the ingested log count
 	count int
 }
 
 func (m *mockStorageNode) sendInsertRequest() error {
-	if m.available {
+	if m.isReachable {
 		m.count++
 		return nil
 	}
@@ -108,14 +109,26 @@ func (m *mockStorageNode) sendInsertRequest() error {
 
 // mockSendInsertRequestToAnyNode is to test sendInsertRequestToAnyNode and their logic must be in sync.
 func mockSendInsertRequestToAnyNode(sns []*mockStorageNode) bool {
-	shuffleIdx := getShuffleBuf(len(sns))
-	defer putShuffleBuf(shuffleIdx)
+	// availableBuf holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
+	availableBuf := getAvailableBuf()
+	defer putAvailableBuf(availableBuf)
 
-	rand.Shuffle(len(shuffleIdx.idx), func(i, j int) {
-		shuffleIdx.idx[i], shuffleIdx.idx[j] = shuffleIdx.idx[j], shuffleIdx.idx[i]
-	})
+	for idx, sn := range sns {
+		if sn.isReachable {
+			availableBuf.idx = append(availableBuf.idx, idx)
+		}
+	}
 
-	for _, idx := range shuffleIdx.idx {
+	// pick a starting point from the availableBuf randomly, and try to reroute to this node.
+	// if failed, reroute to the next node.
+	//
+	// e.g. [0, 1, 3, 4, 5]
+	// 1. picked `4` as starting point.
+	// 2. try to send to `4`.
+	// 3. if failed, try `5`, `0`, `1`, `3`.
+	start := int(fastrand.Uint32n(uint32(len(availableBuf.idx))))
+	for i := range availableBuf.idx {
+		idx := availableBuf.idx[(start+i)%len(availableBuf.idx)]
 		sn := sns[idx]
 		err := sn.sendInsertRequest()
 		if err == nil {
@@ -137,9 +150,9 @@ func buildStorageNodeSlice(nodeCount int, unhealthyNodes []int) ([]*mockStorageN
 	sns := make([]*mockStorageNode, nodeCount)
 	for i := 0; i < nodeCount; i++ {
 		sns[i] = &mockStorageNode{
-			addr:      fmt.Sprintf("node-%d", i),
-			available: !unhealthyNodeIdx[i],
-			count:     0,
+			addr:        fmt.Sprintf("node-%d", i),
+			isReachable: !unhealthyNodeIdx[i],
+			count:       0,
 		}
 	}
 
@@ -150,7 +163,7 @@ func checkUniformity(t *testing.T, sns []*mockStorageNode, unhealthyNodeIdx map[
 	// check uniformity
 	expectCountPerNode := float64(total) / float64(len(sns)-len(unhealthyNodeIdx))
 	for _, sn := range sns {
-		if !sn.available {
+		if !sn.isReachable {
 			if sn.count != 0 {
 				t.Fatalf("unhealthy node %s shouldn't ingest data, but ingested %d", sn.addr, sn.count)
 			}

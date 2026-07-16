@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -389,14 +388,26 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 // To simplify the test we have `mockSendInsertRequestToAnyNode` to mock the logic.
 // the logic here MUST sync to `mockSendInsertRequestToAnyNode` as well.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
-	shuffleIdx := getShuffleBuf(len(s.sns))
-	defer putShuffleBuf(shuffleIdx)
+	// availableBuf holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
+	availableBuf := getAvailableBuf()
+	defer putAvailableBuf(availableBuf)
 
-	rand.Shuffle(len(shuffleIdx.idx), func(i, j int) {
-		shuffleIdx.idx[i], shuffleIdx.idx[j] = shuffleIdx.idx[j], shuffleIdx.idx[i]
-	})
+	for idx, sn := range s.sns {
+		if sn.isReachable.Load() {
+			availableBuf.idx = append(availableBuf.idx, idx)
+		}
+	}
 
-	for _, idx := range shuffleIdx.idx {
+	// pick a starting point from the availableBuf randomly, and try to reroute to this node.
+	// if failed, reroute to the next node.
+	//
+	// e.g. [0, 1, 3, 4, 5]
+	// 1. picked `4` as starting point.
+	// 2. try to send to `4`.
+	// 3. if failed, try `5`, `0`, `1`, `3`.
+	start := int(fastrand.Uint32n(uint32(len(availableBuf.idx))))
+	for i := range availableBuf.idx {
+		idx := availableBuf.idx[(start+i)%len(availableBuf.idx)]
 		sn := s.sns[idx]
 		err := sn.sendInsertRequest(pendingData)
 		if err == nil {
@@ -454,36 +465,28 @@ func (srt *streamRowsTracker) getNodeIdx(streamHash uint64) uint64 {
 	return uint64(fastrand.Uint32n(uint32(srt.nodesCount)))
 }
 
-// shuffleBuf holds a reusable index slice for sendInsertRequestToAnyNode.
-type shuffleBuf struct {
-	idx []uint64
+// availableBuffer holds a reusable slice for reachable storage indexes.
+type availableBuffer struct {
+	idx []int
 }
 
 // reset must be call before using it
-func (si *shuffleBuf) reset(n int) {
-	if cap(si.idx) < n {
-		si.idx = make([]uint64, n)
-	} else {
-		si.idx = si.idx[:n]
-	}
-
-	for i := range si.idx {
-		si.idx[i] = uint64(i)
-	}
+func (ab *availableBuffer) reset() {
+	ab.idx = ab.idx[:0]
 }
 
-var shuffleBufPool = sync.Pool{
+var availableBufPool = sync.Pool{
 	New: func() any {
-		return &shuffleBuf{}
+		return &availableBuffer{}
 	},
 }
 
-func getShuffleBuf(n int) *shuffleBuf {
-	buf := shuffleBufPool.Get().(*shuffleBuf)
-	buf.reset(n)
+func getAvailableBuf() *availableBuffer {
+	buf := availableBufPool.Get().(*availableBuffer)
+	buf.reset()
 	return buf
 }
 
-func putShuffleBuf(buf *shuffleBuf) {
-	shuffleBufPool.Put(buf)
+func putAvailableBuf(buf *availableBuffer) {
+	availableBufPool.Put(buf)
 }
