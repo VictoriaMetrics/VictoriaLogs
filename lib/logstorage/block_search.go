@@ -7,6 +7,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 // The number of blocks to search at once by a single worker
@@ -235,15 +237,27 @@ func (bs *blockSearch) partFormatVersion() uint {
 }
 
 func (bs *blockSearch) isHiddenField(name string) bool {
+	hff := bs.bsw.pso.hiddenFieldsFilter
+	if hff == nil {
+		// Fast path - there are no hidden fields.
+		return false
+	}
+
+	// Slow path - check for the hidden field.
+	return matchCanonicalColumnName(hff, name)
+}
+
+func matchCanonicalColumnName(f *prefixfilter.Filter, name string) bool {
 	name = getCanonicalColumnName(name)
-	return bs.bsw.pso.hiddenFieldsFilter.MatchString(name)
+	return f.MatchString(name)
 }
 
 func (bs *blockSearch) getConstColumnValue(name string) string {
-	name = getCanonicalFieldName(name)
 	if bs.isHiddenField(name) {
 		return ""
 	}
+
+	name = getCanonicalFieldName(name)
 
 	if bs.partFormatVersion() < 1 {
 		csh := bs.getColumnsHeader()
@@ -289,10 +303,11 @@ func (bs *blockSearch) getConstColumnValue(name string) string {
 }
 
 func (bs *blockSearch) getColumnHeader(name string) *columnHeader {
-	name = getCanonicalFieldName(name)
 	if bs.isHiddenField(name) {
 		return nil
 	}
+
+	name = getCanonicalFieldName(name)
 
 	if bs.partFormatVersion() < 1 {
 		csh := bs.getColumnsHeader()

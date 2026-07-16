@@ -617,7 +617,7 @@ func (s *Storage) DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTa
 	return tasks, nil
 }
 
-// GetTenantIDs returns sorted tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs on the [start..end] time range.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -653,20 +653,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]logstor
 		return nil, err
 	}
 
-	// Deduplicate tenantIDs
-	m := make(map[logstorage.TenantID]struct{})
-	for _, tenantIDs := range results {
-		for _, tenantID := range tenantIDs {
-			m[tenantID] = struct{}{}
-		}
-	}
+	tenantIDs := logstorage.MergeTenantIDs(results)
 
-	tenantIDs := make([]logstorage.TenantID, 0, len(m))
-	for tenantID := range m {
-		tenantIDs = append(tenantIDs, tenantID)
-	}
-
-	logstorage.SortTenantIDs(tenantIDs)
 	return tenantIDs, nil
 }
 

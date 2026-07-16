@@ -8,7 +8,6 @@ import DragResizeHandle from "../Main/DragResizeHandle/DragResizeHandle";
 import { useFilterSidebarWidth } from "./hooks/useFilterSidebarWidth";
 import { CSSProperties } from "preact";
 import FilterSidebarActions from "./FilterSidebarActions/FilterSidebarActions";
-import { useFilterSidebarVisible } from "./hooks/useFilterSidebarVisible";
 import classNames from "classnames";
 import useBoolean from "../../hooks/useBoolean";
 import { ExtraFilter } from "../ExtraFilters/types";
@@ -27,6 +26,7 @@ type Props = {
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
   onRemoveByField: (field: string) => void;
+  onClose: () => void;
 }
 
 const FilterSidebar: FC<Props> = ({
@@ -36,6 +36,7 @@ const FilterSidebar: FC<Props> = ({
   onAddFilter,
   onRemoveByValue,
   onRemoveByField,
+  onClose,
 }) => {
   const { isMobile } = useDeviceDetect();
   const { getCurrentPeriod } = useTimePeriod();
@@ -46,7 +47,6 @@ const FilterSidebar: FC<Props> = ({
   const sidebarRef = useRef<HTMLElement>(null);
   const { height, top } = useFilterSidebarSticky(sidebarRef);
   const { size: parentSize, width, setWidth, clearWidth } = useFilterSidebarWidth(sidebarRef);
-  const { isVisible, setHidden } = useFilterSidebarVisible();
 
   const { value: isDescOrder, toggle: toggleSortOrder } = useBoolean(true);
   const orderDir = isDescOrder ? "desc" : "asc";
@@ -99,7 +99,6 @@ const FilterSidebar: FC<Props> = ({
     <section
       className={classNames({
         "vm-filter-sidebar": true,
-        "vm-filter-sidebar_hidden": !isVisible,
         "vm-filter-sidebar_mobile": isMobile,
       })}
       style={sidebarStyles}
@@ -112,7 +111,7 @@ const FilterSidebar: FC<Props> = ({
         <FilterSidebarActions
           onToggleSort={toggleSortOrder}
           onResetWidth={clearWidth}
-          onClose={setHidden}
+          onClose={onClose}
         />
       </div>
 

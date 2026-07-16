@@ -14,7 +14,6 @@ tags:
 All the VictoriaLogs components must run inside a protected trusted network. Requests from the Internet
 must be properly authorized before being proxied to VictoriaLogs components. It is recommended using
 [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) for the request authorization and load balancing.
-See [routing and security in the VictoriaLogs architecture](https://victoriametrics.com/blog/victorialogs-architecture-basics/#routing--security) for the big picture.
 
 It is recommended accepting incoming requests at `vmauth` over https in order to guarantee that they cannot be
 read or modified by an attacker when they are transferred over untrusted networks such as Internet.

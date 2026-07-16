@@ -15,7 +15,7 @@ const AutocompleteDetailsPanel: FC<Props> = ({ option }) => {
 
   return (
     <div className="vm-autocomplete-details-panel">
-      <div className="vm-autocomplete-details-panel__type">{type}</div>
+      <div className="vm-autocomplete__title">{type}</div>
       <div
         className="vm-autocomplete-details-panel__description vm-markdown"
         dangerouslySetInnerHTML={{ __html: description || "" }}

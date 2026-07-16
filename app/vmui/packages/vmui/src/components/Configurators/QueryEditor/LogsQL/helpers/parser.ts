@@ -1,8 +1,8 @@
-import { ContextData, ContextType, LogicalPart, LogicalPartPosition, LogicalPartType } from "./types";
-import { pipeList } from "./pipes";
+import { ContextData, ContextType, LogicalPart, LogicalPartPosition, LogicalPartType } from "../types";
+import { pipeOptions } from "./pipes";
 
 const BUILDER_OPERATORS = ["AND", "OR", "NOT"];
-const PIPE_NAMES = pipeList.map(p => p.value);
+const PIPE_NAMES = pipeOptions.map(p => p.value);
 
 const QUOTE_CHARS = ["'", "\"", "`"];
 const OPENING_BRACKETS = ["(", "[", "{"];

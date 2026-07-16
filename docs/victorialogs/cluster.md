@@ -187,7 +187,7 @@ multiple levels of `vlinsert` and `vlselect` nodes.
 All the [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/#architecture) components must run in a protected internal network
 without direct access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
-See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details, and [routing & security](https://victoriametrics.com/blog/victorialogs-architecture-basics/#routing--security) for the big picture.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 It is possible to disallow access to `/internal/insert` endpoint and `/internal/select/*` endpoints by running VictoriaLogs with `-internalinsert.disable`
 and `-internalselect.disable` command-line flags.
