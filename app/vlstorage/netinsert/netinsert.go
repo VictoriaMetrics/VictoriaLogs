@@ -391,8 +391,9 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 	// availableIdx holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
 	availableIdx := make([]int, 0, len(s.sns))
 
+	currentTime := fasttime.UnixTimestamp()
 	for idx, sn := range s.sns {
-		if sn.isReachable.Load() {
+		if sn.disabledUntil.Load() < currentTime {
 			availableIdx = append(availableIdx, idx)
 		}
 	}
