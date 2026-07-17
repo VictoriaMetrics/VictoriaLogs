@@ -2,10 +2,11 @@ package netinsert
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash/v2"
 	"math"
 	"math/rand"
 	"testing"
+
+	"github.com/cespare/xxhash/v2"
 )
 
 func TestStreamRowsTracker(t *testing.T) {
