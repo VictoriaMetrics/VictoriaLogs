@@ -22,7 +22,7 @@ according to the following docs:
 
 ## tip
 
-* FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): skip unavailable storage nodes when rerouting occurs. Previously, data was rerouted across all nodes following the `-storageNode` order with a random starting offset. This caused uneven load distribution, as healthy nodes adjacent to offline nodes would consistently receive more data. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): evenly spread rerouted data across available `vlstorage` nodes. Previously, healthy nodes adjacent to unavailable nodes in the `-storageNode` list could receive much more data, resulting in uneven resource usage. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
