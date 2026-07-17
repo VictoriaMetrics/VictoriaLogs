@@ -384,11 +384,8 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 }
 
 // sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable.
-//
-// To simplify the test we have `mockSendInsertRequestToAnyNode` to mock the logic.
-// the logic here MUST sync to `mockSendInsertRequestToAnyNode` as well.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
-	// availableIdx holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
+	// collect available storage node indexes
 	availableIdx := make([]int, 0, len(s.sns))
 
 	currentTime := fasttime.UnixTimestamp()
@@ -397,14 +394,7 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 			availableIdx = append(availableIdx, idx)
 		}
 	}
-
-	// pick a starting point from the availableIdx randomly, and try to reroute to this node.
-	// if failed, reroute to the next node.
-	//
-	// e.g. [0, 1, 3, 4, 5]
-	// 1. picked `4` as starting point.
-	// 2. try to send to `4`.
-	// 3. if failed, try `5`, `0`, `1`, `3`.
+	// pick a random start position and reroute the data
 	startIdx := int(fastrand.Uint32n(uint32(len(availableIdx))))
 	for i := range availableIdx {
 		idx := availableIdx[(startIdx+i)%len(availableIdx)]
