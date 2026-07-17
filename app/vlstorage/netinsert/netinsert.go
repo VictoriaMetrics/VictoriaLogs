@@ -397,7 +397,7 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 		}
 	}
 
-	// pick a starting point from the availableBuf randomly, and try to reroute to this node.
+	// pick a starting point from the availableIdx randomly, and try to reroute to this node.
 	// if failed, reroute to the next node.
 	//
 	// e.g. [0, 1, 3, 4, 5]
