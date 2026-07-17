@@ -109,13 +109,12 @@ func (m *mockStorageNode) sendInsertRequest() error {
 
 // mockSendInsertRequestToAnyNode is to test sendInsertRequestToAnyNode and their logic must be in sync.
 func mockSendInsertRequestToAnyNode(sns []*mockStorageNode) bool {
-	// availableBuf holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
-	availableBuf := getAvailableBuf()
-	defer putAvailableBuf(availableBuf)
+	// availableIdx holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
+	availableIdx := make([]int, 0, len(sns))
 
 	for idx, sn := range sns {
 		if sn.isReachable {
-			availableBuf.idx = append(availableBuf.idx, idx)
+			availableIdx = append(availableIdx, idx)
 		}
 	}
 
@@ -126,9 +125,9 @@ func mockSendInsertRequestToAnyNode(sns []*mockStorageNode) bool {
 	// 1. picked `4` as starting point.
 	// 2. try to send to `4`.
 	// 3. if failed, try `5`, `0`, `1`, `3`.
-	start := int(fastrand.Uint32n(uint32(len(availableBuf.idx))))
-	for i := range availableBuf.idx {
-		idx := availableBuf.idx[(start+i)%len(availableBuf.idx)]
+	startIdx := int(fastrand.Uint32n(uint32(len(availableIdx))))
+	for i := range availableIdx {
+		idx := availableIdx[(startIdx+i)%len(availableIdx)]
 		sn := sns[idx]
 		err := sn.sendInsertRequest()
 		if err == nil {

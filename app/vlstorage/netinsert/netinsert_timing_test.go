@@ -23,13 +23,7 @@ func BenchmarkSendInsertRequestToAnyNode(b *testing.B) {
 			}
 		})
 
-		b.Run(fmt.Sprintf("available-without-pooling/nodeCount=%d", nodeCount), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				mockSendInsertRequestToAnyNodeWithoutPool(sns)
-			}
-		})
-
-		b.Run(fmt.Sprintf("shuffle-without-pooling/nodeCount=%d", nodeCount), func(b *testing.B) {
+		b.Run(fmt.Sprintf("shuffle/nodeCount=%d", nodeCount), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				mockSendInsertRequestToAnyNodeShuffle(sns)
 			}
@@ -50,30 +44,6 @@ func mockSendInsertRequestToAnyNodeRand(sns []*mockStorageNode) bool {
 		idx := (startIdx + i) % len(sns)
 
 		sn := sns[idx]
-		err := sn.sendInsertRequest()
-		if err == nil {
-			return true
-		}
-		if !errors.Is(err, errTemporarilyDisabled) {
-			logger.Warnf("cannot send pending data to the storage node %q: %s; trying to send it to another storage node", sn.addr, err)
-		}
-	}
-	return false
-}
-
-// mockSendInsertRequestToAnyNodeWithoutPool is for comparison with pooling implementation.
-func mockSendInsertRequestToAnyNodeWithoutPool(sns []*mockStorageNode) bool {
-	availableIdx := make([]int, 0, len(sns))
-
-	for idx, sn := range sns {
-		if sn.isReachable {
-			availableIdx = append(availableIdx, idx)
-		}
-	}
-	startIdx := int(fastrand.Uint32n(uint32(len(availableIdx))))
-	for i := range availableIdx {
-		idxOfIdx := (startIdx + i) % len(availableIdx)
-		sn := sns[availableIdx[idxOfIdx]]
 		err := sn.sendInsertRequest()
 		if err == nil {
 			return true

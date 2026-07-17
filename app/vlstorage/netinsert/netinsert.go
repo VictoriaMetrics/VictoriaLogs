@@ -388,13 +388,12 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 // To simplify the test we have `mockSendInsertRequestToAnyNode` to mock the logic.
 // the logic here MUST sync to `mockSendInsertRequestToAnyNode` as well.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
-	// availableBuf holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
-	availableBuf := getAvailableBuf()
-	defer putAvailableBuf(availableBuf)
+	// availableIdx holds the index of reachable storage nodes. e.g. [0,1,3,4,5]
+	availableIdx := make([]int, 0, len(s.sns))
 
 	for idx, sn := range s.sns {
 		if sn.isReachable.Load() {
-			availableBuf.idx = append(availableBuf.idx, idx)
+			availableIdx = append(availableIdx, idx)
 		}
 	}
 
@@ -405,9 +404,9 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 	// 1. picked `4` as starting point.
 	// 2. try to send to `4`.
 	// 3. if failed, try `5`, `0`, `1`, `3`.
-	start := int(fastrand.Uint32n(uint32(len(availableBuf.idx))))
-	for i := range availableBuf.idx {
-		idx := availableBuf.idx[(start+i)%len(availableBuf.idx)]
+	startIdx := int(fastrand.Uint32n(uint32(len(availableIdx))))
+	for i := range availableIdx {
+		idx := availableIdx[(startIdx+i)%len(availableIdx)]
 		sn := s.sns[idx]
 		err := sn.sendInsertRequest(pendingData)
 		if err == nil {
@@ -463,30 +462,4 @@ func (srt *streamRowsTracker) getNodeIdx(streamHash uint64) uint64 {
 	// dependency between the order of the ingested logs and the number of storage nodes,
 	// which may lead to non-uniform distribution of logs among storage nodes.
 	return uint64(fastrand.Uint32n(uint32(srt.nodesCount)))
-}
-
-// availableBuffer holds a reusable slice for reachable storage indexes.
-type availableBuffer struct {
-	idx []int
-}
-
-// reset must be called before using it.
-func (ab *availableBuffer) reset() {
-	ab.idx = ab.idx[:0]
-}
-
-var availableBufPool = sync.Pool{
-	New: func() any {
-		return &availableBuffer{}
-	},
-}
-
-func getAvailableBuf() *availableBuffer {
-	buf := availableBufPool.Get().(*availableBuffer)
-	buf.reset()
-	return buf
-}
-
-func putAvailableBuf(buf *availableBuffer) {
-	availableBufPool.Put(buf)
 }
