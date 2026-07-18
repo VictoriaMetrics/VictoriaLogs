@@ -25,8 +25,6 @@ import (
 )
 
 // the maximum duration for sending a single data block to a storage node.
-//
-// This is consistent with -remoteWrite.sendTimeout in vlagent.
 const sendTimeout = time.Minute
 
 // the maximum size of a single data block sent to storage node.
@@ -43,12 +41,18 @@ type Storage struct {
 
 	disableCompression bool
 
+	drainTimeout time.Duration
+
 	srt *streamRowsTracker
 
 	pendingDataBuffers chan *bytesutil.ByteBuffer
 
 	stopCh chan struct{}
-	wg     sync.WaitGroup
+
+	sendCtx    context.Context
+	sendCancel context.CancelFunc
+
+	wg sync.WaitGroup
 }
 
 type storageNode struct {
@@ -262,7 +266,7 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 }
 
 func (sn *storageNode) doRequest(path string, body io.Reader) error {
-	ctx, cancel := context.WithTimeout(context.Background(), sendTimeout)
+	ctx, cancel := context.WithTimeout(sn.s.sendCtx, sendTimeout)
 	defer cancel()
 
 	method := "GET"
@@ -329,7 +333,7 @@ var zstdBufPool bytesutil.ByteBufferPool
 // If disableCompression is set, then the data is sent uncompressed to the remote storage.
 //
 // Call MustStop on the returned storage when it is no longer needed.
-func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool) *Storage {
+func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool, drainTimeout time.Duration) *Storage {
 	pendingDataBuffers := make(chan *bytesutil.ByteBuffer, concurrency*len(addrs))
 	for range cap(pendingDataBuffers) {
 		pendingDataBuffers <- &bytesutil.ByteBuffer{}
@@ -337,9 +341,11 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 
 	s := &Storage{
 		disableCompression: disableCompression,
+		drainTimeout:       drainTimeout,
 		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
 	}
+	s.sendCtx, s.sendCancel = context.WithCancel(context.Background())
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
@@ -367,8 +373,17 @@ func (s *Storage) getActiveStreams() int {
 
 // MustStop stops the s.
 func (s *Storage) MustStop() {
+	// Drain the buffered data to storage nodes on shutdown, bounded by drainTimeout so an
+	// unresponsive storage node cannot block MustStop.
+	t := time.AfterFunc(s.drainTimeout, func() {
+		logger.Warnf("cannot drain the buffered data to -storageNode nodes within -insert.drainTimeout=%s on graceful shutdown; "+
+			"the remaining buffered data is dropped; consider increasing -insert.drainTimeout", s.drainTimeout)
+		s.sendCancel()
+	})
 	close(s.stopCh)
 	s.wg.Wait()
+	t.Stop()
+	s.sendCancel()
 	s.sns = nil
 }
 

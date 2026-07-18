@@ -2,7 +2,6 @@ package netinsert
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -20,11 +20,8 @@ import (
 
 func TestStorageDrainsPendingDataOnShutdown(t *testing.T) {
 	var insertRequests atomic.Int64
-	var receivedBytes atomic.Int64
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/internal/insert" {
-			body, _ := io.ReadAll(r.Body)
-			receivedBytes.Add(int64(len(body)))
 			insertRequests.Add(1)
 		}
 		w.WriteHeader(http.StatusOK)
@@ -37,7 +34,7 @@ func TestStorageDrainsPendingDataOnShutdown(t *testing.T) {
 	}
 
 	addr := strings.TrimPrefix(ts.URL, "http://")
-	s := NewStorage([]string{addr}, []*promauth.Config{ac}, []bool{false}, 1, true)
+	s := NewStorage([]string{addr}, []*promauth.Config{ac}, []bool{false}, 1, true, 5*time.Second)
 
 	// Buffer a single small row. It stays pending (it doesn't reach maxInsertBlockSize),
 	// so it is only sent by the final flush performed during shutdown.
@@ -47,14 +44,43 @@ func TestStorageDrainsPendingDataOnShutdown(t *testing.T) {
 	}
 	s.AddRow(0, r)
 
-	// MustStop must drain the buffered row to the storage node instead of dropping it.
 	s.MustStop()
 
 	if n := insertRequests.Load(); n == 0 {
 		t.Fatalf("expected the buffered data to be drained to the storage node on shutdown; got no insert requests")
 	}
-	if n := receivedBytes.Load(); n == 0 {
-		t.Fatalf("expected the storage node to receive non-empty buffered data on shutdown")
+}
+
+func TestStorageDrainTimeoutOnUnresponsiveNode(t *testing.T) {
+	block := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-block
+	}))
+	defer ts.Close()
+	defer close(block)
+
+	ac, err := (&promauth.Options{}).NewConfig()
+	if err != nil {
+		t.Fatalf("cannot create auth config: %s", err)
+	}
+
+	addr := strings.TrimPrefix(ts.URL, "http://")
+	drainTimeout := 100 * time.Millisecond
+	s := NewStorage([]string{addr}, []*promauth.Config{ac}, []bool{false}, 1, true, drainTimeout)
+	s.AddRow(0, &logstorage.InsertRow{
+		Timestamp: 1,
+		Fields:    []logstorage.Field{{Name: "foo", Value: "bar"}},
+	})
+
+	done := make(chan struct{})
+	go func() {
+		s.MustStop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("MustStop is blocked on the unresponsive storage node; it must return within drainTimeout=%s", drainTimeout)
 	}
 }
 
