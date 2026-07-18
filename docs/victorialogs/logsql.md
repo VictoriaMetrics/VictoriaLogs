@@ -390,6 +390,7 @@ VictoriaLogs scans all the logs for a query if it doesn't contain a filter on th
 It uses various optimizations in order to accelerate queries without the `_time` filter,
 but such queries can be slow if the storage contains large number of logs over long time range. The easiest way to optimize queries
 is to narrow down the search with a filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+See [how VictoriaLogs splits data into daily partitions](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#2-daily-partitions) for why a time filter lets queries skip whole days of data.
 
 For example, the following query returns logs with [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last hour,
 which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
@@ -619,6 +620,7 @@ Performance tips:
 
 - It is recommended to use the most specific `{...}` filter matching the smallest number of log streams,
   which needs to be scanned by the rest of filters in the query.
+  See [how logs are grouped into blocks by stream and by time](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#41-logs-are-grouped-into-blocks-by-stream-and-by-time) for why a tighter stream filter scans fewer blocks.
 
 - While LogsQL supports arbitrary number of `{...}` filters at any level of [logical filters](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter),
   it is recommended specifying a single `{...}` filter at the top level of the query.
@@ -5574,6 +5576,7 @@ Internally duration values are converted into nanoseconds.
 - It is recommended to specify the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) you need in query results
   with the [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe), if the selected log entries contain a large number of fields that aren't interesting to you.
   This saves disk read IO and CPU time needed for reading and unpacking all the log fields from disk.
+  See [how VictoriaLogs stores each field as a separate column](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for why selecting fewer fields reads less data.
 - Move faster filters such as [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) and [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
   to the beginning of the query.
   This rule doesn't apply to [time filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) and [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter),

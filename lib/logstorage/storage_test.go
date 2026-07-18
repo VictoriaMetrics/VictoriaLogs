@@ -459,6 +459,52 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	fs.MustRemoveDir(path)
 }
 
+func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
+	t.Parallel()
+
+	path := t.Name()
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+
+	lr := GetLogRows([]string{"job"}, nil, nil, nil, "")
+	lr.mustAdd(TenantID{}, ts, []Field{
+		{Name: "job", Value: "test"},
+		{Name: "secret_field", Value: "sensitive"},
+		{Name: "_msg", Value: "hello"},
+	})
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	check := func(qStr string, hidden, resultsExpected []string) {
+		t.Helper()
+		checkQueryResults(t, s, ts, tenantIDs, qStr, hidden, resultsExpected)
+	}
+
+	// Fast path: field_names is the first pipe.
+	// A field is exposed only when it isn't listed in hidden_fields_filters.
+	check(`* | field_names | filter name:="secret_field" | stats count(*) as c`, nil, []string{`{"c":"1"}`})
+	check(`* | field_names | filter name:="secret_field" | stats count(*) as c`, []string{"secret_field"}, []string{`{"c":"0"}`})
+	// _msg is stored with an empty column name, so it must be hidden as well.
+	check(`* | field_names | filter name:="_msg" | stats count(*) as c`, nil, []string{`{"c":"1"}`})
+	check(`* | field_names | filter name:="_msg" | stats count(*) as c`, []string{"_msg"}, []string{`{"c":"0"}`})
+
+	// Slow path: field_names is not the first pipe.
+	check(`* | head 1000 | field_names | filter name:="secret_field" | stats count(*) as c`, nil, []string{`{"c":"1"}`})
+	check(`* | head 1000 | field_names | filter name:="secret_field" | stats count(*) as c`, []string{"secret_field"}, []string{`{"c":"0"}`})
+	// _msg is stored with an empty column name, so it must be hidden as well.
+	check(`* | head 1000 | field_names | filter name:="_msg" | stats count(*) as c`, nil, []string{`{"c":"1"}`})
+	check(`* | head 1000 | field_names | filter name:="_msg" | stats count(*) as c`, []string{"_msg"}, []string{`{"c":"0"}`})
+
+	s.MustClose()
+	fs.MustRemoveDir(path)
+}
+
 func checkQueryResults(t *testing.T, s *Storage, now int64, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
 	t.Helper()
 

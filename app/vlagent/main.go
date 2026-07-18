@@ -40,7 +40,7 @@ func main() {
 	flag.Usage = usage
 	envflag.Parse()
 	buildinfo.Init()
-	remotewrite.InitSecretFlags()
+	initSecretFlags()
 	logger.Init()
 
 	listenAddrs := *httpListenAddrs
@@ -106,4 +106,9 @@ vlagent collects logs via popular data ingestion protocols and routes it to Vict
 See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 `
 	flagutil.Usage(s)
+}
+
+// initSecretFlags manage the default secret flags for vlagent application.
+func initSecretFlags() {
+	remotewrite.InitSecretFlags()
 }

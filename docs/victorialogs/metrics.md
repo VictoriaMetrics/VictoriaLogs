@@ -93,7 +93,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Labels:**
 - `type`: ingestion protocol
 
-**Description:** Time taken to turn a batch of buffered logs into an in-memory part that becomes searchable. Triggered when the buffer fills up or during periodic flushes (every ~1 second). High values suggest CPU pressure or heavy ingestion load.
+**Description:** Time taken to flush accumulated logs from memory buffers to storage. Triggered when buffers fill up or during periodic flushes (every ~1 second with jitter). High values suggest storage bottlenecks or slow disk performance.
 
 ### vl_too_long_lines_skipped_total
 **Type:** Counter

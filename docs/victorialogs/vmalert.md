@@ -84,10 +84,10 @@ The following are key flags related to integration with VictoriaLogs:
    all files with prefix rule_ in folder dir.
    Supports an array of values separated by commas or specified via multiple flags.
    Values can contain commas inside a single-quoted or double-quoted string, and inside {}, [] and () braces.
--rule.defaultRuleType
+-rule.defaultRuleType string
    The default type for rule expressions; can be overridden by the 'type' parameter inside the rule group. Supported values: "graphite", "prometheus" and "vlogs".
    The default is "prometheus"; change it to "vlogs" if all rules are written with LogsQL.
--rule.evalDelay time
+-rule.evalDelay duration
    Adjustment of the time parameter for rule evaluation requests to compensate for intentional data delay from the datasource. Normally, it should be equal to `-search.latencyOffset` (command-line flag configured for VictoriaMetrics single-node or vmselect).
    Since there is no intentional search delay in VictoriaLogs, `-rule.evalDelay` can be reduced to a few seconds to accommodate network and ingestion time.
 ```
@@ -132,6 +132,7 @@ for triggering an alert if the number of failed requests exceeds 10% for the giv
 
 
 ```yaml
+groups:
 - name: ServiceRequest
   type: vlogs
   interval: 5m
@@ -180,7 +181,7 @@ groups:
   interval: 5m
   rules:
   - record: prodErrorsShareByService
-    expr: '{env=prod} | stats by (service) count() as logs_total, count() if (error) errors | math (errors / total) as errors_share | fields service, errors_share'
+    expr: '{env=prod} | stats by (service) count() as logs_total, count() if (error) errors | math (errors / logs_total) as errors_share | fields service, errors_share'
 ```
 
 ## Time filter
@@ -213,7 +214,7 @@ groups:
   - alert: TooManyFailedRequestByIP
     expr: '_time:10m | extract "ip=<ip> " | extract "status_code=<code>;" | stats by (ip) count() if (code:~"4.*") as failed, count() as total | math (failed / total) * 100 as failed_percentage | filter failed_percentage:>10 | fields ip, failed_percentage'
     annotations:
-    description: "Connection from address {{$labels.ip}} has {{$value}}% failed requests in the last 10 minutes"
+      description: "Connection from address {{$labels.ip}} has {{$value}}% failed requests in the last 10 minutes"
 ```
 
 _Please note, vmalert doesn't support [backfilling](https://docs.victoriametrics.com/victorialogs/vmalert/#rules-backfilling) for rules with a customized time filter yet (might be added in the future)._
@@ -279,7 +280,7 @@ For additional tips on writing LogsQL, refer to this [doc](https://docs.victoria
 Sometimes it may be useful to attach a representative log line to the alert message (e.g. for Slack notifications without opening UI).
 Use [`row_any()`](https://docs.victoriametrics.com/victorialogs/logsql/#row_any-stats) only inside `annotations` via the `query` template function.
 
-> Note: do not use these functions in `expr`, since the returned row can change between evaluations. vmalert identifies each alert instance by the full label set (excluding `__name__`), changing labels leads to alert flapping and resets the `for:` timer.
+> Note: do not use `row_any()`, `row_max()`, or `row_min()` in `expr`, since the returned row can change between evaluations. vmalert identifies each alert instance by the full label set (excluding `__name__`), changing labels leads to alert flapping and resets the `for:` timer.
 
 Example with a stable `expr` and a sampled log message in `annotations`:
 
@@ -328,7 +329,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
     ./bin/vmalert -datasource.url=http://localhost:9428 -remoteWrite.url=http://vminsert:8480/insert/multitenant/prometheus ...
     ```
 
-    With the rules below, `recordingTenant123` will be queried from VictoriaLogs tenant `123` and persisted to tenant `123` in VictoriaMetrics, while `recordingTenant123-456:789` will be queried from VictoriaLogs tenant `124` and persisted to tenant `456:789` in VictoriaMetrics.
+    With the rules below, `recordingTenant123` will be queried from VictoriaLogs tenant `123` and persisted to tenant `123` in VictoriaMetrics, while `recordingTenant124-456:789` will be queried from VictoriaLogs tenant `124` and persisted to tenant `456:789` in VictoriaMetrics.
 
     ```
     groups:
@@ -349,7 +350,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
           vm_account_id: 456
           vm_project_id: 789
         rules:
-        - record: recordingTenant124-456:789
+          - record: recordingTenant124-456:789
             expr: 'tags.path:/var/log/httpd OR tags.path:/var/log/nginx | stats by (tags.host) count() requests'
     ```
 
@@ -361,7 +362,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
     ./bin/vmalert -datasource.url=http://localhost:9428 -clusterMode=true -remoteWrite.url=http://vminsert:8480/ ...
     ```
 
-    With the rules below, `recordingTenant123` will be queried from VictoriaLogs tenant `123` and persisted to tenant `123` in VictoriaMetrics, while `recordingTenant123-456:789` will be queried from VictoriaLogs tenant `124` and persisted to tenant `456:789` in VictoriaMetrics.
+    With the rules below, `recordingTenant123` will be queried from VictoriaLogs tenant `123` and persisted to tenant `123` in VictoriaMetrics, while `recordingTenant124-456:789` will be queried from VictoriaLogs tenant `124` and persisted to tenant `456:789` in VictoriaMetrics.
 
     ```
     groups:
@@ -379,7 +380,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
           - "AccountID: 124"
         tenant: "456:789"
         rules:
-        - record: recordingTenant124-456:789
+          - record: recordingTenant124-456:789
             expr: 'tags.path:/var/log/httpd OR tags.path:/var/log/nginx | stats by (tags.host) count() requests'
     ```
 

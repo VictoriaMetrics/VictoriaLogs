@@ -1,5 +1,4 @@
 import { getFromStorage, saveToStorage } from "../../utils/storage";
-import { HistoryKey, setQueriesToStorage } from "../../components/QueryHistory/utils";
 import {
   QueryAutocompleteCache,
   QueryAutocompleteCacheItem
@@ -7,13 +6,7 @@ import {
 import { AutocompleteOptions } from "../../components/Main/Autocomplete/Autocomplete";
 import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
 
-export interface QueryHistoryType {
-  index: number;
-  values: string[];
-}
-
 export interface QueryState {
-  queryHistory: QueryHistoryType[];
   autocomplete: boolean;
   autocompleteQuick: boolean;
   autocompleteCache: QueryAutocompleteCache;
@@ -23,8 +16,6 @@ export interface QueryState {
 }
 
 export type QueryAction =
-  | { type: "SET_QUERY_HISTORY_BY_INDEX", payload: { value: QueryHistoryType, queryNumber: number } }
-  | { type: "SET_QUERY_HISTORY", payload: { key: HistoryKey, history: QueryHistoryType[] } }
   | { type: "TOGGLE_AUTOCOMPLETE" }
   | { type: "SET_AUTOCOMPLETE_QUICK", payload: boolean }
   | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: QueryAutocompleteCacheItem, value: string[] } }
@@ -32,7 +23,6 @@ export type QueryAction =
   | { type: "RUN_QUERY"}
 
 export const initialQueryState: QueryState = {
-  queryHistory: [],
   autocomplete: getFromStorage("AUTOCOMPLETE") as boolean || false,
   autocompleteQuick: false,
   autocompleteCache: new QueryAutocompleteCache(),
@@ -43,18 +33,6 @@ export const initialQueryState: QueryState = {
 
 export function reducer(state: QueryState, action: QueryAction): QueryState {
   switch (action.type) {
-    case "SET_QUERY_HISTORY":
-      setQueriesToStorage(action.payload.key, action.payload.history);
-      return {
-        ...state,
-        queryHistory: action.payload.history
-      };
-    case "SET_QUERY_HISTORY_BY_INDEX":
-      state.queryHistory.splice(action.payload.queryNumber, 1, action.payload.value);
-      return {
-        ...state,
-        queryHistory: state.queryHistory
-      };
     case "TOGGLE_AUTOCOMPLETE":
       saveToStorage("AUTOCOMPLETE", !state.autocomplete);
       return {

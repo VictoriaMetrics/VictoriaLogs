@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
 import { LOGS_URL_PARAMS } from "../../../constants/logs";
 
-const DEFAULT_QUERY = "*";
+export const DEFAULT_QUERY = "*";
 const PARAM_KEY = LOGS_URL_PARAMS.QUERY;
 
 export const useQueryController = () => {
@@ -13,9 +13,11 @@ export const useQueryController = () => {
 
   const inputQueryRef = useRef(inputQuery);
 
-  const applyQuery = useCallback(() => {
-    const nextQuery = inputQueryRef.current.trim() || DEFAULT_QUERY;
+  const applyQuery = useCallback((query?: string) => {
+    const nextQuery = (query ?? inputQueryRef.current).trim() || DEFAULT_QUERY;
     const prevQuery = appliedQuery;
+
+    setInputQuery(nextQuery);
 
     setSearchParams(prev => {
       const nextParams = new URLSearchParams(prev);
@@ -24,7 +26,7 @@ export const useQueryController = () => {
     });
 
     return { prevQuery, nextQuery };
-  }, [setSearchParams]);
+  }, [appliedQuery, setSearchParams]);
 
   useEffect(() => {
     inputQueryRef.current = inputQuery;

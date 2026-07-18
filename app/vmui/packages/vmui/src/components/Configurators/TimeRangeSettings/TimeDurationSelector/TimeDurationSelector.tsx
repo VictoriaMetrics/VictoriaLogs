@@ -20,6 +20,7 @@ const TimeDurationSelector: FC<TimeDurationSelector> = ({ relativeTime, setDurat
   return (
     <div
       className={classNames({
+        "vm-list": true,
         "vm-time-duration": true,
         "vm-time-duration_mobile": isMobile,
       })}

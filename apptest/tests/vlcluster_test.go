@@ -8,6 +8,34 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
+// TestVlclusterUniqValuesMerge verifies that uniq_values correctly merges results when some storage nodes have no matching values.
+func TestVlclusterUniqValuesMerge(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+	sut := tc.MustStartDefaultVlcluster()
+
+	// Write the same group to two storage nodes. The first node has no x values,
+	// while the second node has x values. This exercises merging a non-empty
+	// uniq_values state into an empty destination state at vlselect.
+	storage0 := sut.StorageNode(0)
+	storage0.JSONLineWrite(t, []string{
+		`{"_msg":"no x","host":"h1","_time":"2025-01-01T01:00:00Z"}`,
+	}, apptest.IngestOpts{})
+	storage0.ForceFlush(t)
+
+	storage1 := sut.StorageNode(1)
+	storage1.JSONLineWrite(t, []string{
+		`{"_msg":"has x","host":"h1","x":"a","_time":"2025-01-01T01:00:00Z"}`,
+	}, apptest.IngestOpts{})
+	storage1.ForceFlush(t)
+
+	got := sut.LogsQLQuery(t, `* | stats by (host) uniq_values(x) as values`, apptest.QueryOpts{})
+	assertLogsQLResponseEqual(t, got, &apptest.LogsQLQueryResponse{
+		LogLines: []string{`{"host":"h1","values":"[\"a\"]"}`},
+	})
+}
+
 // TestVlclusterIngestAndQuery verifies that logs are correctly ingested and queried from cluster.
 func TestVlclusterIngestAndQuery(t *testing.T) {
 	fs.MustRemoveDir(t.Name())
