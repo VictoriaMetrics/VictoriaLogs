@@ -68,7 +68,7 @@ var (
 
 	storageNodeAddrs = flagutil.NewArrayString("storageNode", "Comma-separated list of TCP addresses for storage nodes to route the ingested logs to and to send select queries to. "+
 		"If the list is empty, then the ingested logs are stored and queried locally from -storageDataPath")
-	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
+	insertConcurrency        = flag.Int("insert.concurrency", 2, "The maximum number of concurrent data ingestion requests, which can be sent to every -storageNode; requests above this limit are re-routed to other -storageNode nodes")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
