@@ -22,6 +22,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): evenly spread rerouted data across available `vlstorage` nodes. Previously, healthy nodes adjacent to unavailable nodes in the `-storageNode` list could receive much more data, resulting in uneven resource usage. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
+
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
 Released at 2026-07-16
