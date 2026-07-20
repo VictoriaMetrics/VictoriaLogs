@@ -19,7 +19,7 @@ type Vlcluster struct {
 // values extracted from the application log (such as httpListenAddr).
 //
 // Stop must be called on the returned Vlcluster when it is no longer needed.
-func MustStartVlcluster(t *testing.T, instance string, insertFlags, selectFlags, storageFlags []string, cli *Client) *Vlcluster {
+func MustStartVlcluster(t *testing.T, instance string, storageFlags []string, cli *Client) *Vlcluster {
 	t.Helper()
 
 	// Start storage nodes
@@ -34,12 +34,18 @@ func MustStartVlcluster(t *testing.T, instance string, insertFlags, selectFlags,
 
 	// Start insert node
 	insertName := instance + "-insert"
-	insertFlags = append(insertFlags, "-select.disable=true", storageNodeFlag)
+	insertFlags := []string{
+		storageNodeFlag,
+		"-select.disable=true",
+	}
 	insertNode, _ := mustStartVlnode(t, insertName, insertFlags, cli, nil)
 
 	// Start select node
 	selectName := instance + "-select"
-	selectFlags = append(selectFlags, "-insert.disable=true", storageNodeFlag)
+	selectFlags := []string{
+		storageNodeFlag,
+		"-insert.disable=true",
+	}
 	selectNode, _ := mustStartVlnode(t, selectName, selectFlags, cli, nil)
 
 	return &Vlcluster{
