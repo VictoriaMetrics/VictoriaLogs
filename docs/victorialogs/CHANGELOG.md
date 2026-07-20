@@ -23,6 +23,7 @@ according to the following docs:
 ## tip
 
 * BUGFIX: [vlinsert](https://docs.victoriametrics.com/victorialogs/cluster/): now drains buffered logs to `vlstorage` nodes on graceful shutdown instead of dropping them, bounded by the new `-insert.drainTimeout` command-line flag (default `5s`). See [#1572](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1572).
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): evenly spread rerouted data across available `vlstorage` nodes. Previously, healthy nodes adjacent to unavailable nodes in the `-storageNode` list could receive much more data, resulting in uneven resource usage. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
