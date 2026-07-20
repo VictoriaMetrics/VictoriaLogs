@@ -178,13 +178,13 @@ The following options are available:
 For example, on Linux with `amd64` architecture:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
 ```
 
 2. Extract the archive to /usr/local/bin by running:
 
 ```sh
-sudo tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz -C /usr/local/bin
+sudo tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz -C /usr/local/bin
 ```
 
 3. Create a VictoriaLogs user on the system:
@@ -259,13 +259,13 @@ On all nodes, you will need to do the following:
 For example, on Linux with `amd64` architecture:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
 ```
 
 2. Extract the archive to /usr/local/bin by running:
 
 ```sh
-sudo tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz -C /usr/local/bin
+sudo tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz -C /usr/local/bin
 ```
 
 3. Create a user account for VictoriaLogs:
