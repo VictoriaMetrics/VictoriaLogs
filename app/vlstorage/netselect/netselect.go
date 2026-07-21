@@ -31,37 +31,37 @@ const (
 	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldNamesProtocolVersion = "v5"
+	FieldNamesProtocolVersion = "v6"
 
 	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	FieldValuesProtocolVersion = "v5"
+	FieldValuesProtocolVersion = "v6"
 
 	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldNamesProtocolVersion = "v5"
+	StreamFieldNamesProtocolVersion = "v6"
 
 	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamFieldValuesProtocolVersion = "v5"
+	StreamFieldValuesProtocolVersion = "v6"
 
 	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamsProtocolVersion = "v5"
+	StreamsProtocolVersion = "v6"
 
 	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	StreamIDsProtocolVersion = "v5"
+	StreamIDsProtocolVersion = "v6"
 
 	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
-	QueryProtocolVersion = "v5"
+	QueryProtocolVersion = "v6"
 
 	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
 	//
@@ -278,6 +278,7 @@ func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryConte
 	args := url.Values{}
 	args.Set("version", version)
 	args.Set("tenant_ids", string(logstorage.MarshalTenantIDsToJSON(qctx.TenantIDs)))
+	args.Set("multitenant", fmt.Sprintf("%v", qctx.IsMultiTenant))
 	args.Set("query", qctx.Query.String())
 	args.Set("timestamp", fmt.Sprintf("%d", qctx.Query.GetTimestamp()))
 	args.Set("disable_compression", fmt.Sprintf("%v", sn.s.disableCompression))

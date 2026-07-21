@@ -162,6 +162,8 @@ See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-archi
   This endpoint can be disabled via `-internalinsert.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
 - It accepts queries from `vlselect` via `/internal/select/*` HTTP endpoints at the TCP port specified via `-httpListenAddr` command-line flag.
   These endpoints can be disabled via `-internalselect.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
+  The `/internal/select/*` endpoints can receive both single-tenant and multitenant queries from `vlselect`;
+  they are internal cluster APIs and must not be exposed to untrusted clients.
 
 Every `vlstorage` node can be used as a single-node VictoriaLogs instance:
 
@@ -178,6 +180,7 @@ Every `vlstorage` node can be used as a single-node VictoriaLogs instance:
 - `vlselect` can send queries to other `vlselect` nodes if they are specified via `-storageNode` command-line flag.
   This allows building multi-level cluster schemes when top-level `vlselect` queries multiple lower-level clusters of VictoriaLogs.
   If you don't want accepting queries from other `vlselect` nodes, then the `vlselect` node with `-internalselect.disable` command-line flag.
+  These `/internal/select/*` requests can be single-tenant or multitenant, depending on the original query.
 
 See [these docs](https://docs.victoriametrics.com/victorialogs/cluster/#tls) on how to protect communications between
 multiple levels of `vlinsert` and `vlselect` nodes.
@@ -188,6 +191,10 @@ All the [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/clu
 without direct access from the Internet. HTTP authorization proxies such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/)
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
 See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
+
+`vlselect` can serve `/select/multitenant/logsql/*` endpoints when `-multitenantselect.enable` command-line flag is set.
+These endpoints can query multiple tenants in a single request, so they must be exposed only to trusted users.
+See [multitenancy docs](https://docs.victoriametrics.com/victorialogs/#multitenant-querying) for details.
 
 It is possible to disallow access to `/internal/insert` endpoint and `/internal/select/*` endpoints by running VictoriaLogs with `-internalinsert.disable`
 and `-internalselect.disable` command-line flags.
