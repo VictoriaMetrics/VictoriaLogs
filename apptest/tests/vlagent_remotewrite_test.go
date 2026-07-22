@@ -32,6 +32,7 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, "1:"+remoteWriteURL, 1)
 
 	sut.ForceFlush(t)
 	got := sut.LogsQLQuery(t, "ingest jsonline", apptest.QueryOpts{})
