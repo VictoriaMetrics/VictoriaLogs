@@ -230,7 +230,7 @@ func processFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
-	filter := args.pop("filter")
+	filter := args.get("filter")
 	if err := args.validate(); err != nil {
 		return err
 	}
@@ -253,8 +253,8 @@ func processFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 		return err
 	}
 
-	fieldName := args.pop("field")
-	filter := args.pop("filter")
+	fieldName := args.get("field")
+	filter := args.get("filter")
 
 	limit, err := args.getInt64("limit")
 	if err != nil {
@@ -282,7 +282,7 @@ func processStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
-	filter := args.pop("filter")
+	filter := args.get("filter")
 	if err := args.validate(); err != nil {
 		return err
 	}
@@ -305,8 +305,8 @@ func processStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 		return err
 	}
 
-	fieldName := args.pop("field")
-	filter := args.pop("filter")
+	fieldName := args.get("field")
+	filter := args.get("filter")
 
 	limit, err := args.getInt64("limit")
 	if err != nil {
@@ -386,7 +386,7 @@ func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	// Parse query args
-	taskID := args.pop("task_id")
+	taskID := args.get("task_id")
 	if taskID == "" {
 		return fmt.Errorf("missing task_id arg")
 	}
@@ -396,13 +396,13 @@ func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	tenantIDsStr := args.pop("tenant_ids")
+	tenantIDsStr := args.get("tenant_ids")
 	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
 	}
 
-	fStr := args.pop("filter")
+	fStr := args.get("filter")
 	f, err := logstorage.ParseFilter(fStr)
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal filter=%q: %w", fStr, err)
@@ -421,7 +421,7 @@ func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	taskID := args.pop("task_id")
+	taskID := args.get("task_id")
 	if taskID == "" {
 		return fmt.Errorf("missing task_id arg")
 	}
@@ -520,7 +520,7 @@ func getCommonParams(args requestArgs, expectedProtocolVersion string) (*commonP
 		return nil, err
 	}
 
-	tenantIDsStr := args.pop("tenant_ids")
+	tenantIDsStr := args.get("tenant_ids")
 	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
@@ -531,7 +531,7 @@ func getCommonParams(args requestArgs, expectedProtocolVersion string) (*commonP
 		return nil, err
 	}
 
-	qStr := args.pop("query")
+	qStr := args.get("query")
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal query=%q: %w", qStr, err)
@@ -565,7 +565,7 @@ func getCommonParams(args requestArgs, expectedProtocolVersion string) (*commonP
 }
 
 func checkProtocolVersion(args requestArgs, expectedProtocolVersion string) error {
-	version := args.pop("version")
+	version := args.get("version")
 	if version != expectedProtocolVersion {
 		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
 			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
@@ -611,7 +611,7 @@ func newRequestArgs(r *http.Request) requestArgs {
 	return requestArgs(maps.Clone(r.Form))
 }
 
-func (args requestArgs) pop(name string) string {
+func (args requestArgs) get(name string) string {
 	values := args[name]
 	delete(args, name)
 	if len(values) == 0 {
@@ -630,7 +630,7 @@ func (args requestArgs) validate() error {
 }
 
 func (args requestArgs) getInt64(argName string) (int64, error) {
-	s := args.pop(argName)
+	s := args.get(argName)
 	if s == "" {
 		return 0, fmt.Errorf("missing the required arg %s", argName)
 	}
@@ -642,7 +642,7 @@ func (args requestArgs) getInt64(argName string) (int64, error) {
 }
 
 func (args requestArgs) getBool(argName string) (bool, error) {
-	s := args.pop(argName)
+	s := args.get(argName)
 	if s == "" {
 		return false, fmt.Errorf("missing the required arg %s", argName)
 	}
@@ -655,7 +655,7 @@ func (args requestArgs) getBool(argName string) (bool, error) {
 }
 
 func (args requestArgs) getStringSlice(argName string) ([]string, error) {
-	s := args.pop(argName)
+	s := args.get(argName)
 	if s == "" {
 		return nil, fmt.Errorf("missing the required arg %s", argName)
 	}
