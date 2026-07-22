@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"maps"
 	"net/http"
+	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -126,8 +129,12 @@ var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter
 }
 
 func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.QueryProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.QueryProtocolVersion)
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -217,12 +224,16 @@ func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 }
 
 func processFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.FieldNamesProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.FieldNamesProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	filter := r.FormValue("filter")
+	filter := args.pop("filter")
+	if err := args.validate(); err != nil {
+		return err
+	}
 
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
@@ -236,16 +247,20 @@ func processFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 func processFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.FieldValuesProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.FieldValuesProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	fieldName := r.FormValue("field")
-	filter := r.FormValue("filter")
+	fieldName := args.pop("field")
+	filter := args.pop("filter")
 
-	limit, err := getInt64FromRequest(r, "limit")
+	limit, err := args.getInt64("limit")
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -261,12 +276,16 @@ func processFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 }
 
 func processStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.StreamFieldNamesProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.StreamFieldNamesProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	filter := r.FormValue("filter")
+	filter := args.pop("filter")
+	if err := args.validate(); err != nil {
+		return err
+	}
 
 	qctx := cp.NewQueryContext(ctx)
 	defer cp.UpdatePerQueryStatsMetrics()
@@ -280,16 +299,20 @@ func processStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 }
 
 func processStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.StreamFieldValuesProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.StreamFieldValuesProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	fieldName := r.FormValue("field")
-	filter := r.FormValue("filter")
+	fieldName := args.pop("field")
+	filter := args.pop("filter")
 
-	limit, err := getInt64FromRequest(r, "limit")
+	limit, err := args.getInt64("limit")
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -305,13 +328,17 @@ func processStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 }
 
 func processStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.StreamsProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.StreamsProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	limit, err := getInt64FromRequest(r, "limit")
+	limit, err := args.getInt64("limit")
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -327,13 +354,17 @@ func processStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	cp, err := getCommonParams(r, netselect.StreamIDsProtocolVersion)
+	args := newRequestArgs(r)
+	cp, err := getCommonParams(args, netselect.StreamIDsProtocolVersion)
 	if err != nil {
 		return err
 	}
 
-	limit, err := getInt64FromRequest(r, "limit")
+	limit, err := args.getInt64("limit")
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -349,31 +380,35 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
+	args := newRequestArgs(r)
+	if err := checkProtocolVersion(args, netselect.DeleteRunTaskProtocolVersion); err != nil {
 		return err
 	}
 
 	// Parse query args
-	taskID := r.FormValue("task_id")
+	taskID := args.pop("task_id")
 	if taskID == "" {
 		return fmt.Errorf("missing task_id arg")
 	}
 
-	timestamp, err := getInt64FromRequest(r, "timestamp")
+	timestamp, err := args.getInt64("timestamp")
 	if err != nil {
 		return err
 	}
 
-	tenantIDsStr := r.FormValue("tenant_ids")
+	tenantIDsStr := args.pop("tenant_ids")
 	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
 	}
 
-	fStr := r.FormValue("filter")
+	fStr := args.pop("filter")
 	f, err := logstorage.ParseFilter(fStr)
 	if err != nil {
 		return fmt.Errorf("cannot unmarshal filter=%q: %w", fStr, err)
+	}
+	if err := args.validate(); err != nil {
+		return err
 	}
 
 	// Execute the delete task
@@ -381,20 +416,28 @@ func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion); err != nil {
+	args := newRequestArgs(r)
+	if err := checkProtocolVersion(args, netselect.DeleteStopTaskProtocolVersion); err != nil {
 		return err
 	}
 
-	taskID := r.FormValue("task_id")
+	taskID := args.pop("task_id")
 	if taskID == "" {
 		return fmt.Errorf("missing task_id arg")
+	}
+	if err := args.validate(); err != nil {
+		return err
 	}
 
 	return vlstorage.DeleteStopTask(ctx, taskID)
 }
 
 func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion); err != nil {
+	args := newRequestArgs(r)
+	if err := checkProtocolVersion(args, netselect.DeleteActiveTasksProtocolVersion); err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -415,12 +458,16 @@ func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	start, err := getInt64FromRequest(r, "start")
+	args := newRequestArgs(r)
+	start, err := args.getInt64("start")
 	if err != nil {
 		return err
 	}
-	end, err := getInt64FromRequest(r, "end")
+	end, err := args.getInt64("end")
 	if err != nil {
+		return err
+	}
+	if err := args.validate(); err != nil {
 		return err
 	}
 
@@ -468,39 +515,39 @@ func (cp *commonParams) UpdatePerQueryStatsMetrics() {
 	vlstorage.UpdatePerQueryStatsMetrics(&cp.qs)
 }
 
-func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonParams, error) {
-	if err := checkProtocolVersion(r, expectedProtocolVersion); err != nil {
+func getCommonParams(args requestArgs, expectedProtocolVersion string) (*commonParams, error) {
+	if err := checkProtocolVersion(args, expectedProtocolVersion); err != nil {
 		return nil, err
 	}
 
-	tenantIDsStr := r.FormValue("tenant_ids")
+	tenantIDsStr := args.pop("tenant_ids")
 	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
 	}
 
-	timestamp, err := getInt64FromRequest(r, "timestamp")
+	timestamp, err := args.getInt64("timestamp")
 	if err != nil {
 		return nil, err
 	}
 
-	qStr := r.FormValue("query")
+	qStr := args.pop("query")
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal query=%q: %w", qStr, err)
 	}
 
-	disableCompression, err := getBoolFromRequest(r, "disable_compression")
+	disableCompression, err := args.getBool("disable_compression")
 	if err != nil {
 		return nil, err
 	}
 
-	allowPartialResponse, err := getBoolFromRequest(r, "allow_partial_response")
+	allowPartialResponse, err := args.getBool("allow_partial_response")
 	if err != nil {
 		return nil, err
 	}
 
-	hiddenFieldsFilters, err := getStringSliceFromRequest(r, "hidden_fields_filters")
+	hiddenFieldsFilters, err := args.getStringSlice("hidden_fields_filters")
 	if err != nil {
 		return nil, err
 	}
@@ -517,8 +564,8 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 	return cp, nil
 }
 
-func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
-	version := r.FormValue("version")
+func checkProtocolVersion(args requestArgs, expectedProtocolVersion string) error {
+	version := args.pop("version")
 	if version != expectedProtocolVersion {
 		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
 			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
@@ -558,8 +605,32 @@ func marshalQueryStatsBlock(dst []byte, qctx *logstorage.QueryContext) []byte {
 	return dst
 }
 
-func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
-	s := r.FormValue(argName)
+type requestArgs url.Values
+
+func newRequestArgs(r *http.Request) requestArgs {
+	return requestArgs(maps.Clone(r.Form))
+}
+
+func (args requestArgs) pop(name string) string {
+	values := args[name]
+	delete(args, name)
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+func (args requestArgs) validate() error {
+	if len(args) == 0 {
+		return nil
+	}
+
+	names := slices.Sorted(maps.Keys(args))
+	return fmt.Errorf("unexpected request args: %q", names)
+}
+
+func (args requestArgs) getInt64(argName string) (int64, error) {
+	s := args.pop(argName)
 	if s == "" {
 		return 0, fmt.Errorf("missing the required arg %s", argName)
 	}
@@ -570,8 +641,8 @@ func getInt64FromRequest(r *http.Request, argName string) (int64, error) {
 	return n, nil
 }
 
-func getBoolFromRequest(r *http.Request, argName string) (bool, error) {
-	s := r.FormValue(argName)
+func (args requestArgs) getBool(argName string) (bool, error) {
+	s := args.pop(argName)
 	if s == "" {
 		return false, fmt.Errorf("missing the required arg %s", argName)
 	}
@@ -583,8 +654,8 @@ func getBoolFromRequest(r *http.Request, argName string) (bool, error) {
 	return b, nil
 }
 
-func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
-	s := r.FormValue(argName)
+func (args requestArgs) getStringSlice(argName string) ([]string, error) {
+	s := args.pop(argName)
 	if s == "" {
 		return nil, fmt.Errorf("missing the required arg %s", argName)
 	}
