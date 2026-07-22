@@ -157,7 +157,8 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
-	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs, []int{1, 1})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[0], 1)
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 1)
 
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -180,7 +181,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}, apptest.IngestOpts{})
-	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1:], []int{2})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 2)
 
 	// check alive storage received data
 	wantLogLines = []string{

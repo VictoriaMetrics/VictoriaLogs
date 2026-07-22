@@ -94,32 +94,21 @@ func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
 	t.Fatalf("timed out while waiting for inserted logs to be flushed to remote storage")
 }
 
-// WaitRemoteWriteRequests waits until each remote write URL reaches the corresponding requests count.
-func (app *Vlagent) WaitRemoteWriteRequests(t *testing.T, remoteWriteURLs []string, requests []int) {
+// WaitRemoteWriteRequests waits until the remote write URL reaches the given requests count.
+func (app *Vlagent) WaitRemoteWriteRequests(t *testing.T, remoteWriteURL string, requests int) {
 	t.Helper()
-
-	if len(remoteWriteURLs) != len(requests) {
-		t.Fatalf("unexpected arguments: got %d remote write URLs and %d request counts", len(remoteWriteURLs), len(requests))
-	}
 
 	const (
 		retries = 50
 		period  = 100 * time.Millisecond
 	)
 	for range retries {
-		ok := true
-		for i, remoteWriteURL := range remoteWriteURLs {
-			if app.RemoteWriteRequests(t, remoteWriteURL) != requests[i] {
-				ok = false
-				break
-			}
-		}
-		if ok {
+		if app.RemoteWriteRequests(t, remoteWriteURL) == requests {
 			return
 		}
 		time.Sleep(period)
 	}
-	t.Fatalf("timed out while waiting for remote write requests for %q to reach %v", remoteWriteURLs, requests)
+	t.Fatalf("timed out while waiting for remote write requests for %q to reach %d", remoteWriteURL, requests)
 }
 
 // sendBlocking executes send and waits until the data is added to every remote
@@ -162,12 +151,7 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 // RemoteWriteRequests returns the number of successful remote write requests for the given URL.
 func (app *Vlagent) RemoteWriteRequests(t *testing.T, url string) int {
 	metricName := fmt.Sprintf(`vlagent_remotewrite_requests_total{url=%q, status_code="2XX"}`, url)
-	re := regexp.MustCompile(`^` + regexp.QuoteMeta(metricName) + ` `)
-	total := 0.0
-	for _, v := range app.GetMetricsByRegexp(t, re) {
-		total += v
-	}
-	return int(total)
+	return int(app.GetMetric(t, metricName))
 }
 
 func (app *Vlagent) remoteWriteBlocksSent(t *testing.T) int {
