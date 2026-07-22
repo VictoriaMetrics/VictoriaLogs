@@ -273,7 +273,8 @@ func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]lo
 }
 
 func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryContext) url.Values {
-	// ATTENTION: the *ProtocolVersion consts must be incremented every time the set of common args changes or its format changes.
+	// ATTENTION: the *ProtocolVersion consts must be incremented when the existing args change
+	// in a backwards-incompatible way or when a new required arg is added.
 
 	args := url.Values{}
 	args.Set("version", version)
