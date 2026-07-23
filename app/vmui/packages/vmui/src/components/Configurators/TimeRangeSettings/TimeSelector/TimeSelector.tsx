@@ -24,6 +24,10 @@ import { useQueryState } from "../../../../state/query/QueryStateContext";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import { RelativeTimeOption } from "../../../../types";
 import useEventListener from "../../../../hooks/useEventListener";
+import {
+  formatDateTimeInputValue,
+  parseDateTimeInputValue
+} from "../../../Main/DatePicker/DateTimeInput/utils";
 
 type Props = {
   onOpenSettings?: () => void;
@@ -38,8 +42,8 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const documentSize = useWindowSize();
   const displayFullDate = useMemo(() => documentSize.width > 1120, [documentSize]);
 
-  const [until, setUntil] = useState<string>();
-  const [from, setFrom] = useState<string>();
+  const [untilDraft, setUntilDraft] = useState("");
+  const [fromDraft, setFromDraft] = useState("");
 
   const {
     period: { end, start },
@@ -89,19 +93,20 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const setTimeAndClosePicker = () => {
-    if (from && until) {
-      const nextPeriod = { from: from, to: until };
-      setPeriod({ nextPeriod });
-    }
+    const from = parseDateTimeInputValue(fromDraft);
+    const until = parseDateTimeInputValue(untilDraft);
+    if (!from || !until) return;
+
+    setPeriod({ nextPeriod: { from, to: until } });
     handleCloseOptions();
   };
 
   const handleSetFrom = (start: bigint) => {
-    setFrom(nanosToIsoString(start));
+    setFromDraft(formatDateTimeInputValue(nanosToIsoString(start)));
   };
 
   const handleSetUntil = (end: bigint) => {
-    setUntil(nanosToIsoString(end));
+    setUntilDraft(formatDateTimeInputValue(nanosToIsoString(end)));
   };
 
   const handleOpenSettings = () => {
@@ -198,19 +203,19 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
             })}
           >
             <DateTimeInput
-              value={from}
+              value={fromDraft}
               label="From:"
               pickerLabel="Date From"
               pickerRef={fromPickerRef}
-              onChange={setFrom}
+              onChange={setFromDraft}
               onEnter={setTimeAndClosePicker}
             />
             <DateTimeInput
-              value={until}
+              value={untilDraft}
               label="To:"
               pickerLabel="Date To"
               pickerRef={untilPickerRef}
-              onChange={setUntil}
+              onChange={setUntilDraft}
               onEnter={setTimeAndClosePicker}
             />
           </div>
