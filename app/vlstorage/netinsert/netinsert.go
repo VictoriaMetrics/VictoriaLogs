@@ -225,7 +225,7 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 
 		t := timerpool.Get(time.Second)
 		select {
-		case <-sn.s.stopCh:
+		case <-sn.s.sendCtx.Done():
 			timerpool.Put(t)
 			logger.Errorf("dropping %d bytes of data, since there are no available storage nodes", pendingData.Len())
 			return
