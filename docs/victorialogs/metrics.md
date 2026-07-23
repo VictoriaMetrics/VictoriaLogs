@@ -397,6 +397,14 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Remote storage node availability status where 1 means reachable and 0 means unreachable. Becomes 0 when send errors occur and temporarily disabled for 10 seconds, returns to 1 when successful requests resume. Cluster health monitoring.
 
+### vl_insert_remote_concurrency_limit_reached_total
+**Type:** Counter
+
+**Labels:**
+- `addr`: storage node address
+
+**Description:** Data ingestion requests rejected because the storage node reached the concurrency limit set by `-insert.concurrency`. Rejected requests are re-routed to other storage nodes. Growing values on a single node indicate the node is slower than the rest of the cluster.
+
 ### vl_select_remote_send_errors_total
 **Type:** Counter
 
