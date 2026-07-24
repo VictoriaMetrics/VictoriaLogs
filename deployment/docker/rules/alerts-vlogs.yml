@@ -15,33 +15,33 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Instance {{ $labels.instance }} (job={{ $labels.job }}) will run out of disk space soon"
-          description: "Disk utilisation on instance {{ $labels.instance }} is more than 80%.\n
-            Having less than 20% of free disk space could cripple merge processes and overall performance.
-            Consider to limit the ingestion rate, decrease retention or scale the disk space if possible."
-
-
+          summary: |-
+            Instance {{ $labels.instance }} (job={{ $labels.job }}) will run out of disk space soon
+          description: |-
+            Disk utilisation on instance {{ $labels.instance }} is more than 80%.
+             Having less than 20% of free disk space could cripple merge processes and overall performance. Consider to limit the ingestion rate, decrease retention or scale the disk space if possible.
       - alert: ConcurrentQueriesHitTheLimit
         expr: avg_over_time(vl_concurrent_select_current[1m]) >= vl_concurrent_select_capacity
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent query limit"
+          summary: |-
+            {{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent query limit
           description: |
             The limit of concurrent queries on instance {{ $labels.instance }} is controlled by `-search.maxConcurrentRequests`.
             Usually, when the component constantly hits the limit it is likely overloaded and requires more CPU or more replicas.
             In some cases the alert might trigger if clients send too many expensive queries to the component.
             If the component's CPU usage and storage latency are at normal level, then
             it might be worth adjusting `-search.maxConcurrentRequests`.
-
       - alert: TooHighQueryLoad
         expr: increase(vl_concurrent_select_limit_timeout_total[5m]) > 0
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "Read queries fail with timeout for {{ $labels.job }} on instance {{ $labels.instance }}"
+          summary: |-
+            Read queries fail with timeout for {{ $labels.job }} on instance {{ $labels.instance }}
           description: |
             Instance {{ $labels.instance }} ({{ $labels.job }}) is failing to serve read queries during last 15m.
             Concurrency limit `-search.maxConcurrentRequests` was reached on this instance and extra queries were
