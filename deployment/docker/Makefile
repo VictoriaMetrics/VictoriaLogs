@@ -14,7 +14,7 @@ DOCKER_BUILD ?= $(DOCKER) build
 DOCKER_COMPOSE ?= $(DOCKER) compose
 DOCKER_IMAGE_LS ?= $(DOCKER) image ls --format '{{.Repository}}:{{.Tag}}'
 
-RULES_DIR := deployment/docker/rules
+include deployment/docker/rules/Makefile
 
 package-builder:
 	($(DOCKER_IMAGE_LS) | grep -q '$(BUILDER_IMAGE)$$') \
@@ -152,10 +152,3 @@ docker-vl-cluster-up:
 
 docker-vl-cluster-down:
 	$(DOCKER_COMPOSE) -f deployment/docker/compose-vl-cluster.yml down -v
-
-# format the summary and description in rules.
-format-rules:
-	find $(RULES_DIR) -type f -name "*.yml" | while read -r f; do \
-		echo "Processing $$f"; \
-		yq -i '.groups[].rules[].annotations |= (.summary style="literal", .description style="literal")' "$$f"; \
-	done
