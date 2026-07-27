@@ -250,7 +250,7 @@ func (app *Vlcluster) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts)
 	values.Add("query", query)
 
 	url := fmt.Sprintf("http://%s/select/logsql/query", app.selectNode.httpListenAddr)
-	return app.selectNode.cli.PostForm(t, url, values)
+	return app.selectNode.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
 }
 
 // StorageNode returns the i-th storage node, allowing direct log ingestion that bypasses the insert node.

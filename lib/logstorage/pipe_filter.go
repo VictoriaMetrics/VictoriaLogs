@@ -44,8 +44,8 @@ func (pf *pipeFilter) hasFilterInWithQuery() bool {
 	return hasFilterInWithQueryForFilter(pf.f)
 }
 
-func (pf *pipeFilter) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	fNew, err := initFilterInValuesForFilter(cache, pf.f, getFieldValuesFunc)
+func (pf *pipeFilter) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	fNew, err := initFilterInValuesForFilter(cache, pf.f, getFieldValues)
 	if err != nil {
 		return nil, err
 	}
