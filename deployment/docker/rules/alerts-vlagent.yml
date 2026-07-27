@@ -69,7 +69,12 @@ groups:
           description: |-
             Persistent queue reads for vlagent "{{ $labels.job }}" (instance {{ $labels.instance }}) are saturated by more than 90% and vlagent won't be able to keep up with reading data from the disk. In this case, consider to decrease load on the vlagent or improve the disk throughput.
       - alert: PersistentQueueRunsOutOfSpaceIn12Hours
-        expr: "(\n  (sum(vm_persistentqueue_free_disk_space_bytes) by (job, instance, path)) /\n  (sum(deriv(vm_persistentqueue_bytes_pending[1m])) by (job, instance, path) > 0)\n) * \non(job, instance, path) group_left(url)\n(vlagent_remotewrite_pending_data_bytes * 0 + 1) < 12 * 3600 >0\n"
+        expr: |
+          (
+            (sum(vm_persistentqueue_free_disk_space_bytes) by (job, instance, path)) /
+            (sum(deriv(vm_persistentqueue_bytes_pending[1m])) by (job, instance, path) > 0)
+          ) * on(job, instance, path) group_left(url)
+          (vlagent_remotewrite_pending_data_bytes * 0 + 1) < 12 * 3600 >0
         for: 10m
         labels:
           severity: warning
@@ -79,7 +84,12 @@ groups:
           description: |-
             RemoteWrite destination ({{ $labels.url }}) is unavailable or unable to receive data in a timely manner, so the persistent queue size is growing. Once the available space is exhausted, some samples will be discarded and cause incident. Please check the health of remoteWrite destination ({{ $labels.url }}).
       - alert: PersistentQueueRunsOutOfSpaceIn4Hours
-        expr: "(\n  (sum(vm_persistentqueue_free_disk_space_bytes) by (job, instance, path)) /\n  (sum(deriv(vm_persistentqueue_bytes_pending[1m])) by (job, instance, path) > 0)\n) * \non(job, instance, path) group_left(url)\n(vlagent_remotewrite_pending_data_bytes * 0 + 1) < 4 * 3600 >0\n"
+        expr: |-
+          (
+            (sum(vm_persistentqueue_free_disk_space_bytes) by (job, instance, path)) /
+            (sum(deriv(vm_persistentqueue_bytes_pending[1m])) by (job, instance, path) > 0)
+          ) * on(job, instance, path) group_left(url)
+          (vlagent_remotewrite_pending_data_bytes * 0 + 1) < 4 * 3600 >0
         for: 10m
         labels:
           severity: critical
