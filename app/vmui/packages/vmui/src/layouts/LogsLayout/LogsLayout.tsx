@@ -7,7 +7,6 @@ import classNames from "classnames";
 import Footer from "../Footer/Footer";
 import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
-import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
 import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
 import { migrateStorageToPrefixedKeys } from "../../utils/storage";
@@ -44,7 +43,7 @@ const LogsLayout: FC = () => {
     "vm-container_dark": isDarkTheme
   })}
   >
-    <Header controlsComponent={ControlsLogsLayout}/>
+    <Header/>
     <div
       id="vm-body"
       className={classNames({

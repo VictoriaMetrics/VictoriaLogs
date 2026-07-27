@@ -7,7 +7,7 @@ import {
 import TimeDurationSelector from "../TimeDurationSelector/TimeDurationSelector";
 import { getAppModeEnable } from "../../../../utils/app-mode";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { ArrowDownIcon, ClockIcon } from "../../../Main/Icons";
+import { ClockIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
 import Popper from "../../../Main/Popper/Popper";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
@@ -140,32 +140,18 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
 
   return <>
     <div ref={buttonRef}>
-      {isMobile ? (
-        <div
-          className="vm-mobile-option"
+      <Tooltip title={displayFullDate ? "Time range controls" : dateTitle}>
+        <Button
+          className={appModeEnable ? "" : "vm-header-button"}
+          variant="contained"
+          color="primary"
+          startIcon={<ClockIcon/>}
           onClick={toggleOpenOptions}
+          aria-label="time range controls"
         >
-          <span className="vm-mobile-option__icon"><ClockIcon/></span>
-          <div className="vm-mobile-option-text">
-            <span className="vm-mobile-option-text__label">Time range</span>
-            <span className="vm-mobile-option-text__value">{dateTitle}</span>
-          </div>
-          <span className="vm-mobile-option__arrow"><ArrowDownIcon/></span>
-        </div>
-      ) : (
-        <Tooltip title={displayFullDate ? "Time range controls" : dateTitle}>
-          <Button
-            className={appModeEnable ? "" : "vm-header-button"}
-            variant="contained"
-            color="primary"
-            startIcon={<ClockIcon/>}
-            onClick={toggleOpenOptions}
-            aria-label="time range controls"
-          >
-            {displayFullDate && <span>{dateTitle}</span>}
-          </Button>
-        </Tooltip>
-      )}
+          {displayFullDate && <span>{dateTitle}</span>}
+        </Button>
+      </Tooltip>
     </div>
     <Popper
       open={openOptions}
