@@ -69,7 +69,7 @@ groups:
           description: |-
             Persistent queue reads for vlagent "{{ $labels.job }}" (instance {{ $labels.instance }}) are saturated by more than 90% and vlagent won't be able to keep up with reading data from the disk. In this case, consider to decrease load on the vlagent or improve the disk throughput.
       - alert: PersistentQueueRunsOutOfSpaceIn12Hours
-        expr: |
+        expr: |-
           (
             (sum(vm_persistentqueue_free_disk_space_bytes) by (job, instance, path)) /
             (sum(deriv(vm_persistentqueue_bytes_pending[1m])) by (job, instance, path) > 0)

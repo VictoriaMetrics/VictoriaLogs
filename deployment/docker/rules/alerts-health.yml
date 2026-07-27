@@ -13,7 +13,7 @@ groups:
         annotations:
           summary: |-
             {{ $labels.job }} too many restarts (instance {{ $labels.instance }})
-          description: |
+          description: |-
             Job {{ $labels.job }} (instance {{ $labels.instance }}) has restarted more than twice in the last 15 minutes. It might be crashlooping.
       - alert: ServiceDown
         expr: up{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"} == 0
@@ -33,7 +33,7 @@ groups:
         annotations:
           summary: |-
             Number of free file descriptors is less than 100 for "{{ $labels.job }}"("{{ $labels.instance }}") for the last 5m
-          description: |
+          description: |-
             Exhausting OS file descriptors limit can cause severe degradation of the process.
             Consider to increase the limit as fast as possible.
       - alert: TooHighMemoryUsage
@@ -44,7 +44,7 @@ groups:
         annotations:
           summary: |-
             It is more than 80% of memory used by "{{ $labels.job }}"("{{ $labels.instance }}")
-          description: |
+          description: |-
             Too high memory usage may result into multiple issues such as OOMs or degraded performance.
             Consider to either increase available memory or decrease the load on the process.
       - alert: TooHighCPUUsage
@@ -55,8 +55,9 @@ groups:
         annotations:
           summary: |-
             More than 90% of CPU is used by "{{ $labels.job }}"("{{ $labels.instance }}") during the last 5m
-          description: |
-            Too high CPU usage may be a sign of insufficient resources and make process unstable. Consider to either increase available CPU resources or decrease the load on the process.
+          description: |-
+            Too high CPU usage may be a sign of insufficient resources and make process unstable. 
+            Consider to either increase available CPU resources or decrease the load on the process.
       - alert: TooHighGoroutineSchedulingLatency
         expr: histogram_quantile(0.99, sum(rate(go_sched_latencies_seconds_bucket{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m])) by (le, job, instance)) > 0.1
         for: 15m
@@ -65,8 +66,9 @@ groups:
         annotations:
           summary: |-
             "{{ $labels.job }}"("{{ $labels.instance }}") has insufficient CPU resources for >15m
-          description: |
-            Go runtime is unable to schedule goroutines execution in acceptable time. This is usually a sign of insufficient CPU resources or CPU throttling. Verify that service has enough CPU resources. Otherwise, the service could work unreliably with delays in processing.
+          description: |-
+            Go runtime is unable to schedule goroutines execution in acceptable time. This is usually a sign of insufficient CPU resources or CPU throttling. 
+            Verify that service has enough CPU resources. Otherwise, the service could work unreliably with delays in processing.
       - alert: TooManyLogs
         expr: sum(increase(vm_log_messages_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*", level="error"}[5m])) without (app_version, location) > 0
         for: 15m
@@ -75,7 +77,7 @@ groups:
         annotations:
           summary: |-
             Too many logs printed for job "{{ $labels.job }}" ({{ $labels.instance }})
-          description: |
+          description: |-
             Logging rate for job "{{ $labels.job }}" ({{ $labels.instance }}) is {{ $value }} for last 15m. Worth to check logs for specific error messages.
       - alert: RequestErrorsToAPI
         expr: increase(vl_http_errors_total[5m]) > 0
@@ -105,7 +107,7 @@ groups:
         annotations:
           summary: |-
             {{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent inserts limit
-          description: |
+          description: |-
             The limit of concurrent inserts on instance {{ $labels.instance }} depends on the number of CPUs.
             Usually, when component constantly hits the limit it is likely the component is overloaded and requires more CPU.
             In some cases the alert might trigger if there are too many clients making write attempts to the component.

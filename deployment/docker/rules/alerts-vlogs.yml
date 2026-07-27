@@ -5,7 +5,7 @@ groups:
   - name: vlogs
     rules:
       - alert: DiskRunsOutOfSpace
-        expr: |
+        expr: |-
           sum(vl_data_size_bytes) by(job, instance) /
           (
            sum(vl_free_disk_space_bytes) by(job, instance) +
@@ -28,7 +28,7 @@ groups:
         annotations:
           summary: |-
             {{ $labels.job }} on instance {{ $labels.instance }} is constantly hitting concurrent query limit
-          description: |
+          description: |-
             The limit of concurrent queries on instance {{ $labels.instance }} is controlled by `-search.maxConcurrentRequests`.
             Usually, when the component constantly hits the limit it is likely overloaded and requires more CPU or more replicas.
             In some cases the alert might trigger if clients send too many expensive queries to the component.
@@ -42,7 +42,7 @@ groups:
         annotations:
           summary: |-
             Read queries fail with timeout for {{ $labels.job }} on instance {{ $labels.instance }}
-          description: |
+          description: |-
             Instance {{ $labels.instance }} ({{ $labels.job }}) is failing to serve read queries during last 15m.
             Concurrency limit `-search.maxConcurrentRequests` was reached on this instance and extra queries were
             put into the queue for `-search.maxQueueDuration` interval. But even after waiting in the queue these queries weren't served.
