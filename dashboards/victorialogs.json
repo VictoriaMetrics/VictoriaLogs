@@ -4328,7 +4328,7 @@
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "$ds"
+                "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
               "expr": "rate(vm_filestream_fsync_duration_seconds_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]) / rate(vm_filestream_fsync_calls_total{job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])",
