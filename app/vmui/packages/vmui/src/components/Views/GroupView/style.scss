@@ -478,3 +478,9 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
     }
   }
 }
+
+.vm-group-logs-row-content__field-name {
+  opacity: 0.55;
+  margin-right: 4px;
+  font-weight: 500;
+}
