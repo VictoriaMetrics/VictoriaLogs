@@ -43,16 +43,19 @@ const Table = <T extends object>({
     setOrderDir(defaultOrder?.dir || "desc");
   }, [defaultOrder?.key, defaultOrder?.dir]);
 
+  const [offsetStart, offsetEnd] = paginationOffset;
+
   const sortedList = useMemo(() => {
-    const [startIndex, endIndex] = paginationOffset;
-    return stableSort<T>(rows, getComparator(orderDir, orderBy)).slice(startIndex, endIndex);
-  }, [rows, orderBy, orderDir, paginationOffset]);
+    return stableSort<T>(rows, getComparator(orderDir, orderBy)).slice(offsetStart, offsetEnd);
+  }, [rows, orderBy, orderDir, offsetStart, offsetEnd]);
 
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setExpandedRows(new Set());
-  }, [rows, orderBy, orderDir, paginationOffset]);
+    // reset on pagination bounds change, not on the paginationOffset tuple identity
+    // (the parent may recreate that array every render)
+  }, [rows, orderBy, orderDir, offsetStart, offsetEnd]);
 
   const toggleExpanded = (idx: number) => {
     setExpandedRows(prev => {
@@ -114,7 +117,8 @@ const Table = <T extends object>({
                 <td className="vm-table-cell vm-table-cell_expand">
                   <button
                     type="button"
-                    aria-label="Expand row"
+                    aria-label={expandedRows.has(rowIndex) ? "Collapse row" : "Expand row"}
+                    aria-expanded={expandedRows.has(rowIndex)}
                     className={classNames({
                       "vm-table__expand-btn": true,
                       "vm-table__expand-btn_open": expandedRows.has(rowIndex),
