@@ -40,9 +40,18 @@ describe("Table renderExpandedRow", () => {
       renderExpandedRow={(row) => <div data-testid="expanded">{row.msg}-details</div>}
     />);
     expect(screen.queryByTestId("expanded")).toBeNull();
-    fireEvent.click(screen.getByLabelText("Expand row"));
+
+    const expandBtn = screen.getByLabelText("Expand row");
+    expect(expandBtn.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(expandBtn);
     expect(screen.getByTestId("expanded")).toHaveTextContent("hello-details");
-    fireEvent.click(screen.getByLabelText("Expand row"));
+
+    const collapseBtn = screen.getByLabelText("Collapse row");
+    expect(collapseBtn.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(collapseBtn);
     expect(screen.queryByTestId("expanded")).toBeNull();
+    expect(screen.getByLabelText("Expand row").getAttribute("aria-expanded")).toBe("false");
   });
 });
