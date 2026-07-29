@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "preact/compat";
+import { Fragment, useState, useMemo, useRef, useEffect } from "preact/compat";
+import classNames from "classnames";
 import { getComparator, stableSort } from "./helpers";
 import { OrderDir } from "../../types";
 import TableHeaderCell from "./TableHeaderCell/TableHeaderCell";
@@ -11,6 +12,7 @@ import { Size, useResizeObserver } from "../../hooks/useResizeObserver";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import { ColumnKey, TableProps } from "./types";
 import { useDragColumn } from "./hooks/useDragColumn";
+import { ArrowDownIcon } from "../Main/Icons";
 
 const Table = <T extends object>({
   tableId,
@@ -20,6 +22,7 @@ const Table = <T extends object>({
   isActiveRow,
   onClickRow,
   actionsRender,
+  renderExpandedRow,
   paginationOffset,
   applyViewColumns = () => {
   },
@@ -45,6 +48,20 @@ const Table = <T extends object>({
     return stableSort<T>(rows, getComparator(orderDir, orderBy)).slice(startIndex, endIndex);
   }, [rows, orderBy, orderDir, paginationOffset]);
 
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setExpandedRows(new Set());
+  }, [rows, orderBy, orderDir, paginationOffset]);
+
+  const toggleExpanded = (idx: number) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
   const sortPack = useMemo(() => ({
     key: orderBy,
     dir: orderDir,
@@ -66,6 +83,7 @@ const Table = <T extends object>({
     >
       <thead className="vm-table-header">
         <TableRow variant="header">
+          {renderExpandedRow && <th className="vm-table-cell vm-table-cell-header vm-table-cell_expand"/>}
           {columns.map((column, idx) => (
             <TableHeaderCell
               key={column.key}
@@ -87,31 +105,62 @@ const Table = <T extends object>({
       </thead>
       <tbody className="vm-table-body">
         {sortedList.map((row, rowIndex) => (
-          <TableRow
-            key={rowIndex}
-            isActive={isActiveRow && isActiveRow(row as T)}
-            onClick={(e) => onClickRow && onClickRow(row as T, e)}
-          >
-            {columns.map((col) => (
-              <TableCell
-                key={String(col.key)}
-                column={col}
-                columnPrefs={getColumnPrefs(col.key)}
-                row={row as T}
-                rowIdx={rowIndex}
-              />
-          ))}
+          <Fragment key={rowIndex}>
+            <TableRow
+              isActive={isActiveRow && isActiveRow(row as T)}
+              onClick={(e) => onClickRow && onClickRow(row as T, e)}
+            >
+              {renderExpandedRow && (
+                <td className="vm-table-cell vm-table-cell_expand">
+                  <button
+                    type="button"
+                    aria-label="Expand row"
+                    className={classNames({
+                      "vm-table__expand-btn": true,
+                      "vm-table__expand-btn_open": expandedRows.has(rowIndex),
+                    })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpanded(rowIndex);
+                    }}
+                  >
+                    <ArrowDownIcon/>
+                  </button>
+                </td>
+              )}
 
-            {actionsRender && (
-              <TableCellActions
-                row={row as T}
-                actionsRender={actionsRender}
-              />
+              {columns.map((col) => (
+                <TableCell
+                  key={String(col.key)}
+                  column={col}
+                  columnPrefs={getColumnPrefs(col.key)}
+                  row={row as T}
+                  rowIdx={rowIndex}
+                />
+            ))}
+
+              {actionsRender && (
+                <TableCellActions
+                  row={row as T}
+                  actionsRender={actionsRender}
+                />
+              )}
+
+              {/* Spacer column fills remaining width */}
+              <td className="vm-table-cell vm-table-cell_empty"/>
+            </TableRow>
+
+            {renderExpandedRow && expandedRows.has(rowIndex) && (
+              <tr className="vm-table-row vm-table-row_expanded">
+                <td
+                  className="vm-table-cell vm-table-cell_expanded-content"
+                  colSpan={1 + columns.length + (actionsRender ? 1 : 0) + 1}
+                >
+                  {renderExpandedRow(row as T)}
+                </td>
+              </tr>
             )}
-
-            {/* Spacer column fills remaining width */}
-            <td className="vm-table-cell vm-table-cell_empty"/>
-          </TableRow>
+          </Fragment>
       ))}
       </tbody>
     </table>
