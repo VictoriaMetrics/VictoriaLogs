@@ -42,6 +42,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
 
   const [disabledHovers, setDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
   const [disabledLevelDetection, setDisabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
+  const [showFieldNames, setShowFieldNames] = useLocalStorageBoolean("LOGS_SHOW_FIELD_NAMES");
 
   const isGroupChanged = groupBy !== LOGS_GROUP_BY;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
@@ -166,6 +167,17 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
               </Tooltip>
               <span className="vm-group-logs-configurator-item__info">
                 Select fields to display instead of the message (default: <code>{LOGS_DISPLAY_FIELDS}</code>).
+              </span>
+            </div>
+
+            <div className="vm-group-logs-configurator-item">
+              <Switch
+                value={showFieldNames}
+                onChange={setShowFieldNames}
+                label="Show field names"
+              />
+              <span className="vm-group-logs-configurator-item__info">
+                Prefixes each displayed field value with its field name.
               </span>
             </div>
 
