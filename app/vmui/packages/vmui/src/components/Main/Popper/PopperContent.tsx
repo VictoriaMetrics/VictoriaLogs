@@ -37,6 +37,7 @@ const PopperContent: FC<PopperContentProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [popperSize, setPopperSize] = useState<Size>({ width: 0, height: 0 });
+  const [anchorSize, setAnchorSize] = useState<Size>({ width: 0, height: 0 });
 
   const popperRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +108,8 @@ const PopperContent: FC<PopperContentProps> = ({
     fullWidth,
     popperSize.width,
     popperSize.height,
+    anchorSize.width,
+    anchorSize.height,
   ]);
 
   const handleClickClose = (e: MouseEvent) => {
@@ -133,6 +136,7 @@ const PopperContent: FC<PopperContentProps> = ({
   useEventListener("scroll", handleClose);
   useEventListener("popstate", handlePopstate);
   useResizeObserver({ ref: popperRef, onResize: setPopperSize });
+  useResizeObserver({ ref: buttonRef, onResize: setAnchorSize });
   useClickOutside(popperRef, handleClickOutside, buttonRef);
 
   useEffect(() => {

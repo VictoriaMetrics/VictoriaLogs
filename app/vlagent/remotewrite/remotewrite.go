@@ -66,7 +66,9 @@ var maxQueues = cgroup.AvailableCPUs() * 16
 
 const persistentQueueDirname = "persistent-queue"
 
-// InitSecretFlags must be called after flag.Parse and before any logging.
+// InitSecretFlags registers secret flags defined under `remotewrite` pkg.
+//
+// It must be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
 func InitSecretFlags() {
 	if !*showRemoteWriteURL {
 		// remoteWrite.url can contain authentication codes, so hide it at `/metrics` output.
@@ -188,7 +190,6 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 	for _, rwctx := range rwctxs {
 		wg.Go(func() {
 			rwctx.push(lr)
-
 		})
 	}
 	wg.Wait()

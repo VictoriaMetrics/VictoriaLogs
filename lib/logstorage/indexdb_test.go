@@ -308,13 +308,12 @@ func TestGetTenantsIDs(t *testing.T) {
 			for _, sid := range sids {
 				idb.mustRegisterStream(&sid, streamTagsCanonical)
 			}
-
 		}
 	}
 	idb.debugFlush()
 
 	// run the test
-	result := idb.searchTenants()
+	result := idb.getTenantIDs()
 	if !reflect.DeepEqual(result, tenantIDs) {
 		t.Fatalf("unexpected tensntIds; got %v; want %v", result, tenantIDs)
 	}

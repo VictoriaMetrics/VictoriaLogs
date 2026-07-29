@@ -114,7 +114,7 @@ func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query,
 	}
 	q, err := logstorage.ParseQueryAtTimestamp(qStr, timestamp)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse `query` arg: %w; query=%s", err, qStr)
+		return nil, fmt.Errorf("cannot parse `query` arg [%s]: %w", qStr, err)
 	}
 	return q, nil
 }
@@ -169,7 +169,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		fieldValues := columns[1].Values
 		hits := columns[2].Values
 
-		bb := blockResultPool.Get()
 		for i := range fieldNames {
 			fieldName := strings.Clone(fieldNames[i])
 			fieldValue := strings.Clone(fieldValues[i])
@@ -182,7 +181,6 @@ func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 			})
 			mLock.Unlock()
 		}
-		blockResultPool.Put(bb)
 	}
 
 	qctx := ca.newQueryContext(ctx)
@@ -669,7 +667,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgsWithConfig(r, true)
+	ca, err := parseCommonArgsExt(r, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -1349,6 +1347,8 @@ func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []b
 }
 
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants
 func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	accountID := r.Header.Get("AccountID")
 	if accountID != "" {
@@ -1391,13 +1391,13 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
+	tenantIDs, err := vlstorage.GetTenantIDs(ctx, start, end)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
 		return
 	}
 
-	data, err := json.Marshal(tenants)
+	data, err := json.Marshal(tenantIDs)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
 		return
@@ -1456,10 +1456,15 @@ func (ca *commonArgs) updatePerQueryStatsMetrics() {
 }
 
 func parseCommonArgs(r *http.Request) (*commonArgs, error) {
-	return parseCommonArgsWithConfig(r, false)
+	return parseCommonArgsExt(r, false)
 }
 
-func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*commonArgs, error) {
+// parseCommonArgsExt parses commonArgs from r.
+//
+// If skipMaxQueryTimeRangeCheck is set, then the query time range isn't limited by -search.maxQueryTimeRange.
+// This is used by live tailing, since it processes only newly ingested logs
+// and doesn't scan historical data even if the query contains a wide time filter.
+func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
@@ -1490,14 +1495,13 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		return nil, err
 	}
 
-	currTimestamp := time.Now().UnixNano()
 	if !timeOK {
 		// If time arg is missing, then evaluate query either at the end timestamp (if it is set)
 		// or at the current timestamp (if end query arg isn't set)
 		if endOK {
 			timestamp = end
 		} else {
-			timestamp = currTimestamp
+			timestamp = time.Now().UnixNano()
 		}
 	}
 
@@ -1569,7 +1573,7 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxRangeCheck {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start

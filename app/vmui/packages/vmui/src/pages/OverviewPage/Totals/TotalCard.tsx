@@ -6,8 +6,8 @@ import { InfoIcon } from "../../../components/Main/Icons";
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import classNames from "classnames";
 import { TimeParams } from "../../../types";
-import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../../constants/date";
+import { nanosToIsoString, vmDate } from "../../../utils/time";
 
 interface Props extends TotalsConfig {
   isLoading: boolean;
@@ -38,8 +38,8 @@ const TotalCard: FC<Props> = ({ title, value, valuePrev, description, formatter,
   const prevTimeRange = useMemo(() => {
     if (!periods?.prev) return "";
     const { start, end } = periods.prev;
-    const startStr = dayjs(start * 1000).tz().format(DATE_TIME_FORMAT);
-    const endStr = dayjs(end * 1000).tz().format(DATE_TIME_FORMAT);
+    const startStr = vmDate(nanosToIsoString(start)).tz().format(DATE_TIME_FORMAT);
+    const endStr = vmDate(nanosToIsoString(end)).tz().format(DATE_TIME_FORMAT);
     return `${startStr} — ${endStr}`;
   }, [periods]);
 

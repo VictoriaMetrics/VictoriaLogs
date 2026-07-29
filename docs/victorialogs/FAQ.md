@@ -112,6 +112,7 @@ VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design idea
 VictoriaLogs accepts logs as [JSON entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 Then it stores log fields into distinct data blocks. E.g. values for the same log field across multiple log entries
 are stored in a single data block. This allows reading data blocks only for the needed fields during querying.
+See [how each field is stored as a column on disk](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for details.
 
 Data blocks are compressed before being saved to persistent storage. This allows saving disk space and improving query performance
 when it is limited by disk read IO bandwidth.
@@ -148,6 +149,7 @@ for limiting the amounts of exported logs.
 
 VictoriaLogs [accepts](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs without [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 In this case the `_msg` field is set to the default value, which can be configured via `-defaultMsgValue` command-line flag.
+See [what the message field is and how it fits the log data model](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#message) for details.
 
 ## What if my logs have multiple message fields candidates?
 

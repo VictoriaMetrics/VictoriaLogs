@@ -186,7 +186,7 @@ func (tc *TestCase) MustStartVlagent(instance string, remoteWriteURLs []string, 
 	return app
 }
 
-// MustStartVlcluster starts Vlcluster with default settings
+// MustStartDefaultVlcluster starts Vlcluster with default settings
 func (tc *TestCase) MustStartDefaultVlcluster() *Vlcluster {
 	tc.t.Helper()
 

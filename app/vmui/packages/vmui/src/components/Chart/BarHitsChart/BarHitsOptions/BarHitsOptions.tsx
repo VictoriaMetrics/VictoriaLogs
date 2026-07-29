@@ -18,9 +18,9 @@ import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
-import { humanizeSeconds } from "../../../../utils/time";
-import { generateIntervalsMs } from "../../../../utils/intervals";
+import { getDefaultIntervalOption, getIntervalOptions } from "../../../../utils/intervals";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
+import usePrevious from "../../../../hooks/usePrevious";
 
 interface Props {
   query?: string;
@@ -64,12 +64,18 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     hideChart,
   }), [stacked, cumulative, hideChart, queryMode]);
 
-  const intervals = useMemo(() => {
-    const msIntervals = generateIntervalsMs(start, end);
-    return msIntervals.map(ms => humanizeSeconds(ms / 1000));
+  const { intervals, defaultStep } = useMemo(() => {
+    const intervalOptions = getIntervalOptions({ start, end });
+    const options = intervalOptions.map(ops => ops.duration);
+    const fallbackStep = options[Math.floor(options.length / 2)];
+
+    return {
+      intervals: options,
+      defaultStep: getDefaultIntervalOption({ start, end })?.duration || fallbackStep,
+    };
   }, [start, end]);
 
-  const defaultStep = intervals[Math.floor(intervals.length / 2)];
+  const prevDefaultStep = usePrevious(defaultStep);
 
   const fieldNamesOptions = useMemo(() => {
     const fields = fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
@@ -77,7 +83,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }, [fieldNames]);
 
   const handleOpenFields = useCallback(() => {
-    fetchFieldNames({ start, end, extraParams, skipNoiseFields: true, query });
+    const period = { start, end };
+    void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
@@ -115,17 +122,23 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }, [options]);
 
   useEffect(() => {
-    const isAllowed = (v: string | null) => !!v && intervals.includes(v);
-    const shouldReset = (v: string | null) => !isAllowed(v) && v !== defaultStep;
-
-    if (!shouldReset(step.value)) return;
+    if (!prevDefaultStep || prevDefaultStep === defaultStep) return;
 
     const t = setTimeout(() => {
-      if (shouldReset(step.value)) step.set(defaultStep, { replace: true });
+      step.set(defaultStep, { replace: true });
     }, 200);
 
     return () => clearTimeout(t);
-  }, [intervals, defaultStep, step.value]);
+  }, [defaultStep]);
+
+  useEffect(() => {
+    if (!defaultStep || !step.value) return;
+
+    const isValidStep = intervals.includes(step.value);
+    if (isValidStep) return;
+
+    step.set(defaultStep, { replace: true });
+  }, [step.value, step.set, defaultStep, intervals]);
 
   const controls = (
     <>

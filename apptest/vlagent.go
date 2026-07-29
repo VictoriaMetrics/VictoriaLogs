@@ -92,19 +92,35 @@ func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
 		time.Sleep(period)
 	}
 	t.Fatalf("timed out while waiting for inserted logs to be flushed to remote storage")
-
 }
 
-// sendBlocking sends the data to remote write url by executing `send` function and
-// waits until the data is actually sent.
+// WaitRemoteWriteRequests waits until the remote write URL reaches the given requests count.
+func (app *Vlagent) WaitRemoteWriteRequests(t *testing.T, remoteWriteURL string, requests int) {
+	t.Helper()
+
+	const (
+		retries = 50
+		period  = 100 * time.Millisecond
+	)
+	for range retries {
+		if app.RemoteWriteRequests(t, remoteWriteURL) == requests {
+			return
+		}
+		time.Sleep(period)
+	}
+	t.Fatalf("timed out while waiting for remote write requests for %q to reach %d", remoteWriteURL, requests)
+}
+
+// sendBlocking executes send and waits until the data is added to every remote
+// write queue.
 //
 // vlagent does not send the data immediately. It first puts the data into a
-// buffer. Then a background goroutine takes the data from the buffer sends it
+// buffer. Then a background goroutine takes the data from the buffer and sends it
 // to the vmstorage. This happens every 1s by default.
 //
-// Waiting is implemented a retrieving the value of `vlagent_remotewrite_block_size_rows_sum`
+// Waiting is implemented by retrieving the value of `vlagent_remotewrite_block_size_rows_sum`
 // metric and checking whether it is equal or greater than the wanted value.
-// If it is, then the data has been sent to remote storage.
+// This doesn't guarantee that remote storage has received the data.
 //
 // Unreliable if the records are inserted concurrently.
 func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()) {
@@ -132,6 +148,12 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 	t.Fatalf("timed out while waiting for inserted rows to be sent to remote storage")
 }
 
+// RemoteWriteRequests returns the number of successful remote write requests for the given URL.
+func (app *Vlagent) RemoteWriteRequests(t *testing.T, url string) int {
+	metricName := fmt.Sprintf(`vlagent_remotewrite_requests_total{url=%q, status_code="2XX"}`, url)
+	return int(app.GetMetric(t, metricName))
+}
+
 func (app *Vlagent) remoteWriteBlocksSent(t *testing.T) int {
 	total := 0.0
 	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_blocks_sent_total") {
@@ -142,7 +164,6 @@ func (app *Vlagent) remoteWriteBlocksSent(t *testing.T) int {
 
 func (app *Vlagent) remoteWriteRowsPushed(t *testing.T) int {
 	total := 0.0
-	// vlagent_remotewrite_blocks_sent_total
 	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_block_size_rows_sum") {
 		total += v
 	}

@@ -1,62 +1,70 @@
-import { FC, useMemo } from "preact/compat";
+import { FC } from "preact/compat";
 import Button from "../Main/Button/Button";
-import { CopyIcon, PlayCircleOutlineIcon, StarBorderIcon, StarIcon } from "../Main/Icons";
+import { CopyIcon, DeleteIcon, PlayIcon } from "../Main/Icons";
 import Tooltip from "../Main/Tooltip/Tooltip";
 import useCopyToClipboard from "../../hooks/useCopyToClipboard";
 import "./style.scss";
+import { QueryHistoryEntry } from "./types";
+import { formatHistoryDate } from "./utils";
 
 interface Props {
-  query: string;
-  favorites: string[];
+  entry: QueryHistoryEntry;
   onRun: (query: string) => void;
-  onToggleFavorite: (query: string, isFavorite: boolean) => void;
+  onRemove: (query: string) => void;
 }
 
-const QueryHistoryItem: FC<Props> = ({ query, favorites, onRun, onToggleFavorite }) => {
+const QueryHistoryItem: FC<Props> = ({ entry, onRun, onRemove }) => {
   const copyToClipboard = useCopyToClipboard();
-  const isFavorite = useMemo(() => favorites.includes(query), [query, favorites]);
 
   const handleCopyQuery = async () => {
-    await copyToClipboard(query, "Query has been copied");
+    await copyToClipboard(entry.query, "Query has been copied");
+  };
+
+  const handleRemoveHistory = () => {
+    onRemove(entry.query);
   };
 
   const handleRunQuery = () => {
-    onRun(query);
-  };
-
-  const handleToggleFavorite = () => {
-    onToggleFavorite(query, isFavorite);
+    onRun(entry.query);
   };
 
   return (
     <div className="vm-query-history-item">
-      <span className="vm-query-history-item__value">{query}</span>
+      <span className="vm-query-history-item__time">{formatHistoryDate(entry.lastRunAt)}</span>
+
+      <span className="vm-query-history-item__value">{entry.query}</span>
+
       <div className="vm-query-history-item__buttons">
-        <Tooltip title={"Execute query"}>
+        <Tooltip title={"Remove from history"}>
           <Button
             size="small"
             variant="text"
-            onClick={handleRunQuery}
-            startIcon={<PlayCircleOutlineIcon/>}
+            color="gray"
+            onClick={handleRemoveHistory}
+            startIcon={<DeleteIcon/>}
+            aria-label="Remove from history"
           />
         </Tooltip>
         <Tooltip title={"Copy query"}>
           <Button
             size="small"
             variant="text"
+            color="gray"
             onClick={handleCopyQuery}
             startIcon={<CopyIcon/>}
+            aria-label="Copy query"
           />
         </Tooltip>
-        <Tooltip title={isFavorite ? "Remove Favorite" : "Add to Favorites"}>
-          <Button
-            size="small"
-            variant="text"
-            color={isFavorite ? "warning" : "primary"}
-            onClick={handleToggleFavorite}
-            startIcon={isFavorite ? <StarIcon/> : <StarBorderIcon/>}
-          />
-        </Tooltip>
+        <Button
+          variant="text"
+          size="small"
+          color="primary"
+          startIcon={<PlayIcon/>}
+          onClick={handleRunQuery}
+          aria-label="Run query"
+        >
+          Run
+        </Button>
       </div>
     </div>
   );

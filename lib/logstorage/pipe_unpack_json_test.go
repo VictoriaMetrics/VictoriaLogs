@@ -34,7 +34,7 @@ func TestParsePipeUnpackJSONSuccess(t *testing.T) {
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc`)
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc skip_empty_results`)
 	f(`unpack_json if (a:x) from x fields (a, b) result_prefix abc keep_original_fields`)
-	f(`unpack_json if (a:x) from x fields (a, b) preserve_keys (a.b, c) result_prefix abc`)
+	f(`unpack_json if (a:x) from x fields (a, b) preserve_keys ("a.b", c) result_prefix abc`)
 	f(`unpack_json result_prefix abc`)
 	f(`unpack_json if (a:x) fields (a, b) result_prefix abc`)
 	f(`unpack_json if (a:x) fields (a, b) result_prefix abc skip_empty_results`)

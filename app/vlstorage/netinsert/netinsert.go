@@ -82,6 +82,11 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
 
+	// Set the idle connection timeout to the value smaller than the default timeout at the server side
+	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
+	tr.IdleConnTimeout = 5 * time.Second
+
 	scheme := "http"
 	if isTLS {
 		scheme = "https"
@@ -378,10 +383,21 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 	sn.addRow(r)
 }
 
+// sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
-	startIdx := int(fastrand.Uint32n(uint32(len(s.sns))))
-	for i := range s.sns {
-		idx := (startIdx + i) % len(s.sns)
+	// collect available storage node indexes
+	availableIdx := make([]int, 0, len(s.sns))
+	currentTime := fasttime.UnixTimestamp()
+	for idx, sn := range s.sns {
+		if sn.disabledUntil.Load() <= currentTime {
+			availableIdx = append(availableIdx, idx)
+		}
+	}
+
+	// pick a random start position and reroute the data
+	startIdx := int(fastrand.Uint32n(uint32(len(availableIdx))))
+	for i := range availableIdx {
+		idx := availableIdx[(startIdx+i)%len(availableIdx)]
 		sn := s.sns[idx]
 		err := sn.sendInsertRequest(pendingData)
 		if err == nil {

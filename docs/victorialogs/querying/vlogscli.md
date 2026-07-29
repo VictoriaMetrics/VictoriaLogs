@@ -10,9 +10,13 @@ tags:
   - logs
 ---
 
-`vlogsqcli` is an interactive command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
+`vlogsqcli` is an **interactive** command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
 It has the following features:
 
+- It provides the ability to execute [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) queries at the configured VictoriaLogs instance
+  (either single-node or [cluster](https://docs.victoriametrics.com/victorialogs/cluster/)) in an **interactive mode** similar
+  to [psql for PostgreSQL](https://www.postgresql.org/docs/current/app-psql.html). For non-interactive query processing from command line
+  it is recommended to use curl + jq according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 - It supports scrolling and searching over query results in the same way as `less` command does - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#scrolling-query-results).
 - It supports canceling long-running queries at any time via `Ctrl+C`.
 - It supports query history - see [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/#query-history).
@@ -25,8 +29,8 @@ or from docker images at [Docker Hub](https://hub.docker.com/r/victoriametrics/v
 ### Running `vlogscli` from release binary
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.50.0/vlutils-linux-amd64-v1.50.0.tar.gz
-tar xzf vlutils-linux-amd64-v1.50.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/vlutils-linux-amd64-v1.52.0.tar.gz
+tar xzf vlutils-linux-amd64-v1.52.0.tar.gz
 ./vlogscli-prod
 ```
 
