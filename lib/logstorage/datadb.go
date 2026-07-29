@@ -921,7 +921,7 @@ func (ddb *datadb) updateStats(s *DatadbStats) {
 	s.ActiveBigMerges += uint64(ddb.bigPartActiveMerges.Load())
 	s.BigRowsMerged += ddb.bigPartMergeRowsTotal.Load()
 
-	s.PendingRows = ddb.rb.Len()
+	s.PendingRows += ddb.rb.Len()
 
 	ddb.partsLock.Lock()
 
