@@ -101,6 +101,8 @@ const GroupLogsItem: FC<Props> = ({
 
         value && values.push(value);
       });
+    } else if (displayFields.length) {
+      values.push("—");
     } else {
       Object.entries(log).forEach(([key, value]) => {
         values.push(`${key}: ${value}`);
