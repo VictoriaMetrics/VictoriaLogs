@@ -39,6 +39,22 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 		},
 	})
 
+	// json line with duplicate fields
+	sut.JSONLineWrite(t, []string{
+		`{"_msg":"ingest duplicate jsonline","_time":"2025-06-05T14:30:19.088007Z","app":"first","app":"second"}`,
+	}, apptest.IngestOpts{
+		StreamFields: "app",
+	})
+	duplicateFieldsOpts := &opts{
+		query: `"ingest duplicate jsonline"`,
+		wantLogLines: []string{
+			`{"_msg":"ingest duplicate jsonline","_stream":"{app=\"first\"}","_time":"2025-06-05T14:30:19.088007Z","app":"first"}`,
+		},
+	}
+	f(duplicateFieldsOpts)
+	sut.ForceMerge(t, "20250605")
+	f(duplicateFieldsOpts)
+
 	// json line with _stream field
 	sut.JSONLineWrite(t, []string{
 		`{"_msg":"ingest _stream jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar", "_stream":"{foo=\"bar\"}", "_stream_id":"abcdefd"}`,

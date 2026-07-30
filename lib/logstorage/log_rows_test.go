@@ -159,6 +159,193 @@ func TestLogRows_StreamFieldsOverride(t *testing.T) {
 	f(o)
 }
 
+func TestLogRowsDropDuplicateFields(t *testing.T) {
+	tests := []struct {
+		name                    string
+		fields                  []Field
+		streamFieldsLen         int
+		fieldsExpected          []Field
+		streamFieldsLenExpected int
+	}{
+		{
+			name:                    "empty",
+			streamFieldsLen:         -1,
+			streamFieldsLenExpected: -1,
+		},
+		{
+			name: "unique",
+			fields: []Field{
+				{Name: "foo", Value: "a"},
+				{Name: "bar", Value: "b"},
+			},
+			streamFieldsLen: 2,
+			fieldsExpected: []Field{
+				{Name: "foo", Value: "a"},
+				{Name: "bar", Value: "b"},
+			},
+			streamFieldsLenExpected: 2,
+		},
+		{
+			name: "adjacent and non-adjacent duplicates",
+			fields: []Field{
+				{Name: "foo", Value: "first"},
+				{Name: "foo", Value: "second"},
+				{Name: "bar", Value: "first"},
+				{Name: "baz", Value: "first"},
+				{Name: "bar", Value: "second"},
+			},
+			streamFieldsLen: -1,
+			fieldsExpected: []Field{
+				{Name: "foo", Value: "first"},
+				{Name: "bar", Value: "first"},
+				{Name: "baz", Value: "first"},
+			},
+			streamFieldsLenExpected: -1,
+		},
+		{
+			name: "_msg aliases",
+			fields: []Field{
+				{Name: "_msg", Value: "first"},
+				{Name: "", Value: "second"},
+				{Name: "_msg", Value: "third"},
+			},
+			streamFieldsLen: -1,
+			fieldsExpected: []Field{
+				{Name: "_msg", Value: "first"},
+			},
+			streamFieldsLenExpected: -1,
+		},
+		{
+			name: "empty first value",
+			fields: []Field{
+				{Name: "foo", Value: ""},
+				{Name: "foo", Value: "second"},
+			},
+			streamFieldsLen: -1,
+			fieldsExpected: []Field{
+				{Name: "foo", Value: ""},
+			},
+			streamFieldsLenExpected: -1,
+		},
+		{
+			name: "stream fields length",
+			fields: []Field{
+				{Name: "stream-a", Value: "first"},
+				{Name: "stream-a", Value: "second"},
+				{Name: "stream-b", Value: "first"},
+				{Name: "field", Value: "first"},
+				{Name: "field", Value: "second"},
+			},
+			streamFieldsLen: 3,
+			fieldsExpected: []Field{
+				{Name: "stream-a", Value: "first"},
+				{Name: "stream-b", Value: "first"},
+				{Name: "field", Value: "first"},
+			},
+			streamFieldsLenExpected: 2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fieldsOrig := append([]Field(nil), test.fields...)
+			var lr LogRows
+			fields, streamFieldsLen := lr.dropDuplicateFields(test.fields, test.streamFieldsLen)
+			if !reflect.DeepEqual(fields, test.fieldsExpected) {
+				t.Fatalf("unexpected fields\ngot\n%v\nwant\n%v", fields, test.fieldsExpected)
+			}
+			if streamFieldsLen != test.streamFieldsLenExpected {
+				t.Fatalf("unexpected streamFieldsLen; got %d; want %d", streamFieldsLen, test.streamFieldsLenExpected)
+			}
+			if !reflect.DeepEqual(test.fields, fieldsOrig) {
+				t.Fatalf("dropDuplicateFields modified the source fields\ngot\n%v\nwant\n%v", test.fields, fieldsOrig)
+			}
+		})
+	}
+}
+
+func TestLogRowsDuplicateFields(t *testing.T) {
+	t.Run("configured stream fields", func(t *testing.T) {
+		lr := GetLogRows([]string{"app"}, nil, nil, nil, "")
+		defer PutLogRows(lr)
+
+		lr.mustAdd(TenantID{}, 1, []Field{
+			{Name: "app", Value: "first"},
+			{Name: "x", Value: "y"},
+			{Name: "app", Value: "second"},
+			{Name: "_msg", Value: "hello"},
+		})
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"hello","_stream":"{app=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","app":"first","x":"y"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
+	t.Run("inline stream fields", func(t *testing.T) {
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		defer PutLogRows(lr)
+
+		lr.MustAdd(TenantID{}, 1, []Field{
+			{Name: "stream-a", Value: "first"},
+			{Name: "stream-a", Value: "second"},
+			{Name: "stream-b", Value: "first"},
+			{Name: "field", Value: "value"},
+		}, 3)
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_stream":"{stream-a=\"first\",stream-b=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","field":"value","stream-a":"first","stream-b":"first"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
+	t.Run("extra fields", func(t *testing.T) {
+		extraFields := []Field{
+			{Name: "foo", Value: "first"},
+			{Name: "foo", Value: "second"},
+		}
+		lr := GetLogRows(nil, nil, nil, extraFields, "")
+		defer PutLogRows(lr)
+
+		lr.mustAdd(TenantID{}, 1, []Field{
+			{Name: "foo", Value: "client"},
+			{Name: "_msg", Value: "hello"},
+		})
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"hello","_stream":"{}","_time":"1970-01-01T00:00:00.000000001Z","foo":"first"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
+	t.Run("native insert row", func(t *testing.T) {
+		var st StreamTags
+		st.Add("app", "first")
+		st.Add("app", "second")
+
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		defer PutLogRows(lr)
+		lr.MustAddInsertRow(&InsertRow{
+			StreamTagsCanonical: string(st.MarshalCanonical(nil)),
+			Timestamp:           1,
+			Fields: []Field{
+				{Name: "app", Value: "first"},
+				{Name: "app", Value: "second"},
+				{Name: "_msg", Value: "hello"},
+			},
+		})
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"hello","_stream":"{app=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","app":"first"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+}
+
 func TestLogRows_DefaultMsgValue(t *testing.T) {
 	type opts struct {
 		rows []string

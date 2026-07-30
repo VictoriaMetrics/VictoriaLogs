@@ -58,7 +58,8 @@ func (st *StreamTags) String() string {
 
 // normalize synchronizes st with the provided fields and returns true if st was updated.
 //
-// This function updates or keeps tags that exist in fields and removes missing ones.
+// This function updates or keeps tags that exist in fields, removes missing ones
+// and drops duplicate tag names.
 func (st *StreamTags) normalize(fields []Field) bool {
 	updated := false
 
@@ -66,10 +67,15 @@ func (st *StreamTags) normalize(fields []Field) bool {
 	dstTags := tags[:0]
 	for _, tag := range tags {
 		tagName := tag.Name
+		if len(dstTags) > 0 && dstTags[len(dstTags)-1].Name == tagName {
+			updated = true
+			continue
+		}
 
 		var f *Field
 		for j := range fields {
-			if fields[j].Name == tagName {
+			fieldName := getCanonicalColumnName(getCanonicalFieldName(fields[j].Name))
+			if fieldName == tagName {
 				f = &fields[j]
 				// break is skipped intentionally in order to get the last matching field
 			}

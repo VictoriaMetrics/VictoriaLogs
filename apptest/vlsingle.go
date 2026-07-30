@@ -3,6 +3,7 @@ package apptest
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -88,6 +89,21 @@ func (app *Vlsingle) ForceFlush(t *testing.T) {
 	_, statusCode := app.node.cli.Get(t, url)
 	if statusCode != http.StatusOK {
 		t.Fatalf("unexpected status code when querying %s: got %d, want %d", url, statusCode, http.StatusOK)
+	}
+}
+
+// ForceMerge is a test helper function that forces merging the partition with
+// the given prefix.
+func (app *Vlsingle) ForceMerge(t *testing.T, partitionPrefix string) {
+	t.Helper()
+
+	uv := url.Values{
+		"partition_prefix": []string{partitionPrefix},
+	}
+	requestURL := fmt.Sprintf("http://%s/internal/force_merge?%s", app.node.httpListenAddr, uv.Encode())
+	_, statusCode := app.node.cli.Get(t, requestURL)
+	if statusCode != http.StatusOK {
+		t.Fatalf("unexpected status code when querying %s: got %d, want %d", requestURL, statusCode, http.StatusOK)
 	}
 }
 
