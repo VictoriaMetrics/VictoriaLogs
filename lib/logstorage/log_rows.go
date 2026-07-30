@@ -545,7 +545,8 @@ func (lr *LogRows) dropDuplicateFields(fields []Field, streamFieldsLen int) ([]F
 			}
 			duplicateFieldLogger.Warnf("ignoring duplicate field %q with the value %q, since the log entry already contains a field with the same name; "+
 				"preserving the first occurrence; log entry: %s", getCanonicalColumnName(fieldName), f.Value, line)
-			if streamFieldsLen >= 0 && i < streamFieldsLen {
+			// Use retained length so multiple stream-field duplicates keep streamFieldsLen in sync.
+			if len(dstFields) < streamFieldsLen {
 				streamFieldsLen--
 			}
 			continue

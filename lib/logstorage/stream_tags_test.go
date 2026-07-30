@@ -93,4 +93,9 @@ func TestStreamTagsNormalize(t *testing.T) {
 	// multiple stream tags with the same name
 	f(`{a="b",a="c"}`, `a=d`, `{a="d"}`, true)
 	f(`{a="b",a="b",q="w"}`, `a=b q=w`, `{a="b",q="w"}`, true)
+
+	// empty-name stream tag is an alias of _msg
+	f(`{="hello"}`, `_msg=world`, `{="world"}`, true)
+	f(`{="hello"}`, `=world`, `{="world"}`, true)
+	f(`{="hello"}`, `_msg=hello`, `{="hello"}`, false)
 }

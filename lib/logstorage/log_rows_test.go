@@ -244,6 +244,19 @@ func TestLogRowsDropDuplicateFields(t *testing.T) {
 			},
 			streamFieldsLenExpected: 2,
 		},
+		{
+			name: "multiple duplicate stream fields",
+			fields: []Field{
+				{Name: "app", Value: "first"},
+				{Name: "app", Value: "second"},
+				{Name: "app", Value: "third"},
+			},
+			streamFieldsLen: 3,
+			fieldsExpected: []Field{
+				{Name: "app", Value: "first"},
+			},
+			streamFieldsLenExpected: 1,
+		},
 	}
 
 	for _, test := range tests {
@@ -296,6 +309,24 @@ func TestLogRowsDuplicateFields(t *testing.T) {
 
 		result := lr.GetRowString(0)
 		resultExpected := `{"_stream":"{stream-a=\"first\",stream-b=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","field":"value","stream-a":"first","stream-b":"first"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
+	t.Run("multiple duplicate inline stream fields", func(t *testing.T) {
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		defer PutLogRows(lr)
+
+		lr.MustAdd(TenantID{}, 1, []Field{
+			{Name: "app", Value: "first"},
+			{Name: "app", Value: "second"},
+			{Name: "app", Value: "third"},
+			{Name: "_msg", Value: "hello"},
+		}, 3)
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"hello","_stream":"{app=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","app":"first"}`
 		if result != resultExpected {
 			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
 		}

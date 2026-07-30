@@ -75,7 +75,8 @@ func (st *StreamTags) normalize(fields []Field) bool {
 
 		var f *Field
 		for j := range fields {
-			if getCanonicalColumnName(fields[j].Name) == tagName {
+			// Canonicalize both sides so empty-name and "_msg" aliases match.
+			if getCanonicalColumnName(fields[j].Name) == getCanonicalColumnName(tagName) {
 				f = &fields[j]
 				// break is skipped intentionally in order to get the last matching field
 			}
