@@ -604,6 +604,8 @@ is set to vmalert url. For example, the following command instructs proxying `ht
 This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
 at the `/select/vmalert/*` paths.
 
+> Currently, the Grafana Alerting UI cannot work with the VictoriaLogs datasource, since it does not proxy requests to the configured `-vmalert.proxyURL` due to a hard limitation on Grafana side, see [this issue](https://github.com/VictoriaMetrics/victoriametrics-datasource/issues/59#issuecomment-2694191642) for details.
+
 ## List of command-line flags
 
 Pass `-help` to VictoriaLogs in order to see the list of supported command-line flags with their description:

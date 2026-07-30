@@ -428,3 +428,7 @@ Please refer to [How to use multitenancy in rules](https://docs.victoriametrics.
           - "/select/logsql/.*"
           url_prefix: "http://victorialogs:9428"
 ```
+
+### How to display rules in Grafana Alerting UI?
+
+Currently, the Grafana Alerting UI cannot work with the VictoriaLogs datasource, since it does not proxy requests to the configured `-vmalert.proxyURL` due to a hard limitation on Grafana side, see [this issue](https://github.com/VictoriaMetrics/victoriametrics-datasource/issues/59#issuecomment-2694191642) for details.
