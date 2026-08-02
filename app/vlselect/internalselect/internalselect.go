@@ -443,8 +443,9 @@ func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 type commonParams struct {
-	TenantIDs []logstorage.TenantID
-	Query     *logstorage.Query
+	TenantIDs     []logstorage.TenantID
+	IsMultiTenant bool
+	Query         *logstorage.Query
 
 	// Whether to disable compression of the response sent to the vlselect.
 	DisableCompression bool
@@ -460,7 +461,7 @@ type commonParams struct {
 }
 
 func (cp *commonParams) NewQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
+	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.IsMultiTenant, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
 }
 
 func (cp *commonParams) UpdatePerQueryStatsMetrics() {
@@ -476,6 +477,11 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 	tenantIDs, err := logstorage.UnmarshalTenantIDsFromJSON([]byte(tenantIDsStr))
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal tenant_ids=%q: %w", tenantIDsStr, err)
+	}
+
+	isMultiTenant, err := getBoolFromRequest(r, "multitenant")
+	if err != nil {
+		return nil, err
 	}
 
 	timestamp, err := getInt64FromRequest(r, "timestamp")
@@ -505,8 +511,9 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 	}
 
 	cp := &commonParams{
-		TenantIDs: tenantIDs,
-		Query:     q,
+		TenantIDs:     tenantIDs,
+		IsMultiTenant: isMultiTenant,
+		Query:         q,
 
 		DisableCompression: disableCompression,
 

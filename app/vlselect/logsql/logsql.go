@@ -126,8 +126,8 @@ func timestampToRFC3339Nano(nsec int64) string {
 // ProcessFacetsRequest handles /select/logsql/facets request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-facets
-func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessFacetsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -211,8 +211,8 @@ type facetEntry struct {
 // ProcessHitsRequest handles /select/logsql/hits request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats
-func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessHitsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -423,8 +423,8 @@ func (hs *hitsSeries) Less(i, j int) bool {
 // ProcessFieldNamesRequest handles /select/logsql/field_names request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names
-func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -457,8 +457,8 @@ func ProcessFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *htt
 // ProcessFieldValuesRequest handles /select/logsql/field_values request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values
-func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -505,8 +505,8 @@ func ProcessFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *ht
 // ProcessStreamFieldNamesRequest processes /select/logsql/stream_field_names request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-names
-func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -539,8 +539,8 @@ func ProcessStreamFieldNamesRequest(ctx context.Context, w http.ResponseWriter, 
 // ProcessStreamFieldValuesRequest processes /select/logsql/stream_field_values request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values
-func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -587,8 +587,8 @@ func ProcessStreamFieldValuesRequest(ctx context.Context, w http.ResponseWriter,
 // ProcessStreamIDsRequest processes /select/logsql/stream_ids request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream_ids
-func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -625,8 +625,8 @@ func ProcessStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 // ProcessStreamsRequest processes /select/logsql/streams request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-streams
-func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -663,11 +663,11 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 // ProcessLiveTailRequest processes live tailing request to /select/logsq/tail
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
-func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgsExt(r, true)
+	ca, err := parseCommonArgsExt(r, isMultiTenant, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -872,8 +872,8 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 // ProcessStatsQueryRangeRequest handles /select/logsql/stats_query_range request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
-func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1050,8 +1050,8 @@ type statsPoint struct {
 // ProcessStatsQueryRequest handles /select/logsql/stats_query request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
-func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
 		return
@@ -1172,8 +1172,8 @@ type histogramBucket struct {
 // ProcessQueryRequest handles /select/logsql/query request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
-func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	ca, err := parseCommonArgs(r)
+func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, isMultiTenant bool) {
+	ca, err := parseCommonArgs(r, isMultiTenant)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -1430,6 +1430,9 @@ type commonArgs struct {
 	// tenantIDs is the list of tenantIDs to query.
 	tenantIDs []logstorage.TenantID
 
+	// isMultiTenant indicates whether the request is for a multitenant endpoint.
+	isMultiTenant bool
+
 	// Whether to allow partial response when some of vlstorage nodes are unavailable for querying.
 	// This option makes sense only for cluster setup when vlselect queries vlstorage nodes.
 	allowPartialResponse bool
@@ -1448,15 +1451,15 @@ type commonArgs struct {
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters)
+	return logstorage.NewQueryContext(ctx, &ca.qs, ca.tenantIDs, ca.isMultiTenant, ca.q, ca.allowPartialResponse, ca.hiddenFieldsFilters)
 }
 
 func (ca *commonArgs) updatePerQueryStatsMetrics() {
 	vlstorage.UpdatePerQueryStatsMetrics(&ca.qs)
 }
 
-func parseCommonArgs(r *http.Request) (*commonArgs, error) {
-	return parseCommonArgsExt(r, false)
+func parseCommonArgs(r *http.Request, isMultiTenant bool) (*commonArgs, error) {
+	return parseCommonArgsExt(r, isMultiTenant, false)
 }
 
 // parseCommonArgsExt parses commonArgs from r.
@@ -1464,13 +1467,20 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 // If skipMaxQueryTimeRangeCheck is set, then the query time range isn't limited by -search.maxQueryTimeRange.
 // This is used by live tailing, since it processes only newly ingested logs
 // and doesn't scan historical data even if the query contains a wide time filter.
-func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
-	// Extract tenantID
-	tenantID, err := logstorage.GetTenantIDFromRequest(r)
-	if err != nil {
-		return nil, fmt.Errorf("cannot obtain tenantID: %w", err)
+func parseCommonArgsExt(r *http.Request, isMultiTenant, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
+	// Validate tenant IDs
+	var tenantIDs []logstorage.TenantID
+	if isMultiTenant {
+		if logstorage.HasTenantIDFromRequest(r) {
+			return nil, fmt.Errorf("accountID/projectID should not be set for multitenant request")
+		}
+	} else {
+		tenantID, err := logstorage.GetTenantIDFromRequest(r)
+		if err != nil {
+			return nil, fmt.Errorf("cannot obtain tenantID: %w", err)
+		}
+		tenantIDs = []logstorage.TenantID{tenantID}
 	}
-	tenantIDs := []logstorage.TenantID{tenantID}
 
 	// Parse optional start and end args
 	start, startOK, err := getTimeNsec(r, "start")
@@ -1596,8 +1606,9 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 	}
 
 	ca := &commonArgs{
-		q:         q,
-		tenantIDs: tenantIDs,
+		q:             q,
+		tenantIDs:     tenantIDs,
+		isMultiTenant: isMultiTenant,
 
 		allowPartialResponse: allowPartialResponse,
 		hiddenFieldsFilters:  hiddenFieldsFilters,

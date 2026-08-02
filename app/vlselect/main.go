@@ -34,8 +34,9 @@ var (
 	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 
-	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
-	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
+	enableMultitenantSelect = flag.Bool("multitenantselect.enable", false, "Whether to enable /select/multitenant/logsql/* HTTP endpoints. See https://docs.victoriametrics.com/victorialogs/#multitenant-querying")
+	enableDelete            = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	enableInternalDelete    = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
@@ -192,13 +193,6 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		return true
 	}
 
-	if path == "/select/logsql/tail" {
-		logsqlTailRequests.Inc()
-		// Process live tailing request without timeout, since it is OK to run live tailing requests for very long time.
-		// Also do not apply concurrency limit to tail requests, since these limits are intended for non-tail requests.
-		logsql.ProcessLiveTailRequest(ctx, w, r)
-		return true
-	}
 	if strings.HasPrefix(path, "/select/vmalert/") {
 		vmalertRequests.Inc()
 		if len(*vmalertProxyURL) == 0 {
@@ -210,6 +204,23 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		}
 		path = strings.TrimPrefix(path, "/select")
 		vmalertproxy.HandleRequest(w, r, path)
+		return true
+	}
+
+	isMultiTenant := strings.HasPrefix(path, "/select/multitenant/logsql/")
+	if isMultiTenant && !*enableMultitenantSelect {
+		httpserver.Errorf(w, r, "requests to /select/multitenant/logsql/* endpoints are disabled; pass -multitenantselect.enable command-line flag for enabling them; "+
+			"see https://docs.victoriametrics.com/victorialogs/#multitenant-querying")
+		return true
+	}
+
+	// Process live tailing requests without timeout, since it is OK to run live tailing requests for very long time.
+	// Also do not apply concurrency limit to tail requests, since these limits are intended for non-tail requests.
+	switch path {
+	case "/select/logsql/tail",
+		"/select/multitenant/logsql/tail":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessLiveTailRequest(ctx, w, r, isMultiTenant)
 		return true
 	}
 
@@ -228,7 +239,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	}
 	defer decRequestConcurrency()
 
-	ok := processSelectRequest(ctxWithTimeout, w, r, path)
+	ok := processSelectRequest(ctxWithTimeout, w, r, path, isMultiTenant)
 	if !ok {
 		return false
 	}
@@ -313,77 +324,96 @@ func decRequestConcurrency() {
 	<-concurrencyLimitCh
 }
 
-func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) bool {
+func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, isMultiTenant bool) bool {
 	httpserver.EnableCORS(w, r)
 	startTime := time.Now()
 	switch path {
 	case "/select/logsql/query_time_range":
-		logsqlQueryTimeRangeRequests.Inc()
+		httpRequestTotalCounter(path).Inc()
 		logsql.ProcessQueryTimeRangeRequest(ctx, w, r)
 		return true
-	case "/select/logsql/facets":
-		logsqlFacetsRequests.Inc()
-		logsql.ProcessFacetsRequest(ctx, w, r)
-		logsqlFacetsDuration.UpdateDuration(startTime)
+	case "/select/logsql/facets",
+		"/select/multitenant/logsql/facets":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessFacetsRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/field_names":
-		logsqlFieldNamesRequests.Inc()
-		logsql.ProcessFieldNamesRequest(ctx, w, r)
-		logsqlFieldNamesDuration.UpdateDuration(startTime)
+	case "/select/logsql/field_names",
+		"/select/multitenant/logsql/field_names":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessFieldNamesRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/field_values":
-		logsqlFieldValuesRequests.Inc()
-		logsql.ProcessFieldValuesRequest(ctx, w, r)
-		logsqlFieldValuesDuration.UpdateDuration(startTime)
+	case "/select/logsql/field_values",
+		"/select/multitenant/logsql/field_values":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessFieldValuesRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/hits":
-		logsqlHitsRequests.Inc()
-		logsql.ProcessHitsRequest(ctx, w, r)
-		logsqlHitsDuration.UpdateDuration(startTime)
+	case "/select/logsql/hits",
+		"/select/multitenant/logsql/hits":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessHitsRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/query":
-		logsqlQueryRequests.Inc()
-		logsql.ProcessQueryRequest(ctx, w, r)
-		logsqlQueryDuration.UpdateDuration(startTime)
+	case "/select/logsql/query",
+		"/select/multitenant/logsql/query":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessQueryRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/stats_query":
-		logsqlStatsQueryRequests.Inc()
-		logsql.ProcessStatsQueryRequest(ctx, w, r)
-		logsqlStatsQueryDuration.UpdateDuration(startTime)
+	case "/select/logsql/stats_query",
+		"/select/multitenant/logsql/stats_query":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStatsQueryRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/stats_query_range":
-		logsqlStatsQueryRangeRequests.Inc()
-		logsql.ProcessStatsQueryRangeRequest(ctx, w, r)
-		logsqlStatsQueryRangeDuration.UpdateDuration(startTime)
+	case "/select/logsql/stats_query_range",
+		"/select/multitenant/logsql/stats_query_range":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStatsQueryRangeRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/stream_field_names":
-		logsqlStreamFieldNamesRequests.Inc()
-		logsql.ProcessStreamFieldNamesRequest(ctx, w, r)
-		logsqlStreamFieldNamesDuration.UpdateDuration(startTime)
+	case "/select/logsql/stream_field_names",
+		"/select/multitenant/logsql/stream_field_names":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStreamFieldNamesRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/stream_field_values":
-		logsqlStreamFieldValuesRequests.Inc()
-		logsql.ProcessStreamFieldValuesRequest(ctx, w, r)
-		logsqlStreamFieldValuesDuration.UpdateDuration(startTime)
+	case "/select/logsql/stream_field_values",
+		"/select/multitenant/logsql/stream_field_values":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStreamFieldValuesRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/stream_ids":
-		logsqlStreamIDsRequests.Inc()
-		logsql.ProcessStreamIDsRequest(ctx, w, r)
-		logsqlStreamIDsDuration.UpdateDuration(startTime)
+	case "/select/logsql/stream_ids",
+		"/select/multitenant/logsql/stream_ids":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStreamIDsRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
-	case "/select/logsql/streams":
-		logsqlStreamsRequests.Inc()
-		logsql.ProcessStreamsRequest(ctx, w, r)
-		logsqlStreamsDuration.UpdateDuration(startTime)
+	case "/select/logsql/streams",
+		"/select/multitenant/logsql/streams":
+		httpRequestTotalCounter(path).Inc()
+		logsql.ProcessStreamsRequest(ctx, w, r, isMultiTenant)
+		httpRequestDuration(path, startTime)
 		return true
 	case "/select/tenant_ids":
-		tenantIDsRequests.Inc()
+		httpRequestTotalCounter(path).Inc()
 		logsql.ProcessTenantIDsRequest(ctx, w, r)
-		tenantIDsDuration.UpdateDuration(startTime)
+		httpRequestDuration(path, startTime)
 		return true
 	default:
 		return false
 	}
+}
+
+func httpRequestTotalCounter(path string) *metrics.Counter {
+	return metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path))
+}
+
+func httpRequestDuration(path string, startTime time.Time) {
+	metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
 }
 
 func deleteHandler(w http.ResponseWriter, r *http.Request, path string) {
@@ -479,48 +509,6 @@ func getMaxQueryDuration(r *http.Request) (time.Duration, error) {
 }
 
 var (
-	logsqlFacetsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/facets"}`)
-	logsqlFacetsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/facets"}`)
-
-	logsqlFieldNamesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/field_names"}`)
-	logsqlFieldNamesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/field_names"}`)
-
-	logsqlFieldValuesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/field_values"}`)
-	logsqlFieldValuesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/field_values"}`)
-
-	logsqlHitsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/hits"}`)
-	logsqlHitsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/hits"}`)
-
-	logsqlQueryRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query"}`)
-	logsqlQueryDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/query"}`)
-
-	logsqlStatsQueryRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/stats_query"}`)
-	logsqlStatsQueryDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/stats_query"}`)
-
-	logsqlStatsQueryRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/stats_query_range"}`)
-	logsqlStatsQueryRangeDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/stats_query_range"}`)
-
-	logsqlStreamFieldNamesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/stream_field_names"}`)
-	logsqlStreamFieldNamesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/stream_field_names"}`)
-
-	logsqlStreamFieldValuesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/stream_field_values"}`)
-	logsqlStreamFieldValuesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/stream_field_values"}`)
-
-	logsqlStreamIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/stream_ids"}`)
-	logsqlStreamIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/stream_ids"}`)
-
-	logsqlStreamsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/streams"}`)
-	logsqlStreamsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/logsql/streams"}`)
-
-	tenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
-	tenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
-
-	// no need to track duration for tail requests, as they usually take long time
-	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)
-
-	// no need to track the duration for query_time_range requests, since they are instant
-	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
-
 	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 
 	// no need to track duration for /delete/* requests, because they are asynchronous

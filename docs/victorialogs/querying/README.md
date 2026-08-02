@@ -138,6 +138,9 @@ for log messages at `(AccountID=12, ProjectID=34)` tenant:
 curl http://localhost:9428/select/logsql/query -H 'AccountID: 12' -H 'ProjectID: 34' -d 'query=error'
 ```
 
+Use `/select/multitenant/logsql/query` endpoint for querying multiple tenants in a single request.
+See [multitenancy docs](https://docs.victoriametrics.com/victorialogs/#multitenant-querying) for details.
+
 The number of requests to `/select/logsql/query` can be [monitored](https://docs.victoriametrics.com/victorialogs/metrics/)
 with [`vl_http_requests_total{path="/select/logsql/query"}`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_http_requests_total) metric.
 

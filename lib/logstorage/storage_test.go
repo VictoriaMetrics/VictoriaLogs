@@ -515,7 +515,7 @@ func checkQueryResults(t *testing.T, s *Storage, now int64, tenantIDs []TenantID
 
 	ctx := t.Context()
 	var qs QueryStats
-	qctx := NewQueryContext(ctx, &qs, tenantIDs, q, false, hiddenFieldsFilters)
+	qctx := NewQueryContext(ctx, &qs, tenantIDs, false, q, false, hiddenFieldsFilters)
 
 	var buf []byte
 	var bufLock sync.Mutex

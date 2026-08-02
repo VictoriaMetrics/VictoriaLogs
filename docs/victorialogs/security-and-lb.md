@@ -144,6 +144,10 @@ similar to [this one](https://github.com/VictoriaMetrics/VictoriaLogs/issues/15#
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#routing-by-header) on how to setup request routing in `vmauth` by request headers.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers) on how to modify request headers before proxying the requests to backends.
 
+Requests to `/select/multitenant/logsql/*` endpoints can query multiple tenants in a single request when
+[`-multitenantselect.enable`](https://docs.victoriametrics.com/victorialogs/#multitenant-querying) is set.
+Expose these endpoints only to trusted users, or block them in `vmauth` configs for users who must access just a single tenant.
+
 See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).
 
 ### Proxying requests to the given tenants

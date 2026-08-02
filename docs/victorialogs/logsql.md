@@ -286,6 +286,10 @@ _time:5m
   | filter error_rate:>0.1;
 ```
 
+During [multitenant querying](https://docs.victoriametrics.com/victorialogs/#multitenant-querying), LogsQL can filter and return tenant IDs
+via `vl_account_id` and `vl_project_id` fields. These fields are returned in query results unless they are removed by LogsQL pipes
+such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe).
+
 ## Filters
 
 LogsQL supports various filters for searching for log messages (see below).

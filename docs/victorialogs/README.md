@@ -491,6 +491,29 @@ VictoriaLogs has very low overhead for per-tenant management, so it is OK to hav
 VictoriaLogs doesn't perform per-tenant authorization. Use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) or similar tools for per-tenant authorization.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
+### Multitenant querying
+
+By default, VictoriaLogs queries a single tenant per request. The requested tenant is selected via `AccountID` and `ProjectID` request headers.
+
+It is also possible to query multiple tenants in a single request via `/select/multitenant/logsql/*` endpoints.
+These endpoints are disabled by default and can be enabled by passing `-multitenantselect.enable` command-line flag to VictoriaLogs or `vlselect`.
+Requests to `/select/multitenant/logsql/*` endpoints must not contain `AccountID` and `ProjectID` request headers.
+
+Use `vl_account_id` and `vl_project_id` fields in LogsQL filters for limiting the query to the needed tenants.
+For example, the following query searches logs containing the `error` word across `(AccountID=12, ProjectID=34)` tenant:
+
+```sh
+curl http://localhost:9428/select/multitenant/logsql/query \
+  -d 'query=vl_account_id:=12 vl_project_id:=34 error'
+```
+
+The `vl_account_id` and `vl_project_id` fields are generated from tenant IDs during multitenant querying.
+They are returned in query results unless they are removed by LogsQL pipes such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe).
+They can also be used in LogsQL filters for selecting the needed tenants.
+
+The `/select/multitenant/logsql/*` endpoints can query all the stored tenants, so they must be protected with proper authorization.
+See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
+
 ### Multitenancy access control
 
 Enforce access control for tenants by using [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/). Access control can be configured for each tenant by setting up the following rules:

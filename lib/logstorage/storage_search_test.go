@@ -175,6 +175,35 @@ func TestStorageRunQuery(t *testing.T) {
 			t.Fatalf("unexpected number of matching rows; got %d; want %d", n, expectedRowsCount)
 		}
 	})
+	t.Run("matching-multitenant-query-tenant-filter", func(t *testing.T) {
+		f := func(t *testing.T, query string, rowsExpected int) {
+			t.Helper()
+
+			q := mustParseQuery(query)
+			qs := &QueryStats{}
+			qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+
+			var rowsCountTotal atomic.Uint32
+			writeBlock := func(_ uint, db *DataBlock) {
+				rowsCountTotal.Add(uint32(db.RowsCount()))
+			}
+			if err := s.RunQuery(qctx, writeBlock); err != nil {
+				t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)
+			}
+
+			if n := rowsCountTotal.Load(); n != uint32(rowsExpected) {
+				t.Fatalf("unexpected number of matching rows for query %q; got %d; want %d", query, n, rowsExpected)
+			}
+		}
+
+		rowsPerTenant := streamsPerTenant * blocksPerStream * rowsPerBlock
+		rowsPerTenantStream := blocksPerStream * rowsPerBlock
+		rowsTotal := tenantsCount * rowsPerTenant
+		f(t, `vl_account_id:2`, rowsPerTenant)
+		f(t, `vl_account_id:2 AND _stream:{job="foobar",instance="host-1:234"}`, rowsPerTenantStream)
+		f(t, `vl_account_id:2 OR vl_project_id:31`, 2*rowsPerTenant)
+		f(t, `!vl_account_id:2`, rowsTotal-rowsPerTenant)
+	})
 	t.Run("matching-in-filter", func(t *testing.T) {
 		q := mustParseQuery(`source-file:in(foobar,/foo/bar/baz)`)
 		var rowsCountTotal atomic.Uint32
@@ -1716,5 +1745,104 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 
 func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
-	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
+	return NewQueryContext(context.Background(), qs, tenantIDs, false, q, false, nil)
+}
+
+func TestStorageGetFieldNamesMultitenant(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+	s := MustOpenStorage(path, &StorageConfig{
+		Retention: 24 * time.Hour,
+	})
+	defer s.MustClose()
+
+	now := time.Now().UnixNano()
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	for i := range 3 {
+		tenantID := TenantID{
+			AccountID: uint32(i + 1),
+			ProjectID: uint32(i + 11),
+		}
+		fields := []Field{
+			{Name: "_msg", Value: fmt.Sprintf("message-%d", i)},
+		}
+		if i < 2 {
+			fields = append(fields,
+				Field{Name: "vl_account_id", Value: "stored-account-id"},
+				Field{Name: "vl_project_id", Value: "stored-project-id"},
+			)
+		}
+		lr.mustAdd(tenantID, now+int64(i), fields)
+	}
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	q := mustParseQuery("*")
+	qs := &QueryStats{}
+	qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+	results, err := s.GetFieldNames(qctx, "vl_")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	resultsExpected := []ValueWithHits{
+		{"vl_account_id", 3},
+		{"vl_project_id", 3},
+	}
+	if !reflect.DeepEqual(results, resultsExpected) {
+		t.Fatalf("unexpected result; got\n%v\nwant\n%v", results, resultsExpected)
+	}
+}
+
+func TestGetTenantFilter(t *testing.T) {
+	t.Parallel()
+
+	tenantRows := [][]Field{
+		{
+			{Name: "vl_account_id", Value: "1"},
+			{Name: "vl_project_id", Value: "11"},
+		},
+		{
+			{Name: "vl_account_id", Value: "2"},
+			{Name: "vl_project_id", Value: "21"},
+		},
+		{
+			{Name: "vl_account_id", Value: "1"},
+			{Name: "vl_project_id", Value: "21"},
+		},
+	}
+
+	f := func(query string, matchingTenantIndexesExpected []int) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		tf := getTenantFilter(q)
+
+		var matchingTenantIndexes []int
+		for i, rows := range tenantRows {
+			if tf.matchRow(rows) {
+				matchingTenantIndexes = append(matchingTenantIndexes, i)
+			}
+		}
+		if !reflect.DeepEqual(matchingTenantIndexes, matchingTenantIndexesExpected) {
+			t.Fatalf("unexpected tenant filter matches for query %q; got %v; want %v", query, matchingTenantIndexes, matchingTenantIndexesExpected)
+		}
+	}
+
+	f(`vl_account_id:1`, []int{0, 2})
+	f(`vl_account_id:=1`, []int{0, 2})
+	f(`vl_account_id:~"1|2"`, []int{0, 1, 2})
+	f(`vl_account_id:in(1,2)`, []int{0, 1, 2})
+	f(`vl_project_id:21`, []int{1, 2})
+	f(`vl_account_id:1 AND vl_project_id:21`, []int{2})
+	f(`vl_account_id:1 AND foo:bar`, []int{0, 2})
+	f(`vl_account_id:2 OR vl_project_id:11`, []int{0, 1})
+	f(`vl_account_id:2 OR foo:bar`, []int{0, 1, 2})
+	f(`foo:bar`, []int{0, 1, 2})
+	f(`!vl_account_id:1`, []int{1})
+	f(`vl_account_id:!~"1"`, []int{1})
+	f(`!foo:bar`, []int{0, 1, 2})
+	f(`!(vl_account_id:1 OR vl_project_id:21)`, []int{0, 1, 2})
 }
