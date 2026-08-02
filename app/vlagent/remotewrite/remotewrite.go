@@ -33,8 +33,8 @@ var (
 	format = flagutil.NewArrayString("remoteWrite.format", "The data format to use for sending data to the corresponding -remoteWrite.url. "+
 		"Available formats: native, jsonline. Default is native. See https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format")
 
-	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . "+
-		"if this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
+	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url. "+
+		"If this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
 		"see also -remoteWrite.maxDiskUsagePerURL")
 	queues = flag.Int("remoteWrite.queues", cgroup.AvailableCPUs()*2, "The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues "+
 		"isn't enough for sending high volume of collected data to remote storage. "+
