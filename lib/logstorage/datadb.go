@@ -593,8 +593,10 @@ func (ddb *datadb) mustMergePartsInternal(pws []*partWrapper, isFinal bool, drop
 	}
 	if needStop(stopCh) {
 		// Remove incomplete destination part
-		if dstPartType != partInmemory {
+		if mpNew == nil {
 			fs.MustRemoveDir(dstPartPath)
+		} else {
+			putInmemoryPart(mpNew)
 		}
 		return false
 	}
@@ -689,6 +691,8 @@ func (ddb *datadb) openCreatedPart(ph *partHeader, pws []*partWrapper, mpNew *in
 		// The created part is empty. Remove it
 		if mpNew == nil {
 			fs.MustRemoveDir(dstPartPath)
+		} else {
+			putInmemoryPart(mpNew)
 		}
 		return nil
 	}
