@@ -8,8 +8,8 @@ type Options = {
 export const useTableLogsPaginate = ({ rowsPerPage, containerRef }: Options) => {
   const [page, setPage] = useState(1);
 
-  const startOffset = (page - 1) * rowsPerPage;
-  const endOffset =  page * rowsPerPage;
+  const startOffset = rowsPerPage ? (page - 1) * rowsPerPage : 0;
+  const endOffset = rowsPerPage ? page * rowsPerPage : Infinity;
   const offset: [number, number] = [startOffset, endOffset];
 
   const onChangePage = (newPage: number) => {

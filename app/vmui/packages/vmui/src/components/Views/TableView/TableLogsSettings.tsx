@@ -21,6 +21,7 @@ const TableLogsSettings: FC<Props> = ({ rowsPerPage, setRowsPerPage, targetRef, 
     <div className="vm-table-view-settings">
       <div className="vm-table-view-settings__button">
         <SelectLimit
+          allowUnlimited
           limit={rowsPerPage}
           onChange={handleSetRowsPerPage}
         />
