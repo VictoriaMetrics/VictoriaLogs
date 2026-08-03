@@ -117,6 +117,8 @@ type partWrapper struct {
 	refCount atomic.Int32
 
 	// The flag, which is set when the part must be deleted after refCount reaches zero.
+	// This field should be updated only after partWrapper
+	// was removed from the list of active parts.
 	mustDrop atomic.Bool
 
 	// p is an opened part
@@ -1514,11 +1516,12 @@ func (ddb *datadb) deleteRows(pso *partitionSearchOptions, stopCh <-chan struct{
 		}
 
 		ddb.partsLock.Lock()
-		if !pw.isInMerge {
+		if !pw.isInMerge && !pw.mustDrop.Load() {
 			pw.isInMerge = true
 			pwsToMerge = append(pwsToMerge, pw)
 		} else {
-			// The pw is in merge now, so it must be processed again for the rows' deletion in the future.
+			// The pw is being merged or has been replaced,
+			// so it must be processed again for the rows' deletion in the future.
 			needRepeat = true
 		}
 		ddb.partsLock.Unlock()
