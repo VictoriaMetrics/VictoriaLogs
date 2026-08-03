@@ -1679,15 +1679,15 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 
 	for rowID := range rowsPerDayPerStream {
 		for streamID := range streamsPerTenant {
-			fields = append(fields[:0], Field{
-				Name:  "host",
-				Value: fmt.Sprintf("host-%d", streamID),
-			}, Field{
-				Name:  "app",
-				Value: fmt.Sprintf("app-%d", 200+streamID),
-			})
 			for _, tenantID := range tenantIDs {
 				for dayID := range int64(days) {
+					fields = append(fields[:0], Field{
+						Name:  "host",
+						Value: fmt.Sprintf("host-%d", streamID),
+					}, Field{
+						Name:  "app",
+						Value: fmt.Sprintf("app-%d", 200+streamID),
+					})
 					fields = append(fields, Field{
 						Name:  "_msg",
 						Value: fmt.Sprintf("value #%d at the day %d for the tenantID=%s and streamID=%d", rowID, dayID, tenantID, streamID),
