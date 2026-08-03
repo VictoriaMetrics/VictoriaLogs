@@ -247,7 +247,7 @@ See [cluster mode docs](https://docs.victoriametrics.com/victorialogs/cluster/) 
 
 ## Partitions lifecycle
 
-The ingested logs are stored in per-day subdirectories (partitions) at the `<-storageDataPath>/partitions/` directory. The per-day subdirectories have `YYYYMMDD` names.
+The ingested logs are stored in [per-day subdirectories (partitions)](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#2-daily-partitions) at the `<-storageDataPath>/partitions/` directory. The per-day subdirectories have `YYYYMMDD` names.
 For example, the directory with the name `20250418` contains logs with [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
 at April 18, 2025 UTC. This allows flexible data management.
 
@@ -288,7 +288,7 @@ with fast NVMe (SSD) disks, while historical logs are gradually migrated to Vict
 This scheme can be implemented with the following simple cron job, which must run once per day:
 
 1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` endpoint.
-1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaMetrics with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
+1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaLogs with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
 1. To delete the created snapshot according to [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
 1. To detach the copied partition from the VictoriaLogs with NVMe via `/internal/partition/detach?name=YYYYMMDD` endpoint.
 1. To attach the copied partition to the VictoriaLogs with HDD via `/internal/partition/attach?name=YYYYMMDD` endpoint.
@@ -317,7 +317,7 @@ It is recommended leaving the following amounts of spare resource for smooth wor
 - 50% of spare CPU for reducing the probability of slowdowns during temporary spikes in workload.
 - At least 20% of free storage space at the directory pointed by the [`-storageDataPath`](https://docs.victoriametrics.com/victorialogs/#storage) command-line flag.
   Too small amounts of free disk space may result in significant slowdown for both data ingestion and querying
-  because of inability to merge newly created smaller data parts into bigger data parts.
+  because of inability to merge newly created smaller [data parts](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#3-parts-the-unit-victorialogs-actually-stores) into bigger data parts.
 
 ## Logging new streams
 
@@ -358,7 +358,7 @@ See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#
 VictoriaLogs puts the recently [ingested logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/) into in-memory buffers,
 which aren't available for [querying](https://docs.victoriametrics.com/victorialogs/querying/) for up to a second.
 If you need querying logs immediately after their ingestion, then the `/internal/force_flush` HTTP endpoint must be requested
-before querying. This endpoint converts in-memory buffers with the recently ingested logs into searchable data blocks.
+before querying. This endpoint converts in-memory buffers with the recently ingested logs into searchable [data blocks](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#41-logs-are-grouped-into-blocks-by-stream-and-by-time).
 
 It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a regular basis, since this increases CPU usage
 and slows down data ingestion. It is expected that the `/internal/force_flush` is requested in automated tests, which need querying
@@ -603,6 +603,8 @@ is set to vmalert url. For example, the following command instructs proxying `ht
 
 This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
 at the `/select/vmalert/*` paths.
+
+> Currently, Grafana Alerting UI cannot display datasource-managed rules through the VictoriaLogs datasource plugin, even when `-vmalert.proxyURL` is configured. This is because Grafana currently supports datasource-managed rules only for the `Prometheus` and `Loki` datasource types. See [this issue](https://github.com/VictoriaMetrics/victoriametrics-datasource/issues/59#issuecomment-2694191642) for details.
 
 ## List of command-line flags
 

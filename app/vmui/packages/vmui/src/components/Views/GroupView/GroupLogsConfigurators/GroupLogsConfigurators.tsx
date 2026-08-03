@@ -129,8 +129,8 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
               <Select
                 value={groupBy}
                 list={[WITHOUT_GROUPING, ...logsKeys]}
-                label="Group by field"
-                placeholder="Group by field"
+                label="Group by"
+                placeholder="Group by"
                 onChange={handleSelectGroupBy}
                 searchable
               />
@@ -143,7 +143,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
                 />
               </Tooltip>
               <span className="vm-group-logs-configurator-item__info">
-                Select a field to group logs by (default: <code>{LOGS_GROUP_BY}</code>).
+                Select a field used to group both the hits chart and logs (default: <code>{LOGS_GROUP_BY}</code>).
               </span>
             </div>
 

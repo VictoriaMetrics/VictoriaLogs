@@ -4423,6 +4423,110 @@
           ],
           "title": "Streams churn rate 24h",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-metrics-datasource",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "description": "Average duration of fsync system calls. Spikes or consistently high values indicate slow storage writes and may reduce data ingestion performance.\n\nIf this value is high:\n- Check disk latency and utilization.\n- For cloud storage, check IOPS and throughput limits.\n- For NFS, check network latency and NFS server resource usage.\n- Check for known filesystem or kernel issues.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 124
+          },
+          "id": 159,
+          "options": {
+            "legend": {
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "sortBy": "Last *",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "hideZeros": true,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.4.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "victoriametrics-metrics-datasource",
+                "uid": "$DS_PROMETHEUS"
+              },
+              "editorMode": "code",
+              "expr": "rate(vm_filestream_fsync_duration_seconds_total{job=~\"$job_cluster\", instance=~\"$instance\"}[$__rate_interval]) / rate(vm_filestream_fsync_calls_total{job=~\"$job_cluster\", instance=~\"$instance\"}[$__rate_interval])",
+              "format": "time_series",
+              "instant": false,
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Fsync avg duration ($instance)",
+          "type": "timeseries"
         }
       ],
       "title": "Troubleshooting",
@@ -10589,7 +10693,7 @@
           "refId": "VictoriaMetricsVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
-        "regex": "/^(?<value>.*)-(?:vlinsert|vlstorage|vlselect|insert|storage|select)$/",
+        "regex": "/^(?:(?:(?:vl)?(?:insert|storage|select))(?:internal)?-)?(?<value>.+?)(?:-(?:(?:vl)?(?:insert|storage|select)))?$/",
         "type": "query"
       },
       {
@@ -10598,14 +10702,14 @@
           "type": "victoriametrics-metrics-datasource",
           "uid": "$DS_PROMETHEUS"
         },
-        "definition": "label_values(vm_app_version{job=~\"$job\", job=~\"$cluster.*\"}, job)",
+        "definition": "label_values(vm_app_version{job=~\"$job\", job=~\".*$cluster.*\"}, job)",
         "includeAll": true,
         "multi": true,
         "name": "job_cluster",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(vm_app_version{job=~\"$job\", job=~\"$cluster.*\"}, job)",
+          "query": "label_values(vm_app_version{job=~\"$job\", job=~\".*$cluster.*\"}, job)",
           "refId": "VictoriaMetricsVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -10718,7 +10822,7 @@
   "timezone": "",
   "title": "VictoriaLogs - cluster (VM)",
   "uid": "XqCOFEX4z_vm",
-  "version": 5,
+  "version": 6,
   "weekStart": "",
   "id": null
 }

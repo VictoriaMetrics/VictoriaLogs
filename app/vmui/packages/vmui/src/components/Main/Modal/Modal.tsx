@@ -10,6 +10,7 @@ import useEventListener from "../../../hooks/useEventListener";
 interface ModalProps {
   title?: string
   children: ReactNode
+  footer?: ReactNode
   onClose: () => void
   className?: string
   isOpen?: boolean
@@ -18,6 +19,7 @@ interface ModalProps {
 const Modal: FC<ModalProps> = ({
   title,
   children,
+  footer,
   onClose,
   className,
   isOpen = true,
@@ -94,6 +96,11 @@ const Modal: FC<ModalProps> = ({
         >
           {children}
         </div>
+        {footer && (
+          <div className="vm-modal-content-footer">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   ), document.body);

@@ -1,5 +1,5 @@
 include:
- - ../compose-base.yml
+  - ../compose-base.yml
 services:
   fluentd:
     build: .
@@ -10,6 +10,9 @@ services:
     ports:
       - "5140:5140"
       - "24224:24224"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "-n", "-v", "127.0.0.1", "24224"]
+      start_period: 3s
   nginx:
     image: nginx:1.27
     ports:
@@ -21,4 +24,4 @@ services:
         labels: com.docker.compose.service
     depends_on:
       fluentd:
-        condition: service_started
+        condition: service_healthy

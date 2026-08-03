@@ -63,8 +63,8 @@ func (pr *pipeReplace) hasFilterInWithQuery() bool {
 	return pr.iff.hasFilterInWithQuery()
 }
 
-func (pr *pipeReplace) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pr.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pr *pipeReplace) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pr.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

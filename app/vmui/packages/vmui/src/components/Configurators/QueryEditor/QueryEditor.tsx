@@ -1,25 +1,20 @@
-import { FC, useEffect, useRef, useState, RefObject } from "preact/compat";
+import { FC, useRef, useState, RefObject, useEffect } from "preact/compat";
 import { ErrorTypes } from "../../../types";
 import TextField, { TextFieldKeyboardEvent } from "../../Main/TextField/TextField";
 import "./style.scss";
 import { QueryStats } from "../../../api/types";
-import { AutocompleteOptions } from "../../Main/Autocomplete/Autocomplete";
-import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { useQueryState } from "../../../state/query/QueryStateContext";
-import debounce from "lodash.debounce";
-import { toggleLineComment } from "./LogsQL/utils";
+import { toggleLineComment } from "./LogsQL/helpers/utils";
 import QueryEditorHotkeysTip from "./QueryEditorHotkeysTip";
 import { formatRequestDuration } from "../../../utils/time";
+import useBoolean from "../../../hooks/useBoolean";
+import { DEFAULT_QUERY } from "../../../pages/QueryPage/hooks/useQueryController";
 
 export interface QueryEditorAutocompleteProps {
   value: string;
-  anchorEl: RefObject<HTMLInputElement>;
+  anchorEl: RefObject<HTMLElement>;
   caretPosition: [number, number]; // [start, end]
-  hasHelperText: boolean;
-  includeFunctions: boolean;
-  isOpen: boolean;
   onSelect: (val: string, caretPosition: number) => void;
-  onFoundOptions: (val: AutocompleteOptions[]) => void;
 }
 
 export interface QueryEditorProps {
@@ -28,14 +23,11 @@ export interface QueryEditorProps {
   onArrowUp: () => void;
   onArrowDown: () => void;
   value: string;
-  oneLiner?: boolean;
-  autocomplete: boolean;
   autocompleteEl?: FC<QueryEditorAutocompleteProps>;
   error?: ErrorTypes | string;
   stats?: QueryStats;
   label: string;
   disabled?: boolean
-  includeFunctions?: boolean;
 }
 
 const QueryEditor: FC<QueryEditorProps> = ({
@@ -44,24 +36,27 @@ const QueryEditor: FC<QueryEditorProps> = ({
   onEnter,
   onArrowUp,
   onArrowDown,
-  autocomplete,
   autocompleteEl: AutocompleteEl,
   error,
   stats,
   label,
   disabled = false,
-  includeFunctions = true
 }) => {
-  const { autocompleteQuick } = useQueryState();
-  const { isMobile } = useDeviceDetect();
+  const { autocomplete, autocompleteQuick } = useQueryState();
 
-  const [openAutocomplete, setOpenAutocomplete] = useState(false);
+  const isDefaultQuery = value === "" || value === DEFAULT_QUERY;
+  const isShowAutocomplete = autocompleteQuick || autocomplete || isDefaultQuery;
+
+  const {
+    value: isFocused,
+    setTrue: onFocused,
+    setFalse: onBlurred,
+  } = useBoolean(false);
+
+  const [autocompleteDismissed, setAutocompleteDismissed] = useState(false);
   const [caretPositionAutocomplete, setCaretPositionAutocomplete] = useState<[number, number]>([0, 0]);
-  const [caretPositionInput, setCaretPositionInput] = useState<[number, number]>([0, 0]);
-  const autocompleteAnchorEl = useRef<HTMLInputElement>(null);
-
-  const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const debouncedSetShowAutocomplete = useRef(debounce(setShowAutocomplete, 500)).current;
+  const [caretPositionInput, setCaretPositionInput] = useState<[number, number]>([value.length, value.length]);
+  const autocompleteAnchorEl = useRef<HTMLDivElement>(null);
 
   const executionTimeMs = stats?.executionTimeMs;
   const labelPostfix = executionTimeMs ? ` (${formatRequestDuration(executionTimeMs)})` : "";
@@ -69,6 +64,21 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const handleSelect = (val: string, caretPosition: number) => {
     onChange(val);
     setCaretPositionInput([caretPosition, caretPosition]);
+    setAutocompleteDismissed(true);
+  };
+
+  const handleChange = (val: string) => {
+    onChange(val);
+    setAutocompleteDismissed(false);
+  };
+
+  const handleChangeCaret = (val: [number, number]) => {
+    setCaretPositionAutocomplete(prev => prev[0] === val[0] && prev[1] === val[1] ? prev : val);
+  };
+
+  const handleFocus = () => {
+    onFocused();
+    setAutocompleteDismissed(false);
   };
 
   const handleKeyDown = (e: TextFieldKeyboardEvent) => {
@@ -96,13 +106,10 @@ const QueryEditor: FC<QueryEditorProps> = ({
       onArrowDown();
     }
 
-    if (enter && openAutocomplete) {
-      e.preventDefault();
-    }
-
     // execute query
-    if (enter && !shiftKey && (!isMultiline || ctrlMetaKey) && !openAutocomplete) {
+    if (enter && !shiftKey && (!isMultiline || ctrlMetaKey)) {
       e.preventDefault();
+      setAutocompleteDismissed(true);
       onEnter();
     }
 
@@ -122,22 +129,9 @@ const QueryEditor: FC<QueryEditorProps> = ({
     }
   };
 
-  const handleChangeFoundOptions = (val: AutocompleteOptions[]) => {
-    setOpenAutocomplete(!!val.length);
-  };
-
-  const handleChangeCaret = (val: [number, number]) => {
-    setCaretPositionAutocomplete(prev => prev[0] === val[0] && prev[1] === val[1] ? prev : val);
-  };
-
   useEffect(() => {
-    setOpenAutocomplete(!!AutocompleteEl && autocompleteQuick);
+    if (autocompleteQuick) setAutocompleteDismissed(false);
   }, [autocompleteQuick]);
-
-  useEffect(() => {
-    setShowAutocomplete(false);
-    debouncedSetShowAutocomplete(caretPositionAutocomplete.every(Boolean));
-  }, [caretPositionAutocomplete]);
 
   return (
     <div
@@ -148,26 +142,23 @@ const QueryEditor: FC<QueryEditorProps> = ({
         value={value}
         label={`${label}${labelPostfix}`}
         type={"textarea"}
-        autofocus={!isMobile}
         error={error}
         onKeyDown={handleKeyDown}
-        onChange={onChange}
+        onChange={handleChange}
         onChangeCaret={handleChangeCaret}
         disabled={disabled}
         inputmode={"search"}
         caretPosition={caretPositionInput}
+        onFocus={handleFocus}
+        onBlur={onBlurred}
         endIcon={<QueryEditorHotkeysTip/>}
       />
-      {autocomplete && AutocompleteEl && (
+      {AutocompleteEl && isShowAutocomplete && isFocused && !autocompleteDismissed && (
         <AutocompleteEl
           value={value}
           anchorEl={autocompleteAnchorEl}
           caretPosition={caretPositionAutocomplete}
-          hasHelperText={Boolean(error)}
-          includeFunctions={includeFunctions}
           onSelect={handleSelect}
-          onFoundOptions={handleChangeFoundOptions}
-          isOpen={showAutocomplete}
         />
       )}
     </div>

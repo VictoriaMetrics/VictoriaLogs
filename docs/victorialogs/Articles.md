@@ -40,6 +40,7 @@ Integration and Data Collection:
 * [How to Extend Percona Monitoring and Management to Add Logging Functionality](https://www.percona.com/blog/how-to-extend-percona-monitoring-and-management-to-add-logging-functionality/)
 * [Getting Victoria Logs running on FreeBSD](https://dan.langille.org/2026/06/14/getting-victoria-logs-running-on-freebsd/)
 * [Getting Nginx logs into Victoria-Logs](https://dan.langille.org/2026/06/17/getting-nginx-logs-into-victoria-logs/)
+* [Easy Mode Monitoring and Logging with Shiftmon](https://www.wearedevelopers.com/en/videos/2114/easy-mode-monitoring-and-logging-with-shiftmon)
 
 Grafana and Visualization:
 
@@ -66,7 +67,11 @@ AI and Automation:
 Comparisons and Technical Explanations:
 
 * [Why VictoriaLogs is a better alternative to Grafana Loki?](https://itnext.io/why-victorialogs-is-a-better-alternative-to-grafana-loki-7e941567c4d5)
+* [Benchmarking Kubernetes Log Collectors: vlagent, Vector, Fluent Bit, OpenTelemetry Collector, and more](https://victoriametrics.com/blog/log-collectors-benchmark-2026/)
 * [How do open source solutions for logs work](https://itnext.io/how-do-open-source-solutions-for-logs-work-elasticsearch-loki-and-victorialogs-9f7097ecbc2f)
+* [VictoriaLogs Basics: What You Need to Know, with Examples & Visuals](https://victoriametrics.com/blog/victorialogs-architecture-basics/)
+* [VictoriaLogs Practical Ingestion Guide for Message, Time and Streams](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/)
+* [How VictoriaLogs Stores Your Logs in a Columnar Layout](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/)
 
 Product Announcements and Features:
 
