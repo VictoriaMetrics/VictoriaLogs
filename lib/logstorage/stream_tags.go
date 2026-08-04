@@ -67,8 +67,15 @@ func (st *StreamTags) normalize(fields []Field) bool {
 	dstTags := tags[:0]
 	for _, tag := range tags {
 		tagName := tag.Name
-		// tags are sorted by name, so duplicate names are always adjacent.
-		if len(dstTags) > 0 && dstTags[len(dstTags)-1].Name == tagName {
+		tagNameCanonical := getCanonicalColumnName(tagName)
+		isDuplicate := false
+		for i := range dstTags {
+			if getCanonicalColumnName(dstTags[i].Name) == tagNameCanonical {
+				isDuplicate = true
+				break
+			}
+		}
+		if isDuplicate {
 			updated = true
 			continue
 		}
@@ -76,12 +83,12 @@ func (st *StreamTags) normalize(fields []Field) bool {
 		var f *Field
 		for j := range fields {
 			// Canonicalize both sides so empty-name and "_msg" aliases match.
-			if getCanonicalColumnName(fields[j].Name) == getCanonicalColumnName(tagName) {
+			if getCanonicalColumnName(fields[j].Name) == tagNameCanonical {
 				f = &fields[j]
 				// break is skipped intentionally in order to get the last matching field
 			}
 		}
-		if f == nil {
+		if f == nil || f.Value == "" {
 			updated = true
 			continue
 		}

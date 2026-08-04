@@ -170,17 +170,22 @@ func isLogfmtSpecialChar(c rune) bool {
 	}
 }
 
-// RenameField renames the first non-empty field with the name from oldNames list to newName in Fields
+// RenameField selects the first name from oldNames matching a non-empty field and renames all the fields
+// with the selected name to newName.
 func RenameField(fields []Field, oldNames []string, newName string) {
 	if len(oldNames) == 0 {
 		// Nothing to rename
 		return
 	}
 	for _, n := range oldNames {
-		for j := range fields {
-			f := &fields[j]
+		for i := range fields {
+			f := &fields[i]
 			if f.Name == n && f.Value != "" {
-				f.Name = newName
+				for j := range fields {
+					if fields[j].Name == n {
+						fields[j].Name = newName
+					}
+				}
 				return
 			}
 		}

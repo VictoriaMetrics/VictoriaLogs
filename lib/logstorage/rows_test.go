@@ -7,6 +7,8 @@ import (
 
 func TestRenameField(t *testing.T) {
 	f := func(fields []Field, oldNames []string, resultExpected string) {
+		t.Helper()
+
 		RenameField(fields, oldNames, "_msg")
 		result := MarshalFieldsToJSON(nil, fields)
 		if string(result) != resultExpected {
@@ -24,6 +26,27 @@ func TestRenameField(t *testing.T) {
 			Value: "foo",
 		},
 	}, []string{"field.message", "message"}, `{"message":"test","_msg":"foo"}`)
+
+	f([]Field{
+		{
+			Name:  "message",
+			Value: "first",
+		},
+		{
+			Name:  "message",
+			Value: "second",
+		},
+	}, []string{"message"}, `{"_msg":"first","_msg":"second"}`)
+
+	f([]Field{
+		{
+			Name: "message",
+		},
+		{
+			Name:  "message",
+			Value: "second",
+		},
+	}, []string{"message"}, `{"_msg":"second"}`)
 }
 
 func TestMarshalFieldsToJSON(t *testing.T) {

@@ -278,6 +278,24 @@ func TestLogRowsDropDuplicateFields(t *testing.T) {
 }
 
 func TestLogRowsDuplicateFields(t *testing.T) {
+	t.Run("renamed message field", func(t *testing.T) {
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		defer PutLogRows(lr)
+
+		fields := []Field{
+			{Name: "message", Value: "first"},
+			{Name: "message", Value: "second"},
+		}
+		RenameField(fields, []string{"message"}, "_msg")
+		lr.mustAdd(TenantID{}, 1, fields)
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"first","_stream":"{}","_time":"1970-01-01T00:00:00.000000001Z"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
 	t.Run("configured stream fields", func(t *testing.T) {
 		lr := GetLogRows([]string{"app"}, nil, nil, nil, "")
 		defer PutLogRows(lr)
@@ -371,6 +389,45 @@ func TestLogRowsDuplicateFields(t *testing.T) {
 
 		result := lr.GetRowString(0)
 		resultExpected := `{"_msg":"hello","_stream":"{app=\"first\"}","_time":"1970-01-01T00:00:00.000000001Z","app":"first"}`
+		if result != resultExpected {
+			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	})
+
+	t.Run("native insert row with empty retained stream field", func(t *testing.T) {
+		var st StreamTags
+		st.Add("app", "second")
+
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		defer PutLogRows(lr)
+		lr.MustAddInsertRow(&InsertRow{
+			StreamTagsCanonical: string(st.MarshalCanonical(nil)),
+			Timestamp:           1,
+			Fields: []Field{
+				{Name: "app", Value: ""},
+				{Name: "app", Value: "second"},
+				{Name: "_msg", Value: "first"},
+			},
+		})
+
+		var stEmpty StreamTags
+		lr.MustAddInsertRow(&InsertRow{
+			StreamTagsCanonical: string(stEmpty.MarshalCanonical(nil)),
+			Timestamp:           2,
+			Fields: []Field{
+				{Name: "_msg", Value: "second"},
+			},
+		})
+
+		if !lr.streamIDs[0].equal(&lr.streamIDs[1]) {
+			t.Fatalf("unexpected stream ids; got %s and %s; want equal ids", &lr.streamIDs[0], &lr.streamIDs[1])
+		}
+		if lr.streamTagsCanonicals[0] != lr.streamTagsCanonicals[1] {
+			t.Fatalf("unexpected stream tags canonicals; got %q and %q; want equal values", lr.streamTagsCanonicals[0], lr.streamTagsCanonicals[1])
+		}
+
+		result := lr.GetRowString(0)
+		resultExpected := `{"_msg":"first","_stream":"{}","_time":"1970-01-01T00:00:00.000000001Z"}`
 		if result != resultExpected {
 			t.Fatalf("unexpected result\ngot\n%s\nwant\n%s", result, resultExpected)
 		}
