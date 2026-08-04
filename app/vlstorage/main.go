@@ -71,8 +71,10 @@ var (
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
-	insertDrainTimeout = flag.Duration("insert.drainTimeout", 5*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown. "+
-		"It must be smaller than the container termination grace period minus -http.shutdownDelay, otherwise the process may be killed before the drain completes and the buffered logs are lost")
+	insertDrainTimeout = flag.Duration("insert.drainTimeout", 12*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown. "+
+		"Unavailable -storageNode nodes are temporarily excluded from data writing for 10s, so smaller values may leave no chance to re-send the buffered logs to the recovered nodes. "+
+		"The container termination grace period must cover the preStop hook duration plus -http.shutdownDelay plus -http.maxGracefulShutdownDuration plus this timeout plus a safety margin, "+
+		"otherwise the process may be killed before the drain completes and the buffered logs are lost")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
