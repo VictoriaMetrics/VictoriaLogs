@@ -85,19 +85,17 @@ FNR==NR {\
 }' "$(1)" "$(2)" >> "$(3)"
 endef
 
-#-v /tmp/linkinator.config.json:/opt/docs/linkinator.config.json \
-
 docs-check-links: docs-image
-	rm -rf $(PWD)/docs/public
+	rm -rf "$(PWD)/docs/public"
 	docker run \
 		--rm \
 		--platform $(DOCKER_PLATFORM) \
-		-v $(PWD)/docs/victorialogs:/opt/docs/content/victorialogs \
-		-v $(PWD)/docs/public:/opt/docs/public \
+		-v "$(PWD)/docs/victorialogs:/opt/docs/content/victorialogs" \
+		-v "$(PWD)/docs/public:/opt/docs/public" \
 		--entrypoint /bin/sh \
 		vmdocs-docker-package \
 			-c "yarn install && hugo --minify && yarn run check-links" || exit_code=$$?; \
-			rm -rf $(PWD)/docs/public; \
+			rm -rf "$(PWD)/docs/public"; \
 			exit $$exit_code
 
 docs-update-victoria-logs-flags:
