@@ -67,7 +67,8 @@ groups:
           summary: |-
             "{{ $labels.job }}"("{{ $labels.instance }}") has insufficient CPU resources for >15m
           description: |-
-            Go runtime is unable to schedule goroutines execution in acceptable time. This is usually a sign of insufficient CPU resources or CPU throttling. \nVerify that service has enough CPU resources. Otherwise, the service could work unreliably with delays in processing.
+            Go runtime is unable to schedule goroutines execution in acceptable time. This is usually a sign of insufficient CPU resources or CPU throttling. 
+            Verify that service has enough CPU resources. Otherwise, the service could work unreliably with delays in processing.
       - alert: TooManyLogs
         expr: sum(increase(vm_log_messages_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*", level="error"}[5m])) without (app_version, location) > 0
         for: 15m
