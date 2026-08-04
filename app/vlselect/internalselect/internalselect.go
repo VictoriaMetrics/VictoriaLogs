@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -340,7 +341,7 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
+	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion, "v1"); err != nil {
 		return err
 	}
 
@@ -372,7 +373,7 @@ func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion); err != nil {
+	if err := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion, "v1"); err != nil {
 		return err
 	}
 
@@ -385,7 +386,7 @@ func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion); err != nil {
+	if err := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion, "v1"); err != nil {
 		return err
 	}
 
@@ -460,7 +461,7 @@ func (cp *commonParams) UpdatePerQueryStatsMetrics() {
 }
 
 func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonParams, error) {
-	if err := checkProtocolVersion(r, expectedProtocolVersion); err != nil {
+	if err := checkProtocolVersion(r, expectedProtocolVersion, "v4"); err != nil {
 		return nil, err
 	}
 
@@ -508,13 +509,12 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 	return cp, nil
 }
 
-func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
+func checkProtocolVersion(r *http.Request, supportedProtocolVersions ...string) error {
 	version := r.FormValue("version")
-	if version != expectedProtocolVersion {
-		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
-			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
+	if slices.Contains(supportedProtocolVersions, version) {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("unexpected protocol version=%q; supported versions: %q; the most likely cause of this error is incompatible versions of VictoriaLogs cluster components", version, supportedProtocolVersions)
 }
 
 func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, vhs []logstorage.ValueWithHits, disableCompression bool) error {
