@@ -194,9 +194,8 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 }
 
 type remoteWriteCtx struct {
-	idx int
-	fq  *persistentqueue.FastQueue
-	c   *client
+	fq *persistentqueue.FastQueue
+	c  *client
 
 	pls        []*pendingLogs
 	pssNextIdx atomic.Uint64
@@ -269,7 +268,6 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	}
 
 	rwctx := &remoteWriteCtx{
-		idx: argIdx,
 		fq:  fq,
 		c:   c,
 		pls: pls,
@@ -288,7 +286,6 @@ func (rwctx *remoteWriteCtx) mustStop() {
 	for _, ps := range rwctx.pls {
 		ps.mustStop()
 	}
-	rwctx.idx = 0
 	rwctx.pls = nil
 	rwctx.fq.UnblockAllReaders()
 	rwctx.c.MustStop()
