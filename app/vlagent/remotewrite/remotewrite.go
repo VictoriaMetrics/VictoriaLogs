@@ -159,7 +159,6 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 		maxInmemoryBlocks = 2
 	}
 	rwctxs := make([]*remoteWriteCtx, len(urls))
-	rwctxIdx := make([]int, len(urls))
 	for i, remoteWriteURLRaw := range urls {
 		remoteWriteURL, err := url.Parse(remoteWriteURLRaw)
 		if err != nil {
@@ -170,7 +169,6 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 			sanitizedURL = fmt.Sprintf("%d:%s", i+1, remoteWriteURL)
 		}
 		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
-		rwctxIdx[i] = i
 	}
 	fs.RegisterPathFsMetrics(tmpDataPath)
 
