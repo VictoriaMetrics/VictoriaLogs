@@ -30,7 +30,6 @@ docs-repo-checkout:
 		git clone --depth 1 git@github.com:VictoriaMetrics/vmdocs vmdocs; \
 	fi; \
 	cd vmdocs && git checkout origin/main && rm -rf content/victorialogs && git checkout ./content/victorialogs && git pull && cd ..
-	cp /tmp/linkinator.config.json vmdocs
 
 docs-debug: docs-image
 	docker run \
