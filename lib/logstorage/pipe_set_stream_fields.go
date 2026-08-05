@@ -62,8 +62,8 @@ func (ps *pipeSetStreamFields) hasFilterInWithQuery() bool {
 	return ps.iff.hasFilterInWithQuery()
 }
 
-func (ps *pipeSetStreamFields) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := ps.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (ps *pipeSetStreamFields) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := ps.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

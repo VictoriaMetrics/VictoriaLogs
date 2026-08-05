@@ -137,8 +137,8 @@ func (idb *indexdb) updateStats(d *IndexdbStats) {
 	d.IndexdbPendingItems += tm.PendingItems
 	d.IndexdbPartsCount += tm.InmemoryPartsCount + tm.FilePartsCount
 	d.IndexdbBlocksCount += tm.InmemoryBlocksCount + tm.FileBlocksCount
-	d.IndexdbActiveFileMerges = tm.ActiveFileMerges
-	d.IndexdbActiveInmemoryMerges = tm.ActiveInmemoryMerges
+	d.IndexdbActiveFileMerges += tm.ActiveFileMerges
+	d.IndexdbActiveInmemoryMerges += tm.ActiveInmemoryMerges
 	d.IndexdbFileMergesCount += tm.FileMergesCount
 	d.IndexdbInmemoryMergesCount += tm.InmemoryMergesCount
 	d.IndexdbFileItemsMerged += tm.FileItemsMerged
@@ -640,7 +640,7 @@ func (idb *indexdb) storeStreamIDsToCache(tenantIDs []TenantID, sf *StreamFilter
 	bbPool.Put(bb)
 }
 
-func (idb *indexdb) searchTenants() []TenantID {
+func (idb *indexdb) getTenantIDs() []TenantID {
 	is := idb.getIndexSearch()
 	defer idb.putIndexSearch(is)
 

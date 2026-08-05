@@ -18,6 +18,7 @@ aliases:
 
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) works with both structured and unstructured logs.
 Every log entry must contain at least the [log message field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). An arbitrary number of additional `key=value` fields can be added to the log entry.
+See [an overview of the message, time and stream concepts](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#victorialogs-concepts) for a high-level walkthrough of these fields.
 A single log entry can be expressed as a single-level [JSON](https://www.json.org/json-en.html) object with string keys and string values.
 For example:
 
@@ -142,6 +143,7 @@ See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#h
 If the `_msg` field remains empty after an attempt to get it from `_msg_field`, then VictoriaLogs automatically sets it to the value specified
 via `-defaultMsgValue` command-line flag. It is OK to have an empty `_msg` field if log entry contains essential information in other fields -
 VictoriaLogs just fills the `_msg` with the `-defaultMsgValue` constant, which is very lightweight for processing and querying.
+See [how the message field works](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#message) for details.
 
 ```mermaid
 flowchart LR
@@ -184,6 +186,7 @@ If `_time` field is missing, or if it equals `0`, or if it equals `-`, then the 
 
 The `_time` field is used by [time filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) for quickly narrowing down
 the search to the selected time range.
+See [how the time field works](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#time) for details.
 
 ```mermaid
 flowchart LR
@@ -201,7 +204,7 @@ This may be either a single field such as `instance="host123:456"` or a set of f
 `{datacenter="...", env="...", job="...", instance="..."}` or
 `{kubernetes.namespace="...", kubernetes.node.name="...", kubernetes.pod.name="...", kubernetes.container.name="..."}`.
 
-Log entries received from a single application instance form a **log stream** in VictoriaLogs.
+Log entries received from a single application instance form a [**log stream**](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#stream-1) in VictoriaLogs.
 VictoriaLogs optimizes storing and [querying](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) of individual log streams.
 This provides the following benefits:
 
@@ -293,6 +296,7 @@ This can help narrow down and eliminate high-cardinality fields from [log stream
 
 Every ingested log entry may contain an arbitrary number of [fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) in addition to [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 For example, `level`, `ip`, `user_id`, `trace_id`, etc. Such fields can be used for simplifying and optimizing [search queries](https://docs.victoriametrics.com/victorialogs/logsql/).
+See [how additional log fields work](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#field) for details.
 It is usually faster to search over a dedicated `trace_id` field instead of searching for the `trace_id` inside a long [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 E.g. the `trace_id:="XXXX-YYYY-ZZZZ"` query usually works faster than the `_msg:"trace_id=XXXX-YYYY-ZZZZ"` query.
 

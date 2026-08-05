@@ -70,8 +70,8 @@ func (pr *pipeReplaceRegexp) hasFilterInWithQuery() bool {
 	return pr.iff.hasFilterInWithQuery()
 }
 
-func (pr *pipeReplaceRegexp) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pr.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pr *pipeReplaceRegexp) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pr.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

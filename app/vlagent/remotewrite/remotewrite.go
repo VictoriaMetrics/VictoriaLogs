@@ -33,8 +33,8 @@ var (
 	format = flagutil.NewArrayString("remoteWrite.format", "The data format to use for sending data to the corresponding -remoteWrite.url. "+
 		"Available formats: native, jsonline. Default is native. See https://docs.victoriametrics.com/victorialogs/vlagent/#remote-write-format")
 
-	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url . "+
-		"if this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
+	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url. "+
+		"If this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
 		"see also -remoteWrite.maxDiskUsagePerURL")
 	queues = flag.Int("remoteWrite.queues", cgroup.AvailableCPUs()*2, "The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues "+
 		"isn't enough for sending high volume of collected data to remote storage. "+
@@ -66,7 +66,9 @@ var maxQueues = cgroup.AvailableCPUs() * 16
 
 const persistentQueueDirname = "persistent-queue"
 
-// InitSecretFlags must be called after flag.Parse and before any logging.
+// InitSecretFlags registers secret flags defined under `remotewrite` pkg.
+//
+// It must be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
 func InitSecretFlags() {
 	if !*showRemoteWriteURL {
 		// remoteWrite.url can contain authentication codes, so hide it at `/metrics` output.
@@ -157,7 +159,6 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 		maxInmemoryBlocks = 2
 	}
 	rwctxs := make([]*remoteWriteCtx, len(urls))
-	rwctxIdx := make([]int, len(urls))
 	for i, remoteWriteURLRaw := range urls {
 		remoteWriteURL, err := url.Parse(remoteWriteURLRaw)
 		if err != nil {
@@ -168,7 +169,6 @@ func initRemoteWriteCtxs(tmpDataPath string, urls []string) {
 			sanitizedURL = fmt.Sprintf("%d:%s", i+1, remoteWriteURL)
 		}
 		rwctxs[i] = newRemoteWriteCtx(i, remoteWriteURL, maxInmemoryBlocks, sanitizedURL, tmpDataPath)
-		rwctxIdx[i] = i
 	}
 	fs.RegisterPathFsMetrics(tmpDataPath)
 
@@ -194,12 +194,11 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 }
 
 type remoteWriteCtx struct {
-	idx int
-	fq  *persistentqueue.FastQueue
-	c   *client
+	fq *persistentqueue.FastQueue
+	c  *client
 
 	pls        []*pendingLogs
-	pssNextIdx atomic.Uint64
+	plsNextIdx atomic.Uint64
 }
 
 func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks int, sanitizedURL, tmpDataPath string) *remoteWriteCtx {
@@ -256,7 +255,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	}
 	c.init(argIdx, *queues, sanitizedURL)
 
-	// Initialize pss
+	// Initialize pls
 	plsLen := *queues
 	if n := cgroup.AvailableCPUs(); plsLen > n {
 		// There is no sense in running more than availableCPUs concurrent pendingLogs,
@@ -269,7 +268,6 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	}
 
 	rwctx := &remoteWriteCtx{
-		idx: argIdx,
 		fq:  fq,
 		c:   c,
 		pls: pls,
@@ -280,15 +278,14 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 
 func (rwctx *remoteWriteCtx) push(lr *logstorage.LogRows) {
 	pls := rwctx.pls
-	idx := rwctx.pssNextIdx.Add(1) % uint64(len(pls))
+	idx := rwctx.plsNextIdx.Add(1) % uint64(len(pls))
 	pls[idx].add(lr)
 }
 
 func (rwctx *remoteWriteCtx) mustStop() {
-	for _, ps := range rwctx.pls {
-		ps.mustStop()
+	for _, pl := range rwctx.pls {
+		pl.mustStop()
 	}
-	rwctx.idx = 0
 	rwctx.pls = nil
 	rwctx.fq.UnblockAllReaders()
 	rwctx.c.MustStop()

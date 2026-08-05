@@ -32,6 +32,7 @@ See [quick start guide](https://docs.victoriametrics.com/victorialogs/cluster/#q
 ## Architecture
 
 VictoriaLogs in cluster mode is composed of three main components: `vlinsert`, `vlselect`, and `vlstorage`.
+See [how these components fit together](https://victoriametrics.com/blog/victorialogs-architecture-basics/#components) for the big picture.
 
 - `vlinsert` accepts logs via [all supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It distributes (shards) incoming logs evenly across the `vlstorage` nodes specified in the `-storageNode` command-line flag.
@@ -154,7 +155,8 @@ so there is little practical sense in relying on automatic data recovery from th
 
 ## Single-node and cluster mode duality
 
-A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture):
+A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for the big picture on when to choose each:
 
 - It accepts data ingestion requests from `vlinsert` via `/internal/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
   This endpoint can be disabled via `-internalinsert.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
@@ -304,8 +306,8 @@ If you want running VictoriaLogs cluster in Kubernetes, then please read [these 
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.51.0/victoria-logs-linux-amd64-v1.51.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.51.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491`

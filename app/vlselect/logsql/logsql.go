@@ -667,7 +667,7 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 	liveTailRequests.Inc()
 	defer liveTailRequests.Dec()
 
-	ca, err := parseCommonArgsWithConfig(r, true)
+	ca, err := parseCommonArgsExt(r, true)
 	if err != nil {
 		httpserver.Errorf(w, r, "%s", err)
 		return
@@ -1347,6 +1347,8 @@ func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []b
 }
 
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants
 func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	accountID := r.Header.Get("AccountID")
 	if accountID != "" {
@@ -1389,13 +1391,13 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
+	tenantIDs, err := vlstorage.GetTenantIDs(ctx, start, end)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
 		return
 	}
 
-	data, err := json.Marshal(tenants)
+	data, err := json.Marshal(tenantIDs)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
 		return
@@ -1454,10 +1456,15 @@ func (ca *commonArgs) updatePerQueryStatsMetrics() {
 }
 
 func parseCommonArgs(r *http.Request) (*commonArgs, error) {
-	return parseCommonArgsWithConfig(r, false)
+	return parseCommonArgsExt(r, false)
 }
 
-func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*commonArgs, error) {
+// parseCommonArgsExt parses commonArgs from r.
+//
+// If skipMaxQueryTimeRangeCheck is set, then the query time range isn't limited by -search.maxQueryTimeRange.
+// This is used by live tailing, since it processes only newly ingested logs
+// and doesn't scan historical data even if the query contains a wide time filter.
+func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
 	// Extract tenantID
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
@@ -1488,14 +1495,13 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		return nil, err
 	}
 
-	currTimestamp := time.Now().UnixNano()
 	if !timeOK {
 		// If time arg is missing, then evaluate query either at the end timestamp (if it is set)
 		// or at the current timestamp (if end query arg isn't set)
 		if endOK {
 			timestamp = end
 		} else {
-			timestamp = currTimestamp
+			timestamp = time.Now().UnixNano()
 		}
 	}
 
@@ -1567,7 +1573,7 @@ func parseCommonArgsWithConfig(r *http.Request, skipMaxRangeCheck bool) (*common
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxRangeCheck {
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
 			queryTimeRange := end - start

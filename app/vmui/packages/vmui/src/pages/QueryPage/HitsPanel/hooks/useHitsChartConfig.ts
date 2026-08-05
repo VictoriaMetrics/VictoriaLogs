@@ -1,13 +1,13 @@
 import { useSearchParams } from "react-router-dom";
 import { useCallback, useMemo } from "preact/compat";
-import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../../constants/logs";
+import { LOGS_LIMIT_HITS, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../../constants/logs";
 import { NavigateOptions } from "../../../../types";
 
-enum  HITS_PARAMS {
-  TOP = "top_hits",
-  GROUP = "group_hits",
-  STEP = "step",
-}
+const HITS_PARAMS = {
+  TOP: "top_hits",
+  GROUP: LOGS_URL_PARAMS.GROUP_BY,
+  STEP: "step",
+};
 
 export const useHitsChartConfig = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,7 +24,7 @@ export const useHitsChartConfig = () => {
   const groupFieldHits = searchParams.get(HITS_PARAMS.GROUP) || WITHOUT_GROUPING;
 
   const setValue = useCallback((
-    param: HITS_PARAMS,
+    param: string,
     newValue?: string | number,
     navigateOpts?: NavigateOptions
   ) => {
