@@ -17,8 +17,20 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/common"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/snapshot/snapshotutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
+)
+
+const (
+	// minRetention is the minimum allowed retention period.
+	// Partitions newer than minRetention are kept read-write regardless of the configured retention.
+	minRetention = 24 * time.Hour
+
+	// minOffload is the minimum allowed offload period.
+	// Partitions newer than minOffload are never moved to object storage.
+	minOffload = 24 * time.Hour
 )
 
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
@@ -60,6 +72,11 @@ func (s *StorageStats) Reset() {
 
 // StorageConfig is the config for the Storage.
 type StorageConfig struct {
+	ObjectStorage objectstorage.StorageConfig
+
+	// Offload is the period after which data is moved to object storage
+	Offload time.Duration
+
 	// Retention is the retention for the ingested data.
 	//
 	// Older data is automatically deleted.
@@ -124,10 +141,16 @@ type Storage struct {
 	// path is the path to the Storage directory
 	path string
 
+	// sc is a remote storage filesystem implementation
+	sc common.StorageClient
+
 	// retention is the retention for the stored data
 	//
 	// older data is automatically deleted
 	retention time.Duration
+
+	// offload is the period, after which data is moved to object storage
+	offload time.Duration
 
 	// defaultParallelReaders is the default number of parallel IO-bound readers to use for query execution.
 	//
@@ -148,8 +171,10 @@ type Storage struct {
 	// futureRetention is the maximum allowed interval to write data into the future
 	futureRetention time.Duration
 
-	// maxBackfillAge is the maximum age of logs with historical timestamps to accept
-	maxBackfillAge time.Duration
+	// maxBackfillAge is the maximum age of logs with historical timestamps to accept.
+	// It is atomic because it is written by the background watchOffload goroutine
+	// and read concurrently by MustAddRows.
+	maxBackfillAge atomic.Int64
 
 	// snapshotsMaxAge is the maximum age for the created partition snapshots.
 	//
@@ -248,11 +273,11 @@ func (s *Storage) PartitionAttach(name string) error {
 	partitionsPath := filepath.Join(s.path, partitionsDirname)
 	partitionPath := filepath.Join(partitionsPath, name)
 	if !fs.IsPathExist(partitionPath) {
-		return fmt.Errorf("cannot attach the partition %q, because there is no the corresponding directory %q", name, partitionPath)
+		return fmt.Errorf("cannot attach the partition %q, because there is no the corresponding directory %q; note that attaching object storage partitions is not supported", name, partitionPath)
 	}
 
-	pt := mustOpenPartition(s, partitionPath)
-	ptw := newPartitionWrapper(pt, day)
+	pt := mustOpenLocalPartition(s, partitionPath)
+	ptw := newPartitionWrapper(pt, day, false)
 
 	s.partitions = append(s.partitions, ptw)
 	sortPartitions(s.partitions)
@@ -269,6 +294,7 @@ func (s *Storage) PartitionAttach(name string) error {
 //
 // The detached partition can be attached again via PartitionAttach() call.
 func (s *Storage) PartitionDetach(name string) error {
+	var err error
 	ptw := func() *partitionWrapper {
 		s.partitionsLock.Lock()
 		defer s.partitionsLock.Unlock()
@@ -276,6 +302,10 @@ func (s *Storage) PartitionDetach(name string) error {
 		for i, ptw := range s.partitions {
 			if ptw.pt.name != name {
 				continue
+			}
+			if ptw.pt.isRemote {
+				err = fmt.Errorf("cannot detach the partition %q, because detaching object storage partitions is not supported", name)
+				return nil
 			}
 
 			// Found the partition to detach. Detach it.
@@ -288,12 +318,15 @@ func (s *Storage) PartitionDetach(name string) error {
 		return nil
 	}()
 
+	if err != nil {
+		return err
+	}
 	if ptw == nil {
 		return fmt.Errorf("cannot detach the partition %q, because it isn't attached", name)
 	}
 
 	partitionPath := ptw.pt.path
-	ptw.decRef()
+	ptw.releaseRefs()
 
 	logger.Infof("waiting until the partition %q isn't accessed", name)
 	<-ptw.doneCh
@@ -312,12 +345,12 @@ func (s *Storage) PartitionDetach(name string) error {
 // Every partition name has YYYYMMDD format.
 func (s *Storage) PartitionList() []string {
 	s.partitionsLock.Lock()
+	defer s.partitionsLock.Unlock()
+
 	ptNames := make([]string, len(s.partitions))
 	for i, ptw := range s.partitions {
 		ptNames[i] = ptw.pt.name
 	}
-	s.partitionsLock.Unlock()
-
 	return ptNames
 }
 
@@ -331,8 +364,8 @@ func (s *Storage) PartitionList() []string {
 //
 // The function returns paths to created snapshots
 func (s *Storage) PartitionSnapshotMustCreate(partitionPrefix string) []string {
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	var snapshotPaths []string
 
@@ -348,8 +381,8 @@ func (s *Storage) PartitionSnapshotMustCreate(partitionPrefix string) []string {
 
 // PartitionSnapshotList returns a list of paths to all the snapshots across active partitions.
 func (s *Storage) PartitionSnapshotList() []string {
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	snapshotPaths := getSnapshotPaths(ptws)
 	sort.Strings(snapshotPaths)
@@ -395,8 +428,8 @@ func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	}
 	partitionPath := filepath.Dir(snapshotDir)
 
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	ptw := func() *partitionWrapper {
 		for _, ptw := range ptws {
@@ -422,8 +455,8 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 
 	currentTime := time.Now()
 
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	snapshotPaths := getSnapshotPaths(ptws)
 	for _, snapshotPath := range snapshotPaths {
@@ -450,6 +483,13 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 // The taskID must contain a unique id of the task. It is used for tracking the task at the list returned by DeleteActiveTasks().
 // The timestamp must contain the timestamp in nanoseconds when the task is started.
 func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int64, tenantIDs []TenantID, f *Filter) error {
+	minTimestamp, _ := getFilterTimeRange(f.f)
+	now := time.Now().UnixNano()
+	minAllowedTimestamp := now - s.offload.Nanoseconds()
+	if s.sc != nil && minTimestamp < minAllowedTimestamp {
+		return fmt.Errorf("deletion operation was rejected, operation's time range overlaps read-only data boundary")
+	}
+
 	// Register the task in the list of active delete tasks, so it survives application restarts and crashes.
 	dt := newDeleteTask(taskID, timestamp, tenantIDs, f.String())
 
@@ -551,12 +591,19 @@ func (s *Storage) EnableLogNewStreams(seconds int) {
 }
 
 type partitionWrapper struct {
-	// refCount is the number of active references to partition.
-	// When it reaches zero, then the partition is closed.
-	refCount atomic.Int32
+	// totalRefCount is the total number of active read and write references.
+	// When it reaches zero, the partition is closed.
+	totalRefCount atomic.Int32
 
-	// mustDrop is set when the partition must be deleted after refCount reaches zero.
+	// writeRefCount tracks active write references.
+	// When it reaches zero, writeDoneCh is closed.
+	writeRefCount atomic.Int32
+
+	// mustDrop is set when the partition must be deleted after totalRefCount reaches zero.
 	mustDrop atomic.Bool
+
+	// isReadOnly is set when the partition must be excluded from ingestion.
+	isReadOnly atomic.Bool
 
 	// day is the day for the partition in the unix timestamp divided by the number of seconds in the day.
 	day int64
@@ -564,33 +611,86 @@ type partitionWrapper struct {
 	// pt is the wrapped partition.
 	pt *partition
 
-	// doneCh is closed when refCount reaches zero, e.g. when the partitionWrapper is no longer accessed.
+	// writeDoneCh is closed when writeRefCount reaches zero
+	writeDoneCh chan struct{}
+
+	// doneCh is closed when totalRefCount reaches zero, e.g. when the partitionWrapper is no longer accessed.
 	doneCh chan struct{}
 }
 
-func newPartitionWrapper(pt *partition, day int64) *partitionWrapper {
+func newPartitionWrapper(pt *partition, day int64, isReadOnly bool) *partitionWrapper {
 	pw := &partitionWrapper{
 		day:    day,
 		pt:     pt,
 		doneCh: make(chan struct{}),
 	}
-	pw.incRef()
+	if isReadOnly {
+		pw.isReadOnly.Store(isReadOnly)
+	} else {
+		// The owner write sentinel keeps writeDoneCh open until setReadOnly is called.
+		// It only touches writeRefCount, not totalRefCount — partition lifetime is
+		// governed solely by the read ref.
+		pw.writeRefCount.Add(1)
+		pw.writeDoneCh = make(chan struct{})
+	}
+
+	pw.incReadRef()
 	return pw
 }
 
-func (ptw *partitionWrapper) incRef() {
-	ptw.refCount.Add(1)
-}
-
-func (ptw *partitionWrapper) decRef() {
-	n := ptw.refCount.Add(-1)
-	if n > 0 {
+func (ptw *partitionWrapper) setReadOnly() {
+	if ptw.isReadOnly.Swap(true) {
+		// Already marked read-only; the owner write sentinel was already dropped.
 		return
 	}
+	// Drop the owner write sentinel. Does not touch totalRefCount — only
+	// in-flight writers acquired via incWriteRef do.
+	if ptw.writeRefCount.Add(-1) == 0 {
+		close(ptw.writeDoneCh)
+	}
+}
 
+func (ptw *partitionWrapper) incReadRef() {
+	ptw.totalRefCount.Add(1)
+}
+
+func (ptw *partitionWrapper) incWriteRef() {
+	ptw.writeRefCount.Add(1)
+	ptw.totalRefCount.Add(1)
+}
+
+// releaseRefs drops the owner refs for a partition.
+// For writable partitions it drops the owner write sentinel and the read ref.
+// For read-only partitions it drops only the read ref.
+func (ptw *partitionWrapper) releaseRefs() {
+	ptw.setReadOnly()
+	ptw.decReadRef()
+}
+
+func (ptw *partitionWrapper) decWriteRef() {
+	if ptw.writeRefCount.Add(-1) == 0 {
+		close(ptw.writeDoneCh)
+	}
+	if ptw.totalRefCount.Add(-1) == 0 {
+		ptw.close()
+	}
+}
+
+func (ptw *partitionWrapper) decReadRef() {
+	if ptw.totalRefCount.Add(-1) == 0 {
+		ptw.close()
+	}
+}
+
+func (ptw *partitionWrapper) close() {
 	deletePath := ""
 	if ptw.mustDrop.Load() {
 		deletePath = ptw.pt.path
+	}
+
+	var sc common.StorageClient
+	if ptw.pt.isRemote {
+		sc = ptw.pt.s.sc
 	}
 
 	// Close pw.pt, since nobody refers to it.
@@ -599,7 +699,7 @@ func (ptw *partitionWrapper) decRef() {
 
 	// Delete partition if needed.
 	if deletePath != "" {
-		mustDeletePartition(deletePath)
+		mustDeletePartition(deletePath, sc)
 	}
 
 	// signal that the ptw is no longer accessed.
@@ -633,14 +733,16 @@ func mustCreateStorage(path string) {
 func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	flushInterval := max(cfg.FlushInterval, time.Second)
 
-	retention := max(cfg.Retention, 24*time.Hour)
+	hasObjectStorage := len(cfg.ObjectStorage.Destination) > 0
 
-	futureRetention := max(cfg.FutureRetention, 24*time.Hour)
+	offload := max(cfg.Offload, minOffload)
 
-	maxBackfillAge := cfg.MaxBackfillAge
-	if maxBackfillAge <= 0 || maxBackfillAge > retention {
-		maxBackfillAge = retention
+	retention := max(cfg.Retention, minRetention)
+	if hasObjectStorage {
+		retention = max(retention, offload)
 	}
+
+	futureRetention := max(cfg.FutureRetention, minRetention)
 
 	var minFreeDiskSpaceBytes uint64
 	if cfg.MinFreeDiskSpaceBytes >= 0 {
@@ -663,13 +765,13 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 
 	s := &Storage{
 		path:                   path,
+		offload:                offload,
 		retention:              retention,
 		defaultParallelReaders: cfg.DefaultParallelReaders,
 		maxDiskSpaceUsageBytes: cfg.MaxDiskSpaceUsageBytes,
 		maxDiskUsagePercent:    cfg.MaxDiskUsagePercent,
 		flushInterval:          flushInterval,
 		futureRetention:        futureRetention,
-		maxBackfillAge:         maxBackfillAge,
 		snapshotsMaxAge:        cfg.SnapshotsMaxAge,
 		minFreeDiskSpaceBytes:  minFreeDiskSpaceBytes,
 		logIngestedRows:        cfg.LogIngestedRows,
@@ -681,8 +783,113 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 
 		deleteTasks: deleteTasks,
 	}
+
+	if hasObjectStorage {
+		s.sc = objectstorage.New(cfg.ObjectStorage, s.stopCh)
+	}
+
 	s.logNewStreams.Store(cfg.LogNewStreams)
 
+	ptws := s.loadLocalPartitions(path)
+
+	maxBackfillAge := cfg.MaxBackfillAge.Nanoseconds()
+	if maxBackfillAge <= 0 || maxBackfillAge > retention.Nanoseconds() || (hasObjectStorage && maxBackfillAge > offload.Nanoseconds()) {
+		maxBackfillAge = retention.Nanoseconds()
+	}
+
+	if s.sc != nil {
+		partitionExists := func(day int64) bool {
+			for i := len(ptws) - 1; i >= 0; i-- {
+				lptw := ptws[i]
+				if lptw.day > day {
+					return false
+				}
+				if lptw.day == day {
+					return true
+				}
+			}
+			return false
+		}
+
+		rptws := s.mustLoadRemotePartitions(partitionExists)
+		now := time.Now().UnixNano()
+		for _, rptw := range rptws {
+			if rptw == nil {
+				continue
+			}
+			ptMaxBackfillAge := now - (rptw.day+1)*nsecsPerDay
+			if maxBackfillAge > ptMaxBackfillAge {
+				maxBackfillAge = ptMaxBackfillAge
+			}
+			ptws = append(ptws, rptw)
+		}
+		sortPartitions(ptws)
+	}
+
+	s.maxBackfillAge.Store(maxBackfillAge)
+	s.partitions = ptws
+	s.runRetentionWatcher()
+	s.runMaxDiskSpaceUsageWatcher()
+	s.runDeleteTasksWatcher()
+	s.runSnapshotsMaxAgeWatcher()
+	s.runOffloadWatcher()
+	return s
+}
+
+func (s *Storage) mustLoadRemotePartitions(exists func(d int64) bool) []*partitionWrapper {
+	dirs, err := s.sc.ReadDir(partitionsDirname)
+	if err != nil {
+		logger.Panicf("FATAL: cannot list partitions at %q: %w", s.sc.GetRoot(), err)
+	}
+	ptws := make([]*partitionWrapper, len(dirs))
+
+	// Open partitions in parallel. This should improve VictoriaLogs initialization duration
+	// when it opens many partitions.
+	var wg sync.WaitGroup
+	concurrencyLimiterCh := make(chan struct{}, cgroup.AvailableCPUs())
+
+	now := time.Now().UnixNano()
+	maxReadOnlyDay := (now - minRetention.Nanoseconds()) / nsecsPerDay
+
+	for idx, dir := range dirs {
+		day, err := getPartitionDayFromName(dir)
+		if err != nil {
+			logger.Panicf("FATAL: cannot parse partition filename %q at %q: %s", dir, s.sc.GetPath(partitionsDirname), err)
+		}
+
+		if day > maxReadOnlyDay {
+			logger.Infof("skipping partition %q which may block live logs ingestion", dir)
+			continue
+		}
+
+		if exists(day) {
+			logger.Infof("skipping partition %q which exists on a local file system", dir)
+			continue
+		}
+
+		concurrencyLimiterCh <- struct{}{}
+		wg.Go(func() {
+			defer func() {
+				<-concurrencyLimiterCh
+			}()
+			partitionPath := filepath.Join(partitionsDirname, dir)
+			pt, ok := mustOpenRemotePartition(s, partitionPath)
+			if !ok {
+				// The partition has no readiness marker and no local copy, so it is a leftover of an interrupted deletion.
+				logger.Infof("deleting incomplete remote partition %s", s.sc.GetPath(partitionPath))
+				if err := s.sc.DeletePath(partitionPath, true); err != nil {
+					logger.Errorf("cannot delete incomplete remote partition %s: %s", s.sc.GetPath(partitionPath), err)
+				}
+				return
+			}
+			ptws[idx] = newPartitionWrapper(pt, day, true)
+		})
+	}
+	wg.Wait()
+	return ptws
+}
+
+func (s *Storage) loadLocalPartitions(path string) []*partitionWrapper {
 	partitionsPath := filepath.Join(path, partitionsDirname)
 	fs.MustMkdirIfNotExist(partitionsPath)
 	fs.MustSyncPath(path)
@@ -720,8 +927,8 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			}
 
 			partitionPath := filepath.Join(partitionsPath, fname)
-			pt := mustOpenPartition(s, partitionPath)
-			ptws[idx] = newPartitionWrapper(pt, day)
+			pt := mustOpenLocalPartition(s, partitionPath)
+			ptws[idx] = newPartitionWrapper(pt, day, false)
 
 			<-concurrencyLimiterCh
 		})
@@ -741,7 +948,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		}
 		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -futureRetention=%dd", ptw.pt.path, durationToDays(s.futureRetention))
 		ptw.mustDrop.Store(true)
-		ptw.decRef()
+		ptw.releaseRefs()
 		j--
 	}
 	j++
@@ -749,13 +956,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		ptws[i] = nil
 	}
 	ptws = ptws[:j]
-
-	s.partitions = ptws
-	s.runRetentionWatcher()
-	s.runMaxDiskSpaceUsageWatcher()
-	s.runDeleteTasksWatcher()
-	s.runSnapshotsMaxAgeWatcher()
-	return s
+	return ptws
 }
 
 func sortPartitions(ptws []*partitionWrapper) {
@@ -766,6 +967,13 @@ func sortPartitions(ptws []*partitionWrapper) {
 
 func (s *Storage) runRetentionWatcher() {
 	s.wg.Go(s.watchRetention)
+}
+
+func (s *Storage) runOffloadWatcher() {
+	if s.sc == nil || s.retention-s.offload <= 24*time.Hour {
+		return
+	}
+	s.wg.Go(s.watchOffload)
 }
 
 func (s *Storage) runMaxDiskSpaceUsageWatcher() {
@@ -781,6 +989,122 @@ func (s *Storage) runDeleteTasksWatcher() {
 
 func (s *Storage) runSnapshotsMaxAgeWatcher() {
 	s.wg.Go(s.watchSnapshotsMaxAge)
+}
+
+// offloadPartition uploads lptw to object storage and replaces it with the remote partition at s.partitions.
+//
+// The caller must hold a read reference to lptw.
+func (s *Storage) offloadPartition(lptw *partitionWrapper) error {
+	s.partitionsLock.Lock()
+	lptw.setReadOnly()
+	s.partitionsLock.Unlock()
+
+	pt := lptw.pt
+	partitionPath := filepath.Join(partitionsDirname, pt.name)
+	partitionReadyFile := filepath.Join(partitionPath, partitionReadyFilename)
+	if exists, err := s.sc.IsFileExist(partitionReadyFile); err != nil {
+		return fmt.Errorf("cannot check readiness marker for partition %q: %w", pt.name, err)
+	} else if exists {
+		logger.Warnf("remote partition %s already exists, probably after unclean shutdown; re-syncing it with the local partition", s.sc.GetPath(partitionPath))
+		if err := s.sc.DeletePath(partitionReadyFile, false); err != nil {
+			return fmt.Errorf("cannot delete readiness marker for partition %q: %w", pt.name, err)
+		}
+	}
+	<-lptw.writeDoneCh
+	if err := pt.deleteAllSnapshots(); err != nil {
+		return fmt.Errorf("failed to delete all snapshots for partition %q before offloading: %w", pt.name, err)
+	}
+	pt.mustPrepareForOffload()
+	remotePath := s.sc.GetPath(partitionPath)
+	if err := s.sc.Sync(pt.path, partitionPath); err != nil {
+		return fmt.Errorf("cannot sync partition %q to %s, skipping: %w", pt.name, remotePath, err)
+	}
+	if err := s.sc.CreateFile(partitionReadyFile, nil); err != nil {
+		return fmt.Errorf("failed to create readiness marker for partition %q: %w", pt.name, err)
+	}
+	rpt, _ := mustOpenRemotePartition(s, partitionPath)
+	rptw := newPartitionWrapper(rpt, lptw.day, true)
+
+	s.partitionsLock.Lock()
+	idx := slices.Index(s.partitions, lptw)
+	if idx >= 0 {
+		s.partitions[idx] = rptw
+	}
+	s.partitionsLock.Unlock()
+
+	if idx < 0 {
+		// lptw has been already dropped by retention, so drop the uploaded copy too.
+		rptw.mustDrop.Store(true)
+		rptw.releaseRefs()
+		return nil
+	}
+
+	lptw.mustDrop.Store(true)
+	lptw.releaseRefs()
+	return nil
+}
+
+func (s *Storage) watchOffload() {
+	d := timeutil.AddJitterToDuration(time.Hour)
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
+		now := time.Now().UnixNano()
+		offloadDay := s.getOffloadDay(now)
+
+		s.partitionsLock.Lock()
+
+		// Offload partitions.
+		// s.partitions are sorted by day, so find the first non-expired partition.
+		n := sort.Search(len(s.partitions), func(i int) bool {
+			return s.partitions[i].day >= offloadDay
+		})
+		var ptwsToOffload []*partitionWrapper
+		for _, ptw := range s.partitions[:n] {
+			if ptw.pt.isRemote {
+				continue
+			}
+			ptw.incReadRef()
+			ptwsToOffload = append(ptwsToOffload, ptw)
+		}
+
+		// Remove reference to offloaded partitions from s.ptwHot
+		if slices.Contains(ptwsToOffload, s.ptwHot) {
+			s.ptwHot = nil
+		}
+
+		s.partitionsLock.Unlock()
+
+		maxBackfillAge := s.maxBackfillAge.Load()
+		for _, ptw := range ptwsToOffload {
+			if needStop(s.stopCh) {
+				ptw.decReadRef()
+				continue
+			}
+			now := time.Now().UnixNano()
+			ptMaxBackfillAge := now - (ptw.day+1)*nsecsPerDay
+			if maxBackfillAge > ptMaxBackfillAge {
+				maxBackfillAge = ptMaxBackfillAge
+				s.maxBackfillAge.Store(maxBackfillAge)
+			}
+			name := ptw.pt.name
+			logger.Infof("the partition %s is scheduled to be offloaded because it is outside the -offloadPeriod=%dd", ptw.pt.path, durationToDays(s.offload))
+			if err := s.offloadPartition(ptw); err != nil {
+				if !needStop(s.stopCh) {
+					logger.Errorf("failed to offload partition %q: %s", name, err)
+				}
+			} else {
+				logger.Infof("successfully offloaded partition %q", name)
+			}
+			ptw.decReadRef()
+		}
+
+		select {
+		case <-s.stopCh:
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 func (s *Storage) watchRetention() {
@@ -823,7 +1147,7 @@ func (s *Storage) dropStalePartitions() {
 	for i, ptw := range ptwsToDelete {
 		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
 		ptw.mustDrop.Store(true)
-		ptw.decRef()
+		ptw.releaseRefs()
 		ptwsToDelete[i] = nil
 	}
 }
@@ -886,16 +1210,17 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 
 		s.partitionsLock.Unlock()
 
+		var reason string
+		if s.maxDiskSpaceUsageBytes > 0 {
+			reason = fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
+		} else {
+			reason = fmt.Sprintf("-retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
+		}
+
 		for i, ptw := range ptwsToDelete {
-			var reason string
-			if s.maxDiskSpaceUsageBytes > 0 {
-				reason = fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
-			} else {
-				reason = fmt.Sprintf("-retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
-			}
 			logger.Infof("the partition %s is scheduled to be deleted because the total size of partitions exceeds %s", ptw.pt.path, reason)
 			ptw.mustDrop.Store(true)
-			ptw.decRef()
+			ptw.releaseRefs()
 			ptwsToDelete[i] = nil
 		}
 
@@ -1045,7 +1370,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 }
 
 func (s *Storage) deleteRows(sso *storageSearchOptions, stopCh <-chan struct{}) bool {
-	ptws, ptwsDecRef := s.getPartitionsForTimeRange(sso.minTimestamp, sso.maxTimestamp)
+	ptws, _, ptwsDecRef := s.getPartitionsForTimeRange(sso.minTimestamp, sso.maxTimestamp, true)
 	defer ptwsDecRef()
 
 	// Delete rows sequentially in every partition in order to limit resource usage needed for the logs' deletion.
@@ -1063,10 +1388,17 @@ func (s *Storage) deleteRows(sso *storageSearchOptions, stopCh <-chan struct{}) 
 
 func (s *Storage) updateDeletedPartitionsLocked(ptwsToDelete []*partitionWrapper) {
 	for _, ptw := range ptwsToDelete {
+		if ptw == nil {
+			continue
+		}
 		if !slices.Contains(s.deletedPartitions, ptw.day) {
 			s.deletedPartitions = append(s.deletedPartitions, ptw.day)
 		}
 	}
+}
+
+func (s *Storage) getOffloadDay(now int64) int64 {
+	return (now - s.offload.Nanoseconds()) / nsecsPerDay
 }
 
 func (s *Storage) getMinAllowedDay(now int64) int64 {
@@ -1087,8 +1419,11 @@ func (s *Storage) MustClose() {
 
 	// Close partitions
 	for _, pw := range s.partitions {
-		pw.decRef()
-		if n := pw.refCount.Load(); n != 0 {
+		pw.releaseRefs()
+		if n := pw.writeRefCount.Load(); n != 0 {
+			logger.Panicf("BUG: there are %d write users of partition", n)
+		}
+		if n := pw.totalRefCount.Load(); n != 0 {
 			logger.Panicf("BUG: there are %d users of partition", n)
 		}
 	}
@@ -1112,15 +1447,37 @@ func (s *Storage) MustClose() {
 	fs.MustClose(s.flockF)
 	s.flockF = nil
 
+	if s.sc != nil {
+		s.sc.Close()
+	}
+
 	s.path = ""
+	s.sc = nil
+}
+
+// GetReadOnlyPartitions returns list of read only partition names that are starting with the given partitionPrefix.
+func (s *Storage) GetReadOnlyPartitions(partitionPrefix string) []string {
+	ptws := s.getReadPartitions()
+	defer s.putReadPartitions(ptws)
+	s.wg.Add(1)
+	defer s.wg.Done()
+
+	var readOnlyPartitions []string
+	for _, ptw := range ptws {
+		pt := ptw.pt
+		if ptw.isReadOnly.Load() && strings.HasPrefix(pt.name, partitionPrefix) {
+			readOnlyPartitions = append(readOnlyPartitions, pt.name)
+		}
+	}
+	return readOnlyPartitions
 }
 
 // MustForceMerge force-merges parts in s partitions with names starting from the given partitionPrefix.
 //
 // Partitions are merged sequentially in order to reduce load on the system.
 func (s *Storage) MustForceMerge(partitionPrefix string) {
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	s.wg.Add(1)
 	defer s.wg.Done()
@@ -1149,24 +1506,24 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 	s.partitionsLock.Lock()
 	ptwHot := s.ptwHot
 	if ptwHot != nil {
-		ptwHot.incRef()
+		ptwHot.incWriteRef()
 	}
 	s.partitionsLock.Unlock()
 
 	if ptwHot != nil {
 		if ptwHot.canAddAllRows(lr) {
 			ptwHot.pt.mustAddRows(lr)
-			ptwHot.decRef()
+			ptwHot.decWriteRef()
 			return
 		}
-		ptwHot.decRef()
+		ptwHot.decWriteRef()
 	}
 
 	// Slow path - rows cannot be added to the hot partition, so split rows among available partitions
 	now := time.Now().UnixNano()
 	minAllowedDay := s.getMinAllowedDay(now)
 	maxAllowedDay := s.getMaxAllowedDay(now)
-	minAllowedTimestamp := now - s.maxBackfillAge.Nanoseconds()
+	minAllowedTimestamp := now - s.maxBackfillAge.Load()
 
 	m := make(map[int64]*LogRows)
 	for i, ts := range lr.timestamps {
@@ -1197,7 +1554,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 			minAllowedTsf := TimeFormatter(minAllowedTimestamp)
 			tooSmallTimestampLogger.Warnf("skipping log entry with too small timestamp=%s; it must be bigger than %s according "+
 				"to the configured -maxBackfillAge=%s. See https://docs.victoriametrics.com/victorialogs/#backfilling ; "+
-				"log entry: %s", &tsf, &minAllowedTsf, s.maxBackfillAge, line)
+				"log entry: %s", &tsf, &minAllowedTsf, time.Duration(s.maxBackfillAge.Load()), line)
 			s.rowsDroppedTooSmallTimestamp.Add(1)
 			continue
 		}
@@ -1213,7 +1570,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 		ptw := s.getPartitionForWriting(day)
 		if ptw != nil {
 			ptw.pt.mustAddRows(lrPart)
-			ptw.decRef()
+			ptw.decWriteRef()
 		} else {
 			// the lrPart must contain at least a single row, so log it.
 			line := MarshalFieldsToJSON(nil, lrPart.rows[0])
@@ -1263,6 +1620,8 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 		ptw = ptws[n]
 		if ptw.day != day {
 			ptw = nil
+		} else if ptw.isReadOnly.Load() {
+			return nil
 		}
 	}
 	if ptw == nil {
@@ -1283,8 +1642,8 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 
 		// Create missing partition.
 		mustCreatePartition(partitionPath)
-		pt := mustOpenPartition(s, partitionPath)
-		ptw = newPartitionWrapper(pt, day)
+		pt := mustOpenLocalPartition(s, partitionPath)
+		ptw = newPartitionWrapper(pt, day, false)
 		if n == len(ptws) {
 			ptws = append(ptws, ptw)
 		} else {
@@ -1295,7 +1654,7 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 	}
 
 	s.ptwHot = ptw
-	ptw.incRef()
+	ptw.incWriteRef()
 
 	return ptw
 }
@@ -1341,28 +1700,48 @@ func (s *Storage) IsReadOnly() bool {
 //
 // This function is for debugging and testing purposes only, since it is slow.
 func (s *Storage) DebugFlush() {
-	ptws := s.getPartitions()
-	defer s.putPartitions(ptws)
+	ptws := s.getWritePartitions()
+	defer s.putWritePartitions(ptws)
 
 	for _, ptw := range ptws {
 		ptw.pt.debugFlush()
 	}
 }
 
-func (s *Storage) getPartitions() []*partitionWrapper {
+func (s *Storage) getWritePartitions() []*partitionWrapper {
 	s.partitionsLock.Lock()
-	ptws := append([]*partitionWrapper{}, s.partitions...)
-	for _, ptw := range ptws {
-		ptw.incRef()
+	defer s.partitionsLock.Unlock()
+	ptws := make([]*partitionWrapper, 0, len(s.partitions))
+	for _, ptw := range s.partitions {
+		if ptw.isReadOnly.Load() {
+			continue
+		}
+		ptw.incWriteRef()
+		ptws = append(ptws, ptw)
 	}
-	s.partitionsLock.Unlock()
-
 	return ptws
 }
 
-func (s *Storage) putPartitions(ptws []*partitionWrapper) {
+func (s *Storage) putWritePartitions(ptws []*partitionWrapper) {
 	for _, ptw := range ptws {
-		ptw.decRef()
+		ptw.decWriteRef()
+	}
+}
+
+func (s *Storage) getReadPartitions() []*partitionWrapper {
+	s.partitionsLock.Lock()
+	defer s.partitionsLock.Unlock()
+	ptws := make([]*partitionWrapper, 0, len(s.partitions))
+	for _, ptw := range s.partitions {
+		ptw.incReadRef()
+		ptws = append(ptws, ptw)
+	}
+	return ptws
+}
+
+func (s *Storage) putReadPartitions(ptws []*partitionWrapper) {
+	for _, ptw := range ptws {
+		ptw.decReadRef()
 	}
 }
 

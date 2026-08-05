@@ -59,21 +59,26 @@ func (ph *partHeader) String() string {
 		timestampToString(ph.MinTimestamp), timestampToString(ph.MaxTimestamp), ph.BloomValuesShardsCount)
 }
 
-func (ph *partHeader) mustReadMetadata(partPath string) {
-	ph.reset()
-
+func (ph *partHeader) mustReadLocalMetadata(partPath string) {
 	metadataPath := filepath.Join(partPath, metadataFilename)
 	metadata, err := os.ReadFile(metadataPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot read %q: %s", metadataPath, err)
 	}
+	if err := ph.readMetadata(metadata); err != nil {
+		logger.Panicf("FATAL: part=%q, %s", metadataPath, err)
+	}
+}
+
+func (ph *partHeader) readMetadata(metadata []byte) error {
+	ph.reset()
 	if err := json.Unmarshal(metadata, ph); err != nil {
-		logger.Panicf("FATAL: cannot parse %q: %s", metadataPath, err)
+		return fmt.Errorf("cannot parse metadata: %w", err)
 	}
 
 	if ph.FormatVersion <= 1 {
 		if ph.BloomValuesShardsCount != 0 {
-			logger.Panicf("FATAL: %s: unexpected BloomValuesShardsCount for FormatVersion<=1; got %d; want 0", metadataPath, ph.BloomValuesShardsCount)
+			return fmt.Errorf("unexpected BloomValuesShardsCount for FormatVersion<=1; got %d; want 0", ph.BloomValuesShardsCount)
 		}
 		if ph.FormatVersion == 1 {
 			ph.BloomValuesShardsCount = 8
@@ -82,14 +87,15 @@ func (ph *partHeader) mustReadMetadata(partPath string) {
 
 	// Perform various checks
 	if ph.FormatVersion > partFormatLatestVersion {
-		logger.Panicf("FATAL: %s: unsupported part format version; got %d; mustn't exceed %d", metadataPath, ph.FormatVersion, partFormatLatestVersion)
+		return fmt.Errorf("unsupported part format version; got %d; mustn't exceed %d", ph.FormatVersion, partFormatLatestVersion)
 	}
 	if ph.MinTimestamp > ph.MaxTimestamp {
-		logger.Panicf("FATAL: %s: MinTimestamp cannot exceed MaxTimestamp; got %d vs %d", metadataPath, ph.MinTimestamp, ph.MaxTimestamp)
+		return fmt.Errorf("MinTimestamp cannot exceed MaxTimestamp; got %d vs %d", ph.MinTimestamp, ph.MaxTimestamp)
 	}
 	if ph.BlocksCount > ph.RowsCount {
-		logger.Panicf("FATAL: %s: BlocksCount=%d cannot exceed RowsCount=%d", metadataPath, ph.BlocksCount, ph.RowsCount)
+		return fmt.Errorf("BlocksCount=%d cannot exceed RowsCount=%d", ph.BlocksCount, ph.RowsCount)
 	}
+	return nil
 }
 
 func (ph *partHeader) mustWriteMetadata(partPath string) {
