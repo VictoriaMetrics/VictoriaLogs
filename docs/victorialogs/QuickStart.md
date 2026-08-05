@@ -206,6 +206,16 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
   docker.io/victoriametrics/victoria-logs:v1.52.0 -storageDataPath=victoria-logs-data
 ```
 
+The Docker image contains the built-in `HEALTHCHECK` instruction backed by the `-healthcheck` command-line flag. {{% available_from "#" %}}
+
+By default the health check probes `http://127.0.0.1:9428/health`. If VictoriaLogs is configured with other values for `-httpListenAddr`, `-httpListenAddr.useProxyProtocol`, `-tls` or `-http.pathPrefix` via command-line flags, pass these flags to the custom health check, e.g.:
+
+```sh
+["CMD", "/victoria-logs-prod", "-healthcheck", "-envflag.enable", "-httpListenAddr=:9428", "-httpListenAddr.useProxyProtocol=false", "-tls=false", "-http.pathPrefix="]
+```
+
+`-envflag.enable` is passed to the custom health check so it picks up the same [environment variables](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#environment-variables) as VictoriaLogs.
+
 See also:
 
 - [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/#how-to-configure-victorialogs)

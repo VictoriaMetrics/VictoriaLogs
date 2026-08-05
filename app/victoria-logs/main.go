@@ -33,14 +33,17 @@ func main() {
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.Usage = usage
 	envflag.Parse()
-	buildinfo.Init()
-	initSecretFlags()
-	logger.Init()
-
 	listenAddrs := *httpListenAddrs
 	if len(listenAddrs) == 0 {
 		listenAddrs = []string{":9428"}
 	}
+	if *healthcheck {
+		os.Exit(runHealthcheck(listenAddrs[0]))
+	}
+	buildinfo.Init()
+	initSecretFlags()
+	logger.Init()
+
 	logger.Infof("starting VictoriaLogs at %q...", listenAddrs)
 	startTime := time.Now()
 
