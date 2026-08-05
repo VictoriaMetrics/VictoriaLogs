@@ -198,7 +198,7 @@ type remoteWriteCtx struct {
 	c  *client
 
 	pls        []*pendingLogs
-	pssNextIdx atomic.Uint64
+	plsNextIdx atomic.Uint64
 }
 
 func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks int, sanitizedURL, tmpDataPath string) *remoteWriteCtx {
@@ -255,7 +255,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	}
 	c.init(argIdx, *queues, sanitizedURL)
 
-	// Initialize pss
+	// Initialize pls
 	plsLen := *queues
 	if n := cgroup.AvailableCPUs(); plsLen > n {
 		// There is no sense in running more than availableCPUs concurrent pendingLogs,
@@ -278,13 +278,13 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 
 func (rwctx *remoteWriteCtx) push(lr *logstorage.LogRows) {
 	pls := rwctx.pls
-	idx := rwctx.pssNextIdx.Add(1) % uint64(len(pls))
+	idx := rwctx.plsNextIdx.Add(1) % uint64(len(pls))
 	pls[idx].add(lr)
 }
 
 func (rwctx *remoteWriteCtx) mustStop() {
-	for _, ps := range rwctx.pls {
-		ps.mustStop()
+	for _, pl := range rwctx.pls {
+		pl.mustStop()
 	}
 	rwctx.pls = nil
 	rwctx.fq.UnblockAllReaders()
