@@ -726,7 +726,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	ptws = append([]*partitionWrapper{}, ptws...)
 
 	for _, ptw := range ptws {
-		ptw.incRef()
+		ptw.incReadRef()
 	}
 	s.partitionsLock.Unlock()
 
@@ -741,7 +741,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 
 	// Decrement references to partitions
 	for _, ptw := range ptws {
-		ptw.decRef()
+		ptw.decReadRef()
 	}
 
 	tenantIDs := MergeTenantIDs(tenantIDsByWorker)
@@ -1298,27 +1298,58 @@ func (db *DataBlock) mustInitFromBlockResult(br *blockResult) {
 //
 // It uses workersCount parallel workers for the search and calls writeBlock for each matching block.
 func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
-	// spin up workers
-	var wg sync.WaitGroup
+	var preloadCh chan *blockSearchWorkBatch
 	workCh := make(chan *blockSearchWorkBatch, workersCount)
+
+	ptws, hasRemotePartitions, ptwsDecRef := s.getPartitionsForTimeRange(sso.minTimestamp, sso.maxTimestamp, false)
+	defer ptwsDecRef()
+
+	var preloadWg sync.WaitGroup
+	if hasRemotePartitions {
+		preloadCh = make(chan *blockSearchWorkBatch, workersCount)
+		neededBloomCols := collectBloomFilterColumns(sso.filter)
+		preloadWorkersCount := 4 * workersCount
+		for range preloadWorkersCount {
+			preloadWg.Go(func() {
+				for bswb := range preloadCh {
+					if !needStop(stopCh) {
+						preloadBatchBloomFilters(bswb.bsws, neededBloomCols)
+					}
+					select {
+					case workCh <- bswb:
+					case <-stopCh:
+						bswb.bsws = bswb.bsws[:0]
+						putBlockSearchWorkBatch(bswb)
+					}
+				}
+			})
+		}
+	} else {
+		preloadCh = workCh
+	}
+
+	var wg sync.WaitGroup
 	for workerID := range workersCount {
 		wg.Go(func() {
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
 
+			defer func() {
+				putBlockSearch(bs)
+				putBitmap(bm)
+			}()
+
 			for bswb := range workCh {
 				bsws := bswb.bsws
 				for i := range bsws {
 					bsw := &bsws[i]
 					if needStop(stopCh) {
-						// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
 						bsw.reset()
 						continue
 					}
 
 					rowsProcessed := bsw.bh.rowsCount
-
 					bs.search(qsLocal, bsw, bm)
 					if bs.br.rowsLen > 0 {
 						if sso.timeOffset != 0 {
@@ -1336,15 +1367,9 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 				putBlockSearchWorkBatch(bswb)
 			}
 
-			putBlockSearch(bs)
-			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
 		})
 	}
-
-	// Select partitions according to the selected time range
-	ptws, ptwsDecRef := s.getPartitionsForTimeRange(sso.minTimestamp, sso.maxTimestamp)
-	defer ptwsDecRef()
 
 	// Schedule concurrent search across matching partitions.
 	psfs := make([]partitionSearchFinalizer, len(ptws))
@@ -1352,19 +1377,26 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 	for idx, ptw := range ptws {
 		partitionSearchConcurrencyLimitCh <- struct{}{}
 		wgSearchers.Go(func() {
+			defer func() {
+				<-partitionSearchConcurrencyLimitCh
+			}()
+
 			qsLocal := &QueryStats{}
 
-			psfs[idx] = ptw.pt.search(sso, qsLocal, workCh, stopCh)
+			psfs[idx] = ptw.pt.search(sso, qsLocal, preloadCh, stopCh)
 
 			qs.UpdateAtomic(qsLocal)
-
-			<-partitionSearchConcurrencyLimitCh
 		})
 	}
-	wgSearchers.Wait()
 
-	// Wait until workers finish their work
+	wgSearchers.Wait()
+	if hasRemotePartitions {
+		close(preloadCh)
+	}
+
+	preloadWg.Wait()
 	close(workCh)
+
 	wg.Wait()
 
 	// Finalize partition search
@@ -1373,10 +1405,11 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 	}
 }
 
-// getPartitionsForTimeRange returns partitions covered by [minTimestamp, maxTimestamp] time range.
-//
-// The caller must call ptwsDecRef when the returned partitions are no longer needed.
-func (s *Storage) getPartitionsForTimeRange(minTimestamp, maxTimestamp int64) (ptws []*partitionWrapper, ptwsDecRef func()) {
+// getPartitionsForTimeRange returns partitions covered by [minTimestamp, maxTimestamp].
+// When isWrite is true, read-only partitions are excluded and hasSkipped is set; the ref
+// increments and isReadOnly checks happen under partitionsLock, making them atomic with
+// setReadOnly in offloadPartition.
+func (s *Storage) getPartitionsForTimeRange(minTimestamp, maxTimestamp int64, isWrite bool) (ptws []*partitionWrapper, hasRemote bool, ptwsDecRef func()) {
 	s.partitionsLock.Lock()
 
 	// s.partitions are sorted by s.day. Use binary search for finding partitions for the given [minTimestamp, maxTimestamp] time range.
@@ -1392,22 +1425,34 @@ func (s *Storage) getPartitionsForTimeRange(minTimestamp, maxTimestamp int64) (p
 	})
 	ptwsTmp = ptwsTmp[:n]
 
-	// Copy the selected partitions, so they don't interfere with s.partitions.
-	ptws = append([]*partitionWrapper{}, ptwsTmp...)
-
-	for _, ptw := range ptws {
-		ptw.incRef()
+	for _, ptw := range ptwsTmp {
+		if isWrite {
+			if ptw.isReadOnly.Load() {
+				continue
+			}
+			ptw.incWriteRef()
+		} else {
+			ptw.incReadRef()
+		}
+		ptws = append(ptws, ptw)
+		if ptw.pt.isRemote {
+			hasRemote = true
+		}
 	}
 
 	s.partitionsLock.Unlock()
 
 	ptwsDecRef = func() {
 		for _, ptw := range ptws {
-			ptw.decRef()
+			if isWrite {
+				ptw.decWriteRef()
+			} else {
+				ptw.decReadRef()
+			}
 		}
 	}
 
-	return ptws, ptwsDecRef
+	return ptws, hasRemote, ptwsDecRef
 }
 
 // partitionSearchConcurrencyLimitCh limits the number of concurrent searches in partition.
@@ -1551,12 +1596,12 @@ func (ddb *datadb) getPartsForTimeRange(minTimestamp, maxTimestamp int64) (pws [
 
 func (p *part) search(pso *partitionSearchOptions, qs *QueryStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
 	bhss := getBlockHeaders()
+	defer putBlockHeaders(bhss)
 	if len(pso.tenantIDs) > 0 {
 		p.searchByTenantIDs(pso, qs, bhss, workCh, stopCh)
 	} else {
 		p.searchByStreamIDs(pso, qs, bhss, workCh, stopCh)
 	}
-	putBlockHeaders(bhss)
 }
 
 func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct{}) bool {
@@ -1571,6 +1616,11 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 			qsLocal := &QueryStats{}
 			bs := getBlockSearch()
 			bm := getBitmap(0)
+
+			defer func() {
+				putBlockSearch(bs)
+				putBitmap(bm)
+			}()
 
 			for bswb := range workCh {
 				bsws := bswb.bsws
@@ -1589,9 +1639,6 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 				bswb.bsws = bswb.bsws[:0]
 				putBlockSearchWorkBatch(bswb)
 			}
-
-			putBlockSearch(bs)
-			putBitmap(bm)
 		})
 	}
 

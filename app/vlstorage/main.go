@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -16,6 +17,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/s3"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth"
 	"github.com/VictoriaMetrics/metrics"
 
@@ -25,6 +28,23 @@ import (
 )
 
 var (
+	offloadDestination                 = flag.String("offload.destination", "", "Object storage path for offloaded partitions")
+	offloadCachePath                   = flag.String("offload.cache.path", "victoria-logs-data/cache", "Local cache path for reading offloaded data")
+	offloadCacheMaxDiskSpaceUsageBytes = flagutil.NewBytes("offload.cache.maxDiskSpaceUsageBytes", 0, "The maximum disk space usage at -offload.cache.path before older cache entries are automatically dropped")
+	s3CredsFile                        = flag.String("offload.s3.credsFile", "", "Path to file with S3 credentials. Credentials are loaded from default locations if not set.\n"+
+		"See https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html")
+	s3ConfigFile = flag.String("offload.s3.configFile", "", "Path to file with S3 configs. Configs are loaded from default location if not set.\n"+
+		"See https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html")
+	s3ProfileName = flag.String("offload.s3.profileName", "", "Profile name for S3 configs.\n"+
+		"If no set, the value of the environment variable will be loaded (AWS_PROFILE or AWS_DEFAULT_PROFILE), or if both not set, DefaultSharedConfigProfile is used")
+	s3ForcePathStyle     = flag.Bool("offload.s3.forcePathStyle", true, "Prefixing endpoint with bucket name when set false, true by default.")
+	s3Endpoint           = flag.String("offload.s3.endpoint", "", "Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set")
+	s3Region             = flag.String("offload.s3.region", "", "AWS region for S3 bucket")
+	s3CompatMode         = flag.Bool("offload.s3.compatMode", false, "Enables compatibilty mode with other S3-compatible solutions")
+	s3InsecureSkipVerify = flag.Bool("offload.s3.insecureSkipVerify", false, "Whether to skip TLS verification when connecting to the S3 endpoint.")
+	offloadPeriod        = flagutil.NewRetentionDuration("offloadPeriod", "7d", "Partitions older than now-offloadPeriod are automatically moved to object storage; "+
+		"log entries with timestamps outside the offload period are rejected during data ingestion; the minimum supported offload period is 1d (one day); "+
+		"see https://docs.victoriametrics.com/victorialogs/#object-storage;")
 	retentionPeriod = flagutil.NewRetentionDuration("retentionPeriod", "7d", "Log entries with timestamps older than now-retentionPeriod are automatically deleted; "+
 		"log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent")
@@ -122,6 +142,11 @@ func initLocalStorage() {
 	if retentionPeriod.Duration() < 24*time.Hour {
 		logger.Fatalf("-retentionPeriod cannot be smaller than a day; got %s", retentionPeriod)
 	}
+	if len(*offloadDestination) > 0 {
+		if maxDiskSpaceUsageBytes.N > 0 || *maxDiskUsagePercent > 0 {
+			logger.Fatalf("-retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent are not compatible with -offload.destination")
+		}
+	}
 	// Validate mutually exclusive retention flags and their values
 	if maxDiskSpaceUsageBytes.N > 0 && *maxDiskUsagePercent > 0 {
 		logger.Fatalf("-retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent cannot be set simultaneously")
@@ -130,6 +155,24 @@ func initLocalStorage() {
 		logger.Fatalf("-retention.maxDiskUsagePercent must be between 1 and 100; got %d", *maxDiskUsagePercent)
 	}
 	cfg := &logstorage.StorageConfig{
+		ObjectStorage: objectstorage.StorageConfig{
+			Destination: *offloadDestination,
+			S3: s3.StorageConfig{
+				CredsFile:          *s3CredsFile,
+				ConfigFile:         *s3ConfigFile,
+				ProfileName:        *s3ProfileName,
+				ForcePathStyle:     *s3ForcePathStyle,
+				Endpoint:           *s3Endpoint,
+				Region:             *s3Region,
+				InsecureSkipVerify: *s3InsecureSkipVerify,
+				CompatMode:         *s3CompatMode,
+			},
+			Cache: objectstorage.CachedStorageConfig{
+				Path:                   *offloadCachePath,
+				MaxDiskSpaceUsageBytes: offloadCacheMaxDiskSpaceUsageBytes.N,
+			},
+		},
+		Offload:                offloadPeriod.Duration(),
 		Retention:              retentionPeriod.Duration(),
 		DefaultParallelReaders: *defaultParallelReaders,
 		MaxDiskSpaceUsageBytes: maxDiskSpaceUsageBytes.N,
@@ -303,6 +346,11 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 
 	// Run force merge in background
 	partitionPrefix := r.FormValue("partition_prefix")
+	readOnlyPartitions := localStorage.GetReadOnlyPartitions(partitionPrefix)
+	if len(readOnlyPartitions) > 0 {
+		httpserver.Errorf(w, r, "force merge for partition_prefix=%q was rejected due to found read-only partitions: [%s]", partitionPrefix, strings.Join(readOnlyPartitions, ","))
+		return true
+	}
 	go func() {
 		activeForceMerges.Inc()
 		defer activeForceMerges.Dec()
@@ -402,6 +450,12 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 	if partitionPrefix == "" {
 		// Fall back to the deprecated argument.
 		partitionPrefix = r.FormValue("name")
+	}
+
+	readOnlyPartitions := localStorage.GetReadOnlyPartitions(partitionPrefix)
+	if len(readOnlyPartitions) > 0 {
+		httpserver.Errorf(w, r, "snapshot creation for partition_prefix=%q was rejected due to found read-only partitions: [%s]", partitionPrefix, strings.Join(readOnlyPartitions, ","))
+		return true
 	}
 
 	snapshotPaths := localStorage.PartitionSnapshotMustCreate(partitionPrefix)

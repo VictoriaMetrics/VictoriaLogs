@@ -62,6 +62,29 @@ func (fg *filterGeneric) getTokens() []string {
 	}
 }
 
+func (fg *filterGeneric) hasBloomFilterTokens() bool {
+	if len(fg.getTokens()) > 0 {
+		return true
+	}
+	switch t := fg.f.(type) {
+	case *filterContainsAll:
+		return len(t.values.values) > 0
+	case *filterContainsAny:
+		return len(t.values.values) > 0
+	case *filterIn:
+		return len(t.values.values) > 0
+	case *filterContainsCommonCase:
+		return len(t.containsAny.values.values) > 0
+	case *filterEqualsCommonCase:
+		return len(t.equalsAny.values.values) > 0
+	case *filterAnyCasePhrase:
+		return t.phrase != ""
+	case *filterAnyCasePrefix:
+		return t.prefix != ""
+	}
+	return false
+}
+
 func (fg *filterGeneric) visitSubqueries(visitFunc func(q *Query)) {
 	switch t := fg.f.(type) {
 	case *filterContainsAll:

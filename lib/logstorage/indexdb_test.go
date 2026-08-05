@@ -15,7 +15,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	const partitionName = "foobar"
 	s := newTestStorage()
 	mustCreateIndexdb(path)
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, nil)
 
 	tenantID := TenantID{
 		AccountID: 123,
@@ -265,7 +265,7 @@ func TestGetTenantsIDs(t *testing.T) {
 	mustCreateIndexdb(path)
 	defer fs.MustRemoveDir(path)
 
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, nil)
 	defer mustCloseIndexdb(idb)
 
 	tenantIDs := []TenantID{
