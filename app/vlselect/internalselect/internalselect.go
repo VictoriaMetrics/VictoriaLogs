@@ -98,8 +98,8 @@ func parseRequest(r *http.Request) error {
 	maxMemory := int64(0.1 * float64(memory.Allowed()))
 	ct := r.Header.Get("Content-Type")
 
-	// ParseForm limits URL-encoded bodies to 10MB.
-	// while ParseMultipartForm accepts a configurable memory limit.
+	// ParseMultipartForm allows configuring the memory limit,
+	// while ParseForm limits URL-encoded bodies to 10MB.
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
