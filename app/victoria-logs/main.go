@@ -33,6 +33,10 @@ func main() {
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.Usage = usage
 	envflag.Parse()
+	if *healthcheck {
+		// Perform a healthcheck of the locally running VictoriaLogs and exit.
+		os.Exit(runHealthcheck())
+	}
 	buildinfo.Init()
 	initSecretFlags()
 	logger.Init()

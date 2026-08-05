@@ -63,6 +63,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -futureRetention value
      Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
+  -healthcheck
+     Performs a healthcheck of the locally running VictoriaLogs by issuing a GET request to the /health endpoint at the first -httpListenAddr and exits with 0 status code if the response status code is 2xx, otherwise it exits with 1. This flag is intended to be used by the HEALTHCHECK instruction in Docker images, so the container health can be inspected with tools such as docker ps without having curl or wget inside the image. The healthcheck resolves its flags from the command line and, since the built-in HEALTHCHECK in Docker images runs with -envflag.enable, from environment variables; the running server only reads environment variables if it is started with -envflag.enable, so the healthcheck and the server must be started with matching flags, otherwise the healthcheck may probe a wrong address. The flag cannot be used if -httpListenAddr.useProxyProtocol is enabled for the first -httpListenAddr
   -http.connTimeout duration
      Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
   -http.disableCORS
