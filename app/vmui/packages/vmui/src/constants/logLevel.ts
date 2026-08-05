@@ -4,9 +4,13 @@ export const LOG_LEVEL_COLORS = {
   trace: "#20BFC0",
   debug: "#4771E2",
   info: "#62A53B",
+  notice: "#62A53B",
   warn: "#F27800",
   error: "#D2323B",
   fatal: "#9C50D3",
+  critical: "#9C50D3",
+  alert: "#9C50D3",
+  emergency: "#9C50D3",
   [LOG_LEVEL_UNKNOWN]: "#A09F9F",
 } as const;
 
