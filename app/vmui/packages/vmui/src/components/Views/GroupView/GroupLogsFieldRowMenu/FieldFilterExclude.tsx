@@ -2,14 +2,15 @@ import { FC } from "preact/compat";
 import { FilterOffIcon } from "../../../Main/Icons";
 import { ExtraFilterOperator } from "../../../ExtraFilters/types";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
+import Tooltip from "../../../Main/Tooltip/Tooltip";
+import Button from "../../../Main/Button/Button";
 
 interface Props {
   field: string;
   value: string;
-  onClose: () => void;
 }
 
-const FieldFilterExclude: FC<Props> = ({ field, value, onClose }) => {
+const FieldFilterExclude: FC<Props> = ({ field, value }) => {
   const { extraFilters, addNewFilter, removeFilterByValue } = useExtraFilters();
   const filtersByValue = extraFilters.filter(f => f.field === field && f.value === value);
   const isExcludeFilter = filtersByValue.some(f => f.operator === ExtraFilterOperator.NotEquals);
@@ -22,19 +23,19 @@ const FieldFilterExclude: FC<Props> = ({ field, value, onClose }) => {
     } else {
       addNewFilter(newFilter);
     }
-    onClose();
   };
 
   return (
-    <div
-      className="vm-legend-hits-menu-row vm-legend-hits-menu-row_interactive"
-      onClick={handleClickFilter}
-    >
-      <div className="vm-legend-hits-menu-row__icon">{<FilterOffIcon/>}</div>
-      <div className="vm-legend-hits-menu-row__title">
-        {isExcludeFilter ? "Remove exclude filter" : "Exclude this value"}
-      </div>
-    </div>
+    <Tooltip title={isExcludeFilter ? "Remove exclude filter" : "Exclude this value"}>
+      <Button
+        variant="text"
+        color={isExcludeFilter ? "secondary" : "gray"}
+        size="small"
+        startIcon={<FilterOffIcon/>}
+        onClick={handleClickFilter}
+        aria-label={isExcludeFilter ? "Remove exclude filter" : "Exclude this value"}
+      />
+    </Tooltip>
   );
 };
 
