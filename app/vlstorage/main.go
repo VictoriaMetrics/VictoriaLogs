@@ -28,9 +28,10 @@ import (
 )
 
 var (
-	offloadDestination = flag.String("offload.destination", "", "Object storage path for offloaded partitions")
-	offloadCachePath   = flag.String("offload.cachePath", "victoria-logs-data/cache", "Local cache path for reading offloaded data")
-	s3CredsFile        = flag.String("offload.s3.credsFile", "", "Path to file with S3 credentials. Credentials are loaded from default locations if not set.\n"+
+	offloadDestination                 = flag.String("offload.destination", "", "Object storage path for offloaded partitions")
+	offloadCachePath                   = flag.String("offload.cache.path", "victoria-logs-data/cache", "Local cache path for reading offloaded data")
+	offloadCacheMaxDiskSpaceUsageBytes = flagutil.NewBytes("offload.cache.maxDiskSpaceUsageBytes", 0, "The maximum disk space usage at -offload.cache.path before older cache entries are automatically dropped")
+	s3CredsFile                        = flag.String("offload.s3.credsFile", "", "Path to file with S3 credentials. Credentials are loaded from default locations if not set.\n"+
 		"See https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html")
 	s3ConfigFile = flag.String("offload.s3.configFile", "", "Path to file with S3 configs. Configs are loaded from default location if not set.\n"+
 		"See https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html")
@@ -167,7 +168,8 @@ func initLocalStorage() {
 				CompatMode:         *s3CompatMode,
 			},
 			Cache: objectstorage.CachedStorageConfig{
-				Path: *offloadCachePath,
+				Path:                   *offloadCachePath,
+				MaxDiskSpaceUsageBytes: offloadCacheMaxDiskSpaceUsageBytes.N,
 			},
 		},
 		Offload:                offloadPeriod.Duration(),

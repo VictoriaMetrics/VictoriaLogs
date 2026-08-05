@@ -167,7 +167,7 @@ For example, use `s3://my-vl-bucket/prod/vlstorage-0/` for one node and
 ```sh
 /path/to/victoria-logs \
   -storageDataPath=/var/lib/victoria-logs \
-  -offload.cachePath=/var/lib/victoria-logs/cache \
+  -offload.cache.path=/var/lib/victoria-logs/cache \
   -retentionPeriod=30d \
   -offloadPeriod=7d \
   -offload.destination='s3://my-vl-bucket/prod/' \
@@ -179,7 +179,7 @@ VictoriaLogs also supports S3-compatible services such as MinIO:
 ```sh
 /path/to/victoria-logs \
   -storageDataPath=/var/lib/victoria-logs \
-  -offload.cachePath=/var/lib/victoria-logs/cache \
+  -offload.cache.path=/var/lib/victoria-logs/cache \
   -retentionPeriod=30d \
   -offloadPeriod=7d \
   -offload.destination='s3://my-vl-bucket/prod/' \
@@ -212,15 +212,16 @@ VictoriaLogs loads S3 credentials from AWS environment variables, shared AWS fil
 Use `-offload.s3.configFile`, `-offload.s3.credsFile`, and `-offload.s3.profileName`
 to select specific files or a profile.
 
-When a query reads data from S3, VictoriaLogs downloads data chunks to `-offload.cachePath`.
+When a query reads data from S3, VictoriaLogs downloads data chunks to `-offload.cache.path`.
 This path does not follow `-storageDataPath` automatically, and the cache currently has no size limit.
 Place it on a disk with enough free space and monitor its usage.
 
 Offload-related flags:
 
-- `-offload.destination`: S3 bucket and path for moved partitions.
-- `-offload.cachePath`: local directory for data downloaded from S3.
 - `-offloadPeriod`: how long partitions stay on local disk before VictoriaLogs moves them to S3.
+- `-offload.destination`: S3 bucket and path for moved partitions.
+- `-offload.cache.path`: local directory for data downloaded from S3.
+- `-offload.cache.maxDiskSpaceUsageBytes`: limit for cache directory size, least used data is removed.
 - `-offload.s3.endpoint`: S3 server address for services such as MinIO.
 - `-offload.s3.region`: AWS region for S3 requests.
 - `-offload.s3.forcePathStyle`: put the bucket name in the URL path.
