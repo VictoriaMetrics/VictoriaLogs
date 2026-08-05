@@ -5,16 +5,14 @@ import TableSettings, { TableSettingsProps } from "../../Table/TableSettings/Tab
 
 interface Props extends TableSettingsProps {
   rowsPerPage: number,
-  setRowsPerPage: (limit: number) => void,
   targetRef: RefObject<HTMLElement>,
 }
 
-const TableLogsSettings: FC<Props> = ({ rowsPerPage, setRowsPerPage, targetRef, ...settingsProps }) => {
+const TableLogsSettings: FC<Props> = ({ rowsPerPage, targetRef, ...settingsProps }) => {
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
 
   const handleSetRowsPerPage = (limit: number) => {
-    setRowsPerPage(limit);
-    setSearchParamsFromKeys({ rows_per_page: limit });
+    setSearchParamsFromKeys({ rows_per_page: limit || "all" });
   };
 
   const controls = (
