@@ -49,9 +49,13 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	// Track the time spent on waiting for a free slot in the concurrency limiter separately
+	// from startTime, so the parseRequest() duration isn't accounted as the wait time.
+	waitStartTime := time.Now()
+
 	select {
 	case concurrencyLimitCh <- struct{}{}:
-		if d := time.Since(startTime); d > 100*time.Millisecond {
+		if d := time.Since(waitStartTime); d > 100*time.Millisecond {
 			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
 			concurrentRequestsWaitDuration.Update(d.Seconds())
 		}
@@ -59,7 +63,7 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		<-concurrencyLimitCh
 	case <-ctx.Done():
 		// Unconditionally measure the wait time until the the request is canceled by the client.
-		concurrentRequestsWaitDuration.UpdateDuration(startTime)
+		concurrentRequestsWaitDuration.UpdateDuration(waitStartTime)
 	}
 }
 

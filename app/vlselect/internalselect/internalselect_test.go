@@ -91,12 +91,19 @@ func TestRequestHandlerCancelQueuedRequestOnClientDisconnect(t *testing.T) {
 	}
 }
 
-// TestRequestHandlerParseErrorDoesNotConsumeConcurrencySlot verifies that a
-// request which fails to parse never reaches (and never leaks) a concurrency
-// limiter slot.
-func TestRequestHandlerParseErrorDoesNotConsumeConcurrencySlot(t *testing.T) {
+// TestRequestHandlerParseErrorWithoutFreeConcurrencySlot verifies that a request
+// which fails to parse is rejected without waiting for a free slot in the
+// concurrency limiter, and that it doesn't occupy such a slot.
+//
+// All the slots in the concurrency limiter are occupied on purpose - this is what
+// makes the test verify the ordering between parseRequest() and the concurrency
+// limiter. If the request were parsed only after obtaining a free slot, then
+// RequestHandler() would wait in the queue instead of returning the parse error.
+func TestRequestHandlerParseErrorWithoutFreeConcurrencySlot(t *testing.T) {
 	Init()
 	t.Cleanup(Stop)
+
+	fillConcurrencyLimitCh(t)
 
 	// Malformed multipart body: Content-Type declares multipart/form-data, but
 	// the body itself is garbage, so r.ParseMultipartForm() must fail.
@@ -105,7 +112,18 @@ func TestRequestHandlerParseErrorDoesNotConsumeConcurrencySlot(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	RequestHandler(context.Background(), rr, req, "/internal/select/tenant_ids")
+	doneCh := make(chan struct{})
+	go func() {
+		RequestHandler(context.Background(), rr, req, "/internal/select/tenant_ids")
+		close(doneCh)
+	}()
+
+	select {
+	case <-doneCh:
+		// Good - the parse error has been returned without waiting for a free slot.
+	case <-time.After(5 * time.Second):
+		t.Fatalf("RequestHandler didn't return the parse error while all the slots in the concurrency limiter are occupied")
+	}
 
 	if rr.Code == http.StatusOK {
 		t.Fatalf("expected a non-200 status code for a malformed request, got %d", rr.Code)
@@ -114,8 +132,8 @@ func TestRequestHandlerParseErrorDoesNotConsumeConcurrencySlot(t *testing.T) {
 		t.Fatalf("expected an error message to be written to the response, got empty body")
 	}
 
-	if n := len(concurrencyLimitCh); n != 0 {
-		t.Fatalf("expected no concurrency slot to be leaked after a parse error, got len(concurrencyLimitCh)=%d", n)
+	if n := len(concurrencyLimitCh); n != cap(concurrencyLimitCh) {
+		t.Fatalf("unexpected number of occupied slots in the concurrency limiter after a parse error; got %d; want %d", n, cap(concurrencyLimitCh))
 	}
 }
 
