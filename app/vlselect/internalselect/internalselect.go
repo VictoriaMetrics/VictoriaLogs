@@ -33,6 +33,22 @@ var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, 
 func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
 	startTime := time.Now()
 
+	// Parse the request before waiting for a free slot in the concurrency limiter below.
+	// This reads the request body to EOF, which is what allows net/http to detect the client
+	// closing its connection and to cancel ctx while the request is still queued for execution.
+	// Without this, vlstorage cannot detect requests already abandoned by vlselect (e.g. after
+	// -search.maxQueryDuration elapses) while they wait in the queue, and ends up executing them
+	// anyway once a free slot appears, even though nobody will read the response.
+	//
+	// Parsing here (rather than deeper in requestHandler) also catches parse errors up front,
+	// instead of letting them be silently skipped at r.FormValue() calls inside the request
+	// handlers executed below.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+	if err := parseRequest(r); err != nil {
+		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
+		return
+	}
+
 	select {
 	case concurrencyLimitCh <- struct{}{}:
 		if d := time.Since(startTime); d > 100*time.Millisecond {
@@ -62,15 +78,6 @@ var concurrencyLimitCh chan struct{}
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
 func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, startTime time.Time) {
-	// Parse request before obtaining the request args from it in order to catch parse errors,
-	// which are silently skipped at r.FormValue() calls inside the request handlers executed below.
-	//
-	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
-	if err := parseRequest(r); err != nil {
-		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
-		return
-	}
-
 	rh := requestHandlers[path]
 	if rh == nil {
 		httpserver.Errorf(w, r, "unsupported endpoint requested: %s", path)
