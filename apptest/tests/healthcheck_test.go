@@ -15,8 +15,8 @@ func TestVlsingleHealthcheck(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
-	addr := getFreeTCPAddr(t)
-	tc.MustStartVlsingle("vlsingle", []string{"-httpListenAddr=" + addr})
+	sut := tc.MustStartVlsingle("vlsingle", nil)
+	addr := sut.HTTPAddr()
 
 	// The healthcheck must exit with 0 when the server is healthy.
 	out, err := exec.Command("../../bin/victoria-logs-race", "-healthcheck", "-httpListenAddr="+addr).CombinedOutput()
@@ -25,7 +25,14 @@ func TestVlsingleHealthcheck(t *testing.T) {
 	}
 
 	// The healthcheck must exit with 1 when the server is unavailable.
-	deadAddr := getFreeTCPAddr(t)
+	// The listener is kept open, so the probe cannot succeed against this address,
+	// but the port cannot be taken over by another process either.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("cannot open listener for the unavailable server address: %s", err)
+	}
+	defer ln.Close()
+	deadAddr := ln.Addr().String()
 	cmd := exec.Command("../../bin/victoria-logs-race", "-healthcheck", "-httpListenAddr="+deadAddr)
 	out, err = cmd.CombinedOutput()
 	if err == nil {
@@ -35,18 +42,4 @@ func TestVlsingleHealthcheck(t *testing.T) {
 	if !ok || exitErr.ExitCode() != 1 {
 		t.Fatalf("healthcheck against %s must exit with 1 status code; got error: %s; output: %q", deadAddr, err, out)
 	}
-}
-
-// getFreeTCPAddr returns a TCP address on 127.0.0.1 with a free port.
-func getFreeTCPAddr(t *testing.T) string {
-	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("cannot obtain free TCP address: %s", err)
-	}
-	addr := ln.Addr().String()
-	if err := ln.Close(); err != nil {
-		t.Fatalf("cannot close listener at %s: %s", addr, err)
-	}
-	return addr
 }

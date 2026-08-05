@@ -209,9 +209,10 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
 VictoriaLogs Docker images contain the built-in `HEALTHCHECK` instruction, which probes the `/health` endpoint
 via the `-healthcheck` command-line flag, so the container health can be inspected with tools such as `docker ps`
 without needing `curl` or `wget` inside the image. The built-in healthcheck reads flags from environment variables
-via `-envflag.enable`, so it automatically follows `-httpListenAddr`, `-tls`, `-http.pathPrefix`
-and `-httpListenAddr.useProxyProtocol` when VictoriaLogs is configured via environment variables. Note that
-environment variables are only read if VictoriaLogs is started with `-envflag.enable`, e.g.:
+via `-envflag.enable`, so it automatically follows `-httpListenAddr`, `-tls` and `-http.pathPrefix`
+when VictoriaLogs is configured via environment variables. The healthcheck cannot be used when
+`-httpListenAddr.useProxyProtocol` is enabled for the first `-httpListenAddr` — it exits with 1 in this case.
+Note that environment variables are only read if VictoriaLogs is started with `-envflag.enable`, e.g.:
 
 ```sh
 docker run --rm -it -p 9430:9430 -e httpListenAddr=:9430 \
