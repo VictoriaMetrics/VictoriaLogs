@@ -410,6 +410,7 @@ func unmarshalBytesBlock(dst, src []byte) ([]byte, []byte, error) {
 
 		// Decompress the block
 		bb := bbPool.Get()
+		defer bbPool.Put(bb)
 		var err error
 		bb.B, err = encoding.DecompressZSTD(bb.B[:0], compressedBlock)
 		if err != nil {
@@ -418,7 +419,6 @@ func unmarshalBytesBlock(dst, src []byte) ([]byte, []byte, error) {
 
 		// Copy the decompressed block to dst.
 		dst = append(dst, bb.B...)
-		bbPool.Put(bb)
 		return dst, src, nil
 	default:
 		return dst, src, fmt.Errorf("unexpected block type: %d; supported types: 0, 1", blockType)

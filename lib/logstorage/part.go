@@ -9,7 +9,9 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/filestream"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/common"
 )
 
 type part struct {
@@ -54,10 +56,9 @@ type bloomValuesReaderAt struct {
 	values fs.MustReadAtCloser
 }
 
-func (r *bloomValuesReaderAt) appendClosers(dst []fs.MustCloser) []fs.MustCloser {
-	dst = append(dst, r.bloom)
-	dst = append(dst, r.values)
-	return dst
+func (r *bloomValuesReaderAt) appendCloserTasks(pe *fsutil.ParallelExecutor) {
+	pe.Add(fs.NewMustCloserTask(r.bloom))
+	pe.Add(fs.NewMustCloserTask(r.values))
 }
 
 func mustOpenInmemoryPart(pt *partition, mp *inmemoryPart) *part {
@@ -103,11 +104,97 @@ func mustOpenInmemoryPart(pt *partition, mp *inmemoryPart) *part {
 	return &p
 }
 
+func mustOpenRemotePart(pt *partition, allPartFiles map[string]uint64, path, name string) *part {
+	sc := pt.s.sc
+	var p part
+	p.pt = pt
+	p.path = path
+
+	metadataOpenPath := filepath.Join(path, name, metadataFilename)
+	metadataLookupPath := filepath.Join(name, metadataFilename)
+	metadataSize, ok := allPartFiles[metadataLookupPath]
+	if !ok {
+		logger.Panicf("FATAL: cannot locate part header file %q", sc.GetPath(metadataOpenPath))
+	}
+
+	getReader := func(p string) *common.MustReadCloser {
+		lookupPath := filepath.Join(name, p)
+		openPath := filepath.Join(path, name, p)
+		if fileSize, ok := allPartFiles[lookupPath]; ok {
+			return common.NewMustReadCloser(sc, openPath, fileSize)
+		}
+		logger.Panicf("FATAL: cannot locate part file %s", sc.GetPath(openPath))
+		return nil
+	}
+
+	bb := common.GetWriteAtBuffer()
+	defer common.PutWriteAtBuffer(bb)
+	bb.Grow(int(metadataSize))
+	bb.B = bb.B[:int(metadataSize)]
+	if err := sc.ReadFile(metadataOpenPath, bb); err != nil {
+		logger.Panicf("FATAL: cannot get header file %q: %s", sc.GetPath(metadataOpenPath), err)
+	}
+	if err := p.ph.readMetadata(bb.B); err != nil {
+		logger.Panicf("FATAL: part=%q, %s", sc.GetPath(metadataOpenPath), err)
+	}
+
+	// Read columnNames
+	if p.ph.FormatVersion >= 1 {
+		columnNamesReader := getReader(columnNamesFilename)
+		p.columnNames, p.columnNameIDs = mustReadColumnNames(columnNamesReader)
+		columnNamesReader.MustClose()
+	}
+	if p.ph.FormatVersion >= 3 {
+		columnIdxsReader := getReader(columnIdxsFilename)
+		p.columnIdxs = mustReadColumnIdxs(columnIdxsReader, p.columnNames, p.ph.BloomValuesShardsCount)
+		columnIdxsReader.MustClose()
+	}
+
+	// Read metaindex
+	metaindexReader := getReader(metaindexFilename)
+	var mrs readerWithStats
+	mrs.init(metaindexReader)
+	p.indexBlockHeaders = mustReadIndexBlockHeaders(p.indexBlockHeaders[:0], &mrs)
+	mrs.MustClose()
+
+	// Open data files
+	p.indexFile = getReader(indexFilename)
+	if p.ph.FormatVersion >= 1 {
+		p.columnsHeaderIndexFile = getReader(columnsHeaderIndexFilename)
+	}
+	p.columnsHeaderFile = getReader(columnsHeaderFilename)
+	p.timestampsFile = getReader(timestampsFilename)
+
+	// Open files with bloom filters and column values
+	p.messageBloomValues.bloom = getReader(messageBloomFilename)
+
+	p.messageBloomValues.values = getReader(messageValuesFilename)
+
+	if p.ph.FormatVersion < 1 {
+		p.oldBloomValues.bloom = getReader(oldBloomFilename)
+
+		p.oldBloomValues.values = getReader(oldValuesFilename)
+	} else {
+		p.bloomValuesShards = make([]bloomValuesReaderAt, p.ph.BloomValuesShardsCount)
+		for i := range p.bloomValuesShards {
+			shard := &p.bloomValuesShards[i]
+
+			bloomPath := getBloomFilePath("", uint64(i))
+			shard.bloom = getReader(bloomPath)
+
+			valuesPath := getValuesFilePath("", uint64(i))
+			shard.values = getReader(valuesPath)
+		}
+	}
+
+	return &p
+}
+
 func mustOpenFilePart(pt *partition, path string) *part {
 	var p part
 	p.pt = pt
 	p.path = path
-	p.ph.mustReadMetadata(path)
+	p.ph.mustReadLocalMetadata(path)
 
 	columnNamesPath := filepath.Join(path, columnNamesFilename)
 	columnIdxsPath := filepath.Join(path, columnIdxsFilename)
@@ -176,25 +263,25 @@ func mustOpenFilePart(pt *partition, path string) *part {
 func mustClosePart(p *part) {
 	// Close files in parallel in order to speed up this operation
 	// on high-latency storage systems such as NFS and Ceph.
-	var cs []fs.MustCloser
+	var pe fsutil.ParallelExecutor
 
-	cs = append(cs, p.indexFile)
+	pe.Add(fs.NewMustCloserTask(p.indexFile))
 	if p.ph.FormatVersion >= 1 {
-		cs = append(cs, p.columnsHeaderIndexFile)
+		pe.Add(fs.NewMustCloserTask(p.columnsHeaderIndexFile))
 	}
-	cs = append(cs, p.columnsHeaderFile)
-	cs = append(cs, p.timestampsFile)
-	cs = p.messageBloomValues.appendClosers(cs)
+	pe.Add(fs.NewMustCloserTask(p.columnsHeaderFile))
+	pe.Add(fs.NewMustCloserTask(p.timestampsFile))
+	p.messageBloomValues.appendCloserTasks(&pe)
 
 	if p.ph.FormatVersion < 1 {
-		cs = p.oldBloomValues.appendClosers(cs)
+		p.oldBloomValues.appendCloserTasks(&pe)
 	} else {
 		for i := range p.bloomValuesShards {
-			cs = p.bloomValuesShards[i].appendClosers(cs)
+			p.bloomValuesShards[i].appendCloserTasks(&pe)
 		}
 	}
 
-	fs.MustCloseParallel(cs)
+	pe.Run()
 
 	p.pt = nil
 }

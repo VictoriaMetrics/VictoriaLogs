@@ -621,8 +621,8 @@ func TestStorageDropStalePartitions(t *testing.T) {
 	expectPartitionsNumber := func(n int) {
 		t.Helper()
 
-		pws := s.getPartitions()
-		defer s.putPartitions(pws)
+		pws := s.getWritePartitions()
+		defer s.putWritePartitions(pws)
 
 		if len(pws) != n {
 			t.Fatalf("unexpected number of partitions; got %d; want %d", len(pws), n)

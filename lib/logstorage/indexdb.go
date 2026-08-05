@@ -2,6 +2,8 @@ package logstorage
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -14,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/mergeset"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/common"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/regexutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 )
@@ -99,14 +102,26 @@ func mustCreateIndexdb(path string) {
 	fs.MustSyncPathAndParentDir(path)
 }
 
-func mustOpenIndexdb(path, partitionName string, s *Storage) *indexdb {
+func openIndexdb(path, partitionName string, s *Storage, sc common.StorageClient) (*indexdb, error) {
 	idb := &indexdb{
 		path:          path,
 		partitionName: partitionName,
 		s:             s,
 	}
 	var isReadOnly atomic.Bool
-	idb.tb = mergeset.MustOpenTable(path, s.flushInterval, idb.invalidateStreamFilterCache, time.Second, mergeTagToStreamIDsRows, &isReadOnly)
+	var err error
+	idb.tb, err = mergeset.OpenTable(sc, path, s.flushInterval, idb.invalidateStreamFilterCache, time.Second, mergeTagToStreamIDsRows, &isReadOnly)
+	if err != nil {
+		return nil, err
+	}
+	return idb, nil
+}
+
+func mustOpenIndexdb(path, partitionName string, s *Storage, sc common.StorageClient) *indexdb {
+	idb, err := openIndexdb(path, partitionName, s, sc)
+	if err != nil {
+		logger.Fatalf("FATAL: %s", err)
+	}
 	return idb
 }
 
@@ -178,7 +193,7 @@ func (idb *indexdb) appendStreamTagsByStreamID(dst []byte, sid *streamID) []byte
 	kb.B = sid.id.marshal(kb.B)
 
 	if err := ts.FirstItemWithPrefix(kb.B); err != nil {
-		if err == io.EOF {
+		if err == io.EOF || errors.Is(err, context.Canceled) {
 			return dst
 		}
 		logger.Panicf("FATAL: unexpected error when searching for StreamTags by streamID=%s in indexdb: %s", sid, err)

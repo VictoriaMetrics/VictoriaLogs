@@ -18,7 +18,7 @@ func TestPartitionLifecycle(t *testing.T) {
 	for range 3 {
 		mustCreatePartition(path)
 		for range 2 {
-			pt := mustOpenPartition(s, path)
+			pt := mustOpenLocalPartition(s, path)
 			ddbStats.reset()
 			pt.ddb.updateStats(&ddbStats)
 			if n := ddbStats.RowsCount(); n != 0 {
@@ -45,7 +45,7 @@ func TestPartitionLifecycle(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 			mustClosePartition(pt)
 		}
-		mustDeletePartition(path)
+		mustDeletePartition(path, nil)
 	}
 	closeTestStorage(s)
 }
@@ -58,7 +58,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 
 	s := newTestStorage()
 	mustCreatePartition(path)
-	pt := mustOpenPartition(s, path)
+	pt := mustOpenLocalPartition(s, path)
 
 	// Try adding the same entry at a time.
 	totalRowsCount := uint64(0)
@@ -91,7 +91,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 
 	// Re-open the partition and verify the number of entries remains the same
 	mustClosePartition(pt)
-	pt = mustOpenPartition(s, path)
+	pt = mustOpenLocalPartition(s, path)
 	ddbStats.reset()
 	pt.ddb.updateStats(&ddbStats)
 	if n := ddbStats.RowsCount(); n != totalRowsCount {
@@ -121,7 +121,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 
 	// Re-open the partition and verify the number of entries remains the same
 	mustClosePartition(pt)
-	pt = mustOpenPartition(s, path)
+	pt = mustOpenLocalPartition(s, path)
 	ddbStats.reset()
 	pt.ddb.updateStats(&ddbStats)
 	if n := ddbStats.RowsCount(); n != totalRowsCount {
@@ -135,7 +135,7 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 	}
 
 	mustClosePartition(pt)
-	mustDeletePartition(path)
+	mustDeletePartition(path, nil)
 
 	closeTestStorage(s)
 }
@@ -147,7 +147,7 @@ func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	s := newTestStorage()
 
 	mustCreatePartition(path)
-	pt := mustOpenPartition(s, path)
+	pt := mustOpenLocalPartition(s, path)
 
 	const workersCount = 3
 	var totalRowsCount atomic.Uint64
@@ -180,7 +180,7 @@ func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	}
 
 	mustClosePartition(pt)
-	mustDeletePartition(path)
+	mustDeletePartition(path, nil)
 
 	closeTestStorage(s)
 }

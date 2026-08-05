@@ -16,10 +16,10 @@ func mustWriteColumnIdxs(w *writerWithStats, columnIdxs map[uint64]uint64) {
 	w.MustWrite(data)
 }
 
-func mustReadColumnIdxs(r filestream.ReadCloser, columnNames []string, shardsCount uint64) map[string]uint64 {
+func readColumnIdxs(r filestream.ReadCloser, columnNames []string, shardsCount uint64) (map[string]uint64, error) {
 	src, err := io.ReadAll(r)
 	if err != nil {
-		logger.Panicf("FATAL: %s: cannot read column indexes: %s", r.Path(), err)
+		return nil, fmt.Errorf("%s: cannot read column indexes: %w", r.Path(), err)
 	}
 
 	columnIdxs, err := unmarshalColumnIdxs(src, columnNames, shardsCount)
@@ -27,7 +27,15 @@ func mustReadColumnIdxs(r filestream.ReadCloser, columnNames []string, shardsCou
 		logger.Panicf("FATAL: %s: cannot parse column indexes: %s", r.Path(), err)
 	}
 
-	return columnIdxs
+	return columnIdxs, nil
+}
+
+func mustReadColumnIdxs(r filestream.ReadCloser, columnNames []string, shardsCount uint64) map[string]uint64 {
+	idxs, err := readColumnIdxs(r, columnNames, shardsCount)
+	if err != nil {
+		logger.Panicf("FATAL: %s", err)
+	}
+	return idxs
 }
 
 func marshalColumnIdxs(dst []byte, columnIdxs map[uint64]uint64) []byte {
@@ -84,10 +92,10 @@ func mustWriteColumnNames(w *writerWithStats, columnNames []string) {
 	w.MustWrite(data)
 }
 
-func mustReadColumnNames(r filestream.ReadCloser) ([]string, map[string]uint64) {
+func readColumnNames(r filestream.ReadCloser) ([]string, map[string]uint64, error) {
 	src, err := io.ReadAll(r)
 	if err != nil {
-		logger.Panicf("FATAL: %s: cannot read column names: %s", r.Path(), err)
+		return nil, nil, fmt.Errorf("%s: cannot read column names: %w", r.Path(), err)
 	}
 
 	columnNames, columnNameIDs, err := unmarshalColumnNames(src)
@@ -95,7 +103,15 @@ func mustReadColumnNames(r filestream.ReadCloser) ([]string, map[string]uint64) 
 		logger.Panicf("FATAL: %s: %s", r.Path(), err)
 	}
 
-	return columnNames, columnNameIDs
+	return columnNames, columnNameIDs, nil
+}
+
+func mustReadColumnNames(r filestream.ReadCloser) ([]string, map[string]uint64) {
+	names, idxs, err := readColumnNames(r)
+	if err != nil {
+		logger.Panicf("FATAL: %s", err)
+	}
+	return names, idxs
 }
 
 func marshalColumnNames(dst []byte, columnNames []string) []byte {

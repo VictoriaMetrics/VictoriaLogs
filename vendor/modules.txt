@@ -1,5 +1,5 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1
-## explicit; go 1.26.4
+# github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1 => ../VictoriaMetrics
+## explicit; go 1.26.5
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/blockcache
@@ -30,6 +30,10 @@ github.com/VictoriaMetrics/VictoriaMetrics/lib/logger
 github.com/VictoriaMetrics/VictoriaMetrics/lib/memory
 github.com/VictoriaMetrics/VictoriaMetrics/lib/mergeset
 github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil
+github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage
+github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/common
+github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/s3
+github.com/VictoriaMetrics/VictoriaMetrics/lib/objectstorage/testutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/persistentqueue
 github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/promauth
@@ -160,7 +164,7 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.27.3
+# github.com/aws/smithy-go v1.27.4
 ## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
@@ -263,6 +267,9 @@ github.com/valyala/quicktemplate
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/internal
+# golang.org/x/sync v0.22.0
+## explicit; go 1.25.0
+golang.org/x/sync/singleflight
 # golang.org/x/sys v0.47.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
@@ -276,3 +283,4 @@ golang.org/x/text/width
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
+# github.com/VictoriaMetrics/VictoriaMetrics => ../VictoriaMetrics
