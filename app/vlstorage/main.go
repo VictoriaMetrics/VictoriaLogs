@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -242,7 +243,7 @@ func Stop() {
 
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)

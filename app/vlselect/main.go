@@ -127,7 +127,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
@@ -140,7 +140,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 			httpserver.Errorf(w, r, "requests to /internal/select/* are disabled with -select.disable command-line flag")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
