@@ -19,8 +19,6 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton = false })
       "vm-group-logs-row-fields-item_mobile": isMobile
     })}
     >
-      <td className="vm-group-logs-row-fields-item__key">{field}</td>
-      <td className="vm-group-logs-row-fields-item__value">{value}</td>
       <td className="vm-group-logs-row-fields-item-controls">
         <FieldRowActions
           field={field}
@@ -28,6 +26,8 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, hideGroupButton = false })
           hideGroupButton={hideGroupButton}
         />
       </td>
+      <td className="vm-group-logs-row-fields-item__key">{field}</td>
+      <td className="vm-group-logs-row-fields-item__value">{value}</td>
     </tr>
   );
 };
