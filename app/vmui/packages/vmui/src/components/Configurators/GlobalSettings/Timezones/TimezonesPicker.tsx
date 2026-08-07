@@ -1,4 +1,4 @@
-import { FC, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import { getUTCByTimezone } from "../../../../utils/time";
 import { ArrowDropDownIcon } from "../../../Main/Icons";
 import classNames from "classnames";
@@ -10,7 +10,7 @@ import TimezonesList from "./TimezonesList";
 import Popper from "../../../Main/Popper/Popper";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 
-const TimezonesPicker: FC = forwardRef((_props, ref) => {
+const TimezonesPicker: FC = () => {
   const { isMobile } = useDeviceDetect();
   const { timezone: stateTimezone } = useTimeState();
   const timeDispatch = useTimeDispatch();
@@ -30,19 +30,13 @@ const TimezonesPicker: FC = forwardRef((_props, ref) => {
   }), [timezone]);
 
   const handleSetTimezone = (tz: Timezone) => {
-    setTimezone(tz.region);
+    timeDispatch({ type: "SET_TIMEZONE", payload: tz.region });
     handleCloseList();
   };
 
   useEffect(() => {
     setTimezone(stateTimezone);
   }, [stateTimezone]);
-
-  useImperativeHandle(ref, () => ({
-    handleApply: () => {
-      timeDispatch({ type: "SET_TIMEZONE", payload: timezone });
-    }
-  }), [timezone]);
 
   return (
     <div className="vm-timezones">
@@ -77,6 +71,6 @@ const TimezonesPicker: FC = forwardRef((_props, ref) => {
       </Popper>
     </div>
   );
-});
+};
 
 export default TimezonesPicker;
