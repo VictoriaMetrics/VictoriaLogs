@@ -22,6 +22,7 @@ can accept logs from the following log collectors:
 - Journald - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/).
 - DataDog - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/).
 - Splunk - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/).
+- KENT (Kubernetes events) - see [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/kent/).
 
 The ingested logs can be queried according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/).
 
