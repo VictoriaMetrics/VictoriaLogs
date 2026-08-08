@@ -2,6 +2,7 @@ import { FC } from "preact/compat";
 import Switch from "../../../Main/Switch/Switch";
 import { getFromStorage, saveToStorage } from "../../../../utils/storage";
 import { useLocalStorageBoolean } from "../../../../hooks/useLocalStorageBoolean";
+import "./style.scss";
 
 const key = "LOGS_OVERRIDE_TIME";
 const defaultValue = true;
@@ -21,17 +22,25 @@ const QueryTimeOverride: FC = () => {
   };
 
   return (
-    <div>
-      <div className="vm-server-configurator__title">
-        Query time override
-      </div>
+    <div className="vm-time-override-controller">
       <Switch
-        label="Override time picker with query _time filter"
+        fullWidth
+        color="neutral"
         value={overrideTime}
         onChange={handleUpdateValue}
+        label={<OverrideTimeLabel/>}
       />
+      <div className="vm-time-override-controller__description">
+        If the query contains a time filter, it overrides the selected time range.
+      </div>
     </div>
   );
 };
 
 export default QueryTimeOverride;
+
+const OverrideTimeLabel: FC = () => (
+  <p className="vm-server-configurator__title">
+    Override time picker with query time filter
+  </p>
+);

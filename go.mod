@@ -11,8 +11,8 @@ require (
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
-	github.com/klauspost/compress v1.18.6
-	github.com/mattn/go-isatty v0.0.22
+	github.com/klauspost/compress v1.19.1
+	github.com/mattn/go-isatty v0.0.23
 	github.com/valyala/fastjson v1.6.10
 	github.com/valyala/fastrand v1.1.0
 	github.com/valyala/quicktemplate v1.8.0
@@ -20,12 +20,12 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/metricsql v0.87.2 // indirect
+	github.com/VictoriaMetrics/metricsql v0.87.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/valyala/gozstd v1.24.0 // indirect
+	github.com/valyala/gozstd v1.25.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 )

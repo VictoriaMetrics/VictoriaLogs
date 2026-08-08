@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage/netinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
@@ -109,14 +110,14 @@ func (app *Vlsingle) JSONLineWrite(t *testing.T, records []string, opts IngestOp
 
 	_, statusCode := app.node.cli.PostWithTenant(t, opts.AccountID, opts.ProjectID, url, "text/plain", data)
 	if statusCode != http.StatusOK {
-		t.Fatalf("unexpected status code: got %d, want %d", statusCode, http.StatusOK)
+		t.Fatalf("unexpected status code when sending data to %s: got %d, want %d", url, statusCode, http.StatusOK)
 	}
 }
 
 // NativeWrite is a test helper function that sends a collection of records
 // to /insert/native API.
 //
-// See https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vlinsert/internalinsert/internalinsert.go
+// See https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/app/vlinsert/nativeinsert/nativeinsert.go
 func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, opts QueryOpts) {
 	t.Helper()
 	var data []byte
@@ -125,10 +126,13 @@ func (app *Vlsingle) NativeWrite(t *testing.T, records []logstorage.InsertRow, o
 	}
 	dstURL := fmt.Sprintf("http://%s/insert/native", app.node.httpListenAddr)
 	uv := opts.asURLValues()
-	uv.Add("version", "v1")
+	uv.Add("version", netinsert.ProtocolVersion)
 	dstURL += "?" + uv.Encode()
 
-	app.node.cli.Post(t, dstURL, "application/octet-stream", data)
+	_, statusCode := app.node.cli.PostWithTenant(t, opts.AccountID, opts.ProjectID, dstURL, "application/octet-stream", data)
+	if statusCode != http.StatusOK {
+		t.Fatalf("unexpected status code when sending data to %s: got %d, want %d", dstURL, statusCode, http.StatusOK)
+	}
 }
 
 // LogsQLQuery sends HTTP POST request to /select/logsql/query endpoint.
@@ -138,8 +142,8 @@ func (app *Vlsingle) LogsQLQuery(t *testing.T, query string, opts QueryOpts) *Lo
 	t.Helper()
 
 	res, statusCode := app.LogsQLQueryRaw(t, query, opts)
-	if statusCode != 200 {
-		t.Fatalf("unexpected response status code: %d; want 200; response\n%s", statusCode, res)
+	if statusCode != http.StatusOK {
+		t.Fatalf("unexpected response status code for query %q: got %d; want %d; response\n%s", query, statusCode, http.StatusOK, res)
 	}
 	return NewLogsQLQueryResponse(t, res)
 }
@@ -222,7 +226,9 @@ func (app *Vlsingle) Streams(t *testing.T, query string, opts StreamsOpts) strin
 	return app.node.cli.PostFormSuccess(t, url, values)
 }
 
-// Hits sends HTTP POOST request to /select/logsql/hists endpoint and returns the plain response.
+// Hits sends HTTP POST request to /select/logsql/hits endpoint and returns the plain response.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats
 func (app *Vlsingle) Hits(t *testing.T, query string, opts HitsOpts) string {
 	t.Helper()
 
@@ -261,7 +267,7 @@ func (app *Vlsingle) StatsQueryRangeRaw(t *testing.T, query string, opts StatsQu
 	return app.node.cli.PostForm(t, url, values)
 }
 
-// HTTPAddr returns the address at which the vmstorage process is listening
+// HTTPAddr returns the address at which the vlsingle process is listening
 // for http connections.
 func (app *Vlsingle) HTTPAddr() string {
 	return app.node.httpListenAddr
