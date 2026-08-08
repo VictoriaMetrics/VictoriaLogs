@@ -4007,20 +4007,20 @@ func TestQueryGetFilterTimeRange(t *testing.T) {
 }
 
 func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
-	f := func(qStr, qOptExpected string, offsetExpected, limitExpected uint64) {
+	f := func(qStr, qSearchExpected string, offsetExpected, limitExpected uint64) {
 		t.Helper()
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
-		if qOpt == nil {
-			t.Fatalf("unexpected nil qOpt")
+		qSearch, offset, limit := q.GetLastNResultsQuery()
+		if qSearch == nil {
+			t.Fatalf("unexpected nil qSearch")
 		}
-		qOptStr := qOpt.String()
-		if qOptStr != qOptExpected {
-			t.Fatalf("unexpected qOptStr; got %q; want %q", qOptStr, qOptExpected)
+		qSearchStr := qSearch.String()
+		if qSearchStr != qSearchExpected {
+			t.Fatalf("unexpected qSearchStr; got %q; want %q", qSearchStr, qSearchExpected)
 		}
 		if offset != offsetExpected {
 			t.Fatalf("unexpected offset; got %d; want %d", offset, offsetExpected)
@@ -4030,28 +4030,34 @@ func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
 		}
 	}
 
-	f("* | sort (_time) desc limit 10", "*", 0, 10)
-	f("* | sort (_time) desc offset 5 limit 10", "*", 5, 10)
-	f("* | sort (_time) desc limit 5 offset 10", "*", 10, 5)
-	f("* | sort by (_time desc) limit 20", "*", 0, 20)
-	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 0, 30)
-	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 0, 5)
-	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 0, 5)
+	f("* | sort (_time) desc limit 10", "* | fields _time", 0, 10)
+	f("* | sort (_time) desc offset 5 limit 10", "* | fields _time", 5, 10)
+	f("* | sort (_time) desc limit 5 offset 10", "* | fields _time", 10, 5)
+	f("* | sort by (_time desc) limit 20", "* | fields _time", 0, 20)
+	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y | fields _time", 0, 30)
+	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x | fields _time", 0, 5)
+	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y* | fields _time", 0, 5)
 
 	// fields pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 0, 5)
+	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time", 0, 5)
+	f("* | sort (_time desc) limit 5 | fields x", "* | fields _time", 0, 5)
 
 	// delete pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 0, 5)
+	f("* | sort (_time desc) limit 5 | delete x, y*", "* | fields _time", 0, 5)
 
 	// multiple keep and rm pipes
-	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 0, 5)
+	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time", 0, 5)
+
+	f("* | sort (_time desc) limit 5 | unpack_json from payload", "* | fields _time", 0, 5)
+	f("* | sort (_time desc) limit 5 | stats count() rows", "* | fields _time", 0, 5)
 
 	// first pipe
-	f(`* | first 10 (_time desc)`, `*`, 0, 10)
+	f(`* | first 10 (_time desc)`, `* | fields _time`, 0, 10)
+	f(`* | first 10 (_time desc) | format "x" as y`, `* | fields _time`, 0, 10)
 
 	// last pipe
-	f(`* | last 10 (_time)`, `*`, 0, 10)
+	f(`* | last 10 (_time)`, `* | fields _time`, 0, 10)
+	f(`* | last 10 (_time) | filter y:z`, `* | fields _time`, 0, 10)
 }
 
 func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
@@ -4062,9 +4068,9 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
-		if qOpt != nil {
-			t.Fatalf("unexpected non-nil qOpt: [%s]", qOpt)
+		qSearch, offset, limit := q.GetLastNResultsQuery()
+		if qSearch != nil {
+			t.Fatalf("unexpected non-nil qSearch: [%s]", qSearch)
 		}
 		if offset != 0 {
 			t.Fatalf("unexpected offset; got %d; want 0", offset)
@@ -4074,7 +4080,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 		}
 	}
 
-	// No 'sort' pipe at the end
+	// no last-N pipe
 	f("*")
 	f("foo")
 	f("foo | count()")
@@ -4085,9 +4091,11 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 
 	// sort by multiple fields
 	f("* | sort (_time desc, x)")
+	f("* | sort (_time desc, x) limit 5")
 
 	// sort by _time in ascending order
 	f("* | sort (_time)")
+	f("* | sort (_time) limit 5")
 	f("* | sort (_time desc) desc")
 
 	// missing limit
@@ -4106,9 +4114,9 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	f("* | rm _time | sort (_time desc) limit 5")
 	f("* | keep x, y | sort (_time desc) limit 5")
 
-	// missing _time field after the sort pipe
-	f("* | sort (_time desc) limit 5 | keep x")
-	f("* | sort (_time desc) limit 5 | rm _time, x")
+	// multiple last-N pipes cannot be optimized, since only one time boundary can be selected.
+	f("* | sort (x desc) limit 5 | sort (_time desc) limit 5")
+	f("* | sort (_time desc) limit 5 | sort (_time desc) limit 3")
 
 	// first without descending sorting
 	f("* | first 10 (_time)")

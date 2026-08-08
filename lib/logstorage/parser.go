@@ -680,10 +680,10 @@ func (q *Query) CloneWithTimeFilter(timestamp, start, end int64) *Query {
 	return qCopy
 }
 
-// GetLastNResultsQuery() returns a query for optimized querying of the last <limit> results with the biggest _time values with an optional <offset>.
+// GetLastNResultsQuery returns a query for finding the minimal _time needed for optimized querying of the last <limit> results with the biggest _time values with an optional <offset>.
 //
-// The returned query is nil if q cannot be used for optimized querying of the last N results.
-func (q *Query) GetLastNResultsQuery() (qOpt *Query, offset uint64, limit uint64) {
+// The returned qSearch is nil if q cannot be used for optimized querying of the last N results.
+func (q *Query) GetLastNResultsQuery() (qSearch *Query, offset uint64, limit uint64) {
 	start, end := q.GetFilterTimeRange()
 	if !CanApplyLastNResultsOptimization(start, end) {
 		// It is faster to execute the query as is on such a small time range.
@@ -691,48 +691,32 @@ func (q *Query) GetLastNResultsQuery() (qOpt *Query, offset uint64, limit uint64
 	}
 
 	pipes := q.pipes
-
-	// Remember the trailing 'fields' and 'delete' pipes - they are moved in front of `sort` pipe below.
-	tailPipes := func() []pipe {
-		for i := len(pipes) - 1; i >= 0; i-- {
-			switch pipes[i].(type) {
-			case *pipeFields, *pipeDelete:
-				// Skip 'fields' and 'delete' pipes.
-			default:
-				return pipes[i+1:]
-			}
+	lastNPipeIdx := -1
+	for i := len(pipes) - 1; i >= 0; i-- {
+		offsetLocal, limitLocal, ok := getOffsetLimitFromPipe(pipes[i])
+		if !ok {
+			continue
 		}
-		return pipes
-	}()
-	pipes = pipes[:len(pipes)-len(tailPipes)]
-	if len(pipes) == 0 {
+		lastNPipeIdx = i
+		offset = offsetLocal
+		limit = limitLocal
+		break
+	}
+	if lastNPipeIdx < 0 {
 		return nil, 0, 0
 	}
 
-	// The query must end with one of the following pipes in order to be eligible for the optimization:
-	// - 'sort by (_time desc) offset <offset> limit <limit>'
-	// - 'first <limit> by (_time desc)'
-	// - 'last <limit> by (_time)'
-	pLast := pipes[len(pipes)-1]
-	offset, limit, ok := getOffsetLimitFromPipe(pLast)
-	if !ok {
+	qSearch = q.Clone(q.GetTimestamp())
+	if len(qSearch.pipes) != len(q.pipes) {
 		return nil, 0, 0
 	}
+	qSearch.pipes = qSearch.pipes[:lastNPipeIdx]
+	if !qSearch.CanReturnLastNResults() {
+		return nil, 0, 0
+	}
+	qSearch.AddPipeFields([]string{"_time"})
 
-	// Remove the `| sort ...` pipe from the query, add tailPipes and verify
-	// whether it can reliably return last N results with the biggest _time values.
-	qCopy := q.Clone(q.GetTimestamp())
-	if len(qCopy.pipes) != len(q.pipes) {
-		return nil, 0, 0
-	}
-	qCopy.pipes = qCopy.pipes[:len(pipes)-1]
-	qCopy.pipes = append(qCopy.pipes, tailPipes...)
-	if !qCopy.CanReturnLastNResults() {
-		return nil, 0, 0
-	}
-
-	// The query is eligible for last N results optimization.
-	return qCopy, offset, limit
+	return qSearch, offset, limit
 }
 
 // CanApplyLastNResultsOptimization returns true if there is sense for applying 'last N' optimization for the query on the time range [start, end]
