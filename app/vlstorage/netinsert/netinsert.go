@@ -89,10 +89,6 @@ type storageNode struct {
 
 	// concurrencyLimitReached counts insert requests rejected because concurrencyCh is full.
 	concurrencyLimitReached *metrics.Counter
-
-	// concurrencyLimitLogger throttles warnings emitted when the data is re-routed because concurrencyCh is full,
-	// since such warnings can be emitted every second while the storage node at addr remains slow.
-	concurrencyLimitLogger *logger.LogThrottler
 }
 
 func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, concurrency int) *storageNode {
@@ -126,7 +122,6 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, co
 		concurrencyCh: make(chan struct{}, concurrency),
 
 		concurrencyLimitReached: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_insert_remote_concurrency_limit_reached_total{addr=%q}`, addr)),
-		concurrencyLimitLogger:  logger.WithThrottler("concurrencyLimitReached-"+addr, 5*time.Second),
 	}
 
 	sn.isReachable.Store(true)
@@ -232,9 +227,7 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 		return
 	}
 
-	if errors.Is(err, errConcurrencyLimitReached) {
-		sn.concurrencyLimitLogger.Warnf("cannot send data block to the storage node %q, since it has too many in-flight insert requests; re-routing the data block to the remaining nodes", sn.addr)
-	} else if !errors.Is(err, errTemporarilyDisabled) {
+	if !errors.Is(err, errTemporarilyDisabled) && !errors.Is(err, errConcurrencyLimitReached) {
 		logger.Warnf("%s; re-routing the data block to the remaining nodes", err)
 	}
 	for !sn.s.sendInsertRequestToAnyNode(pendingData) {
