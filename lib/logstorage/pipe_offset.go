@@ -30,7 +30,7 @@ func (po *pipeOffset) canLiveTail() bool {
 	return false
 }
 
-func (po *pipeOffset) canReturnLastNResults() bool {
+func (po *pipeOffset) canReturnTimeSortedNResults() bool {
 	return false
 }
 

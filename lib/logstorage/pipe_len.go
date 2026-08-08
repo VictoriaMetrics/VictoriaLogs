@@ -34,7 +34,7 @@ func (pl *pipeLen) canLiveTail() bool {
 	return true
 }
 
-func (pl *pipeLen) canReturnLastNResults() bool {
+func (pl *pipeLen) canReturnTimeSortedNResults() bool {
 	return pl.resultField != "_time"
 }
 

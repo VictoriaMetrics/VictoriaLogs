@@ -268,12 +268,23 @@ func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryRespo
 	t.Helper()
 	sort.Strings(got.LogLines)
 	sort.Strings(want.LogLines)
-	if len(got.LogLines) != len(want.LogLines) {
-		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(want.LogLines), len(got.LogLines), strings.Join(got.LogLines, "\n"), strings.Join(want.LogLines, "\n"))
+	assertLogsQLResponseLines(t, got.LogLines, want.LogLines)
+}
+
+// assertLogsQLResponseOrdered compares responses without sorting log lines.
+func assertLogsQLResponseOrdered(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	assertLogsQLResponseLines(t, got.LogLines, want.LogLines)
+}
+
+func assertLogsQLResponseLines(t *testing.T, gotLines, wantLines []string) {
+	t.Helper()
+	if len(gotLines) != len(wantLines) {
+		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(wantLines), len(gotLines), strings.Join(gotLines, "\n"), strings.Join(wantLines, "\n"))
 		return
 	}
-	for i := range len(want.LogLines) {
-		gotLine, wantLine := got.LogLines[i], want.LogLines[i]
+	for i := range len(wantLines) {
+		gotLine, wantLine := gotLines[i], wantLines[i]
 		var gotLineJSON map[string]any
 		var wantLineJSON map[string]any
 		if err := json.Unmarshal([]byte(gotLine), &gotLineJSON); err != nil {
@@ -288,7 +299,7 @@ func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryRespo
 		delete(gotLineJSON, "_stream_id")
 		delete(wantLineJSON, "_stream_id")
 		if diff := cmp.Diff(gotLineJSON, wantLineJSON); diff != "" {
-			t.Errorf("unexpected response (-want, +got):\n%s\n%s\n%s", diff, wantLine, gotLine)
+			t.Errorf("unexpected response at index %d (-want, +got):\n%s\n%s\n%s", i, diff, wantLine, gotLine)
 			return
 		}
 	}

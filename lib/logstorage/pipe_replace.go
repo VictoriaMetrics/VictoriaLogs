@@ -47,7 +47,7 @@ func (pr *pipeReplace) canLiveTail() bool {
 	return true
 }
 
-func (pr *pipeReplace) canReturnLastNResults() bool {
+func (pr *pipeReplace) canReturnTimeSortedNResults() bool {
 	return true
 }
 

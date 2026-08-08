@@ -54,7 +54,7 @@ func (pr *pipeReplaceRegexp) canLiveTail() bool {
 	return true
 }
 
-func (pr *pipeReplaceRegexp) canReturnLastNResults() bool {
+func (pr *pipeReplaceRegexp) canReturnTimeSortedNResults() bool {
 	return true
 }
 

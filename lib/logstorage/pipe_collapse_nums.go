@@ -45,7 +45,7 @@ func (pc *pipeCollapseNums) canLiveTail() bool {
 	return true
 }
 
-func (pc *pipeCollapseNums) canReturnLastNResults() bool {
+func (pc *pipeCollapseNums) canReturnTimeSortedNResults() bool {
 	return true
 }
 

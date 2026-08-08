@@ -41,7 +41,7 @@ func (pu *pipeUnroll) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnroll) canReturnLastNResults() bool {
+func (pu *pipeUnroll) canReturnTimeSortedNResults() bool {
 	return true
 }
 

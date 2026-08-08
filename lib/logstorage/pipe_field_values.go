@@ -40,7 +40,7 @@ func (pf *pipeFieldValues) canLiveTail() bool {
 	return false
 }
 
-func (pf *pipeFieldValues) canReturnLastNResults() bool {
+func (pf *pipeFieldValues) canReturnTimeSortedNResults() bool {
 	return false
 }
 
