@@ -3990,6 +3990,9 @@ var reservedKeywords = func() map[string]struct{} {
 		// 'if' is used in conditional pipes such as `format if (...) ...`
 		"if",
 
+		// 'switch' is used in conditional pipes such as `format switch(...) ...`
+		"switch",
+
 		// 'by' is used in various pipes such as `stats by (...) ...`
 		"by",
 
