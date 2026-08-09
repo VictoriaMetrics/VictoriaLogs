@@ -28,6 +28,8 @@ func TestParsePipeFormatSuccess(t *testing.T) {
 	f(`format if (x:y) "bar<baz><xyz>bac"`)
 	f(`format if (x:y) "bar<baz><xyz>bac" skip_empty_results`)
 	f(`format if (x:y) "bar<baz><xyz>bac" keep_original_fields`)
+	f(`format "switch" as z`)
+	f(`format switch(case (x:y) foo case (a:b) "bar<baz>" default other) as z`)
 }
 
 func TestParsePipeFormatFailure(t *testing.T) {
@@ -44,6 +46,12 @@ func TestParsePipeFormatFailure(t *testing.T) {
 	f(`format "foo<bar*>"`)
 	f(`format "foo<bar>" as *`)
 	f(`format "foo<bar>" as x*`)
+	f(`format switch`)
+	f(`format switch(`)
+	f(`format switch()`)
+	f(`format switch(case (x:y))`)
+	f(`format switch("foo")`)
+	f(`format switch(default "foo" case (x:y) "bar")`)
 }
 
 func TestPipeFormat(t *testing.T) {
@@ -51,6 +59,32 @@ func TestPipeFormat(t *testing.T) {
 		t.Helper()
 		expectPipeResults(t, pipeStr, rows, rowsExpected)
 	}
+
+	// switch
+	f(`format switch(case (status:>=400) Error case (status:>=200) OK default Other) as status_string`, [][]Field{
+		{
+			{"status", "200"},
+		},
+		{
+			{"status", "404"},
+		},
+		{
+			{"status", "100"},
+		},
+	}, [][]Field{
+		{
+			{"status", "200"},
+			{"status_string", "OK"},
+		},
+		{
+			{"status", "404"},
+			{"status_string", "Error"},
+		},
+		{
+			{"status", "100"},
+			{"status_string", "Other"},
+		},
+	})
 
 	// format time, duration, duration_seconds and ipv4
 	f(`format 'time=<time:foo>, duration=<duration:bar>, duration_secs=<duration_seconds:d> ip=<ipv4:baz>' as x`, [][]Field{
@@ -366,6 +400,7 @@ func TestPipeFormatUpdateNeededFields(t *testing.T) {
 	f(`format "foo" as x skip_empty_results`, "*", "", "*", "")
 	f(`format "foo" as x keep_original_fields`, "*", "", "*", "")
 	f(`format "<f1>foo" as x`, "*", "", "*", "x")
+	f(`format switch(case (f2:z) "<f1>foo" default "<f3>bar") as x`, "*", "", "*", "x")
 	f(`format if (f2:z) "<f1>foo" as x`, "*", "", "*", "")
 	f(`format if (f2:z) "<f1>foo" as x skip_empty_results`, "*", "", "*", "")
 	f(`format if (f2:z) "<f1>foo" as x keep_original_fields`, "*", "", "*", "")
@@ -425,6 +460,7 @@ func TestPipeFormatUpdateNeededFields(t *testing.T) {
 	f(`format "<f1>foo" as f2 skip_empty_results`, "f2,y", "", "f1,f2,y", "")
 	f(`format "<f1>foo" as f2 keep_original_fields`, "f2,y", "", "f1,f2,y", "")
 	f(`format if (f3:z) "<f1>foo" as f2`, "f2,y", "", "f1,f2,f3,y", "")
+	f(`format switch(case (f2:z) "<f1>foo" case (f3:z) "<f4>bar" default "<f5>baz") as x`, "x,y", "", "f1,f2,f3,f4,f5,y", "")
 	f(`format if (x:z or y:w) "<f1>foo" as f2`, "f2,y", "", "f1,f2,x,y", "")
 	f(`format if (x:z or y:w) "<f1>foo" as f2 skip_empty_results`, "f2,y", "", "f1,f2,x,y", "")
 	f(`format if (x:z or y:w) "<f1>foo" as f2 keep_original_fields`, "f2,y", "", "f1,f2,x,y", "")

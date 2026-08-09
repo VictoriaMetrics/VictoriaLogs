@@ -20,24 +20,49 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe
 type pipeFormat struct {
-	formatStr string
-	steps     []patternStep
+	cases []pipeFormatCase
+
+	isSwitch bool
 
 	resultField string
 
 	keepOriginalFields bool
 	skipEmptyResults   bool
+}
 
-	// iff is an optional filter for skipping the format func
+type pipeFormatCase struct {
+	// iff is an optional filter for skipping the format case
 	iff *ifFilter
+
+	formatStr string
+	steps     []patternStep
+}
+
+func (c *pipeFormatCase) String() string {
+	if c.iff == nil {
+		return "default " + quoteTokenIfNeeded(c.formatStr)
+	}
+	return fmt.Sprintf("case (%s) %s", c.iff.f.String(), quoteTokenIfNeeded(c.formatStr))
+}
+
+func pipeFormatCasesString(cases []pipeFormatCase, isSwitch bool) string {
+	if !isSwitch {
+		c := &cases[0]
+		s := ""
+		if c.iff != nil {
+			s += c.iff.String() + " "
+		}
+		return s + quoteTokenIfNeeded(c.formatStr)
+	}
+	a := make([]string, len(cases))
+	for i := range cases {
+		a[i] = cases[i].String()
+	}
+	return "switch(" + strings.Join(a, " ") + ")"
 }
 
 func (pf *pipeFormat) String() string {
-	s := "format"
-	if pf.iff != nil {
-		s += " " + pf.iff.String()
-	}
-	s += " " + quoteTokenIfNeeded(pf.formatStr)
+	s := "format " + pipeFormatCasesString(pf.cases, pf.isSwitch)
 	if !isMsgFieldName(pf.resultField) {
 		s += " as " + quoteTokenIfNeeded(pf.resultField)
 	}
@@ -71,41 +96,65 @@ func (pf *pipeFormat) updateNeededFields(f *prefixfilter.Filter) {
 		return
 	}
 
-	if pf.iff != nil {
-		f.AddAllowFilters(pf.iff.allowFilters)
-	} else if shouldDenyOverwrittenField(pf.iff, pf.keepOriginalFields, pf.skipEmptyResults) {
+	// Only the last case may have no 'if' filter
+	lastCase := &pf.cases[len(pf.cases)-1]
+	if shouldDenyOverwrittenField(lastCase.iff, pf.keepOriginalFields, pf.skipEmptyResults) {
 		f.AddDenyFilter(pf.resultField)
 	}
-	for _, step := range pf.steps {
-		if step.field != "" {
-			f.AddAllowFilter(step.field)
+	for i := range pf.cases {
+		c := &pf.cases[i]
+		if c.iff != nil {
+			f.AddAllowFilters(c.iff.allowFilters)
+		}
+		for _, step := range c.steps {
+			if step.field != "" {
+				f.AddAllowFilter(step.field)
+			}
 		}
 	}
 }
 
 func (pf *pipeFormat) hasFilterInWithQuery() bool {
-	return pf.iff.hasFilterInWithQuery()
+	for i := range pf.cases {
+		if pf.cases[i].iff.hasFilterInWithQuery() {
+			return true
+		}
+	}
+	return false
 }
 
 func (pf *pipeFormat) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pf.iff.initFilterInValues(cache, getFieldValues)
-	if err != nil {
-		return nil, err
+	casesNew := make([]pipeFormatCase, len(pf.cases))
+	for i := range pf.cases {
+		c := &pf.cases[i]
+		iffNew, err := c.iff.initFilterInValues(cache, getFieldValues)
+		if err != nil {
+			return nil, err
+		}
+		cNew := *c
+		cNew.iff = iffNew
+		casesNew[i] = cNew
 	}
 	pfNew := *pf
-	pfNew.iff = iffNew
+	pfNew.cases = casesNew
 	return &pfNew, nil
 }
 
 func (pf *pipeFormat) visitSubqueries(visitFunc func(q *Query)) {
-	pf.iff.visitSubqueries(visitFunc)
+	for i := range pf.cases {
+		pf.cases[i].iff.visitSubqueries(visitFunc)
+	}
 }
 
 func (pf *pipeFormat) newPipeProcessor(_ int, _ <-chan struct{}, _ func(), ppNext pipeProcessor) pipeProcessor {
-	return &pipeFormatProcessor{
+	pfp := &pipeFormatProcessor{
 		pf:     pf,
 		ppNext: ppNext,
 	}
+	pfp.shards.Init = func(shard *pipeFormatProcessorShard) {
+		shard.bms = make([]bitmap, len(pf.cases))
+	}
+	return pfp
 }
 
 type pipeFormatProcessor struct {
@@ -116,7 +165,7 @@ type pipeFormatProcessor struct {
 }
 
 type pipeFormatProcessorShard struct {
-	bm bitmap
+	bms []bitmap
 
 	a  arena
 	rc resultColumn
@@ -130,15 +179,24 @@ func (pfp *pipeFormatProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := pfp.shards.Get(workerID)
 	pf := pfp.pf
 
-	bm := &shard.bm
-	if iff := pf.iff; iff != nil {
+	hasMatchingCases := false
+	for i := range pf.cases {
+		iff := pf.cases[i].iff
+		if iff == nil {
+			hasMatchingCases = true
+			continue
+		}
+		bm := &shard.bms[i]
 		bm.init(br.rowsLen)
 		bm.setBits()
 		iff.f.applyToBlockResult(br, bm)
-		if bm.isZero() {
-			pfp.ppNext.writeBlock(workerID, br)
-			return
+		if !bm.isZero() {
+			hasMatchingCases = true
 		}
+	}
+	if !hasMatchingCases {
+		pfp.ppNext.writeBlock(workerID, br)
+		return
 	}
 
 	shard.rc.name = pf.resultField
@@ -146,8 +204,8 @@ func (pfp *pipeFormatProcessor) writeBlock(workerID uint, br *blockResult) {
 	resultColumn := br.getColumnByName(pf.resultField)
 	for rowIdx := range br.rowsLen {
 		v := ""
-		if pf.iff == nil || bm.isSetBit(rowIdx) {
-			v = shard.formatRow(pf, br, rowIdx)
+		if c := pf.getMatchingCase(shard.bms, rowIdx); c != nil {
+			v = shard.formatRow(c, br, rowIdx)
 			if v == "" && pf.skipEmptyResults || pf.keepOriginalFields {
 				if vOrig := resultColumn.getValueAtRow(br, rowIdx); vOrig != "" {
 					v = vOrig
@@ -170,10 +228,20 @@ func (pfp *pipeFormatProcessor) flush() error {
 	return nil
 }
 
-func (shard *pipeFormatProcessorShard) formatRow(pf *pipeFormat, br *blockResult, rowIdx int) string {
+func (pf *pipeFormat) getMatchingCase(bms []bitmap, rowIdx int) *pipeFormatCase {
+	for i := range pf.cases {
+		c := &pf.cases[i]
+		if c.iff == nil || bms[i].isSetBit(rowIdx) {
+			return c
+		}
+	}
+	return nil
+}
+
+func (shard *pipeFormatProcessorShard) formatRow(pfc *pipeFormatCase, br *blockResult, rowIdx int) string {
 	b := shard.a.b
 	bLen := len(b)
-	for _, step := range pf.steps {
+	for _, step := range pfc.steps {
 		b = append(b, step.prefix...)
 		if step.field == "" {
 			continue
@@ -258,31 +326,9 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 	}
 	lex.nextToken()
 
-	// parse optional if (...)
-	var iff *ifFilter
-	if lex.isKeyword("if") {
-		f, err := parseIfFilter(lex)
-		if err != nil {
-			return nil, err
-		}
-		iff = f
-	}
-
-	// parse format
-	formatStr, err := lex.nextCompoundToken()
+	cases, isSwitch, err := parsePipeFormatCases(lex)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read 'format': %w", err)
-	}
-	steps, err := parsePatternSteps(formatStr)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse 'pattern' %q: %w", formatStr, err)
-	}
-
-	// Verify that all the fields mentioned in the format pattern do not end with '*'
-	for _, step := range steps {
-		if prefixfilter.IsWildcardFilter(step.field) {
-			return nil, fmt.Errorf("'pattern' %q cannot contain wildcard fields like %q", formatStr, step.field)
-		}
+		return nil, err
 	}
 
 	// parse optional 'as ...` part
@@ -291,7 +337,7 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 		lex.nextToken()
 		field, err := parseFieldName(lex)
 		if err != nil {
-			return nil, fmt.Errorf("cannot parse result field after 'format %q as': %w", formatStr, err)
+			return nil, fmt.Errorf("cannot parse result field after 'format %s as': %w", pipeFormatCasesString(cases, isSwitch), err)
 		}
 		resultField = field
 	}
@@ -308,15 +354,100 @@ func parsePipeFormat(lex *lexer) (pipe, error) {
 	}
 
 	pf := &pipeFormat{
-		formatStr:          formatStr,
-		steps:              steps,
+		cases:              cases,
+		isSwitch:           isSwitch,
 		resultField:        resultField,
 		keepOriginalFields: keepOriginalFields,
 		skipEmptyResults:   skipEmptyResults,
-		iff:                iff,
 	}
 
 	return pf, nil
+}
+
+func parsePipeFormatCases(lex *lexer) ([]pipeFormatCase, bool, error) {
+	if !lex.isKeyword("switch") {
+		// parse optional if (...)
+		var iff *ifFilter
+		if lex.isKeyword("if") {
+			f, err := parseIfFilter(lex)
+			if err != nil {
+				return nil, false, err
+			}
+			iff = f
+		}
+		c, err := parsePipeFormatCasePattern(lex, iff)
+		if err != nil {
+			return nil, false, err
+		}
+		return []pipeFormatCase{*c}, false, nil
+	}
+	lex.nextToken()
+
+	if !lex.isKeyword("(") {
+		return nil, false, fmt.Errorf("missing '(' after the 'switch'")
+	}
+	lex.nextToken()
+
+	var cases []pipeFormatCase
+	for !lex.isKeyword(")") {
+		if lex.isEnd() {
+			return nil, false, fmt.Errorf("missing ')' to close switch(...)")
+		}
+
+		if len(cases) > 0 && cases[len(cases)-1].iff == nil {
+			return nil, false, fmt.Errorf("switch(...) cannot contain cases after the 'default'")
+		}
+
+		var iff *ifFilter
+		switch {
+		case lex.isKeyword("case"):
+			f, err := parseIfFilter(lex)
+			if err != nil {
+				return nil, false, fmt.Errorf("cannot parse case filter: %w", err)
+			}
+			iff = f
+		case lex.isKeyword("default"):
+			lex.nextToken()
+		default:
+			return nil, false, fmt.Errorf("unexpected token inside switch(...): %q; want 'case' or 'default'", lex.token)
+		}
+
+		c, err := parsePipeFormatCasePattern(lex, iff)
+		if err != nil {
+			return nil, false, err
+		}
+		cases = append(cases, *c)
+	}
+	if len(cases) == 0 {
+		return nil, false, fmt.Errorf("switch(...) must contain at least a single 'case' or 'default'")
+	}
+	lex.nextToken()
+
+	return cases, true, nil
+}
+
+func parsePipeFormatCasePattern(lex *lexer, iff *ifFilter) (*pipeFormatCase, error) {
+	formatStr, err := lex.nextCompoundToken()
+	if err != nil {
+		return nil, fmt.Errorf("cannot read 'format': %w", err)
+	}
+	steps, err := parsePatternSteps(formatStr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse 'pattern' %q: %w", formatStr, err)
+	}
+
+	// Verify that all the fields mentioned in the format pattern do not end with '*'
+	for _, step := range steps {
+		if prefixfilter.IsWildcardFilter(step.field) {
+			return nil, fmt.Errorf("'pattern' %q cannot contain wildcard fields like %q", formatStr, step.field)
+		}
+	}
+
+	return &pipeFormatCase{
+		iff:       iff,
+		formatStr: formatStr,
+		steps:     steps,
+	}, nil
 }
 
 func appendUppercase(dst []byte, s string) []byte {

@@ -2681,6 +2681,19 @@ only if `ip` and `host` [fields](https://docs.victoriametrics.com/victorialogs/k
 _time:5m | format if (ip:* and host:*) "request from <ip>:<host>" as message
 ```
 
+If different patterns must be applied depending on multiple conditions, then use `switch(...)` syntax:
+
+```logsql
+_time:5m | format switch(
+  case (status:=200) "OK"
+  case (status:>=400) "Error"
+  default "Other"
+) as status_string
+```
+
+The cases are evaluated from top to bottom, and only the pattern of the first matching `case` is applied.
+The `default` case must be the last one, since it matches unconditionally and any `case` after it would never be reached.
+
 ### generate_sequence pipe
 
 The `<q> | generate_sequence <N>` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) skips all the `<q>` results and generates `<N>` output logs
