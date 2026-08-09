@@ -2691,6 +2691,9 @@ _time:5m | format switch(
 ) as status_string
 ```
 
+The cases are evaluated from top to bottom, and only the pattern of the first matching `case` is applied.
+The `default` case must be the last one, since it matches unconditionally and any `case` after it would never be reached.
+
 ### generate_sequence pipe
 
 The `<q> | generate_sequence <N>` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) skips all the `<q>` results and generates `<N>` output logs
