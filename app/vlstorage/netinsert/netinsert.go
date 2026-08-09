@@ -268,10 +268,9 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	}()
 
 	var body io.Reader
+	var bb *bytesutil.ByteBuffer
 	if !sn.s.disableCompression {
-		bb := zstdBufPool.Get()
-		defer zstdBufPool.Put(bb)
-
+		bb = zstdBufPool.Get()
 		bb.B = zstd.CompressLevel(bb.B[:0], pendingData.B, 1)
 		body = bb.NewReader()
 	} else {
@@ -279,9 +278,15 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	}
 
 	if err := sn.doRequest("/internal/insert", body); err != nil {
+		// Do not return bb to the pool, since on errors the http transport may still be reading bb.B
+		// in a separate goroutine even after doRequest returns; let GC collect bb instead.
+		// See https://pkg.go.dev/net/http#RoundTripper
 		return fmt.Errorf("cannot send data block with the length %d: %w", pendingData.Len(), err)
 	}
 
+	if bb != nil {
+		zstdBufPool.Put(bb)
+	}
 	return nil
 }
 
