@@ -1684,18 +1684,18 @@ func optimizeOffsetLimitPipesInternal(pipes []pipe) []pipe {
 }
 
 func optimizeSortOffsetPipes(pipes []pipe) []pipe {
-	// Merge 'sort ... | offset ...' into 'sort ... offset ...'
+	// Merge 'sort ... | offset ...' into 'sort ... offset ...'.
 	i := 1
 	for i < len(pipes) {
-		ps, ok1 := pipes[i-1].(*pipeSort)
-		po, ok2 := pipes[i].(*pipeOffset)
-		if !ok1 || !ok2 {
+		ps, j := getPrevSortPipe(pipes, i)
+		po, ok := pipes[i].(*pipeOffset)
+		if ps == nil || !ok {
 			i++
 			continue
 		}
 
 		if ps.limit > 0 && po.offset >= ps.limit {
-			pipes[i-1] = &pipeLimit{}
+			pipes[j] = &pipeLimit{}
 			pipes = append(pipes[:i], pipes[i+1:]...)
 			continue
 		}
@@ -1710,18 +1710,19 @@ func optimizeSortOffsetPipes(pipes []pipe) []pipe {
 }
 
 func optimizeSortLimitPipes(pipes []pipe) []pipe {
-	// Merge 'sort ... | limit ...' into 'sort ... limit ...'
+	// Merge 'sort ... | limit ...' into 'sort ... limit ...'.
 	i := 1
 	for i < len(pipes) {
-		ps, ok1 := pipes[i-1].(*pipeSort)
-		pl, ok2 := pipes[i].(*pipeLimit)
-		if !ok1 || !ok2 {
+		ps, j := getPrevSortPipe(pipes, i)
+		pl, ok := pipes[i].(*pipeLimit)
+		if ps == nil || !ok {
 			i++
 			continue
 		}
 
 		if pl.limit == 0 {
-			pipes = append(pipes[:i-1], pipes[i:]...)
+			pipes[j] = pl
+			pipes = append(pipes[:i], pipes[i+1:]...)
 			continue
 		}
 		if ps.limit == 0 || pl.limit < ps.limit {
@@ -1730,6 +1731,20 @@ func optimizeSortLimitPipes(pipes []pipe) []pipe {
 		pipes = append(pipes[:i], pipes[i+1:]...)
 	}
 	return pipes
+}
+
+func getPrevSortPipe(pipes []pipe, i int) (*pipeSort, int) {
+	for i--; i >= 0; i-- {
+		switch p := pipes[i].(type) {
+		case *pipeFields, *pipeDelete, *pipeCopy, *pipeRename, *pipePackJSON, *pipePackLogfmt:
+			// These pipes preserve the number and order of rows.
+		case *pipeSort:
+			return p, i
+		default:
+			return nil, -1
+		}
+	}
+	return nil, -1
 }
 
 func optimizeUniqLimitPipes(pipes []pipe) []pipe {
