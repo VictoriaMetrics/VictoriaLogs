@@ -12,12 +12,16 @@ import { footerLinksToLogs } from "../../constants/footerLinks";
 import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
 import { migrateStorageToPrefixedKeys } from "../../utils/storage";
 import { useAppState } from "../../state/common/StateContext";
+import {
+  useBrowserTabSync
+} from "../../components/Configurators/GlobalSettings/BrowserTabController/hooks/useBrowserTabSync";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
   const { isMobile } = useDeviceDetect();
   const { pathname } = useLocation();
   const { isDarkTheme } = useAppState();
+  useBrowserTabSync();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {

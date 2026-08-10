@@ -30,7 +30,7 @@ var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, 
 	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
 
 // RequestHandler processes requests to /internal/select/*
-func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
 	startTime := time.Now()
 
 	select {
@@ -39,7 +39,7 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
 			concurrentRequestsWaitDuration.Update(d.Seconds())
 		}
-		requestHandler(ctx, w, r, startTime)
+		requestHandler(ctx, w, r, path, startTime)
 		<-concurrencyLimitCh
 	case <-ctx.Done():
 		// Unconditionally measure the wait time until the the request is canceled by the client.
@@ -61,7 +61,7 @@ var concurrencyLimitCh chan struct{}
 
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
-func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, startTime time.Time) {
+func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, startTime time.Time) {
 	// Parse request before obtaining the request args from it in order to catch parse errors,
 	// which are silently skipped at r.FormValue() calls inside the request handlers executed below.
 	//
@@ -71,7 +71,6 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	path := r.URL.Path
 	rh := requestHandlers[path]
 	if rh == nil {
 		httpserver.Errorf(w, r, "unsupported endpoint requested: %s", path)
@@ -98,6 +97,9 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 func parseRequest(r *http.Request) error {
 	maxMemory := int64(0.1 * float64(memory.Allowed()))
 	ct := r.Header.Get("Content-Type")
+
+	// ParseMultipartForm allows configuring the memory limit,
+	// while ParseForm limits URL-encoded bodies to 10MB.
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)

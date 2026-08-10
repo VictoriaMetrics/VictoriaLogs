@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -71,6 +72,8 @@ var (
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
+	insertDrainTimeout = flag.Duration("insert.drainTimeout", 5*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown; "+
+		"the logs, which cannot be drained within this duration, are dropped")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
@@ -175,7 +178,7 @@ func initNetworkStorage() {
 	}
 
 	logger.Infof("starting insert service for nodes %s", *storageNodeAddrs)
-	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression)
+	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression, *insertDrainTimeout)
 
 	logger.Infof("initializing select service for nodes %s", *storageNodeAddrs)
 	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *selectDisableCompression)
@@ -242,7 +245,7 @@ func Stop() {
 
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)
