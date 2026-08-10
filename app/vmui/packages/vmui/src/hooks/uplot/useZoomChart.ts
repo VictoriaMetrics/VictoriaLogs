@@ -1,9 +1,10 @@
-import { useCallback, useState } from "preact/compat";
+import { RefObject, useCallback, useRef } from "preact/compat";
 import useEventListener from "../useEventListener";
 import { MinMax, SetMinMax } from "../../types";
 
 interface ZoomChartHook {
   uPlotInst?: uPlot;
+  element: RefObject<HTMLDivElement>
   xRange: MinMax;
   setPlotScale: SetMinMax;
 }
@@ -14,8 +15,10 @@ const calculateDistance = (touches: TouchList) => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
-const useZoomChart = ({ uPlotInst, xRange, setPlotScale }: ZoomChartHook) => {
-  const [startTouchDistance, setStartTouchDistance] = useState(0);
+const minTouchDistanceDiff = 1;
+
+const useZoomChart = ({ uPlotInst, element, xRange, setPlotScale }: ZoomChartHook) => {
+  const previousTouchDistance = useRef(0);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const { target, ctrlKey, metaKey, key } = e;
@@ -36,7 +39,7 @@ const useZoomChart = ({ uPlotInst, xRange, setPlotScale }: ZoomChartHook) => {
   const handleTouchStart = (e: TouchEvent) => {
     if (e.touches.length === 2) {
       e.preventDefault();
-      setStartTouchDistance(calculateDistance(e.touches));
+      previousTouchDistance.current = calculateDistance(e.touches);
     }
   };
 
@@ -44,8 +47,16 @@ const useZoomChart = ({ uPlotInst, xRange, setPlotScale }: ZoomChartHook) => {
     if (!uPlotInst || e.touches.length !== 2) return;
     e.preventDefault();
 
-    const endTouchDistance = calculateDistance(e.touches);
-    const diffDistance = startTouchDistance - endTouchDistance;
+    const currentTouchDistance = calculateDistance(e.touches);
+    const previousDistance = previousTouchDistance.current;
+    if (currentTouchDistance <= 0) return;
+    if (previousDistance <= 0) {
+      previousTouchDistance.current = currentTouchDistance;
+      return;
+    }
+
+    const diffDistance = previousDistance - currentTouchDistance;
+    if (Math.abs(diffDistance) < minTouchDistanceDiff) return;
 
     const max = (uPlotInst.scales.x.max || xRange.max);
     const min = (uPlotInst.scales.x.min || xRange.min);
@@ -53,12 +64,26 @@ const useZoomChart = ({ uPlotInst, xRange, setPlotScale }: ZoomChartHook) => {
     const dir = (diffDistance > 0 ? -1 : 1);
 
     const zoomFactor = dur / 50 * dir;
-    uPlotInst.batch(() => setPlotScale({ min: min + zoomFactor, max: max - zoomFactor }));
-  }, [uPlotInst, startTouchDistance, xRange]);
+    const nextDuration = dur - (zoomFactor * 2);
+    const touchCenter = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const { left, width } = uPlotInst.over.getBoundingClientRect();
+    if (width <= 0) return;
+
+    previousTouchDistance.current = currentTouchDistance;
+
+    const zoomPosition = Math.min(width, Math.max(0, touchCenter - left));
+    const anchorRatio = zoomPosition / width;
+    const anchorValue = uPlotInst.posToVal(zoomPosition, "x");
+
+    uPlotInst.batch(() => setPlotScale({
+      min: anchorValue - (anchorRatio * nextDuration),
+      max: anchorValue + ((1 - anchorRatio) * nextDuration),
+    }));
+  }, [uPlotInst, xRange]);
 
   useEventListener("keydown", handleKeyDown);
-  useEventListener("touchmove", handleTouchMove);
-  useEventListener("touchstart", handleTouchStart);
+  useEventListener("touchmove", handleTouchMove, element, { passive: false });
+  useEventListener("touchstart", handleTouchStart, element);
 
   return null;
 };

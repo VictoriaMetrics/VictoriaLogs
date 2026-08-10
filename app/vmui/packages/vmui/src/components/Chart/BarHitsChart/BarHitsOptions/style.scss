@@ -29,6 +29,13 @@
     &_switch {
       padding-right: $padding-global;
     }
+
+    &_timerange {
+      gap: calc($padding-small / 4);
+      padding-inline: calc($padding-small / 2) $padding-small;
+      grid-template-columns: 16px 1fr;
+      min-height: 24px;
+    }
   }
 
   &_mobile {
