@@ -34,6 +34,8 @@ according to the following docs:
 * BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`week_range[Sun,Sun]` filter](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) when it is used inside the [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe). Previously, it could fail to match rows on Sunday. See [#1335](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1335).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent long group-by values from overflowing group headers. See [#1663](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1663).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): render only inline Markdown links with explicit `http` or `https` destinations, such as `[text](https://example.com)`, as clickable links in log messages. Bare URLs, autolinks, reference-style links, links using other schemes, and images are rendered as plain text. See [#1470](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1470).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent manually entered time ranges from shifting after Apply when using non-UTC time zones.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bar chart tap, pan, and pinch-to-zoom interactions on mobile devices.
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 

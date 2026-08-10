@@ -40,7 +40,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
 
   const { xRange, setPlotScale } = usePlotScale({ period, setPeriod });
   const { onReadyChart, isPanning } = useReadyChart(setPlotScale);
-  useZoomChart({ uPlotInst, xRange, setPlotScale });
+  useZoomChart({ uPlotInst, element: uPlotRef, xRange, setPlotScale });
 
   const transformedData = useMemo(() => {
     if (graphOptions.cumulative) return cumulativeMatrix(_data);
@@ -151,7 +151,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
         ref={containerRef}
       >
         <div
-          className="vm-line-chart__u-plot"
+          className="vm-bar-hits-chart__u-plot"
           ref={uPlotRef}
         />
         {!isMobile && (
