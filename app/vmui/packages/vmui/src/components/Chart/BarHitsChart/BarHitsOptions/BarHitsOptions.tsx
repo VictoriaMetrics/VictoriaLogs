@@ -5,7 +5,13 @@ import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../../Main/Button/Button";
-import { KeyboardIcon, MoreIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
+import {
+  ArrowBackIcon,
+  KeyboardIcon,
+  MoreIcon,
+  VisibilityIcon,
+  VisibilityOffIcon
+} from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 import { useCallback } from "react";
@@ -19,17 +25,23 @@ import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
 import { getDefaultIntervalOption, getIntervalOptions } from "../../../../utils/intervals";
+import { nanosToIsoString, vmDate } from "../../../../utils/time";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import usePrevious from "../../../../hooks/usePrevious";
+import { TimeParams } from "../../../../types";
+import { DATE_TIME_FORMAT } from "../../../../constants/date";
+import { useTimeState } from "../../../../state/time/TimeStateContext";
 
 interface Props {
   query?: string;
   isHitsMode?: boolean;
   isOverview?: boolean;
+  prevPeriod?: TimeParams;
+  onRevertPeriod: () => void
   onChange: (options: GraphOptions) => void;
 }
 
-const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) => {
+const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, onRevertPeriod, onChange }) => {
   const { isMobile } = useDeviceDetect();
   const {
     value: openList,
@@ -40,6 +52,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { topHits, groupFieldHits, step } = useHitsChartConfig();
+  const { timezone } = useTimeState();
 
   const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimePeriod();
@@ -54,6 +67,14 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
   const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
+
+  const prevPeriodFormatted = useMemo(() => {
+    if (!prevPeriod) return;
+
+    const startIso = nanosToIsoString(prevPeriod.start);
+    const endIso = nanosToIsoString(prevPeriod.end);
+    return `${vmDate(startIso).tz().format(DATE_TIME_FORMAT)} - ${vmDate(endIso).tz().format(DATE_TIME_FORMAT)}`;
+  }, [prevPeriod, timezone]);
 
   const options: GraphOptions = useMemo(() => ({
     graphStyle: GRAPH_STYLES.BAR,
@@ -180,6 +201,20 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             />
           </div>
         )}
+
+        {prevPeriod && (
+          <Tooltip title={`Back to previous range: ${prevPeriodFormatted}`}>
+            <div
+              className="vm-bar-hits-options-item"
+              onClick={onRevertPeriod}
+            >
+              <button className="vm-select-limits-button vm-bar-hits-options-item_timerange">
+                <ArrowBackIcon/>
+                Back to prev range
+              </button>
+            </div>
+          </Tooltip>
+        )}
       </div>
 
       <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
@@ -213,7 +248,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
       className={classNames({
         "vm-bar-hits-options": true,
         "vm-bar-hits-options_mobile": isMobile,
-      "vm-bar-hits-options_hidden": hideChart,
+        "vm-bar-hits-options_hidden": hideChart,
       })}
     >
       {!isMobile && !hideChart && (

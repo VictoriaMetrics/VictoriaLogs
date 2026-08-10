@@ -21,6 +21,7 @@ according to the following docs:
 * [How to build vlagent from source code](https://docs.victoriametrics.com/victorialogs/vlagent/#building-from-source-code)
 
 ## tip
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add a `Back` action to the Hits chart for restoring the previous time range after zooming or panning the chart. See [#1535](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1535).
 
 * FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): optimize queries, which return the limited number of log entries with the biggest timestamps on the selected time range. [Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) usually executes such queries. See [#1602](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602).
 * FEATURE: [dashboards/cluster](https://grafana.com/grafana/dashboards/23274), [dashboards/single](https://grafana.com/grafana/dashboards/22084), and [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): add `Fsync avg duration` panel to the Troubleshooting section of the single-node, cluster, and vlagent dashboards. This panel shows average `fsync` latency to help identify slow storage persistence. See [VictoriaMetrics#10432](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10432).
