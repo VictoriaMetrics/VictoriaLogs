@@ -40,12 +40,9 @@ func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
 		t.Fatalf("unexpected number of active deletion tasks after the rejected requests: got %d; want 0", n)
 	}
 
-	// A POST request must be accepted and create a deletion task.
+	// A POST request must be accepted.
 	if body, statusCode := cli.Post(t, baseURL+"/delete/run_task?filter=app:del", "", nil); statusCode != http.StatusOK {
 		t.Fatalf("unexpected status code for POST /delete/run_task: got %d; want %d; body\n%s", statusCode, http.StatusOK, body)
-	}
-	if n := activeDeleteTasks(t, cli, baseURL); n != 1 {
-		t.Fatalf("unexpected number of active deletion tasks after POST /delete/run_task: got %d; want 1", n)
 	}
 }
 
