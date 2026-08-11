@@ -18,7 +18,7 @@ const Pagination: FC<PaginationProps> = ({
   onPageChange,
   maxVisiblePages = 10
 }) => {
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = itemsPerPage > 0 ? Math.ceil(totalItems / itemsPerPage) : 1;
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
     onPageChange(page);
