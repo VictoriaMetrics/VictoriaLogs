@@ -215,6 +215,7 @@ func initPipeParsers() {
 		"copy":              parsePipeCopy,
 		"cp":                parsePipeCopy,
 		"decolorize":        parsePipeDecolorize,
+		"deduplicate":       parsePipeDeduplicate,
 		"del":               parsePipeDelete,
 		"delete":            parsePipeDelete,
 		"drop":              parsePipeDelete,

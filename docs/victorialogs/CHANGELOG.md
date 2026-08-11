@@ -22,6 +22,7 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): add [`deduplicate` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#deduplicate-pipe), which drops duplicate log entries. See [#1599](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1599).
 * FEATURE: [dashboards/cluster](https://grafana.com/grafana/dashboards/23274), [dashboards/single](https://grafana.com/grafana/dashboards/22084), and [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): add `Fsync avg duration` panel to the Troubleshooting section of the single-node, cluster, and vlagent dashboards. This panel shows average `fsync` latency to help identify slow storage persistence. See [VictoriaMetrics#10432](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10432).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an option to customize the favicon color. This makes it easier to distinguish between different installations opened in multiple browser tabs. See [#1634](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1634).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve field action usability in the expanded log entry view by removing the rarely used Copy action, exposing Exclude for quick access and moving action icons closer to field values. See [#1663](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1663).
