@@ -218,12 +218,9 @@ func (sn *storageNode) grabPendingDataForFlushLocked() *bytesutil.ByteBuffer {
 var pendingDataPool bytesutil.ByteBufferPool
 
 func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) {
-	defer func() {
-		pendingDataPool.Put(pendingData)
-	}()
-
 	err := sn.sendInsertRequest(pendingData)
 	if err == nil {
+		pendingDataPool.Put(pendingData)
 		return
 	}
 
@@ -243,6 +240,11 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 			timerpool.Put(t)
 		}
 	}
+
+	// Do not return pendingData to the pool even after the successful re-routing, since it is used
+	// as the request body when compression is disabled, and the http transport of the failed attempts
+	// may still be reading it in a separate goroutine; let GC collect it instead.
+	// See https://pkg.go.dev/net/http#RoundTripper
 }
 
 func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) error {
