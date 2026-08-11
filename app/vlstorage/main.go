@@ -556,15 +556,21 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
-	if qOpt != nil {
-		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedLastNResultsQuery(qctxOpt, offset, limit, writeBlock)
-	}
-
 	if localStorage != nil {
+		// Optimize the query, which returns last N rows with the biggest timestamps,
+		// only at the leaf vlstorage nodes. There is no need in optimizing the query
+		// at vlselect because the optimization usually leads in 20-30 sequentially run
+		// queries - this is slow because of network latencies between vlselect and vlstorage.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
+		qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+		if qOpt != nil {
+			qctxOpt := qctx.WithQuery(qOpt)
+			return runOptimizedLastNResultsQuery(localStorage, qctxOpt, offset, limit, writeBlock)
+		}
+
 		return localStorage.RunQuery(qctx, writeBlock)
 	}
+
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 
