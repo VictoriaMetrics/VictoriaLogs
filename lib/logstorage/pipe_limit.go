@@ -30,6 +30,10 @@ func (pl *pipeLimit) canReturnLastNResults() bool {
 	return false
 }
 
+func (pl *pipeLimit) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pl *pipeLimit) isFixedOutputFieldsOrder() bool {
 	return false
 }

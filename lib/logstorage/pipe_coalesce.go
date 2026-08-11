@@ -45,6 +45,10 @@ func (pc *pipeCoalesce) canReturnLastNResults() bool {
 	return pc.dstField != "_time"
 }
 
+func (pc *pipeCoalesce) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pc *pipeCoalesce) isFixedOutputFieldsOrder() bool {
 	return false
 }

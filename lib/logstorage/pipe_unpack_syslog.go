@@ -61,6 +61,10 @@ func (pu *pipeUnpackSyslog) canReturnLastNResults() bool {
 	return true
 }
 
+func (pu *pipeUnpackSyslog) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pu *pipeUnpackSyslog) isFixedOutputFieldsOrder() bool {
 	return false
 }

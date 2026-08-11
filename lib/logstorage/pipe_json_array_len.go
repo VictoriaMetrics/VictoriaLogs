@@ -38,6 +38,10 @@ func (pl *pipeJSONArrayLen) canReturnLastNResults() bool {
 	return pl.resultField != "_time"
 }
 
+func (pl *pipeJSONArrayLen) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pl *pipeJSONArrayLen) isFixedOutputFieldsOrder() bool {
 	return false
 }

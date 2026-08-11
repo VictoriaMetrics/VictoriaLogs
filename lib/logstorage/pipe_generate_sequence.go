@@ -32,6 +32,10 @@ func (pg *pipeGenerateSequence) canReturnLastNResults() bool {
 	return false
 }
 
+func (pg *pipeGenerateSequence) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pg *pipeGenerateSequence) isFixedOutputFieldsOrder() bool {
 	return true
 }

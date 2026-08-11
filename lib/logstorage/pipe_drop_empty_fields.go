@@ -32,6 +32,10 @@ func (pd *pipeDropEmptyFields) canReturnLastNResults() bool {
 	return true
 }
 
+func (pd *pipeDropEmptyFields) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pd *pipeDropEmptyFields) isFixedOutputFieldsOrder() bool {
 	return false
 }

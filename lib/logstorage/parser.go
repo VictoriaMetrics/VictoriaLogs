@@ -1735,14 +1735,14 @@ func optimizeSortLimitPipes(pipes []pipe) []pipe {
 
 func getPrevSortPipe(pipes []pipe, i int) (*pipeSort, int) {
 	for i--; i >= 0; i-- {
-		switch p := pipes[i].(type) {
-		case *pipeFields, *pipeDelete, *pipeCopy, *pipeRename, *pipePackJSON, *pipePackLogfmt:
-			// These pipes preserve the number and order of rows.
-		case *pipeSort:
-			return p, i
-		default:
-			return nil, -1
+		p := pipes[i]
+		if p.isOneToOneRowLocalTransform() {
+			continue
 		}
+		if ps, ok := p.(*pipeSort); ok {
+			return ps, i
+		}
+		return nil, -1
 	}
 	return nil, -1
 }

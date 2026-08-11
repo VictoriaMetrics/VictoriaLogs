@@ -33,6 +33,10 @@ type pipe interface {
 	// The pipe can return last N results if it doesn't modify the _time field.
 	canReturnLastNResults() bool
 
+	// isOneToOneRowLocalTransform must return true if the given pipe transforms every input row independently,
+	// emits exactly one output row per input row and preserves the row order.
+	isOneToOneRowLocalTransform() bool
+
 	// isFixedOutputFieldsOrder must return true if the pipe returns the output log fields in a fixed order.
 	isFixedOutputFieldsOrder() bool
 

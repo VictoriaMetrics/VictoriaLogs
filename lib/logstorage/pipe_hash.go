@@ -39,6 +39,10 @@ func (ph *pipeHash) canReturnLastNResults() bool {
 	return ph.resultField != "_time"
 }
 
+func (ph *pipeHash) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (ph *pipeHash) isFixedOutputFieldsOrder() bool {
 	return false
 }

@@ -62,6 +62,10 @@ func (pf *pipeFormat) canReturnLastNResults() bool {
 	return pf.resultField != "_time"
 }
 
+func (pf *pipeFormat) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pf *pipeFormat) isFixedOutputFieldsOrder() bool {
 	return false
 }
