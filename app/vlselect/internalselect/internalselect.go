@@ -530,10 +530,11 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 
 func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
 	version := r.FormValue("version")
-	if version == expectedProtocolVersion {
-		return nil
+	if version != expectedProtocolVersion {
+		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
+			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
 	}
-	return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is incompatible versions of VictoriaLogs cluster components", version, expectedProtocolVersion)
+	return nil
 }
 
 func writeValuesWithHits(w http.ResponseWriter, qctx *logstorage.QueryContext, vhs []logstorage.ValueWithHits, disableCompression bool) error {
