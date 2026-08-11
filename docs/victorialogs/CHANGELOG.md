@@ -22,6 +22,10 @@ according to the following docs:
 
 ## tip
 
+### v1.51.1 (UNRELEASED)
+
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): allow `vlstorage` v1.51.1 to accept requests from `vlselect` versions v1.38.0 through v1.51.0. This allows upgrading `vlstorage` nodes from older versions to v1.51.1 while `vlselect` nodes remain on the corresponding older version, and then upgrading the `vlselect` nodes to v1.51.1, without query downtime caused by an internal protocol mismatch. Starting from v1.52.0, `vlstorage` no longer accepts requests from `vlselect` v1.50.0 or earlier. See [#1665](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1665).
+
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 
 Released at 2026-06-17
