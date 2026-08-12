@@ -9,7 +9,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
-// TestVlsingleDeleteAPIRequiresPOST verifies that the log deletion endpoints require the POST method.
+// TestVlsingleDeleteAPIRequiresPOST verifies that the log deletion endpoint requires the POST method.
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635
 func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
@@ -20,7 +20,6 @@ func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
 
 	sut := tc.MustStartVlsingle("vlsingle", []string{
 		"-delete.enable=true",
-		"-internaldelete.enable=true",
 	})
 	cli := tc.Client()
 	baseURL := "http://" + sut.HTTPAddr()
@@ -32,10 +31,9 @@ func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
 		}
 	}
 
-	// Non-POST requests must be rejected with 405 on both the public and the internal endpoints.
+	// Non-POST requests must be rejected with 405.
 	for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodPatch} {
 		f(method, "/delete/run_task", http.StatusMethodNotAllowed)
-		f(method, "/internal/delete/run_task", http.StatusMethodNotAllowed)
 	}
 
 	// A POST request must be accepted.

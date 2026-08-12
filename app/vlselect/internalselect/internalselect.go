@@ -351,11 +351,6 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return nil
-	}
-
 	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
 		return err
 	}
