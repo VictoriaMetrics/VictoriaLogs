@@ -182,7 +182,7 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 		rwctxs[0].push(lr)
 		return
 	}
-	// Push samples to remote storage systems in parallel in order to reduce
+	// Push log rows to remote storage systems in parallel in order to reduce
 	// the time needed for sending the data to multiple remote storage systems.
 	var wg sync.WaitGroup
 	for _, rwctx := range rwctxs {
