@@ -121,6 +121,8 @@ type pipeDeduplicateProcessorShard struct {
 
 	bm bitmap
 	br blockResult
+
+	stateSizeBudget int
 }
 
 type pipeDeduplicateKeySetShard struct {
@@ -188,16 +190,27 @@ func (pdp *pipeDeduplicateProcessor) writeBlock(workerID uint, br *blockResult) 
 	}
 
 	shard := pdp.shards.Get(workerID)
+
+	for shard.stateSizeBudget < 0 {
+		// steal some budget for the state size from the global budget.
+		remaining := pdp.stateSizeBudget.Add(-stateSizeBudgetChunk)
+		if remaining < 0 {
+			// The state size is too big. Stop processing data in order to avoid OOM crash.
+			if remaining+stateSizeBudgetChunk >= 0 {
+				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+				pdp.cancel()
+			}
+			return
+		}
+		shard.stateSizeBudget += stateSizeBudgetChunk
+	}
+
 	shard.updateKeys(br)
 
 	bm := &shard.bm
 	bm.init(br.rowsLen)
 
-	if pdp.addKeys(shard, bm) <= 0 {
-		// The state size is too big. Stop processing data in order to avoid OOM crash.
-		pdp.cancel()
-		return
-	}
+	shard.stateSizeBudget -= pdp.addKeys(shard, bm)
 
 	if bm.areAllBitsSet() {
 		// Fast path - there are no duplicate rows at br - send it to the next pipe as is.
@@ -214,7 +227,7 @@ func (pdp *pipeDeduplicateProcessor) writeBlock(workerID uint, br *blockResult) 
 	pdp.ppNext.writeBlock(workerID, &shard.br)
 }
 
-func (pdp *pipeDeduplicateProcessor) addKeys(shard *pipeDeduplicateProcessorShard, bm *bitmap) int64 {
+func (pdp *pipeDeduplicateProcessor) addKeys(shard *pipeDeduplicateProcessorShard, bm *bitmap) int {
 	keysBuf := shard.keysBuf
 	keyEnds := shard.keyEnds
 
@@ -240,17 +253,17 @@ func (pdp *pipeDeduplicateProcessor) addKeys(shard *pipeDeduplicateProcessorShar
 		}
 	}
 
-	stateSize := int64(0)
+	stateSize := 0
 	for i := range rowIdxss {
 		if rowIdxs := rowIdxss[i]; len(rowIdxs) > 0 {
 			stateSize += pdp.keySetShards[i].addKeys(&shard.a, keysBuf, keyEnds, rowIdxs, bm)
 		}
 	}
 
-	return pdp.stateSizeBudget.Add(-stateSize)
+	return stateSize
 }
 
-func (ks *pipeDeduplicateKeySet) addKeys(a *chunkedAllocator, keysBuf []byte, keyEnds []int, rowIdxs []int, bm *bitmap) int64 {
+func (ks *pipeDeduplicateKeySet) addKeys(a *chunkedAllocator, keysBuf []byte, keyEnds []int, rowIdxs []int, bm *bitmap) int {
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
 
@@ -258,7 +271,7 @@ func (ks *pipeDeduplicateKeySet) addKeys(a *chunkedAllocator, keysBuf []byte, ke
 		ks.keys = make(map[string]struct{})
 	}
 
-	stateSize := int64(0)
+	stateSize := 0
 	for _, rowIdx := range rowIdxs {
 		keyStart := 0
 		if rowIdx > 0 {
@@ -271,7 +284,7 @@ func (ks *pipeDeduplicateKeySet) addKeys(a *chunkedAllocator, keysBuf []byte, ke
 		}
 		keyCopy := a.cloneBytesToString(key)
 		ks.keys[keyCopy] = struct{}{}
-		stateSize += int64(len(keyCopy)) + int64(unsafe.Sizeof(keyCopy))
+		stateSize += len(keyCopy) + int(unsafe.Sizeof(keyCopy))
 		bm.setBit(rowIdx)
 	}
 
