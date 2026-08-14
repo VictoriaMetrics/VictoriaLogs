@@ -1,9 +1,13 @@
 // The list of supported units could be the following -
 // https://prometheus.io/docs/prometheus/latest/querying/basics/#float-literals-and-time-durations
 import { TimePeriod } from "../../types";
-import { vmDate } from "./vmDate";
 import { absNanoseconds, NANOSECONDS_PER_MILLISECOND, nanosecondsToMilliseconds } from "./nano";
 import { timePeriodToTimeParams } from "./convert";
+
+const MILLISECONDS_PER_SECOND = 1_000;
+const MILLISECONDS_PER_MINUTE = 60 * MILLISECONDS_PER_SECOND;
+const MILLISECONDS_PER_HOUR = 60 * MILLISECONDS_PER_MINUTE;
+const MILLISECONDS_PER_DAY = 24 * MILLISECONDS_PER_HOUR;
 
 const DURATION_UNITS_IN_NANOS = {
   ns: 1n,
@@ -46,14 +50,21 @@ export const getMillisecondsFromDuration = (dur: string): number => {
 export const getDurationFromMilliseconds = (ms: number): string => {
   if (ms === 0) return "0ms";
 
-  const d = vmDate.duration(ms);
-  const milliseconds = d.milliseconds();
+  let remaining = ms;
+  const days = Math.floor(remaining / MILLISECONDS_PER_DAY);
+  remaining %= MILLISECONDS_PER_DAY;
+  const hours = Math.floor(remaining / MILLISECONDS_PER_HOUR);
+  remaining %= MILLISECONDS_PER_HOUR;
+  const minutes = Math.floor(remaining / MILLISECONDS_PER_MINUTE);
+  remaining %= MILLISECONDS_PER_MINUTE;
+  const seconds = Math.floor(remaining / MILLISECONDS_PER_SECOND);
+  const milliseconds = remaining % MILLISECONDS_PER_SECOND;
 
   const units = [
-    { val: Math.floor(d.asDays()), label: "d" },
-    { val: d.hours(), label: "h" },
-    { val: d.minutes(), label: "m" },
-    { val: d.seconds(), label: "s" },
+    { val: days, label: "d" },
+    { val: hours, label: "h" },
+    { val: minutes, label: "m" },
+    { val: seconds, label: "s" },
     { val: milliseconds, label: "ms" },
   ];
 
@@ -90,4 +101,3 @@ export function formatRequestDuration(ms: number): string {
 
   return `${(ms / 1000).toFixed(1)}s`;
 }
-
