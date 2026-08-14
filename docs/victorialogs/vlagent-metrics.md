@@ -1,6 +1,7 @@
 ---
 weight: 21
 title: Metrics of vlagent
+description: "Prometheus metrics exposed by vlagent for monitoring VictoriaLogs."
 menu:
   docs:
     parent: victorialogs

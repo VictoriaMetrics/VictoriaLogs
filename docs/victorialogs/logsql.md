@@ -1,5 +1,6 @@
 ---
 title: LogsQL
+description: "Complete LogsQL query language reference for VictoriaLogs. Full-text search, phrase/prefix filters, logical filters, stats calculations, and step-by-step tutorial."
 weight: 7
 menu:
   docs:

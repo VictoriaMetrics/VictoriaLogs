@@ -1,6 +1,7 @@
 ---
 weight: 13
 title: FAQ
+description: "Frequently asked questions comparing VictoriaLogs with Elasticsearch, OpenSearch, and Loki."
 menu:
   docs:
     identifier: "victorialogs-faq"

@@ -1,5 +1,6 @@
 ---
 title: Data Ingestion
+description: "Supported methods for ingesting logs into VictoriaLogs. Syslog, Filebeat, Fluentbit, Fluentd, Logstash, Promtail, Vector, Telegraf, OpenTelemetry, Journald, Datadog, and Splunk."
 weight: 5
 menu:
   docs:

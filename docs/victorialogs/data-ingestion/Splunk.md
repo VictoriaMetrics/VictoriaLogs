@@ -1,6 +1,7 @@
 ---
 weight: 14
 title: Splunk Setup
+description: "Send logs to VictoriaLogs via Splunk HEC API"
 disableToc: true
 menu:
   docs:

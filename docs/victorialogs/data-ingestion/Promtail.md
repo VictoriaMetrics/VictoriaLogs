@@ -1,6 +1,7 @@
 ---
 weight: 4
 title: Promtail Setup
+description: "Configure Loki collectors to send logs to VictoriaLogs."
 disableToc: true
 menu:
   docs:

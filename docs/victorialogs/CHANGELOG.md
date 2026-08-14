@@ -1,6 +1,7 @@
 ---
 weight: 101
 title: CHANGELOG
+description: "Release history for VictoriaLogs"
 menu:
   docs:
     identifier: "victorialogs-changelog"
