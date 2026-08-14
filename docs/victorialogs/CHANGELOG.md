@@ -22,6 +22,7 @@ according to the following docs:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.26.5 to Go1.26.6. See [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved).
 * SECURITY: [deletion API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): restrict the `/delete/run_task` endpoint to the `POST` method only in order to prevent some [SSRF](https://en.wikipedia.org/wiki/Server-side_request_forgery)-based log deletion attacks. See [#1635](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635).
 
 * FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): optimize queries, which return the limited number of log entries with the biggest timestamps on the selected time range. [Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) usually executes such queries. See [#1602](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602).
