@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"unsafe"
+
+	"github.com/cespare/xxhash/v2"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -66,17 +69,23 @@ func (pd *pipeDeduplicate) visitSubqueries(_ func(q *Query)) {
 	// nothing to do
 }
 
-func (pd *pipeDeduplicate) newPipeProcessor(_ int, _ <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
+func (pd *pipeDeduplicate) newPipeProcessor(concurrency int, _ <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
+	maxStateSize := int64(float64(memory.Allowed()) * 0.4)
+
 	pdp := &pipeDeduplicateProcessor{
 		pd:     pd,
 		cancel: cancel,
 		ppNext: ppNext,
 
-		maxStateSize: int64(float64(memory.Allowed()) * 0.4),
+		keySetShards: make([]pipeDeduplicateKeySetShard, concurrency),
+
+		maxStateSize: maxStateSize,
 	}
 	pdp.shards.Init = func(shard *pipeDeduplicateProcessorShard) {
 		shard.pd = pd
+		shard.rowIdxss = make([][]int, concurrency)
 	}
+	pdp.stateSizeBudget.Store(maxStateSize)
 	return pdp
 }
 
@@ -87,12 +96,11 @@ type pipeDeduplicateProcessor struct {
 
 	shards atomicutil.Slice[pipeDeduplicateProcessorShard]
 
-	mu        sync.Mutex
-	keys      map[string]struct{}
-	a         chunkedAllocator
-	stateSize int64
+	// keySetShards hold keys of the already returned log entries.
+	keySetShards []pipeDeduplicateKeySetShard
 
-	maxStateSize int64
+	stateSizeBudget atomic.Int64
+	maxStateSize    int64
 }
 
 type pipeDeduplicateProcessorShard struct {
@@ -105,8 +113,27 @@ type pipeDeduplicateProcessorShard struct {
 	keysBuf []byte
 	keyEnds []int
 
+	// rowIdxss holds row indexes grouped by target keySet shard.
+	rowIdxss [][]int
+
+	// a is used for reducing memory allocations when registering dedup keys.
+	a chunkedAllocator
+
 	bm bitmap
 	br blockResult
+}
+
+type pipeDeduplicateKeySetShard struct {
+	pipeDeduplicateKeySet
+
+	// The padding prevents false sharing
+	_ [atomicutil.CacheLineSize - unsafe.Sizeof(pipeDeduplicateKeySet{})%atomicutil.CacheLineSize]byte
+}
+
+type pipeDeduplicateKeySet struct {
+	mu sync.Mutex
+
+	keys map[string]struct{}
 }
 
 func (shard *pipeDeduplicateProcessorShard) updateKeys(br *blockResult) {
@@ -166,7 +193,7 @@ func (pdp *pipeDeduplicateProcessor) writeBlock(workerID uint, br *blockResult) 
 	bm := &shard.bm
 	bm.init(br.rowsLen)
 
-	if pdp.addKeys(shard.keysBuf, shard.keyEnds, bm) > pdp.maxStateSize {
+	if pdp.addKeys(shard, bm) <= 0 {
 		// The state size is too big. Stop processing data in order to avoid OOM crash.
 		pdp.cancel()
 		return
@@ -187,33 +214,72 @@ func (pdp *pipeDeduplicateProcessor) writeBlock(workerID uint, br *blockResult) 
 	pdp.ppNext.writeBlock(workerID, &shard.br)
 }
 
-func (pdp *pipeDeduplicateProcessor) addKeys(keysBuf []byte, keyEnds []int, bm *bitmap) int64 {
-	pdp.mu.Lock()
-	defer pdp.mu.Unlock()
+func (pdp *pipeDeduplicateProcessor) addKeys(shard *pipeDeduplicateProcessorShard, bm *bitmap) int64 {
+	keysBuf := shard.keysBuf
+	keyEnds := shard.keyEnds
 
-	if pdp.keys == nil {
-		pdp.keys = make(map[string]struct{})
+	rowIdxss := shard.rowIdxss
+	for i := range rowIdxss {
+		rowIdxss[i] = rowIdxss[i][:0]
+	}
+	if len(rowIdxss) == 1 {
+		// Fast path - a single shard, so there is no need in calculating key hashes.
+		rowIdxs := rowIdxss[0]
+		for i := range keyEnds {
+			rowIdxs = append(rowIdxs, i)
+		}
+		rowIdxss[0] = rowIdxs
+	} else {
+		keyStart := 0
+		for i, keyEnd := range keyEnds {
+			key := keysBuf[keyStart:keyEnd]
+			keyStart = keyEnd
+
+			idx := xxhash.Sum64(key) % uint64(len(rowIdxss))
+			rowIdxss[idx] = append(rowIdxss[idx], i)
+		}
 	}
 
-	keyStart := 0
-	for i, keyEnd := range keyEnds {
-		key := keysBuf[keyStart:keyEnd]
-		keyStart = keyEnd
+	stateSize := int64(0)
+	for i := range rowIdxss {
+		if rowIdxs := rowIdxss[i]; len(rowIdxs) > 0 {
+			stateSize += pdp.keySetShards[i].addKeys(&shard.a, keysBuf, keyEnds, rowIdxs, bm)
+		}
+	}
 
-		if _, ok := pdp.keys[bytesutil.ToUnsafeString(key)]; ok {
+	return pdp.stateSizeBudget.Add(-stateSize)
+}
+
+func (ks *pipeDeduplicateKeySet) addKeys(a *chunkedAllocator, keysBuf []byte, keyEnds []int, rowIdxs []int, bm *bitmap) int64 {
+	ks.mu.Lock()
+	defer ks.mu.Unlock()
+
+	if ks.keys == nil {
+		ks.keys = make(map[string]struct{})
+	}
+
+	stateSize := int64(0)
+	for _, rowIdx := range rowIdxs {
+		keyStart := 0
+		if rowIdx > 0 {
+			keyStart = keyEnds[rowIdx-1]
+		}
+		key := keysBuf[keyStart:keyEnds[rowIdx]]
+
+		if _, ok := ks.keys[bytesutil.ToUnsafeString(key)]; ok {
 			continue
 		}
-		keyCopy := pdp.a.cloneBytesToString(key)
-		pdp.keys[keyCopy] = struct{}{}
-		pdp.stateSize += int64(len(keyCopy)) + int64(unsafe.Sizeof(keyCopy))
-		bm.setBit(i)
+		keyCopy := a.cloneBytesToString(key)
+		ks.keys[keyCopy] = struct{}{}
+		stateSize += int64(len(keyCopy)) + int64(unsafe.Sizeof(keyCopy))
+		bm.setBit(rowIdx)
 	}
 
-	return pdp.stateSize
+	return stateSize
 }
 
 func (pdp *pipeDeduplicateProcessor) flush() error {
-	if pdp.stateSize > pdp.maxStateSize {
+	if pdp.stateSizeBudget.Load() <= 0 {
 		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", pdp.pd.String(), pdp.maxStateSize/(1<<20))
 	}
 	return nil

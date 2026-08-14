@@ -2126,8 +2126,9 @@ See also:
 ### deduplicate pipe
 
 `<q> | deduplicate` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) drops duplicate log entries returned by `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax).
-Log entries are considered duplicates if all their [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) are identical.
-This is useful for dropping logs, which were ingested more than once. For example, the following query returns distinct log entries over the last 5 minutes:
+Log entries are considered duplicates if all their [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) are identical,
+including [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) and [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+For example, the following query returns distinct log entries over the last 5 minutes:
 
 ```logsql
 _time:5m | deduplicate
@@ -2145,6 +2146,10 @@ The `by` keyword can be skipped in `deduplicate ...` pipe. For example, the foll
 ```logsql
 _time:5m | deduplicate (user_id)
 ```
+
+The `deduplicate` pipe is useful for dropping logs, which were ingested more than once. Note that [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+is taken into account when `by (...)` isn't set, so re-ingested logs, which were assigned distinct `_time` values during the ingestion, aren't dropped.
+Deduplicate by the fields, which do not change across re-ingestion, such as an event id, in this case.
 
 An arbitrary log entry is returned among the duplicate ones, since the logs are processed in parallel.
 
