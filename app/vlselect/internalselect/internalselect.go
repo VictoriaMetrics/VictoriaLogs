@@ -67,6 +67,10 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	//
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
 	if err := parseRequest(r); err != nil {
+		if ctx.Err() != nil {
+			// Do not report parse errors for canceled requests, since they are expected and legal.
+			return
+		}
 		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
 		return
 	}
@@ -351,11 +355,6 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return nil
-	}
-
 	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
 		return err
 	}
