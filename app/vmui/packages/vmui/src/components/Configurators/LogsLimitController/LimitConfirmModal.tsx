@@ -13,8 +13,10 @@ type Props = {
   limitDraft: number;
   setLimitDraft: (limit: number) => void;
   suppressWarning: boolean;
+  persistWarning: boolean;
   queryParams?: Record<string, string>;
   onChangeSuppressWarning: (value: boolean) => void;
+  onChangePersistWarning: (value: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -25,8 +27,10 @@ const LimitConfirmModal: FC<Props> = ({
   setLimitDraft,
   isOpen,
   suppressWarning,
+  persistWarning,
   queryParams,
   onChangeSuppressWarning,
+  onChangePersistWarning,
   onConfirm,
   onCancel
 }) => {
@@ -73,7 +77,13 @@ const LimitConfirmModal: FC<Props> = ({
               checked={suppressWarning}
               onChange={onChangeSuppressWarning}
             />
-
+            <Checkbox
+              color="primary"
+              label="Remember permanently"
+              checked={persistWarning}
+              disabled={!suppressWarning}
+              onChange={onChangePersistWarning}
+            />
           </div>
 
           <div className="vm-logs-limit-modal-footer__actions">
