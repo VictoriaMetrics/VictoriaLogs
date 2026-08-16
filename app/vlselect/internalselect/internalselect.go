@@ -31,6 +31,11 @@ var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, 
 
 // RequestHandler processes requests to /internal/select/*
 func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	startTime := time.Now()
 
 	select {
