@@ -340,8 +340,13 @@ func processStreamIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); err != nil {
-		return err
+	if currentErr := checkProtocolVersion(r, netselect.DeleteRunTaskProtocolVersion); currentErr != nil {
+		// Only the protocol version needs a fallback, since parseRequest already supports
+		// both application/x-www-form-urlencoded and multipart/form-data.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+		if fallbackErr := checkProtocolVersion(r, "v1"); fallbackErr != nil {
+			return currentErr
+		}
 	}
 
 	// Parse query args
@@ -372,8 +377,13 @@ func processDeleteRunTask(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion); err != nil {
-		return err
+	if currentErr := checkProtocolVersion(r, netselect.DeleteStopTaskProtocolVersion); currentErr != nil {
+		// Only the protocol version needs a fallback, since parseRequest already supports
+		// both application/x-www-form-urlencoded and multipart/form-data.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+		if fallbackErr := checkProtocolVersion(r, "v1"); fallbackErr != nil {
+			return currentErr
+		}
 	}
 
 	taskID := r.FormValue("task_id")
@@ -385,8 +395,13 @@ func processDeleteStopTask(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func processDeleteActiveTasks(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	if err := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion); err != nil {
-		return err
+	if currentErr := checkProtocolVersion(r, netselect.DeleteActiveTasksProtocolVersion); currentErr != nil {
+		// Only the protocol version needs a fallback, since parseRequest already supports
+		// both application/x-www-form-urlencoded and multipart/form-data.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+		if fallbackErr := checkProtocolVersion(r, "v1"); fallbackErr != nil {
+			return currentErr
+		}
 	}
 
 	tasks, err := vlstorage.DeleteActiveTasks(ctx)
@@ -460,8 +475,13 @@ func (cp *commonParams) UpdatePerQueryStatsMetrics() {
 }
 
 func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonParams, error) {
-	if err := checkProtocolVersion(r, expectedProtocolVersion); err != nil {
-		return nil, err
+	if currentErr := checkProtocolVersion(r, expectedProtocolVersion); currentErr != nil {
+		// Only the protocol version needs a fallback, since parseRequest already supports
+		// both application/x-www-form-urlencoded and multipart/form-data.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
+		if fallbackErr := checkProtocolVersion(r, "v4"); fallbackErr != nil {
+			return nil, currentErr
+		}
 	}
 
 	tenantIDsStr := r.FormValue("tenant_ids")
