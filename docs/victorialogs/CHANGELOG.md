@@ -80,6 +80,14 @@ Released at 2026-07-16
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix hits chart tooltip layout to prevent long values from overflowing the viewport. See [#1536](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1536).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix filters sidebar opening on mobile. See [#1537](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1537).
 
+## [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1)
+
+Released at 2026-08-18
+
+* SECURITY: upgrade Go builder from Go1.26.4 to Go1.26.6. See [the list of issues addressed in Go1.26.5](https://github.com/golang/go/issues?q=milestone%3AGo1.26.5%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved).
+
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): allow `vlstorage` v1.51.1 to accept requests from `vlselect` versions v1.38.0 through v1.51.0. This allows upgrading `vlstorage` nodes from older versions to v1.51.1 while `vlselect` nodes remain on the corresponding older version, and then upgrading the `vlselect` nodes to v1.51.1, without query downtime caused by an internal protocol mismatch. Starting from v1.52.0, `vlstorage` no longer accepts requests from `vlselect` v1.50.0 or earlier. See [#1665](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1665).
+
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 
 Released at 2026-06-17
