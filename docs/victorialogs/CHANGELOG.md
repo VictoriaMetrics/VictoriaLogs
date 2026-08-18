@@ -49,6 +49,8 @@ Released at 2026-07-16
 
 **Update note 2:** VictoriaLogs no longer provides a Docker image for the `linux/386` platform because the `distroless` base image [doesn't support this platform](https://github.com/GoogleContainerTools/distroless/issues/881). Executable files for `linux/386` platform are still published at [the VictoriaLogs releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases).
 
+**Update note 3:** [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) users upgrading from versions v1.38.0 through v1.50.0 should first upgrade all `vlstorage` nodes to [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1), then upgrade all `vlselect` nodes to v1.51.1, and only then continue upgrading the cluster to v1.52.0. This avoids query downtime caused by incompatible internal protocol versions.
+
 * SECURITY: upgrade Go builder from Go1.26.4 to Go1.26.5. See [the list of issues addressed in Go1.26.5](https://github.com/golang/go/issues?q=milestone%3AGo1.26.5%20label%3ACherryPickApproved).
 
 * FEATURE: switch base Docker image from [Alpine](https://www.alpinelinux.org/) to [distroless](https://github.com/GoogleContainerTools/distroless/) for VictoriaLogs, `vlagent` and `vlogscli`. This reduces the image size and attack surface. See [#1228](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1228).
@@ -95,6 +97,8 @@ Released at 2026-06-17
 **Update Note 1:** [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): disallow using [`filter` pipes](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) without the `filter` prefix if the filter doesn't start with `field_name:` prefix. For example, `foo | bar` is disallowed now. It must be rewritten to one of the following equivalents: `foo bar`, `foo | "bar"`, `foo | _msg:bar` or `foo | filter bar`. This reduces the chances of incorrectly written queries like in the [#1454](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1454). However, this may be a breaking change if you have queries that filter without the `filter` prefix, such as `... | !foo`, `... | {host="x"}`, `... | >5` or `... | =foo` - these now fail with `unexpected pipe` and must add the `filter` prefix (e.g. `... | filter !foo`).
 
 **Update Note 2:** [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): this release bumps the internal `vlselect` and `vlstorage` protocol version (see the queries-longer-than-10MB fix in [#1462](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462)). A version mismatch between `vlselect` and `vlstorage` fails the request, so queries are expected to fail during a rolling upgrade while the cluster runs mixed versions. All the cluster components must be upgraded to this release or newer.
+
+**Update Note 3:** [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) users upgrading from versions v1.38.0 through v1.50.0 should upgrade to [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1) instead of this release. Upgrade all `vlstorage` nodes first, and then upgrade all `vlselect` nodes. This avoids query downtime caused by incompatible internal protocol versions.
 
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
 
