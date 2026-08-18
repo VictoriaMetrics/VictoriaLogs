@@ -1,7 +1,7 @@
 ---
 weight:
 title: vlogscli
-description: "Interactive command-line LogsQL query tool for VictoriaLogs with history, live tailing, and multiple output formats."
+description: "Use vlogscli, an interactive command-line tool, to query VictoriaLogs with LogsQL, history, live tailing, and multiple output formats."
 disableToc: true
 menu:
   docs:

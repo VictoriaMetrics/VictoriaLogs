@@ -1,7 +1,7 @@
 ---
 weight: 13
 title: FAQ
-description: "Frequently asked questions comparing VictoriaLogs with Elasticsearch, OpenSearch, and Loki."
+description: "Frequently asked questions about VictoriaLogs, including comparisons with Elasticsearch, Loki, and ClickHouse, disk usage, field limits, and sizing."
 menu:
   docs:
     identifier: "victorialogs-faq"
