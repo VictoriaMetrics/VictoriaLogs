@@ -1,5 +1,5 @@
-# github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1
-## explicit; go 1.26.4
+# github.com/VictoriaMetrics/VictoriaMetrics v1.149.1-0.20260811205936-d4a40004ef28
+## explicit; go 1.26.5
 github.com/VictoriaMetrics/VictoriaMetrics/lib/appmetrics
 github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil
 github.com/VictoriaMetrics/VictoriaMetrics/lib/blockcache
