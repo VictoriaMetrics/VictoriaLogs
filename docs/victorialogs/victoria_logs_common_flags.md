@@ -495,4 +495,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Show VictoriaMetrics version
   -vmalert.proxyURL string
      Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert
+  -vmui.tenantAliases array
+     Optional list of accountID:projectID=alias entries, which are displayed instead of the raw tenant ids in the tenant selector at VictoriaLogs web UI. For example, -vmui.tenantAliases='0:0=k8s,0:1=nginx-access'. The aliases affect only the way tenants are displayed; see https://docs.victoriametrics.com/victorialogs/#multitenancy
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
 ```
