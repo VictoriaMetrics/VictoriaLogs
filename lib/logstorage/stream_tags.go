@@ -58,8 +58,8 @@ func (st *StreamTags) String() string {
 
 // normalize synchronizes st with the provided fields and returns true if st was updated.
 //
-// This function updates or keeps tags that exist in fields and removes missing ones.
-func (st *StreamTags) normalize(fields []Field) bool {
+// This function updates or keeps tags that exist in fields or extraFields and removes missing ones.
+func (st *StreamTags) normalize(fields, extraFields []Field) bool {
 	updated := false
 
 	tags := st.tags
@@ -72,6 +72,11 @@ func (st *StreamTags) normalize(fields []Field) bool {
 			if fields[j].Name == tagName {
 				f = &fields[j]
 				// break is skipped intentionally in order to get the last matching field
+			}
+		}
+		for j := range extraFields {
+			if getCanonicalFieldName(extraFields[j].Name) == tagName {
+				f = &extraFields[j]
 			}
 		}
 		if f == nil {

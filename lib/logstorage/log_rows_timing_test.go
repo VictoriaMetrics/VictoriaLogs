@@ -257,7 +257,7 @@ func BenchmarkStreamTagsNormalize(b *testing.B) {
 		for pb.Next() {
 			for _, c := range casesReal {
 				st.CopyFrom(&c.streamTags)
-				st.normalize(c.fields)
+				st.normalize(c.fields, nil)
 			}
 		}
 	})

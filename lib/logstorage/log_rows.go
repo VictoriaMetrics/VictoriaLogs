@@ -310,7 +310,7 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 		return
 	}
 
-	if st.normalize(r.Fields) {
+	if st.normalize(r.Fields, lr.extraFields) {
 		bLen := len(lr.a.b)
 		lr.a.b = st.MarshalCanonical(lr.a.b)
 		streamTagsCanonical = bytesutil.ToUnsafeString(lr.a.b[bLen:])
@@ -399,7 +399,7 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 					invalidStreamTagsLogger.Warnf("cannot parse _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
 					return
 				}
-				st.normalize(fields)
+				st.normalize(fields, lr.extraFields)
 				// Remove _stream field, since it is re-generated from st below.
 				f.Value = ""
 			case "_stream_id":

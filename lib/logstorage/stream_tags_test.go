@@ -46,7 +46,7 @@ func TestStreamTagsUnmarshalStringInplace_Failure(t *testing.T) {
 }
 
 func TestStreamTagsNormalize(t *testing.T) {
-	f := func(streamTags, fieldsStr, streamTagsExpected string, isNormalizedExpected bool) {
+	f := func(streamTags, fieldsStr string, extraFields []Field, streamTagsExpected string, isNormalizedExpected bool) {
 		t.Helper()
 
 		st := GetStreamTags()
@@ -59,7 +59,7 @@ func TestStreamTagsNormalize(t *testing.T) {
 		defer putLogfmtParser(p)
 		p.parse(fieldsStr)
 
-		isNormalized := st.normalize(p.fields)
+		isNormalized := st.normalize(p.fields, extraFields)
 
 		result := st.String()
 		if result != streamTagsExpected {
@@ -71,22 +71,26 @@ func TestStreamTagsNormalize(t *testing.T) {
 		}
 	}
 
-	f(`{}`, ``, `{}`, false)
-	f(`{}`, `a=b c=d`, `{}`, false)
-	f(`{a="b"}`, `a=b`, `{a="b"}`, false)
-	f(`{a="b"}`, `x=y a=b q=w`, `{a="b"}`, false)
-	f(`{a="b",c="d"}`, `c=d x=y a=b`, `{a="b",c="d"}`, false)
-	f(`{a="b"}`, `a=b x=y a=b`, `{a="b"}`, false)
+	f(`{}`, ``, nil, `{}`, false)
+	f(`{}`, `a=b c=d`, nil, `{}`, false)
+	f(`{a="b"}`, `a=b`, nil, `{a="b"}`, false)
+	f(`{a="b"}`, `x=y a=b q=w`, nil, `{a="b"}`, false)
+	f(`{a="b",c="d"}`, `c=d x=y a=b`, nil, `{a="b",c="d"}`, false)
+	f(`{a="b"}`, `a=b x=y a=b`, nil, `{a="b"}`, false)
 
 	// missing value
-	f(`{a="b"}`, ``, `{}`, true)
-	f(`{a="b",x="y"}`, `x=y`, `{x="y"}`, true)
+	f(`{a="b"}`, ``, nil, `{}`, true)
+	f(`{a="b",x="y"}`, `x=y`, nil, `{x="y"}`, true)
 
 	// value mismatch
-	f(`{a="b"}`, `a=c`, `{a="c"}`, true)
-	f(`{c="d",a="b"}`, `c=d x=y a=c`, `{a="c",c="d"}`, true)
+	f(`{a="b"}`, `a=c`, nil, `{a="c"}`, true)
+	f(`{c="d",a="b"}`, `c=d x=y a=c`, nil, `{a="c",c="d"}`, true)
 
 	// multiple fields with the same name
-	f(`{a="b"}`, `a=b x=y a=c`, `{a="c"}`, true)
-	f(`{a="b",q="w"}`, `a=c a=c q=w`, `{a="c",q="w"}`, true)
+	f(`{a="b"}`, `a=b x=y a=c`, nil, `{a="c"}`, true)
+	f(`{a="b",q="w"}`, `a=c a=c q=w`, nil, `{a="c",q="w"}`, true)
+
+	// extra fields override the matching fields
+	f(`{a="b"}`, `a=b`, []Field{{Name: "a", Value: "c"}}, `{a="c"}`, true)
+	f(`{a="b"}`, `a=b`, []Field{{Name: "x", Value: "y"}}, `{a="b"}`, false)
 }
