@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -24,6 +26,12 @@ type LogRows struct {
 
 	// fieldsBuf holds all the fields referred by items in LogRows
 	fieldsBuf []Field
+
+	// dedupFieldsBuf is used for dropping duplicate fields from the currently added row.
+	dedupFieldsBuf []Field
+
+	// dedupFieldIndexes is used as a hash table for detecting duplicate field names.
+	dedupFieldIndexes []int
 
 	// streamIDs holds streamIDs for rows added to LogRows
 	streamIDs []streamID
@@ -279,6 +287,8 @@ func (lr *LogRows) ResetKeepSettings() {
 	}
 	lr.fieldsBuf = fb[:0]
 
+	lr.resetDedupFieldsBuf()
+
 	sids := lr.streamIDs
 	for i := range sids {
 		sids[i].reset()
@@ -301,16 +311,19 @@ func (lr *LogRows) NeedFlush() bool {
 
 // MustAddInsertRow adds r to lr.
 func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
+	fields, _ := lr.dropDuplicateFields(r.Fields, -1)
+	defer lr.resetDedupFieldsBuf()
+
 	st := GetStreamTags()
 	streamTagsCanonical := r.StreamTagsCanonical
 	if err := parseStreamTagsCanonical(st, streamTagsCanonical); err != nil {
-		line := MarshalFieldsToJSON(nil, r.Fields)
+		line := MarshalFieldsToJSON(nil, fields)
 		invalidStreamTagsLogger.Warnf("cannot unmarshal streamTagsCanonical: %s; skipping the log entry; log entry: %s", err, line)
 		PutStreamTags(st)
 		return
 	}
 
-	if st.normalize(r.Fields) {
+	if st.normalize(fields) {
 		bLen := len(lr.a.b)
 		lr.a.b = st.MarshalCanonical(lr.a.b)
 		streamTagsCanonical = bytesutil.ToUnsafeString(lr.a.b[bLen:])
@@ -323,7 +336,7 @@ func (lr *LogRows) MustAddInsertRow(r *InsertRow) {
 	sid.id = hash128(bytesutil.ToUnsafeBytes(streamTagsCanonical))
 
 	// Store the row
-	lr.mustAddInternal(sid, r.Timestamp, r.Fields, streamTagsCanonical)
+	lr.mustAddInternal(sid, r.Timestamp, fields, streamTagsCanonical)
 }
 
 var invalidStreamTagsLogger = logger.WithThrottler("invalid_stream_tags", 5*time.Second)
@@ -357,6 +370,9 @@ func (lr *LogRows) mustAdd(tenantID TenantID, timestamp int64, fields []Field) {
 // - if the total length of log entries is too long
 // - if the log entry contains _stream or _stream_id fields (these fields clash with the automatically generated fields by VictoriaLogs)
 func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, streamFieldsLen int) {
+	fields, streamFieldsLen = lr.dropDuplicateFields(fields, streamFieldsLen)
+	defer lr.resetDedupFieldsBuf()
+
 	// Compose StreamTags from fields
 	st := GetStreamTags()
 	if streamFieldsLen >= 0 {
@@ -485,6 +501,73 @@ var (
 	tooLongFieldNameLogger = logger.WithThrottler("too_logn_field_name", 5*time.Second)
 	tooLongEntryLogger     = logger.WithThrottler("too_long_entry", 5*time.Second)
 )
+
+func (lr *LogRows) dropDuplicateFields(fields []Field, streamFieldsLen int) ([]Field, int) {
+	if len(fields) < 2 {
+		return fields, streamFieldsLen
+	}
+
+	indexesLen := 1
+	for indexesLen < 2*len(fields) {
+		indexesLen *= 2
+	}
+	indexes := slicesutil.SetLength(lr.dedupFieldIndexes, indexesLen)
+	clear(indexes)
+	lr.dedupFieldIndexes = indexes
+
+	var dstFields []Field
+	var line []byte
+	for i := range fields {
+		f := fields[i]
+		fieldName := getCanonicalFieldName(f.Name)
+
+		h := xxhash.Sum64String(fieldName)
+		idx := int(h) & (len(indexes) - 1)
+		isDuplicate := false
+		for {
+			fieldIdx := indexes[idx]
+			if fieldIdx == 0 {
+				indexes[idx] = i + 1
+				break
+			}
+			fieldNamePrev := getCanonicalFieldName(fields[fieldIdx-1].Name)
+			if fieldNamePrev == fieldName {
+				isDuplicate = true
+				break
+			}
+			idx = (idx + 1) & (len(indexes) - 1)
+		}
+
+		if isDuplicate {
+			if dstFields == nil {
+				dstFields = append(lr.dedupFieldsBuf[:0], fields[:i]...)
+				line = MarshalFieldsToJSON(nil, fields)
+			}
+			duplicateFieldLogger.Warnf("ignoring duplicate field %q with the value %q, since the log entry already contains a field with the same name; "+
+				"preserving the first occurrence; log entry: %s", getCanonicalColumnName(fieldName), f.Value, line)
+			// Use retained length so multiple stream-field duplicates keep streamFieldsLen in sync.
+			if len(dstFields) < streamFieldsLen {
+				streamFieldsLen--
+			}
+			continue
+		}
+		if dstFields != nil {
+			dstFields = append(dstFields, f)
+		}
+	}
+	if dstFields == nil {
+		return fields, streamFieldsLen
+	}
+	lr.dedupFieldsBuf = dstFields
+	return dstFields, streamFieldsLen
+}
+
+var duplicateFieldLogger = logger.WithThrottler("duplicate_field", 5*time.Second)
+
+func (lr *LogRows) resetDedupFieldsBuf() {
+	clear(lr.dedupFieldsBuf)
+	lr.dedupFieldsBuf = lr.dedupFieldsBuf[:0]
+}
 
 func (lr *LogRows) addFieldsInternal(fields []Field, ignoreFields, decolorizeFields *prefixfilter.Filter, mustCopyFields bool) bool {
 	if len(fields) == 0 {
@@ -629,6 +712,12 @@ func GetLogRows(streamFields, ignoreFields, decolorizeFields []string, extraFiel
 		v = &LogRows{}
 	}
 	lr := v.(*LogRows)
+
+	extraFieldsDedup, _ := lr.dropDuplicateFields(extraFields, -1)
+	if len(extraFieldsDedup) < len(extraFields) {
+		extraFields = slices.Clone(extraFieldsDedup)
+	}
+	lr.resetDedupFieldsBuf()
 
 	// initialize ignoreFields
 	for _, f := range ignoreFields {
