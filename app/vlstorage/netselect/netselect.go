@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -784,33 +785,44 @@ func getFirstError(errs []error, allowPartialResponse bool) error {
 		logger.Panicf("BUG: len(errs) must be bigger than 0")
 	}
 
-	if !allowPartialResponse {
-		for _, err := range errs {
-			if err != nil {
-				return newStatusBadGatewayError(err)
-			}
-		}
+	firstErr := firstNonNilErr(errs)
+	if firstErr == nil {
 		return nil
 	}
+	if !allowPartialResponse {
+		return newStatusBadGatewayError(firstErr)
+	}
+	if err := firstNonUnavailableErr(errs); err != nil {
+		// Return the first error, which isn't related to the backend unavailability, to the client,
+		// since this error may point to configuration issues, which must be fixed ASAP.
+		// Hiding this error would complicate troubleshooting of improperly configured system.
+		err = fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
+		return newStatusBadGatewayError(err)
+	}
+	if slices.Contains(errs, nil) {
+		// At least a single vlstorage returned full response.
+		return nil
+	}
+	err := fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", firstErr)
+	return newStatusBadGatewayError(err)
+}
 
-	// allowPartialResponse == true. Return the error only if all the backends are unavailable
-	// or if some of the backends are improperly configured.
+func firstNonNilErr(errs []error) error {
 	for _, err := range errs {
-		if err == nil {
-			// At least a single vlstorage returned full response.
-			return nil
-		}
-		if !isUnavailableBackendError(err) {
-			// Return the first error, which isn't related to the backend unavailability, to the client,
-			// since this error may point to configuration issues, which must be fixed ASAP.
-			// Hiding this error would complicate troubleshooting of improperly configured system.
-			err = fmt.Errorf("the vlstorage node is available, but it returns an error, which may point to configuration issues: %w", err)
-			return newStatusBadGatewayError(err)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
-	err := fmt.Errorf("all the vlstorage nodes are unavailable for querying; a sample error: %w", errs[0])
-	return newStatusBadGatewayError(err)
+func firstNonUnavailableErr(errs []error) error {
+	for _, err := range errs {
+		if err != nil && !isUnavailableBackendError(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func newStatusBadGatewayError(err error) error {
