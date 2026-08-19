@@ -36,5 +36,17 @@
       gap: $padding-small;
       padding: $padding-small;
     }
+
+    &-item {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: $padding-small;
+
+      &__id {
+        color: $color-text-secondary;
+        font-size: $font-size-small;
+      }
+    }
   }
 }
