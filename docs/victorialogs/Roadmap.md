@@ -1,6 +1,7 @@
 ---
 weight: 102
 title: Roadmap
+description: "Upcoming features for VictoriaLogs. Object storage support, log transformations, Kafka, backup tooling, multi-tenant querying."
 disableToc: true
 menu:
   docs:
