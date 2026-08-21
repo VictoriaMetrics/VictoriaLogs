@@ -113,7 +113,7 @@ var (
 //   - regular log message with string text
 //   - nested json format for serverless plugins
 //     which has the following format:
-//     {"message": {"message": "text","lamdba": {"arn": "string","requestID": "string"}, "timestamp": int64} }
+//     {"message": {"message": "text","lambda": {"arn": "string","requestID": "string"}, "timestamp": int64} }
 //
 // See https://github.com/DataDog/datadog-lambda-extension/blob/28b90c7e4e985b72d60b5f5a5147c69c7ac693c4/bottlecap/src/logs/lambda/mod.rs#L24
 func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage.Field, error) {
@@ -143,7 +143,7 @@ func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage
 					Name:  "status",
 					Value: bytesutil.ToUnsafeString(val),
 				})
-			case "lamdba":
+			case "lambda":
 				obj, err := v.Object()
 				if err != nil {
 					firstErr = err
