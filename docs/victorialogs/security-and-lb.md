@@ -32,7 +32,7 @@ This document contains the following configuration examples for `vmauth`:
 * [How to set up authorization for search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization)
 * [How to set up authorization for data ingestion](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization)
 * [Routing search requests among multiple VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#cluster-routing)
-* [Auhtorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
+* [Authorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
 * [Authorizing per-tenant data ingestion requests](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests)
 * [Proxying requests to the given tenants](https://docs.victoriametrics.com/victorialogs/security-and-lb/#proxying-requests-to-the-given-tenants)
 * [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
@@ -329,7 +329,7 @@ See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-b
 
 Enumerate all the `vlinsert` instances in the cluster under the `url_prefix` option above in order to spread load among them.
 
-Note that `vmauth` doesn't replicate data amont the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
+Note that `vmauth` doesn't replicate data among the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
 Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replicating the data to multiple VictoriaLogs instances or multiple VictoriaLogs clusters.
 
 See also [how to set up authorization for search queries at VitoriaLogs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
@@ -611,6 +611,7 @@ and additional `-mtls` command-line flag:
 
 By default, VictoriaLogs verifies client certificates using the system's trusted certificate store.
 If using certificates signed by a private CA not present in the system trust store, you have two options:
+
 1. Install your CA certificate in the system's trusted certificate store.
 1. Specify the CA certificate path manually using `-mtlsCAFile` command-line flag.
 
@@ -634,11 +635,13 @@ Certificate and TLS config values are cached for up to 1 second and then refresh
 which enables seamless certificate rotation in production environments.
 
 The certificate reloading feature works for:
+
 - Server certificates (`-tlsCertFile` and `-tlsKeyFile`).
 - Client certificates (`-storageNode.tlsCertFile`, `-storageNode.tlsKeyFile`, `-remoteWrite.tlsCertFile`, `-remoteWrite.tlsKeyFile`).
 - CA certificates (`-mtlsCAFile`, `-storageNode.tlsCAFile`, `-remoteWrite.tlsCAFile`).
 
 To update certificates:
+
 1. Replace the certificate files on disk with new versions.
 1. VictoriaLogs will automatically detect and load the updated certificates.
 1. New connections will use the updated certificates immediately.

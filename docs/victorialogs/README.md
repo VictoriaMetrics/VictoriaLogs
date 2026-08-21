@@ -611,9 +611,11 @@ at the `/select/vmalert/*` paths.
 Pass `-help` to VictoriaLogs in order to see the list of supported command-line flags with their description:
 
 ### Common flags
+
 These flags are available in both VictoriaLogs OSS and VictoriaLogs Enterprise.
 {{% content "victoria_logs_common_flags.md" %}}
 
 ### Enterprise flags
+
 These flags are available only in [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 {{% content "victoria_logs_enterprise_flags.md" %}}

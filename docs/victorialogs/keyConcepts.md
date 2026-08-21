@@ -234,6 +234,7 @@ By default, the value of the `_stream` field is `{}`, since VictoriaLogs cannot 
 which fields uniquely identify each log stream. This may lead to not-so-optimal resource usage and query performance.
 Therefore we recommend specifying stream-level fields via `_stream_fields` query arg
 during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+
 ```mermaid
 flowchart LR
   A["Incoming log JSON"] --> L{"_stream_fields set?"}
@@ -242,6 +243,7 @@ flowchart LR
   X -- No  --> P["Build _stream from available fields only<br>(still creates a new stream)"]
   L -- No  --> N["Use empty stream {}"]
 ```
+
 For example, if logs from Kubernetes containers have the following fields:
 
 ```json

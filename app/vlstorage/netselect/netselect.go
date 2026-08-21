@@ -348,7 +348,7 @@ func (sn *storageNode) getResponseBodyForPathAndArgs(ctx context.Context, path s
 	resp, err := sn.c.Do(req)
 	if err != nil {
 		// the errUnavailableBackend is used by isUnavailableBackendError() function in order to differentiate
-		// unavailable backend errors from configuration errors at vlstorage, wich return non-200 status code.
+		// unavailable backend errors from configuration errors at vlstorage, which return non-200 status code.
 		return nil, "", &errUnavailableBackend{
 			err: fmt.Errorf("cannot connect to storage node at %q: %w", reqURL, err),
 		}
