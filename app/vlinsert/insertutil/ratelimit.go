@@ -2,7 +2,6 @@ package insertutil
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
@@ -114,42 +113,30 @@ func (rl *rateLimiter) register(n int64) {
 	}
 }
 
-type ingestRateLimiters struct {
-	logs  *rateLimiter
-	bytes *rateLimiter
-}
-
-// ingestRateLimitersV holds the globally configured ingestion rate limiters.
+// logsRateLimiter and bytesRateLimiter limit the global data ingestion rate.
 //
-// It is initialized by InitRateLimiters() after the command-line flags are parsed.
-// Until then it holds limiters with the disabled rate limiting.
-var ingestRateLimitersV atomic.Pointer[ingestRateLimiters]
+// They are nil if the corresponding limits are disabled.
+// They are set by InitRateLimiters() before the data ingestion starts.
+var (
+	logsRateLimiter  *rateLimiter
+	bytesRateLimiter *rateLimiter
+)
 
-func init() {
-	ingestRateLimitersV.Store(&ingestRateLimiters{})
-}
-
-// InitRateLimiters initializes the global ingestion rate limiters
+// InitRateLimiters initializes the global data ingestion rate limiters
 // according to -insert.maxLogsPerSecond and -insert.maxBytesPerSecond command-line flags.
 //
-// It must be called after the command-line flags are parsed.
+// This function must be called after the command-line flags are parsed
+// and before using RegisterIngestedData and IsIngestRateLimitExceeded from this package.
 func InitRateLimiters() {
-	rls := &ingestRateLimiters{
-		logs:  newRateLimiter(*maxLogsPerSecond, rateLimitReachedLogs),
-		bytes: newRateLimiter(maxBytesPerSecond.N, rateLimitReachedBytes),
+	logsRateLimiter = newRateLimiter(*maxLogsPerSecond, rateLimitReachedLogs)
+	if logsRateLimiter != nil {
+		logger.Infof("applying %d log entries per second data ingestion rate limit according to -insert.maxLogsPerSecond", *maxLogsPerSecond)
 	}
-	ingestRateLimitersV.Store(rls)
 
-	if rls.logs != nil {
-		logger.Infof("limiting the data ingestion rate by %d log entries per second according to -insert.maxLogsPerSecond", *maxLogsPerSecond)
+	bytesRateLimiter = newRateLimiter(maxBytesPerSecond.N, rateLimitReachedBytes)
+	if bytesRateLimiter != nil {
+		logger.Infof("applying %d bytes per second data ingestion rate limit according to -insert.maxBytesPerSecond", maxBytesPerSecond.N)
 	}
-	if rls.bytes != nil {
-		logger.Infof("limiting the data ingestion rate by %d bytes per second according to -insert.maxBytesPerSecond", maxBytesPerSecond.N)
-	}
-}
-
-func getIngestRateLimiters() *ingestRateLimiters {
-	return ingestRateLimitersV.Load()
 }
 
 var (
@@ -167,9 +154,8 @@ var (
 //
 // See also IsIngestRateLimitExceeded.
 func RegisterIngestedData(rows, bytes int) {
-	rls := getIngestRateLimiters()
-	rls.logs.register(int64(rows))
-	rls.bytes.register(int64(bytes))
+	logsRateLimiter.register(int64(rows))
+	bytesRateLimiter.register(int64(bytes))
 }
 
 // IsIngestRateLimitExceeded returns true if the limits set via -insert.maxLogsPerSecond
@@ -180,6 +166,5 @@ func RegisterIngestedData(rows, bytes int) {
 //
 // It always returns false if both limits are disabled.
 func IsIngestRateLimitExceeded() bool {
-	rls := getIngestRateLimiters()
-	return !rls.logs.hasBudget() || !rls.bytes.hasBudget()
+	return !logsRateLimiter.hasBudget() || !bytesRateLimiter.hasBudget()
 }
