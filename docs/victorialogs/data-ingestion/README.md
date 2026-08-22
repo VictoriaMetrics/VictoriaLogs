@@ -359,7 +359,14 @@ Data ingestion protocols, which do not run on top of HTTP, such as [syslog](http
 are throttled instead of being rejected, since these protocols have no way to report the rate limit back to the client.
 
 The `vl_insert_rate_limit_reached_total` metric is incremented every time the ingestion is limited. It can be used for alerting
-on the ingestion rate limits being hit.
+on the ingestion rate limits being hit. The configured limits are exposed via the `vl_insert_rate_limit` metric.
+
+The `-insert.maxBytesPerSecond` limit is applied to the estimated JSON size of the ingested log entries - the same value
+which is exposed via the `vl_bytes_ingested_total` metric. It isn't applied to the size of the received HTTP request bodies,
+since these may be compressed and may use various data ingestion formats.
+
+The limits are applied when the ingested log entries are flushed to the storage in batches, so the actual ingestion rate
+may exceed the configured limits by up to a single batch. The limits are respected on average.
 
 ## Decolorizing
 
