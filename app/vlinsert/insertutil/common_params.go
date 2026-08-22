@@ -221,6 +221,14 @@ type logMessageProcessor struct {
 
 	unflushedRows  int
 	unflushedBytes int
+
+	// acceptedRows and acceptedBytes contain the number of log entries and their estimated size,
+	// which have been accepted for storing since the last flush.
+	//
+	// They do not include the log entries dropped because of -insert.maxFieldsPerLine,
+	// so invalid input cannot consume the data ingestion rate limits.
+	acceptedRows  int
+	acceptedBytes int
 }
 
 func (lmp *logMessageProcessor) initPeriodicFlush() {
@@ -265,6 +273,9 @@ func (lmp *logMessageProcessor) AddRow(timestamp int64, fields []logstorage.Fiel
 		return
 	}
 
+	lmp.acceptedRows++
+	lmp.acceptedBytes += n
+
 	lmp.lr.MustAdd(lmp.cp.TenantID, timestamp, fields, streamFieldsLen)
 
 	if lmp.cp.Debug {
@@ -301,6 +312,9 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 		return
 	}
 
+	lmp.acceptedRows++
+	lmp.acceptedBytes += n
+
 	lmp.lr.MustAddInsertRow(r)
 
 	if lmp.cp.Debug {
@@ -319,7 +333,7 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 func (lmp *logMessageProcessor) flushLocked() {
 	// Throttle the ingestion if the limits set via -insert.maxLogsPerSecond or -insert.maxBytesPerSecond are exceeded.
 	// This is the common path for all the data ingestion protocols, so the limits are global.
-	RegisterIngestedData(lmp.unflushedRows, lmp.unflushedBytes)
+	RegisterIngestedData(lmp.acceptedRows, lmp.acceptedBytes)
 
 	start := time.Now()
 	lmp.lastFlushTime = start
@@ -332,6 +346,8 @@ func (lmp *logMessageProcessor) flushLocked() {
 
 	lmp.unflushedRows = 0
 	lmp.unflushedBytes = 0
+	lmp.acceptedRows = 0
+	lmp.acceptedBytes = 0
 }
 
 // MustClose flushes the remaining data to the underlying storage and closes lmp.
