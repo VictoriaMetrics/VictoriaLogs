@@ -189,6 +189,18 @@ func RegisterIngestedData(rows, bytes int) {
 	bytesRateLimiter.register(int64(bytes))
 }
 
+// retryAfterHeaderValue returns the value for the Retry-After response header for the given wait duration.
+//
+// The duration is rounded up to the next whole second, so the client doesn't retry the request
+// before the rate limiter budget is replenished.
+func retryAfterHeaderValue(d time.Duration) string {
+	seconds := (d + time.Second - 1) / time.Second
+	if seconds < 1 {
+		seconds = 1
+	}
+	return strconv.Itoa(int(seconds))
+}
+
 // RejectOnIngestRateLimit responds with the 429 status code and returns true
 // if the limits set via -insert.maxLogsPerSecond or -insert.maxBytesPerSecond are already exceeded.
 //
@@ -198,18 +210,18 @@ func RegisterIngestedData(rows, bytes int) {
 //
 // It doesn't block and always returns false if both limits are disabled.
 func RejectOnIngestRateLimit(w http.ResponseWriter, r *http.Request) bool {
-	if logsRateLimiter.hasBudget() && bytesRateLimiter.hasBudget() {
+	// Check both the limiters instead of short-circuiting on the first one,
+	// so every exhausted limiter updates its vl_insert_rate_limit_reached_total counter.
+	hasLogsBudget := logsRateLimiter.hasBudget()
+	hasBytesBudget := bytesRateLimiter.hasBudget()
+	if hasLogsBudget && hasBytesBudget {
 		return false
 	}
 
 	d := max(logsRateLimiter.retryAfter(), bytesRateLimiter.retryAfter())
-	retryAfterSeconds := int(d.Round(time.Second) / time.Second)
-	if retryAfterSeconds < 1 {
-		retryAfterSeconds = 1
-	}
 
 	// The Retry-After header must be set before writing the response status code.
-	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
+	w.Header().Set("Retry-After", retryAfterHeaderValue(d))
 	err := &httpserver.ErrorWithStatusCode{
 		Err: errors.New("cannot ingest data, since the ingestion rate limit set via -insert.maxLogsPerSecond and/or -insert.maxBytesPerSecond is exceeded; " +
 			"retry the request later; see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting"),

@@ -104,6 +104,28 @@ func TestRateLimiter_RegisterBlocksOnExceededLimit(t *testing.T) {
 	}
 }
 
+func TestRetryAfterHeaderValue(t *testing.T) {
+	f := func(d time.Duration, resultExpected string) {
+		t.Helper()
+
+		result := retryAfterHeaderValue(d)
+		if result != resultExpected {
+			t.Fatalf("unexpected retryAfterHeaderValue(%s); got %q; want %q", d, result, resultExpected)
+		}
+	}
+
+	// the header must always ask to retry after at least a second
+	f(0, "1")
+	f(time.Millisecond, "1")
+	f(time.Second, "1")
+
+	// the duration must be rounded up, so the client doesn't retry too early
+	f(1200*time.Millisecond, "2")
+	f(1999*time.Millisecond, "2")
+	f(2*time.Second, "2")
+	f(2001*time.Millisecond, "3")
+}
+
 func TestRateLimiter_RetryAfter(t *testing.T) {
 	f := func(perSecondLimit, budget int64, resultExpected time.Duration) {
 		t.Helper()
