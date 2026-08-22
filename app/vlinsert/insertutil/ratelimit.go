@@ -1,21 +1,12 @@
 package insertutil
 
 import (
-	"flag"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/metrics"
-)
-
-var (
-	maxLogsPerSecond = flag.Int64("insert.maxLogsPerSecond", 0, "The maximum number of log entries, which can be ingested per second across all the data ingestion protocols; "+
-		"see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting ; by default there is no limit on the number of ingested log entries per second")
-	maxBytesPerSecond = flagutil.NewBytes("insert.maxBytesPerSecond", 0, "The maximum number of bytes, which can be ingested per second across all the data ingestion protocols; "+
-		"see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting ; by default there is no limit on the number of ingested bytes per second")
 )
 
 // rateLimiter limits the per-second rate of the registered resources.
