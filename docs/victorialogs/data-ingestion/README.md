@@ -335,6 +335,32 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 
 See also [HTTP Query string parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters).
 
+## Rate limiting
+
+Single-node VictoriaLogs and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) can limit the rate of the ingested data
+via the following command-line flags:
+
+- `-insert.maxLogsPerSecond` - the maximum number of log entries, which can be ingested per second.
+- `-insert.maxBytesPerSecond` - the maximum number of bytes, which can be ingested per second.
+
+For example, the following command limits the ingestion rate by 10K log entries per second and by 5MB per second:
+
+```sh
+./victoria-logs -insert.maxLogsPerSecond=10000 -insert.maxBytesPerSecond=5MB
+```
+
+Both limits are disabled by default, so there is no ingestion rate limiting and no associated overhead out of the box.
+The limits are global - they are shared by all the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+The limits work independently of each other - the ingestion is limited when any of the configured limits is exceeded.
+
+Data ingestion requests sent over HTTP are rejected with the `429 Too Many Requests` status code and the `Retry-After` response header
+while the configured limits are exceeded. Well-behaved log collectors retry such requests later, so the logs aren't lost.
+Data ingestion protocols, which do not run on top of HTTP, such as [syslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/),
+are throttled instead of being rejected, since these protocols have no way to report the rate limit back to the client.
+
+The `vl_insert_rate_limit_reached_total` metric is incremented every time the ingestion is limited. It can be used for alerting
+on the ingestion rate limits being hit.
+
 ## Decolorizing
 
 If the ingested logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code), then it is recommended dropping these color codes before

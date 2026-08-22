@@ -88,6 +88,22 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod`. `too_big_timestamp` counts entries newer than `-futureRetention`.
 
+### vl_insert_rate_limit_reached_total
+**Type:** Counter
+
+**Labels:**
+- `type`: `logs`, `bytes`
+
+**Description:** Number of times the data ingestion rate limit set via `-insert.maxLogsPerSecond` or `-insert.maxBytesPerSecond` has been reached. It is incremented both when an HTTP data ingestion request is rejected with the `429 Too Many Requests` status code and when the ingestion is throttled. Non-zero values mean that the configured limits are too low for the actual data ingestion rate.
+
+### vl_insert_rate_limit
+**Type:** Gauge
+
+**Labels:**
+- `type`: `logs`, `bytes`
+
+**Description:** The data ingestion rate limits configured via `-insert.maxLogsPerSecond` and `-insert.maxBytesPerSecond`. Zero means that the corresponding limit is disabled. Use together with `vl_insert_rate_limit_reached_total` for alerting on the ingestion hitting the configured limits.
+
 ### vl_insert_flush_duration_seconds
 **Type:** Summary
 

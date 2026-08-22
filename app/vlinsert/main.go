@@ -1,6 +1,7 @@
 package vlinsert
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/datadog"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/elasticsearch"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/internalinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/journald"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/jsonline"
@@ -28,6 +30,7 @@ var (
 
 // Init initializes vlinsert
 func Init() {
+	insertutil.InitRateLimiters()
 	syslog.MustInit()
 	journald.MustInit()
 	splunk.MustInit()
@@ -47,6 +50,9 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 			httpserver.Errorf(w, r, "requests to /insert/* are disabled with -insert.disable command-line flag")
 			return true
 		}
+		if path != "/insert/ready" && rejectOnIngestRateLimit(w, r) {
+			return true
+		}
 
 		return insertHandler(w, r, path)
 	}
@@ -54,6 +60,9 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	if path == "/internal/insert" {
 		if *disableInternalInsert || *disableInsert {
 			httpserver.Errorf(w, r, "requests to /internal/insert are disabled with -internalinsert.disable or -insert.disable command-line flag")
+			return true
+		}
+		if rejectOnIngestRateLimit(w, r) {
 			return true
 		}
 		internalinsert.RequestHandler(w, r)
@@ -66,16 +75,43 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 			httpserver.Errorf(w, r, "requests to /api/v2/logs and /api/v1/validate are disabled with -insert.disable command-line flag")
 			return true
 		}
+		if rejectOnIngestRateLimit(w, r) {
+			return true
+		}
 		return datadog.RequestHandler(path, w, r)
 	case strings.HasPrefix(path, "/services/collector/"):
 		if *disableInsert {
 			httpserver.Errorf(w, r, "requests to /services/collector/* are disabled with -insert.disable command-line flag")
 			return true
 		}
+		if rejectOnIngestRateLimit(w, r) {
+			return true
+		}
 		return splunk.RequestHandler(path, w, r)
 	}
 
 	return false
+}
+
+// rejectOnIngestRateLimit responds with HTTP 429 and returns true
+// if the limits set via -insert.maxLogsPerSecond or -insert.maxBytesPerSecond are exceeded.
+//
+// Data ingestion protocols, which do not run on top of HTTP, are throttled instead of being rejected.
+// See insertutil.RegisterIngestedData.
+func rejectOnIngestRateLimit(w http.ResponseWriter, r *http.Request) bool {
+	if !insertutil.IsIngestRateLimitExceeded() {
+		return false
+	}
+
+	// Retry-After must be set before writing the response status code.
+	w.Header().Set("Retry-After", "1")
+	err := &httpserver.ErrorWithStatusCode{
+		Err: errors.New("cannot ingest data, since the ingestion rate limit set via -insert.maxLogsPerSecond and/or -insert.maxBytesPerSecond is exceeded; " +
+			"retry the request later; see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting"),
+		StatusCode: http.StatusTooManyRequests,
+	}
+	httpserver.Errorf(w, r, "%s", err)
+	return true
 }
 
 func insertHandler(w http.ResponseWriter, r *http.Request, path string) bool {
