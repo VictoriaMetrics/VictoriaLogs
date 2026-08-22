@@ -1,9 +1,13 @@
 package insertutil
 
 import (
+	"errors"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/metrics"
 )
@@ -79,6 +83,33 @@ func (rl *rateLimiter) hasBudget() bool {
 	}
 	rl.limitReached.Inc()
 	return false
+}
+
+// retryAfter returns the duration to wait until rl.budget becomes positive.
+//
+// It returns zero duration if resources may be registered at rl right now.
+func (rl *rateLimiter) retryAfter() time.Duration {
+	if rl == nil {
+		return 0
+	}
+
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	rl.replenishLocked(now)
+	if rl.budget > 0 {
+		return 0
+	}
+
+	// The budget is replenished by perSecondLimit at rl.deadline and every second after that,
+	// so calculate the number of replenishments needed for paying off the accumulated debt.
+	replenishments := 1 + -rl.budget/rl.perSecondLimit
+	d := rl.deadline.Sub(now) + time.Duration(replenishments-1)*time.Second
+	if d < time.Second {
+		d = time.Second
+	}
+	return d
 }
 
 // register registers n resources at rl.
@@ -158,13 +189,32 @@ func RegisterIngestedData(rows, bytes int) {
 	bytesRateLimiter.register(int64(bytes))
 }
 
-// IsIngestRateLimitExceeded returns true if the limits set via -insert.maxLogsPerSecond
-// or -insert.maxBytesPerSecond are already exceeded at the moment.
+// RejectOnIngestRateLimit responds with the 429 status code and returns true
+// if the limits set via -insert.maxLogsPerSecond or -insert.maxBytesPerSecond are already exceeded.
 //
-// It doesn't block. It is intended for rejecting new data ingestion requests early
-// instead of throttling them, e.g. for returning HTTP 429 to HTTP-based data ingestion protocols.
+// It must be called by HTTP-based data ingestion protocols before processing the ingested data.
+// Data ingestion protocols, which do not run on top of HTTP, are throttled at RegisterIngestedData instead,
+// since they have no way to report the rate limit back to the client.
 //
-// It always returns false if both limits are disabled.
-func IsIngestRateLimitExceeded() bool {
-	return !logsRateLimiter.hasBudget() || !bytesRateLimiter.hasBudget()
+// It doesn't block and always returns false if both limits are disabled.
+func RejectOnIngestRateLimit(w http.ResponseWriter, r *http.Request) bool {
+	if logsRateLimiter.hasBudget() && bytesRateLimiter.hasBudget() {
+		return false
+	}
+
+	d := max(logsRateLimiter.retryAfter(), bytesRateLimiter.retryAfter())
+	retryAfterSeconds := int(d.Round(time.Second) / time.Second)
+	if retryAfterSeconds < 1 {
+		retryAfterSeconds = 1
+	}
+
+	// The Retry-After header must be set before writing the response status code.
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
+	err := &httpserver.ErrorWithStatusCode{
+		Err: errors.New("cannot ingest data, since the ingestion rate limit set via -insert.maxLogsPerSecond and/or -insert.maxBytesPerSecond is exceeded; " +
+			"retry the request later; see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting"),
+		StatusCode: http.StatusTooManyRequests,
+	}
+	httpserver.Errorf(w, r, "%s", err)
+	return true
 }

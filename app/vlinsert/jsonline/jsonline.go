@@ -38,6 +38,10 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
 	if err != nil {
 		logger.Errorf("cannot start reading jsonline request: %s", err)

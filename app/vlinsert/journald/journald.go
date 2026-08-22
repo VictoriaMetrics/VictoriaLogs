@@ -128,6 +128,11 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		errorsTotal.Inc()
+		return
+	}
+
 	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
 	if err != nil {
 		errorsTotal.Inc()

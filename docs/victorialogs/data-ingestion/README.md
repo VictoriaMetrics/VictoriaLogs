@@ -354,7 +354,8 @@ The limits are global - they are shared by all the [supported data ingestion pro
 The limits work independently of each other - the ingestion is limited when any of the configured limits is exceeded.
 
 Data ingestion requests sent over HTTP are rejected with the `429 Too Many Requests` status code and the `Retry-After` response header
-while the configured limits are exceeded. Well-behaved log collectors retry such requests later, so the logs aren't lost.
+with the number of seconds needed for the ingestion to be allowed again, while the configured limits are exceeded.
+Health, readiness and validation endpoints aren't affected by the limits. Well-behaved log collectors retry such requests later, so the logs aren't lost.
 Data ingestion protocols, which do not run on top of HTTP, such as [syslog](https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/),
 are throttled instead of being rejected, since these protocols have no way to report the rate limit back to the client.
 

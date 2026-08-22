@@ -27,6 +27,10 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	encoding := r.Header.Get("Content-Encoding")
 	if encoding == "" {
 		// Loki protocol uses snappy compression by default.

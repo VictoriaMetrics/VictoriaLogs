@@ -41,6 +41,10 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	if cp.TenantID.AccountID != 0 || cp.TenantID.ProjectID != 0 {
 		unsupportedOptionsLogger.Warnf("/insert/multitenant/native endpoint doesn't support setting tenantID via AccountID and ProjectID request headers; "+
 			"ignoring it; tenantID=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.TenantID)

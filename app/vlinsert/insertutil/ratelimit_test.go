@@ -86,22 +86,58 @@ func TestRateLimiter_HasBudgetUpdatesLimitReached(t *testing.T) {
 func TestRateLimiter_RegisterBlocksOnExceededLimit(t *testing.T) {
 	rl := newRateLimiter(10, metrics.GetOrCreateCounter(`test_rate_limit_reached_total{case="blocks"}`))
 
-	// Exhaust the budget for the current second.
+	// Exhaust the budget and set the deadline explicitly, so the test doesn't depend on the wall clock.
 	rl.register(10)
+	rl.mu.Lock()
+	rl.deadline = time.Now().Add(200 * time.Millisecond)
+	rl.mu.Unlock()
 
-	// The next register() must block until the budget is replenished.
+	// The next register() must block until the budget is replenished at the deadline.
 	startTime := time.Now()
 	rl.register(1)
-	d := time.Since(startTime)
-	if d < 500*time.Millisecond {
-		t.Fatalf("unexpected register() duration; got %s; want at least 500ms", d)
-	}
-	if d > 3*time.Second {
-		t.Fatalf("unexpected register() duration; got %s; want less than 3s", d)
+	if d := time.Since(startTime); d < 200*time.Millisecond {
+		t.Fatalf("unexpected register() duration; got %s; want at least 200ms", d)
 	}
 
 	if !rl.hasBudget() {
 		t.Fatalf("unexpected hasBudget() result after the budget replenishment; got false; want true")
+	}
+}
+
+func TestRateLimiter_RetryAfter(t *testing.T) {
+	f := func(perSecondLimit, budget int64, resultExpected time.Duration) {
+		t.Helper()
+
+		rl := newRateLimiter(perSecondLimit, metrics.GetOrCreateCounter(`test_rate_limit_reached_total{case="retry_after"}`))
+
+		// Set the budget and the deadline explicitly, so the test doesn't depend on the wall clock.
+		rl.mu.Lock()
+		rl.budget = budget
+		rl.deadline = time.Now().Add(time.Second)
+		rl.mu.Unlock()
+
+		result := rl.retryAfter().Round(time.Second)
+		if result != resultExpected {
+			t.Fatalf("unexpected retryAfter() result; got %s; want %s", result, resultExpected)
+		}
+	}
+
+	// the limit isn't reached, so there is nothing to wait for
+	f(10, 5, 0)
+
+	// the budget is exhausted, so a single replenishment is enough
+	f(10, 0, time.Second)
+
+	// the debt must be paid off by multiple replenishments
+	f(10, -10, 2*time.Second)
+	f(10, -15, 2*time.Second)
+	f(10, -25, 3*time.Second)
+	f(10, -30, 4*time.Second)
+
+	// the disabled rate limiter never asks to retry later
+	rl := newRateLimiter(0, metrics.GetOrCreateCounter(`test_rate_limit_reached_total{case="retry_after_disabled"}`))
+	if d := rl.retryAfter(); d != 0 {
+		t.Fatalf("unexpected retryAfter() result for the disabled rate limiter; got %s; want 0s", d)
 	}
 }
 

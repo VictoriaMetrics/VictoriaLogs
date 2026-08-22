@@ -47,6 +47,10 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	if cp.IsTimeFieldSet {
 		unsupportedOptionsLogger.Warnf("/insert/native endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; "+
 			"ignoring them; timeFields=%q; see https://docs.victoriametrics.com/victorialogs/vlagent/#multitenancy", cp.TimeFields)

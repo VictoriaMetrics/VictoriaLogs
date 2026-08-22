@@ -143,6 +143,10 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	encoding := r.Header.Get("Content-Encoding")
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, splunkMaxRequestSize, func(data []byte) error {
 		lmp := cp.NewLogMessageProcessor("splunk", true)

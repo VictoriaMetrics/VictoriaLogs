@@ -37,6 +37,10 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
+	if insertutil.RejectOnIngestRateLimit(w, r) {
+		return
+	}
+
 	encoding := r.Header.Get("Content-Encoding")
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.cp.NewLogMessageProcessor("loki_json", false)
