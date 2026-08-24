@@ -37,8 +37,9 @@ func Init() {
 
 // Stop stops vlinsert
 func Stop() {
-	// Unblock the pending data ingestion rate limiters before stopping the protocol handlers,
-	// since these handlers may wait for the rate limiter budget replenishment.
+	// Unblock the pending data ingestion rate limiters first,
+	// so the in-flight HTTP handlers and the syslog workers can proceed with shutdown
+	// instead of waiting for the rate limiter budget replenishment.
 	insertutil.StopRateLimiters()
 
 	syslog.MustStop()
