@@ -1,9 +1,9 @@
 module github.com/VictoriaMetrics/VictoriaLogs
 
-go 1.26.5
+go 1.26.6
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1
+	github.com/VictoriaMetrics/VictoriaMetrics v1.149.1-0.20260811205936-d4a40004ef28
 	github.com/VictoriaMetrics/easyproto v1.2.0
 	github.com/VictoriaMetrics/metrics v1.44.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0

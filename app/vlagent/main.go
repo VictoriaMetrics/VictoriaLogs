@@ -111,4 +111,5 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 // initSecretFlags manage the default secret flags for vlagent application.
 func initSecretFlags() {
 	remotewrite.InitSecretFlags()
+	pushmetrics.InitSecretFlags()
 }

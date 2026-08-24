@@ -11,12 +11,24 @@
     width: 100%;
     max-height: calc(($vh * 100) - 70px);
     overflow: auto;
+    padding-bottom: calc($padding-global * 5);
   }
 
   &_mobile &-left {
     border-right: none;
     border-bottom: $border-divider;
     padding-bottom: $padding-global;
+
+    &__controls {
+      position: fixed;
+      right: 0;
+      left: 0;
+      bottom: 0;
+      padding: $padding-global;
+      justify-content: flex-end;
+      border-top: $border-divider;
+      background-color: $color-background-body;
+    }
   }
 
   &-left {

@@ -1,6 +1,7 @@
 ---
 weight: 20
 title: Vector Setup
+description: "Configure Vector to send logs to VictoriaLogs via Elasticsearch or HTTP JSON."
 disableToc: true
 menu:
   docs:

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,6 +68,10 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	//
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
 	if err := parseRequest(r); err != nil {
+		if ctx.Err() != nil {
+			// Do not report parse errors for canceled requests, since they are expected and legal.
+			return
+		}
 		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
 		return
 	}
@@ -97,9 +102,20 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 func parseRequest(r *http.Request) error {
 	maxMemory := int64(0.1 * float64(memory.Allowed()))
 	ct := r.Header.Get("Content-Type")
+
+	// ParseMultipartForm allows configuring the memory limit,
+	// while ParseForm limits URL-encoded bodies to 10MB.
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
+		}
+
+		// ParseMultipartForm may not read the body to EOF if data after the multipart boundary,
+		// such as the terminator for "Transfer-Encoding: chunked", arrives late.
+		// Reading the body to EOF allows net/http to detect when the client disconnects.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1672#issuecomment-5247918811
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			return fmt.Errorf("cannot read multipart-encoded request body: %w", err)
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {

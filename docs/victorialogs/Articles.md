@@ -1,6 +1,7 @@
 ---
 weight: 70
 title: Articles
+description: "Articles and additional resources about VictoriaLogs and its use cases."
 menu:
   docs:
     parent: 'victorialogs'
@@ -67,6 +68,7 @@ AI and Automation:
 Comparisons and Technical Explanations:
 
 * [Why VictoriaLogs is a better alternative to Grafana Loki?](https://itnext.io/why-victorialogs-is-a-better-alternative-to-grafana-loki-7e941567c4d5)
+* [Benchmarking Kubernetes Log Collectors: vlagent, Vector, Fluent Bit, OpenTelemetry Collector, and more](https://victoriametrics.com/blog/log-collectors-benchmark-2026/)
 * [How do open source solutions for logs work](https://itnext.io/how-do-open-source-solutions-for-logs-work-elasticsearch-loki-and-victorialogs-9f7097ecbc2f)
 * [VictoriaLogs Basics: What You Need to Know, with Examples & Visuals](https://victoriametrics.com/blog/victorialogs-architecture-basics/)
 * [VictoriaLogs Practical Ingestion Guide for Message, Time and Streams](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/)

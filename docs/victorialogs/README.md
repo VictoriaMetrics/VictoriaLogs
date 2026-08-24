@@ -376,7 +376,7 @@ because of [GDPR compliance](https://en.wikipedia.org/wiki/General_Data_Protecti
 VictoriaLogs enables HTTP API for deleting logs if `-delete.enable` command-line flag is passed to it.
 The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this case:
 
-- `/delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
+- `POST /delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
   The `<logsql_filter>` may contain arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
   For example, request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
   `{app="nginx"}` [log stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
@@ -384,7 +384,7 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
   otherwise `curl` may strip the curly braces and the filter will fail to parse. For example, `{app=nginx}` becomes `%7Bapp%3Dnginx%7D`, so the full request is:
 
   ```bash
-  curl 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D'
+  curl -X POST 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D'
   ```
 
   This endpoint returns `{"task_id":"<id>"}` response, where `<id>` is an unique id of the deletion task, which can be used
@@ -603,6 +603,8 @@ is set to vmalert url. For example, the following command instructs proxying `ht
 
 This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
 at the `/select/vmalert/*` paths.
+
+> Currently, Grafana Alerting UI cannot display datasource-managed rules through the VictoriaLogs datasource plugin, even when `-vmalert.proxyURL` is configured. This is because Grafana currently supports datasource-managed rules only for the `Prometheus` and `Loki` datasource types. See [this issue](https://github.com/VictoriaMetrics/victoriametrics-datasource/issues/59#issuecomment-2694191642) for details.
 
 ## List of command-line flags
 

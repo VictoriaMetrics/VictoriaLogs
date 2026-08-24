@@ -1,6 +1,7 @@
 package netinsert
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
@@ -38,12 +38,18 @@ type Storage struct {
 
 	disableCompression bool
 
+	drainTimeout time.Duration
+
 	srt *streamRowsTracker
 
 	pendingDataBuffers chan *bytesutil.ByteBuffer
 
 	stopCh chan struct{}
-	wg     sync.WaitGroup
+
+	sendCtx    context.Context
+	sendCancel context.CancelFunc
+
+	wg sync.WaitGroup
 }
 
 type storageNode struct {
@@ -216,7 +222,7 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 
 		t := timerpool.Get(time.Second)
 		select {
-		case <-sn.s.stopCh:
+		case <-sn.s.sendCtx.Done():
 			timerpool.Put(t)
 			logger.Errorf("dropping %d bytes of data, since there are no available storage nodes", pendingData.Len())
 			return
@@ -257,16 +263,13 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 }
 
 func (sn *storageNode) doRequest(path string, body io.Reader) error {
-	ctx, cancel := contextutil.NewStopChanContext(sn.s.stopCh)
-	defer cancel()
-
 	method := "GET"
 	if body != nil {
 		method = "POST"
 	}
 
 	reqURL := sn.getRequestURL(path)
-	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
+	req, err := http.NewRequestWithContext(sn.s.sendCtx, method, reqURL, body)
 	if err != nil {
 		return fmt.Errorf("cannot create http %s request for %s: %w", method, reqURL, err)
 	}
@@ -324,7 +327,7 @@ var zstdBufPool bytesutil.ByteBufferPool
 // If disableCompression is set, then the data is sent uncompressed to the remote storage.
 //
 // Call MustStop on the returned storage when it is no longer needed.
-func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool) *Storage {
+func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool, drainTimeout time.Duration) *Storage {
 	pendingDataBuffers := make(chan *bytesutil.ByteBuffer, concurrency*len(addrs))
 	for range cap(pendingDataBuffers) {
 		pendingDataBuffers <- &bytesutil.ByteBuffer{}
@@ -332,9 +335,11 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 
 	s := &Storage{
 		disableCompression: disableCompression,
+		drainTimeout:       drainTimeout,
 		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
 	}
+	s.sendCtx, s.sendCancel = context.WithCancel(context.Background())
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
@@ -362,8 +367,17 @@ func (s *Storage) getActiveStreams() int {
 
 // MustStop stops the s.
 func (s *Storage) MustStop() {
+	// Drain the buffered data to storage nodes on shutdown, bounded by drainTimeout so an
+	// unresponsive storage node cannot block MustStop.
+	t := time.AfterFunc(s.drainTimeout, func() {
+		logger.Warnf("cannot drain the buffered data to -storageNode nodes within -insert.drainTimeout=%s on graceful shutdown; "+
+			"the remaining buffered data is dropped; consider increasing -insert.drainTimeout", s.drainTimeout)
+		s.sendCancel()
+	})
 	close(s.stopCh)
 	s.wg.Wait()
+	t.Stop()
+	s.sendCancel()
 	s.sns = nil
 }
 

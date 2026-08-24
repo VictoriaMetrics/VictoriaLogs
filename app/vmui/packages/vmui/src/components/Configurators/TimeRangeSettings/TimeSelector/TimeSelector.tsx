@@ -7,7 +7,7 @@ import {
 import TimeDurationSelector from "../TimeDurationSelector/TimeDurationSelector";
 import { getAppModeEnable } from "../../../../utils/app-mode";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
-import { ArrowDownIcon, ClockIcon } from "../../../Main/Icons";
+import { ClockIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
 import Popper from "../../../Main/Popper/Popper";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
@@ -24,6 +24,10 @@ import { useQueryState } from "../../../../state/query/QueryStateContext";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
 import { RelativeTimeOption } from "../../../../types";
 import useEventListener from "../../../../hooks/useEventListener";
+import {
+  formatDateTimeInputValue,
+  parseDateTimeInputValue
+} from "../../../Main/DatePicker/DateTimeInput/utils";
 
 type Props = {
   onOpenSettings?: () => void;
@@ -38,8 +42,8 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const documentSize = useWindowSize();
   const displayFullDate = useMemo(() => documentSize.width > 1120, [documentSize]);
 
-  const [until, setUntil] = useState<string>();
-  const [from, setFrom] = useState<string>();
+  const [untilDraft, setUntilDraft] = useState("");
+  const [fromDraft, setFromDraft] = useState("");
 
   const {
     period: { end, start },
@@ -89,19 +93,20 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const setTimeAndClosePicker = () => {
-    if (from && until) {
-      const nextPeriod = { from: from, to: until };
-      setPeriod({ nextPeriod });
-    }
+    const from = parseDateTimeInputValue(fromDraft);
+    const until = parseDateTimeInputValue(untilDraft);
+    if (!from || !until) return;
+
+    setPeriod({ nextPeriod: { from, to: until } });
     handleCloseOptions();
   };
 
   const handleSetFrom = (start: bigint) => {
-    setFrom(nanosToIsoString(start));
+    setFromDraft(formatDateTimeInputValue(nanosToIsoString(start)));
   };
 
   const handleSetUntil = (end: bigint) => {
-    setUntil(nanosToIsoString(end));
+    setUntilDraft(formatDateTimeInputValue(nanosToIsoString(end)));
   };
 
   const handleOpenSettings = () => {
@@ -135,32 +140,18 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
 
   return <>
     <div ref={buttonRef}>
-      {isMobile ? (
-        <div
-          className="vm-mobile-option"
+      <Tooltip title={displayFullDate ? "Time range controls" : dateTitle}>
+        <Button
+          className={appModeEnable ? "" : "vm-header-button"}
+          variant="contained"
+          color="primary"
+          startIcon={<ClockIcon/>}
           onClick={toggleOpenOptions}
+          aria-label="time range controls"
         >
-          <span className="vm-mobile-option__icon"><ClockIcon/></span>
-          <div className="vm-mobile-option-text">
-            <span className="vm-mobile-option-text__label">Time range</span>
-            <span className="vm-mobile-option-text__value">{dateTitle}</span>
-          </div>
-          <span className="vm-mobile-option__arrow"><ArrowDownIcon/></span>
-        </div>
-      ) : (
-        <Tooltip title={displayFullDate ? "Time range controls" : dateTitle}>
-          <Button
-            className={appModeEnable ? "" : "vm-header-button"}
-            variant="contained"
-            color="primary"
-            startIcon={<ClockIcon/>}
-            onClick={toggleOpenOptions}
-            aria-label="time range controls"
-          >
-            {displayFullDate && <span>{dateTitle}</span>}
-          </Button>
-        </Tooltip>
-      )}
+          {displayFullDate && <span>{dateTitle}</span>}
+        </Button>
+      </Tooltip>
     </div>
     <Popper
       open={openOptions}
@@ -198,19 +189,19 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
             })}
           >
             <DateTimeInput
-              value={from}
+              value={fromDraft}
               label="From:"
               pickerLabel="Date From"
               pickerRef={fromPickerRef}
-              onChange={setFrom}
+              onChange={setFromDraft}
               onEnter={setTimeAndClosePicker}
             />
             <DateTimeInput
-              value={until}
+              value={untilDraft}
               label="To:"
               pickerLabel="Date To"
               pickerRef={untilPickerRef}
-              onChange={setUntil}
+              onChange={setUntilDraft}
               onEnter={setTimeAndClosePicker}
             />
           </div>
