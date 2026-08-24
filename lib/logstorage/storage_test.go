@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -11,10 +12,19 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
+func clean(t *testing.T, path string) {
+	t.Helper()
+
+	if err := os.RemoveAll(path); err != nil {
+		t.Fatalf("failed to delete test data %q: %v", path, err)
+	}
+}
+
 func TestStorageLifecycle(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 
 	for range 3 {
 		cfg := &StorageConfig{}
@@ -28,6 +38,7 @@ func TestStorageMustAddRows(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 
 	cfg := &StorageConfig{}
 	s := MustOpenStorage(path, cfg)
@@ -115,6 +126,7 @@ func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 
 	cfg := &StorageConfig{
 		Retention:       365 * 24 * time.Hour,
@@ -176,6 +188,7 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 
 	cfg := &StorageConfig{
 		Retention: 365 * 24 * time.Hour,
@@ -235,6 +248,7 @@ func TestStorageDeleteTaskOps(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 	cfg := &StorageConfig{}
 	s := MustOpenStorage(path, cfg)
 
@@ -291,6 +305,7 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 	ctx := t.Context()
 
 	cfg := &StorageConfig{
@@ -408,6 +423,7 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 	ctx := t.Context()
 
 	cfg := &StorageConfig{
@@ -463,6 +479,7 @@ func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 	cfg := &StorageConfig{
 		Retention: 365 * 24 * time.Hour,
 	}
@@ -612,6 +629,7 @@ func TestStorageDropStalePartitions(t *testing.T) {
 	t.Parallel()
 
 	path := t.Name()
+	clean(t, path)
 
 	cfg := &StorageConfig{
 		Retention: 30 * 24 * time.Hour,

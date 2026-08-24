@@ -60,6 +60,7 @@ func testFilterMatchForTimestamps(t *testing.T, timestamps []int64, f filter, ex
 
 	// Create the test storage
 	storagePath := t.Name()
+	clean(t, storagePath)
 	cfg := &StorageConfig{
 		Retention: 100 * 365 * time.Duration(nsecsPerDay),
 	}

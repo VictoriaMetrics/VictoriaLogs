@@ -41,6 +41,7 @@ func testFilterMatchForStreamID(t *testing.T, f filter, expectedRowIdxs []int) {
 	t.Helper()
 
 	storagePath := t.Name()
+	clean(t, storagePath)
 
 	cfg := &StorageConfig{
 		Retention: 100 * 365 * time.Duration(nsecsPerDay),

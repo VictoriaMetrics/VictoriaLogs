@@ -82,6 +82,7 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 
 	// Create the test storage
 	storagePath := t.Name()
+	clean(t, storagePath)
 	cfg := &StorageConfig{
 		Retention: time.Duration(100 * 365 * nsecsPerDay),
 	}
