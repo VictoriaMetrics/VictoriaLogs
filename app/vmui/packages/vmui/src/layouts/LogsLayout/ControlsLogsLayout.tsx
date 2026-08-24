@@ -9,6 +9,7 @@ import ShortcutKeys from "../../components/Main/ShortcutKeys/ShortcutKeys";
 import { getAppModeEnable } from "../../utils/app-mode";
 import Button from "../../components/Main/Button/Button";
 import { KeyboardIcon } from "../../components/Main/Icons";
+import TimeZonePreview from "../../components/Configurators/GlobalSettings/TimeZonePreview/TimeZonePreview";
 
 const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
   const appModeEnable = getAppModeEnable();
@@ -24,6 +25,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
 
       {headerSetup?.tenant && <Tenants/>}
       {headerSetup?.timeSelector && <TimeSelector onOpenSettings={settingsRef?.current?.open}/>}
+      <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>
       {headerSetup?.executionControls &&  <ExecutionControls/>}
       <GlobalSettings ref={settingsRef}/>
       {!isMobile && (
