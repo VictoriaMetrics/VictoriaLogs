@@ -35,9 +35,7 @@ func Init() {
 	splunk.MustInit()
 }
 
-// StopRateLimiters unblocks the data ingestion, which waits for the rate limiter budget replenishment.
-//
-// It must be called before stopping the http server.
+// StopRateLimiters unblocks the data ingestion, which waits for the rate limiter budget replenishment. It must be called before stopping the http server.
 func StopRateLimiters() {
 	insertutil.StopRateLimiters()
 }

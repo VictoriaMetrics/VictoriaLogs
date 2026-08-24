@@ -317,7 +317,6 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 
 // flushLocked must be called under locked lmp.mu.
 func (lmp *logMessageProcessor) flushLocked() {
-	// This is the common path for all the data ingestion protocols, so the rate limits are global.
 	if lmp.unflushedRows > 0 {
 		logsRateLimiter.Register(lmp.unflushedRows)
 		bytesRateLimiter.Register(lmp.unflushedBytes)

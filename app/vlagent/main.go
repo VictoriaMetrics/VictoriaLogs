@@ -67,7 +67,6 @@ func main() {
 	logger.Infof("received signal %s", sig)
 	pushmetrics.Stop()
 
-	// Unblock the throttled in-flight requests, so httpserver.Stop() can complete.
 	vlinsert.StopRateLimiters()
 
 	startTime = time.Now()
