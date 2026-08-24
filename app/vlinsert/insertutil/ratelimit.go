@@ -21,11 +21,8 @@ var (
 	_ = metrics.NewGauge(`vl_insert_rate_limit{type="bytes"}`, func() float64 { return float64(maxBytesPerSecond.N) })
 )
 
-// InitRateLimiters initializes the data ingestion rate limiters
-// according to -insert.maxLogsPerSecond and -insert.maxBytesPerSecond command-line flags.
-//
-// It must be called after the command-line flags are parsed.
-// StopRateLimiters must be called when the data ingestion is stopped.
+// InitRateLimiters initializes the data ingestion rate limiters according to
+// -insert.maxLogsPerSecond and -insert.maxBytesPerSecond command-line flags.
 func InitRateLimiters() {
 	rateLimiterStopCh = make(chan struct{})
 

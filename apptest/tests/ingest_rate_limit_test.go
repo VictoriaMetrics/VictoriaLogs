@@ -24,11 +24,9 @@ func TestVlsingleIngestionRateLimit(t *testing.T) {
 
 		sut := tc.MustStartVlsingle("vlsingle", flags)
 
-		// The first data ingestion isn't throttled - it just puts the rate limiter budget into debt,
-		// since the budget is checked before it is decreased.
+		// The first data ingestion isn't throttled - it just puts the rate limiter budget into debt.
 		sut.JSONLineWrite(t, jsonLines(3), apptest.IngestOpts{})
 
-		// The next data ingestion must wait until the rate limiter budget is replenished.
 		startTime := time.Now()
 		sut.JSONLineWrite(t, jsonLines(1), apptest.IngestOpts{})
 		if d := time.Since(startTime); d < time.Second {

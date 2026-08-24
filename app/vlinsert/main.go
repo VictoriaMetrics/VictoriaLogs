@@ -37,8 +37,7 @@ func Init() {
 
 // StopRateLimiters unblocks the data ingestion, which waits for the rate limiter budget replenishment.
 //
-// It must be called before stopping the http server, so the throttled in-flight requests
-// do not delay the graceful shutdown. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/887
+// It must be called before stopping the http server.
 func StopRateLimiters() {
 	insertutil.StopRateLimiters()
 }

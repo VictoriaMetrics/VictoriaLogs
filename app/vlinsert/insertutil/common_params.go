@@ -317,10 +317,7 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 
 // flushLocked must be called under locked lmp.mu.
 func (lmp *logMessageProcessor) flushLocked() {
-	// Throttle the ingestion if the limits set via -insert.maxLogsPerSecond or -insert.maxBytesPerSecond are exceeded.
-	// This is the common path for all the data ingestion protocols, so the limits are global.
-	// Skip empty flushes, so periodic and close flushes with no buffered rows don't delay the shutdown
-	// and don't inflate vl_insert_rate_limit_reached_total when the budget is in debt.
+	// This is the common path for all the data ingestion protocols, so the rate limits are global.
 	if lmp.unflushedRows > 0 {
 		logsRateLimiter.Register(lmp.unflushedRows)
 		bytesRateLimiter.Register(lmp.unflushedBytes)
