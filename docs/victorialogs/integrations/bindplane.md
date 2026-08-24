@@ -1,5 +1,6 @@
 ---
 title: Bindplane
+description: "Configure Bindplane to collect and send logs to VictoriaLogs."
 weight: 3
 menu:
   docs:

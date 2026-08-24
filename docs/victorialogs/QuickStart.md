@@ -1,6 +1,7 @@
 ---
 weight: 1
 title: Quick Start
+description: "Get started with VictoriaLogs. Download, ingest logs, and query via the built-in Web UI."
 menu:
   docs:
     parent: victorialogs
