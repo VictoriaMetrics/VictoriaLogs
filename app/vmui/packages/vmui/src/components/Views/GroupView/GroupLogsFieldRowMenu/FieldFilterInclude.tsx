@@ -34,6 +34,7 @@ const FieldFilterInclude: FC<Props> = ({ field, value, isStreamField }) => {
         size="small"
         startIcon={<FilterIcon/>}
         onClick={handleClickFilter}
+        aria-label={isIncludeFilter ? "Remove include filter" : "Filter by this value"}
       />
     </Tooltip>
   );

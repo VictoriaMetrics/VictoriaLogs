@@ -27,8 +27,6 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, isStreamField, hideGroupBu
           {isStreamField ? <FieldStreamIcon/> : null}
         </Tooltip>
       </td>
-      <td className="vm-group-logs-row-fields-item__key">{field}</td>
-      <td className="vm-group-logs-row-fields-item__value">{value}</td>
       <td className="vm-group-logs-row-fields-item-controls">
         <FieldRowActions
           field={field}
@@ -37,6 +35,8 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, isStreamField, hideGroupBu
           hideGroupButton={hideGroupButton}
         />
       </td>
+      <td className="vm-group-logs-row-fields-item__key">{field}</td>
+      <td className="vm-group-logs-row-fields-item__value">{value}</td>
     </tr>
   );
 };

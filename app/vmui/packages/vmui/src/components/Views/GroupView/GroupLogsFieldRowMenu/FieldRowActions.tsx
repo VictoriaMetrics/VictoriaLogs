@@ -1,5 +1,4 @@
 import { FC, useRef } from "preact/compat";
-import FieldCopyButton from "./FieldCopyButton";
 import FieldMessageToggle from "./FieldMessageToggle";
 import FieldGroupingToggle from "./FieldGroupingToggle";
 import FieldFilterExclude from "./FieldFilterExclude";
@@ -33,12 +32,13 @@ const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButt
 
   return (
     <div className="vm-group-logs-row-fields-item-controls__wrapper">
-      <FieldCopyButton
+      <FieldFilterInclude
         field={field}
         value={value}
+        isStreamField={isStreamField}
       />
 
-      <FieldFilterInclude
+      <FieldFilterExclude
         field={field}
         value={value}
         isStreamField={isStreamField}
@@ -47,6 +47,7 @@ const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButt
       <div ref={buttonRef}>
         <Button
           startIcon={<MoreIcon/>}
+          color="gray"
           variant="text"
           size="small"
           onClick={handleClick}
@@ -61,12 +62,6 @@ const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButt
       >
         <div className="vm-legend-hits-menu">
           <div className="vm-legend-hits-menu-section">
-            <FieldFilterExclude
-              field={field}
-              value={value}
-              isStreamField={isStreamField}
-              onClose={handleCloseContextMenu}
-            />
             <FieldMessageToggle
               field={field}
               onClose={handleCloseContextMenu}

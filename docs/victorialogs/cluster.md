@@ -1,6 +1,7 @@
 ---
 weight: 3
 title: VictoriaLogs Cluster
+description: "Deploy VictoriaLogs in cluster mode with vlinsert, vlselect, and vlstorage components."
 menu:
   docs:
     parent: victorialogs

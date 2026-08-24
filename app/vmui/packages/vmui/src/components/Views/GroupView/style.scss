@@ -35,6 +35,11 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
     border-bottom: $border-divider;
     padding-bottom: $padding-small;
 
+    & > .vm-accordion-header {
+      grid-template-columns: minmax(0, 1fr);
+      min-width: 0;
+    }
+
     &__ungrouped {
       padding-top: $padding-small;
     }
@@ -67,6 +72,8 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
       &__title {
         font-weight: bold;
         white-space: nowrap;
+        background-color: $color-background-body;
+        z-index: 1;
 
         code {
           font-family: monospace;
@@ -92,6 +99,12 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         padding-right: calc($padding-large * 3);
       }
 
+      &:not(&_compact) &__pair:not(&__pair_more) {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       &__pair {
         order: 0;
         padding: calc($padding-global / 2) $padding-global;
@@ -111,6 +124,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
 
         &_more {
           order: 1;
+          z-index: 1;
         }
 
         &:hover {
@@ -425,7 +439,7 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         }
 
         &-controls {
-          padding: 1px 2px;
+          padding: 1px $padding-small 1px calc($padding-small / 2);
 
           &__wrapper {
             display: flex;

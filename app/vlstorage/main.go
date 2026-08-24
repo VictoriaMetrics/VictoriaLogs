@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -71,6 +72,8 @@ var (
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
+	insertDrainTimeout = flag.Duration("insert.drainTimeout", 5*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown; "+
+		"the logs, which cannot be drained within this duration, are dropped")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
@@ -175,7 +178,7 @@ func initNetworkStorage() {
 	}
 
 	logger.Infof("starting insert service for nodes %s", *storageNodeAddrs)
-	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression)
+	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression, *insertDrainTimeout)
 
 	logger.Infof("initializing select service for nodes %s", *storageNodeAddrs)
 	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *selectDisableCompression)
@@ -242,7 +245,7 @@ func Stop() {
 
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)
@@ -553,15 +556,21 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
-	if qOpt != nil {
-		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedLastNResultsQuery(qctxOpt, offset, limit, writeBlock)
-	}
-
 	if localStorage != nil {
+		// Optimize the query, which returns last N rows with the biggest timestamps,
+		// only at the leaf vlstorage nodes. There is no need in optimizing the query
+		// at vlselect because the optimization usually leads in 20-30 sequentially run
+		// queries - this is slow because of network latencies between vlselect and vlstorage.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
+		qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+		if qOpt != nil {
+			qctxOpt := qctx.WithQuery(qOpt)
+			return runOptimizedLastNResultsQuery(localStorage, qctxOpt, offset, limit, writeBlock)
+		}
+
 		return localStorage.RunQuery(qctx, writeBlock)
 	}
+
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 

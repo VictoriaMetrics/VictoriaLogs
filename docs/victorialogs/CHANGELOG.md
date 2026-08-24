@@ -1,6 +1,7 @@
 ---
 weight: 101
 title: CHANGELOG
+description: "Release history for VictoriaLogs"
 menu:
   docs:
     identifier: "victorialogs-changelog"
@@ -22,7 +23,26 @@ according to the following docs:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.26.5 to Go1.26.6. See [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved).
+* SECURITY: [deletion API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): restrict the `/delete/run_task` endpoint to the `POST` method only in order to prevent some [SSRF](https://en.wikipedia.org/wiki/Server-side_request_forgery)-based log deletion attacks. See [#1635](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635).
+
+* FEATURE: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): optimize queries, which return the limited number of log entries with the biggest timestamps on the selected time range. [Web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) usually executes such queries. See [#1602](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602).
+* FEATURE: [dashboards/cluster](https://grafana.com/grafana/dashboards/23274), [dashboards/single](https://grafana.com/grafana/dashboards/22084), and [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): add `Fsync avg duration` panel to the Troubleshooting section of the single-node, cluster, and vlagent dashboards. This panel shows average `fsync` latency to help identify slow storage persistence. See [VictoriaMetrics#10432](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10432).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add an option to customize the favicon color. This makes it easier to distinguish between different installations opened in multiple browser tabs. See [#1634](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1634).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): improve field action usability in the expanded log entry view by removing the rarely used Copy action, exposing Exclude for quick access and moving action icons closer to field values. See [#1663](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1663).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add a `Back` action to the Hits chart for restoring the previous time range after zooming or panning the chart. See [#1535](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1535).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): visually distinguish stream fields in expanded log entries and active filters, and automatically use [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter) for include and exclude actions on stream fields. See [#1607](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1607).
+
+* BUGFIX: [cluster version (vlinsert)](https://docs.victoriametrics.com/victorialogs/cluster/): now drains buffered logs to `vlstorage` nodes on graceful shutdown instead of dropping them, bounded by the new `-insert.drainTimeout` command-line flag (default `5s`). See [#1572](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1572).
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): evenly spread rerouted data across available `vlstorage` nodes. Previously, healthy nodes adjacent to unavailable nodes in the `-storageNode` list could receive much more data, resulting in uneven resource usage. See [#1548](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1548).
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): properly cancel requests waiting in the `vlstorage` concurrency queue when the corresponding query is canceled or times out on `vlselect`. Previously, these requests could remain queued and run later, accumulating stale work and wasting resources. See [#1672](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1672).
+* BUGFIX: [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/) and [querying](https://docs.victoriametrics.com/victorialogs/querying/): properly handle logs containing duplicate [stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) names. Previously, [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0) could panic when ingesting such logs in single-node VictoriaLogs, drop them during ingestion in VictoriaLogs cluster, or panic when querying such data written by earlier releases. See [#1603](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1603) and [#1604](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1604).
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): fix [`week_range[Sun,Sun]` filter](https://docs.victoriametrics.com/victorialogs/logsql/#week-range-filter) when it is used inside the [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe). Previously, it could fail to match rows on Sunday. See [#1335](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1335).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent long group-by values from overflowing group headers. See [#1663](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1663).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): render only inline Markdown links with explicit `http` or `https` destinations, such as `[text](https://example.com)`, as clickable links in log messages. Bare URLs, autolinks, reference-style links, links using other schemes, and images are rendered as plain text. See [#1470](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1470).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent manually entered time ranges from shifting after Apply when using non-UTC time zones.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bar chart tap, pan, and pinch-to-zoom interactions on mobile devices.
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix the `Table` view to show all logs when `All` is selected for `Rows per page`. Previously, the table showed no rows in this case. See [#1661](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1661).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
@@ -31,6 +51,8 @@ Released at 2026-07-16
 **Update note 1:** the base Docker image has been changed from [Alpine](https://www.alpinelinux.org/) to [distroless](https://github.com/googlecontainertools/distroless) in order to reduce an attack surface (The `distroless` base image doesn't contain any executables contrary to the Alpine base image). For debugging VictoriaLogs containers in Kubernetes it is recommended to use [`kubectl debug`](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_debug/).
 
 **Update note 2:** VictoriaLogs no longer provides a Docker image for the `linux/386` platform because the `distroless` base image [doesn't support this platform](https://github.com/GoogleContainerTools/distroless/issues/881). Executable files for `linux/386` platform are still published at [the VictoriaLogs releases page](https://github.com/VictoriaMetrics/VictoriaLogs/releases).
+
+**Update note 3:** [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) users upgrading from versions v1.38.0 through v1.50.0 should first upgrade all `vlstorage` nodes to [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1), then upgrade all `vlselect` nodes to v1.51.1, and only then continue upgrading the cluster to v1.52.0. This avoids query downtime caused by incompatible internal protocol versions.
 
 * SECURITY: upgrade Go builder from Go1.26.4 to Go1.26.5. See [the list of issues addressed in Go1.26.5](https://github.com/golang/go/issues?q=milestone%3AGo1.26.5%20label%3ACherryPickApproved).
 
@@ -63,6 +85,14 @@ Released at 2026-07-16
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix hits chart tooltip layout to prevent long values from overflowing the viewport. See [#1536](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1536).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix filters sidebar opening on mobile. See [#1537](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1537).
 
+## [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1)
+
+Released at 2026-08-18
+
+* SECURITY: upgrade Go builder from Go1.26.4 to Go1.26.6. See [the list of issues addressed in Go1.26.5](https://github.com/golang/go/issues?q=milestone%3AGo1.26.5%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved).
+
+* BUGFIX: [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): allow `vlstorage` v1.51.1 to accept requests from `vlselect` versions v1.38.0 through v1.51.0. This allows upgrading `vlstorage` nodes from older versions to v1.51.1 while `vlselect` nodes remain on the corresponding older version, and then upgrading the `vlselect` nodes to v1.51.1, without query downtime caused by an internal protocol mismatch. Starting from v1.52.0, `vlstorage` no longer accepts requests from `vlselect` v1.50.0 or earlier. See [#1665](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1665).
+
 ## [v1.51.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.0)
 
 Released at 2026-06-17
@@ -70,6 +100,8 @@ Released at 2026-06-17
 **Update Note 1:** [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): disallow using [`filter` pipes](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) without the `filter` prefix if the filter doesn't start with `field_name:` prefix. For example, `foo | bar` is disallowed now. It must be rewritten to one of the following equivalents: `foo bar`, `foo | "bar"`, `foo | _msg:bar` or `foo | filter bar`. This reduces the chances of incorrectly written queries like in the [#1454](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1454). However, this may be a breaking change if you have queries that filter without the `filter` prefix, such as `... | !foo`, `... | {host="x"}`, `... | >5` or `... | =foo` - these now fail with `unexpected pipe` and must add the `filter` prefix (e.g. `... | filter !foo`).
 
 **Update Note 2:** [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/): this release bumps the internal `vlselect` and `vlstorage` protocol version (see the queries-longer-than-10MB fix in [#1462](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462)). A version mismatch between `vlselect` and `vlstorage` fails the request, so queries are expected to fail during a rolling upgrade while the cluster runs mixed versions. All the cluster components must be upgraded to this release or newer.
+
+**Update Note 3:** [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) users upgrading from versions v1.38.0 through v1.50.0 should upgrade to [v1.51.1](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.51.1) instead of this release. Upgrade all `vlstorage` nodes first, and then upgrade all `vlselect` nodes. This avoids query downtime caused by incompatible internal protocol versions.
 
 * SECURITY: upgrade Go builder from Go1.26.2 to Go1.26.4. See [the list of issues addressed in Go1.26.3](https://github.com/golang/go/issues?q=milestone%3AGo1.26.3%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.26.4](https://github.com/golang/go/issues?q=milestone%3AGo1.26.4%20label%3ACherryPickApproved).
 

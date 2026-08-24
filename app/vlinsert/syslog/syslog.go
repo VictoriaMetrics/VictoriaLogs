@@ -222,7 +222,7 @@ func runUnixStreamListener(laddr *net.UnixAddr, cfg *configs) {
 	logger.Infof("started accepting syslog messages at %q", laddr)
 	<-workersStopCh
 	if err := ln.Close(); err != nil {
-		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", laddr, err)
+		logger.Fatalf("syslog: cannot close Unix socket listener at %s: %s", laddr, err)
 	}
 	<-doneCh
 	logger.Infof("finished accepting syslog messages at -syslog.listenAddr.unix=%q", laddr)
@@ -243,7 +243,7 @@ func runUnixPacketListener(laddr *net.UnixAddr, cfg *configs) {
 	logger.Infof("started accepting syslog messages at %q", laddr)
 	<-workersStopCh
 	if err := ln.Close(); err != nil {
-		logger.Fatalf("syslog: cannot close UDP listener at %s: %s", laddr, err)
+		logger.Fatalf("syslog: cannot close Unix packet listener at %s: %s", laddr, err)
 	}
 	<-doneCh
 	logger.Infof("finished accepting syslog messages at %q", laddr)
@@ -622,7 +622,7 @@ var msgFields = []string{"message"}
 var (
 	errorsTotal = metrics.NewCounter(`vl_errors_total{type="syslog"}`)
 
-	udpRequestsTotal = metrics.NewCounter(`vl_udp_reqests_total{type="syslog"}`)
+	udpRequestsTotal = metrics.NewCounter(`vl_udp_requests_total{type="syslog"}`)
 	udpErrorsTotal   = metrics.NewCounter(`vl_udp_errors_total{type="syslog"}`)
 )
 

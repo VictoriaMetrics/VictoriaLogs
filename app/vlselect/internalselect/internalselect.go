@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, 
 	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
 
 // RequestHandler processes requests to /internal/select/*
-func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
 	startTime := time.Now()
 
 	select {
@@ -39,7 +40,7 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
 			concurrentRequestsWaitDuration.Update(d.Seconds())
 		}
-		requestHandler(ctx, w, r, startTime)
+		requestHandler(ctx, w, r, path, startTime)
 		<-concurrencyLimitCh
 	case <-ctx.Done():
 		// Unconditionally measure the wait time until the the request is canceled by the client.
@@ -61,17 +62,20 @@ var concurrencyLimitCh chan struct{}
 
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
-func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, startTime time.Time) {
+func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, startTime time.Time) {
 	// Parse request before obtaining the request args from it in order to catch parse errors,
 	// which are silently skipped at r.FormValue() calls inside the request handlers executed below.
 	//
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
 	if err := parseRequest(r); err != nil {
+		if ctx.Err() != nil {
+			// Do not report parse errors for canceled requests, since they are expected and legal.
+			return
+		}
 		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
 		return
 	}
 
-	path := r.URL.Path
 	rh := requestHandlers[path]
 	if rh == nil {
 		httpserver.Errorf(w, r, "unsupported endpoint requested: %s", path)
@@ -98,9 +102,20 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 func parseRequest(r *http.Request) error {
 	maxMemory := int64(0.1 * float64(memory.Allowed()))
 	ct := r.Header.Get("Content-Type")
+
+	// ParseMultipartForm allows configuring the memory limit,
+	// while ParseForm limits URL-encoded bodies to 10MB.
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
+		}
+
+		// ParseMultipartForm may not read the body to EOF if data after the multipart boundary,
+		// such as the terminator for "Transfer-Encoding: chunked", arrives late.
+		// Reading the body to EOF allows net/http to detect when the client disconnects.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1672#issuecomment-5247918811
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			return fmt.Errorf("cannot read multipart-encoded request body: %w", err)
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {

@@ -127,7 +127,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
@@ -140,7 +140,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 			httpserver.Errorf(w, r, "requests to /internal/select/* are disabled with -select.disable command-line flag")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
@@ -405,6 +405,11 @@ func deleteHandler(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func processDeleteRunTaskRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantID: %s", err)

@@ -32,6 +32,7 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, "1:"+remoteWriteURL, 1)
 
 	sut.ForceFlush(t)
 	got := sut.LogsQLQuery(t, "ingest jsonline", apptest.QueryOpts{})
@@ -90,6 +91,7 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 		AccountID:    "1",
 		StreamFields: "foo,bar",
 	})
+	vlagent.WaitRemoteWriteRequests(t, "1:"+remoteWriteURL, 2)
 
 	sut.ForceFlush(t)
 
@@ -147,12 +149,18 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		"-remoteWrite.tmpDataPath=" + fmt.Sprintf("%s/%s-%d", os.TempDir(), vlagentInstance, time.Now().UnixNano()),
 	}
 	vlagent := tc.MustStartVlagent(vlagentInstance, vlagentRemoteWriteURLs, vlagentFlags)
+	vlagentRemoteWriteMetricURLs := []string{
+		"1:" + vlagentRemoteWriteURLs[0],
+		"2:" + vlagentRemoteWriteURLs[1],
+	}
 
 	// ingest data and check if it properly replicated to the vlsingles
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[0], 1)
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 1)
 
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -175,6 +183,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 2)
 
 	// check alive storage received data
 	wantLogLines = []string{
