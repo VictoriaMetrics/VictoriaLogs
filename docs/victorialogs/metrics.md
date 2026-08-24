@@ -94,7 +94,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Labels:**
 - `type`: `logs`, `bytes`
 
-**Description:** Number of times the data ingestion has been throttled because of the limits set via `-insert.maxLogsPerSecond` or `-insert.maxBytesPerSecond`. Non-zero values mean that the configured limits are lower than the actual data ingestion rate.
+**Description:** The time the data ingestion spends waiting for the budget replenishment because of the limits set via `-insert.maxLogsPerSecond` or `-insert.maxBytesPerSecond`. The counter is incremented approximately once per second of waiting, so `rate()` over it shows the fraction of time the ingestion is throttled. Non-zero values mean that the configured limits are lower than the actual data ingestion rate.
 
 ### vl_insert_rate_limit
 **Type:** Gauge
