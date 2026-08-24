@@ -356,8 +356,8 @@ The limits work independently of each other - the ingestion is throttled when an
 The limits are applied to the data ingested via the data ingestion protocols listed above. This includes the logs
 forwarded by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) to `-remoteWrite.url`, since vlagent
 sends them via the data ingestion protocol. The logs collected by vlagent from files and from Kubernetes pods do not go
-through these protocols at vlagent itself, so these flags cannot limit the collection rate at vlagent.
-Use the `-remoteWrite.rateLimit` command-line flag for this.
+through these protocols at vlagent itself, so these flags have no effect there. Use the `-remoteWrite.rateLimit`
+command-line flag for limiting the rate of the data sent by vlagent to `-remoteWrite.url`, including the collected logs.
 
 The limits are applied per process. In [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/)
 set them at `vlinsert` nodes, since setting them at `vlstorage` nodes throttles the data received from `vlinsert` nodes.
