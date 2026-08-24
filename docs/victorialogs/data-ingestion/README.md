@@ -353,6 +353,17 @@ Both limits are disabled by default, so there is no ingestion rate limiting and 
 The limits are global - they are shared by all the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 The limits work independently of each other - the ingestion is throttled when any of the configured limits is exceeded.
 
+The limits are applied to the data ingested via the data ingestion protocols listed above. The logs collected by
+[vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) from files and from Kubernetes pods do not go through
+these protocols, so they are not limited by these flags. Use the `-remoteWrite.rateLimit` command-line flag
+for limiting the rate of the data sent by vlagent to `-remoteWrite.url`, including the collected logs.
+
+The limits are applied per process. In [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/)
+set them at `vlinsert` nodes, since setting them at `vlstorage` nodes throttles the data received from `vlinsert` nodes.
+
+See also `-maxConcurrentInserts` and `-insert.maxQueueDuration` command-line flags, which limit the number
+of concurrent data ingestion requests instead of the data ingestion rate.
+
 The `-insert.maxBytesPerSecond` limit is applied to the estimated JSON size of the ingested log entries - the same value
 which is exposed via the `vl_bytes_ingested_total` metric. It isn't applied to the size of the received requests,
 since these may be compressed and may use various data ingestion formats.
