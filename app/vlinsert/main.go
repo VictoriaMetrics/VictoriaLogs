@@ -35,13 +35,16 @@ func Init() {
 	splunk.MustInit()
 }
 
+// StopRateLimiters unblocks the data ingestion, which waits for the rate limiter budget replenishment.
+//
+// It must be called before stopping the http server, so the throttled in-flight requests
+// do not delay the graceful shutdown. See https://github.com/VictoriaMetrics/VictoriaLogs/issues/887
+func StopRateLimiters() {
+	insertutil.StopRateLimiters()
+}
+
 // Stop stops vlinsert
 func Stop() {
-	// Unblock the pending data ingestion rate limiters first,
-	// so the in-flight HTTP handlers and the syslog workers can proceed with shutdown
-	// instead of waiting for the rate limiter budget replenishment.
-	insertutil.StopRateLimiters()
-
 	syslog.MustStop()
 }
 

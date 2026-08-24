@@ -60,6 +60,10 @@ func main() {
 	logger.Infof("received signal %s", sig)
 	pushmetrics.Stop()
 
+	// Unblock the data ingestion, which may wait for the rate limiter budget replenishment,
+	// so httpserver.Stop() can complete without waiting for the throttled in-flight requests.
+	vlinsert.StopRateLimiters()
+
 	logger.Infof("gracefully shutting down webservice at %q", listenAddrs)
 	startTime = time.Now()
 	if err := httpserver.Stop(listenAddrs); err != nil {
