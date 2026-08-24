@@ -335,6 +335,32 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 
 See also [HTTP Query string parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters).
 
+## Rate limiting
+
+Single-node VictoriaLogs and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) can limit the rate of the ingested data
+{{% available_from "#" %}} via the following command-line flags:
+
+- `-insert.maxLogsPerSecond` - the maximum number of log entries, which can be ingested per second.
+- `-insert.maxBytesPerSecond` - the maximum number of bytes, which can be ingested per second.
+
+For example, the following command limits the ingestion rate by 10K log entries per second and by 5MB per second:
+
+```sh
+./victoria-logs -insert.maxLogsPerSecond=10000 -insert.maxBytesPerSecond=5MB
+```
+
+Both limits are disabled by default, so there is no ingestion rate limiting and no associated overhead out of the box.
+The limits are global - they are shared by all the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+The limits work independently of each other - the ingestion is throttled when any of the configured limits is exceeded.
+
+The `-insert.maxBytesPerSecond` limit is applied to the estimated JSON size of the ingested log entries - the same value
+which is exposed via the `vl_bytes_ingested_total` metric. It isn't applied to the size of the received requests,
+since these may be compressed and may use various data ingestion formats.
+
+The `vl_insert_rate_limit_reached_total` metric is incremented every time the ingestion is throttled,
+while the `vl_insert_rate_limit` metric exposes the configured limits. These metrics can be used for alerting
+on the ingestion rate limits being hit.
+
 ## Decolorizing
 
 If the ingested logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code), then it is recommended dropping these color codes before

@@ -10,6 +10,7 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/datadog"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/elasticsearch"
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/internalinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/journald"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/jsonline"
@@ -28,6 +29,7 @@ var (
 
 // Init initializes vlinsert
 func Init() {
+	insertutil.InitRateLimiters()
 	syslog.MustInit()
 	journald.MustInit()
 	splunk.MustInit()
@@ -35,6 +37,10 @@ func Init() {
 
 // Stop stops vlinsert
 func Stop() {
+	// Unblock the pending data ingestion rate limiters before stopping the protocol handlers,
+	// since these handlers may wait for the rate limiter budget replenishment.
+	insertutil.StopRateLimiters()
+
 	syslog.MustStop()
 }
 

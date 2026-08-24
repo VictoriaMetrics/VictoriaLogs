@@ -109,11 +109,16 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -insert.disableCompression
      Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
+  -insert.maxBytesPerSecond size
+     The maximum number of bytes, which can be ingested per second across all the data ingestion protocols; see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting ; by default there is no limit on the number of ingested bytes per second
+     Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size
      The maximum size of a single line that can be read by /insert/* handlers. Regardless of this flag, entries above the 2 MB limit are ignored, see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 262144)
+  -insert.maxLogsPerSecond int
+     The maximum number of log entries, which can be ingested per second across all the data ingestion protocols; see https://docs.victoriametrics.com/victorialogs/data-ingestion/#rate-limiting ; by default there is no limit on the number of ingested log entries per second
   -insert.maxQueueDuration duration
      The maximum duration to wait in the queue when -maxConcurrentInserts concurrent insert requests are executed (default 1m0s)
   -internStringCacheExpireDuration duration
