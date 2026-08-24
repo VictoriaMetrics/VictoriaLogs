@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -107,6 +108,14 @@ func parseRequest(r *http.Request) error {
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
+		}
+
+		// ParseMultipartForm may not read the body to EOF if data after the multipart boundary,
+		// such as the terminator for "Transfer-Encoding: chunked", arrives late.
+		// Reading the body to EOF allows net/http to detect when the client disconnects.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1672#issuecomment-5247918811
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			return fmt.Errorf("cannot read multipart-encoded request body: %w", err)
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {
