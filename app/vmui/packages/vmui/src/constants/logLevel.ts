@@ -14,6 +14,11 @@ export const LOG_LEVEL_COLORS = {
   [LOG_LEVEL_UNKNOWN]: "#A09F9F",
 } as const;
 
+export const LOG_LEVEL_ABBREVIATIONS: Partial<Record<keyof typeof LOG_LEVEL_COLORS, string>> = {
+  critical: "crit",
+  emergency: "emerg",
+};
+
 export const LOG_LEVEL_FIELDS = [
   "level",
   "lvl",
