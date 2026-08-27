@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -29,7 +30,8 @@ var (
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the given -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
-	healthCheck = flag.Bool("health", false, "Whether to run a quick health check on the /health endpoint of a VictoriaLogs instance and exit. Can use the -httpListenAddr, -http.pathPrefix, and -tls flags.")
+	healthCheck = flag.Bool("health", false, "Whether to run a quick health check on the /health endpoint of a VictoriaLogs instance and exit. "+
+		"These flags should be set if they are also set by the checked instance: -http.pathPrefix, -httpListenAddr (only first address is used), -httpListenAddr.useProxyProtocol, -tls")
 )
 
 func main() {
@@ -148,6 +150,21 @@ func runHealthCheck(address string) int {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
+	if useProxyProtocol.GetOptionalArg(0) {
+		transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := (&net.Dialer{}).DialContext(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := conn.Write([]byte("\r\n\r\n\x00\r\nQUIT\n\x20\x00\x00\x00")); err != nil {
+				conn.Close()
+				return nil, err
+			}
+			return conn, nil
+		}
+	}
+
 	client := &http.Client{Timeout: 3 * time.Second, Transport: transport}
 
 	res, err := client.Get(addr)
