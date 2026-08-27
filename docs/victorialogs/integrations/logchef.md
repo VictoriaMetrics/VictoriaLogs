@@ -56,7 +56,7 @@ Logchef sends the selected time range to VictoriaLogs as `start` and `end` param
 
 With a VictoriaLogs source, Logchef provides field discovery, histograms, result views, saved queries and collections, dashboards, alerts, live tail, CLI/MCP access, and team access. Immutable scope and tenant settings continue to apply server-side for these source operations.
 
-![Logchef dashboard with log monitoring panels](logchef-dashboard.png)
+![Logchef dashboard with log monitoring panels](logchef-dashboard.webp)
 
 For explorer histograms and dashboard stat, time-series, and breakdown panels, use filter expressions. Table queries can use full native LogsQL pipes.
 
