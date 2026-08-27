@@ -129,7 +129,7 @@ func runHealthCheck(address string) int {
 		return 1
 	}
 
-	if host == "" {
+	if host == "" || host == "0.0.0.0" || host == "::" {
 		host = "127.0.0.1"
 	}
 
