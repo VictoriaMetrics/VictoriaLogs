@@ -29,7 +29,7 @@ const maxInsertBlockSize = 2 * 1024 * 1024
 
 // ProtocolVersion is the version of the data ingestion protocol.
 //
-// It must be changed every time the data encoding at /internal/insert HTTP endpoint is changed.
+// It must be changed every time the data encoding at /internal/rpc/insert HTTP endpoint is changed.
 const ProtocolVersion = "v1"
 
 // Storage is a network storage for sending data to remote storage nodes in the cluster.
@@ -255,7 +255,7 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		body = pendingData.NewReader()
 	}
 
-	if err := sn.doRequest("/internal/insert", body); err != nil {
+	if err := sn.doRequest("/internal/rpc/insert", body); err != nil {
 		return fmt.Errorf("cannot send data block with the length %d: %w", pendingData.Len(), err)
 	}
 

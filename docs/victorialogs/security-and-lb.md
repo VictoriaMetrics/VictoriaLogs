@@ -38,6 +38,7 @@ This document contains the following configuration examples for `vmauth`:
 * [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
 * [Access control inside a single tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#access-control-inside-a-single-tenant)
 * [Adding extra fields for the ingested logs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#adding-extra-fields)
+* [Authorizing access to internal RPC endpoints](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization)
 
 ## Search Authorization
 
@@ -433,6 +434,46 @@ Any field sent by the application will be overridden by the value set in the `ex
 This prevents the log shipper from unexpectedly overriding the provided `extra_fields`.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#query-args-handling) for details.
 
+## Internal RPC authorization
+
+The VictoriaLogs cluster components communicate with each other via internal RPC endpoints,
+which [start with the `/internal/rpc/` path prefix](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+These endpoints aren't protected with `-*AuthKey` command-line flags, since they are intended for machine-to-machine communication
+inside a protected internal network. They are covered by the `-httpAuth.*` command-line flags like all the other HTTP endpoints.
+See [Basic Auth](https://docs.victoriametrics.com/victorialogs/security-and-lb/#basic-auth).
+
+In [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) the top-level
+`vlinsert` and `vlselect` nodes may communicate with the lower-level clusters over untrusted networks, for example, when they
+run in different data centers. In this case it is recommended running [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) in
+front of every lower-level cluster for authorizing access to its internal RPC endpoints.
+
+The following configuration can be used at the `vmauth` in front of a single lower-level cluster:
+
+```yaml
+users:
+- username: "internal-rpc"
+  password: "secret"
+  url_map:
+  - src_paths: ["/internal/rpc/insert"]
+    url_prefix:
+    - "http://vlinsert-1:9428/"
+    - "http://vlinsert-2:9428/"
+  - src_paths: ["/internal/rpc/select/.*", "/internal/rpc/delete/.*"]
+    url_prefix:
+    - "http://vlselect-1:9428/"
+    - "http://vlselect-2:9428/"
+```
+
+This configuration blocks unauthorized access to the `vlinsert` and `vlselect` nodes of the lower-level cluster via Basic Auth.
+The top-level `vlinsert` and `vlselect` must send requests to the `vmauth` addresses specified via `-storageNode`
+command-line flag and pass the Basic Auth credentials via `-storageNode.username` and `-storageNode.password` command-line
+flags. Enable TLS at `vmauth` and pass `-storageNode.tls` command-line flag to the top-level `vlinsert` and `vlselect`
+in order to transfer the credentials over `https`. See [Basic Auth](https://docs.victoriametrics.com/victorialogs/security-and-lb/#basic-auth).
+`vmauth` supports other authorization methods as well. See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#authorization).
+
+See also [these docs](https://docs.victoriametrics.com/victorialogs/cluster/#tls) on how to protect the communication between the cluster components
+via TLS and Basic Auth without `vmauth`.
+
 ## Basic Auth
 
 It is recommended to run all the VictoriaLogs components in a secure trusted network, and proxying only the properly authorized requests
@@ -488,6 +529,8 @@ curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 
 
 The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
 This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
+The internal RPC endpoints at the `/internal/rpc/` path prefix have no dedicated `-*AuthKey` command-line flags.
+See [how to authorize access to them](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization).
 
 - [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
   Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).

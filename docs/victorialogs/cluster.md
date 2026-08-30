@@ -78,10 +78,11 @@ All the VictoriaLogs cluster components are horizontally scalable and can be dep
 
 Communication between `vlinsert` / `vlselect` and `vlstorage` is done via HTTP over the port specified by the `-httpListenAddr` flag (`9428` by default):
 
-- `vlinsert` sends data to the `/internal/insert` HTTP endpoint at `vlstorage`.
-- `vlselect` sends queries to `/internal/select/*` HTTP endponts at `vlstorage`.
+- `vlinsert` sends data to the `/internal/rpc/insert` HTTP endpoint at `vlstorage`.
+- `vlselect` sends queries to `/internal/rpc/select/*` HTTP endpoints at `vlstorage`.
 
 This HTTP-based communication model allows using reverse proxies for authorization, routing, and encryption between components.
+See [how to protect the internal RPC endpoints with an authorization proxy](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization).
 
 For advanced setups, refer to the [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) documentation.
 
@@ -159,9 +160,9 @@ so there is little practical sense in relying on automatic data recovery from th
 A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
 See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for the big picture on when to choose each:
 
-- It accepts data ingestion requests from `vlinsert` via `/internal/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
+- It accepts data ingestion requests from `vlinsert` via `/internal/rpc/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
   This endpoint can be disabled via `-internalinsert.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
-- It accepts queries from `vlselect` via `/internal/select/*` HTTP endpoints at the TCP port specified via `-httpListenAddr` command-line flag.
+- It accepts queries from `vlselect` via `/internal/rpc/select/*` HTTP endpoints at the TCP port specified via `-httpListenAddr` command-line flag.
   These endpoints can be disabled via `-internalselect.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
 
 Every `vlstorage` node can be used as a single-node VictoriaLogs instance:
@@ -190,14 +191,14 @@ without direct access from the Internet. HTTP authorization proxies such as [vma
 must be used in front of `vlinsert` and `vlselect` for authorizing access to these components from the Internet.
 See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
-It is possible to disallow access to `/internal/insert` endpoint and `/internal/select/*` endpoints by running VictoriaLogs with `-internalinsert.disable`
+It is possible to disallow access to `/internal/rpc/insert` endpoint and `/internal/rpc/select/*` endpoints by running VictoriaLogs with `-internalinsert.disable`
 and `-internalselect.disable` command-line flags.
 
 It is possible to disallow access to [HTTP insert APIs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-apis) via `-insert.disable` command-line flag.
-This flag also disables access to `/internal/insert/*` endpoints.
+This flag also disables access to `/internal/rpc/insert` endpoint.
 
-It is possible to disally access to [HTTP query APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) via `-select.disable` command-line flag.
-This flag also disables access to `/internal/select/*` endpoints.
+It is possible to disallow access to [HTTP query APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api) via `-select.disable` command-line flag.
+This flag also disables access to `/internal/rpc/select/*` endpoints.
 
 By default, all the VictoriaLogs cluster components (`vlinsert`, `vlselect`, `vlstorage`) support all the HTTP endpoints including `/insert/*` and `/select/*`.
 It is recommended disabling select endpoints on dedicated `vlinsert` nodes and insert endpoints on dedicated `vlselect` nodes:

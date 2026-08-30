@@ -308,7 +308,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_concurrent_internalselect_requests_wait_duration
 **Type:** Summary
 
-**Description:** The wait time for requests to [`/internal/select/*` at `vlstorage` nodes](https://docs.victoriametrics.com/victorialogs/cluster/) because of reaching the limit on the number of concurrently executed requests.
+**Description:** The wait time for requests to [`/internal/rpc/select/*` at `vlstorage` nodes](https://docs.victoriametrics.com/victorialogs/cluster/) because of reaching the limit on the number of concurrently executed requests.
 
 ### vl_insert_processors_count
 **Type:** Gauge

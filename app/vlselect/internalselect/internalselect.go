@@ -27,10 +27,10 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
+var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, "The limit on the number of concurrent requests to /internal/rpc/select/* endpoints; "+
 	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
 
-// RequestHandler processes requests to /internal/select/*
+// RequestHandler processes requests to /internal/rpc/select/* and /internal/rpc/delete/*
 func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -131,18 +131,18 @@ func parseRequest(r *http.Request) error {
 }
 
 var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter, r *http.Request) error{
-	"/internal/select/query":               processQueryRequest,
-	"/internal/select/field_names":         processFieldNamesRequest,
-	"/internal/select/field_values":        processFieldValuesRequest,
-	"/internal/select/stream_field_names":  processStreamFieldNamesRequest,
-	"/internal/select/stream_field_values": processStreamFieldValuesRequest,
-	"/internal/select/streams":             processStreamsRequest,
-	"/internal/select/stream_ids":          processStreamIDsRequest,
-	"/internal/select/tenant_ids":          processTenantIDsRequest,
+	"/internal/rpc/select/query":               processQueryRequest,
+	"/internal/rpc/select/field_names":         processFieldNamesRequest,
+	"/internal/rpc/select/field_values":        processFieldValuesRequest,
+	"/internal/rpc/select/stream_field_names":  processStreamFieldNamesRequest,
+	"/internal/rpc/select/stream_field_values": processStreamFieldValuesRequest,
+	"/internal/rpc/select/streams":             processStreamsRequest,
+	"/internal/rpc/select/stream_ids":          processStreamIDsRequest,
+	"/internal/rpc/select/tenant_ids":          processTenantIDsRequest,
 
-	"/internal/delete/run_task":     processDeleteRunTask,
-	"/internal/delete/stop_task":    processDeleteStopTask,
-	"/internal/delete/active_tasks": processDeleteActiveTasks,
+	"/internal/rpc/delete/run_task":     processDeleteRunTask,
+	"/internal/rpc/delete/stop_task":    processDeleteStopTask,
+	"/internal/rpc/delete/active_tasks": processDeleteActiveTasks,
 }
 
 func processQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
