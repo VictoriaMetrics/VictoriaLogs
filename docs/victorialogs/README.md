@@ -405,10 +405,17 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
 The logs scheduled for the deletion via `/delete/run_task` endpoint main remain visible until the deletion task is complete.
 The deletion task is complete when the `/delete/active_task` endpoint stops returning it.
 
+The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey` command-line flag.
+When it is set, every request to `/delete/*` must pass the matching `authKey` query arg, which overrides `-httpAuth.*`. For example:
+
+```bash
+curl -X POST 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D&authKey=top-secret'
+```
+
 If the deletion API must be enabled in [cluster version of VictoriaLogs](https://docs.victoriametrics.com/victorialogs/cluster/),
 then `-delete.enable` command-line flag must be passed to `vlselect` nodes (this enables the deletion API at `vlselect` nodes),
 while `-internaldelete.enable` command-line flag must be passed to `vlstorage` nodes (this enables internal cluster API
-for receiving deletion requests from `vlselect` nodes).
+for receiving deletion requests from `vlselect` nodes). The `-deleteAuthKey` command-line flag, if used, must be passed to `vlselect` nodes as well.
 
 ## High Availability
 
