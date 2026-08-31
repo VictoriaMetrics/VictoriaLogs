@@ -1,5 +1,6 @@
 ---
 title: vlagent
+description: "Log collection agent for VictoriaLogs with Kubernetes pod log discovery, HTTP ingestion, replication, and on-disk buffering."
 weight: 4
 menu:
   docs:
