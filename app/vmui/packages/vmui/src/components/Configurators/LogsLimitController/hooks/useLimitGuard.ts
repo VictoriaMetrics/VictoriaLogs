@@ -7,27 +7,12 @@ import {
 import { BeforeFetch, BeforeFetchResult } from "../../../../pages/QueryPage/hooks/useFetchLogs";
 import useBoolean from "../../../../hooks/useBoolean";
 
-type WarningPreference = {
-  suppress: boolean;
-  permanent: boolean;
-};
-
-const getStoredWarningPreference = (): WarningPreference => {
-  const read = (storage: Storage): boolean => {
-    try {
-      return Boolean(storage.getItem(LOGS_LIMIT_WARN_DISMISSED_KEY));
-    } catch {
-      return false;
-    }
-  };
-
-  const permanent = read(localStorage);
-  const session = read(sessionStorage);
-
-  return {
-    suppress: permanent || session,
-    permanent,
-  };
+const getStoredWarningPreference = (): boolean => {
+  try {
+    return Boolean(localStorage.getItem(LOGS_LIMIT_WARN_DISMISSED_KEY));
+  } catch {
+    return false;
+  }
 };
 
 type Params = {
@@ -40,8 +25,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
   const [initialLimit, setInitialLimit] = useState<number>(0);
   const [limitDraft, setLimitDraft] = useState<number>(0);
 
-  const [warningPreference, setWarningPreference] = useState<WarningPreference>(getStoredWarningPreference);
-  const { suppress: suppressWarning, permanent: persistWarning } = warningPreference;
+  const [suppressWarning, setSuppressWarning] = useState(getStoredWarningPreference);
 
   const pendingResolveRef = useRef<(r: BeforeFetchResult) => void>();
   const pendingPromiseRef = useRef<Promise<BeforeFetchResult> | null>(null);
@@ -53,7 +37,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     const safeLimit = Number.isFinite(n) && n >= 0 ? n : 0;
 
     const mustConfirm = safeLimit === 0 || safeLimit > LOGS_MAX_LIMIT;
-    const softConfirm = safeLimit > LOGS_CONFIRM_THRESHOLD && !suppressWarning;
+    const softConfirm = safeLimit > LOGS_CONFIRM_THRESHOLD && !getStoredWarningPreference();
     const needsDialog = mustConfirm || softConfirm;
     if (!needsDialog) return { action: "proceed" };
 
@@ -82,14 +66,9 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     setLimit(next);
 
     try {
-      if (!suppressWarning) {
-        sessionStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
-        localStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
-      } else if (persistWarning) {
+      if (suppressWarning) {
         localStorage.setItem(LOGS_LIMIT_WARN_DISMISSED_KEY, "true");
-        sessionStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
       } else {
-        sessionStorage.setItem(LOGS_LIMIT_WARN_DISMISSED_KEY, "true");
         localStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
       }
     } catch (e) {
@@ -104,26 +83,19 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     pendingResolveRef.current = undefined;
     pendingPromiseRef.current = null;
     handleClose();
-  }, [limitDraft, setLimit, suppressWarning, persistWarning, handleClose]);
+  }, [limitDraft, setLimit, suppressWarning, handleClose]);
 
   const onCancel = useCallback(() => {
     const resolve = pendingResolveRef.current;
     if (resolve) resolve({ action: "abort" });
     pendingResolveRef.current = undefined;
     pendingPromiseRef.current = null;
-    setWarningPreference(getStoredWarningPreference());
+    setSuppressWarning(getStoredWarningPreference());
     handleClose();
   }, [handleClose]);
 
   const onChangeSuppressWarning = useCallback((value: boolean) => {
-    setWarningPreference((current) => ({
-      suppress: value,
-      permanent: value && current.permanent,
-    }));
-  }, []);
-
-  const onChangePersistWarning = useCallback((value: boolean) => {
-    setWarningPreference((current) => ({ ...current, permanent: value }));
+    setSuppressWarning(value);
   }, []);
 
   useEffect(() => {
@@ -142,9 +114,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     limitDraft,
     setLimitDraft,
     suppressWarning,
-    persistWarning,
     onChangeSuppressWarning,
-    onChangePersistWarning,
     onConfirm,
     onCancel,
   };
