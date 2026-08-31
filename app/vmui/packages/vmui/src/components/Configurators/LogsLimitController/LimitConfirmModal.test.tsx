@@ -16,31 +16,21 @@ vi.mock("./LogsLimitInput", () => ({
 }));
 
 describe("LimitConfirmModal", () => {
-  it("enables permanent dismissal only when warning dismissal is selected", () => {
-    const onChangePersistWarning = vi.fn();
+  it("offers persistent warning dismissal", () => {
+    const onChangeSuppressWarning = vi.fn();
     const props = {
       isOpen: true,
       initialLimit: 5000,
       limitDraft: 5000,
       setLimitDraft: vi.fn(),
       suppressWarning: false,
-      persistWarning: false,
-      onChangeSuppressWarning: vi.fn(),
-      onChangePersistWarning,
+      onChangeSuppressWarning,
       onConfirm: vi.fn(),
       onCancel: vi.fn(),
     };
-    const { rerender } = render(<LimitConfirmModal {...props}/>);
+    render(<LimitConfirmModal {...props}/>);
 
-    const permanentLabel = screen.getByText("Remember permanently");
-    fireEvent.click(permanentLabel);
-    expect(onChangePersistWarning).not.toHaveBeenCalled();
-
-    rerender(<LimitConfirmModal
-      {...props}
-      suppressWarning
-    />);
-    fireEvent.click(screen.getByText("Remember permanently"));
-    expect(onChangePersistWarning).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByText("Don't show again"));
+    expect(onChangeSuppressWarning).toHaveBeenCalledWith(true);
   });
 });
