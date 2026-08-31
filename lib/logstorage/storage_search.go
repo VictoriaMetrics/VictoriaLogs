@@ -217,6 +217,9 @@ func (s *Storage) RunQuery(qctx *QueryContext, writeBlock WriteDataBlockFunc) er
 type runQueryFunc func(qctx *QueryContext, writeBlock writeBlockResultFunc) error
 
 func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
+	// Mark the response as complete.
+	qctx.QueryStats.MergeQueryCompleteness(true)
+
 	qNew, err := initSubqueries(qctx, s.runQuery, false)
 	if err != nil {
 		return err
