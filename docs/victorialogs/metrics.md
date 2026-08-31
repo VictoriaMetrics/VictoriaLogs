@@ -1,6 +1,7 @@
 ---
 weight: 20
 title: Metrics of VictoriaLogs
+description: "Prometheus metrics exposed by VictoriaLogs for operational monitoring."
 menu:
   docs:
     parent: victorialogs

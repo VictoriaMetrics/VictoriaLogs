@@ -5,6 +5,7 @@ menu:
     parent: victorialogs
     weight: 12
 title: Security and Load Balancing
+description: "Secure VictoriaLogs with vmauth, TLS termination, and multi-tenant proxying."
 tags:
   - logs
 ---

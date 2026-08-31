@@ -246,6 +246,12 @@ func Stop() {
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	if strings.HasPrefix(path, "/internal/") && r.Method != "POST" {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return true
+	}
+
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)

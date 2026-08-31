@@ -1,6 +1,7 @@
 package netselect
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -384,7 +385,11 @@ func newMultipartRequestBody(args url.Values) (io.Reader, string) {
 		logger.Panicf("BUG: cannot close in-memory multipart request body: %s", err)
 	}
 
-	return bb.NewReader(), w.FormDataContentType()
+	// Wrap bb.B in bytes.Reader, so net/http sends "Content-Length" instead of
+	// "Transfer-Encoding: chunked". See https://pkg.go.dev/net/http#NewRequestWithContext
+	// ParseMultipartForm may return before reading the chunked terminator to EOF if it arrives late.
+	// See https://github.com/golang/go/issues/32935#issuecomment-5247812654
+	return bytes.NewReader(bb.B), w.FormDataContentType()
 }
 
 func (sn *storageNode) getRequestURL(path string) string {

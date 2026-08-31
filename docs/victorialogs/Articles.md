@@ -1,6 +1,7 @@
 ---
 weight: 70
 title: Articles
+description: "Articles and additional resources about VictoriaLogs and its use cases."
 menu:
   docs:
     parent: 'victorialogs'

@@ -1,6 +1,7 @@
 ---
 weight: 9
 title: Alerting with Logs
+description: "Configure vmalert to alert on VictoriaLogs LogsQL stats queries."
 menu:
   docs:
     parent: "victorialogs"

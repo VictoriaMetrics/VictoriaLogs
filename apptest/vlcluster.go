@@ -71,7 +71,7 @@ func (app *Vlcluster) ForceFlush(t *testing.T) {
 
 	url := fmt.Sprintf("http://%s/internal/force_flush", app.insertNode.httpListenAddr)
 
-	_, statusCode := app.insertNode.cli.Get(t, url)
+	_, statusCode := app.insertNode.cli.Post(t, url, "", nil)
 	if statusCode != http.StatusOK {
 		t.Fatalf("unexpected status code when querying %s: got %d; want %d", url, statusCode, http.StatusOK)
 	}

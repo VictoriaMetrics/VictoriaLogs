@@ -263,10 +263,8 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 }
 
 func (sn *storageNode) doRequest(path string, body io.Reader) error {
-	method := "GET"
-	if body != nil {
-		method = "POST"
-	}
+	// All the internal endpoints require the POST method.
+	method := "POST"
 
 	reqURL := sn.getRequestURL(path)
 	req, err := http.NewRequestWithContext(sn.s.sendCtx, method, reqURL, body)

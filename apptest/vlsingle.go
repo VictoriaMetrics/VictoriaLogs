@@ -85,7 +85,7 @@ func (app *Vlsingle) ForceFlush(t *testing.T) {
 	t.Helper()
 
 	url := fmt.Sprintf("http://%s/internal/force_flush", app.node.httpListenAddr)
-	_, statusCode := app.node.cli.Get(t, url)
+	_, statusCode := app.node.cli.Post(t, url, "", nil)
 	if statusCode != http.StatusOK {
 		t.Fatalf("unexpected status code when querying %s: got %d, want %d", url, statusCode, http.StatusOK)
 	}

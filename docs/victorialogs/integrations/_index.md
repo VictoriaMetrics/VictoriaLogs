@@ -1,5 +1,6 @@
 ---
 title: Integrations
+description: "Integration guides for using VictoriaLogs with Grafana, Perses, and Bindplane."
 weight: 13
 menu:
   docs:

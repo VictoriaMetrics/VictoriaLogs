@@ -1,6 +1,7 @@
 ---
 weight: 5
 title: Telegraf Setup
+description: "Configure Telegraf to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

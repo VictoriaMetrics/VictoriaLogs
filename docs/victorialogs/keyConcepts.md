@@ -1,6 +1,7 @@
 ---
 weight: 2
 title: Key Concepts
+description: "VictoriaLogs data model. Structured and unstructured logs, fields, streams, and time."
 menu:
   docs:
     identifier: vl-key-concepts

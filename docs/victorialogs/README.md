@@ -253,7 +253,7 @@ at April 18, 2025 UTC. This allows flexible data management.
 
 For example, old per-day data is automatically and quickly deleted according to the provided [retention policy](https://docs.victoriametrics.com/victorialogs/#retention) by removing the corresponding per-day subdirectory (partition).
 
-VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions:
+VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions. All of them must be called with the `POST` method:
 
 - `/internal/partition/attach?name=YYYYMMDD` - attaches the partition directory with the given name `YYYYMMDD` to VictoriaLogs,
   so it becomes visible for querying and can be used for data ingestion.
@@ -324,11 +324,11 @@ It is recommended leaving the following amounts of spare resource for smooth wor
 VictoriaLogs can log new [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 This is useful during the debugging of high cardinality or churn rate issues for the ingested log streams.
 This functionality can be enabled either on a permanent basis via `-logNewStreams` command-line flag or temporarily for the given number of seconds
-by sending HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
+by sending a `POST` HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
 of new log streams for 10 seconds:
 
 ```
-curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
+curl -X POST http://victoria-logs:9428/internal/log_new_streams?seconds=10
 ```
 
 This endpoint can be protected with the `-logNewStreamsAuthKey` command-line flag.
@@ -342,7 +342,7 @@ VictoriaLogs performs data compactions in background in order to keep good perfo
 These compactions (merges) are performed independently on per-day partitions.
 This means that compactions are stopped for per-day partitions if no new data is ingested into these partitions.
 Sometimes it is necessary to trigger compactions for old partitions. In this case forced compaction may be initiated on the specified per-day partition
-by sending request to `/internal/force_merge?partition_prefix=YYYYMMDD`,
+by sending a `POST` request to `/internal/force_merge?partition_prefix=YYYYMMDD`,
 where `YYYYMMDD` is per-day partition name. For example, `http://victoria-logs:9428/internal/force_merge?partition_prefix=20240921` would initiate forced
 merge for September 21, 2024 partition. The call to `/internal/force_merge` returns immediately, while the corresponding forced merge continues running in background.
 
@@ -357,7 +357,7 @@ See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#
 
 VictoriaLogs puts the recently [ingested logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/) into in-memory buffers,
 which aren't available for [querying](https://docs.victoriametrics.com/victorialogs/querying/) for up to a second.
-If you need querying logs immediately after their ingestion, then the `/internal/force_flush` HTTP endpoint must be requested
+If you need querying logs immediately after their ingestion, then the `/internal/force_flush` HTTP endpoint must be requested with the `POST` method
 before querying. This endpoint converts in-memory buffers with the recently ingested logs into searchable [data blocks](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#41-logs-are-grouped-into-blocks-by-stream-and-by-time).
 
 It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a regular basis, since this increases CPU usage

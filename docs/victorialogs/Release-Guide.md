@@ -1,6 +1,7 @@
 ---
 weight: 100
 title: Release Process Guidance for VictoriaLogs
+description: "Guidance for preparing, testing, and publishing VictoriaLogs releases."
 menu:
   docs:
     parent: victorialogs
