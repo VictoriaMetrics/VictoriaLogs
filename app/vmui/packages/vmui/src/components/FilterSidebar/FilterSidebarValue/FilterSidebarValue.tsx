@@ -14,7 +14,9 @@ type Props = {
   field: LogsFieldValues;
   fieldName: string;
   extraFilters: ExtraFilter[];
-  isAnyValueFilter: boolean;
+  isAnyValueFilter?: boolean;
+  checked?: boolean;
+  label?: string;
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
 }
@@ -23,6 +25,8 @@ const FilterSidebarValue: FC<Props> = ({
   field,
   fieldName,
   isAnyValueFilter,
+  checked,
+  label,
   extraFilters,
   onAddFilter,
   onRemoveByValue,
@@ -33,8 +37,10 @@ const FilterSidebarValue: FC<Props> = ({
     return extraFilters.filter(f => f.value === field.value);
   }, [field.value, extraFilters]);
 
-  const hasFilter = !!filtersByValue.length;
-  const isExcluded = filtersByValue.some(f => f.operator === ExtraFilterOperator.NotEquals);
+  const hasFilter = isAnyValueFilter ? !!checked : !!filtersByValue.length;
+  const isExcluded = !isAnyValueFilter && filtersByValue.some(
+    filter => filter.operator === ExtraFilterOperator.NotEquals
+  );
 
   const hitsShort = formatNumberShort(field.hits);
 
@@ -56,22 +62,22 @@ const FilterSidebarValue: FC<Props> = ({
       className={classNames({
         "vm-filter-sidebar-value": true,
         "vm-filter-sidebar-value_active": hasFilter,
-        "vm-filter-sidebar-value_empty": !field.hits
+        "vm-filter-sidebar-value_empty": !field.hits && !isAnyValueFilter,
       })}
       onClick={handleToggleFilter}
     >
       <div className="vm-filter-sidebar-value__checkbox">
         <Checkbox
           size="small"
-          checked={hasFilter || isAnyValueFilter}
+          checked={hasFilter}
           icon={isExcluded ? <DisabledIcon/> : undefined}
           color={hasFilter ? (isDarkTheme ? "secondary" : "primary") : "gray"}
         />
       </div>
 
       <div className="vm-filter-sidebar-value__title">
-        {field.value}
-        <span className="vm-filter-sidebar-value__hits">{" "}({hitsShort})</span>
+        {isAnyValueFilter ? label : field.value}
+        {!isAnyValueFilter && <span className="vm-filter-sidebar-value__hits">{" "}({hitsShort})</span>}
       </div>
     </div>
   );
