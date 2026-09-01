@@ -18,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -27,8 +28,11 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
-	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
+var (
+	maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, "The limit on the number of concurrent requests to /internal/select/* endpoints; "+
+		"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
+	maxQueueDuration = flag.Duration("internalselect.maxQueueDuration", time.Second*10, "The maximum time an internal search request waits for execution when -internalselect.maxConcurrentRequests limit is reached")
+)
 
 // RequestHandler processes requests to /internal/select/*
 func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
@@ -38,19 +42,11 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	}
 
 	startTime := time.Now()
-
-	select {
-	case concurrencyLimitCh <- struct{}{}:
-		if d := time.Since(startTime); d > 100*time.Millisecond {
-			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
-			concurrentRequestsWaitDuration.Update(d.Seconds())
-		}
-		requestHandler(ctx, w, r, path, startTime)
-		<-concurrencyLimitCh
-	case <-ctx.Done():
-		// Unconditionally measure the wait time until the the request is canceled by the client.
-		concurrentRequestsWaitDuration.UpdateDuration(startTime)
+	if !incRequestConcurrency(ctx, w, r, startTime) {
+		return
 	}
+	defer decRequestConcurrency()
+	requestHandler(ctx, w, r, path, startTime)
 }
 
 // Init initializes internalselect package.
@@ -58,14 +54,73 @@ func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
 }
 
-// Stop stops vlselect
+// Stop stops internalselect.
 func Stop() {
 	concurrencyLimitCh = nil
 }
 
 var concurrencyLimitCh chan struct{}
 
-var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
+var (
+	concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
+	concurrencyLimitReached        = metrics.NewCounter(`vl_concurrent_internalselect_limit_reached_total`)
+	concurrencyLimitTimeout        = metrics.NewCounter(`vl_concurrent_internalselect_limit_timeout_total`)
+
+	_ = metrics.NewGauge(`vl_concurrent_internalselect_capacity`, func() float64 {
+		return float64(cap(concurrencyLimitCh))
+	})
+	_ = metrics.NewGauge(`vl_concurrent_internalselect_current`, func() float64 {
+		return float64(len(concurrencyLimitCh))
+	})
+)
+
+func incRequestConcurrency(ctx context.Context, w http.ResponseWriter, r *http.Request, startTime time.Time) bool {
+	select {
+	case concurrencyLimitCh <- struct{}{}:
+		// Fast path - there is a free slot in the concurrency limiter for executing the request.
+		return true
+	default:
+		// Slow path - there are no free slots in the concurrency limiter for executing the request.
+		// Wait for up to *maxQueueDuration for the query execution.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, *maxQueueDuration)
+		defer cancel()
+
+		concurrencyLimitReached.Inc()
+		select {
+		case concurrencyLimitCh <- struct{}{}:
+			if d := time.Since(startTime); d > 100*time.Millisecond {
+				// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
+				concurrentRequestsWaitDuration.Update(d.Seconds())
+			}
+			return true
+		case <-ctxWithTimeout.Done():
+			// Unconditionally measure the wait time until the request is canceled by the client.
+			concurrentRequestsWaitDuration.UpdateDuration(startTime)
+			switch ctxWithTimeout.Err() {
+			case context.Canceled:
+				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+				requestURI := httpserver.GetRequestURI(r)
+				logger.Infof("client has canceled the pending request after %.3f seconds: remoteAddr=%s, requestURI: %q",
+					time.Since(startTime).Seconds(), remoteAddr, requestURI)
+			case context.DeadlineExceeded:
+				concurrencyLimitTimeout.Inc()
+				err := &httpserver.ErrorWithStatusCode{
+					Err: fmt.Errorf("couldn't start executing the request in %.3f seconds, since -internalselect.maxConcurrentRequests=%d concurrent requests "+
+						"are executed. Possible solutions: to reduce query load; to add more compute resources to the server; "+
+						"to increase -internalselect.maxQueueDuration=%s; to increase -internalselect.maxConcurrentRequests",
+						time.Since(startTime).Seconds(), *maxConcurrentRequests, maxQueueDuration),
+					StatusCode: http.StatusServiceUnavailable,
+				}
+				httpserver.Errorf(w, r, "%s", err)
+			}
+			return false
+		}
+	}
+}
+
+func decRequestConcurrency() {
+	<-concurrencyLimitCh
+}
 
 func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, startTime time.Time) {
 	// Parse request before obtaining the request args from it in order to catch parse errors,
