@@ -8,15 +8,16 @@ import Button from "../../../Main/Button/Button";
 interface Props {
   field: string;
   value: string;
+  isStreamField: boolean;
 }
 
-const FieldFilterExclude: FC<Props> = ({ field, value }) => {
+const FieldFilterExclude: FC<Props> = ({ field, value, isStreamField }) => {
   const { extraFilters, addNewFilter, removeFilterByValue } = useExtraFilters();
   const filtersByValue = extraFilters.filter(f => f.field === field && f.value === value);
   const isExcludeFilter = filtersByValue.some(f => f.operator === ExtraFilterOperator.NotEquals);
 
   const handleClickFilter = () => {
-    const newFilter = { field, value, operator: ExtraFilterOperator.NotEquals };
+    const newFilter = { field, value, operator: ExtraFilterOperator.NotEquals, isStream: isStreamField };
     if (isExcludeFilter) {
       // If the same filter already exists, we remove it by setting the value to an empty string
       removeFilterByValue(field, value);
