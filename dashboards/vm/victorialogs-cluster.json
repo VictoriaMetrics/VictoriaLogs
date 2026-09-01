@@ -83,7 +83,7 @@
         },
         "enable": true,
         "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job_cluster\", instance=~\"$instance\"}[$__interval])) by(job)",
-        "hide": true,
+        "hide": false,
         "iconColor": "orange",
         "name": "restarts",
         "textFormat": "{{job}} restarted"
