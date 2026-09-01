@@ -1709,18 +1709,53 @@ func optimizeSortOffsetPipes(pipes []pipe) []pipe {
 	return pipes
 }
 
+// isOneRowPerRowPipe returns true if p writes exactly one output row per every input row,
+// in the same order.
+//
+// The number of rows reaching a trailing 'limit' pipe is unchanged by such a pipe,
+// so the limit may be applied in front of it. See optimizeSortLimitPipes.
+func isOneRowPerRowPipe(p pipe) bool {
+	switch p.(type) {
+	case *pipeCoalesce, *pipeCollapseNums, *pipeCopy, *pipeDecolorize, *pipeDelete,
+		*pipeDropEmptyFields, *pipeExtract, *pipeExtractRegexp, *pipeFields, *pipeFormat,
+		*pipeHash, *pipeJSONArrayConcat, *pipeJSONArrayLen, *pipeLen, *pipeMath,
+		*pipePackJSON, *pipePackLogfmt, *pipeRename, *pipeReplace, *pipeReplaceRegexp,
+		*pipeSetStreamFields, *pipeSplit, *pipeTimeAdd, *pipeUnpackJSON, *pipeUnpackLogfmt,
+		*pipeUnpackSyslog, *pipeUnpackWords:
+		return true
+	default:
+		return false
+	}
+}
+
 func optimizeSortLimitPipes(pipes []pipe) []pipe {
 	// Merge 'sort ... | limit ...' into 'sort ... limit ...'
 	i := 1
 	for i < len(pipes) {
-		ps, ok1 := pipes[i-1].(*pipeSort)
-		pl, ok2 := pipes[i].(*pipeLimit)
-		if !ok1 || !ok2 {
+		pl, ok := pipes[i].(*pipeLimit)
+		if !ok {
+			i++
+			continue
+		}
+
+		// Skip pipes writing a single row per every input row - they do not change
+		// the number of rows the limit is applied to.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1601
+		j := i - 1
+		for j > 0 && pl.limit > 0 && isOneRowPerRowPipe(pipes[j]) {
+			j--
+		}
+		ps, ok := pipes[j].(*pipeSort)
+		if !ok {
 			i++
 			continue
 		}
 
 		if pl.limit == 0 {
+			if j != i-1 {
+				i++
+				continue
+			}
 			pipes = append(pipes[:i-1], pipes[i:]...)
 			continue
 		}

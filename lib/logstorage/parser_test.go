@@ -544,6 +544,21 @@ func TestParseQuery_OptimizeOffsetLimitPipes(t *testing.T) {
 	f(`* | sort by (x) | limit 30 | limit 20 | offset 4 | offset 5`, `* | sort by (x) offset 9 limit 11`)
 	f(`* | sort by (x) | limit 30 | limit 20 | offset 4 | offset 5 | fields x`, `* | sort by (x) offset 9 limit 11 | fields x`)
 
+	// Merge 'sort ... | limit ...' across pipes writing a single row per every input row.
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1601
+	f(`* | sort by (x) | pack_json | limit 30`, `* | sort by (x) limit 30 | pack_json`)
+	f(`* | sort by (x) | pack_json | fields a | limit 30`, `* | sort by (x) limit 30 | pack_json | fields a`)
+	f(`* | sort by (x) limit 12 | pack_json | limit 30`, `* | sort by (x) limit 12 | pack_json`)
+	f(`* | sort by (x) | replace ("a", "b") at y | limit 30`, `* | sort by (x) limit 30 | replace (a, b) at y`)
+	f(`* | sort by (x) | unpack_json | limit 30`, `* | sort by (x) limit 30 | unpack_json`)
+	f(`* | sort by (x) | pack_logfmt | limit 30`, `* | sort by (x) limit 30 | pack_logfmt`)
+
+	// Do not merge across pipes changing the number of rows.
+	f(`* | sort by (x) | unroll (a) | limit 30`, `* | sort by (x) | unroll by (a) | limit 30`)
+	f(`* | sort by (x) | filter foo:bar | limit 30`, `* | sort by (x) | filter foo:bar | limit 30`)
+	f(`* | sort by (x) | stats count() | limit 30`, `* | sort by (x) | stats count(*) as "count(*)" | limit 30`)
+	f(`* | sort by (x) | pack_json | unroll (a) | limit 30`, `* | sort by (x) | pack_json | unroll by (a) | limit 30`)
+
 	// Verify the case without 'sort' pipe and with 'offset 0' pipes.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/620#issuecomment-3276624504
 	f(`* | offset 0`, `*`)
