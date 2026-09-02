@@ -3,6 +3,19 @@
 .vm-tenant-input {
   position: relative;
 
+  // An alias replaces the short `accountID:projectID` with free-form text that may
+  // contain spaces and be arbitrarily long, and neither the header button
+  // (`vm-button` sets `white-space: nowrap`) nor the mobile value handle overflow.
+  // Truncate it here so a long alias cannot stretch or distort the header.
+  &__label {
+    display: block;
+    min-width: 0;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &-list {
     max-height: 300px;
     overflow: auto;

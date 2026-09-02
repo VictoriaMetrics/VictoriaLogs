@@ -73,7 +73,7 @@ const Tenants: FC = () => {
               <span className="vm-mobile-option__icon"><StorageIcon/></span>
               <div className="vm-mobile-option-text">
                 <span className="vm-mobile-option-text__label">Tenant ID</span>
-                <span className="vm-mobile-option-text__value">{tenantLabel}</span>
+                <span className="vm-mobile-option-text__value vm-tenant-input__label">{tenantLabel}</span>
               </div>
               <span className="vm-mobile-option__arrow"><ArrowDownIcon/></span>
             </div>
@@ -96,7 +96,7 @@ const Tenants: FC = () => {
               )}
               onClick={toggleOpenPopup}
             >
-              {tenantLabel}
+              <span className="vm-tenant-input__label">{tenantLabel}</span>
             </Button>
           )}
         </div>
