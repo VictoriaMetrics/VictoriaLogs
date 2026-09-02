@@ -82,7 +82,7 @@ Communication between `vlinsert` / `vlselect` and `vlstorage` is done via HTTP o
 - `vlselect` sends queries to `/internal/rpc/select/*` HTTP endpoints at `vlstorage`.
 
 This HTTP-based communication model allows using reverse proxies for authorization, routing, and encryption between components.
-See [how to protect the internal RPC endpoints with an authorization proxy](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization).
+See [how to protect the internal RPC endpoints with an authorization proxy](https://docs.victoriametrics.com/victorialogs/security-and-lb/#multi-level-cluster-authorization).
 
 For advanced setups, refer to the [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) documentation.
 

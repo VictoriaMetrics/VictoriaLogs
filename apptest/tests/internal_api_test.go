@@ -46,6 +46,8 @@ func TestVlsingleInternalEndpointsRequirePOST(t *testing.T) {
 		"/internal/select/query",
 		"/internal/delete/run_task",
 		"/internal/force_merge",
+		"/internal/force_flush",
+		"/internal/rpc/force_flush",
 	}
 	for _, path := range paths {
 		for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodPatch} {
@@ -53,9 +55,12 @@ func TestVlsingleInternalEndpointsRequirePOST(t *testing.T) {
 		}
 	}
 
-	// A POST request must pass the method check.
-	if _, statusCode := cli.Do(t, http.MethodPost, baseURL+"/internal/rpc/select/query", "", nil); statusCode == http.StatusMethodNotAllowed {
-		t.Fatalf("unexpected 405 for POST /internal/rpc/select/query; POST must be allowed by the method check")
+	// A POST request to each path must be accepted by the method check (not 405)
+	// and must reach a real handler (not 404).
+	for _, path := range paths {
+		if _, statusCode := cli.Do(t, http.MethodPost, baseURL+path, "", nil); statusCode == http.StatusMethodNotAllowed || statusCode == http.StatusNotFound {
+			t.Fatalf("unexpected status code for POST %s: got %d; want a code other than 405 and 404", path, statusCode)
+		}
 	}
 }
 

@@ -38,7 +38,7 @@ This document contains the following configuration examples for `vmauth`:
 * [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
 * [Access control inside a single tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#access-control-inside-a-single-tenant)
 * [Adding extra fields for the ingested logs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#adding-extra-fields)
-* [Authorizing access to internal RPC endpoints](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization)
+* [Authorizing traffic to lower-level clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#multi-level-cluster-authorization)
 
 ## Search Authorization
 
@@ -434,7 +434,7 @@ Any field sent by the application will be overridden by the value set in the `ex
 This prevents the log shipper from unexpectedly overriding the provided `extra_fields`.
 See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#query-args-handling) for details.
 
-## Internal RPC authorization
+## Multi-Level Cluster Authorization
 
 The VictoriaLogs cluster components communicate with each other via internal RPC endpoints,
 which [start with the `/internal/rpc/` path prefix](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
@@ -454,15 +454,23 @@ users:
 - username: "internal-rpc"
   password: "secret"
   url_map:
-  - src_paths: ["/internal/rpc/insert"]
+
+  # Protect the insert nodes
+  - src_paths: ["/internal/rpc/insert", "/internal/rpc/force_flush"]
     url_prefix:
     - "http://vlinsert-1:9428/"
     - "http://vlinsert-2:9428/"
+
+  # Protect the select nodes
   - src_paths: ["/internal/rpc/select/.*", "/internal/rpc/delete/.*"]
     url_prefix:
     - "http://vlselect-1:9428/"
     - "http://vlselect-2:9428/"
 ```
+
+In this example, `vlinsert-1` and `vlinsert-2` are the insert nodes and `vlselect-1` and `vlselect-2` are the select nodes of the same
+lower-level cluster. Do not list the `vlstorage` nodes under `url_prefix`, because `vmauth` load-balances each request to a single node,
+even when a query needs data from all of them.
 
 This configuration blocks unauthorized access to the `vlinsert` and `vlselect` nodes of the lower-level cluster via Basic Auth.
 The top-level `vlinsert` and `vlselect` must send requests to the `vmauth` addresses specified via `-storageNode`
@@ -530,7 +538,7 @@ curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 
 The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
 This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
 The internal RPC endpoints at the `/internal/rpc/` path prefix have no dedicated `-*AuthKey` command-line flags.
-See [how to authorize access to them](https://docs.victoriametrics.com/victorialogs/security-and-lb/#internal-rpc-authorization).
+See [how to authorize access to them](https://docs.victoriametrics.com/victorialogs/security-and-lb/#multi-level-cluster-authorization).
 
 - [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
   Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
