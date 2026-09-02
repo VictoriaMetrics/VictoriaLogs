@@ -10,6 +10,7 @@ import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import useBoolean from "../../../../hooks/useBoolean";
 import Popper from "../../../Main/Popper/Popper";
 import { ArrowDownIcon, StorageIcon } from "../../../Main/Icons";
+import { useTenantAliases } from "../../../../hooks/useTenantAliases";
 import "./style.scss";
 import "../../TimeRangeSettings/ExecutionControls/style.scss";
 
@@ -21,11 +22,17 @@ export type TenantType = {
 const Tenants: FC = () => {
   const { accountIds } = useFetchAccountIds();
   const { isMobile } = useDeviceDetect();
+  const { aliases, getLabel } = useTenantAliases();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const accountId = searchParams.get("accountID") || "0";
   const projectId = searchParams.get("projectID") || "0";
   const tenantId = `${accountId}:${projectId}`;
+  // the alias is display-only: requests are still identified by accountID/projectID
+  const tenantLabel = getLabel(tenantId);
+  const tooltipTitle = tenantLabel === tenantId
+    ? "Define Tenant ID if you need request to another storage"
+    : `Tenant ID: ${tenantId}`;
 
   const buttonRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
@@ -46,6 +53,7 @@ const Tenants: FC = () => {
   const childrenProps = {
     tenantId,
     accountIds,
+    aliases,
     accountId,
     projectId,
     search,
@@ -55,7 +63,7 @@ const Tenants: FC = () => {
 
   return (
     <div className="vm-tenant-input">
-      <Tooltip title="Define Tenant ID if you need request to another storage">
+      <Tooltip title={tooltipTitle}>
         <div ref={buttonRef}>
           {isMobile ? (
             <div
@@ -65,7 +73,7 @@ const Tenants: FC = () => {
               <span className="vm-mobile-option__icon"><StorageIcon/></span>
               <div className="vm-mobile-option-text">
                 <span className="vm-mobile-option-text__label">Tenant ID</span>
-                <span className="vm-mobile-option-text__value">{tenantId}</span>
+                <span className="vm-mobile-option-text__value vm-tenant-input__label">{tenantLabel}</span>
               </div>
               <span className="vm-mobile-option__arrow"><ArrowDownIcon/></span>
             </div>
@@ -88,7 +96,7 @@ const Tenants: FC = () => {
               )}
               onClick={toggleOpenPopup}
             >
-              {tenantId}
+              <span className="vm-tenant-input__label">{tenantLabel}</span>
             </Button>
           )}
         </div>

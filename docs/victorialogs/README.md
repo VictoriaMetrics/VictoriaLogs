@@ -488,6 +488,16 @@ If `AccountID` and/or `ProjectID` request headers aren't set, then the default `
 
 VictoriaLogs has very low overhead for per-tenant management, so it is OK to have thousands of tenants in a single VictoriaLogs instance.
 
+The tenant selector at [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) displays raw `accountID:projectID` pairs by default.
+Pass the `-vmui.tenantAliases` command-line flag in order to display human-readable names for the given tenants:
+
+```sh
+/path/to/victoria-logs -vmui.tenantAliases='0:0=k8s,0:1=nginx-access'
+```
+
+The aliases are displayed instead of the corresponding tenant ids at the tenant selector, while the tenant itself is still identified
+by the `accountID` and `projectID` query args, so links to the web UI remain compatible. Tenants without an alias are displayed as `accountID:projectID`.
+
 VictoriaLogs doesn't perform per-tenant authorization. Use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) or similar tools for per-tenant authorization.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 

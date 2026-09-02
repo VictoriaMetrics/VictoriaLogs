@@ -3,10 +3,12 @@ package vlselect
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
@@ -40,6 +42,10 @@ var (
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
+
+	vmuiTenantAliases = flagutil.NewArrayString("vmui.tenantAliases", "Optional list of `accountID:projectID=alias` entries, which are displayed instead of the raw tenant ids "+
+		"in the tenant selector at VictoriaLogs web UI. For example, -vmui.tenantAliases='0:0=k8s,0:1=nginx-access'. "+
+		"The aliases affect only the way tenants are displayed; see https://docs.victoriametrics.com/victorialogs/#multitenancy")
 )
 
 // InitSecretFlags registers secret flags defined under `vlselect` pkg.
@@ -65,6 +71,9 @@ func getDefaultMaxConcurrentRequests() int {
 
 // Init initializes vlselect
 func Init() {
+	// Verify -vmui.tenantAliases at startup instead of failing at the first request to vmui config.json.
+	_ = vmuiConfig()
+
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
 
 	vmalertproxy.Init(*vmalertProxyURL)
@@ -97,6 +106,66 @@ var (
 var vmuiFiles embed.FS
 
 var vmuiFileServer = http.FileServer(http.FS(vmuiFiles))
+
+// vmuiConfig returns contents of the embedded vmui/config.json enriched with tenant aliases
+// from the -vmui.tenantAliases command-line flag.
+var vmuiConfig = sync.OnceValue(func() []byte {
+	data, err := vmuiFiles.ReadFile("vmui/config.json")
+	if err != nil {
+		logger.Panicf("BUG: cannot read the embedded vmui/config.json: %s", err)
+	}
+	aliases, err := parseTenantAliases(*vmuiTenantAliases)
+	if err != nil {
+		logger.Fatalf("invalid -vmui.tenantAliases: %s", err)
+	}
+	if len(aliases) == 0 {
+		return data
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		logger.Panicf("BUG: cannot parse the embedded vmui/config.json: %s", err)
+	}
+	if cfg == nil {
+		cfg = make(map[string]any)
+	}
+	cfg["tenantAliases"] = aliases
+
+	dataPatched, err := json.Marshal(cfg)
+	if err != nil {
+		logger.Panicf("BUG: cannot marshal vmui config: %s", err)
+	}
+	return dataPatched
+})
+
+// parseTenantAliases parses `accountID:projectID=alias` entries from the -vmui.tenantAliases command-line flag.
+func parseTenantAliases(a []string) (map[string]string, error) {
+	aliases := make(map[string]string, len(a))
+	for _, s := range a {
+		tenantIDStr, alias, ok := strings.Cut(s, "=")
+		if !ok {
+			return nil, fmt.Errorf("missing `=` delimiter in %q; expecting accountID:projectID=alias", s)
+		}
+		// ParseTenantID treats an empty accountID or projectID as 0 without an error,
+		// so ":1=foo" would silently alias tenant 0:1 and "=foo" tenant 0:0. Reject
+		// those forms instead of labelling a tenant the operator did not name.
+		tenantIDStr = strings.TrimSpace(tenantIDStr)
+		if tenantIDStr == "" || strings.HasPrefix(tenantIDStr, ":") || strings.HasSuffix(tenantIDStr, ":") {
+			return nil, fmt.Errorf("missing accountID or projectID in %q; expecting accountID:projectID=alias", s)
+		}
+		tenantID, err := logstorage.ParseTenantID(tenantIDStr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse tenant id from %q: %w", s, err)
+		}
+		alias = strings.TrimSpace(alias)
+		if alias == "" {
+			return nil, fmt.Errorf("missing alias in %q; expecting accountID:projectID=alias", s)
+		}
+		// use the `accountID:projectID` form expected by vmui - TenantID.String() returns a different format
+		aliases[fmt.Sprintf("%d:%d", tenantID.AccountID, tenantID.ProjectID)] = alias
+	}
+	return aliases, nil
+}
 
 // RequestHandler handles select requests for VictoriaLogs
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
@@ -188,6 +257,12 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 			w.Header().Set("Cache-Control", "max-age=31536000")
 		}
 		r.URL.Path = strings.TrimPrefix(path, "/select")
+		if r.URL.Path == "/vmui/config.json" {
+			// Serve the config with tenant aliases from -vmui.tenantAliases instead of the embedded one.
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(vmuiConfig())
+			return true
+		}
 		vmuiFileServer.ServeHTTP(w, r)
 		return true
 	}
