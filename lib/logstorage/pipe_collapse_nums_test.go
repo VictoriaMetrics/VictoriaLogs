@@ -205,6 +205,10 @@ func TestAppendCollapseNums(t *testing.T) {
 	f("beefsteak", "beefsteak")
 	f("abacus", "abacus")
 	f("dead_letter", "dead_letter")
+	f("deadbeef1234s", "deadbeef1234s")
+	f("dead_beef", "dead_<N>")
+	f("deadbeef1234", "<N>")
+	f("deadbeef1234 done", "<N> done")
 }
 
 func TestAppendCollapseNums_Prettified(t *testing.T) {
