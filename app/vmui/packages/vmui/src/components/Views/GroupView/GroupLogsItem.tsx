@@ -55,6 +55,7 @@ const GroupLogsItem: FC<Props> = ({
 
   const noWrapLines = searchParams.get(LOGS_URL_PARAMS.NO_WRAP_LINES) === "true";
   const [disabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
+  const [showFieldNames] = useLocalStorageBoolean("LOGS_SHOW_FIELD_NAMES");
 
   const logLevel = useMemo(() => {
     if (disabledLevelDetection) return null;
@@ -99,7 +100,18 @@ const GroupLogsItem: FC<Props> = ({
           value = "";
         }
 
-        value && values.push(value);
+        if (!value) return;
+
+        if (showFieldNames) {
+          values.push(
+            <>
+              <span className="vm-group-logs-row-content__field-name">{field}:</span>
+              {value}
+            </>
+          );
+        } else {
+          values.push(value);
+        }
       });
     } else {
       Object.entries(log).forEach(([key, value]) => {
@@ -108,7 +120,7 @@ const GroupLogsItem: FC<Props> = ({
     }
 
     return values;
-  }, [log, hasFields, displayFields, ansiParsing, markdownParsing]);
+  }, [log, hasFields, displayFields, ansiParsing, markdownParsing, showFieldNames]);
 
   const [disabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
 
