@@ -114,7 +114,10 @@ var vmuiConfig = sync.OnceValue(func() []byte {
 	if err != nil {
 		logger.Panicf("BUG: cannot read the embedded vmui/config.json: %s", err)
 	}
-	aliases := parseTenantAliases(*vmuiTenantAliases)
+	aliases, err := parseTenantAliases(*vmuiTenantAliases)
+	if err != nil {
+		logger.Fatalf("invalid -vmui.tenantAliases: %s", err)
+	}
 	if len(aliases) == 0 {
 		return data
 	}
@@ -136,25 +139,32 @@ var vmuiConfig = sync.OnceValue(func() []byte {
 })
 
 // parseTenantAliases parses `accountID:projectID=alias` entries from the -vmui.tenantAliases command-line flag.
-func parseTenantAliases(a []string) map[string]string {
+func parseTenantAliases(a []string) (map[string]string, error) {
 	aliases := make(map[string]string, len(a))
 	for _, s := range a {
 		tenantIDStr, alias, ok := strings.Cut(s, "=")
 		if !ok {
-			logger.Fatalf("missing `=` delimiter in -vmui.tenantAliases=%q; expecting accountID:projectID=alias", s)
+			return nil, fmt.Errorf("missing `=` delimiter in %q; expecting accountID:projectID=alias", s)
 		}
-		tenantID, err := logstorage.ParseTenantID(strings.TrimSpace(tenantIDStr))
+		// ParseTenantID treats an empty accountID or projectID as 0 without an error,
+		// so ":1=foo" would silently alias tenant 0:1 and "=foo" tenant 0:0. Reject
+		// those forms instead of labelling a tenant the operator did not name.
+		tenantIDStr = strings.TrimSpace(tenantIDStr)
+		if tenantIDStr == "" || strings.HasPrefix(tenantIDStr, ":") || strings.HasSuffix(tenantIDStr, ":") {
+			return nil, fmt.Errorf("missing accountID or projectID in %q; expecting accountID:projectID=alias", s)
+		}
+		tenantID, err := logstorage.ParseTenantID(tenantIDStr)
 		if err != nil {
-			logger.Fatalf("cannot parse tenant id from -vmui.tenantAliases=%q: %s", s, err)
+			return nil, fmt.Errorf("cannot parse tenant id from %q: %w", s, err)
 		}
 		alias = strings.TrimSpace(alias)
 		if alias == "" {
-			logger.Fatalf("missing alias in -vmui.tenantAliases=%q; expecting accountID:projectID=alias", s)
+			return nil, fmt.Errorf("missing alias in %q; expecting accountID:projectID=alias", s)
 		}
 		// use the `accountID:projectID` form expected by vmui - TenantID.String() returns a different format
 		aliases[fmt.Sprintf("%d:%d", tenantID.AccountID, tenantID.ProjectID)] = alias
 	}
-	return aliases
+	return aliases, nil
 }
 
 // RequestHandler handles select requests for VictoriaLogs

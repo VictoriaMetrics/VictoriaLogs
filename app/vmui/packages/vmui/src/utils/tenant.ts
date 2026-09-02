@@ -36,9 +36,3 @@ export const parseTenantAliases = (appConfig?: AppConfig): TenantAliases => {
 export const getTenantLabel = (tenantId: string, aliases: TenantAliases): string => {
   return aliases[normalizeTenantId(tenantId) || tenantId] || tenantId;
 };
-
-/** Returns the string the tenant is searched by - both the alias and the raw tenant id are matched. */
-export const getTenantSearchString = (tenantId: string, aliases: TenantAliases): string => {
-  const label = getTenantLabel(tenantId, aliases);
-  return label === tenantId ? tenantId : `${label} ${tenantId}`;
-};
