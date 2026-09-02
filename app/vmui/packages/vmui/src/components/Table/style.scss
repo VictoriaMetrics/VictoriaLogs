@@ -15,6 +15,11 @@
   // top padding aligns the chevron with the first line of row content, which sits
   // lower because the data cells have vertical padding of their own
   padding: calc($padding-small / 2);
+}
+
+// the header shares the class for column width but has no toggle, so only the
+// body cell gets the pointer
+td.vm-table-cell_expand {
   cursor: pointer;
 }
 
