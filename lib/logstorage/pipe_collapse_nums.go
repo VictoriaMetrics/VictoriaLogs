@@ -180,8 +180,13 @@ func indexNumEnd(s string, offset int) int {
 }
 
 func isValidNum(s string, start, end int) bool {
-	if end < len(s) && isTokenChar(s[end]) && !isSpecialNumEnd(s[end]) {
-		return false
+	if end < len(s) && isTokenChar(s[end]) {
+		if !isSpecialNumEnd(s[end]) {
+			return false
+		}
+		if hasHexChars(s[start:end]) {
+			return false
+		}
 	}
 	return canBeTreatedAsNum(s[start:end])
 }

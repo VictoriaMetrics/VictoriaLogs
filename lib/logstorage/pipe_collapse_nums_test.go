@@ -199,6 +199,12 @@ func TestAppendCollapseNums(t *testing.T) {
 
 	// non-ascii chars must be treated as number delimiters
 	f("ЙЦ123ук", "ЙЦ<N>ук")
+
+	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1760
+	f("default", "default")
+	f("beefsteak", "beefsteak")
+	f("abacus", "abacus")
+	f("dead_letter", "dead_letter")
 }
 
 func TestAppendCollapseNums_Prettified(t *testing.T) {
