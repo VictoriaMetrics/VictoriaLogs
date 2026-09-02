@@ -12,7 +12,10 @@
 
 .vm-table-cell_expand {
   width: 24px;
-  padding: 0 4px;
+  // top padding aligns the chevron with the first line of row content, which sits
+  // lower because the data cells have vertical padding of their own
+  padding: calc($padding-small / 2);
+  cursor: pointer;
 }
 
 .vm-table__expand-btn {
@@ -20,8 +23,7 @@
   align-items: center;
   background: none;
   border: none;
-  cursor: pointer;
-  padding: 2px;
+  padding: 0;
 
   svg {
     width: 14px;

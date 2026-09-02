@@ -1,18 +1,17 @@
 import { Fragment, useState, useMemo, useRef, useEffect } from "preact/compat";
-import classNames from "classnames";
 import { getComparator, stableSort } from "./helpers";
 import { OrderDir } from "../../types";
 import TableHeaderCell from "./TableHeaderCell/TableHeaderCell";
 import TableCell from "./TableCell/TableCell";
 import TableCellActions from "./TableCell/TableCellActions";
 import TableRow from "./TableRow/TableRow";
+import TableExpandCell from "./TableExpandCell/TableExpandCell";
 import "./style.scss";
 import { useTableColumnPrefs } from "./hooks/useTableColumnPrefs";
 import { Size, useResizeObserver } from "../../hooks/useResizeObserver";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import { ColumnKey, TableProps } from "./types";
 import { useDragColumn } from "./hooks/useDragColumn";
-import { ArrowDownIcon } from "../Main/Icons";
 
 const Table = <T extends object>({
   tableId,
@@ -114,23 +113,13 @@ const Table = <T extends object>({
               onClick={(e) => onClickRow && onClickRow(row as T, e)}
             >
               {renderExpandedRow && (
-                <td className="vm-table-cell vm-table-cell_expand">
-                  <button
-                    type="button"
-                    aria-label={expandedRows.has(rowIndex) ? "Collapse row" : "Expand row"}
-                    aria-expanded={expandedRows.has(rowIndex)}
-                    className={classNames({
-                      "vm-table__expand-btn": true,
-                      "vm-table__expand-btn_open": expandedRows.has(rowIndex),
-                    })}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpanded(rowIndex);
-                    }}
-                  >
-                    <ArrowDownIcon/>
-                  </button>
-                </td>
+                <TableExpandCell
+                  expanded={expandedRows.has(rowIndex)}
+                  onToggle={(e) => {
+                    e.stopPropagation();
+                    toggleExpanded(rowIndex);
+                  }}
+                />
               )}
 
               {columns.map((col) => (
