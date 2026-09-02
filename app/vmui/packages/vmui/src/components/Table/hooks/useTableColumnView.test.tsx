@@ -25,7 +25,7 @@ vi.mock("../../../utils/storage", async () => {
 vi.mock("../../../constants/logs", async () => {
   return {
     DEFAULT_COMMON_FIELDS: ["ts", "level", "message"],
-    LOGS_URL_PARAMS: { COLUMNS: "columns" },
+    LOGS_URL_PARAMS: { COLUMNS: "columns", DISPLAY_FIELDS: "displayFields" },
   };
 });
 
@@ -251,6 +251,41 @@ describe("useTableColumnView", () => {
 
     await waitFor(() => {
       expect(result.current.viewColumnKeys).toEqual(["message", "host"]);
+    });
+  });
+
+  describe("seeding from displayFields", () => {
+    it("defaults to _time + displayFields when no url/storage columns", () => {
+      routerMock.__setInitialSearchParams(new URLSearchParams({ displayFields: "foo,bar,missing" }));
+
+      const { result } = renderHook(() =>
+        useTableColumnView("t1", ["_time", "foo", "bar", "baz"]),
+      );
+
+      expect(result.current.viewColumnKeys).toEqual(["_time", "foo", "bar"]);
+    });
+
+    it("url columns take priority over displayFields", () => {
+      routerMock.__setInitialSearchParams(new URLSearchParams({
+        displayFields: "foo",
+        columns: JSON.stringify(["baz"]),
+      }));
+
+      const { result } = renderHook(() =>
+        useTableColumnView("t1", ["foo", "baz"]),
+      );
+
+      expect(result.current.viewColumnKeys).toEqual(["baz"]);
+    });
+
+    it("falls back to DEFAULT_COMMON_FIELDS when displayFields unset", () => {
+      routerMock.__setInitialSearchParams(new URLSearchParams());
+
+      const { result } = renderHook(() =>
+        useTableColumnView("t1", ["ts", "level", "message", "x"]),
+      );
+
+      expect(result.current.viewColumnKeys).toEqual(["ts", "level", "message"]);
     });
   });
 });
