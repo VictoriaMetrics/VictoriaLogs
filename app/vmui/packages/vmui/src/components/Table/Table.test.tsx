@@ -54,4 +54,21 @@ describe("Table renderExpandedRow", () => {
     expect(screen.queryByTestId("expanded")).toBeNull();
     expect(screen.getByLabelText("Expand row").getAttribute("aria-expanded")).toBe("false");
   });
+
+  it("expands a row on click anywhere in the expand cell", () => {
+    render(<Table
+      tableId="t"
+      rows={rows}
+      columns={columns}
+      paginationOffset={[0, 10]}
+      renderExpandedRow={(row) => <div data-testid="expanded">{row.msg}-details</div>}
+    />);
+
+    const cell = screen.getByLabelText("Expand row").closest("td") as HTMLElement;
+    fireEvent.click(cell);
+    expect(screen.getByTestId("expanded")).toHaveTextContent("hello-details");
+
+    fireEvent.click(cell);
+    expect(screen.queryByTestId("expanded")).toBeNull();
+  });
 });
