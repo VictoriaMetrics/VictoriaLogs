@@ -5,7 +5,7 @@ import TextField from "../../../Main/TextField/TextField";
 import { TenantType } from "./Tenants";
 import Button from "../../../Main/Button/Button";
 import { LOGS_DOCS_URL } from "../../../../constants/logs";
-import { getTenantLabel, getTenantSearchString, TenantAliases } from "../../../../utils/tenant";
+import { getTenantLabel, TenantAliases } from "../../../../utils/tenant";
 
 interface Props extends TenantType {
   accountIds: string[];
@@ -22,16 +22,22 @@ const TenantsSelect: FC<Props> = ({ accountIds, tenantId, aliases, search, onSea
   const options = useMemo(() => accountIds.map(id => ({
     id,
     label: getTenantLabel(id, aliases),
-    // both the alias and the raw tenant id are searchable
-    searchString: getTenantSearchString(id, aliases),
   })), [accountIds, aliases]);
 
   const optionsFiltered = useMemo(() => {
     if (!search) return options;
     try {
       const regexp = new RegExp(search, "i");
-      const found = options.filter((item) => regexp.test(item.searchString));
-      return found.sort((a, b) => (a.searchString.match(regexp)?.index || 0) - (b.searchString.match(regexp)?.index || 0));
+      // The alias and the raw id are matched separately: searching a single
+      // "<alias> <id>" haystack hides aliased tenants from anchored patterns
+      // like `^0:1`, because the haystack starts with the alias.
+      const matchIndex = (item: { id: string, label: string }) => Math.min(
+        item.label.match(regexp)?.index ?? Infinity,
+        item.id.match(regexp)?.index ?? Infinity,
+      );
+      return options
+        .filter((item) => matchIndex(item) !== Infinity)
+        .sort((a, b) => matchIndex(a) - matchIndex(b));
     } catch (e) {
       return [];
     }

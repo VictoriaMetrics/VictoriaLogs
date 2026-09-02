@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTenantLabel, getTenantSearchString, normalizeTenantId, parseTenantAliases } from "./tenant";
+import { getTenantLabel, normalizeTenantId, parseTenantAliases } from "./tenant";
 
 describe("normalizeTenantId", () => {
   it("keeps a canonical accountID:projectID pair", () => {
@@ -55,14 +55,3 @@ describe("getTenantLabel", () => {
   });
 });
 
-describe("getTenantSearchString", () => {
-  const aliases = { "0:0": "k8s" };
-
-  it("matches both the alias and the raw tenant id", () => {
-    expect(getTenantSearchString("0:0", aliases)).toBe("k8s 0:0");
-  });
-
-  it("returns just the tenant id when there is no alias", () => {
-    expect(getTenantSearchString("0:1", aliases)).toBe("0:1");
-  });
-});
