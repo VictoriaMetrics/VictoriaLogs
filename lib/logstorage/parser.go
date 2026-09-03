@@ -2353,6 +2353,9 @@ func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg str
 		lex.restoreState(lexState)
 		return parseFilterPhrase(lex, fieldName)
 	}
+	if lex.isSkippedSpace {
+		return nil, fmt.Errorf("unexpected whitespace between %q and '('", funcName)
+	}
 	lex.nextToken()
 
 	arg := ""
@@ -2893,6 +2896,9 @@ func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
 		lex.restoreState(lexState)
 		return parseFilterPhrase(lex, fieldName)
 	}
+	if lex.isSkippedSpace {
+		return nil, fmt.Errorf("unexpected whitespace between %q and %q", funcName, lex.token)
+	}
 	lex.nextToken()
 
 	minValue, minValueStr, err := parseNumber(lex)
@@ -2973,6 +2979,9 @@ func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, 
 		lex.restoreState(lexState)
 		return parseFilterPhrase(lex, fieldName)
 	}
+	if lex.isSkippedSpace {
+		return nil, fmt.Errorf("unexpected whitespace between %q and '('", funcName)
+	}
 
 	args, err := parseArgsInParens(lex)
 	if err != nil {
@@ -2988,6 +2997,9 @@ func parseFuncArgsPossibleWildcard(lex *lexer, callback func(args []string) (fil
 
 	if !lex.isKeyword("(") {
 		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
+	}
+	if lex.isSkippedSpace {
+		return nil, fmt.Errorf("unexpected whitespace between %q and '('", funcName)
 	}
 
 	args, isWildcard, err := parseArgsInParensPossibleWildcard(lex)
