@@ -25,7 +25,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
   const [initialLimit, setInitialLimit] = useState<number>(0);
   const [limitDraft, setLimitDraft] = useState<number>(0);
 
-  const [suppressWarning, setSuppressWarning] = useState(getStoredWarningPreference);
+  const [dismissWarningDraft, setDismissWarningDraft] = useState(getStoredWarningPreference);
 
   const pendingResolveRef = useRef<(r: BeforeFetchResult) => void>();
   const pendingPromiseRef = useRef<Promise<BeforeFetchResult> | null>(null);
@@ -37,12 +37,14 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     const safeLimit = Number.isFinite(n) && n >= 0 ? n : 0;
 
     const mustConfirm = safeLimit === 0 || safeLimit > LOGS_MAX_LIMIT;
-    const softConfirm = safeLimit > LOGS_CONFIRM_THRESHOLD && !getStoredWarningPreference();
+    const warningDismissed = getStoredWarningPreference();
+    const softConfirm = safeLimit > LOGS_CONFIRM_THRESHOLD && !warningDismissed;
     const needsDialog = mustConfirm || softConfirm;
     if (!needsDialog) return { action: "proceed" };
 
     setInitialLimit(safeLimit);
     setLimitDraft(safeLimit);
+    setDismissWarningDraft(warningDismissed);
     handleOpen();
 
     const p = new Promise<BeforeFetchResult>((resolve) => {
@@ -50,7 +52,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     });
     pendingPromiseRef.current = p;
     return p;
-  }, [handleOpen, suppressWarning]);
+  }, [handleOpen]);
 
   const onConfirm = useCallback(() => {
     const resolve = pendingResolveRef.current;
@@ -66,7 +68,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     setLimit(next);
 
     try {
-      if (suppressWarning) {
+      if (dismissWarningDraft) {
         localStorage.setItem(LOGS_LIMIT_WARN_DISMISSED_KEY, "true");
       } else {
         localStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
@@ -83,19 +85,19 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     pendingResolveRef.current = undefined;
     pendingPromiseRef.current = null;
     handleClose();
-  }, [limitDraft, setLimit, suppressWarning, handleClose]);
+  }, [limitDraft, setLimit, dismissWarningDraft, handleClose]);
 
   const onCancel = useCallback(() => {
     const resolve = pendingResolveRef.current;
     if (resolve) resolve({ action: "abort" });
     pendingResolveRef.current = undefined;
     pendingPromiseRef.current = null;
-    setSuppressWarning(getStoredWarningPreference());
+    setDismissWarningDraft(getStoredWarningPreference());
     handleClose();
   }, [handleClose]);
 
   const onChangeSuppressWarning = useCallback((value: boolean) => {
-    setSuppressWarning(value);
+    setDismissWarningDraft(value);
   }, []);
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export const useLimitGuard = ({ setLimit }: Params) => {
     initialLimit,
     limitDraft,
     setLimitDraft,
-    suppressWarning,
+    suppressWarning: dismissWarningDraft,
     onChangeSuppressWarning,
     onConfirm,
     onCancel,
