@@ -488,3 +488,281 @@ for the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcept
 which contain the `ERROR` word in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 Then it uses `now()` function at [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe) for calculating
 the duration since the last seen log entry with the `ERROR` word.
+
+## How to filter authentication errors by status code?
+
+Authentication and validation errors are usually reported with `4xx` status codes such as `400` or `422`.
+
+The following query returns authentication‑related errors over the last 15 minutes using a time filter and range comparison on `http.status_code`.
+
+```logsql
+_time:15m
+http.status_code:>=400
+http.status_code:<500
+| sort by (_time)
+```
+
+You may add `path` to filter by URL. Adjust the path string for your logged data:
+
+```logsql
+_time:15m
+path:="/api/auth"*
+http.status_code:>=400
+http.status_code:<500
+| sort by (_time)
+```
+
+If you want to focus only on `400` and `422` errors and see how many of each occurred, use `stats` with grouping by status code.
+
+```logsql
+_time:15m
+http.status_code:in(400, 422)
+| stats by (http.status_code) count() errors
+| sort by (errors desc)
+```
+
+## How to investigate POST or PATCH requests for a given user?
+
+To inspect all `POST` and `PATCH` requests made by a specific user over the last hour, combine filters on `user.id` and `http.method` and then sort by time.
+
+```logsql
+_time:1h
+user.id:="12345"
+http.method:in("POST","PATCH")
+| sort by (_time)
+```
+
+If user information and HTTP method are stored inside a JSON payload (for example, in `_msg`), use `unpack_json` to extract structured fields at query time.
+
+```logsql
+_time:1h
+path:="/api/orders"*
+| unpack_json
+| filter user.id:="12345" http.method:="POST"
+| sort by (_time)
+```
+
+## How to track errors by user ID or `X-User-Id` header?
+
+The following query finds the top users with the most `5xx` errors over the last 24 hours, assuming a `user.id` field is present in the error logs.
+
+```logsql
+_time:24h
+http.status_code:>=500
+| stats by (user.id) count() errors
+| sort by (errors desc)
+| limit 20
+```
+
+Sometimes user identity is stored in a header such as `X-User-Id`, in those cases, the same query becomes:
+
+```logsql
+_time:24h
+http.status_code:>=500
+| stats by ("X-User-Id") count() errors
+| sort by (errors desc)
+| limit 20
+```
+
+When the user ID lives inside a JSON payload, you can extract it first and then aggregate.
+
+```logsql
+_time:24h
+http.status_code:>=400
+| unpack_json
+| stats by (json.user.id) count() errors
+| sort by (errors desc)
+| limit 20
+```
+
+## How to calculate error rate per second by status code
+
+The `rate()` combined with the `stats` function can be used to return the average per‑second rate of matching logs.
+
+```logsql
+http.status_code:>=500
+| stats by (http.status_code) rate() errors_per_second
+| sort by (errors_per_second desc)
+```
+
+## Error rate by client version
+
+Assuming `client.version` is a field,  you can see which versions generate the most `5xx` errors.
+
+```logsql
+http.status_code:>=500
+| stats by (client.version) rate() errors_per_second, count() errors
+| sort by (errors_per_second desc)
+```
+
+## Latency percentiles (quantiles) per endpoint
+
+The `quantile(phi, field)` stats function returns an estimated percentile of a numeric field across matching logs (for example, request duration). This query produces per‑endpoint latency percentiles that can be visualized as tables or charts in your dashboard.
+
+```logsql
+path:="/api/"*
+http.status_code:<500
+| stats by (path)
+    quantile(0.5, http.request_duration_ms)  p50_ms,
+    quantile(0.9, http.request_duration_ms)  p90_ms,
+    quantile(0.99, http.request_duration_ms) p99_ms
+| sort by (p99_ms desc)
+```
+
+## How to search for users on a specific app, major, and minor version
+
+LogsQL supports prefix, substring, and regex filters on arbitrary fields, including `client.version` and `user.name`.
+
+If versions are stored as strings like `2.3.4` in `client.version`, you can match a whole minor version via exact prefix filter or regex.
+
+```logsql
+client.version:="2.3."*
+| uniq by (user.id)
+```
+
+Or with a regexp filter:
+
+```logsql
+client.version:~"^2\\.3\\."
+| uniq by (user.id)
+```
+
+To see how many users per version are active over the last 7 days:
+
+```logsql
+_time:7d
+| stats by (client.version) count_uniq(user.id) users
+| sort by (users desc)
+```
+
+## How to fuzzy search usernames
+
+To find usernames containing a substring (for example, all usernames containing `john`), you can use a substring filter on the `user.name` field.
+
+```logsql
+user.name:*john*
+| sort by (_time) desc
+```
+
+For case‑insensitive matching, use a regex with the `(?i)` flag.
+
+```logsql
+user.name:~"(?i)john"
+| uniq by (user.name)
+```
+
+## How to filter out paths or messages you are not interested in?
+
+To exclude log lines containing a specific substring (for example, health checks), prepend the word or phrase filter with `-`.
+
+```logsql
+"error"
+-"healthcheck"
+| sort by (_time) desc
+```
+
+This returns logs that contain `error` but do not contain `healthcheck` anywhere in the line.
+
+You can apply the same pattern to authentication errors, for example, excluding `/healthz` and `/metrics` endpoints while looking at `4xx` codes.
+
+```logsql
+http.status_code:>=400
+http.status_code:<500
+-"GET /healthz"
+-"/metrics"
+| sort by (_time)
+```
+
+## How to exclude specific status codes or methods?
+
+Field filters can also be negated with `-` in front of them. For example, "all errors except 404":
+
+```logsql
+http.status_code:>=400
+-http.status_code:=404
+| stats by (http.status_code) count() errors
+| sort by (errors desc)
+```
+
+Or "all requests from this user that are **not** `GET` requests":
+
+```logsql
+user.id:="12345"
+-http.method:="GET"
+| sort by (_time)
+```
+
+## How to exclude environments, client versions, or users?
+
+When filtering by labels/fields such as environment or client version, you can use `-field:=value` or `-field:in(...)` to exclude sets of values.
+
+Exclude logs from non‑production environments while analyzing error rates:
+
+```logsql
+http.status_code:>=500
+-env:in("dev","staging","test")
+| stats by (_time:5m) count() errors
+| sort by (_time)
+```
+
+Exclude a specific problematic client version from your "error rate by client version":
+
+```logsql
+http.status_code:>=500
+-client.version:="1.0.0-beta"
+| stats by (client.version) rate() errors_per_second, count() errors
+| sort by (errors_per_second desc)
+```
+
+You can also flip your "top 20 users by errors" example to ignore an internal test user ID:
+
+```logsql
+http.status_code:>=500
+-user.id:="internal-test-user"
+| stats by (user.id) count() errors
+| sort by (errors desc)
+| limit 20
+```
+
+## How to use negative regex filters?
+
+For message‑level regexes, LogsQL supports negative matching with `NOT ~"regexp"`. Exclude logs whose messages match a noisy pattern:
+
+```logsql
+"error"
+NOT ~"^ignored_error_code_[0-9]+"
+| sort by (_time) desc
+```
+
+For label fields, use `-field:~"regexp"` to exclude values matching a regex.
+
+```logsql
+-client.version:~"^0\\."
+| stats by (client.version) uniq(user.id) users
+| sort by (users desc)
+```
+
+## How to negate whole logical conditions with NOT?
+
+In addition to the shorthand `-filter`, LogsQL supports logical filters `AND`, `OR`, and `NOT` to combine or negate groups of filters.
+
+For example, "all warnings that are not from nginx or envoy":
+
+```logsql
+level:="warning"
+NOT (app:="nginx" OR app:="envoy")
+| sort by (_time) desc
+```
+
+Or, in a signup investigation, "failed signups that are not from bots":
+
+```logsql
+  path:="/api/signup"
+  http.method:="POST"
+  | unpack_json
+  | filter json.status:in("error","failed")
+            AND NOT json.user.agent:~"bot|crawler"
+  | stats by (_time:5m) count() errors
+  | sort by (_time)
+```
+
