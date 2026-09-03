@@ -5,11 +5,9 @@ import (
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestVlsingleStatsQueryRange_Success(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -60,7 +58,6 @@ func TestVlsingleStatsQueryRange_Success(t *testing.T) {
 }
 
 func TestVlclusterStatsQueryRangeRate(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -97,7 +94,6 @@ func TestVlclusterStatsQueryRangeRate(t *testing.T) {
 }
 
 func TestVlsingleStatsQueryRange_Failure(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -146,7 +142,6 @@ func TestVlsingleStatsQueryRange_Failure(t *testing.T) {
 //
 // The test also verifies that `total_stats by (_time)` returns the same per-step total for every original series.
 func TestStatsQueryRangeTotalStatsBySubsetLabels(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -182,7 +177,6 @@ func TestStatsQueryRangeTotalStatsBySubsetLabels(t *testing.T) {
 }
 
 func TestStatsQueryRangeHistogram(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 

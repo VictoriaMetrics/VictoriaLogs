@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterStreamID(t *testing.T) {
@@ -40,12 +38,10 @@ func TestFilterStreamID(t *testing.T) {
 func testFilterMatchForStreamID(t *testing.T, f filter, expectedRowIdxs []int) {
 	t.Helper()
 
-	storagePath := t.Name()
-
 	cfg := &StorageConfig{
 		Retention: 100 * 365 * time.Duration(nsecsPerDay),
 	}
-	s := MustOpenStorage(storagePath, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	tenantID := TenantID{
 		AccountID: 123,
@@ -67,9 +63,7 @@ func testFilterMatchForStreamID(t *testing.T, f filter, expectedRowIdxs []int) {
 
 	testFilterMatchForStorage(t, s, tenantID, f, "_msg", expectedResults, expectedTimestamps)
 
-	// Close and delete the test storage
 	s.MustClose()
-	fs.MustRemoveDir(storagePath)
 }
 
 func generateTestLogStreams(s *Storage, tenantID TenantID, getMsgValue func(int) string, rowsCount, streamsCount int) {
