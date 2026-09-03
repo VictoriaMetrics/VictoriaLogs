@@ -317,6 +317,11 @@ func (lmp *logMessageProcessor) AddInsertRow(r *logstorage.InsertRow) {
 
 // flushLocked must be called under locked lmp.mu.
 func (lmp *logMessageProcessor) flushLocked() {
+	if lmp.unflushedRows > 0 {
+		logsRateLimiter.Register(lmp.unflushedRows)
+		bytesRateLimiter.Register(lmp.unflushedBytes)
+	}
+
 	start := time.Now()
 	lmp.lastFlushTime = start
 	logRowsStorage.MustAddRows(lmp.lr)

@@ -60,6 +60,8 @@ func main() {
 	logger.Infof("received signal %s", sig)
 	pushmetrics.Stop()
 
+	vlinsert.StopRateLimiters()
+
 	logger.Infof("gracefully shutting down webservice at %q", listenAddrs)
 	startTime = time.Now()
 	if err := httpserver.Stop(listenAddrs); err != nil {

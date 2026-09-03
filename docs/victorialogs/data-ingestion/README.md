@@ -335,6 +335,58 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 
 See also [HTTP Query string parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-query-string-parameters).
 
+## Rate limiting
+
+Single-node VictoriaLogs and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) can limit the rate of the ingested data
+{{% available_from "#" %}} via the following command-line flags:
+
+- `-insert.maxLogsPerSecond` - the maximum number of log entries, which can be ingested per second.
+- `-insert.maxBytesPerSecond` - the maximum number of bytes, which can be ingested per second.
+
+For example, the following command limits the ingestion rate by 10K log entries per second and by 5MB per second:
+
+```sh
+./victoria-logs -insert.maxLogsPerSecond=10000 -insert.maxBytesPerSecond=5MB
+```
+
+Both limits are disabled by default, so there is no ingestion rate limiting and no associated overhead out of the box.
+The limits are global - they are shared by all the [supported data ingestion protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+The limits work independently of each other - the ingestion is throttled when any of the configured limits is exceeded.
+The limits are checked sequentially, so the delays are summed up when both limits are exceeded at the same time.
+
+The limits are applied to the data ingested via the data ingestion protocols listed above. This includes the logs
+forwarded by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) to `-remoteWrite.url`, since vlagent
+sends them via the data ingestion protocol. The logs collected by vlagent from files and from Kubernetes pods do not go
+through these protocols at vlagent itself, so these flags have no effect there. Use the `-remoteWrite.rateLimit`
+command-line flag for limiting the rate of the data sent by vlagent to `-remoteWrite.url`, including the collected logs.
+
+The limits are applied per process. In [cluster version](https://docs.victoriametrics.com/victorialogs/cluster/)
+set them at `vlinsert` nodes, since setting them at `vlstorage` nodes throttles the data received from `vlinsert` nodes.
+
+The limits are checked once per flush of the buffered log entries instead of per log entry, and the whole flush
+is accounted at once. A single flush may contain up to 20972 log entries or 1.75MiB of buffered data, so the configured
+limit should exceed the size of a single flush. Otherwise a single flush consumes the budget for many seconds ahead
+and the subsequent data ingestion is blocked until the budget is replenished - for example,
+`-insert.maxLogsPerSecond=100` blocks the ingestion for around 209 seconds after a full flush, while
+`-insert.maxLogsPerSecond=100000` never accumulates such a debt.
+
+See also the `-maxConcurrentInserts` command-line flag, which limits the number of concurrently processed
+data ingestion requests, and the `-insert.maxQueueDuration` command-line flag, which limits the time
+the data ingestion requests wait in the queue when this concurrency limit is reached.
+
+The `-insert.maxBytesPerSecond` limit is applied to the estimated JSON size of the ingested log entries - the same value
+which is exposed via the `vl_bytes_ingested_total` metric. It isn't applied to the size of the received requests,
+since these may be compressed and may use various data ingestion formats.
+
+Both limits are applied to every parsed log entry, including the entries dropped because of `-insert.maxFieldsPerLine`
+and the entries processed with `debug=1`, which aren't stored. This is the same set of entries which is accounted
+at the `vl_rows_ingested_total` and `vl_bytes_ingested_total` metrics.
+
+The `vl_insert_rate_limit_reached_total` metric is incremented approximately once per second spent waiting
+for the budget replenishment, so `rate()` over this metric shows the fraction of time the ingestion is throttled.
+The `vl_insert_rate_limit` metric exposes the configured limits. These metrics can be used for alerting
+on the ingestion rate limits being hit.
+
 ## Decolorizing
 
 If the ingested logs contain [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code), then it is recommended dropping these color codes before
