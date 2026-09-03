@@ -12,15 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 func TestStorageRunQuery(t *testing.T) {
 	t.Parallel()
-
-	path := t.Name()
 
 	const tenantsCount = 11
 	const streamsPerTenant = 3
@@ -30,7 +26,7 @@ func TestStorageRunQuery(t *testing.T) {
 	sc := &StorageConfig{
 		Retention: 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, sc)
+	s := MustOpenStorage(t.TempDir(), sc)
 
 	// fill the storage with data
 	var allTenantIDs []TenantID
@@ -1139,9 +1135,8 @@ func TestStorageRunQuery(t *testing.T) {
 		})
 	})
 
-	// Close the storage and delete its data
+	// Close the storage
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func mustParseQuery(query string) *Query {
@@ -1155,8 +1150,6 @@ func mustParseQuery(query string) *Query {
 func TestStorageSearch(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
-
 	const tenantsCount = 11
 	const streamsPerTenant = 3
 	const blocksPerStream = 5
@@ -1165,7 +1158,7 @@ func TestStorageSearch(t *testing.T) {
 	sc := &StorageConfig{
 		Retention: 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, sc)
+	s := MustOpenStorage(t.TempDir(), sc)
 
 	// fill the storage with data.
 	var allTenantIDs []TenantID
@@ -1436,7 +1429,6 @@ func TestStorageSearch(t *testing.T) {
 	})
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func TestParseStreamFieldsSuccess(t *testing.T) {
@@ -1606,12 +1598,10 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 		},
 	}
 
-	path := t.Name()
-
 	cfg := &StorageConfig{
 		Retention: 30 * 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	now := time.Now().UnixNano()
 
@@ -1658,8 +1648,6 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
 
 	s.MustClose()
-
-	fs.MustRemoveDir(path)
 }
 
 func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now int64) {
