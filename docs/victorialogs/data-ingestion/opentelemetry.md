@@ -44,6 +44,67 @@ VictoriaLogs supports other HTTP headers - see the list [here](https://docs.vict
 
 The ingested log entries can be queried according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/).
 
+## Field prefixes
+
+By default, VictoriaLogs flattens all OpenTelemetry field sources into a single namespace.
+This means the following sources can produce fields with identical names:
+
+| Source | Example OTel path | Stored field name (default) |
+|---|---|---|
+| Resource attributes | `resource.attributes["service.name"]` | `service.name` |
+| Log record attributes | `logRecord.attributes["service.name"]` | `service.name` |
+| Log record body (KV list) | `logRecord.body["service.name"]` | `service.name` |
+| Generated fields | `logRecord.traceID` | `trace_id` |
+
+When two sources share a key, the log entry ends up with **duplicate field names**, which are
+handled inconsistently across query and storage paths. This is especially noticeable when the
+collision involves resource attributes, because those are used as
+[stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) by default.
+
+### Enabling prefixes
+
+Start VictoriaLogs with the `-opentelemetry.enableFieldPrefixes` flag to add a source prefix
+before each field is stored:
+
+```sh
+victoria-logs -opentelemetry.enableFieldPrefixes
+```
+
+With the flag enabled, each source writes to its own sub-namespace:
+
+| Source | Example OTel path | Stored field name (with flag) |
+|---|---|---|
+| Resource attributes | `resource.attributes["service.name"]` | `resource.service.name` |
+| Log record attributes | `logRecord.attributes["service.name"]` | `attributes.service.name` |
+| Log record body (KV list) | `logRecord.body["service.name"]` | `body.service.name` |
+| Generated fields | `logRecord.traceID` | `trace_id` *(unchanged)* |
+| Scope attributes | `scope.attributes["abc"]` | `scope.attributes.abc` *(unchanged)* |
+
+Scalar body values (string, int, bool, …) continue to arrive in the
+[`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) field, the same as without the flag.
+
+The flag is **disabled by default** to avoid breaking existing ingestion pipelines.
+Enable it for new deployments, or for existing ones after updating any queries and dashboards
+that reference the old unprefixed field names.
+
+### Updating stream fields
+
+When field prefixes are enabled, resource attributes are stored as `resource.*` fields.
+Auto-selection of stream fields continues to work without changes — VictoriaLogs will
+use the prefixed names automatically.
+
+If you have an explicit `VL-Stream-Fields` header that references resource attribute names,
+update those names to include the `resource.` prefix. For example:
+
+```go
+logExporter, err := otlploghttp.New(ctx,
+  otlploghttp.WithEndpointURL("http://victorialogs:9428/insert/opentelemetry/v1/logs"),
+  otlploghttp.WithHeaders(map[string]string{
+    "VL-Stream-Fields": "resource.host,resource.service.name",
+  }),
+)
+```
+
 ## Collector configuration
 
 VictoriaLogs supports receiving logs from the following OpenTelemetry collectors:

@@ -106,6 +106,11 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 	//   repeated KeyValue attributes = 1;
 	// }
 
+	resourcePrefix := ""
+	if *enableFieldPrefixes {
+		resourcePrefix = "resource"
+	}
+
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
@@ -119,7 +124,7 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 				return fmt.Errorf("cannot read Attributes data")
 			}
 
-			if err := decodeKeyValue(data, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(data, fs, fb, resourcePrefix); err != nil {
 				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
@@ -256,6 +261,13 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 	//   string event_name = 12;
 	// }
 
+	bodyKeyValueFieldNamePrefix := ""
+	attributesPrefix := ""
+	if *enableFieldPrefixes {
+		bodyKeyValueFieldNamePrefix = "body"
+		attributesPrefix = "attributes"
+	}
+
 	var (
 		timeUnixNano         uint64
 		observedTimeUnixNano uint64
@@ -298,7 +310,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Body")
 			}
-			if err := decodeAnyValue(body, fs, fb, ""); err != nil {
+			if err := decodeAnyValue(body, fs, fb, "", bodyKeyValueFieldNamePrefix); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:
@@ -306,7 +318,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Attributes data")
 			}
-			if err := decodeKeyValue(attributesData, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(attributesData, fs, fb, attributesPrefix); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		case 9:
@@ -380,14 +392,14 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return nil
 	}
 
-	if err := decodeAnyValue(valueData, fs, fb, fieldName); err != nil {
+	if err := decodeAnyValue(valueData, fs, fb, fieldName, fieldName); err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
 
 	return nil
 }
 
-func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
+func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string, keyValueListPrefix string) (err error) {
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -456,7 +468,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 			if !ok {
 				return fmt.Errorf("cannot read KeyValueList")
 			}
-			if err := decodeKeyValueList(data, fs, fb, fieldName); err != nil {
+			if err := decodeKeyValueList(data, fs, fb, keyValueListPrefix); err != nil {
 				return fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 		case 7:
