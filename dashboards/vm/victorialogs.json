@@ -86,7 +86,7 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
-        "hide": true,
+        "hide": false,
         "iconColor": "orange",
         "name": "restarts",
         "target": {
