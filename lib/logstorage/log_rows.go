@@ -823,3 +823,64 @@ func (r *InsertRow) UnmarshalInplace(src []byte) ([]byte, error) {
 
 	return src, nil
 }
+
+func (lr *LogRows) initFromBlockResult(br *blockResult) {
+	lr.ResetKeepSettings()
+	if br.rowsLen == 0 {
+		return
+	}
+
+	fs := GetFields()
+	defer func() {
+		// Clear fs up to capacity once, instead of clearing each loop iteration.
+		fs.ClearUpToCapacity()
+		PutFields(fs)
+	}()
+
+	cs := br.getColumns()
+	timestamps := br.getTimestamps()
+
+	fields := fs.Fields
+	for i := 0; i < br.rowsLen; i++ {
+		var vlAccountID, vlProjectID string
+		fields = fields[:0]
+		for _, c := range cs {
+			if c.name == "_time" {
+				// Timestamps initialized above.
+				continue
+			}
+			s := c.getValueAtRow(br, i)
+			switch c.name {
+			case "vl_account_id":
+				vlAccountID = s
+			case "vl_project_id":
+				vlProjectID = s
+			default:
+				fields = append(fields, Field{
+					Name:  c.name,
+					Value: s,
+				})
+			}
+		}
+
+		// Restore AccountID from vl_account_id.
+		accountID, err := getUint32FromString(vlAccountID)
+		if err != nil {
+			skipMalformedLogEntryLogger.Errorf("skipping log entry with invalid 'vl_account_id': %s", err)
+			continue
+		}
+
+		// Restore ProjectID from vl_project_id.
+		projectID, err := getUint32FromString(vlProjectID)
+		if err != nil {
+			skipMalformedLogEntryLogger.Errorf("skipping log entry with invalid 'vl_project_id': %s", err)
+			continue
+		}
+
+		tid := TenantID{AccountID: accountID, ProjectID: projectID}
+		lr.MustAdd(tid, timestamps[i], fields, -1)
+	}
+	fs.Fields = fields
+}
+
+var skipMalformedLogEntryLogger = logger.WithThrottler("skip_malformed_log_entry", time.Second*5)
