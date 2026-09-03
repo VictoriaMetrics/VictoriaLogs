@@ -352,7 +352,7 @@ See also: [How to exclude vlagent's own logs from collection](https://docs.victo
 `vlagent` can collect text-based logs directly from files on disk using the `-fileCollector.glob` flag.
 This is useful for collecting logs from applications that write to log files, such as nginx, Redis, ClickHouse.
 
-### Quick start
+### Quick start for File Collector
 
 The following command starts `vlagent` to collect logs from the `/path/to/file` file
 and to send the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
