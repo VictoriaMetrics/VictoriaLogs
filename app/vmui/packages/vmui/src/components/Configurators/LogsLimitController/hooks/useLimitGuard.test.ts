@@ -172,10 +172,12 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     expect(result.current.modalProps.isOpen).toBe(false);
   });
 
-  it("re-enables soft confirmation when persistent suppression is cleared", async () => {
+  it("re-enables soft confirmation with an unchecked dismissal option after persistent suppression is cleared", async () => {
     localStorage.setItem(WARN_KEY, "true");
     const setLimit = vi.fn<(value: number) => void>();
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
+
+    await expect(result.current.beforeFetch(makeBody(THRESHOLD + 1))).resolves.toEqual({ action: "proceed" });
 
     localStorage.removeItem(WARN_KEY);
     let pending: Promise<BeforeFetchResult>;
@@ -184,6 +186,7 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     });
 
     expect(result.current.modalProps.isOpen).toBe(true);
+    expect(result.current.modalProps.suppressWarning).toBe(false);
     await act(async () => {
       result.current.modalProps.onCancel();
       await pending!;
