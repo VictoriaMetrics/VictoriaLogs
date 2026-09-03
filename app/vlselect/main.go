@@ -31,11 +31,11 @@ var (
 		"limit is reached; see also -search.maxQueryDuration")
 	maxQueryDuration = flag.Duration("search.maxQueryDuration", time.Second*30, "The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg")
 
-	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
-	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/rpc/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/rpc/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
-	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
+	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/rpc/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
@@ -121,9 +121,16 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return selectHandler(w, r, path)
 	}
 
-	if strings.HasPrefix(path, "/internal/delete/") {
+	// The internal RPC endpoints are served at /internal/rpc/* paths.
+	// Accept requests to the deprecated /internal/select/* and /internal/delete/* paths
+	// for backwards compatibility with the previous release.
+	if strings.HasPrefix(path, "/internal/select/") || strings.HasPrefix(path, "/internal/delete/") {
+		path = "/internal/rpc/" + strings.TrimPrefix(path, "/internal/")
+	}
+
+	if strings.HasPrefix(path, "/internal/rpc/delete/") {
 		if !*enableInternalDelete {
-			httpserver.Errorf(w, r, "requests to /internal/delete/* are disabled; pass -internaldelete.enable command-line flag for enabling them; "+
+			httpserver.Errorf(w, r, "requests to /internal/rpc/delete/* are disabled; pass -internaldelete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 			return true
 		}
@@ -131,13 +138,13 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 
-	if strings.HasPrefix(path, "/internal/select/") {
+	if strings.HasPrefix(path, "/internal/rpc/select/") {
 		if *disableInternalSelect {
-			httpserver.Errorf(w, r, "requests to /internal/select/* are disabled with -internalselect.disable command-line flag")
+			httpserver.Errorf(w, r, "requests to /internal/rpc/select/* are disabled with -internalselect.disable command-line flag")
 			return true
 		}
 		if *disableSelect {
-			httpserver.Errorf(w, r, "requests to /internal/select/* are disabled with -select.disable command-line flag")
+			httpserver.Errorf(w, r, "requests to /internal/rpc/select/* are disabled with -select.disable command-line flag")
 			return true
 		}
 		internalselect.RequestHandler(r.Context(), w, r, path)

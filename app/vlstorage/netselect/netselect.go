@@ -29,52 +29,52 @@ import (
 )
 
 const (
-	// FieldNamesProtocolVersion is the version of the protocol used for /internal/select/field_names HTTP endpoint.
+	// FieldNamesProtocolVersion is the version of the protocol used for /internal/rpc/select/field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	FieldNamesProtocolVersion = "v5"
 
-	// FieldValuesProtocolVersion is the version of the protocol used for /internal/select/field_values HTTP endpoint.
+	// FieldValuesProtocolVersion is the version of the protocol used for /internal/rpc/select/field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	FieldValuesProtocolVersion = "v5"
 
-	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/select/stream_field_names HTTP endpoint.
+	// StreamFieldNamesProtocolVersion is the version of the protocol used for /internal/rpc/select/stream_field_names HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	StreamFieldNamesProtocolVersion = "v5"
 
-	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/select/stream_field_values HTTP endpoint.
+	// StreamFieldValuesProtocolVersion is the version of the protocol used for /internal/rpc/select/stream_field_values HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	StreamFieldValuesProtocolVersion = "v5"
 
-	// StreamsProtocolVersion is the version of the protocol used for /internal/select/streams HTTP endpoint.
+	// StreamsProtocolVersion is the version of the protocol used for /internal/rpc/select/streams HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	StreamsProtocolVersion = "v5"
 
-	// StreamIDsProtocolVersion is the version of the protocol used for /internal/select/stream_ids HTTP endpoint.
+	// StreamIDsProtocolVersion is the version of the protocol used for /internal/rpc/select/stream_ids HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	StreamIDsProtocolVersion = "v5"
 
-	// QueryProtocolVersion is the version of the protocol used for /internal/select/query HTTP endpoint.
+	// QueryProtocolVersion is the version of the protocol used for /internal/rpc/select/query HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	QueryProtocolVersion = "v5"
 
-	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/delete/run_task HTTP endpoint.
+	// DeleteRunTaskProtocolVersion is the version of the protocol used for /internal/rpc/delete/run_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	DeleteRunTaskProtocolVersion = "v2"
 
-	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/delete/stop_task HTTP endpoint.
+	// DeleteStopTaskProtocolVersion is the version of the protocol used for /internal/rpc/delete/stop_task HTTP endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	DeleteStopTaskProtocolVersion = "v2"
 
-	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/delete/active_tasks endpoint.
+	// DeleteActiveTasksProtocolVersion is the version of the protocol used for /internal/rpc/delete/active_tasks endpoint.
 	//
 	// It must be updated every time the protocol changes.
 	DeleteActiveTasksProtocolVersion = "v2"
@@ -142,7 +142,7 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 	qsLocal := &logstorage.QueryStats{}
 	defer qctx.QueryStats.UpdateAtomic(qsLocal)
 
-	path := "/internal/select/query"
+	path := "/internal/rpc/select/query"
 	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(qctx.Context, path, args)
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func (sn *storageNode) getFieldNames(qctx *logstorage.QueryContext, filter strin
 	args := sn.getCommonArgs(FieldNamesProtocolVersion, qctx)
 	args.Set("filter", filter)
 
-	return sn.getValuesWithHits(qctx, "/internal/select/field_names", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/field_names", args)
 }
 
 func (sn *storageNode) getFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
@@ -223,14 +223,14 @@ func (sn *storageNode) getFieldValues(qctx *logstorage.QueryContext, fieldName, 
 	args.Set("filter", filter)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
-	return sn.getValuesWithHits(qctx, "/internal/select/field_values", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/field_values", args)
 }
 
 func (sn *storageNode) getStreamFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(StreamFieldNamesProtocolVersion, qctx)
 	args.Set("filter", filter)
 
-	return sn.getValuesWithHits(qctx, "/internal/select/stream_field_names", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/stream_field_names", args)
 }
 
 func (sn *storageNode) getStreamFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
@@ -239,21 +239,21 @@ func (sn *storageNode) getStreamFieldValues(qctx *logstorage.QueryContext, field
 	args.Set("filter", filter)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
-	return sn.getValuesWithHits(qctx, "/internal/select/stream_field_values", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/stream_field_values", args)
 }
 
 func (sn *storageNode) getStreams(qctx *logstorage.QueryContext, limit uint64) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(StreamsProtocolVersion, qctx)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
-	return sn.getValuesWithHits(qctx, "/internal/select/streams", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/streams", args)
 }
 
 func (sn *storageNode) getStreamIDs(qctx *logstorage.QueryContext, limit uint64) ([]logstorage.ValueWithHits, error) {
 	args := sn.getCommonArgs(StreamIDsProtocolVersion, qctx)
 	args.Set("limit", fmt.Sprintf("%d", limit))
 
-	return sn.getValuesWithHits(qctx, "/internal/select/stream_ids", args)
+	return sn.getValuesWithHits(qctx, "/internal/rpc/select/stream_ids", args)
 }
 
 func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
@@ -261,7 +261,7 @@ func (sn *storageNode) getTenantIDs(ctx context.Context, start, end int64) ([]lo
 	args.Set("start", fmt.Sprintf("%d", start))
 	args.Set("end", fmt.Sprintf("%d", end))
 
-	path := "/internal/select/tenant_ids"
+	path := "/internal/rpc/select/tenant_ids"
 	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
 		return nil, err
@@ -700,7 +700,7 @@ func (sn *storageNode) deleteRunTask(ctx context.Context, taskID string, timesta
 	args.Set("tenant_ids", string(logstorage.MarshalTenantIDsToJSON(tenantIDs)))
 	args.Set("filter", f.String())
 
-	path := "/internal/delete/run_task"
+	path := "/internal/rpc/delete/run_task"
 	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
 		return err
@@ -717,7 +717,7 @@ func (sn *storageNode) deleteStopTask(ctx context.Context, taskID string) error 
 	args.Set("version", DeleteStopTaskProtocolVersion)
 	args.Set("task_id", taskID)
 
-	path := "/internal/delete/stop_task"
+	path := "/internal/rpc/delete/stop_task"
 	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
 		return err
@@ -733,7 +733,7 @@ func (sn *storageNode) deleteActiveTasks(ctx context.Context) ([]*logstorage.Del
 	args := url.Values{}
 	args.Set("version", DeleteActiveTasksProtocolVersion)
 
-	path := "/internal/delete/active_tasks"
+	path := "/internal/rpc/delete/active_tasks"
 	data, reqURL, err := sn.getPlainResponseBodyForPathAndArgs(ctx, path, args)
 	if err != nil {
 		return nil, err

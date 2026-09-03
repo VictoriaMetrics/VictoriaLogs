@@ -1105,7 +1105,7 @@
         "type": "prometheus",
         "uid": "$DS_PROMETHEUS"
       },
-      "description": "Ingestion rate in number of log entries and bytes per second.\n\nNote: this panel excludes `type=\"internalinsert\"` (traffic via `/internal/insert`), since `/internal/*` APIs are used for internal (in-cluster) communication",
+      "description": "Ingestion rate in number of log entries and bytes per second.\n\nNote: this panel excludes `type=\"internalinsert\"` (traffic via `/internal/rpc/insert`), since `/internal/*` APIs are used for internal (in-cluster) communication",
       "fieldConfig": {
         "defaults": {
           "color": {
