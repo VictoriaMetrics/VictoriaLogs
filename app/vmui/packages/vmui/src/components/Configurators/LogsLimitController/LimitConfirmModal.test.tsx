@@ -30,7 +30,7 @@ describe("LimitConfirmModal", () => {
     };
     render(<LimitConfirmModal {...props}/>);
 
-    fireEvent.click(screen.getByText("Don't show again"));
+    fireEvent.click(screen.getByText("Don't show this warning again"));
     expect(onChangeSuppressWarning).toHaveBeenCalledWith(true);
   });
 });

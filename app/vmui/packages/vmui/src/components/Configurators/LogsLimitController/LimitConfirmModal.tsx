@@ -69,7 +69,7 @@ const LimitConfirmModal: FC<Props> = ({
           <div>
             <Checkbox
               color="primary"
-              label="Don't show again"
+              label="Don't show this warning again"
               checked={suppressWarning}
               onChange={onChangeSuppressWarning}
             />
