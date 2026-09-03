@@ -12,7 +12,7 @@ import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
 import QueryTimeOverride from "./QueryTimeOverride/QueryTimeOverride";
 import BrowserTabController from "./BrowserTabController/BrowserTabController";
-import { LOGS_LIMIT_WARN_DISMISSED_KEY } from "../../../constants/logs";
+import LargeLoadWarning from "./LargeLoadWarning/LargeLoadWarning";
 
 const title = "Settings";
 
@@ -35,14 +35,6 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const handleResetLargeLoadWarning = () => {
-    try {
-      localStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const controls = [
     {
       show: true,
@@ -62,15 +54,7 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     },
     {
       show: true,
-      component: (
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={handleResetLargeLoadWarning}
-        >
-          Re-enable Confirm large load warning
-        </Button>
-      )
+      component: <LargeLoadWarning/>
     },
   ].filter(control => control.show);
 

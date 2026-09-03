@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import {
   LOGS_CONFIRM_THRESHOLD,
   LOGS_MAX_LIMIT,
-  LOGS_LIMIT_WARN_DISMISSED_KEY,
 } from "../../../../constants/logs";
 import { BeforeFetch, BeforeFetchResult } from "../../../../pages/QueryPage/hooks/useFetchLogs";
 import useBoolean from "../../../../hooks/useBoolean";
+import { getFromStorage, removeFromStorage, saveToStorage } from "../../../../utils/storage";
+
+const warningDismissedKey = "LOGS_LIMIT_WARN_DISMISSED";
 
 const getStoredWarningPreference = (): boolean => {
   try {
-    return Boolean(localStorage.getItem(LOGS_LIMIT_WARN_DISMISSED_KEY));
+    return Boolean(getFromStorage(warningDismissedKey));
   } catch {
     return false;
   }
@@ -69,9 +71,9 @@ export const useLimitGuard = ({ setLimit }: Params) => {
 
     try {
       if (dismissWarningDraft) {
-        localStorage.setItem(LOGS_LIMIT_WARN_DISMISSED_KEY, "true");
+        saveToStorage(warningDismissedKey, true);
       } else {
-        localStorage.removeItem(LOGS_LIMIT_WARN_DISMISSED_KEY);
+        removeFromStorage([warningDismissedKey]);
       }
     } catch (e) {
       console.error(e);
