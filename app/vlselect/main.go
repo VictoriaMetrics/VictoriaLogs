@@ -69,7 +69,7 @@ func Init() {
 
 	vmalertproxy.Init(*vmalertProxyURL)
 
-	internalselect.Init()
+	internalselect.Init(*logSlowQueryDuration)
 }
 
 // Stop stops vlselect
