@@ -5,7 +5,7 @@ groups:
   - name: vlagent
     rules:
       - alert: PersistentQueueIsDroppingData
-        expr: sum(increase(vm_persistentqueue_bytes_dropped_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m])) without (path) > 0
+        expr: sum(increase(vm_persistentqueue_bytes_dropped_total{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m])) without (path) > 0
         for: 10m
         labels:
           severity: critical
@@ -49,7 +49,7 @@ groups:
              * vlagent can't send data fast enough through the existing network connections. Increase `-remoteWrite.queues` cmd-line flag value to establish more connections per destination.
              * remote destination can't accept data fast enough. Check if remote destination has enough resources for processing.
       - alert: PersistentQueueForWritesIsSaturated
-        expr: rate(vm_persistentqueue_write_duration_seconds_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m]) > 0.9
+        expr: rate(vm_persistentqueue_write_duration_seconds_total{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m]) > 0.9
         for: 15m
         labels:
           severity: warning
@@ -59,7 +59,7 @@ groups:
           description: |-
             Persistent queue writes for vlagent "{{ $labels.job }}" (instance {{ $labels.instance }}) are saturated by more than 90% and vlagent won't be able to keep up with flushing data on disk. In this case, consider to decrease load on the vlagent or improve the disk throughput.
       - alert: PersistentQueueForReadsIsSaturated
-        expr: rate(vm_persistentqueue_read_duration_seconds_total{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m]) > 0.9
+        expr: rate(vm_persistentqueue_read_duration_seconds_total{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}[5m]) > 0.9
         for: 15m
         labels:
           severity: warning
@@ -71,8 +71,8 @@ groups:
       - alert: PersistentQueueRunsOutOfSpaceIn12Hours
         expr: |-
           (
-            (sum(vm_persistentqueue_free_disk_space_bytes{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}) by (job, instance, path)) /
-            (sum(deriv(vm_persistentqueue_bytes_pending{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m])) by (job, instance, path) > 0)
+            (sum(vm_persistentqueue_free_disk_space_bytes{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}) by (job, instance, path)) /
+            (sum(deriv(vm_persistentqueue_bytes_pending{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m])) by (job, instance, path) > 0)
           ) * on(job, instance, path) group_left(url)
           (vlagent_remotewrite_pending_data_bytes * 0 + 1) < 12 * 3600 >0
         for: 10m
@@ -86,8 +86,8 @@ groups:
       - alert: PersistentQueueRunsOutOfSpaceIn4Hours
         expr: |-
           (
-            (sum(vm_persistentqueue_free_disk_space_bytes{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}) by (job, instance, path)) /
-            (sum(deriv(vm_persistentqueue_bytes_pending{job=~".*(victorialogs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m])) by (job, instance, path) > 0)
+            (sum(vm_persistentqueue_free_disk_space_bytes{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}) by (job, instance, path)) /
+            (sum(deriv(vm_persistentqueue_bytes_pending{job=~".*(victoria-?logs|vlstorage|vlselect|vlinsert|vlagent).*"}[1m])) by (job, instance, path) > 0)
           ) * on(job, instance, path) group_left(url)
           (vlagent_remotewrite_pending_data_bytes * 0 + 1) < 4 * 3600 >0
         for: 10m
