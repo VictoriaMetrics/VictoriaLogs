@@ -31,6 +31,7 @@ import usePrevious from "../../../../hooks/usePrevious";
 import { TimeParams } from "../../../../types";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHideChart";
 
 interface Props {
   query?: string;
@@ -66,7 +67,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
-  const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
+  const [hideChart, setHideChart] = useHideChart();
 
   const prevPeriodFormatted = useMemo(() => {
     if (!prevPeriod) return;
@@ -131,12 +132,9 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   }, [setCumulative, handleChangeSearchParams]);
 
   const toggleHideChart = useCallback(() => {
-    setHideChart(prev => {
-      const nextVal = !prev;
-      handleChangeSearchParams("hide_chart", nextVal);
-      return nextVal;
-    });
-  }, [setHideChart, handleChangeSearchParams]);
+    const nextVal = !hideChart;
+    setHideChart(nextVal);
+  }, [hideChart, setHideChart]);
 
   useEffect(() => {
     onChange(options);
