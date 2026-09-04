@@ -119,6 +119,38 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 {"x":"y","_msg":"yx"}`)
 }
 
+func TestParseProtobufRequest_EmptyStructuredMetadata(t *testing.T) {
+	const timestamp = int64(1577836800000000001)
+
+	m := mp.Get()
+	mm := m.MessageMarshaler()
+	s := mm.AppendMessage(1)
+	s.AppendString(1, "{}")
+	e := s.AppendMessage(2)
+	marshalTime(e, 1, time.Unix(0, timestamp))
+	e.AppendString(2, "foo bar")
+
+	// Scalar proto3 fields set to empty strings are omitted from the wire.
+	// Such structured metadata must be ignored instead of rejecting the request.
+	e.AppendMessage(3).AppendString(1, "empty_value")
+	e.AppendMessage(3).AppendString(2, "missing_name")
+	e.AppendMessage(3)
+	metadata := e.AppendMessage(3)
+	metadata.AppendString(1, "foo")
+	metadata.AppendString(2, "bar")
+
+	data := m.Marshal(nil)
+	mp.Put(m)
+
+	tlp := &insertutil.TestLogMessageProcessor{}
+	if err := parseProtobufRequest(data, tlp, nil, nil, "", false, false); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if err := tlp.Verify([]int64{timestamp}, `{"foo":"bar","_msg":"foo bar"}`); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestParseProtobufRequest_ParseMessage(t *testing.T) {
 	f := func(s string, msgFields, preserveKeys []string, msgFieldsPrefix string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
