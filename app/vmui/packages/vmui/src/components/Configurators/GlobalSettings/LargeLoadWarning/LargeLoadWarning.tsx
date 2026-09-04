@@ -8,13 +8,18 @@ const LargeLoadWarning: FC = () => {
   const [warningDismissed, setWarningDismissed] = useLocalStorageBoolean(warningDismissedKey);
 
   return (
-    <Switch
-      fullWidth
-      color="neutral"
-      value={!warningDismissed}
-      onChange={(showWarning) => setWarningDismissed(!showWarning)}
-      label={<p className="vm-server-configurator__title">Show confirmation for large loads</p>}
-    />
+    <div className="vm-time-override-controller">
+      <Switch
+        fullWidth
+        color="neutral"
+        value={!warningDismissed}
+        onChange={(showWarning) => setWarningDismissed(!showWarning)}
+        label={<p className="vm-server-configurator__title">Show confirmation for large log loads</p>}
+      />
+      <div className="vm-time-override-controller__description">
+        Show a confirmation before loading more than 1,000 logs.
+      </div>
+    </div>
   );
 };
 
