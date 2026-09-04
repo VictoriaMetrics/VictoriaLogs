@@ -11,7 +11,7 @@ describe("LargeLoadWarning", () => {
   it("persists dismissed warning when switch is turned off", () => {
     const { container } = render(<LargeLoadWarning/>);
 
-    fireEvent.click(screen.getByText("Show confirmation for large loads"));
+    fireEvent.click(screen.getByText("Show confirmation for large log loads"));
 
     expect(getFromStorage("LOGS_LIMIT_WARN_DISMISSED")).toBe(true);
     expect(container.querySelector(".vm-switch_active")).toBeNull();

@@ -45,16 +45,16 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
       component: <QueryTimeOverride/>
     },
     {
+      show: true,
+      component: <LargeLoadWarning/>
+    },
+    {
       show: !appModeEnable,
       component: <ThemeControl/>
     },
     {
       show: true,
       component: <BrowserTabController/>
-    },
-    {
-      show: true,
-      component: <LargeLoadWarning/>
     },
   ].filter(control => control.show);
 
