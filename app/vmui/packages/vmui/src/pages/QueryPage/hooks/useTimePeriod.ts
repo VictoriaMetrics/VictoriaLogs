@@ -10,6 +10,7 @@ import {
   timePeriodToTimeParams,
 } from "../../../utils/time";
 import { NavigateOptions, RelativeTimeOption, TimeParams, TimePeriod } from "../../../types";
+import { useQueryState } from "../../../state/query/QueryStateContext";
 
 const TIME_QUERY_PARAMS = {
   RELATIVE: "relative_time",
@@ -39,6 +40,7 @@ const normalizeTimePeriod = (period: TimePeriod): TimePeriod => {
 export const useTimePeriod = (groupN: number = 0) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const setSearchParamsRef = useRef(setSearchParams);
+  const { executeQueryTrigger } = useQueryState();
 
   const keys = useMemo(() => ({
     relative: getGroupKey(TIME_QUERY_PARAMS.RELATIVE, groupN),
@@ -84,6 +86,9 @@ export const useTimePeriod = (groupN: number = 0) => {
     }, navigateOpts);
   }, [getUrlParams]);
 
+  const isMovingWindow = Boolean(relativeTime) || !endTimeStr;
+  const movingWindowTick = isMovingWindow ? executeQueryTrigger : 0;
+
   const period: TimeParams = useMemo(() => {
     if (relativeTime) {
       return getTimeParamsForDuration(relativeTime.duration, relativeTime.until());
@@ -94,7 +99,7 @@ export const useTimePeriod = (groupN: number = 0) => {
     }
 
     return getTimeParamsForDuration(defaultRelativeTime.duration, defaultRelativeTime.until());
-  }, [durationStr, endTimeStr, relativeTime]);
+  }, [durationStr, endTimeStr, relativeTime, movingWindowTick]);
 
   const getCurrentPeriod = useCallback(() => {
     if (!relativeTime) return period;
@@ -105,8 +110,12 @@ export const useTimePeriod = (groupN: number = 0) => {
   const refreshPeriod = useCallback(() => {
     if (!relativeTime && endTimeStr) return false;
 
+    // The range is already described by relative_time and range_input, and the
+    // window is advanced by movingWindowTick, so there is nothing to rewrite.
+    if (relativeTime) return true;
+
     setPeriod(
-      { nextRelativeTime: relativeTime || defaultRelativeTime },
+      { nextRelativeTime: defaultRelativeTime },
       { replace: true }
     );
 
