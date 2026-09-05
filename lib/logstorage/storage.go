@@ -23,7 +23,7 @@ import (
 
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
 type StorageStats struct {
-	// StreamsCreatedTotal is the number of log streams created since the storage initialization.
+	// StreamsCreatedTotal is the number of log streams registered in daily partitions since the storage initialization.
 	StreamsCreatedTotal uint64
 
 	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed.
