@@ -235,7 +235,7 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 		if n < 0 {
 			return fmt.Errorf("cannot find `=` char for label value at %s", s)
 		}
-		name := s[:n]
+		name := strings.TrimSpace(s[:n])
 		s = s[n+1:]
 
 		// Parse label value
@@ -260,7 +260,6 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 			return fmt.Errorf("missing `,` char at %s", s)
 		}
 		s = s[1:]
-		s = strings.TrimPrefix(s, " ")
 	}
 	return nil
 }
