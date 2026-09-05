@@ -405,7 +405,7 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
 The logs scheduled for the deletion via `/delete/run_task` endpoint main remain visible until the deletion task is complete.
 The deletion task is complete when the `/delete/active_task` endpoint stops returning it.
 
-The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey` command-line flag.
+The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey`{{% available_from "#" %}} command-line flag.
 When it is set, every request to `/delete/*` must pass the matching `authKey` query arg, which overrides `-httpAuth.*`. For example:
 
 ```bash
