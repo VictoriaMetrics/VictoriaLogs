@@ -15,7 +15,7 @@ Loki provides [LogQL](https://grafana.com/docs/loki/latest/query/) query languag
 query language. Both languages are optimized for querying logs. The docs below show how to convert typical LogQL queries to LogsQL queries.
 
 See also [this playground, which automatically converts Loki queries to VictoriaLogs queries](https://play-logql.victoriametrics.com/).
-The source code of this project is available [here](https://github.com/VictoriaMetrics-community/logql-to-logsql/).
+The source code of this project is available in our GitHub [repository](https://github.com/VictoriaMetrics-community/logql-to-logsql/).
 
 ## Data model
 
@@ -224,7 +224,7 @@ Loki provides the ability to keep log labels with the `{...} | keep label1, ...,
 according to [these docs](https://grafana.com/docs/loki/latest/query/log_queries/#keep-labels-expression).
 The similar syntax is also supported by VictoriaLogs. See [these docs](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe).
 
-Loki supports conditional keeping of labels with the `{...} | leep label="value"` syntax.
+Loki supports conditional keeping of labels with the `{...} | keep label="value"` syntax.
 This can be replaced with [conditional format](https://docs.victoriametrics.com/victorialogs/logsql/#conditional-format) at VictoriaLogs:
 
 ```logsql

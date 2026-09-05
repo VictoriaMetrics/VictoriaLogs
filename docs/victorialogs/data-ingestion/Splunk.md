@@ -11,14 +11,14 @@ tags:
   - logs
 ---
 
-VictoriaLogs accpets logs via [Splunk HEC API](https://help.splunk.com/en/splunk-enterprise/get-started/get-data-in/9.0/get-data-with-http-event-collector/set-up-and-use-http-event-collector-in-splunk-web) at `/insert/splunk/services/collector/event` or `/insert/splunk/services/collector/event/1.0` HTTP paths.
+VictoriaLogs accepts logs via [Splunk HEC API](https://help.splunk.com/en/splunk-enterprise/get-started/get-data-in/9.0/get-data-with-http-event-collector/set-up-and-use-http-event-collector-in-splunk-web) at `/insert/splunk/services/collector/event` or `/insert/splunk/services/collector/event/1.0` HTTP paths.
 Additionally paths without `/insert/splunk/` prefix are supported to simplify integration.
 
 ## Collect docker logs using Splunk driver
 
 Docker Splunk driver can be configured to send data to VictoriaLogs without any additional agent:
 
-```
+```docker
 services:
   nginx:
     image: nginx:1.27
@@ -40,6 +40,7 @@ See also [HTTP query string parameters](https://docs.victoriametrics.com/victori
 
 By default VictoriaLogs uses the first non-empty field from the following list as [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 for the logs ingested via Splunk endpoint:
+
 - `event`
 - `event.log`
 - `event.line`

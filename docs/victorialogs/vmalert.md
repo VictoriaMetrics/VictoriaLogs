@@ -21,7 +21,7 @@ These endpoints return log stats in a format compatible with the [Prometheus que
 This allows using VictoriaLogs as the datasource in vmalert and creating alerting and recording rules via [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/).
 VictoriaLogs also can proxy `/select/vmalert/*` requests to `vmalert` according to [these docs](https://docs.victoriametrics.com/victorialogs/#vmalert).
 
-> This page provides only integration instructions for vmalert and VictoriaLogs. See the full textbook for vmalert [here](https://docs.victoriametrics.com/victoriametrics/vmalert/).
+> This page provides only integration instructions for vmalert and VictoriaLogs. See the full textbook for vmalert in our GitHub [repository](https://docs.victoriametrics.com/victoriametrics/vmalert/).
 
 ## Quick Start
 
@@ -93,11 +93,11 @@ The following are key flags related to integration with VictoriaLogs:
    Since there is no intentional search delay in VictoriaLogs, `-rule.evalDelay` can be reduced to a few seconds to accommodate network and ingestion time.
 ```
 
-See the full list of configuration options [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#configuration).
+See the full list of configuration options for [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/#configuration).
 
 ### Groups
 
-See the complete group attributes [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#groups).
+See the complete group attributes for [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/#groups).
 
 #### Alerting rules
 
@@ -130,7 +130,6 @@ Use [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields
 
 The following example of alerting rule uses `stats by (...)`, `math` and `fields` pipes
 for triggering an alert if the number of failed requests exceeds 10% for the given `ip`:
-
 
 ```yaml
 groups:
@@ -233,7 +232,7 @@ vmalert supports alerting and recording rule backfilling (aka replay) against Vi
     -replay.timeTo=2021-05-29T18:40:43Z         # finish replay at (optional; defaults to current time)
 ```
 
-See more details about backfilling [here](https://docs.victoriametrics.com/victoriametrics/vmalert/#rules-backfilling).
+See more details about backfilling in [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/#rules-backfilling).
 
 ## Performance tip
 
@@ -326,7 +325,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
 
     For example, run vmalert with:
 
-    ```
+    ```sh
     ./bin/vmalert -datasource.url=http://localhost:9428 -remoteWrite.url=http://vminsert:8480/insert/multitenant/prometheus ...
     ```
 
@@ -359,7 +358,7 @@ To persist different rule results to different tenants in VictoriaMetrics, there
 
     For example, run vmalert with:
 
-    ```
+    ```sh
     ./bin/vmalert -datasource.url=http://localhost:9428 -clusterMode=true -remoteWrite.url=http://vminsert:8480/ ...
     ```
 

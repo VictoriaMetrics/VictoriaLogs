@@ -33,7 +33,7 @@ sudo mkdir -p /var/log/pods /var/log/containers
 sudo setfacl -R -m u:$(whoami):rx,d:u:$(whoami):rx /var/log/pods /var/log/containers
 ```
 
-### Create a k3d cluster with proper volume mounts:
+### Create a k3d cluster with proper volume mounts
 
 ```sh
 k3d cluster create test -v /var/log/containers:/var/log/containers@all -v /var/log/pods:/var/log/pods@all
@@ -43,7 +43,7 @@ This command will also update the `~/.kube/config` file to use the new k3d clust
 vlagent will use this kubeconfig file to connect to the currently selected cluster.
 You can change the kubeconfig path via the `KUBECONFIG` environment variable.
 
-### Run vlagent with Kubernetes discovery enabled:
+### Run vlagent with Kubernetes discovery enabled
 
 ```sh
 ./vlagent -remoteWrite.url=http://localhost:9428/insert/native -kubernetesCollector
