@@ -62,16 +62,31 @@ func (st *StreamTags) String() string {
 func (st *StreamTags) normalize(fields []Field) bool {
 	updated := false
 
+	if !sort.IsSorted(st) {
+		// Stable sort is not necessary here,
+		// as we adjust tag values with the corresponding field.
+		sort.Sort(st)
+		updated = true
+	}
+
 	tags := st.tags
 	dstTags := tags[:0]
-	for _, tag := range tags {
+	for i, tag := range tags {
 		tagName := tag.Name
+
+		if i > 0 && tags[i-1].Name == tagName {
+			// Tag with this name already processed.
+			updated = true
+			continue
+		}
 
 		var f *Field
 		for j := range fields {
-			if fields[j].Name == tagName {
+			// Get the first non-empty field value, according to data model.
+			// See https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+			if fields[j].Name == tagName && fields[j].Value != "" {
 				f = &fields[j]
-				// break is skipped intentionally in order to get the last matching field
+				break
 			}
 		}
 		if f == nil {
