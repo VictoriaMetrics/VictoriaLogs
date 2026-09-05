@@ -23,6 +23,7 @@ VictoriaLogs provides the following HTTP endpoints:
 - [`/select/logsql/tail`](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) for live tailing of query results.
 - [`/select/logsql/hits`](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats) for querying log hits stats over the given time range.
 - [`/select/logsql/facets`](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets) for querying the most frequent values per each field seen in the selected logs.
+- [`/select/logsql/active_queries`](https://docs.victoriametrics.com/victorialogs/querying/#active-queries) for inspecting currently running queries.
 - [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) for querying log stats at the given time.
 - [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) for querying log stats over the given time range.
 - [`/select/logsql/stream_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream_ids) for querying `_stream_id` values of [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
@@ -467,6 +468,50 @@ See also:
 
 - [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
 - [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
+
+### Active queries
+
+<!-- TODO: improve documentation including example JSON output -->
+
+VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns the currently executed queries.
+
+```sh
+curl http://localhost:9428/select/logsql/active_queries
+```
+
+Below is an example JSON output returned from this endpoint:
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "duration": "1.886s",
+      "id": "18D26B389032DEA5",
+      "remote_addr": "127.0.0.1:38036",
+      "query": "idMeow",
+      "tenant_id": "{accountID=0,projectID=0}",
+      "start": 0,
+      "end": 0,
+      "step": -9223372036854
+    },
+    {
+      "duration": "0.801s",
+      "id": "18D26B389032DEA6",
+      "remote_addr": "127.0.0.1:38046",
+      "query": "_time:[2169-02-08T23:09:07.410000000Z,1999-12-31T23:59:59.999999999Z] id",
+      "tenant_id": "{accountID=67,projectID=0}",
+      "start": 6283264147419,
+      "end": 946684799999,
+      "step": 10
+    }
+  ]
+}
+```
+
+See also:
+
 - [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying log stats
