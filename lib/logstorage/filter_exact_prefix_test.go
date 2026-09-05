@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterExactPrefix(t *testing.T) {
@@ -444,7 +442,4 @@ func TestFilterExactPrefix(t *testing.T) {
 		fep = newFilterExactPrefix("_msg", "0")
 		testFilterMatchForColumns(t, columns, fep, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

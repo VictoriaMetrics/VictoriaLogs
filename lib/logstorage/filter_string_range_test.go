@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestMatchStringRange(t *testing.T) {
@@ -411,7 +409,4 @@ func TestFilterStringRange(t *testing.T) {
 		fr = newFilterStringRange("_msg", "2006-01-03", "2006-01-02", "")
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

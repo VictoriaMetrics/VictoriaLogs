@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterTime(t *testing.T) {
@@ -59,11 +57,10 @@ func testFilterMatchForTimestamps(t *testing.T, timestamps []int64, f filter, ex
 	t.Helper()
 
 	// Create the test storage
-	storagePath := t.Name()
 	cfg := &StorageConfig{
 		Retention: 100 * 365 * time.Duration(nsecsPerDay),
 	}
-	s := MustOpenStorage(storagePath, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	// Generate rows
 	getValue := func(rowIdx int) string {
@@ -84,9 +81,8 @@ func testFilterMatchForTimestamps(t *testing.T, timestamps []int64, f filter, ex
 
 	testFilterMatchForStorage(t, s, tenantID, f, "_msg", expectedResults, expectedTimestamps)
 
-	// Close and delete the test storage
+	// Close the test storage
 	s.MustClose()
-	fs.MustRemoveDir(storagePath)
 }
 
 func generateRowsFromTimestamps(s *Storage, tenantID TenantID, timestamps []int64, getValue func(rowIdx int) string) {

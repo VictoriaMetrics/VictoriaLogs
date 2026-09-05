@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
@@ -13,8 +11,6 @@ import (
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635
 func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
-
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 

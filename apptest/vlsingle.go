@@ -26,9 +26,8 @@ type Vlsingle struct {
 func MustStartVlsingle(t *testing.T, instance string, flags []string, cli *Client) *Vlsingle {
 	t.Helper()
 
-	storageDataPath := fmt.Sprintf("%s/%s", t.Name(), instance)
 	flags = setDefaultFlags(flags, map[string]string{
-		"-storageDataPath": storageDataPath,
+		"-storageDataPath": t.TempDir(),
 		"-retentionPeriod": "100y",
 	})
 	node, extracts := mustStartVlnode(t, instance, flags, cli, []*regexp.Regexp{
