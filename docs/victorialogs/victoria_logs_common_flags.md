@@ -63,6 +63,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -futureRetention value
      Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
+  -health
+     Whether to run a quick health check on the /health endpoint of a VictoriaLogs instance and exit. These flags should be set if they are also set by the checked instance: -http.pathPrefix, -httpListenAddr (only first address is used), -httpListenAddr.useProxyProtocol, -tls
   -http.connTimeout duration
      Incoming connections to -httpListenAddr are closed after the configured timeout. This may help evenly spreading load among a cluster of services behind TCP-level load balancer. Zero value disables closing of incoming connections (default 2m0s)
   -http.disableCORS
