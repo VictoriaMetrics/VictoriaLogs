@@ -456,7 +456,7 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 1. To backup the created snapshot with [`rsync`](https://en.wikipedia.org/wiki/Rsync):
 
    ```sh
-   rsync -avh --progress --delete <path-to-snapshot> <username>@<host>:<path-to-backup>/YYYYMMDD
+   rsync -avh --progress --delete <path-to-snapshot>/ <username>@<host>:<path-to-backup>/YYYYMMDD
    ```
 
    The `--delete` option is required in the command above in order to ensures that the backup contains the full copy of the original data without superfluous files.

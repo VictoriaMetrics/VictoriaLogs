@@ -18,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -41,12 +42,24 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 	select {
 	case concurrencyLimitCh <- struct{}{}:
-		if d := time.Since(startTime); d > 100*time.Millisecond {
+		waitDuration := time.Since(startTime)
+		if waitDuration > 100*time.Millisecond {
 			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
-			concurrentRequestsWaitDuration.Update(d.Seconds())
+			concurrentRequestsWaitDuration.Update(waitDuration.Seconds())
 		}
 		requestHandler(ctx, w, r, path, startTime)
 		<-concurrencyLimitCh
+
+		// Log slow queries executed by this vlstorage node.
+		if strings.HasPrefix(path, "/internal/select/") && logSlowQueryDuration > 0 {
+			if totalDuration := time.Since(startTime); totalDuration >= logSlowQueryDuration {
+				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+				requestURI := httpserver.GetRequestURI(r)
+				logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, totalDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
+					logSlowQueryDuration, remoteAddr, totalDuration.Seconds(), waitDuration.Seconds(), requestURI)
+				metrics.GetOrCreateCounter(`vl_slow_queries_total`).Inc()
+			}
+		}
 	case <-ctx.Done():
 		// Unconditionally measure the wait time until the the request is canceled by the client.
 		concurrentRequestsWaitDuration.UpdateDuration(startTime)
@@ -54,8 +67,9 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 }
 
 // Init initializes internalselect package.
-func Init() {
+func Init(slowQueryDuration time.Duration) {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
+	logSlowQueryDuration = slowQueryDuration
 }
 
 // Stop stops vlselect
@@ -64,6 +78,8 @@ func Stop() {
 }
 
 var concurrencyLimitCh chan struct{}
+
+var logSlowQueryDuration time.Duration
 
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
