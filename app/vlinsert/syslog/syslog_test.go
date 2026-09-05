@@ -81,7 +81,11 @@ func TestProcessStreamInternal_Success(t *testing.T) {
 		MustInit()
 		defer MustStop()
 
-		globalTimezone = time.UTC
+		prevTZ := globalTimezone.Load()
+		globalTimezone.Store(time.UTC)
+		t.Cleanup(func() {
+			globalTimezone.Store(prevTZ)
+		})
 		globalCurrentYear.Store(int64(currentYear))
 
 		tlp := &insertutil.TestLogMessageProcessor{}

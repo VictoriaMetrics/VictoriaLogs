@@ -149,9 +149,9 @@ func MustInit() {
 		if err != nil {
 			logger.Fatalf("cannot parse -syslog.timezone=%q: %s", *syslogTimezone, err)
 		}
-		globalTimezone = tz
+		globalTimezone.Store(tz)
 	} else {
-		globalTimezone = time.Local
+		globalTimezone.Store(time.Local)
 	}
 
 	currentYear := nowInGlobalTZ().Year()
@@ -159,7 +159,7 @@ func MustInit() {
 	workersWG.Go(func() {
 		for {
 			now := nowInGlobalTZ()
-			nextYear := time.Date(now.Year()+1, 1, 1, 0, 0, 0, 0, globalTimezone)
+			nextYear := time.Date(now.Year()+1, 1, 1, 0, 0, 0, 0, globalTimezone.Load())
 			nextTick := min(time.Minute, nextYear.Sub(now))
 			select {
 			case <-workersStopCh:
@@ -174,11 +174,11 @@ func MustInit() {
 
 var (
 	globalCurrentYear atomic.Int64
-	globalTimezone    *time.Location
+	globalTimezone    atomic.Pointer[time.Location]
 )
 
 func nowInGlobalTZ() time.Time {
-	return time.Now().In(globalTimezone)
+	return time.Now().In(globalTimezone.Load())
 }
 
 var (
@@ -457,7 +457,7 @@ func processUncompressedStream(r io.Reader, useLocalTimestamp bool, remoteIP str
 		}
 
 		currentYear := int(globalCurrentYear.Load())
-		err := processLine(slr.line, currentYear, globalTimezone, useLocalTimestamp, remoteIP, lmp)
+		err := processLine(slr.line, currentYear, globalTimezone.Load(), useLocalTimestamp, remoteIP, lmp)
 		if err != nil {
 			errorsTotal.Inc()
 			return fmt.Errorf("cannot read line #%d: %w", n, err)
