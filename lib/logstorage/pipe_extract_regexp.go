@@ -64,6 +64,10 @@ func (pe *pipeExtractRegexp) canReturnLastNResults() bool {
 	return true
 }
 
+func (pe *pipeExtractRegexp) isOneToOneRowLocalTransform() bool {
+	return !pe.keepOriginalFields && !pe.skipEmptyResults
+}
+
 func (pe *pipeExtractRegexp) isFixedOutputFieldsOrder() bool {
 	return false
 }

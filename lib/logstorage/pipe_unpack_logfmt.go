@@ -63,6 +63,10 @@ func (pu *pipeUnpackLogfmt) canReturnLastNResults() bool {
 	return true
 }
 
+func (pu *pipeUnpackLogfmt) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pu *pipeUnpackLogfmt) isFixedOutputFieldsOrder() bool {
 	return false
 }

@@ -58,6 +58,10 @@ func (pr *pipeReplaceRegexp) canReturnLastNResults() bool {
 	return true
 }
 
+func (pr *pipeReplaceRegexp) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pr *pipeReplaceRegexp) isFixedOutputFieldsOrder() bool {
 	return false
 }

@@ -87,6 +87,10 @@ func (pm *pipeMath) canReturnLastNResults() bool {
 	return true
 }
 
+func (pm *pipeMath) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pm *pipeMath) isFixedOutputFieldsOrder() bool {
 	return false
 }

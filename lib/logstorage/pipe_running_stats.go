@@ -98,6 +98,10 @@ func (ps *pipeRunningStats) canReturnLastNResults() bool {
 	return false
 }
 
+func (ps *pipeRunningStats) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (ps *pipeRunningStats) isFixedOutputFieldsOrder() bool {
 	return false
 }

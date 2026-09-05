@@ -57,6 +57,10 @@ func (pe *pipeExtract) canReturnLastNResults() bool {
 	return true
 }
 
+func (pe *pipeExtract) isOneToOneRowLocalTransform() bool {
+	return !pe.keepOriginalFields && !pe.skipEmptyResults
+}
+
 func (pe *pipeExtract) isFixedOutputFieldsOrder() bool {
 	return false
 }

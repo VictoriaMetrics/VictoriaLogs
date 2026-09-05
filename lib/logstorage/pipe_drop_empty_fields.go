@@ -32,6 +32,11 @@ func (pd *pipeDropEmptyFields) canReturnLastNResults() bool {
 	return true
 }
 
+func (pd *pipeDropEmptyFields) isOneToOneRowLocalTransform() bool {
+	// Rows without non-empty fields are dropped.
+	return false
+}
+
 func (pd *pipeDropEmptyFields) isFixedOutputFieldsOrder() bool {
 	return false
 }
