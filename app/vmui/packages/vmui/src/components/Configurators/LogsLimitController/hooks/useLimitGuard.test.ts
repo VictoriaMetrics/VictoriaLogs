@@ -5,8 +5,10 @@ import type { BeforeFetchResult } from "../../../../pages/QueryPage/hooks/useFet
 import {
   LOGS_CONFIRM_THRESHOLD as THRESHOLD,
   LOGS_MAX_LIMIT as MAX,
-  LOGS_LIMIT_WARN_DISMISSED_KEY as WARN_KEY,
 } from "../../../../constants/logs";
+import { getFromStorage, saveToStorage } from "../../../../utils/storage";
+
+const WARN_KEY = "LOGS_LIMIT_WARN_DISMISSED" as const;
 
 const makeBody = (n: number): URLSearchParams => {
   const p = new URLSearchParams();
@@ -16,7 +18,8 @@ const makeBody = (n: number): URLSearchParams => {
 
 describe("useLimitGuard (modal / proceed logic with real constants)", () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    vi.unstubAllGlobals();
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -159,8 +162,8 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     expect(resolvedB).toEqual({ action: "abort" });
   });
 
-  it("session suppression prevents soft-confirm modal", async () => {
-    sessionStorage.setItem(WARN_KEY, "true");
+  it("persistent suppression prevents soft-confirm modal", async () => {
+    saveToStorage(WARN_KEY, true);
     const setLimit = vi.fn<(value: number) => void>();
     const { result } = renderHook(() => useLimitGuard({ setLimit }));
 
@@ -168,6 +171,99 @@ describe("useLimitGuard (modal / proceed logic with real constants)", () => {
     const out = await result.current.beforeFetch(makeBody(soft));
     expect(out).toEqual({ action: "proceed" });
     expect(result.current.modalProps.isOpen).toBe(false);
+  });
+
+  it("re-enables soft confirmation with an unchecked dismissal option after persistent suppression is cleared", async () => {
+    saveToStorage(WARN_KEY, true);
+    const setLimit = vi.fn<(value: number) => void>();
+    const { result } = renderHook(() => useLimitGuard({ setLimit }));
+
+    await expect(result.current.beforeFetch(makeBody(THRESHOLD + 1))).resolves.toEqual({ action: "proceed" });
+
+    saveToStorage(WARN_KEY, false);
+    let pending: Promise<BeforeFetchResult>;
+    act(() => {
+      pending = result.current.beforeFetch(makeBody(THRESHOLD + 1));
+    });
+
+    expect(result.current.modalProps.isOpen).toBe(true);
+    expect(result.current.modalProps.suppressWarning).toBe(false);
+    await act(async () => {
+      result.current.modalProps.onCancel();
+      await pending!;
+    });
+  });
+
+  it("saves persistent dismissal only after confirmation", async () => {
+    const setLimit = vi.fn<(value: number) => void>();
+    const { result } = renderHook(() => useLimitGuard({ setLimit }));
+    const pending = result.current.beforeFetch(makeBody(THRESHOLD + 1));
+
+    act(() => result.current.modalProps.onChangeSuppressWarning(true));
+    expect(getFromStorage(WARN_KEY)).toBeUndefined();
+
+    await act(async () => {
+      result.current.modalProps.onConfirm();
+      await pending;
+    });
+
+    expect(getFromStorage(WARN_KEY)).toBe(true);
+  });
+
+  it("does not save dismissal when confirmation is cancelled", async () => {
+    const setLimit = vi.fn<(value: number) => void>();
+    const { result } = renderHook(() => useLimitGuard({ setLimit }));
+    const pending = result.current.beforeFetch(makeBody(THRESHOLD + 1));
+
+    act(() => {
+      result.current.modalProps.onChangeSuppressWarning(true);
+    });
+    await act(async () => {
+      result.current.modalProps.onCancel();
+      await pending;
+    });
+
+    expect(getFromStorage(WARN_KEY)).toBeUndefined();
+    expect(result.current.modalProps.suppressWarning).toBe(false);
+  });
+
+  it("restores permanent dismissal but keeps hard confirmation", async () => {
+    saveToStorage(WARN_KEY, true);
+    const setLimit = vi.fn<(value: number) => void>();
+    const { result } = renderHook(() => useLimitGuard({ setLimit }));
+
+    await expect(result.current.beforeFetch(makeBody(THRESHOLD + 1))).resolves.toEqual({ action: "proceed" });
+
+    let pending: Promise<BeforeFetchResult>;
+    act(() => {
+      pending = result.current.beforeFetch(makeBody(0));
+    });
+    expect(result.current.modalProps.isOpen).toBe(true);
+
+    await act(async () => {
+      result.current.modalProps.onCancel();
+      await pending!;
+    });
+  });
+
+  it("does not suppress warning when local storage is unavailable", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("local storage unavailable");
+      },
+    });
+    const setLimit = vi.fn<(value: number) => void>();
+    const { result } = renderHook(() => useLimitGuard({ setLimit }));
+
+    let pending: Promise<BeforeFetchResult>;
+    act(() => {
+      pending = result.current.beforeFetch(makeBody(THRESHOLD + 1));
+    });
+    expect(result.current.modalProps.isOpen).toBe(true);
+    await act(async () => {
+      result.current.modalProps.onCancel();
+      await pending!;
+    });
   });
 
   it("deduplicates a pending promise while modal is open", async () => {
