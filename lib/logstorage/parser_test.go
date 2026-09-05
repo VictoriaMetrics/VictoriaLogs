@@ -2424,6 +2424,13 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`* | last 10 by (foo) rank bar`, `* | last 10 by (foo) rank as bar`)
 	f(`* | last 10 by (foo) partition (a,b) rank bar`, `* | last 10 by (foo) partition by (a, b) rank as bar`)
 
+	// deduplicate pipe
+	f(`* | deduplicate`, `* | deduplicate`)
+	f(`* | deduplicate foo`, `* | deduplicate by (foo)`)
+	f(`* | deduplicate foo,bar`, `* | deduplicate by (foo, bar)`)
+	f(`* | deduplicate by(f1,f2)`, `* | deduplicate by (f1, f2)`)
+	f(`* | deduplicate (f1,f2)`, `* | deduplicate by (f1, f2)`)
+
 	// uniq pipe
 	f(`* | uniq foo`, `* | uniq by (foo)`)
 	f(`* | uniq foo,bar`, `* | uniq by (foo, bar)`)
@@ -3409,6 +3416,13 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`foo | sort by(bar) offset 12.34`)
 	f(`foo | sort by(bar) offset 10 offset 20`)
 
+	// invalid deduplicate pipe
+	f(`foo | deduplicate bar,`)
+	f(`foo | deduplicate by(`)
+	f(`foo | deduplicate by(a`)
+	f(`foo | deduplicate by(a,`)
+	f(`foo | deduplicate by(a) bar`)
+
 	// invalid uniq pipe
 	f(`foo | uniq bar,`)
 	f(`foo | uniq limit`)
@@ -4151,6 +4165,8 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | copy _time as x", true)
 	f("* | copy foo as _time", false)
 	f("* | decolorize", true)
+	f("* | deduplicate", false)
+	f("* | deduplicate by (x)", false)
 	f("* | delete foo, bar", true)
 	f("* | drop_empty_fields", true)
 	f("* | extract '<foo>bar<baz>'", true)
@@ -4237,6 +4253,7 @@ func TestQueryCanLiveTail(t *testing.T) {
 	f("* | collapse_nums", true)
 	f("* | copy a b", true)
 	f("* | decolorize x", true)
+	f("* | deduplicate", false)
 	f("* | rm a, b", true)
 	f("* | drop_empty_fields", true)
 	f("* | extract 'foo<bar>baz'", true)
