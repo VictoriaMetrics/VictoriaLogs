@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from "preact/compat";
+import { useEffect, useCallback, useRef, useState } from "preact/compat";
 import { getLogHitsUrl, getStatsQueryRangeUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
@@ -6,7 +6,7 @@ import { getHitsTimeParams } from "../../../utils/logs";
 import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../constants/logs";
 import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
-import { useSearchParams } from "react-router-dom";
+import { useHideChart } from "../HitsPanel/hooks/useHideChart";
 import { useAppState } from "../../../state/common/StateContext";
 import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
 import useProcessStatsQueryRange from "./useProcessStatsQueryRange";
@@ -33,7 +33,7 @@ interface OptionsParams extends FetchHitsParams {
 export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
-  const [searchParams] = useSearchParams();
+  const [hideChart] = useHideChart();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean; }>([]);
@@ -42,8 +42,6 @@ export const useFetchHits = () => {
   const abortControllerRef = useRef(new AbortController());
 
   const processStatsQueryRange = useProcessStatsQueryRange({ setLogHits, setError });
-
-  const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
 
   const getUrl = useCallback((queryMode: GRAPH_QUERY_MODE) => {
     switch (queryMode) {
