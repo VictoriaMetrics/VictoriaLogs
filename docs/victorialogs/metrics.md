@@ -305,6 +305,21 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Current number of queries actively executing. Real-time query processing load when the system approaches the `-search.maxConcurrentRequests` capacity limit.
 
+### vl_query_memory_limit_reached_total
+**Type:** Counter
+
+**Description:** Memory reservation attempts rejected because the shared query memory pool is full. Indicates concurrently executed heavy queries have reached the shared memory limit and are failing with an error instead of risking an out-of-memory crash. A single rejected query may increment this more than once, since its workers keep retrying until the query stops.
+
+### vl_query_memory_limit_bytes
+**Type:** Gauge
+
+**Description:** Maximum amount of memory all concurrently executed queries may use together for their execution state. It is set to half of the memory available to VictoriaLogs, which is in turn controlled by `-memory.allowedPercent`. Queries are rejected once their combined reserved memory would exceed this limit.
+
+### vl_query_memory_usage_bytes
+**Type:** Gauge
+
+**Description:** Current amount of memory reserved from the shared query memory pool by the running queries. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
+
 ### vl_concurrent_internalselect_requests_wait_duration
 **Type:** Summary
 
