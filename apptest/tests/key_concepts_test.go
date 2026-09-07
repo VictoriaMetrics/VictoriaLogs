@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
@@ -138,6 +137,47 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 	})
 }
 
+// assertLogsQLResponseEqual compares a parsed query response with expected JSON lines.
+func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	sort.Strings(got.LogLines)
+	want = normalizeLogsQLResponse(t, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected response (-want, +got):\n%s", diff)
+	}
+}
+
+// assertLogsQLResponseEventually retries get until the response matches want.
+// get must return a parsed query response, as returned by LogsQLQuery.
+// The caller is responsible for flushing storage if needed before each query.
+func assertLogsQLResponseEventually(tc *apptest.TestCase, get func() *apptest.LogsQLQueryResponse, want *apptest.LogsQLQueryResponse) {
+	t := tc.T()
+	t.Helper()
+	tc.Assert(&apptest.AssertOptions{
+		Msg: "unexpected response",
+		Got: func() any {
+			got := get()
+			sort.Strings(got.LogLines)
+			return got
+		},
+		Want: normalizeLogsQLResponse(t, want),
+		// Allow the same retry budget as the remote write recovery tests.
+		Retries: 70,
+		FailNow: true,
+	})
+}
+
+func normalizeLogsQLResponse(t *testing.T, response *apptest.LogsQLQueryResponse) *apptest.LogsQLQueryResponse {
+	t.Helper()
+	data := strings.Join(response.LogLines, "\n")
+	if len(response.LogLines) > 0 {
+		data += "\n"
+	}
+	normalized := apptest.NewLogsQLQueryResponse(t, data)
+	sort.Strings(normalized.LogLines)
+	return normalized
+}
+
 // TestVlclusterKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-cluster.
 func TestVlclusterKeyConcepts(t *testing.T) {
 	fs.MustRemoveDir(t.Name())
@@ -262,34 +302,4 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		query: "'issue 1294' | field_max(_time, a) a_max, field_min(_time, a) a_min, row_max(_time, a) a_max_row, row_min(_time, a) a_min_row",
 	})
-}
-
-func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
-	t.Helper()
-	sort.Strings(got.LogLines)
-	sort.Strings(want.LogLines)
-	if len(got.LogLines) != len(want.LogLines) {
-		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(want.LogLines), len(got.LogLines), strings.Join(got.LogLines, "\n"), strings.Join(want.LogLines, "\n"))
-		return
-	}
-	for i := range len(want.LogLines) {
-		gotLine, wantLine := got.LogLines[i], want.LogLines[i]
-		var gotLineJSON map[string]any
-		var wantLineJSON map[string]any
-		if err := json.Unmarshal([]byte(gotLine), &gotLineJSON); err != nil {
-			t.Errorf("cannot parse got line=%q: %s", gotLine, err)
-			return
-		}
-		if err := json.Unmarshal([]byte(wantLine), &wantLineJSON); err != nil {
-			t.Errorf("cannot parse want line=%q: %s", wantLine, err)
-			return
-		}
-		// stream_id is always unique, remove it from comparison
-		delete(gotLineJSON, "_stream_id")
-		delete(wantLineJSON, "_stream_id")
-		if diff := cmp.Diff(gotLineJSON, wantLineJSON); diff != "" {
-			t.Errorf("unexpected response (-want, +got):\n%s\n%s\n%s", diff, wantLine, gotLine)
-			return
-		}
-	}
 }
