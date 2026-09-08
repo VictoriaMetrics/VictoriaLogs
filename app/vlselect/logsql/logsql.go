@@ -1298,7 +1298,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// Execute the query
 	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r))
-	time.Sleep(3 * time.Second)
 	err = vlstorage.RunQuery(qctx, writeBlock)
 	activeQueriesV.Remove(qid)
 	if err != nil {
