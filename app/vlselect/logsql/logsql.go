@@ -1248,6 +1248,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	startTime := time.Now()
 
 	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r), startTime)
+	defer activeQueriesV.Remove(qid)
 
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
@@ -1301,7 +1302,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// Execute the query
 	err = vlstorage.RunQuery(qctx, writeBlock)
-	activeQueriesV.Remove(qid)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot execute query [%s]: %s", ca.q, err)
 		return
