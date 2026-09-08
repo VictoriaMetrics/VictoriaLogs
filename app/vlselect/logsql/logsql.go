@@ -677,6 +677,10 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 			"see https://docs.victoriametrics.com/victorialogs/querying/#live-tailing for details", ca.q)
 		return
 	}
+	if !ca.q.PreservesTimeField() {
+		httpserver.Errorf(w, r, "the query [%s] must return the _time field for live tailing", ca.q)
+		return
+	}
 
 	refreshInterval, err := parseDuration(r, "refresh_interval", "1s")
 	if err != nil {
