@@ -3,7 +3,6 @@ package apptest
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 	flags = setDefaultFlags(flags, map[string]string{
 		"-httpListenAddr":            "127.0.0.1:0",
 		"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
-		"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
+		"-remoteWrite.tmpDataPath":   t.TempDir(),
 		"-remoteWrite.flushInterval": "10ms",
 		"-remoteWrite.showURL":       "true",
 	})
@@ -73,44 +72,6 @@ func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpt
 	})
 }
 
-// WaitQueueEmptyAfter checks that persistent queue is empty
-// after execution of provided callback
-func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
-	t.Helper()
-	const (
-		retries = 70
-		period  = 100 * time.Millisecond
-	)
-	// vlagent_remotewrite_blocks_sent_total
-	// take in account data replication
-	blocksSent := app.remoteWriteBlocksSent(t)
-	cb()
-	for range retries {
-		if app.remoteWriteBlocksSent(t) > blocksSent && app.persistentQueueSize(t) == 0 {
-			return
-		}
-		time.Sleep(period)
-	}
-	t.Fatalf("timed out while waiting for inserted logs to be flushed to remote storage")
-}
-
-// WaitRemoteWriteRequests waits until the remote write URL reaches the given requests count.
-func (app *Vlagent) WaitRemoteWriteRequests(t *testing.T, remoteWriteURL string, requests int) {
-	t.Helper()
-
-	const (
-		retries = 50
-		period  = 100 * time.Millisecond
-	)
-	for range retries {
-		if app.RemoteWriteRequests(t, remoteWriteURL) == requests {
-			return
-		}
-		time.Sleep(period)
-	}
-	t.Fatalf("timed out while waiting for remote write requests for %q to reach %d", remoteWriteURL, requests)
-}
-
 // sendBlocking executes send and waits until the data is added to every remote
 // write queue.
 //
@@ -148,34 +109,9 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 	t.Fatalf("timed out while waiting for inserted rows to be sent to remote storage")
 }
 
-// RemoteWriteRequests returns the number of successful remote write requests for the given URL.
-func (app *Vlagent) RemoteWriteRequests(t *testing.T, url string) int {
-	metricName := fmt.Sprintf(`vlagent_remotewrite_requests_total{url=%q, status_code="2XX"}`, url)
-	return int(app.GetMetric(t, metricName))
-}
-
-func (app *Vlagent) remoteWriteBlocksSent(t *testing.T) int {
-	total := 0.0
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_blocks_sent_total") {
-		total += v
-	}
-	return int(total)
-}
-
 func (app *Vlagent) remoteWriteRowsPushed(t *testing.T) int {
 	total := 0.0
 	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_block_size_rows_sum") {
-		total += v
-	}
-	return int(total)
-}
-
-func (app *Vlagent) persistentQueueSize(t *testing.T) int {
-	total := 0.0
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_pending_data_bytes") {
-		total += v
-	}
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_pending_inmemory_blocks") {
 		total += v
 	}
 	return int(total)
