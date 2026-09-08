@@ -1301,8 +1301,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	defer ca.updatePerQueryStatsMetrics()
 
 	// Execute the query
-	err = vlstorage.RunQuery(qctx, writeBlock)
-	if err != nil {
+	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
 		httpserver.Errorf(w, r, "cannot execute query [%s]: %s", ca.q, err)
 		return
 	}
