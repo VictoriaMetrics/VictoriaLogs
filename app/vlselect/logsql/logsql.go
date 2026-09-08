@@ -1298,6 +1298,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// Execute the query
 	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r))
+	time.Sleep(3 * time.Second)
 	err = vlstorage.RunQuery(qctx, writeBlock)
 	activeQueriesV.Remove(qid)
 	if err != nil {
@@ -1586,10 +1587,6 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		}
 	}
 
-	// TODO: cleanup handling of "original" start end and step variables
-	ogStart := start
-	ogEnd := end
-
 	// Parse optional time arg
 	timestamp, timeOK, err := getTimeNsec(r, "time")
 	if err != nil {
@@ -1621,7 +1618,11 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.DropAllPipes()
 	}
 
-	ogStep := int64(math.MinInt64)
+	step := int64(math.MinInt64)
+	stepOK := false
+	if stepStr := r.FormValue("step"); stepStr != "" {
+		step, stepOK = logstorage.TryParseDuration(stepStr)
+	}
 
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
@@ -1632,18 +1633,15 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 			end = math.MaxInt64
 		}
 
-		if stepStr := r.FormValue("step"); stepStr != "" {
-			if step, ok := logstorage.TryParseDuration(stepStr); ok {
-				ogStep = step / 1e6
-				offset := int64(0)
-				if offsetStr := r.FormValue("offset"); offsetStr != "" {
-					nsecs, ok := logstorage.TryParseDuration(offsetStr)
-					if ok {
-						offset = nsecs
-					}
+		if stepOK {
+			offset := int64(0)
+			if offsetStr := r.FormValue("offset"); offsetStr != "" {
+				nsecs, ok := logstorage.TryParseDuration(offsetStr)
+				if ok {
+					offset = nsecs
 				}
-				start, end = alignStartEndToStep(start, end, step, offset)
 			}
+			start, end = alignStartEndToStep(start, end, step, offset)
 		}
 
 		q.AddTimeFilter(start, end)
@@ -1699,6 +1697,19 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		return nil, err
 	}
 
+	startMs := int64(math.MinInt64)
+	if startAligned != math.MinInt64 {
+		startMs = startAligned / 1e6
+	}
+	endMs := int64(math.MaxInt64)
+	if end != math.MaxInt64 {
+		endMs = endAligned / 1e6
+	}
+	stepMs := int64(0)
+	if stepOK {
+		stepMs = step / 1e6
+	}
+
 	ca := &commonArgs{
 		q:         q,
 		tenantIDs: tenantIDs,
@@ -1709,10 +1720,9 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		startAligned: startAligned,
 		endAligned:   endAligned,
 
-		// TODO: handle edge case where start and end are min/max but end up divided by 1e6 resulting in garbage num
-		start: ogStart / 1e6,
-		end:   ogEnd / 1e6,
-		step:  ogStep,
+		start: startMs,
+		end:   endMs,
+		step:  stepMs,
 	}
 	return ca, nil
 }
