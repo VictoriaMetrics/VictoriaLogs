@@ -1618,11 +1618,7 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.DropAllPipes()
 	}
 
-	step := int64(math.MinInt64)
-	stepOK := false
-	if stepStr := r.FormValue("step"); stepStr != "" {
-		step, stepOK = logstorage.TryParseDuration(stepStr)
-	}
+	step := int64(0)
 
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
@@ -1633,15 +1629,18 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 			end = math.MaxInt64
 		}
 
-		if stepOK {
-			offset := int64(0)
-			if offsetStr := r.FormValue("offset"); offsetStr != "" {
-				nsecs, ok := logstorage.TryParseDuration(offsetStr)
-				if ok {
-					offset = nsecs
+		if stepStr := r.FormValue("step"); stepStr != "" {
+			var ok bool
+			if step, ok = logstorage.TryParseDuration(stepStr); ok {
+				offset := int64(0)
+				if offsetStr := r.FormValue("offset"); offsetStr != "" {
+					nsecs, ok := logstorage.TryParseDuration(offsetStr)
+					if ok {
+						offset = nsecs
+					}
 				}
+				start, end = alignStartEndToStep(start, end, step, offset)
 			}
-			start, end = alignStartEndToStep(start, end, step, offset)
 		}
 
 		q.AddTimeFilter(start, end)
@@ -1702,13 +1701,10 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		startMs = startAligned / 1e6
 	}
 	endMs := int64(math.MaxInt64)
-	if end != math.MaxInt64 {
+	if endAligned != math.MaxInt64 {
 		endMs = endAligned / 1e6
 	}
-	stepMs := int64(0)
-	if stepOK {
-		stepMs = step / 1e6
-	}
+	stepMs := step / 1e6
 
 	ca := &commonArgs{
 		q:         q,
