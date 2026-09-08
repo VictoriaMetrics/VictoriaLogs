@@ -62,7 +62,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
   const hasGroupField = groupFieldHits.value !== WITHOUT_GROUPING;
-  const isGroupsLimitVisible = (isHitsMode && hasGroupField) || isStatsMode;
+  const hasMultipleSeries = (isHitsMode && hasGroupField) || isStatsMode;
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
@@ -191,7 +191,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
             </div>
           </>
         )}
-        {isGroupsLimitVisible && (
+        {hasMultipleSeries && (
           <div className="vm-bar-hits-options-item">
             <SelectLimit
               label="Groups limit"
@@ -217,6 +217,16 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
         )}
       </div>
 
+      {hasMultipleSeries && (
+        <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
+          <Switch
+            label={"Stacked"}
+            value={stacked}
+            onChange={handleChangeStacked}
+          />
+        </div>
+      )}
+
       <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
         <Switch
           label={"Cumulative"}
@@ -224,6 +234,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
           onChange={handleChangeCumulative}
         />
       </div>
+
       {!isOverview && (
         <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
           <Switch
@@ -233,13 +244,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
           />
         </div>
       )}
-      <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
-        <Switch
-          label={"Stacked"}
-          value={stacked}
-          onChange={handleChangeStacked}
-        />
-      </div>
     </>
   );
 
