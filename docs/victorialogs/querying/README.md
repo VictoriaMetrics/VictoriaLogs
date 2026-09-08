@@ -472,9 +472,7 @@ See also:
 
 ### Active queries
 
-<!-- TODO: improve documentation including example JSON output -->
-
-VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns the currently executed queries.
+VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns information about the currently running [`<queries>`](https://docs.victoriametrics.com/victorialogs/logsql/).
 
 ```sh
 curl http://localhost:9428/select/logsql/active_queries
@@ -487,31 +485,34 @@ Below is an example JSON output returned from this endpoint:
   "status": "success",
   "data": [
     {
-      "duration": "1.886s",
-      "id": "18D26B389032DEA5",
-      "remote_addr": "127.0.0.1:38036",
-      "query": "idMeow",
+      "duration": "7.450s",
+      "id": "18D35D4CB88532FD",
+      "remote_addr": "127.0.0.1:60778",
+      "query": "_time:[2026-09-08T13:01:36.528000000Z,2026-09-08T14:01:36.527999999Z] level:in(error,warn,fatal) | sort by (_time) desc limit 50",
       "tenant_id": "{accountID=0,projectID=0}",
-      "start": 0,
-      "end": 0,
-      "step": -9223372036854
+      "start": 1788872496528,
+      "end": 1788876096527,
+      "step": 0
     },
     {
-      "duration": "0.801s",
-      "id": "18D26B389032DEA6",
-      "remote_addr": "127.0.0.1:38046",
-      "query": "_time:[2169-02-08T23:09:07.410000000Z,1999-12-31T23:59:59.999999999Z] id",
-      "tenant_id": "{accountID=67,projectID=0}",
-      "start": 6283264147419,
-      "end": 946684799999,
-      "step": 10
+      "duration": "3.524s",
+      "id": "18D35D4CB88532FE",
+      "remote_addr": "127.0.0.1:60766",
+      "query": "_time:[2026-09-08T13:01:40.487000000Z,2026-09-08T14:01:40.486999999Z] \"connection refused\" | sort by (_time) desc limit 50",
+      "tenant_id": "{accountID=0,projectID=0}",
+      "start": 1788872500487,
+      "end": 1788876100486,
+      "step": 0
     }
   ]
 }
 ```
 
+The `/select/logsql/active_queries` API is useful for seeing which queries are stuck running for a long time.
+
 See also:
 
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
 - [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying log stats
