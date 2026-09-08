@@ -1210,6 +1210,8 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}
 
+	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r))
+
 	var csvHeader []byte
 	if format == "csv" {
 		fields, ok := ca.q.GetFixedFields()
@@ -1297,7 +1299,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	defer ca.updatePerQueryStatsMetrics()
 
 	// Execute the query
-	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r))
 	err = vlstorage.RunQuery(qctx, writeBlock)
 	activeQueriesV.Remove(qid)
 	if err != nil {
