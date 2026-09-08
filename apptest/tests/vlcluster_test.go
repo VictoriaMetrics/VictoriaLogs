@@ -3,14 +3,11 @@ package tests
 import (
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 // TestVlclusterUniqValuesMerge verifies that uniq_values correctly merges results when some storage nodes have no matching values.
 func TestVlclusterUniqValuesMerge(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -38,7 +35,6 @@ func TestVlclusterUniqValuesMerge(t *testing.T) {
 
 // TestVlclusterIngestAndQuery verifies that logs are correctly ingested and queried from cluster.
 func TestVlclusterIngestAndQuery(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()

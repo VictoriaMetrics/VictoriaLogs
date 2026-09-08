@@ -3,24 +3,20 @@ package tests
 import (
 	"fmt"
 	"os"
-	"path"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
 	// test data ingestion into
 	const instance = "vlsingle"
 	sutFlags := []string{
-		"-storageDataPath=" + tc.Dir() + "/" + instance,
+		"-storageDataPath=" + t.TempDir(),
 	}
 
 	sut := tc.MustStartVlsingle(instance, sutFlags)
@@ -66,7 +62,6 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 }
 
 func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -121,7 +116,6 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 }
 
 func TestVlagentRemoteWriteReplication(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -131,10 +125,10 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		vlagentInstance  = "vlagent"
 	)
 	sutFlagsR0 := []string{
-		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica0),
+		"-storageDataPath=" + t.TempDir(),
 	}
 	sutFlagsR1 := []string{
-		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica1),
+		"-storageDataPath=" + t.TempDir(),
 	}
 
 	sutR0 := tc.MustStartVlsingle(instanceReplica0, sutFlagsR0)

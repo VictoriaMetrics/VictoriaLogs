@@ -3,8 +3,6 @@ package logstorage
 import (
 	"fmt"
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestMatchIPv6Range(t *testing.T) {
@@ -179,9 +177,6 @@ func TestFilterIPv6Range(t *testing.T) {
 		fr = newFilterIPv6Range("foo", mustParseIPv6("2001:db8::"), mustParseIPv6("2001:db8::ffff"))
 		testFilterMatchForColumns(t, columns, fr, "foo", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }
 
 func mustParseIPv6(s string) [16]byte {
