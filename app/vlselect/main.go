@@ -212,6 +212,11 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		vmalertproxy.HandleRequest(w, r, path)
 		return true
 	}
+	if strings.HasPrefix(path, "/select/logsql/active_queries") {
+		logsqlActiveQueriesRequests.Inc()
+		logsql.ProcessActiveQueriesRequest(ctx, w, r)
+		return true
+	}
 
 	// Limit the number of concurrent queries, which can consume big amounts of CPU time.
 	startTime := time.Now()
@@ -319,11 +324,6 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 	httpserver.EnableCORS(w, r)
 	startTime := time.Now()
 	switch path {
-	// TODO: make endpoint not take up a concurrency slot (?)
-	case "/select/logsql/active_queries":
-		logsqlActiveQueriesRequests.Inc()
-		logsql.ProcessActiveQueriesRequest(ctx, w, r)
-		return true
 	case "/select/logsql/query_time_range":
 		logsqlQueryTimeRangeRequests.Inc()
 		logsql.ProcessQueryTimeRangeRequest(ctx, w, r)
