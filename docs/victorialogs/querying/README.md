@@ -472,7 +472,7 @@ See also:
 
 ### Active queries
 
-VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns information about the currently running [`<queries>`](https://docs.victoriametrics.com/victorialogs/logsql/).
+VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns information about the currently running [queries](https://docs.victoriametrics.com/victorialogs/logsql/).
 
 ```sh
 curl http://localhost:9428/select/logsql/active_queries
