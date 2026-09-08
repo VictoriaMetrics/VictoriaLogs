@@ -212,7 +212,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		vmalertproxy.HandleRequest(w, r, path)
 		return true
 	}
-	if strings.HasPrefix(path, "/select/logsql/active_queries") {
+	if path == "/select/logsql/active_queries" {
 		logsqlActiveQueriesRequests.Inc()
 		logsql.ProcessActiveQueriesRequest(ctx, w, r)
 		return true
