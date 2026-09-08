@@ -1210,8 +1210,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}
 
-	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r))
-
 	var csvHeader []byte
 	if format == "csv" {
 		fields, ok := ca.q.GetFixedFields()
@@ -1248,6 +1246,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}()
 
 	startTime := time.Now()
+
+	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r), startTime)
+
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
@@ -1399,7 +1400,7 @@ func newActiveQueries() *activeQueries {
 	}
 }
 
-func (aq *activeQueries) Add(ca *commonArgs, addr string) uint64 {
+func (aq *activeQueries) Add(ca *commonArgs, addr string, startTime time.Time) uint64 {
 	var aqe activeQueryEntry
 	aqe.start = ca.start
 	aqe.end = ca.end
@@ -1410,7 +1411,7 @@ func (aq *activeQueries) Add(ca *commonArgs, addr string) uint64 {
 	if len(ca.tenantIDs) == 1 {
 		aqe.tenantID = ca.tenantIDs[0]
 	}
-	aqe.startTime = time.Now()
+	aqe.startTime = startTime
 
 	aq.mu.Lock()
 	aq.m[aqe.qid] = aqe
