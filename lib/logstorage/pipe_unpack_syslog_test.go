@@ -83,6 +83,29 @@ func TestPipeUnpackSyslog(t *testing.T) {
 		},
 	})
 
+	// surrounding whitespace
+	f("unpack_syslog", [][]Field{
+		{
+			{"_msg", "\t\n\r" + `  <165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47 - This is a test message with structured data   `},
+		},
+	}, [][]Field{
+		{
+			{"_msg", "\t\n\r" + `  <165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47 - This is a test message with structured data   `},
+			{"level", "notice"},
+			{"priority", "165"},
+			{"facility", "20"},
+			{"facility_keyword", "local4"},
+			{"severity", "5"},
+			{"format", "rfc5424"},
+			{"timestamp", "2023-06-03T17:42:32.123456789Z"},
+			{"hostname", "mymachine.example.com"},
+			{"app_name", "appname"},
+			{"proc_id", "12345"},
+			{"msg_id", "ID47"},
+			{"message", "This is a test message with structured data   "},
+		},
+	})
+
 	// keep original fields
 	f("unpack_syslog keep_original_fields", [][]Field{
 		{

@@ -19,20 +19,18 @@ const QueryExamplesItemControls: FC<Props> = ({ example, onApply }) => {
 
   return (
     <div className="vm-query-examples-content-item-header-controls">
-      <a
+      <Button
+        as={"a"}
         href={url}
         target="_blank"
         rel="noreferrer"
+        startIcon={<OpenNewIcon/>}
+        variant="text"
+        size="small"
+        color="gray"
       >
-        <Button
-          startIcon={<OpenNewIcon/>}
-          variant="text"
-          size="small"
-          color="gray"
-        >
-          Docs
-        </Button>
-      </a>
+        Docs
+      </Button>
 
       <Tooltip
         title={"Replace current query and run search"}

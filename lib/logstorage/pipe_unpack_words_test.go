@@ -138,7 +138,7 @@ func TestPipeUnpackWords(t *testing.T) {
 	// unpack_words from _msg into other field
 	f("unpack_words as b", [][]Field{
 		{
-			{"_msg", `foo,bar foo`},
+			{"_msg", `  foo,bar foo  `},
 			{"q", "w"},
 		},
 		{
@@ -147,7 +147,7 @@ func TestPipeUnpackWords(t *testing.T) {
 		},
 	}, [][]Field{
 		{
-			{"_msg", `foo,bar foo`},
+			{"_msg", `  foo,bar foo  `},
 			{"b", `["foo","bar","foo"]`},
 			{"q", "w"},
 		},

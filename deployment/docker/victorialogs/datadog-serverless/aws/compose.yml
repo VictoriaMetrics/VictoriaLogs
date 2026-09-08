@@ -19,8 +19,8 @@ services:
       DD_SERVERLESS_FLUSH_STRATEGY: periodically,100
     depends_on:
       vmauth:
-        condition: service_healthy
+        condition: service_started
       vlagent:
-        condition: service_healthy
+        condition: service_started
       victoriametrics:
-        condition: service_healthy
+        condition: service_started

@@ -111,7 +111,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
               <Button
                 variant="text"
                 startIcon={<DownloadIcon/>}
-                ariaLabel="Download Logs"
+                aria-label="Download Logs"
               />
             </Tooltip>
           </DownloadLogsModal>
@@ -121,7 +121,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
               color="primary"
               startIcon={hideLogs ? <VisibilityIcon/> : <VisibilityOffIcon/>}
               onClick={toggleHideLogs}
-              ariaLabel="settings"
+              aria-label="settings"
             >
               {hideLogs ? "Show Logs" : ""}
             </Button>

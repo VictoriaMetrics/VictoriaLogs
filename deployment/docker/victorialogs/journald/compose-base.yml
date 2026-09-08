@@ -9,8 +9,8 @@ services:
     entrypoint: /lib/systemd/systemd
     depends_on:
       vlagent:
-        condition: service_healthy
+        condition: service_started
       vmauth:
-        condition: service_healthy
+        condition: service_started
       victoriametrics:
-        condition: service_healthy
+        condition: service_started

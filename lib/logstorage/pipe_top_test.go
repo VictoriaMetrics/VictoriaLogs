@@ -29,6 +29,8 @@ func TestParsePipeTopFailure(t *testing.T) {
 	f(`top 5 foo,`)
 	f(`top 5 by`)
 	f(`top 5 by (`)
+	f(`top 5 by (a*)`)
+	f(`top 5 by a*`)
 	f(`top 5foo bar`)
 	f(`top foo bar`)
 	f(`top by`)

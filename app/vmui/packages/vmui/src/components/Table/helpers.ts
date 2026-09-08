@@ -1,4 +1,4 @@
-import { getNanoTimestamp } from "../../utils/time";
+import { vmDate } from "../../utils/time";
 import { OrderDir } from "../../types";
 
 const dateColumns = ["date", "timestamp", "time"];
@@ -18,8 +18,8 @@ export function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   // Dates
   const isDate = dateColumns.includes(String(orderBy));
   if (isDate) {
-    const timeA = getNanoTimestamp(strA);
-    const timeB = getNanoTimestamp(strB);
+    const timeA = vmDate(strA).nano().timestamp();
+    const timeB = vmDate(strB).nano().timestamp();
 
     if (timeB < timeA) return -1;
     if (timeB > timeA) return 1;

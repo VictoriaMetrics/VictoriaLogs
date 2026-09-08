@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -71,6 +72,8 @@ var (
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
+	insertDrainTimeout = flag.Duration("insert.drainTimeout", 5*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown; "+
+		"the logs, which cannot be drained within this duration, are dropped")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
@@ -145,6 +148,7 @@ func initLocalStorage() {
 	logger.Infof("opening storage at -storageDataPath=%s", *storageDataPath)
 	startTime := time.Now()
 	localStorage = logstorage.MustOpenStorage(*storageDataPath, cfg)
+	fs.RegisterPathFsMetrics(*storageDataPath)
 
 	var ss logstorage.StorageStats
 	localStorage.UpdateStats(&ss)
@@ -174,7 +178,7 @@ func initNetworkStorage() {
 	}
 
 	logger.Infof("starting insert service for nodes %s", *storageNodeAddrs)
-	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression)
+	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression, *insertDrainTimeout)
 
 	logger.Infof("initializing select service for nodes %s", *storageNodeAddrs)
 	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *selectDisableCompression)
@@ -241,7 +245,13 @@ func Stop() {
 
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	if strings.HasPrefix(path, "/internal/") && r.Method != "POST" {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return true
+	}
+
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)
@@ -552,21 +562,27 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
-	if qOpt != nil {
-		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedLastNResultsQuery(qctxOpt, offset, limit, writeBlock)
-	}
-
 	if localStorage != nil {
+		// Optimize the query, which returns last N rows with the biggest timestamps,
+		// only at the leaf vlstorage nodes. There is no need in optimizing the query
+		// at vlselect because the optimization usually leads in 20-30 sequentially run
+		// queries - this is slow because of network latencies between vlselect and vlstorage.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
+		qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+		if qOpt != nil {
+			qctxOpt := qctx.WithQuery(qOpt)
+			return runOptimizedLastNResultsQuery(localStorage, qctxOpt, offset, limit, writeBlock)
+		}
+
 		return localStorage.RunQuery(qctx, writeBlock)
 	}
+
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 
 // GetFieldNames executes qctx and returns field names seen in results.
 //
-// If the filter isn't empty, then only the field names containing the filter substing are returned.
+// If the filter isn't empty, then only the field names containing the filter substring are returned.
 func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.ValueWithHits, error) {
 	if localStorage != nil {
 		return localStorage.GetFieldNames(qctx, filter)
@@ -576,7 +592,7 @@ func GetFieldNames(qctx *logstorage.QueryContext, filter string) ([]logstorage.V
 
 // GetFieldValues executes the given qctx and returns unique values for the fieldName seen in results.
 //
-// If the filter isn't empty, then only the field values containing the filter substing are returned.
+// If the filter isn't empty, then only the field values containing the filter substring are returned.
 //
 // If limit > 0, then up to limit unique values are returned.
 func GetFieldValues(qctx *logstorage.QueryContext, fieldName, filter string, limit uint64) ([]logstorage.ValueWithHits, error) {
@@ -664,7 +680,7 @@ func DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
 	return netstorageSelect.DeleteActiveTasks(ctx)
 }
 
-// GetTenantIDs returns tenantIDs from the storage by the given start and end.
+// GetTenantIDs returns sorted tenantIDs on the [start..end] time range.
 func GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	if localStorage != nil {
 		return localStorage.GetTenantIDs(ctx, start, end)

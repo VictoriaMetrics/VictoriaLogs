@@ -37,6 +37,7 @@
     grid-column: 1/span 2;
     line-height: 1.3;
     color: $color-text-secondary;
+    overflow-wrap: break-word;
   }
 
   @mixin variant-alert($name, $color: $color-white) {

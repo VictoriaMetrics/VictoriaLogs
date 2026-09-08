@@ -32,7 +32,7 @@ func BenchmarkJSONParserParseLogMessage(b *testing.B) {
 		p := GetJSONParser()
 		for pb.Next() {
 			if err := p.ParseLogMessage(msg, nil, ""); err != nil {
-				panic(fmt.Errorf("unexpected error: %s", err))
+				panic(fmt.Errorf("unexpected error: %w", err))
 			}
 		}
 		PutJSONParser(p)

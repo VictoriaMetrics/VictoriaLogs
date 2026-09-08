@@ -1,5 +1,5 @@
 import { useFilterSidebarVisible } from "./hooks/useFilterSidebarVisible";
-import { FilterListIcon } from "../Main/Icons";
+import { SidebarCloseIcon, SidebarOpenIcon } from "../Main/Icons";
 import Button from "../Main/Button/Button";
 
 const FilterSidebarToggle = () => {
@@ -8,11 +8,11 @@ const FilterSidebarToggle = () => {
   return (
     <Button
       variant="outlined"
-      color={isVisible ? "primary" : "gray"}
-      startIcon={<FilterListIcon/>}
+      color={isVisible ? "gray" : "primary"}
+      startIcon={isVisible ? <SidebarCloseIcon/> : <SidebarOpenIcon/>}
       onClick={() => setVisible(!isVisible)}
     >
-      Filters
+      {isVisible ? "Hide" : "Show"} filters
     </Button>
   );
 };

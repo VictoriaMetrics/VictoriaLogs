@@ -16,14 +16,6 @@
   font-size: $font-size-small;
   z-index: 99;
 
-  &_hidden {
-    position: absolute;
-    left: -100vw;
-    opacity: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-
   &_mobile {
     position: fixed;
     left: 0;

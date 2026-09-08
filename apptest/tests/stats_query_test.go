@@ -45,16 +45,16 @@ func TestVlsingleStatsQuery_Success(t *testing.T) {
 
 	// filter
 	f(`* | stats count() q | filter q:>0`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
-	f(`* | stats count() q | fiter q:>5`, `{"status":"success","data":{"resultType":"vector","result":[]}}`)
+	f(`* | stats count() q | filter q:>5`, `{"status":"success","data":{"resultType":"vector","result":[]}}`)
 
 	// math with keep
 	f(`* | stats by (x) count() q, max(x) xmax | math q / xmax as y | sort by (y desc) | keep x, y`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"y","x":"1"},"value":[1735689900,"1"]},{"metric":{"__name__":"y","x":"5"},"value":[1735689900,"0.2"]}]}}`)
 	f(`* | stats by (x) count() q, max(x) xmax | math q / xmax as y | sort by (y desc) | keep y, x`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"y","x":"1"},"value":[1735689900,"1"]},{"metric":{"__name__":"y","x":"5"},"value":[1735689900,"0.2"]}]}}`)
 
 	// sort
-	f(`* | stats by (x) count() q | sort by (q desc) limit 1`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
-	f(`* | stats by (x) count() q | first 1 by (q desc)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
-	f(`* | stats by (x) count() q | last 1 by (q)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | sort by (q desc, x) limit 1`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"1"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | first 1 by (q desc, x)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"1"},"value":[1735689900,"1"]}]}}`)
+	f(`* | stats by (x) count() q | last 1 by (q, x)`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q","x":"5"},"value":[1735689900,"1"]}]}}`)
 
 	// limit
 	f(`* | stats count() q | limit 10`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
@@ -65,6 +65,36 @@ func TestVlsingleStatsQuery_Success(t *testing.T) {
 	// it is OK to drop _time when calculating instant stats
 	f(`* | fields x | stats count() q`, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
 	f(`* | delete _time | stats count() q `, `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"q"},"value":[1735689900,"2"]}]}}`)
+}
+
+func TestVlclusterStatsQueryRateWithTimeBucket(t *testing.T) {
+	fs.MustRemoveDir(t.Name())
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlcluster()
+
+	records := []string{
+		`{"_msg":"a","_time":"2025-01-01T00:00:00Z","status":"400","bytes":400}`,
+		`{"_msg":"b","_time":"2025-01-01T00:00:01Z","status":"400","bytes":400}`,
+		`{"_msg":"c","_time":"2025-01-01T00:00:02Z","status":"400","bytes":400}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query := `_time:[2025-01-01T00:00:00Z,2025-01-01T00:00:03Z) status:400 | stats by (_time:1s, status) rate() as logs_rate, rate_sum(bytes) as bytes_rate | sort by (_time, status)`
+	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"400"]}]}}`
+
+	opts := apptest.StatsQueryOpts{
+		Time: "2025-01-01T00:05:03Z",
+	}
+	response, status := sut.StatsQueryRaw(t, query, opts)
+	if status != http.StatusOK {
+		t.Fatalf("unexpected HTTP status=%d; response=%q", status, response)
+	}
+	if response != responseExpected {
+		t.Fatalf("unexpected response\ngot\n%s\nwant\n%s", response, responseExpected)
+	}
 }
 
 func TestVlsingleStatsQuery_Failure(t *testing.T) {

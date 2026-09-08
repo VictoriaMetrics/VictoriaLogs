@@ -33,7 +33,7 @@ func TestPipeFilter(t *testing.T) {
 	}
 
 	// filter mismatch, missing 'filter' prefix
-	f("abc", [][]Field{
+	f(`"abc"`, [][]Field{
 		{
 			{"_msg", `{"foo":"bar"}`},
 			{"a", `test`},
@@ -49,7 +49,7 @@ func TestPipeFilter(t *testing.T) {
 	}, [][]Field{})
 
 	// filter match, missing 'filter' prefix
-	f("foo", [][]Field{
+	f(`"foo"`, [][]Field{
 		{
 			{"_msg", `{"foo":"bar"}`},
 			{"a", `test`},

@@ -1,6 +1,7 @@
 ---
 weight: 10
 title: Syslog Setup
+description: "Accept logs into VictoriaLogs via Syslog TCP, UDP, or Unix socket"
 disableToc: true
 menu:
   docs:
@@ -290,9 +291,9 @@ plus it accepts TLS-encrypted syslog messages via TCP port 6514 and stores them 
 
    ```
    destination d_remote {
-    tcp("victoria-logs-server" port(29514));
+    network("victoria-logs-server" transport("tcp") port(29514));
    };
    ```
 
    Where `victoria-logs-server` is the hostname where VictoriaLogs runs.
-   See [these docs](https://support.oneidentity.com/technical-documents/syslog-ng-open-source-edition/3.19/administration-guide/29#TOPIC-1094570) for details.
+   See [these docs](https://syslog-ng.github.io/admin-guide/070_Destinations/150_Network/README.html) for details.

@@ -30,7 +30,7 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [rowsPerPage] = useStateSearchParams(100, "rows_per_page");
   const [offset] = useStateSearchParams(5, LIVE_TAILING_OFFSET_PARAM);
-  const [query, _setQuery] = useStateSearchParams("*", "query");
+  const [query, _setQuery] = useStateSearchParams("*", LOGS_URL_PARAMS.QUERY);
   const [isRawJsonView, setIsRawJsonView] = useLocalStorageBoolean("RAW_JSON_LIVE_VIEW");
   const {
     logs,

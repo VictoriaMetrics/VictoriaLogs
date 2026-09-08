@@ -48,7 +48,7 @@ func (fr *filterWeekRange) matchRow(fields []Field) bool {
 }
 
 func (fr *filterWeekRange) applyToBlockResult(br *blockResult, bm *bitmap) {
-	if fr.startDay > fr.endDay || fr.startDay > time.Saturday || fr.endDay < time.Monday {
+	if fr.startDay > fr.endDay || fr.startDay > time.Saturday || fr.endDay < time.Sunday {
 		bm.resetBits()
 		return
 	}

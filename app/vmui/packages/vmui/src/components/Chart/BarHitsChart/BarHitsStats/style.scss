@@ -17,4 +17,14 @@
     font-size: $font-size-small;
     gap: 4px;
   }
+
+  &__query-time {
+    $font-size-query-time: 10px;
+    position: absolute;
+    top: calc($font-size-query-time / -2);
+    left: $padding-large;
+    font-size: $font-size-query-time;
+    color: $color-text-secondary;
+    line-height: 1;
+  }
 }

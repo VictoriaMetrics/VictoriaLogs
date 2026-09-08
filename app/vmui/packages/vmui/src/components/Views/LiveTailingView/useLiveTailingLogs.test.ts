@@ -16,6 +16,10 @@ vi.mock("../../../hooks/useStateSearchParams",
   })
 );
 
+vi.mock("../../ExtraFilters/hooks/useExtraFilters", () => ({
+  useExtraFilters: () =>  ({ extraParams: new URLSearchParams() }),
+}));
+
 // Mock dependencies
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

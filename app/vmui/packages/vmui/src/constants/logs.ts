@@ -1,6 +1,7 @@
 import { DATE_TIME_FORMAT } from "./date";
 import { getIsMobile } from "../hooks/useDeviceDetect";
 
+export const LOGS_STREAM_CONTEXT_KEYS = ["_stream_id", "_time"];
 export const LOGS_DOCS_URL = "https://docs.victoriametrics.com/victorialogs";
 
 export const LOGS_DEFAULT_LIMIT = 50;
@@ -12,16 +13,18 @@ export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 export const LOGS_LIMIT_HITS = 5;
 
 export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
+export const LOGS_INTERVALS_COUNT = 7;
 
 export const WITHOUT_GROUPING = "none";
 
 // Default values for the logs configurators.
-export const LOGS_GROUP_BY = "_stream";
+export const LOGS_GROUP_BY = WITHOUT_GROUPING;
 export const LOGS_DISPLAY_FIELDS = "_msg";
-export const LOGS_DATE_FORMAT = `${DATE_TIME_FORMAT}.SSS`;
+export const LOGS_DATE_FORMAT = DATE_TIME_FORMAT;
 
 // URL parameters for the logs page.
 export const LOGS_URL_PARAMS = {
+  QUERY: "query",
   LIMIT: "limit",
   GROUP_BY: "groupBy",
   DISPLAY_FIELDS: "displayFields",

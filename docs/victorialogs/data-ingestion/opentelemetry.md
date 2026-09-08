@@ -1,6 +1,7 @@
 ---
 weight: 4
 title: OpenTelemetry Setup
+description: "Configure OpenTelemetry SDKs and Collectors to send logs to VictoriaLogs."
 disableToc: true
 menu:
   docs:

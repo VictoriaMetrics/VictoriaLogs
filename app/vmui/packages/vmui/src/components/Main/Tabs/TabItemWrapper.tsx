@@ -5,7 +5,6 @@ interface TabItemWrapperProps {
   to: string
   isNavLink?: boolean
   className: string
-  style: { color: string }
   children: ReactNode
   onClick: () => void
 }

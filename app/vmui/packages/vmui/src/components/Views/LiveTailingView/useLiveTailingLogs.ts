@@ -7,6 +7,7 @@ import { useTenant } from "../../../hooks/useTenant";
 import { LogFlowAnalyzer } from "./utils";
 import useStateSearchParams from "../../../hooks/useStateSearchParams";
 import { LIVE_TAILING_OFFSET_PARAM } from "./constants";
+import { useExtraFilters } from "../../ExtraFilters/hooks/useExtraFilters";
 
 /**
  * Defines the log's threshold, after which will be shown a warning notification
@@ -18,7 +19,6 @@ const PROCESSING_INTERVAL_MS = 1000;
 const createStreamProcessor = (
   bufferRef: MutableRefObject<string>,
   bufferLinesRef: MutableRefObject<string[]>,
-  setError: (error: string) => void,
   restartTailing: () => Promise<boolean>
 ) => {
   return async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
@@ -28,7 +28,7 @@ const createStreamProcessor = (
       const timeSinceLastData = Date.now() - lastDataTime;
       if (timeSinceLastData > CONNECTION_TIMEOUT_MS) {
         clearInterval(connectionCheckInterval);
-        restartTailing();
+        void restartTailing();
         return;
       }
     }, CONNECTION_TIMEOUT_MS);
@@ -47,7 +47,7 @@ const createStreamProcessor = (
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
         console.error("Stream processing error:", e);
-        restartTailing();
+        void restartTailing();
       }
     } finally {
       clearInterval(connectionCheckInterval);
@@ -60,6 +60,7 @@ const parseLogLines = (lines: string[], counterRef: MutableRefObject<bigint>): L
     .map(line => {
       try {
         const parsedLine = line && JSON.parse(line);
+        if (!parsedLine || typeof parsedLine !== "object") return null;
         parsedLine._log_id = counterRef.current++;
         return parsedLine;
       } catch (e) {
@@ -76,7 +77,6 @@ interface ProcessBufferedLogsParams {
   counterRef: MutableRefObject<bigint>;
   setIsLimitedLogsPerUpdate: (isLimited: boolean) => void;
   setLogs: Dispatch<SetStateAction<Logs[]>>;
-  bufferLinesRef: MutableRefObject<string[]>;
   logFlowAnalyzerRef?: MutableRefObject<LogFlowAnalyzer>;
 }
 
@@ -86,7 +86,6 @@ const processBufferedLogs = ({
   counterRef,
   setIsLimitedLogsPerUpdate,
   setLogs,
-  bufferLinesRef,
   logFlowAnalyzerRef
 }: ProcessBufferedLogsParams) => {
   const isLimitLogsMode = logFlowAnalyzerRef?.current?.update(lines.length) === "high";
@@ -98,12 +97,13 @@ const processBufferedLogs = ({
     const combinedLogs = [...prevLogs, ...newLogs];
     return combinedLogs.length > limit ? combinedLogs.slice(-limit) : combinedLogs;
   });
-  bufferLinesRef.current = [];
 };
 
 export const useLiveTailingLogs = (query: string, limit: number) => {
   const { serverUrl } = useAppState();
   const [offset] = useStateSearchParams(5, LIVE_TAILING_OFFSET_PARAM);
+  const { extraParams } = useExtraFilters();
+  const extraParamsString = extraParams.toString();
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const { value: isPaused, setTrue: pauseLiveTailing, setFalse: resumeLiveTailing } = useBoolean(false);
@@ -114,27 +114,29 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
   const counterRef = useRef<bigint>(0n);
   const abortControllerRef = useRef(new AbortController());
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferRef = useRef<string>("");
   const bufferLinesRef = useRef<string[]>([]);
   const logFlowAnalyzerRef = useRef(new LogFlowAnalyzer());
 
-  const stopLiveTailing = useCallback(() => {
-    if (readerRef.current) {
-      readerRef.current.cancel();
-      readerRef.current = null;
+  const stopLiveTailing = useCallback(async () => {
+    const reader = readerRef.current;
+    const abortController = abortControllerRef.current;
+
+    readerRef.current = null;
+
+    if (reader) {
+      await reader.cancel();
     }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+
     if (bufferRef.current) {
       bufferRef.current = "";
     }
-    abortControllerRef.current.abort();
+
+    abortController.abort();
   }, []);
 
   const startLiveTailing = useCallback(async () => {
-    stopLiveTailing();
+    await stopLiveTailing();
 
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
@@ -142,16 +144,22 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
     setError(undefined);
 
     try {
+      const body = new URLSearchParams({
+        query: query.trim(),
+        offset: `${offset}s`,
+      });
+
+      extraParams.forEach((value, key) => {
+        body.append(key, value);
+      });
+
       const response = await fetch(`${serverUrl}/select/logsql/tail`, {
         signal,
         method: "POST",
         headers: {
           ...tenant,
         },
-        body: new URLSearchParams({
-          query: query.trim(),
-          offset: `${offset}s`,
-        })
+        body,
       });
 
       if (!response.ok || !response.body) {
@@ -167,11 +175,10 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
       const processStream = createStreamProcessor(
         bufferRef,
         bufferLinesRef,
-        setError,
         startLiveTailing
       );
 
-      processStream(reader);
+      void processStream(reader);
       return true;
     } catch (e) {
       if (e instanceof Error && e.name !== "AbortError") {
@@ -181,7 +188,7 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
       }
       return false;
     }
-  }, [query, stopLiveTailing, offset]);
+  }, [query, stopLiveTailing, offset, extraParamsString]);
 
   useEffect(() => {
     if (isPaused) {
@@ -197,19 +204,20 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
 
     const timerId = setInterval(() => {
       const lines = bufferLinesRef.current;
+      bufferLinesRef.current = [];
+
       processBufferedLogs({
         lines,
         limit,
         counterRef,
         setIsLimitedLogsPerUpdate,
         setLogs,
-        bufferLinesRef,
         logFlowAnalyzerRef
       });
     }, PROCESSING_INTERVAL_MS);
 
     return () => clearInterval(timerId);
-  }, [limit, isPaused, isLimitedLogsPerUpdate]);
+  }, [limit, isPaused]);
 
   const clearLogs = useCallback(() => {
     setLogs([]);

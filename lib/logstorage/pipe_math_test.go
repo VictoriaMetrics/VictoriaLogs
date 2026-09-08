@@ -32,6 +32,11 @@ func TestParsePipeMathSuccess(t *testing.T) {
 	f(`math (x - (y + z)) as x`)
 	f(`math now() as current_time`)
 	f(`math round((now() - max_time) / 1s) as duration_seconds`)
+
+	// operands named like math function names
+	f(`math "abs" as x`)
+	f(`math ("abs" + 1) as x`)
+	f(`math "rand" as r`)
 }
 
 func TestParsePipeMathFailure(t *testing.T) {

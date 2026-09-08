@@ -6,11 +6,15 @@ import { useMemo, useState } from "react";
 import TextField from "../../../components/Main/TextField/TextField";
 import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import { QuestionIcon } from "../../../components/Main/Icons";
+import { OrderDir } from "../../../types";
+import { ColumnKey } from "../../../components/Table/types";
+import { LogsFieldValues } from "../../../api/types";
 
 interface Props extends OverviewTableProps {
   title: ReactNode | string;
   enableSearch?: boolean;
   headerControls?: ReactNode;
+  defaultOrder?: { key?: ColumnKey<LogsFieldValues>; dir?: OrderDir };
 }
 
 const OverviewTable: FC<Props> = ({
@@ -19,6 +23,7 @@ const OverviewTable: FC<Props> = ({
   rows,
   enableSearch,
   headerControls,
+  defaultOrder,
   ...props
 }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -63,6 +68,7 @@ const OverviewTable: FC<Props> = ({
         tableId={tableId}
         rows={filteredRows}
         rowsPerPage={rowsPerPage}
+        defaultOrder={defaultOrder}
       />
     </div>
   );

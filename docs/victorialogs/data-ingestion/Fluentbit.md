@@ -1,6 +1,7 @@
 ---
 weight: 2
 title: Fluentbit Setup
+description: "Configure Fluentbit to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:
@@ -80,7 +81,7 @@ This usually allows saving network bandwidth and costs by up to 5 times:
      compress gzip
 ```
 
-By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/keyconcepts/#multitenancy).
+By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 If you need storing logs in other tenant, then specify the needed tenant via `header` options.
 For example, the following `fluentbit.conf` config instructs Fluentbit to store the data to `(AccountID=12, ProjectID=34)` tenant:
 

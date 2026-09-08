@@ -32,7 +32,7 @@ export const useExtraFilters = () => {
       );
     }
 
-    setSearchParams(next, { replace: true });
+    setSearchParams(next);
   }, [searchParams, setSearchParams]);
 
   const addNewFilter = useCallback((newFilter: ExtraFilter) => {

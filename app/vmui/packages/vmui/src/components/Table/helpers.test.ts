@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { descendingComparator } from "./helpers";
-import { getNanoTimestamp } from "../../utils/time";
+import { vmDate } from "../../utils/time";
 
 describe("descendingComparator", () => {
   it("returns 0 for equal numbers", () => {
@@ -33,8 +33,8 @@ describe("descendingComparator", () => {
     const a = { timestamp: "2024-01-01T00:00:00.200Z" };
     const b = { timestamp: "2023-01-01T00:00:00.100Z" };
 
-    const nanoA = getNanoTimestamp(a.timestamp);
-    const nanoB = getNanoTimestamp(b.timestamp);
+    const nanoA = vmDate(a.timestamp).nano().timestamp();
+    const nanoB = vmDate(b.timestamp).nano().timestamp();
     expect(nanoA).toBeGreaterThan(nanoB);
 
     const result = descendingComparator(a, b, "timestamp");

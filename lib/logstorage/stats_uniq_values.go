@@ -21,7 +21,7 @@ type statsUniqValues struct {
 }
 
 func (su *statsUniqValues) String() string {
-	s := "uniq_values(" + fieldNamesString(su.fieldFilters) + ")"
+	s := "uniq_values(" + fieldFiltersString(su.fieldFilters) + ")"
 	if su.limit > 0 {
 		s += fmt.Sprintf(" limit %d", su.limit)
 	}
@@ -150,6 +150,9 @@ func (sup *statsUniqValuesProcessor) mergeState(_ *chunkedAllocator, sf statsFun
 		return
 	}
 
+	if sup.m == nil {
+		sup.m = make(map[string]struct{}, len(src.m))
+	}
 	for k := range src.m {
 		if _, ok := sup.m[k]; !ok {
 			sup.m[k] = struct{}{}

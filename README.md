@@ -2,7 +2,6 @@
 
 [![Latest Release](https://img.shields.io/github/v/release/VictoriaMetrics/VictoriaLogs?sort=semver&label=Release&logo=github&color=gray)](https://github.com/VictoriaMetrics/VictoriaLogs/releases)
 [![Docker](https://img.shields.io/docker/pulls/victoriametrics/victoria-logs?label=Docker&logo=docker&logoColor=white&labelColor=2496ED&color=2496ED)](https://hub.docker.com/r/victoriametrics/victoria-logs)
-[![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/VictoriaLogs)](https://goreportcard.com/report/github.com/VictoriaMetrics/VictoriaLogs)
 [![Build Status](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/VictoriaMetrics/VictoriaLogs/actions/workflows/main.yml)
 [![License](https://img.shields.io/github/license/VictoriaMetrics/VictoriaLogs?label=License&labelColor=3d444d&color=2496ED)](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE)
 [![Join Slack](https://img.shields.io/badge/Join%20Slack-4A154B?logo=slack)](https://slack.victoriametrics.com)

@@ -34,6 +34,7 @@ func TestParsePipeUniqFailure(t *testing.T) {
 	f(`uniq by ()`)
 	f(`uniq by (*)`)
 	f(`uniq by (a*)`)
+	f(`uniq by a*`)
 	f(`uniq by`)
 	f(`uniq by hits`)
 	f(`uniq by foo bar`)

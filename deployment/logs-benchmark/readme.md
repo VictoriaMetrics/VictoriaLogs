@@ -78,13 +78,7 @@ Unarchived logs size per file for reference:
    `outputRateLimitPeriod` parameters in [docker-compose.yml](./docker-compose.yml). By default, it is configured to
    send 10000 logs per second.
 
-3. (optional) Build victoria-logs image and adjust `image` parameter in [docker-compose.yml](./docker-compose.yml):
-
-```shell
-make package-victoria-logs
-```
-
-Image name should be replaced at `vlogs` service in [docker-compose.yml](./docker-compose.yml).
+3. (optional) Adjust `image` parameter in [docker-compose.yml](./docker-compose.yml). Image name should be replaced at `vlogs` service in [docker-compose.yml](./docker-compose.yml).
 
 It is also possible to configure filebeat to send logs to VictoriaLogs running on local machine.
 To do this modify [filebeat config for vlogs](./elk/filebeat/filebeat-vlogs.yml) and replace `vlogs` address

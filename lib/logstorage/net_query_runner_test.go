@@ -64,6 +64,7 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`foo | format "x<y>"`, `foo | format "x<y>"`, ``)
 	f(`foo | generate_sequence 10`, `foo | delete *`, `generate_sequence 10`)
 	f(`foo | join by (x) (bar)`, `foo`, `join by (x) (bar)`)
+	f(`foo | json_array_concat`, `foo | json_array_concat`, ``)
 	f(`foo | json_array_len (x) y`, `foo | json_array_len(x) as y`, ``)
 	f(`foo | hash(x) as y`, `foo | hash(x) as y`, ``)
 	f(`foo | last 10 by (x)`, `foo | sort by (x) desc limit 10`, `sort by (x) desc limit 10`)

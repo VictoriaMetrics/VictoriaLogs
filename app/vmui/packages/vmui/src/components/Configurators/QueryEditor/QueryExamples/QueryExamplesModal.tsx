@@ -2,11 +2,13 @@ import { FC, useMemo, useState } from "preact/compat";
 import { queryExamples } from "./examples";
 import "./style.scss";
 import TextField from "../../../Main/TextField/TextField";
-import { SearchIcon } from "../../../Main/Icons";
+import { SearchIcon, WikiIcon } from "../../../Main/Icons";
 import classNames from "classnames";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import QueryExamplesSidebar from "./QueryExamplesSidebar";
 import QueryExamplesItem from "./QueryExamplesItem/QueryExamplesItem";
+import { LOGS_DOCS_URL } from "../../../../constants/logs";
+import Button from "../../../Main/Button/Button";
 
 type Props = {
   onApply: (value: string) => void;
@@ -51,7 +53,20 @@ const QueryExamplesModal: FC<Props> = ({ onApply }) => {
     })}
     >
       <div className="vm-query-examples-header">
-        <h2 className="vm-query-examples-header__title">Browse examples or search to find the right query pattern.</h2>
+        <div className="vm-query-examples-header-top">
+          <h2 className="vm-query-examples-header__title">Browse examples or search to find the right query pattern.</h2>
+          <Button
+            as={"a"}
+            target="_blank"
+            href={`${LOGS_DOCS_URL}/logsql/`}
+            rel="help noreferrer"
+            variant="outlined"
+            color="primary"
+            startIcon={<WikiIcon/>}
+          >
+            LogsQL docs
+          </Button>
+        </div>
         <TextField
           autofocus
           placeholder="Filter examples..."

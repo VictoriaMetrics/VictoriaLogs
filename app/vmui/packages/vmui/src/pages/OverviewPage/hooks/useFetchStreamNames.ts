@@ -6,10 +6,10 @@ import {
   useOverviewState
 } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
+import { TimeParams } from "../../../types";
 
 interface FetchOptions {
-  start: number;
-  end: number;
+  period: TimeParams;
   query?: string;
   extraParams?: URLSearchParams;
 }
@@ -22,6 +22,16 @@ export const useFetchStreamFieldNames = () => {
   } = useOverviewState();
   const dispatch = useOverviewDispatch();
   const tenant = useTenant();
+
+  const cacheRef = useRef({
+    state: streamsFieldNamesState,
+    key: streamsFieldNamesParamsKey,
+  });
+
+  cacheRef.current = {
+    state: streamsFieldNamesState,
+    key: streamsFieldNamesParamsKey,
+  };
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -41,8 +51,8 @@ export const useFetchStreamFieldNames = () => {
 
     try {
       const params = new URLSearchParams({
-        start: options.start.toString(),
-        end: options.end.toString(),
+        start: options.period.start.toString(),
+        end: options.period.end.toString(),
         ignore_pipes: "1",
         query,
       });
@@ -51,8 +61,8 @@ export const useFetchStreamFieldNames = () => {
       const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
       const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
 
-      if (streamsFieldNamesParamsKey === cacheKey) {
-        setStreamFieldNames(streamsFieldNamesState);
+      if (cacheRef.current.key === cacheKey) {
+        setStreamFieldNames(cacheRef.current.state);
         return;
       }
 
@@ -87,7 +97,7 @@ export const useFetchStreamFieldNames = () => {
     } finally {
       setLoading(false);
     }
-  }, [serverUrl, tenant, streamsFieldNamesParamsKey, streamsFieldNamesState, dispatch]);
+  }, [serverUrl, tenant, dispatch]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -97,6 +107,7 @@ export const useFetchStreamFieldNames = () => {
     streamFieldNames,
     loading,
     error,
-    fetchStreamFieldNames
+    fetchStreamFieldNames,
+    abort: useCallback(() => abortRef.current?.abort(), [])
   };
 };

@@ -16,7 +16,7 @@ from [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/).
 - **Available**: [Binary releases](https://github.com/VictoriaMetrics/Victorialogs/releases/latest), Docker images on [Docker Hub](https://hub.docker.com/r/victoriametrics/victoria-logs/) and [Quay](https://quay.io/repository/victoriametrics/victoria-logs), [Source code](https://github.com/VictoriaMetrics/VictoriaLogs).
 - **Deployment types**: [Single-node version](https://docs.victoriametrics.com/victorialogs/) and [Cluster version](https://docs.victoriametrics.com/victorialogs/cluster/) under [Apache License 2.0](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/LICENSE).
 - **Getting started:** Read [key concepts](https://docs.victoriametrics.com/victorialogs/keyconcepts/) and follow the
-  [quick start guide](https://docs.victoriametrics.com/victorialogs/quick-start/).
+  [quick start guide](https://docs.victoriametrics.com/victorialogs/quickstart/).
 - **Community**: [Slack](https://slack.victoriametrics.com/)(join via [Slack Inviter](https://slack.victoriametrics.com/)), [X (Twitter)](https://x.com/VictoriaMetrics), [YouTube](https://www.youtube.com/@VictoriaMetrics). See full list [here](https://docs.victoriametrics.com/victoriametrics/#community-and-contributions).
 - **Changelog**: Project evolves fast - check the [CHANGELOG](https://docs.victoriametrics.com/victorialogs/changelog/), and [How to upgrade](https://docs.victoriametrics.com/victorialogs/#upgrading).
 - **Enterprise support:** [Contact us](mailto:info@victoriametrics.com) for commercial support with additional [enterprise features](https://docs.victoriametrics.com/victoriametrics/enterprise/).
@@ -73,7 +73,7 @@ to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriamet
 - No need in tuning for Operating System - VictoriaLogs is optimized for default OS settings.
   The only option is increasing the limit on [the number of open files in the OS](https://medium.com/@muhammadtriwibowo/set-permanently-ulimit-n-open-files-in-ubuntu-4d61064429a).
 - The recommended filesystem is `ext4`, the recommended persistent storage is [persistent HDD-based disk on GCP](https://cloud.google.com/compute/docs/disks/#pdspecs),
-  since it is protected from hardware failures via internal replication and it can be [resized on the fly](https://cloud.google.com/compute/docs/disks/add-persistent-disk#resize_pd).
+  since it is protected from hardware failures via internal replication and it can be [resized on the fly](https://cloud.google.com/compute/docs/disks/resize-persistent-disk#increase_the_size_of_a_disk).
   If you plan to store more than 1TB of data on `ext4` partition, then the following options are recommended to pass to `mkfs.ext4`:
 
   ```sh
@@ -91,7 +91,8 @@ See [metrics reference](https://docs.victoriametrics.com/victorialogs/metrics/) 
 
 We recommend installing Grafana dashboard for [VictoriaLogs single-node](https://grafana.com/grafana/dashboards/22084) or [cluster](https://grafana.com/grafana/dashboards/23274).
 
-We recommend setting up [alerts](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+We recommend setting up [alerts-vlogs.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-vlogs.yml)
+and [alerts-health.yml](https://github.com/VictoriaMetrics/VictoriaLogs/blob/master/deployment/docker/rules/alerts-health.yml)
 via [vmalert](https://docs.victoriametrics.com/victoriametrics/vmalert/) or via Prometheus.
 
 VictoriaLogs emits its own logs to stdout. It is recommended to investigate these logs during troubleshooting.
@@ -115,7 +116,7 @@ The following steps must be performed during the upgrade / downgrade procedure:
 
 By default, VictoriaLogs stores log entries with timestamps in the time range `[now-7d, now]`, while dropping logs outside the given time range.
 E.g. it uses the retention of 7 days. The retention can be configured with `-retentionPeriod` command-line flag.
-This flag accepts values starting from `1d` (one day) up to `100y` (100 years). See [these docs](https://prometheus.io/docs/prometheus/latest/querying/basics/#time-durations)
+This flag accepts values starting from `1d` (one day) up to `100y` (100 years). See [these docs](https://prometheus.io/docs/prometheus/latest/querying/basics/#float-literals-and-time-durations)
 for the supported duration formats.
 
 For example, the following command starts VictoriaLogs with the retention of 8 weeks:
@@ -141,7 +142,7 @@ rate(vl_rows_dropped_total[5m]) > 0
 
 By default, VictoriaLogs doesn't accept log entries with timestamps bigger than `now+2d`, e.g. 2 days in the future.
 If you need accepting logs with bigger timestamps, then specify the desired "future retention" via `-futureRetention` command-line flag.
-This flag accepts values starting from `1d`. See [these docs](https://prometheus.io/docs/prometheus/latest/querying/basics/#time-durations)
+This flag accepts values starting from `1d`. See [these docs](https://prometheus.io/docs/prometheus/latest/querying/basics/#float-literals-and-time-durations)
 for the supported duration formats.
 
 For example, the following command starts VictoriaLogs, which accepts logs with timestamps up to a year in the future:
@@ -202,6 +203,17 @@ or
 /path/to/victoria-logs -retention.maxDiskUsagePercent=85 -retentionPeriod=100y
 ```
 
+### Limitations of disk space usage-based retention
+
+Disk space usage is checked periodically. Disk usage can go over the `-retention.maxDiskSpaceUsageBytes` and `-retention.maxDiskUsagePercent` limits between two checks.
+The disk could reach 100% usage especially when the actual disk size is small, and the ingestion rate is high.
+In this case, VictoriaLogs switches to read-only mode and cannot drop data as expected.
+So it is important to reserve enough free disk space to prevent VictoriaLogs from entering read-only mode.
+
+For example, running VictoriaLogs on a 20 GB disk with `-retention.maxDiskUsagePercent=95` and an ingestion rate of 100 MB/s is not recommended.
+
+See also [Capacity planning](https://docs.victoriametrics.com/victorialogs/#capacity-planning), which recommends reserving at least 20% free storage space.
+
 ## Backfilling
 
 VictoriaLogs accepts logs with timestamps in the time range `[now-retentionPeriod ... now+futureRetention]`,
@@ -235,13 +247,13 @@ See [cluster mode docs](https://docs.victoriametrics.com/victorialogs/cluster/) 
 
 ## Partitions lifecycle
 
-The ingested logs are stored in per-day subdirectories (partitions) at the `<-storageDataPath>/partitions/` directory. The per-day subdirectories have `YYYYMMDD` names.
+The ingested logs are stored in [per-day subdirectories (partitions)](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#2-daily-partitions) at the `<-storageDataPath>/partitions/` directory. The per-day subdirectories have `YYYYMMDD` names.
 For example, the directory with the name `20250418` contains logs with [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values
 at April 18, 2025 UTC. This allows flexible data management.
 
 For example, old per-day data is automatically and quickly deleted according to the provided [retention policy](https://docs.victoriametrics.com/victorialogs/#retention) by removing the corresponding per-day subdirectory (partition).
 
-VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions:
+VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions. All of them must be called with the `POST` method:
 
 - `/internal/partition/attach?name=YYYYMMDD` - attaches the partition directory with the given name `YYYYMMDD` to VictoriaLogs,
   so it becomes visible for querying and can be used for data ingestion.
@@ -267,14 +279,16 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
   The `<snapshot-path>` can be taken from the output of `/internal/partition/snapshot/list`.
 - `/internal/partition/snapshot/delete_stale?max_age=<d>` - deletes snapshots older than `<d>`. For example, `max_age=1d` deletes snapshots older than one day.
 
-These endpoints can be protected from unauthorized access via `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+These endpoints can be protected from unauthorized access via `-partitionManageAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 These endpoints can be used also for setting up automated multi-tier storage schemes where recently ingested logs are stored to VictoriaLogs instances
 with fast NVMe (SSD) disks, while historical logs are gradually migrated to VictoriaLogs instances with slower, but bigger and less expensive HDD disks.
 This scheme can be implemented with the following simple cron job, which must run once per day:
 
 1. To make a snapshot for the older day stored at NVMe via `/internal/partition/snapshot/create?partition_prefix=YYYYMMDD` endpoint.
-1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaMetrics with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
+1. To copy the snapshot to the `<-storageDataPath>/partitions/YYYYMMDD` directory at VictoriaLogs with HDD via [`rsync`](https://en.wikipedia.org/wiki/Rsync).
 1. To delete the created snapshot according to [these docs](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
 1. To detach the copied partition from the VictoriaLogs with NVMe via `/internal/partition/detach?name=YYYYMMDD` endpoint.
 1. To attach the copied partition to the VictoriaLogs with HDD via `/internal/partition/attach?name=YYYYMMDD` endpoint.
@@ -303,19 +317,22 @@ It is recommended leaving the following amounts of spare resource for smooth wor
 - 50% of spare CPU for reducing the probability of slowdowns during temporary spikes in workload.
 - At least 20% of free storage space at the directory pointed by the [`-storageDataPath`](https://docs.victoriametrics.com/victorialogs/#storage) command-line flag.
   Too small amounts of free disk space may result in significant slowdown for both data ingestion and querying
-  because of inability to merge newly created smaller data parts into bigger data parts.
+  because of inability to merge newly created smaller [data parts](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#3-parts-the-unit-victorialogs-actually-stores) into bigger data parts.
 
 ## Logging new streams
 
 VictoriaLogs can log new [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
 This is useful during the debugging of high cardinality or churn rate issues for the ingested log streams.
 This functionality can be enabled either on a permanent basis via `-logNewStreams` command-line flag or temporarily for the given number of seconds
-by sending HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
+by sending a `POST` HTTP request to `http://victoria-logs:9428/internal/log_new_streams?seconds=secs`. For example, the following command enables temporary logging
 of new log streams for 10 seconds:
 
 ```
-curl http://victoria-logs:9428/internal/log_new_streams?seconds=10
+curl -X POST http://victoria-logs:9428/internal/log_new_streams?seconds=10
 ```
+
+This endpoint can be protected with the `-logNewStreamsAuthKey` command-line flag.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 See also [data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
 
@@ -325,27 +342,31 @@ VictoriaLogs performs data compactions in background in order to keep good perfo
 These compactions (merges) are performed independently on per-day partitions.
 This means that compactions are stopped for per-day partitions if no new data is ingested into these partitions.
 Sometimes it is necessary to trigger compactions for old partitions. In this case forced compaction may be initiated on the specified per-day partition
-by sending request to `/internal/force_merge?partition_prefix=YYYYMMDD`,
+by sending a `POST` request to `/internal/force_merge?partition_prefix=YYYYMMDD`,
 where `YYYYMMDD` is per-day partition name. For example, `http://victoria-logs:9428/internal/force_merge?partition_prefix=20240921` would initiate forced
 merge for September 21, 2024 partition. The call to `/internal/force_merge` returns immediately, while the corresponding forced merge continues running in background.
 
 Forced merges may require additional CPU, disk IO and storage space resources. It is unnecessary to run forced merge under normal conditions,
 since VictoriaLogs automatically performs optimal merges in background when new data is ingested into it.
 
-The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_merge` endpoint can be protected from unauthorized access via `-forceMergeAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## Forced flush
 
 VictoriaLogs puts the recently [ingested logs](https://docs.victoriametrics.com/victorialogs/data-ingestion/) into in-memory buffers,
 which aren't available for [querying](https://docs.victoriametrics.com/victorialogs/querying/) for up to a second.
-If you need querying logs immediately after their ingestion, then the `/internal/force_flush` HTTP endpoint must be requested
-before querying. This endpoint converts in-memory buffers with the recently ingested logs into searchable data blocks.
+If you need querying logs immediately after their ingestion, then the `/internal/force_flush` HTTP endpoint must be requested with the `POST` method
+before querying. This endpoint converts in-memory buffers with the recently ingested logs into searchable [data blocks](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#41-logs-are-grouped-into-blocks-by-stream-and-by-time).
 
 It isn't recommended requesting the `/internal/force_flush` HTTP endpoint on a regular basis, since this increases CPU usage
 and slows down data ingestion. It is expected that the `/internal/force_flush` is requested in automated tests, which need querying
 the recently ingested data.
 
-The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+The `/internal/force_flush` endpoint can be protected from unauthorized access via `-forceFlushAuthKey`
+[command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#system-endpoints) for details.
 
 ## How to delete logs
 
@@ -355,7 +376,7 @@ because of [GDPR compliance](https://en.wikipedia.org/wiki/General_Data_Protecti
 VictoriaLogs enables HTTP API for deleting logs if `-delete.enable` command-line flag is passed to it.
 The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this case:
 
-- `/delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
+- `POST /delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
   The `<logsql_filter>` may contain arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
   For example, request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
   `{app="nginx"}` [log stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
@@ -363,7 +384,7 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
   otherwise `curl` may strip the curly braces and the filter will fail to parse. For example, `{app=nginx}` becomes `%7Bapp%3Dnginx%7D`, so the full request is:
 
   ```bash
-  curl 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D'
+  curl -X POST 'http://victoria-logs:9428/delete/run_task?filter=%7Bapp%3Dnginx%7D'
   ```
 
   This endpoint returns `{"task_id":"<id>"}` response, where `<id>` is an unique id of the deletion task, which can be used
@@ -397,7 +418,7 @@ The setup consists of the following components:
 
 - **Log Collector**: The log collector should support sending the same collected data to multiple destinations (aka replication).
 It is recommended to use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/). Other popular log collectors also provide this ability:
-- [How to setup replication at FluentBit](https://docs.fluentbit.io/manual/concepts/data-pipeline/router)
+- [How to setup replication at FluentBit](https://docs.fluentbit.io/manual/data-pipeline/router)
 - [How to setup replication at Logstash](https://www.elastic.co/guide/en/logstash/current/output-plugins.html)
 - [How to setup replication at Fluentd](https://docs.fluentd.org/output/copy)
 - [How to setup replication at Vector](https://vector.dev/docs/reference/configuration/sinks/)
@@ -428,7 +449,7 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 1. To backup the created snapshot with [`rsync`](https://en.wikipedia.org/wiki/Rsync):
 
    ```sh
-   rsync -avh --progress --delete <path-to-snapshot> <username>@<host>:<path-to-backup>/YYYYMMDD
+   rsync -avh --progress --delete <path-to-snapshot>/ <username>@<host>:<path-to-backup>/YYYYMMDD
    ```
 
    The `--delete` option is required in the command above in order to ensures that the backup contains the full copy of the original data without superfluous files.
@@ -501,21 +522,19 @@ users:
 
 This configuration allows `foo` to use the `/select/.*` and `/insert/.*` endpoints with `AccountID: 1` and `ProjectID: 0`, while `baz` can only use the `/select/.*` endpoint with `AccountID: 2` and `ProjectID: 0`.
 
-See also [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
+See also [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/).
 
 ## Security
 
-See [Security on Untrusted Networks](https://docs.victoriametrics.com/victorialogs/security-and-lb/#security-on-untrusted-networks)
-for detailed information about VictoriaLogs security features and recommendations.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
 ### mTLS
 
-See [mTLS docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#mtls) for details.
 
 ### Automatic issuing of TLS certificates
 
-See [Automatic TLS certificates docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates)
-for details.
+See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#automatic-issuing-of-tls-certificates) for details.
 
 ## Benchmarks
 
@@ -572,6 +591,20 @@ VictoriaLogs uses server-side timezone in the following cases:
 
 VictoriaLogs obtains the local timezone from the `TZ` environment variable. It expects valid [IANA Time Zone identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 in the `TZ` environment variable. Set `TZ` environment variable to an empty string - `TZ=""` - for using UTC.
+
+## vmalert
+
+VictoriaLogs can proxy requests to [vmalert](https://docs.victoriametrics.com/victorialogs/vmalert/) if the `-vmalert.proxyURL` command-line flag
+is set to vmalert url. For example, the following command instructs proxying `http://victoria-logs:9428/select/vmalert/*` requests to `http://vmalert:8880/vmalert/*`:
+
+```sh
+/path/to/victoria-logs -vmalert.proxyURL=http://vmalert:8880/
+```
+
+This allows accessing [vmalert web UI](https://docs.victoriametrics.com/victoriametrics/vmalert/#web) via VictoriaLogs
+at the `/select/vmalert/*` paths.
+
+> Currently, Grafana Alerting UI cannot display datasource-managed rules through the VictoriaLogs datasource plugin, even when `-vmalert.proxyURL` is configured. This is because Grafana currently supports datasource-managed rules only for the `Prometheus` and `Loki` datasource types. See [this issue](https://github.com/VictoriaMetrics/victoriametrics-datasource/issues/59#issuecomment-2694191642) for details.
 
 ## List of command-line flags
 

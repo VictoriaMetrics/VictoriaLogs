@@ -1,4 +1,4 @@
-import { FC, RefObject, useRef, createPortal } from "preact/compat";
+import { FC, RefObject, createPortal } from "preact/compat";
 import Button from "../../Main/Button/Button";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { DeleteIcon, PauseIcon, PlayCircleOutlineIcon, TuneIcon } from "../../Main/Icons";
@@ -36,7 +36,6 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
   offset,
   handleSetOffset
 }) => {
-  const settingButtonRef = useRef<HTMLDivElement>(null);
   const { value: isSettingsOpen, setFalse: closeSettings, setTrue: openSettings } = useBoolean(false);
 
   if (!settingsRef.current) return null;
@@ -65,7 +64,7 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
             color="primary"
             onClick={isPaused ? handleResumeLiveTailing : pauseLiveTailing}
             startIcon={isPaused ? <PlayCircleOutlineIcon/> : <PauseIcon/>}
-            ariaLabel={`${isPaused ? "Resume" : "Pause"} live tailing`}
+            aria-label={`${isPaused ? "Resume" : "Pause"} live tailing`}
           />
         </Tooltip>
         <Tooltip title={"Clear logs"}>
@@ -74,16 +73,15 @@ const LiveTailingSettings: FC<LiveTailingSettingsProps> = ({
             color="secondary"
             onClick={clearLogs}
             startIcon={<DeleteIcon/>}
-            ariaLabel={"Clear logs"}
+            aria-label={"Clear logs"}
           />
         </Tooltip>
         <Tooltip title={"Settings"}>
           <Button
-            ref={settingButtonRef}
             variant="text"
             onClick={openSettings}
             startIcon={<TuneIcon/>}
-            ariaLabel={"Settings"}
+            aria-label={"Settings"}
           />
         </Tooltip>
         {isSettingsOpen && <Modal

@@ -1,6 +1,7 @@
 ---
 weight: 1
 title: Filebeat Setup
+description: "Configure Filebeat to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

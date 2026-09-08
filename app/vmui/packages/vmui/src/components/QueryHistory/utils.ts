@@ -1,75 +1,128 @@
-import { getFromStorage, saveToStorage, StorageKeys } from "../../utils/storage";
-import { QueryHistoryType } from "../../state/query/reducer";
+import { getFromStorage, saveToStorage } from "../../utils/storage";
 import { MAX_QUERIES_HISTORY, MAX_QUERY_FIELDS } from "../../constants/logs";
+import { HistoryStorage, QueryHistoryEntry, QueryHistoryGroup } from "./types";
+import { vmDate } from "../../utils/time";
+import { HISTORY_DATE_FORMAT } from "../../constants/date";
+import { DEFAULT_QUERY } from "../../pages/QueryPage/hooks/useQueryController";
 
-export type HistoryKey = Extract<StorageKeys, "LOGS_QUERY_HISTORY">;
-export type HistoryType = "QUERY_HISTORY" | "QUERY_FAVORITES";
+const STORAGE_KEY = "LOGS_QUERY_HISTORY";
+const DEFAULT_HISTORY_TYPE = "QUERY_HISTORY";
 
-const getHistoryFromStorage = (key: HistoryKey) => {
-  const list = getFromStorage(key) as string;
-  const history: Record<HistoryType, string[][]> = list ? JSON.parse(list) : {};
-  return history;
+const getHistoryStorage = (): HistoryStorage => {
+  try {
+    const list = getFromStorage(STORAGE_KEY) as string;
+    return JSON.parse(list);
+  } catch (e) {
+    return {};
+  }
 };
 
-const saveHistoryToStorage = (key: HistoryKey, historyType: HistoryType, history: string[][]) => {
-  const storageHistory = getHistoryFromStorage(key);
-  saveToStorage(key, JSON.stringify({
-    ...storageHistory,
-    [historyType]: history
+export const getHistoryFromStorage = (): QueryHistoryEntry[] => {
+  const history = getHistoryStorage();
+  const values = history[DEFAULT_HISTORY_TYPE]?.[0] || [];
+  const meta = history.QUERY_HISTORY_META || {};
+
+  return values.map(query => ({
+    query,
+    lastRunAt: meta[query],
   }));
 };
 
-export const getQueriesFromStorage = (key: HistoryKey, historyType: HistoryType) => {
-  return getHistoryFromStorage(key)[historyType] || [];
+export const addQueryToHistoryStorage = (query: string) => {
+  const nextQuery = query.trim();
+  if (!nextQuery || nextQuery === DEFAULT_QUERY) return;
+
+  const storageHistory = getHistoryStorage();
+  const storageValues = storageHistory[DEFAULT_HISTORY_TYPE] || [];
+  const values = storageValues[0] || [];
+  const totalLimit = MAX_QUERIES_HISTORY * MAX_QUERY_FIELDS;
+
+  const nextValues = [
+    nextQuery,
+    ...values.filter(v => v !== nextQuery),
+  ].slice(0, totalLimit);
+
+  const now = Date.now();
+  const prevMeta = storageHistory.QUERY_HISTORY_META || {};
+
+  const nextMeta = Object.fromEntries(
+    nextValues
+      .filter(v => v === nextQuery || prevMeta[v] !== undefined)
+      .map(v => [v, v === nextQuery ? now : prevMeta[v]])
+  );
+
+  saveToStorage(STORAGE_KEY, JSON.stringify({
+    ...storageHistory,
+    [DEFAULT_HISTORY_TYPE]: [nextValues],
+    QUERY_HISTORY_META: nextMeta,
+  }));
 };
 
-export const setQueriesToStorage = (key: HistoryKey, history: QueryHistoryType[]) => {
-  // For localStorage, avoid splitting into query fields because when working from multiple tabs can cause confusion.
-  // For convenience, we maintain the original structure of `string[][]`
-  const lastValues = history.map(h => h.values[h.index]);
-  const storageHistory = getHistoryFromStorage(key);
-  const storageValues = storageHistory["QUERY_HISTORY"] || [];
-  if (!storageValues[0]) storageValues[0] = [];
+export const removeQueryFromHistoryStorage = (query: string) => {
+  const storageHistory = getHistoryStorage();
+  const values = storageHistory[DEFAULT_HISTORY_TYPE]?.[0] || [];
+  const nextValues = values.filter(v => v !== query);
 
-  const values = storageValues[0];
-  const TOTAL_LIMIT = MAX_QUERIES_HISTORY * MAX_QUERY_FIELDS;
+  const prevMeta = storageHistory.QUERY_HISTORY_META || {};
+  const nextMeta = Object.fromEntries(
+    nextValues
+      .filter(v => prevMeta[v] !== undefined)
+      .map(v => [v, prevMeta[v]])
+  );
 
-  lastValues.forEach((v) => {
-    const already = values.includes(v);
-    if (!already && v) values.unshift(v);
-    if (values.length > TOTAL_LIMIT) values.pop();
+  saveToStorage(STORAGE_KEY, JSON.stringify({
+    ...storageHistory,
+    [DEFAULT_HISTORY_TYPE]: [nextValues],
+    QUERY_HISTORY_META: nextMeta,
+  }));
+};
+
+export const clearQueryHistoryStorage = () => {
+  const history = getHistoryStorage();
+
+  saveToStorage(STORAGE_KEY, JSON.stringify({
+    ...history,
+    [DEFAULT_HISTORY_TYPE]: [],
+    QUERY_HISTORY_META: {},
+  }));
+};
+
+export const formatHistoryDate = (timestamp?: number) => {
+  if (!timestamp) return "";
+  return vmDate(timestamp).format("HH:mm");
+};
+
+const getHistoryGroupTitle = (entry: QueryHistoryEntry) => {
+  if (!entry.lastRunAt) return "Earlier";
+
+  const date = vmDate(entry.lastRunAt);
+  const now = vmDate();
+
+  if (date.isSame(now, "day")) return `Today - ${date.format(HISTORY_DATE_FORMAT)}`;
+  if (date.isSame(now.subtract(1, "day"), "day")) return `Yesterday - ${date.format(HISTORY_DATE_FORMAT)}`;
+
+  return date.format(HISTORY_DATE_FORMAT);
+};
+
+export const groupHistoryByDay = (entries: QueryHistoryEntry[]): QueryHistoryGroup[] => {
+  const groups = new Map<string, QueryHistoryEntry[]>();
+
+  const sortedEntries = entries.toSorted((a, b) => {
+    const aDate = a.lastRunAt || 0;
+    const bDate = b.lastRunAt || 0;
+
+    return bDate - aDate;
   });
 
-  const newStorageHistory = {
-    ...storageHistory,
-    QUERY_HISTORY: [values]
-  };
+  sortedEntries.forEach(entry => {
+    const title = getHistoryGroupTitle(entry);
+    const group = groups.get(title) || [];
+    group.push(entry);
+    groups.set(title, group);
+  });
 
-  saveToStorage(key, JSON.stringify(newStorageHistory));
-};
-
-export const setFavoriteQueriesToStorage = (key: HistoryKey, favoriteQueries: string[][]) => {
-  saveHistoryToStorage(key, "QUERY_FAVORITES", favoriteQueries);
-};
-
-export const clearQueryHistoryStorage = (key: HistoryKey, historyType: HistoryType) => {
-  const history = getHistoryFromStorage(key);
-  saveToStorage(key, JSON.stringify({
-    ...history,
-    [historyType]: [],
+  return Array.from(groups, ([title, values]) => ({
+    title,
+    entries: values,
   }));
-};
-
-export const getUpdatedHistory = (query: string, queryHistory?: QueryHistoryType): QueryHistoryType => {
-  const h = queryHistory || { values: [] };
-  const queryEqual = query === h.values[h.values.length - 1];
-  const newValues = !queryEqual && query ? [...h.values, query] : h.values;
-
-  // limit the history
-  if (newValues.length > MAX_QUERIES_HISTORY) newValues.shift();
-
-  return {
-    index: h.values.length - Number(queryEqual),
-    values: newValues
-  };
 };

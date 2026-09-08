@@ -24,7 +24,7 @@ func ExtractTimestampFromFields(timeFields []string, fields []logstorage.Field) 
 			}
 			nsecs, err := parseTimestamp(f.Value)
 			if err != nil {
-				return 0, fmt.Errorf("cannot parse timestamp from field %q: %s", f.Name, err)
+				return 0, fmt.Errorf("cannot parse timestamp from field %q: %w", f.Name, err)
 			}
 			f.Value = ""
 			if nsecs == 0 {

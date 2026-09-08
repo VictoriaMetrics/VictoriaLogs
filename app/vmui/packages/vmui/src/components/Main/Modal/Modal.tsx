@@ -10,6 +10,7 @@ import useEventListener from "../../../hooks/useEventListener";
 interface ModalProps {
   title?: string
   children: ReactNode
+  footer?: ReactNode
   onClose: () => void
   className?: string
   isOpen?: boolean
@@ -18,6 +19,7 @@ interface ModalProps {
 const Modal: FC<ModalProps> = ({
   title,
   children,
+  footer,
   onClose,
   className,
   isOpen = true,
@@ -44,10 +46,11 @@ const Modal: FC<ModalProps> = ({
 
   const handleDisplayModal = () => {
     if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = previousOverflow;
     };
   };
 
@@ -81,7 +84,7 @@ const Modal: FC<ModalProps> = ({
               color="gray"
               size="small"
               onClick={onClose}
-              ariaLabel="close"
+              aria-label="close"
             >
               <CloseIcon/>
             </Button>
@@ -94,6 +97,11 @@ const Modal: FC<ModalProps> = ({
         >
           {children}
         </div>
+        {footer && (
+          <div className="vm-modal-content-footer">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   ), document.body);

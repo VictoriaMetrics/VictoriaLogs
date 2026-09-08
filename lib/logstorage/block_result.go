@@ -2282,7 +2282,7 @@ func (br *blockResult) truncateRows(keepRows int) {
 			c.valuesEncoded = valuesEncoded[:keepRows]
 		}
 		if c.valuesBucketed != nil {
-			c.valuesBucketed = append(c.valuesBucketed[:0], c.valuesBucketed[keepRows:]...)
+			c.valuesBucketed = c.valuesBucketed[:keepRows]
 		}
 	}
 }

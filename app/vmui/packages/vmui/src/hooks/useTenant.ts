@@ -1,6 +1,15 @@
 import { useMemo } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
 
+export const getTenantSearchParams = (source: URLSearchParams): URLSearchParams => {
+  const params = new URLSearchParams();
+  const accountID = source.get("accountID");
+  const projectID = source.get("projectID");
+  if (accountID) params.set("accountID", accountID);
+  if (projectID) params.set("projectID", projectID);
+  return params;
+};
+
 export const useTenant = () => {
   const [searchParams] = useSearchParams();
 

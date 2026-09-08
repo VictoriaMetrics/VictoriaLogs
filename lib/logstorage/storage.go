@@ -23,6 +23,9 @@ import (
 
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
 type StorageStats struct {
+	// StreamsCreatedTotal is the number of log streams registered in daily partitions since the storage initialization.
+	StreamsCreatedTotal uint64
+
 	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed.
 	RowsDroppedTooBigTimestamp uint64
 
@@ -113,6 +116,8 @@ type StorageConfig struct {
 
 // Storage is the storage for log entries.
 type Storage struct {
+	streamsCreatedTotal atomic.Uint64
+
 	rowsDroppedTooBigTimestamp   atomic.Uint64
 	rowsDroppedTooSmallTimestamp atomic.Uint64
 
@@ -381,7 +386,7 @@ func getSnapshotPaths(ptws []*partitionWrapper) []string {
 func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 	snapshotName := filepath.Base(snapshotPath)
 	if err := snapshotutil.Validate(snapshotName); err != nil {
-		return fmt.Errorf("unsupported snapshot name %q at %q: %s", snapshotName, snapshotPath, err)
+		return fmt.Errorf("unsupported snapshot name %q at %q: %w", snapshotName, snapshotPath, err)
 	}
 
 	snapshotDir := filepath.Dir(snapshotPath)
@@ -443,7 +448,7 @@ func (s *Storage) MustDeleteStalePartitionSnapshots(maxAge time.Duration) []stri
 // DeleteRunTask starts deletion of logs according to the given filter f for the given tenantIDs.
 //
 // The taskID must contain a unique id of the task. It is used for tracking the task at the list returned by DeleteActiveTasks().
-// The timestamp must contain the timestamp in seconds when the task is started.
+// The timestamp must contain the timestamp in nanoseconds when the task is started.
 func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int64, tenantIDs []TenantID, f *Filter) error {
 	// Register the task in the list of active delete tasks, so it survives application restarts and crashes.
 	dt := newDeleteTask(taskID, timestamp, tenantIDs, f.String())
@@ -1297,6 +1302,7 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 
 // UpdateStats updates ss for the given s.
 func (s *Storage) UpdateStats(ss *StorageStats) {
+	ss.StreamsCreatedTotal += s.streamsCreatedTotal.Load()
 	ss.RowsDroppedTooBigTimestamp += s.rowsDroppedTooBigTimestamp.Load()
 	ss.RowsDroppedTooSmallTimestamp += s.rowsDroppedTooSmallTimestamp.Load()
 	if s.maxDiskSpaceUsageBytes > 0 {

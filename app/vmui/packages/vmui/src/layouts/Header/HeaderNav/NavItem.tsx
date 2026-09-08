@@ -1,5 +1,6 @@
 import { FC } from "preact/compat";
-import { NavLink } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
+import { getTenantSearchParams } from "../../../hooks/useTenant";
 import classNames from "classnames";
 import { NavigationItemType } from "../../../router/navigation";
 
@@ -18,6 +19,9 @@ const NavItem: FC<NavItemProps> = ({
   type,
   color
 }) => {
+  const [searchParams] = useSearchParams();
+  const tenantSearch = getTenantSearchParams(searchParams);
+
   if (type === NavigationItemType.externalLink) return (
     <a
       className={classNames({
@@ -39,7 +43,7 @@ const NavItem: FC<NavItemProps> = ({
         "vm-header-nav-item_active": activeMenu === value // || m.submenu?.find(m => m.value === activeMenu)
       })}
       style={{ color }}
-      to={value}
+      to={{ pathname: value, search: tenantSearch.toString() }}
     >
       {label}
     </NavLink>

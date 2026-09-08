@@ -54,18 +54,16 @@ const TenantsFields: FC<Props> = ({ accountId, projectId, onChange }) => {
         />
       </div>
       <div className="vm-tenant-input-list__buttons">
-        <a
+        <Button
+          as="a"
           href={`${LOGS_DOCS_URL}/#multitenancy`}
           target="_blank"
           rel="help noreferrer"
+          variant="text"
+          color="primary"
         >
-          <Button
-            variant="text"
-            color="primary"
-          >
-            Multitenancy docs
-          </Button>
-        </a>
+          Multitenancy docs
+        </Button>
         <Button
           variant="contained"
           color="primary"

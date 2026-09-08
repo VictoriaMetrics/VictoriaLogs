@@ -6,7 +6,10 @@ import Pagination from "../../../components/Main/Pagination/Pagination";
 import { useEffect, useRef } from "react";
 import { LogsFieldValues } from "../../../api/types";
 import { useTableLogsPaginate } from "../../../components/Views/TableView/hooks/useTableLogsPaginate";
-import { type Column } from "../../../components/Table/types";
+import { ColumnKey, type Column } from "../../../components/Table/types";
+import { OrderDir } from "../../../types";
+
+const DEFAULT_ORDER = { key: "hits", dir: "desc" } as const;
 
 export type OverviewTableProps = {
   tableId: string;
@@ -19,6 +22,7 @@ export type OverviewTableProps = {
   onClickRow?: (row: LogsFieldValues, e: MouseEvent) => void;
   detectActiveRow?: (row: LogsFieldValues) => boolean;
   actionsRender?: (row: LogsFieldValues) => ReactNode;
+  defaultOrder?: { key?: ColumnKey<LogsFieldValues>; dir?: OrderDir };
 }
 
 interface Props extends  OverviewTableProps {
@@ -36,7 +40,8 @@ const OverviewTableBody: FC<Props> = ({
   emptyListText,
   onClickRow,
   detectActiveRow,
-  actionsRender
+  actionsRender,
+  defaultOrder,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { page, offset, onChangePage } = useTableLogsPaginate({ rowsPerPage, containerRef });
@@ -75,7 +80,7 @@ const OverviewTableBody: FC<Props> = ({
               tableId={tableId}
               rows={rows}
               columns={columns}
-              defaultOrder={{ key: "hits", dir: "desc" }}
+              defaultOrder={defaultOrder ?? DEFAULT_ORDER}
               isActiveRow={detectActiveRow}
               onClickRow={onClickRow}
               paginationOffset={offset}

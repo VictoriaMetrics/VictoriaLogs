@@ -1,7 +1,6 @@
 const router = {
   home: "/",
   overview: "/overview",
-  streamContext: "/stream-context/:_stream_id/:_time",
   icons: "/icons",
 };
 
@@ -37,10 +36,6 @@ export const routerOptions: { [key: string]: RouterOptions } = {
     title: "Icons",
     header: {}
   },
-  [router.streamContext]: {
-    title: "Stream context",
-    header: {}
-  }
 };
 
 export default router;

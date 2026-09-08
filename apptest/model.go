@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// QueryOpts contains params used for querying VictoriaLogs via /select/logsq/query
+// QueryOpts contains params used for querying VictoriaLogs via /select/logsql/query
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-logs
 type QueryOpts struct {
@@ -96,7 +96,7 @@ func (fos *StreamFieldNamesOpts) asURLValues() url.Values {
 	return uv
 }
 
-// StreamFieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/field_values
+// StreamFieldValuesOpts contains params used for query VictoriaLogs via /select/logsql/stream_field_values
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-stream-field-values
 type StreamFieldValuesOpts struct {
@@ -184,7 +184,7 @@ func (fos *FacetsOpts) asURLValues() url.Values {
 	return uv
 }
 
-// StatsQueryOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query
+// StatsQueryOpts contains params used for querying VictoriaLogs via /select/logsql/stats_query
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats
 type StatsQueryOpts struct {
@@ -201,7 +201,7 @@ func (qos *StatsQueryOpts) asURLValues() url.Values {
 	return uv
 }
 
-// StatsQueryRangeOpts contains params used for querying VictoriaLogs via /select/logsq/stats_query_range
+// StatsQueryRangeOpts contains params used for querying VictoriaLogs via /select/logsql/stats_query_range
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats
 type StatsQueryRangeOpts struct {

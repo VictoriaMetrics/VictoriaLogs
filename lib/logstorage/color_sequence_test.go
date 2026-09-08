@@ -60,5 +60,4 @@ func TestDropColorSequences(t *testing.T) {
 
 	// valid device control string sequence. It is left as is.
 	f("a\x1bP 1;2;3 qabc\x1b\\", "a\x1bP 1;2;3 qabc\x1b\\")
-
 }

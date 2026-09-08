@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect, useRef } from "preact/hooks";
 import { useAppState } from "../../../state/common/StateContext";
 import { LogsFieldValues } from "../../../api/types";
 import { useTenant } from "../../../hooks/useTenant";
+import { TimeParams } from "../../../types";
 
 interface FetchOptions {
-  start: number;
-  end: number;
+  period: TimeParams;
   query?: string;
   field: string;
   extraParams?: URLSearchParams;
@@ -33,8 +33,8 @@ export const useFetchStreamValues = () => {
     const query = options.query || "*";
 
     const params = new URLSearchParams({
-      start: options.start.toString(),
-      end: options.end.toString(),
+      start: options.period.start.toString(),
+      end: options.period.end.toString(),
       ignore_pipes: "1",
       query,
       field: options.field,

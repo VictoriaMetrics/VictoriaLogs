@@ -1,7 +1,7 @@
 import uPlot, { Axis, Series } from "uplot";
 import { formatTicks, getTextWidth } from "./helpers";
 import { getCssVariable } from "../theme";
-import { AxisExtend } from "../../types";
+import { AxisExtend, MinMax } from "../../types";
 
 // see https://github.com/leeoniya/uPlot/tree/master/docs#axis--grid-opts
 const timeValues = [
@@ -51,4 +51,21 @@ export const sizeAxis = (u: uPlot, values: string[], axisIdx: number, cycleNum: 
   if (longestVal != "") axisSize += getTextWidth(longestVal, "10px Arial");
 
   return Math.ceil(axisSize);
+};
+
+export const normalizeXRange = ({ min, max }: MinMax, minRange: number): MinMax => {
+  const delta = max - min;
+
+  if (delta >= minRange) {
+    return { min, max };
+  }
+
+  const padding = minRange * 0.1;
+  const center = min + delta / 2;
+  const halfRange = minRange / 2 + padding;
+
+  return {
+    min: center - halfRange,
+    max: center + halfRange,
+  };
 };

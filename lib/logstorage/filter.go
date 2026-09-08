@@ -118,7 +118,7 @@ func copyFilterInternal(f filter, visitFunc func(f filter) bool, copyFunc func(f
 	}
 }
 
-// copyFilters recursively copies filters with the help of copyfunc if visitFunc returns true for them.
+// copyFilters recursively copies filters with the help of copyFunc if visitFunc returns true for them.
 //
 // It doesn't copy other filters by returning them as is.
 func copyFilters(filters []filter, visitFunc func(f filter) bool, copyFunc func(f filter) (filter, error)) ([]filter, error) {

@@ -36,4 +36,6 @@ export enum ContextType {
   PipeValue = "PipeValue",
   Unknown = "Unknown",
   FilterOrPipeName = "FilterOrPipeName",
+  Example = "Example",
+  History = "History",
 }

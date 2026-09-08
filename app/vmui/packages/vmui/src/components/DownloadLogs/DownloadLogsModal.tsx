@@ -5,12 +5,12 @@ import Modal from "../Main/Modal/Modal";
 import "./style.scss";
 import Button from "../Main/Button/Button";
 import TextField from "../Main/TextField/TextField";
-import dayjs from "dayjs";
 import { DATE_TIME_FORMAT } from "../../constants/date";
 import { DownloadIcon, SpinnerIcon } from "../Main/Icons";
 import Alert from "../Main/Alert/Alert";
 import useDownloadLogs from "./useDownloadLogs";
 import Select from "../Main/Select/Select";
+import { vmDate } from "../../utils/time";
 
 type Props = {
   children: ReactNode;
@@ -34,9 +34,9 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   const period = useMemo(() => {
     if (!queryParams) return "";
     const { start, end } = queryParams;
-    const localeStart = start ? dayjs(start).format(DATE_TIME_FORMAT) : "";
-    const localeEnd = end ? dayjs(end).format(DATE_TIME_FORMAT) : "";
-    const tz = dayjs(start).format("Z");
+    const localeStart = start ? vmDate(start).nano().format(DATE_TIME_FORMAT) : "";
+    const localeEnd = end ? vmDate(end).nano().format(DATE_TIME_FORMAT) : "";
+    const tz = vmDate(start).tz().format("Z");
     return `${localeStart} - ${localeEnd} (${tz})`;
   }, [queryParams?.start, queryParams?.end]);
 

@@ -84,6 +84,7 @@ func TestStorageRunQuery(t *testing.T) {
 			}
 		}
 	}
+	sortTenantIDs(allTenantIDs)
 	s.DebugFlush()
 
 	mustRunQuery := func(t *testing.T, tenantIDs []TenantID, q *Query, writeBlock WriteDataBlockFunc) {
@@ -675,12 +676,6 @@ func TestStorageRunQuery(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		sort.Slice(tenantIDs, func(i, j int) bool {
-			return tenantIDs[i].less(&tenantIDs[j])
-		})
-		sort.Slice(allTenantIDs, func(i, j int) bool {
-			return allTenantIDs[i].less(&allTenantIDs[j])
-		})
 		if !reflect.DeepEqual(tenantIDs, allTenantIDs) {
 			t.Fatalf("unexpected GetTenantIDs result; got: %v, want: %v", tenantIDs, allTenantIDs)
 		}
@@ -1650,6 +1645,16 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 	// Search for the hidden field
 	q = `host:="host-3"`
 	hiddenFieldsFilters = []string{"tenant_id", "ho*"}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
+
+	// Search the _msg field, which is stored with an empty column name.
+	q = `_msg:"value"`
+	hiddenFieldsFilters = []string{}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"3500"}`})
+
+	// Search the hidden _msg field
+	q = `_msg:"value"`
+	hiddenFieldsFilters = []string{"_msg"}
 	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
 
 	s.MustClose()

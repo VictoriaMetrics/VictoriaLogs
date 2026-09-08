@@ -3,15 +3,13 @@ package filecollector
 import (
 	"flag"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/tail"
@@ -44,13 +42,13 @@ func Init(tmpDataPath string) {
 
 	// Ensure glob patterns are valid.
 	for _, pattern := range *glob {
-		_, err := path.Match(pattern, ".")
+		_, err := doublestar.PathMatch(pattern, ".")
 		if err != nil {
 			logger.Panicf("FATAL: cannot start fileCollector: invalid glob pattern %q: %s", pattern, err)
 		}
 	}
 	for _, pattern := range *excludeGlob {
-		_, err := path.Match(pattern, ".")
+		_, err := doublestar.PathMatch(pattern, ".")
 		if err != nil {
 			logger.Panicf("FATAL: cannot start fileCollector: invalid exclude glob pattern %q: %s", pattern, err)
 		}
@@ -87,6 +85,12 @@ func Init(tmpDataPath string) {
 	})
 }
 
+var globOpts = []doublestar.GlobOption{
+	// Follow traditional shell glob behavior where `*` or a `?` at the start will not match dotfiles by default.
+	// Users can explicitly use `.*` or `.?` syntax to collect logs from the hidden files.
+	doublestar.WithNoHidden(),
+}
+
 func processGlob(argIdx int, pattern string) {
 	if pattern == "" {
 		return
@@ -99,7 +103,7 @@ func processGlob(argIdx int, pattern string) {
 		return
 	}
 
-	matches, err := filepath.Glob(pattern)
+	matches, err := doublestar.FilepathGlob(pattern, globOpts...)
 	if err != nil {
 		// Pattern must be valid since we validate it in the Init function.
 		logger.Panicf("BUG: pattern %q should be valid; got: %s", pattern, err)
@@ -118,7 +122,7 @@ func startRead(argIdx int, filePath string) {
 	}
 
 	if excludePattern := excludeGlob.GetOptionalArg(argIdx); excludePattern != "" {
-		if ok, _ := filepath.Match(excludePattern, filePath); ok {
+		if ok, _ := doublestar.PathMatch(excludePattern, filePath); ok {
 			return
 		}
 	}
@@ -167,10 +171,18 @@ func Stop() {
 	tailer.Stop()
 }
 
-func isGlob(pattern string) bool {
-	// See https://github.com/golang/go/blob/e87b10ea2a2c6c65b80c4374af42b9c02ac9fb20/src/path/filepath/match.go#L352
-	if runtime.GOOS == "windows" {
-		return strings.ContainsAny(pattern, "*?[")
+// isGlob reports whether s contains any unescaped glob meta character.
+// See https://github.com/bmatcuk/doublestar/blob/a9ad9e0ef4d6b7e4443090e9a7201d847a881711/glob.go#L334
+func isGlob(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '*' || c == '?' || c == '[' || c == '{' {
+			return true
+		}
+		if c == '\\' && os.PathSeparator != '\\' {
+			// skip next byte
+			i++
+		}
 	}
-	return strings.ContainsAny(pattern, `*?[\`)
+	return false
 }

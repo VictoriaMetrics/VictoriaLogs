@@ -1,6 +1,6 @@
 @use "src/styles/variables" as *;
 
-$input-limit-width: 200px;
+$input-limit-width: 197px;
 
 .vm-query-page-header {
   display: flex;
@@ -9,11 +9,15 @@ $input-limit-width: 200px;
 
   &-top {
     display: grid;
-    grid-template-columns: minmax(200px, 1fr) minmax(auto, $input-limit-width);
+    grid-template-columns: minmax(200px, 1fr) minmax(100px, $input-limit-width);
     align-items: flex-start;
     justify-content: center;
     gap: $padding-small;
     margin-bottom: -6px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 8fr 2fr;
+    }
   }
 
   &-bottom {

@@ -1,6 +1,7 @@
 ---
 weight: 52
 title: SQL to LogsQL Tutorial
+description: "Tutorial mapping SQL concepts to VictoriaLogs LogsQL syntax"
 menu:
   docs:
     parent: "victorialogs"

@@ -1,5 +1,6 @@
 ---
 title: Data Ingestion
+description: "Ingest logs into VictoriaLogs from Syslog, Filebeat, Fluent Bit, Fluentd, Logstash, Vector, Promtail, Telegraf, OpenTelemetry, Journald, Datadog, and Splunk."
 weight: 5
 menu:
   docs:
