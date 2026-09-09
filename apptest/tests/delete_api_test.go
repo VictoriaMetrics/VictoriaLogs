@@ -38,8 +38,6 @@ func TestVlsingleDeleteAPIRequiresPOST(t *testing.T) {
 
 // TestVlsingleDeleteAPIAuthKey verifies that the -deleteAuthKey command-line flag protects the /delete/* endpoints.
 func TestVlsingleDeleteAPIAuthKey(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
-
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
