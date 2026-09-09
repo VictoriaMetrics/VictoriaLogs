@@ -5,6 +5,7 @@ import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import { getUTCByTimezone } from "../../../../utils/time";
 import { useMemo } from "react";
 import { ArrowDownIcon, PlanetIcon } from "../../../Main/Icons";
+import { getAppModeEnable } from "../../../../utils/app-mode";
 
 type Props = {
   onOpenSettings?: () => void;
@@ -12,6 +13,7 @@ type Props = {
 
 const TimeZonePreview: FC<Props> = ({ onOpenSettings }) => {
   const { isMobile } = useDeviceDetect();
+  const appModeEnable = getAppModeEnable();
 
   const { timezone } = useTimeState();
   const utcOffset = useMemo(() => getUTCByTimezone(timezone), [timezone]);
@@ -24,6 +26,7 @@ const TimeZonePreview: FC<Props> = ({ onOpenSettings }) => {
   if (isMobile) {
     return (
       <button
+        type="button"
         className="vm-mobile-option"
         onClick={handleOpenSettings}
       >
@@ -39,7 +42,7 @@ const TimeZonePreview: FC<Props> = ({ onOpenSettings }) => {
 
   return (
     <Button
-      className="vm-header-button"
+      className={appModeEnable ? "" : "vm-header-button"}
       onClick={handleOpenSettings}
       startIcon={<PlanetIcon/>}
     >

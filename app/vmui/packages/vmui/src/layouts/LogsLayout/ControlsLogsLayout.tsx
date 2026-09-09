@@ -46,6 +46,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
         >
           <div className="vm-header-controls_mobile">
             {headerSetup?.tenant && <Tenants/>}
+            {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
             {headerSetup?.executionControls && <ExecutionControls/>}
             <GlobalSettings ref={settingsRef}/>
           </div>
@@ -58,7 +59,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
     <div className="vm-header-controls">
       {headerSetup?.tenant && <Tenants/>}
       {headerSetup?.timeSelector && <TimeSelector onOpenSettings={() => settingsRef.current?.open()}/>}
-      <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>
+      {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
       {headerSetup?.executionControls && <ExecutionControls/>}
       <GlobalSettings ref={settingsRef}/>
       <ShortcutKeys>
