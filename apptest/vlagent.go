@@ -51,7 +51,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 
 // JSONLineWrite is a test helper function that inserts a
 // collection of records in json line format by sending a HTTP
-// POST request to /insert/jsonline vlagent endpoint.
+// POST request to /insert/jsonline endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
 func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
