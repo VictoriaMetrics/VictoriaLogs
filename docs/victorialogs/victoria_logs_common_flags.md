@@ -32,6 +32,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Default number of parallel data readers to use for executing every query; higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option (default 2x CPU cores)
   -delete.enable
      Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
+  -deleteAuthKey value
+     authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
+     Flag value can be read from the given file when using -deleteAuthKey=file:///abs/path/to/file or -deleteAuthKey=file://./relative/path/to/file.
+     Flag value can be read from the given http/https url when using -deleteAuthKey=http://host/path or -deleteAuthKey=https://host/path
   -elasticsearch.version string
      Elasticsearch version to report to client (default "8.9.0")
   -enableTCP6

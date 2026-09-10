@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -34,11 +33,6 @@ func (tc *TestCase) T() *testing.T {
 	return tc.t
 }
 
-// Dir returns the directory name that should be used by as the -storageDataDir.
-func (tc *TestCase) Dir() string {
-	return tc.t.Name()
-}
-
 // Client returns an instance of the client that can be used for interacting with
 // the app(s) under test.
 func (tc *TestCase) Client() *Client {
@@ -54,9 +48,6 @@ func (tc *TestCase) Stop() {
 	tc.cli.CloseConnections()
 	for _, app := range tc.startedApps {
 		app.Stop()
-	}
-	if !tc.t.Failed() {
-		fs.MustRemoveDir(tc.Dir())
 	}
 }
 

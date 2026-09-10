@@ -105,7 +105,7 @@ func Init(tmpDataPath string) {
 
 // Stop stops remotewrite.
 //
-// It is expected that nobody calls TryPush during and after the call to this func.
+// It is expected that nobody calls Storage.MustAddRows during or after the call to this func.
 func Stop() {
 	for _, rwctx := range rwctxsGlobal {
 		rwctx.mustStop()

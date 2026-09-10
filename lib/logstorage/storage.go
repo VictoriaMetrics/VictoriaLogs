@@ -23,6 +23,9 @@ import (
 
 // StorageStats represents stats for the storage. It may be obtained by calling Storage.UpdateStats().
 type StorageStats struct {
+	// StreamsCreatedTotal is the number of log streams registered in daily partitions since the storage initialization.
+	StreamsCreatedTotal uint64
+
 	// RowsDroppedTooBigTimestamp is the number of rows dropped during data ingestion because their timestamp is bigger than the maximum allowed.
 	RowsDroppedTooBigTimestamp uint64
 
@@ -113,6 +116,8 @@ type StorageConfig struct {
 
 // Storage is the storage for log entries.
 type Storage struct {
+	streamsCreatedTotal atomic.Uint64
+
 	rowsDroppedTooBigTimestamp   atomic.Uint64
 	rowsDroppedTooSmallTimestamp atomic.Uint64
 
@@ -1297,6 +1302,7 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 
 // UpdateStats updates ss for the given s.
 func (s *Storage) UpdateStats(ss *StorageStats) {
+	ss.StreamsCreatedTotal += s.streamsCreatedTotal.Load()
 	ss.RowsDroppedTooBigTimestamp += s.rowsDroppedTooBigTimestamp.Load()
 	ss.RowsDroppedTooSmallTimestamp += s.rowsDroppedTooSmallTimestamp.Load()
 	if s.maxDiskSpaceUsageBytes > 0 {
