@@ -113,7 +113,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.DisableCompression = true
 
 	// Set the idle connection timeout to the value smaller than the default timeout at the server side
-	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// (60 seconds - see -http.idleConnTimeout) in order to avoid EOF errors.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
 	tr.IdleConnTimeout = 5 * time.Second
 
@@ -835,7 +835,7 @@ type errUnavailableBackend struct {
 	err error
 }
 
-// Unwrap returns e.Err.
+// Unwrap returns e.err.
 //
 // This is used by standard errors package. See https://golang.org/pkg/errors
 func (e *errUnavailableBackend) Unwrap() error {

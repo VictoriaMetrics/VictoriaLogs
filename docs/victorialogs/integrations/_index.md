@@ -1,6 +1,6 @@
 ---
 title: Integrations
-description: "Integration guides for using VictoriaLogs with Grafana, Perses, and Bindplane."
+description: "Integration guides for using VictoriaLogs with Grafana, Perses, Bindplane, and Logchef."
 weight: 13
 menu:
   docs:
@@ -14,6 +14,7 @@ VictoriaLogs integrates with many popular monitoring solutions as remote storage
 * [Grafana](https://docs.victoriametrics.com/victorialogs/integrations/grafana/)
 * [Perses](https://docs.victoriametrics.com/victorialogs/integrations/perses/)
 * [Bindplane](https://docs.victoriametrics.com/victorialogs/integrations/bindplane/)
+* [Logchef](https://docs.victoriametrics.com/victorialogs/integrations/logchef/)
 
 If you think that community will benefit from new integrations, open a [feature request on GitHub](https://github.com/VictoriaMetrics/VictoriaLogs/issues).
 

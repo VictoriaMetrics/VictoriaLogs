@@ -1,13 +1,13 @@
-import { FC, useEffect, useMemo } from "preact/compat";
+import { FC, useEffect } from "preact/compat";
 import { useFetchHits } from "../../QueryPage/hooks/useFetchHits";
 import HitsPanel from "../../QueryPage/HitsPanel/HitsPanel";
-import { useSearchParams } from "react-router-dom";
 import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "../../QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
+import { useHideChart } from "../../QueryPage/HitsPanel/hooks/useHideChart";
 
 const OverviewHits: FC = () => {
-  const [searchParams] = useSearchParams();
+  const [hideChart] = useHideChart();
   const { period } = useTimePeriod();
   const query = "*";
 
@@ -19,10 +19,6 @@ const OverviewHits: FC = () => {
 
   const { extraParams } = useExtraFilters();
   const { fetchHits, ...dataLogHits } = useFetchHits();
-
-  const hideChart = useMemo(() => {
-    return Boolean(searchParams.get("hide_chart"));
-  }, [searchParams]);
 
   useEffect(() => {
     if (hideChart) return;

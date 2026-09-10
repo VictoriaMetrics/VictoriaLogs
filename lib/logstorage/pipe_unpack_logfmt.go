@@ -13,7 +13,7 @@ type pipeUnpackLogfmt struct {
 	// fromField is the field to unpack logfmt fields from
 	fromField string
 
-	// filterFields is list of field filters to extract from logfmt.
+	// fieldFilters is list of field filters to extract from logfmt.
 	fieldFilters []string
 
 	// resultPrefix is prefix to add to unpacked field names

@@ -10,6 +10,7 @@ import Button from "../../components/Main/Button/Button";
 import { KeyboardIcon, MoreIcon } from "../../components/Main/Icons";
 import useBoolean from "../../hooks/useBoolean";
 import Modal from "../../components/Main/Modal/Modal";
+import TimeZonePreview from "../../components/Configurators/GlobalSettings/TimeZonePreview/TimeZonePreview";
 
 const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
   const appModeEnable = getAppModeEnable();
@@ -44,6 +45,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
         >
           <div className="vm-header-controls_mobile">
             {headerSetup?.tenant && <Tenants/>}
+            {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
             <GlobalSettings ref={settingsRef}/>
           </div>
         </Modal>
@@ -55,6 +57,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
     <div className="vm-header-controls">
       {headerSetup?.tenant && <Tenants/>}
       {headerSetup?.timeSelector && <TimeSelector onOpenSettings={() => settingsRef.current?.open()}/>}
+      {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
       <GlobalSettings ref={settingsRef}/>
       <ShortcutKeys>
         <Button
