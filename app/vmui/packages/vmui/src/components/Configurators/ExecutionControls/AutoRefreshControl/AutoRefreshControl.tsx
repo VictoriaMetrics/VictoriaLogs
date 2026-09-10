@@ -47,6 +47,7 @@ const AutoRefreshControl: FC = () => {
         <div ref={buttonRef}>
           <Button
             className="vm-auto-refresh-control-button"
+            aria-label="Auto-refresh control"
             variant="contained"
             color="primary"
             fullWidth
