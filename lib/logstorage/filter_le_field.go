@@ -88,7 +88,7 @@ func (fe *filterLeField) applyToBlockResult(br *blockResult, bm *bitmap) {
 	}
 
 	if c.valueType != cOther.valueType {
-		// Slow path - ch and chOther have different valueType, so convert them to string values and compare them
+		// Slow path - c and cOther have different valueType, so convert them to string values and compare them
 		applyFilterLeString(br, bm, c, cOther, fe.excludeEqualValues)
 		return
 	}
@@ -202,7 +202,7 @@ func (fe *filterLeField) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	}
 
 	if ch.valueType != chOther.valueType {
-		// Slow path - c and cOther have different valueType, so convert them to string values and compare them
+		// Slow path - ch and chOther have different valueType, so convert them to string values and compare them
 		fe.applyFilterString(bs, bm)
 		return
 	}
