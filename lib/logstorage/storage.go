@@ -472,7 +472,7 @@ func (s *Storage) DeleteRunTask(_ context.Context, taskID string, timestamp int6
 
 // mustSaveDeleteTasksLocked saves s.deleteTasks to file
 //
-// The s.deleteTaskLock must be locked while calling this function.
+// The s.deleteTasksLock must be locked while calling this function.
 func (s *Storage) mustSaveDeleteTasksLocked() {
 	deleteTasksPath := filepath.Join(s.path, deleteTasksFilename)
 	mustWriteDeleteTasksToFile(deleteTasksPath, s.deleteTasks)

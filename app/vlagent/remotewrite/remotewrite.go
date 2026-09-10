@@ -258,7 +258,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	// Initialize pls
 	plsLen := *queues
 	if n := cgroup.AvailableCPUs(); plsLen > n {
-		// There is no sense in running more than availableCPUs concurrent pendingLogs,
+		// There is no sense in running more concurrent pendingLogs than available CPUs,
 		// since every pendingLogs can saturate up to a single CPU.
 		plsLen = n
 	}

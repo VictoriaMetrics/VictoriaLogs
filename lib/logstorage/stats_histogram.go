@@ -33,7 +33,7 @@ func (sh *statsHistogram) newStatsProcessor(a *chunkedAllocator) statsProcessor 
 type statsHistogramProcessor struct {
 	h metrics.Histogram
 
-	// bucketsMap is initialized only in loadState().
+	// bucketsMap is populated by importState and mergeState.
 	//
 	// It contains additional state for h.
 	bucketsMap map[string]uint64

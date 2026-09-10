@@ -115,8 +115,8 @@ func (app *Vlagent) WaitRemoteWriteRequests(t *testing.T, remoteWriteURL string,
 // write queue.
 //
 // vlagent does not send the data immediately. It first puts the data into a
-// buffer. Then a background goroutine takes the data from the buffer and sends it
-// to the vmstorage. This happens every 1s by default.
+// buffer. Then a background goroutine flushes the buffered data to the remote
+// write queues according to -remoteWrite.flushInterval.
 //
 // Waiting is implemented by retrieving the value of `vlagent_remotewrite_block_size_rows_sum`
 // metric and checking whether it is equal or greater than the wanted value.

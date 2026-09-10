@@ -216,7 +216,7 @@ func (bsm *blockStreamMerger) checkNextBlock(bd *blockData) {
 	if !bd.streamID.equal(&bsm.streamID) {
 		return
 	}
-	// streamID at bd equals streamID at bsm. Check that minTimestamp in bd is bigger or equal to the minTimestmap at bsm.
+	// streamID at bd equals streamID at bsm. Check that minTimestamp in bd is bigger or equal to the minTimestamp at bsm.
 	if bd.rowsCount == 0 {
 		return
 	}

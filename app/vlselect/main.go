@@ -178,7 +178,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 
 	if path == "/select/vmui" {
 		// VMUI access via incomplete url without `/` in the end. Redirect to complete url.
-		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaMetrics
+		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaLogs
 		// is hidden behind vmauth or similar proxy.
 		_ = r.ParseForm()
 		newURL := "vmui/?" + r.Form.Encode()

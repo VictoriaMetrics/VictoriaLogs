@@ -68,7 +68,7 @@ func (qs *QueryStats) UpdateAtomic(src *QueryStats) {
 	atomic.AddUint64(&qs.BytesProcessedUncompressedValues, src.BytesProcessedUncompressedValues)
 }
 
-// UpdateAtomicFromDataBlock adds query stats from db to qs.
+// UpdateFromDataBlock adds query stats from db to qs.
 func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 	rowsCount := db.RowsCount()
 	if rowsCount != 1 {

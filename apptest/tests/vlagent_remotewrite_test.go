@@ -189,7 +189,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	gotR1 = sutR1.LogsQLQuery(t, "ingest jsonline2", apptest.QueryOpts{})
 	assertLogsQLResponseEqual(t, gotR1, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
-	// stop vmagent, it must buffer data on-disk
+	// stop vlagent, it must buffer data on-disk
 	tc.StopApp(vlagentInstance)
 
 	vlagent = tc.MustStartVlagent(vlagentInstance, vlagentRemoteWriteURLs, vlagentFlags)
