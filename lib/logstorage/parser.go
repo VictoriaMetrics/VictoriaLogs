@@ -2344,14 +2344,11 @@ func parseAnyCaseFilter(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFuncArgMaybePrefix(lex *lexer, fieldName string, callback func(arg string, isPrefixFilter bool) (filter, error)) (filter, error) {
-	lexState := lex.backupState()
-
 	funcName := lex.token
 	lex.nextToken()
 
 	if !lex.isKeyword("(") {
-		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
 	}
 	lex.nextToken()
 
@@ -2572,7 +2569,12 @@ func parseFilterIn(lex *lexer, fieldName string) (filter, error) {
 }
 
 func parseFilterContainsCommonCase(lex *lexer, fieldName string) (filter, error) {
+	funcName := lex.token
 	lex.nextToken()
+
+	if !lex.isKeyword("(") {
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
+	}
 
 	phrases, err := parseArgsInParens(lex)
 	if err != nil {
@@ -2587,7 +2589,12 @@ func parseFilterContainsCommonCase(lex *lexer, fieldName string) (filter, error)
 }
 
 func parseFilterEqualsCommonCase(lex *lexer, fieldName string) (filter, error) {
+	funcName := lex.token
 	lex.nextToken()
+
+	if !lex.isKeyword("(") {
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
+	}
 
 	phrases, err := parseArgsInParens(lex)
 	if err != nil {
@@ -2877,8 +2884,6 @@ func tryParseFilterLTString(lex *lexer, fieldName, op string, includeMaxValue bo
 }
 
 func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
-	lexState := lex.backupState()
-
 	funcName := lex.token
 	lex.nextToken()
 
@@ -2890,8 +2895,7 @@ func parseFilterRange(lex *lexer, fieldName string) (filter, error) {
 	case lex.isKeyword("["):
 		includeMinValue = true
 	default:
-		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
 	}
 	lex.nextToken()
 
@@ -2964,14 +2968,11 @@ func parseFuncArg(lex *lexer, fieldName string, callback func(funcName, arg stri
 }
 
 func parseFuncArgs(lex *lexer, fieldName string, callback func(funcName string, args []string) (filter, error)) (filter, error) {
-	lexState := lex.backupState()
-
 	funcName := lex.token
 	lex.nextToken()
 
 	if !lex.isKeyword("(") {
-		lex.restoreState(lexState)
-		return parseFilterPhrase(lex, fieldName)
+		return nil, fmt.Errorf("the %q must be put in quotes", funcName)
 	}
 
 	args, err := parseArgsInParens(lex)

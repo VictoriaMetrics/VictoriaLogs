@@ -4465,7 +4465,7 @@ then add `if (<filters>)` after `unroll`.
 The `<filters>` can contain arbitrary [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters). For example, the following query unrolls the `value` field only if the `value_type` field equals `json_array`:
 
 ```logsql
-_time:5m | unroll if (value_type:="json_array") (value)
+_time:5m | unroll if ("value_type":="json_array") (value)
 ```
 
 ## running_stats pipe functions
