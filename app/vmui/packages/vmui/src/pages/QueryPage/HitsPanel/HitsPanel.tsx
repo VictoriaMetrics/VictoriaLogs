@@ -7,7 +7,7 @@ import { AlignedData } from "uplot";
 import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
 import { TimeParams, TimePeriod } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
-import { useSearchParams } from "react-router-dom";
+import { useHideChart } from "./hooks/useHideChart";
 import { getNanosecondsFromDuration, nanosecondsToSeconds, toEpochSeconds } from "../../../utils/time";
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 import { useTimePeriod } from "../hooks/useTimePeriod";
@@ -27,8 +27,7 @@ interface Props {
 const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
-  const [searchParams] = useSearchParams();
-  const hideChart = useMemo(() => searchParams.get("hide_chart") === "true", [searchParams]);
+  const [hideChart] = useHideChart();
 
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
