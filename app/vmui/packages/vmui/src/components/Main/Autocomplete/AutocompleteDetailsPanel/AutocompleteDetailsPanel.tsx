@@ -1,6 +1,7 @@
 import { FC } from "preact/compat";
 import { AutocompleteOptions } from "../Autocomplete";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
+import SafeHtml from "../../SafeHtml/SafeHtml";
 import "./style.scss";
 
 type Props = {
@@ -16,9 +17,10 @@ const AutocompleteDetailsPanel: FC<Props> = ({ option }) => {
   return (
     <div className="vm-autocomplete-details-panel">
       <div className="vm-autocomplete__title">{type}</div>
-      <div
+      <SafeHtml
+        tagName="div"
         className="vm-autocomplete-details-panel__description vm-markdown"
-        dangerouslySetInnerHTML={{ __html: description || "" }}
+        value={description}
       />
     </div>
   );
