@@ -41,8 +41,8 @@ type Regex struct {
 	// For example, orValues contain ["foo","bar","baz"] for regex="foo|bar|baz"
 	orValues []string
 
-	// suffixRe is the regexp for suffix
-	suffixRe *regexp.Regexp
+	// fallbackRe is used for regexps without a specialized fast path.
+	fallbackRe *regexp.Regexp
 }
 
 // NewRegex returns Regex for the given expr.
@@ -60,13 +60,13 @@ func NewRegex(expr string) (*Regex, error) {
 	substrDotStar := getSubstringLiteral(sre, syntax.OpStar)
 	substrDotPlus := getSubstringLiteral(sre, syntax.OpPlus)
 
-	suffixAnchored := suffix
+	fallbackExpr := suffix
 	if len(prefix) > 0 {
-		suffixAnchored = "^(?:" + suffix + ")"
+		fallbackExpr = regexp.QuoteMeta(prefix) + "(?:" + suffix + ")"
 	}
-	// The suffixAnchored must be properly compiled, since it has been already checked above.
+	// The fallbackExpr must be properly compiled, since it has been already checked above.
 	// Otherwise it is a bug, which must be fixed.
-	suffixRe := regexp.MustCompile(suffixAnchored)
+	fallbackRe := regexp.MustCompile(fallbackExpr)
 
 	r := &Regex{
 		exprStr:         expr,
@@ -77,7 +77,7 @@ func NewRegex(expr string) (*Regex, error) {
 		substrDotStar:   substrDotStar,
 		substrDotPlus:   substrDotPlus,
 		orValues:        orValues,
-		suffixRe:        suffixRe,
+		fallbackRe:      fallbackRe,
 	}
 	return r, nil
 }
@@ -147,7 +147,7 @@ func (r *Regex) matchStringNoPrefix(s string) bool {
 
 	if len(r.orValues) == 0 {
 		// Fall back to slow path by matching the suffix regexp.
-		return r.suffixRe.MatchString(s)
+		return r.fallbackRe.MatchString(s)
 	}
 
 	// Fast path - compare s to r.orValues
@@ -165,6 +165,7 @@ func (r *Regex) matchStringWithPrefix(s string) bool {
 		// Fast path - s doesn't contain the needed prefix
 		return false
 	}
+	sWithPrefix := s[n:]
 	sNext := s[n+1:]
 	s = s[n+len(r.prefix):]
 
@@ -183,19 +184,16 @@ func (r *Regex) matchStringWithPrefix(s string) bool {
 		n := strings.Index(s, r.substrDotPlus)
 		return n > 0 && n+len(r.substrDotPlus) < len(s)
 	}
+	if len(r.orValues) == 0 {
+		// Fall back to slow path by matching the full regexp.
+		return r.fallbackRe.MatchString(sWithPrefix)
+	}
 
 	for {
-		if len(r.orValues) == 0 {
-			// Fall back to slow path by matching the suffix regexp.
-			if r.suffixRe.MatchString(s) {
+		// Fast path - compare s to r.orValues
+		for _, v := range r.orValues {
+			if strings.HasPrefix(s, v) {
 				return true
-			}
-		} else {
-			// Fast path - compare s to r.orValues
-			for _, v := range r.orValues {
-				if strings.HasPrefix(s, v) {
-					return true
-				}
 			}
 		}
 
