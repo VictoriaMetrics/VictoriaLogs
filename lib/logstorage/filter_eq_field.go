@@ -161,7 +161,7 @@ func (fe *filterEqField) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	}
 
 	if ch.valueType != chOther.valueType {
-		// Slow path - c and cOther have different valueType, so convert them to string values and compare them
+		// Slow path - ch and chOther have different valueType, so convert them to string values and compare them
 		fe.applyFilterString(bs, bm)
 		return
 	}

@@ -31,6 +31,7 @@ import usePrevious from "../../../../hooks/usePrevious";
 import { TimeParams } from "../../../../types";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHideChart";
 
 interface Props {
   query?: string;
@@ -62,11 +63,11 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
   const hasGroupField = groupFieldHits.value !== WITHOUT_GROUPING;
-  const isGroupsLimitVisible = (isHitsMode && hasGroupField) || isStatsMode;
+  const hasMultipleSeries = (isHitsMode && hasGroupField) || isStatsMode;
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
-  const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
+  const [hideChart, setHideChart] = useHideChart();
 
   const prevPeriodFormatted = useMemo(() => {
     if (!prevPeriod) return;
@@ -131,12 +132,9 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   }, [setCumulative, handleChangeSearchParams]);
 
   const toggleHideChart = useCallback(() => {
-    setHideChart(prev => {
-      const nextVal = !prev;
-      handleChangeSearchParams("hide_chart", nextVal);
-      return nextVal;
-    });
-  }, [setHideChart, handleChangeSearchParams]);
+    const nextVal = !hideChart;
+    setHideChart(nextVal);
+  }, [hideChart, setHideChart]);
 
   useEffect(() => {
     onChange(options);
@@ -191,7 +189,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
             </div>
           </>
         )}
-        {isGroupsLimitVisible && (
+        {hasMultipleSeries && (
           <div className="vm-bar-hits-options-item">
             <SelectLimit
               label="Groups limit"
@@ -217,6 +215,16 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
         )}
       </div>
 
+      {hasMultipleSeries && (
+        <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
+          <Switch
+            label={"Stacked"}
+            value={stacked}
+            onChange={handleChangeStacked}
+          />
+        </div>
+      )}
+
       <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
         <Switch
           label={"Cumulative"}
@@ -224,6 +232,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
           onChange={handleChangeCumulative}
         />
       </div>
+
       {!isOverview && (
         <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
           <Switch
@@ -233,13 +242,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
           />
         </div>
       )}
-      <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
-        <Switch
-          label={"Stacked"}
-          value={stacked}
-          onChange={handleChangeStacked}
-        />
-      </div>
     </>
   );
 

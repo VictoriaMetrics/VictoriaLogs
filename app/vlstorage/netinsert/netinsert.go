@@ -68,7 +68,7 @@ type storageNode struct {
 	// ac is auth config used for setting request headers such as Authorization and Host.
 	ac *promauth.Config
 
-	// pendingData contains pending data, which must be sent to the storage node at the addr.
+	// pendingDataMu protects pendingData and pendingDataLastFlush.
 	pendingDataMu        sync.Mutex
 	pendingData          *bytesutil.ByteBuffer
 	pendingDataLastFlush time.Time
@@ -89,7 +89,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.DisableCompression = true
 
 	// Set the idle connection timeout to the value smaller than the default timeout at the server side
-	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// (60 seconds - see -http.idleConnTimeout) in order to avoid EOF errors.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
 	tr.IdleConnTimeout = 5 * time.Second
 

@@ -56,25 +56,25 @@ func TestReadLines(t *testing.T) {
 	offset = len(expected)
 	f(in, expected, offset)
 
-	// Lines with maxLineSize
+	// Lines with maxLogLineSize
 	in = []string{strings.Repeat("a", maxLogLineSize)}
 	expected = strings.Join(in, "\n") + "\n"
 	offset = maxLogLineSize + len("\n")
 	f(in, expected, offset)
 
-	// Lines with maxLineSize in the middle
+	// Lines with maxLogLineSize in the middle
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize), "bar"}
 	expected = strings.Join(in, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
-	// Line exceeding maxLineSize
+	// Line exceeding maxLogLineSize
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize+1), "bar"}
 	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 1 + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
-	// Multiple lines exceeding maxLineSize
+	// Multiple lines exceeding maxLogLineSize
 	in = []string{"foo", strings.Repeat("c", maxLogLineSize+10), strings.Repeat("d", maxLogLineSize+20), "bar"}
 	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 10 + len("\n") + maxLogLineSize + 20 + len("\n") + len("bar\n")

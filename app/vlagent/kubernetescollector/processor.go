@@ -163,7 +163,7 @@ var invalidCRILineLogger = logger.WithThrottler("invalid_cri_log_line", 5*time.S
 
 type partialCRILineState struct {
 	// content accumulates the content of partial CRI log lines.
-	// Can be truncated if it exceeds maxLineSize.
+	// Can be truncated if it exceeds maxLogLineSize.
 	content *bytesutil.ByteBuffer
 	// size tracks the actual size of the content.
 	size int

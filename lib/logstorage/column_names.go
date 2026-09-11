@@ -176,7 +176,7 @@ func (g *columnNameIDGenerator) getColumnNameID(name string) uint64 {
 	}
 	id = uint64(len(g.columnNames))
 
-	// it is better to intern the column name instead of cloning it with string.Clone,
+	// it is better to intern the column name instead of cloning it with strings.Clone,
 	// since the number of column names is usually small (e.g. less than 10K).
 	// This reduces memory allocations.
 	nameCopy := bytesutil.InternString(name)

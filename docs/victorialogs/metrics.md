@@ -320,7 +320,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_streams_created_total
 **Type:** Counter
 
-**Description:** New unique combinations of stream fields first encountered during log ingestion. Only counts streams not previously seen since startup, shows growth in stream cardinality and high-cardinality detection.
+**Description:** The number of log streams registered in daily partitions since the last VictoriaLogs restart. The same stream is counted again when it is registered in another daily partition. If this metric increases much faster than expected outside the normal creation of daily partitions, it may indicate high cardinality.
 
 ### vl_indexdb_rows
 **Type:** Gauge

@@ -14,20 +14,19 @@ import (
 func TestStorageLifecycle(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 
 	for range 3 {
 		cfg := &StorageConfig{}
 		s := MustOpenStorage(path, cfg)
 		s.MustClose()
 	}
-	fs.MustRemoveDir(path)
 }
 
 func TestStorageMustAddRows(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 
 	cfg := &StorageConfig{}
 	s := MustOpenStorage(path, cfg)
@@ -107,14 +106,12 @@ func TestStorageMustAddRows(t *testing.T) {
 		t.Fatalf("unexpected number of entries in storage; got %d; want %d", n, totalRowsCount)
 	}
 	s.MustClose()
-
-	fs.MustRemoveDir(path)
 }
 
 func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 
 	cfg := &StorageConfig{
 		Retention:       365 * 24 * time.Hour,
@@ -169,13 +166,12 @@ func TestStoragePartitionDetachRecreateSameDaySameStream(t *testing.T) {
 	check(`* | stats count(*) as rows`, 1)
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 
 	cfg := &StorageConfig{
 		Retention: 365 * 24 * time.Hour,
@@ -228,13 +224,12 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 	check(`{stream="new_stream"} | stats count(*) as rows`, 1)
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func TestStorageDeleteTaskOps(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 	cfg := &StorageConfig{}
 	s := MustOpenStorage(path, cfg)
 
@@ -283,14 +278,12 @@ func TestStorageDeleteTaskOps(t *testing.T) {
 	}
 
 	s.MustClose()
-
-	fs.MustRemoveDir(path)
 }
 
 func TestStorageProcessDeleteTask(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 	ctx := t.Context()
 
 	cfg := &StorageConfig{
@@ -400,21 +393,18 @@ func TestStorageProcessDeleteTask(t *testing.T) {
 	check(allTenantIDs, "* | count(host) rows", []string{`{"rows":"5284"}`})
 
 	s.MustClose()
-
-	fs.MustRemoveDir(path)
 }
 
 func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
 	ctx := t.Context()
 
 	cfg := &StorageConfig{
 		Retention:       30 * 24 * time.Hour,
 		FutureRetention: 30 * 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	tenantIDs := []TenantID{
 		{
@@ -456,17 +446,15 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	check(`row_id:=1 | stats count(*) as rows`, []string{`{"rows":"0"}`})
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
 	cfg := &StorageConfig{
 		Retention: 365 * 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	tenantIDs := []TenantID{{}}
 	ts := time.Now().UTC().UnixNano()
@@ -502,7 +490,6 @@ func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
 	check(`* | head 1000 | field_names | filter name:="_msg" | stats count(*) as c`, []string{"_msg"}, []string{`{"c":"0"}`})
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func checkQueryResults(t *testing.T, s *Storage, now int64, tenantIDs []TenantID, qStr string, hiddenFieldsFilters, resultsExpected []string) {
@@ -611,7 +598,7 @@ func storeRowsForProcessDeleteTaskTest(s *Storage, tenantIDs []TenantID, now int
 func TestStorageDropStalePartitions(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := t.TempDir()
 
 	cfg := &StorageConfig{
 		Retention: 30 * 24 * time.Hour,
@@ -666,7 +653,4 @@ func TestStorageDropStalePartitions(t *testing.T) {
 	s.dropStalePartitions()
 	expectPartitionsNumber(0)
 	s.MustClose()
-
-	// Drop the created data on disk
-	fs.MustRemoveDir(path)
 }

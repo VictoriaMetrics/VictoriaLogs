@@ -383,7 +383,7 @@ type logsData struct {
 	ResourceLogs []resourceLogs `json:"resourceLogs,omitzero"`
 }
 
-// MarshalProtobuf marshals r to a protobuf message, appends it to dst and returns the result.
+// marshalProtobuf marshals r to a protobuf message, appends it to dst and returns the result.
 func (r *logsData) marshalProtobuf(dst []byte) []byte {
 	m := mp.Get()
 	r.marshalProtobufInternal(m.MessageMarshaler())
