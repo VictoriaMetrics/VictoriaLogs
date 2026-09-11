@@ -644,7 +644,7 @@ func (p *SyslogParser) parseCEFExtension(s string) bool {
 		// Parse key value
 		n = nextUnescapedChar(s, '=')
 		if n < 0 {
-			p.AddField(keyName, s)
+			p.AddField(keyName, unescapeCEFValue(s))
 			return true
 		}
 
