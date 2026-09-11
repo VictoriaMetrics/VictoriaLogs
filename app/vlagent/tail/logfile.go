@@ -47,7 +47,7 @@ type logFile struct {
 	commitOffset int64
 
 	// tail contains the last incomplete line read from the file.
-	// Can be truncated if it exceeds maxLogLineSize.
+	// Can be truncated if it exceeds maxLineSize.
 	tail *bytesutil.ByteBuffer
 	// tailSize tracks the actual tail size.
 	tailSize int

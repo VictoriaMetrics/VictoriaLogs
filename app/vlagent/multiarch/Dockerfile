@@ -1,6 +1,4 @@
-ARG root_image=non-existing
-
-FROM $root_image
+FROM gcr.io/distroless/static-debian13
 EXPOSE 9429
 ENTRYPOINT ["/vlagent-prod"]
 ARG TARGETARCH

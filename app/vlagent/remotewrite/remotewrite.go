@@ -17,6 +17,7 @@ import (
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/cespare/xxhash/v2"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/localstorage"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage/netinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
@@ -47,11 +48,20 @@ var (
 // rwctxsGlobal contains statically populated entries when -remoteWrite.url is specified.
 var rwctxsGlobal []*remoteWriteCtx
 
-// Storage implements insertutil.LogRowsStorage interface
-type Storage struct{}
+// Storage implements insertutil.LogRowsStorage interface.
+type Storage struct {
+	localFileName string
+}
+
+// NewStorage returns a storage that uses localFileName for the local copy.
+// An empty localFileName uses the default localStorage.fileName.
+func NewStorage(localFileName string) *Storage {
+	return &Storage{localFileName: localFileName}
+}
 
 // MustAddRows implements insertutil.LogRowsStorage interface
-func (*Storage) MustAddRows(lr *logstorage.LogRows) {
+func (s *Storage) MustAddRows(lr *logstorage.LogRows) {
+	localstorage.MustAddRows(lr, s.localFileName)
 	pushToRemoteStorages(lr)
 }
 
@@ -86,8 +96,12 @@ func InitSecretFlags() {
 //
 // Stop must be called for graceful shutdown.
 func Init(tmpDataPath string) {
-	if len(*remoteWriteURLs) == 0 {
+	localstorage.Init()
+	if len(*remoteWriteURLs) == 0 && !localstorage.Enabled() {
 		logger.Fatalf("at least one `-remoteWrite.url` command-line flag must be set")
+	}
+	if len(*remoteWriteURLs) == 0 {
+		return
 	}
 	if *queues > maxQueues {
 		*queues = maxQueues
@@ -105,12 +119,13 @@ func Init(tmpDataPath string) {
 
 // Stop stops remotewrite.
 //
-// It is expected that nobody calls Storage.MustAddRows during or after the call to this func.
+// It is expected that nobody calls TryPush during and after the call to this func.
 func Stop() {
 	for _, rwctx := range rwctxsGlobal {
 		rwctx.mustStop()
 	}
 	rwctxsGlobal = nil
+	localstorage.Stop()
 }
 
 func dropDanglingQueues(tmpDataPath string) {
@@ -258,7 +273,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	// Initialize pls
 	plsLen := *queues
 	if n := cgroup.AvailableCPUs(); plsLen > n {
-		// There is no sense in running more concurrent pendingLogs than available CPUs,
+		// There is no sense in running more than availableCPUs concurrent pendingLogs,
 		// since every pendingLogs can saturate up to a single CPU.
 		plsLen = n
 	}

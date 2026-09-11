@@ -64,7 +64,7 @@ func loadInClusterConfig() (*kubeAPIConfig, error) {
 	}, nil
 }
 
-// kubeConfig represents ~/.kube/config file structure.
+// kubeAPIConfig represents ~/.kube/config file structure.
 type kubeConfig struct {
 	Clusters []kubeConfigCluster `yaml:"clusters"`
 

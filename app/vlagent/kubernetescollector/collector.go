@@ -16,6 +16,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/localstorage"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/remotewrite"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/tail"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
@@ -199,8 +200,6 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 	}
 }
 
-var storage = &remotewrite.Storage{}
-
 func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 	ns := kc.mustGetNamespace(pod.Metadata.Namespace)
 
@@ -211,12 +210,13 @@ func (kc *kubernetesCollector) startReadPodLogs(pod pod) {
 		}
 
 		commonFields := getCommonFields(kc.currentNode, ns, pod, cs)
-		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) {
+		if kc.excludeFilter != nil && kc.excludeFilter.MatchRow(commonFields) && !isCSIIncluded(commonFields) {
 			// Filter matches - skip this container.
 			return
 		}
 
-		proc := newLogFileProcessor(storage, commonFields)
+		localFileName := localstorage.RouteForFields(commonFields)
+		proc := newLogFileProcessor(remotewrite.NewStorage(localFileName), commonFields)
 		kc.tailer.StartRead(filePath, proc)
 	}
 

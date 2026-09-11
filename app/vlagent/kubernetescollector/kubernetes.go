@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	enabled         = flag.Bool("kubernetesCollector", false, "Whether to enable collecting logs from Kubernetes")
+	enabled         = flag.Bool("kubernetesCollector", true, "Whether to enable collecting logs from Kubernetes")
 	checkpointsPath = flag.String("kubernetesCollector.checkpointsPath", "",
 		"Path to file with checkpoints for Kubernetes logs. "+
 			"Checkpoints are used to persist the read offsets for Kubernetes container logs. "+
@@ -29,6 +29,9 @@ var (
 		"The filter is applied to container metadata fields (e.g., kubernetes.pod_namespace, kubernetes.container_name) before reading the log files. "+
 		"This significantly reduces CPU and I/O usage by skipping logs from unwanted containers. "+
 		"See https://docs.victoriametrics.com/victorialogs/vlagent/#filtering-kubernetes-logs")
+	csiRbdHdd  = flag.Bool("kubernetesCollector.csiRbdHdd", false, "Whether to collect CSI RBD HDD logs from namespace rbd-hdd")
+	csiRbdSsd  = flag.Bool("kubernetesCollector.csiRbdSsd", false, "Whether to collect CSI RBD SSD logs from namespace rbd-ssd")
+	csiRbdNvme = flag.Bool("kubernetesCollector.csiRbdNvme", false, "Whether to collect CSI RBD NVMe logs from namespace rbd-nvme")
 )
 
 var collector *kubernetesCollector
@@ -89,6 +92,35 @@ func getCurrentNodeName(client *kubeAPIClient, isLocal bool) (string, error) {
 		return getCurrentNodeNameLocal(ctx, client)
 	}
 	return getCurrentNodeNameInCluster(ctx, client)
+}
+
+func isCSIIncluded(fields []logstorage.Field) bool {
+	namespace := ""
+	release := ""
+	component := ""
+	for _, field := range fields {
+		switch field.Name {
+		case "kubernetes.pod_namespace":
+			namespace = field.Value
+		case "kubernetes.pod_labels.release":
+			release = field.Value
+		case "kubernetes.pod_labels.component":
+			component = field.Value
+		}
+	}
+	if component != "nodeplugin" && component != "provisioner" {
+		return false
+	}
+	switch namespace {
+	case "rbd-hdd":
+		return *csiRbdHdd && release == namespace
+	case "rbd-ssd":
+		return *csiRbdSsd && release == namespace
+	case "rbd-nvme":
+		return *csiRbdNvme && release == namespace
+	default:
+		return false
+	}
 }
 
 func getCurrentNodeNameLocal(ctx context.Context, client *kubeAPIClient) (string, error) {

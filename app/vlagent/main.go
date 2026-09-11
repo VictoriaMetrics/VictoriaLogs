@@ -38,6 +38,10 @@ func main() {
 	// Write flags and help message to stdout, since it is easier to grep or pipe.
 	flag.CommandLine.SetOutput(os.Stdout)
 	flag.Usage = usage
+	if err := loadConfigFileFromArgs(); err != nil {
+		fmt.Fprintf(os.Stderr, "vlagent configuration error: %s\n", err)
+		os.Exit(1)
+	}
 	envflag.Parse()
 	buildinfo.Init()
 	initSecretFlags()
@@ -80,7 +84,7 @@ func main() {
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())
 }
 
-// requestHandler handles insert requests for VictoriaLogs
+// RequestHandler handles insert requests for VictoriaLogs
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 	if r.URL.Path == "/" {
 		if r.Method != http.MethodGet {
