@@ -177,4 +177,8 @@ func TestPatternMatcherMatch(t *testing.T) {
 	f("xx<N>", "xxxxxx123", patternMatcherOptionFull, false)
 	f("xx<N>", "xxxxxx123", patternMatcherOptionPrefix, false)
 	f("xx<N>", "xxxxxx123", patternMatcherOptionSuffix, true)
+
+	// hex chars at the beginning of the word must not be treated as a num
+	f("<N>ult", "default", patternMatcherOptionAny, false)
+	f("<N>_letter", "dead_letter", patternMatcherOptionAny, false)
 }
