@@ -641,19 +641,35 @@ func (p *SyslogParser) parseCEFExtension(s string) bool {
 		keyName := "cef.extension." + unescapeCEFValue(s[:n])
 		s = s[n+1:]
 
-		// Parse key value
-		n = nextUnescapedChar(s, '=')
-		if n < 0 {
+		// Parse key value.
+		// The '=' which starts the next key must have a space in front of it, since that
+		// space ends the current value. A '=' without one belongs to the value, even though
+		// the CEF spec asks the sender to escape it as `\=`.
+		valueEnd := -1
+		offset := 0
+		spaceOffset := 0
+		for {
+			// offset is 0 or points just past an unescaped '=', so the slice never starts
+			// inside a backslash run and nextUnescapedChar cannot miscount the escaping.
+			n = nextUnescapedChar(s[offset:], '=')
+			if n < 0 {
+				break
+			}
+			offset += n
+			if nSpace := strings.LastIndexByte(s[spaceOffset:offset], ' '); nSpace >= 0 {
+				valueEnd = spaceOffset + nSpace
+				break
+			}
+			// s[:offset] holds no space, so the next lookup may skip it.
+			spaceOffset = offset
+			offset++
+		}
+		if valueEnd < 0 {
 			p.AddField(keyName, s)
 			return true
 		}
-
-		n = strings.LastIndexByte(s[:n], ' ')
-		if n < 0 {
-			return false
-		}
-		p.AddField(keyName, unescapeCEFValue(s[:n]))
-		s = s[n+1:]
+		p.AddField(keyName, unescapeCEFValue(s[:valueEnd]))
+		s = s[valueEnd+1:]
 	}
 }
 
