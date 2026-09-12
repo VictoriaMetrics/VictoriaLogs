@@ -1874,6 +1874,7 @@ LogsQL supports the following pipes:
 - [`copy`](https://docs.victoriametrics.com/victorialogs/logsql/#copy-pipe) copies [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) (alias: `cp`).
 - [`decolorize`](https://docs.victoriametrics.com/victorialogs/logsql/#decolorize-pipe) drops [ANSI color codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
   from the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`deduplicate`](https://docs.victoriametrics.com/victorialogs/logsql/#deduplicate-pipe) drops duplicate log entries.
 - [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe) deletes [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) (aliases: `del`, `drop`, `rm`).
 - [`drop_empty_fields`](https://docs.victoriametrics.com/victorialogs/logsql/#drop_empty_fields-pipe) drops [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
   with empty values.
@@ -2122,6 +2123,45 @@ See also:
 
 - [`replace` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#replace-pipe)
 - [`replace_regexp` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#replace_regexp-pipe)
+
+### deduplicate pipe
+
+`<q> | deduplicate` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) drops duplicate log entries returned by `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax).
+Log entries are considered duplicates if all their [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) are identical,
+including [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) and [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+For example, the following query returns distinct log entries over the last 5 minutes:
+
+```logsql
+_time:5m | deduplicate
+```
+
+The log fields to compare can be specified inside `by (...)`. In this case log entries with identical values for the given fields are considered duplicates.
+For example, the following query returns a single log entry per each `user_id` over the last 5 minutes:
+
+```logsql
+_time:5m | deduplicate by (user_id)
+```
+
+The `by` keyword can be skipped in `deduplicate ...` pipe. For example, the following query is equivalent to the previous one:
+
+```logsql
+_time:5m | deduplicate (user_id)
+```
+
+The `deduplicate` pipe is useful for dropping logs, which were ingested more than once. Note that [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field)
+is taken into account when `by (...)` isn't set, so re-ingested logs, which were assigned distinct `_time` values during the ingestion, aren't dropped.
+Deduplicate by the fields, which do not change across re-ingestion, such as an event id, in this case.
+
+An arbitrary log entry is returned among the duplicate ones, since the logs are processed in parallel.
+
+The set of already returned log entries is stored in memory during query execution. Big number of distinct log entries may require a lot of memory.
+Prefer deduplicating by the minimum set of log fields via `by (...)` in this case.
+
+See also:
+
+- [`uniq` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#uniq-pipe)
+- [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe)
+- [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
 
 ### delete pipe
 
@@ -4104,6 +4144,7 @@ _time:5m | uniq (host, path) limit 100
 See also:
 
 - [`uniq_values` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
+- [`deduplicate` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#deduplicate-pipe)
 - [`top` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe)
 - [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
 
