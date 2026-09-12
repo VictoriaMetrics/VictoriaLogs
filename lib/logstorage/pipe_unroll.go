@@ -45,6 +45,10 @@ func (pu *pipeUnroll) canReturnLastNResults() bool {
 	return !slices.Contains(pu.fields, "_time")
 }
 
+func (pu *pipeUnroll) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pu *pipeUnroll) isFixedOutputFieldsOrder() bool {
 	return false
 }

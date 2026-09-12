@@ -70,6 +70,10 @@ func (pc *pipeStreamContext) canReturnLastNResults() bool {
 	return false
 }
 
+func (pc *pipeStreamContext) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (ps *pipeStreamContext) isFixedOutputFieldsOrder() bool {
 	return false
 }

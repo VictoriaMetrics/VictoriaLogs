@@ -78,6 +78,10 @@ func (pj *pipeJoin) canReturnLastNResults() bool {
 	return false
 }
 
+func (pj *pipeJoin) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pj *pipeJoin) isFixedOutputFieldsOrder() bool {
 	return false
 }

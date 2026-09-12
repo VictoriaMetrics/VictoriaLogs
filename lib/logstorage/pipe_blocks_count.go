@@ -42,6 +42,10 @@ func (pc *pipeBlocksCount) canReturnLastNResults() bool {
 	return false
 }
 
+func (pc *pipeBlocksCount) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pc *pipeBlocksCount) isFixedOutputFieldsOrder() bool {
 	return true
 }

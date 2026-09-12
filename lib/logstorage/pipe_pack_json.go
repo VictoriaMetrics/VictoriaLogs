@@ -40,6 +40,10 @@ func (pp *pipePackJSON) canReturnLastNResults() bool {
 	return pp.resultField != "_time"
 }
 
+func (pp *pipePackJSON) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pp *pipePackJSON) isFixedOutputFieldsOrder() bool {
 	return false
 }

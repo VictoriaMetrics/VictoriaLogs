@@ -81,6 +81,10 @@ func (pu *pipeUnion) canReturnLastNResults() bool {
 	return false
 }
 
+func (pu *pipeUnion) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pu *pipeUnion) isFixedOutputFieldsOrder() bool {
 	return false
 }

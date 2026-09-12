@@ -36,6 +36,10 @@ func (pd *pipeDelete) canReturnLastNResults() bool {
 	return !prefixfilter.MatchFilters(pd.fieldFilters, "_time")
 }
 
+func (pd *pipeDelete) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pd *pipeDelete) isFixedOutputFieldsOrder() bool {
 	return false
 }
