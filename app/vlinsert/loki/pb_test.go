@@ -9,7 +9,7 @@ import (
 )
 
 func TestParsePromLabels_Success(t *testing.T) {
-	f := func(s string) {
+	f := func(s, want string) {
 		t.Helper()
 		var fs logstorage.Fields
 		if err := parsePromLabels(&fs, s); err != nil {
@@ -21,15 +21,17 @@ func TestParsePromLabels_Success(t *testing.T) {
 			a = append(a, fmt.Sprintf("%s=%q", f.Name, f.Value))
 		}
 		result := "{" + strings.Join(a, ", ") + "}"
-		if result != s {
-			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, s)
+		if result != want {
+			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, want)
 		}
 	}
 
-	f("{}")
-	f(`{foo="bar"}`)
-	f(`{foo="bar", baz="x", y="z"}`)
-	f(`{foo="ba\"r\\z\n", a="", b="\"\\"}`)
+	f("{}", "{}")
+	f(`{foo="bar"}`, `{foo="bar"}`)
+	f(`{foo="bar", baz="x", y="z"}`, `{foo="bar", baz="x", y="z"}`)
+	f(`{foo="ba\"r\\z\n", a="", b="\"\\"}`, `{foo="ba\"r\\z\n", a="", b="\"\\"}`)
+	f(`{ level="INFO", application="xxx"}`, `{level="INFO", application="xxx"}`)
+	f(`{ level =" INFO "}`, `{level=" INFO "}`)
 }
 
 func TestParsePromLabels_Failure(t *testing.T) {
