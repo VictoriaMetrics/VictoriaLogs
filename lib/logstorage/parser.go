@@ -517,6 +517,16 @@ func (q *Query) CanLiveTail() bool {
 	return true
 }
 
+// PreservesTimeField returns true if q preserves the original _time field in the query results.
+func (q *Query) PreservesTimeField() bool {
+	var pf prefixfilter.Filter
+	pf.AddAllowFilter("_time")
+	for i := len(q.pipes) - 1; i >= 0; i-- {
+		q.pipes[i].updateNeededFields(&pf)
+	}
+	return pf.MatchString("_time")
+}
+
 func (q *Query) getStreamIDs() []streamID {
 	f := q.getFinalFilter()
 	switch t := f.(type) {

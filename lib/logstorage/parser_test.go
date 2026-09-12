@@ -4306,6 +4306,36 @@ func TestQueryCanLiveTail(t *testing.T) {
 	f("* | sample 10", true)
 }
 
+func TestQueryPreservesTimeField(t *testing.T) {
+	f := func(qStr string, resultExpected bool) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("cannot parse [%s]: %s", qStr, err)
+		}
+		result := q.PreservesTimeField()
+		if result != resultExpected {
+			t.Fatalf("unexpected result for PreservesTimeField(%q); got %v; want %v", qStr, result, resultExpected)
+		}
+	}
+
+	f("*", true)
+	f("* | fields _time, _msg", true)
+	f("* | fields _*", true)
+	f("* | delete foo", true)
+	f("* | copy _time as event_time", true)
+	f("* | filter foo:bar", true)
+	f("* | sample 10", true)
+
+	f("* | fields _msg", false)
+	f("* | delete _time", false)
+	f("* | delete _*", false)
+	f("* | rename _time as event_time", false)
+	f("* | copy foo as _time", false)
+	f("* | format 'x<y>' as _time", false)
+}
+
 func TestQueryDropAllPipes(t *testing.T) {
 	f := func(qStr, resultExpected string) {
 		t.Helper()
