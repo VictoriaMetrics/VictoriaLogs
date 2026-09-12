@@ -151,23 +151,21 @@ func decodeLabelPair(src []byte, fs *logstorage.Fields) error {
 	//   string value = 2;
 	// }
 
-	name, ok, err := easyproto.GetString(src, 1)
+	name, _, err := easyproto.GetString(src, 1)
 	if err != nil {
 		return fmt.Errorf("cannot read name: %w", err)
 	}
-	if !ok {
+	if name == "" {
 		return fmt.Errorf("missing name")
 	}
 
-	value, ok, err := easyproto.GetString(src, 2)
+	// Proto3 omits scalar fields containing default values from the wire.
+	value, _, err := easyproto.GetString(src, 2)
 	if err != nil {
 		return fmt.Errorf("cannot read value: %w", err)
 	}
-	if !ok {
-		return fmt.Errorf("missing value")
-	}
 
-	if name != "" && value != "" {
+	if value != "" {
 		fs.Add(name, value)
 	}
 

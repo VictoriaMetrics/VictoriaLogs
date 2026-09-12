@@ -119,6 +119,59 @@ func TestParseProtobufRequest_Success(t *testing.T) {
 {"x":"y","_msg":"yx"}`)
 }
 
+func TestParseProtobufRequest_EmptyStructuredMetadataValue(t *testing.T) {
+	const timestamp = int64(1577836800000000001)
+
+	m := mp.Get()
+	mm := m.MessageMarshaler()
+	s := mm.AppendMessage(1)
+	s.AppendString(1, "{}")
+	e := s.AppendMessage(2)
+	marshalTime(e, 1, time.Unix(0, timestamp))
+	e.AppendString(2, "foo bar")
+
+	// An empty proto3 string is omitted from the wire. Such structured metadata
+	// must be ignored instead of rejecting the request.
+	e.AppendMessage(3).AppendString(1, "empty_value")
+	metadata := e.AppendMessage(3)
+	metadata.AppendString(1, "foo")
+	metadata.AppendString(2, "bar")
+
+	data := m.Marshal(nil)
+	mp.Put(m)
+
+	tlp := &insertutil.TestLogMessageProcessor{}
+	if err := parseProtobufRequest(data, tlp, nil, nil, "", false, false); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if err := tlp.Verify([]int64{timestamp}, `{"foo":"bar","_msg":"foo bar"}`); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseProtobufRequest_EmptyStructuredMetadataName(t *testing.T) {
+	m := mp.Get()
+	mm := m.MessageMarshaler()
+	s := mm.AppendMessage(1)
+	s.AppendString(1, "{}")
+	e := s.AppendMessage(2)
+	e.AppendString(2, "foo bar")
+	e.AppendMessage(3).AppendString(2, "bar")
+
+	data := m.Marshal(nil)
+	mp.Put(m)
+
+	tlp := &insertutil.TestLogMessageProcessor{}
+	err := parseProtobufRequest(data, tlp, nil, nil, "", false, false)
+	if err == nil {
+		t.Fatalf("expecting non-nil error")
+	}
+	errExpected := "cannot decode PushRequest: cannot unmarshal Stream: cannot unmarshal Entry: cannot unmarshal StructuredMetadata: missing name"
+	if err.Error() != errExpected {
+		t.Fatalf("unexpected error; got\n%q\nwant\n%q", err, errExpected)
+	}
+}
+
 func TestParseProtobufRequest_ParseMessage(t *testing.T) {
 	f := func(s string, msgFields, preserveKeys []string, msgFieldsPrefix string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
