@@ -217,6 +217,11 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		vmalertproxy.HandleRequest(w, r, path)
 		return true
 	}
+	if path == "/select/logsql/active_queries" {
+		logsqlActiveQueriesRequests.Inc()
+		logsql.ProcessActiveQueriesRequest(ctx, w, r)
+		return true
+	}
 
 	// Limit the number of concurrent queries, which can consume big amounts of CPU time.
 	startTime := time.Now()
@@ -532,6 +537,8 @@ var (
 
 	// no need to track the duration for query_time_range requests, since they are instant
 	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
+
+	logsqlActiveQueriesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/active_queries"}`)
 
 	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 
