@@ -46,7 +46,7 @@ func (pc *pipeCollapseNums) canLiveTail() bool {
 }
 
 func (pc *pipeCollapseNums) canReturnLastNResults() bool {
-	return true
+	return pc.field != "_time"
 }
 
 func (pc *pipeCollapseNums) isFixedOutputFieldsOrder() bool {

@@ -42,7 +42,7 @@ func (pu *pipeUnroll) canLiveTail() bool {
 }
 
 func (pu *pipeUnroll) canReturnLastNResults() bool {
-	return true
+	return !slices.Contains(pu.fields, "_time")
 }
 
 func (pu *pipeUnroll) isFixedOutputFieldsOrder() bool {
