@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "preact/compat";
+import { forwardRef, useImperativeHandle } from "preact/compat";
 import { ArrowDownIcon, SettingsIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import Modal from "../../Main/Modal/Modal";
@@ -11,6 +11,7 @@ import ThemeControl from "../ThemeControl/ThemeControl";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
 import QueryTimeOverride from "./QueryTimeOverride/QueryTimeOverride";
+import BrowserTabController from "./BrowserTabController/BrowserTabController";
 
 const title = "Settings";
 
@@ -27,27 +28,16 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
 
   const appModeEnable = getAppModeEnable();
 
-  const serverSettingRef = useRef<ChildComponentHandle>(null);
-  const limitsSettingRef = useRef<ChildComponentHandle>(null);
-  const timezoneSettingRef = useRef<ChildComponentHandle>(null);
-
   const {
     value: open,
     setTrue: handleOpen,
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const handleApply = () => {
-    serverSettingRef.current && serverSettingRef.current.handleApply();
-    limitsSettingRef.current && limitsSettingRef.current.handleApply();
-    timezoneSettingRef.current && timezoneSettingRef.current.handleApply();
-    handleClose();
-  };
-
   const controls = [
     {
       show: true,
-      component: <TimezonesPicker ref={timezoneSettingRef}/>
+      component: <TimezonesPicker/>
     },
     {
       show: true,
@@ -56,7 +46,11 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     {
       show: !appModeEnable,
       component: <ThemeControl/>
-    }
+    },
+    {
+      show: true,
+      component: <BrowserTabController/>
+    },
   ].filter(control => control.show);
 
   useImperativeHandle(ref, () => ({
@@ -108,22 +102,6 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
               {control.component}
             </div>
           ))}
-          <div className="vm-server-configurator-footer">
-            <Button
-              color="error"
-              variant="outlined"
-              onClick={handleClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="primary"
-              variant="contained"
-              onClick={handleApply}
-            >
-              Apply
-            </Button>
-          </div>
         </div>
       </Modal>
     )}

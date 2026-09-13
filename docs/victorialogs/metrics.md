@@ -1,6 +1,7 @@
 ---
 weight: 20
 title: Metrics of VictoriaLogs
+description: "Prometheus metrics exposed by VictoriaLogs for operational monitoring."
 menu:
   docs:
     parent: victorialogs
@@ -93,7 +94,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Labels:**
 - `type`: ingestion protocol
 
-**Description:** Time taken to turn a batch of buffered logs into an in-memory part that becomes searchable. Triggered when the buffer fills up or during periodic flushes (every ~1 second). High values suggest CPU pressure or heavy ingestion load.
+**Description:** Time taken to flush accumulated logs from memory buffers to storage. Triggered when buffers fill up or during periodic flushes (every ~1 second with jitter). High values suggest storage bottlenecks or slow disk performance.
 
 ### vl_too_long_lines_skipped_total
 **Type:** Counter
@@ -319,7 +320,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_streams_created_total
 **Type:** Counter
 
-**Description:** New unique combinations of stream fields first encountered during log ingestion. Only counts streams not previously seen since startup, shows growth in stream cardinality and high-cardinality detection.
+**Description:** The number of log streams registered in daily partitions since the last VictoriaLogs restart. The same stream is counted again when it is registered in another daily partition. If this metric increases much faster than expected outside the normal creation of daily partitions, it may indicate high cardinality.
 
 ### vl_indexdb_rows
 **Type:** Gauge

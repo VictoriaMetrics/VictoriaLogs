@@ -150,6 +150,9 @@ func (sup *statsUniqValuesProcessor) mergeState(_ *chunkedAllocator, sf statsFun
 		return
 	}
 
+	if sup.m == nil {
+		sup.m = make(map[string]struct{}, len(src.m))
+	}
 	for k := range src.m {
 		if _, ok := sup.m[k]; !ok {
 			sup.m[k] = struct{}{}

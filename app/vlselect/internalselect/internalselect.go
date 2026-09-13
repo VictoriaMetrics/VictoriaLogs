@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding/zstd"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/netutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -30,17 +32,34 @@ var maxConcurrentRequests = flag.Int("internalselect.maxConcurrentRequests", 8, 
 	"other requests are put into the wait queue; see https://docs.victoriametrics.com/victorialogs/cluster/")
 
 // RequestHandler processes requests to /internal/select/*
-func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	startTime := time.Now()
 
 	select {
 	case concurrencyLimitCh <- struct{}{}:
-		if d := time.Since(startTime); d > 100*time.Millisecond {
+		waitDuration := time.Since(startTime)
+		if waitDuration > 100*time.Millisecond {
 			// Measure the wait duration for requests, which hit the concurrency limit and waited for more than 100 milliseconds to be executed.
-			concurrentRequestsWaitDuration.Update(d.Seconds())
+			concurrentRequestsWaitDuration.Update(waitDuration.Seconds())
 		}
-		requestHandler(ctx, w, r, startTime)
+		requestHandler(ctx, w, r, path, startTime)
 		<-concurrencyLimitCh
+
+		// Log slow queries executed by this vlstorage node.
+		if strings.HasPrefix(path, "/internal/select/") && logSlowQueryDuration > 0 {
+			if totalDuration := time.Since(startTime); totalDuration >= logSlowQueryDuration {
+				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
+				requestURI := httpserver.GetRequestURI(r)
+				logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, totalDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
+					logSlowQueryDuration, remoteAddr, totalDuration.Seconds(), waitDuration.Seconds(), requestURI)
+				metrics.GetOrCreateCounter(`vl_slow_queries_total`).Inc()
+			}
+		}
 	case <-ctx.Done():
 		// Unconditionally measure the wait time until the the request is canceled by the client.
 		concurrentRequestsWaitDuration.UpdateDuration(startTime)
@@ -48,8 +67,9 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 }
 
 // Init initializes internalselect package.
-func Init() {
+func Init(slowQueryDuration time.Duration) {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
+	logSlowQueryDuration = slowQueryDuration
 }
 
 // Stop stops vlselect
@@ -59,19 +79,24 @@ func Stop() {
 
 var concurrencyLimitCh chan struct{}
 
+var logSlowQueryDuration time.Duration
+
 var concurrentRequestsWaitDuration = metrics.NewSummary(`vl_concurrent_internalselect_requests_wait_duration`)
 
-func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, startTime time.Time) {
+func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, path string, startTime time.Time) {
 	// Parse request before obtaining the request args from it in order to catch parse errors,
 	// which are silently skipped at r.FormValue() calls inside the request handlers executed below.
 	//
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1462
 	if err := parseRequest(r); err != nil {
+		if ctx.Err() != nil {
+			// Do not report parse errors for canceled requests, since they are expected and legal.
+			return
+		}
 		httpserver.Errorf(w, r, "cannot parse request to %q: %s", r.URL, err)
 		return
 	}
 
-	path := r.URL.Path
 	rh := requestHandlers[path]
 	if rh == nil {
 		httpserver.Errorf(w, r, "unsupported endpoint requested: %s", path)
@@ -81,7 +106,15 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_requests_total{path=%q}`, path)).Inc()
 	if err := rh(ctx, w, r); err != nil && !netutil.IsTrivialNetworkError(err) {
 		metrics.GetOrCreateCounter(fmt.Sprintf(`vl_http_errors_total{path=%q}`, path)).Inc()
+
+		// Return the error with 502 status code to vlselect, so it properly propagates the status code to the client,
+		// even if returning partial responses is enabled via -search.allowPartialResponse command-line flag.
+		err = &httpserver.ErrorWithStatusCode{
+			Err:        err,
+			StatusCode: http.StatusBadGateway,
+		}
 		httpserver.Errorf(w, r, "%s", err)
+
 		// The return is skipped intentionally in order to track the duration of failed queries.
 	}
 	metrics.GetOrCreateSummary(fmt.Sprintf(`vl_http_request_duration_seconds{path=%q}`, path)).UpdateDuration(startTime)
@@ -90,9 +123,20 @@ func requestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 func parseRequest(r *http.Request) error {
 	maxMemory := int64(0.1 * float64(memory.Allowed()))
 	ct := r.Header.Get("Content-Type")
+
+	// ParseMultipartForm allows configuring the memory limit,
+	// while ParseForm limits URL-encoded bodies to 10MB.
 	if strings.HasPrefix(ct, "multipart/form-data;") {
 		if err := r.ParseMultipartForm(maxMemory); err != nil {
 			return fmt.Errorf("cannot parse multipart-encoded request args: %w", err)
+		}
+
+		// ParseMultipartForm may not read the body to EOF if data after the multipart boundary,
+		// such as the terminator for "Transfer-Encoding: chunked", arrives late.
+		// Reading the body to EOF allows net/http to detect when the client disconnects.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1672#issuecomment-5247918811
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			return fmt.Errorf("cannot read multipart-encoded request body: %w", err)
 		}
 	} else {
 		if err := r.ParseForm(); err != nil {
@@ -512,11 +556,8 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 func checkProtocolVersion(r *http.Request, expectedProtocolVersion string) error {
 	version := r.FormValue("version")
 	if version != expectedProtocolVersion {
-		return &httpserver.ErrorWithStatusCode{
-			Err: fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
-				"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion),
-			StatusCode: http.StatusBadGateway,
-		}
+		return fmt.Errorf("unexpected protocol version=%q; want %q; the most likely cause of this error is different versions of VictoriaLogs cluster components; "+
+			"make sure VictoriaLogs components have the same release version", version, expectedProtocolVersion)
 	}
 	return nil
 }

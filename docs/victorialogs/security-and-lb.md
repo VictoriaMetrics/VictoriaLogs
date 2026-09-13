@@ -5,6 +5,7 @@ menu:
     parent: victorialogs
     weight: 12
 title: Security and Load Balancing
+description: "Secure VictoriaLogs with vmauth, TLS termination, and multi-tenant proxying."
 tags:
   - logs
 ---
@@ -44,6 +45,7 @@ Both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints,
 which [start with the `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
 When configuring request authorization or load balancing at `vmauth`, it is important to allow access to this path prefix.
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for how these two deployment modes compare.
 
 The following [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration can be used for authorizing requests
 to HTTP querying APIs at VictoriaLogs:
@@ -502,6 +504,8 @@ This may be needed if the corresponding VictoriaLogs components are exposed to u
   Use `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations.
   Use `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/delete/*`](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) - deletes the ingested logs.
+  Use `-deleteAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be accessed by specifying `authKey` query arg with the value matching the corresponding `-*AuthKey` command-line flag.
 

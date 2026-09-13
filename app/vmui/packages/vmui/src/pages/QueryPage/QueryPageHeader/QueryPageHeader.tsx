@@ -1,4 +1,4 @@
-import { FC, useEffect } from "preact/compat";
+import { FC, useRef } from "preact/compat";
 import { PlayIcon, SpinnerIcon } from "../../../components/Main/Icons";
 import "./style.scss";
 import Button from "../../../components/Main/Button/Button";
@@ -6,15 +6,15 @@ import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEdit
 import LogsLimitInput from "../../../components/Configurators/LogsLimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete
   from "../../../components/Configurators/QueryEditor/LogsQL/LogsQueryEditorAutocomplete";
-import { useQueryDispatch, useQueryState } from "../../../state/query/QueryStateContext";
+import { useQueryState } from "../../../state/query/QueryStateContext";
 import QueryHistory from "../../../components/QueryHistory/QueryHistory";
-import useBoolean from "../../../hooks/useBoolean";
 import { useQuickAutocomplete } from "../../../hooks/useQuickAutocomplete";
 import FilterSidebarToggle from "../../../components/FilterSidebar/FilterSidebarToggle";
 import AutocompleteToggle from "../../../components/Configurators/QueryEditor/AutocompleteToggle";
 import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersReset";
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
+import { getHistoryFromStorage } from "../../../components/QueryHistory/utils";
 
 interface Props {
   query: string;
@@ -24,7 +24,7 @@ interface Props {
   isLoading: boolean;
   onChange: (val: string) => void;
   onChangeLimit: (val: number) => void;
-  onRun: () => void;
+  onRun: (query?: string) => void;
 }
 
 const QueryPageHeader: FC<Props> = ({
@@ -37,43 +37,37 @@ const QueryPageHeader: FC<Props> = ({
   onChangeLimit,
   onRun,
 }) => {
-  const { autocomplete, queryHistory, autocompleteQuick } = useQueryState();
-  const queryDispatch = useQueryDispatch();
+  const { autocompleteQuick } = useQueryState();
   const setQuickAutocomplete = useQuickAutocomplete();
 
-  const { value: awaitQuery, setValue: setAwaitQuery } = useBoolean(false);
+  const historyIndexRef = useRef<number | null>(null);
 
   const handleHistoryChange = (step: number) => {
-    if (!queryHistory.length) return;
+    const history = getHistoryFromStorage();
+    if (!history.length) return;
 
-    const { values, index } = queryHistory[0];
-    const newIndexHistory = index + step;
-    if (newIndexHistory < 0 || newIndexHistory >= values.length) return;
-    onChange(values[newIndexHistory] || "");
-    queryDispatch({
-      type: "SET_QUERY_HISTORY_BY_INDEX",
-      payload: { value: { values, index: newIndexHistory }, queryNumber: 0 }
-    });
-  };
+    const currentIndex = historyIndexRef.current ?? (step > 0 ? -1 : 0);
+    const nextIndex = currentIndex + step;
 
-  const handleChangeAndRun = (value: string) => {
-    onChange(value);
-    setAwaitQuery(true);
+    if (nextIndex < 0 || nextIndex >= history.length) return;
+
+    historyIndexRef.current = nextIndex;
+    onChange(history[nextIndex].query);
   };
 
   const createHandlerArrow = (step: number) => () => {
     handleHistoryChange(step);
   };
 
-  useEffect(() => {
-    if (awaitQuery) {
-      onRun();
-      setAwaitQuery(false);
-    }
-  }, [query, awaitQuery]);
+  const handleChangeAndRun = (value: string) => {
+    onChange(value);
+    onRun(value);
+  };
 
   const onChangeHandle = (value: string) => {
+    historyIndexRef.current = null;
     onChange(value);
+
     if (autocompleteQuick) {
       setQuickAutocomplete(false);
     }
@@ -84,10 +78,9 @@ const QueryPageHeader: FC<Props> = ({
       <div className="vm-query-page-header-top">
         <QueryEditor
           value={query}
-          autocomplete={autocomplete || autocompleteQuick}
           autocompleteEl={LogsQueryEditorAutocomplete}
-          onArrowUp={createHandlerArrow(-1)}
-          onArrowDown={createHandlerArrow(1)}
+          onArrowUp={createHandlerArrow(1)}
+          onArrowDown={createHandlerArrow(-1)}
           onEnter={onRun}
           onChange={onChangeHandle}
           label={"Query"}
@@ -108,14 +101,11 @@ const QueryPageHeader: FC<Props> = ({
         </div>
         <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
-        <QueryHistory
-          handleSelectQuery={handleChangeAndRun}
-          historyKey={"LOGS_QUERY_HISTORY"}
-        />
+        <QueryHistory handleSelectQuery={handleChangeAndRun}/>
         <div className="vm-query-page-header-bottom-execute">
           <Button
             startIcon={isLoading ? <SpinnerIcon/> : <PlayIcon/>}
-            onClick={onRun}
+            onClick={() => onRun()}
             fullWidth
           >
             <div>

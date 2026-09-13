@@ -20,7 +20,7 @@ type Props = {
 
 const browserTimezone = getBrowserTimezone();
 
-const TimezonesList: FC<Props>= ({ onChange }) => {
+const TimezonesList: FC<Props> = ({ onChange }) => {
   const { isMobile } = useDeviceDetect();
   const { defaultTimezone } = useTimeState();
 
@@ -74,30 +74,30 @@ const TimezonesList: FC<Props>= ({ onChange }) => {
   return (
     <div
       className={classNames({
-          "vm-timezones-list": true,
-          "vm-timezones-list_mobile": isMobile,
-        })}
+        "vm-list": true,
+        "vm-timezones-list": true,
+        "vm-timezones-list_mobile": isMobile,
+      })}
     >
       <div className="vm-timezones-list-header">
         <div className="vm-timezones-list-header__search">
           <TextField
-            autofocus
             label="Search"
             value={search}
             onChange={handleChangeSearch}
           />
         </div>
-        {pinnedTimezones.map((t, i) => t && (
+      </div>
+      {pinnedTimezones.map((t, i) => t && (
         <div
           key={`${i}_${t.region}`}
-          className="vm-timezones-item vm-timezones-list-group-options__item"
+          className="vm-list-item vm-timezones-item vm-timezones-list-group-options__item"
           onClick={createHandlerSetTimezone(t)}
         >
           <div className="vm-timezones-item__title">{t.title}{t.isInvalid && <WarningTimezone/>}</div>
           <div className="vm-timezones-item__utc">{t.utc}</div>
         </div>
-          ))}
-      </div>
+      ))}
       {timezonesGroups.map(t => (
         <div
           className="vm-timezones-list-group"
@@ -110,18 +110,18 @@ const TimezonesList: FC<Props>= ({ onChange }) => {
             <div className="vm-timezones-list-group-options">
               {searchTimezones[t] && searchTimezones[t].map(item => (
                 <div
-                  className="vm-timezones-item vm-timezones-list-group-options__item"
+                  className="vm-list-item vm-timezones-item vm-timezones-list-group-options__item"
                   onClick={createHandlerSetTimezone(item)}
                   key={item.search}
                 >
                   <div className="vm-timezones-item__title">{item.region}</div>
                   <div className="vm-timezones-item__utc">{item.utc}</div>
                 </div>
-                ))}
+              ))}
             </div>
           </Accordion>
         </div>
-        ))}
+      ))}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hasBalancedQuotes, splitLogicalParts } from "./parser";
-import { LogicalPart, LogicalPartType } from "./types";
+import { LogicalPart, LogicalPartType } from "../types";
 
 function getValue(p: LogicalPart): string {
   return p.value;

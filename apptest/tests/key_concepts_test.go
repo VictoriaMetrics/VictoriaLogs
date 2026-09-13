@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
@@ -14,7 +13,6 @@ import (
 
 // TestVlsingleKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-single.
 func TestVlsingleKeyConcepts(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -140,7 +138,6 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 
 // TestVlclusterKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-cluster.
 func TestVlclusterKeyConcepts(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()

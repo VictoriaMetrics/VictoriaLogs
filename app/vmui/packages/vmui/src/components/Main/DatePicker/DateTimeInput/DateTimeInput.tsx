@@ -1,17 +1,13 @@
-import { FC, useEffect, useRef, useState, RefObject, ChangeEvent, KeyboardEvent, useMemo } from "preact/compat";
+import { FC, useEffect, useRef, useState, RefObject, useMemo } from "preact/compat";
 import { CalendarIcon } from "../../Icons";
 import DatePicker from "../DatePicker";
 import Button from "../../Button/Button";
-import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import InputMask from "react-input-mask";
 import classNames from "classnames";
 import "./style.scss";
 import { vmDate } from "../../../../utils/time";
-
-const formatStringDate = (val: string) => {
-  const localDate = vmDate(val);
-  return localDate.isValid() ? localDate.nano().format(DATE_TIME_FORMAT) : val;
-};
+import { parseDateTimeInputValue } from "./utils";
+import { TargetedEvent } from "preact";
 
 interface DateTimeInputProps {
   value?:  string;
@@ -33,51 +29,24 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [inputRef, setInputRef] = useState<HTMLInputElement | null>(null);
 
-  const [maskedValue, setMaskedValue] = useState(formatStringDate(value));
-  const isValidDate = !!maskedValue && vmDate(maskedValue).isValid();
-  const isoValue = useMemo(() => {
-    return isValidDate ? vmDate.tz(maskedValue).nano().toISOString() : "";
-  }, [maskedValue]);
-
-  const datePickerValue = useMemo(() => isValidDate ? vmDate.tz(maskedValue) : vmDate().tz(), [maskedValue]);
+  const isValidDate = useMemo(() => !!parseDateTimeInputValue(value), [value]);
+  const datePickerValue = useMemo(() => isValidDate ? vmDate.tz(value) : vmDate().tz(), [value]);
 
   const [focusToTime, setFocusToTime] = useState(false);
-  const [awaitChangeForEnter, setAwaitChangeForEnter] = useState(false);
   const error = isValidDate ? "" : "Invalid date format";
 
-  const handleMaskedChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setMaskedValue(e.currentTarget.value);
+  const handleMaskedChange = (e: TargetedEvent<HTMLInputElement, Event>) => {
+    onChange(e.currentTarget.value);
   };
 
-  const handleBlur = () => {
-    if (!isValidDate) return;
-    onChange(isoValue);
-  };
-
-  const handleKeyUp = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      if (!isValidDate) return;
-      onChange(isoValue);
-      setAwaitChangeForEnter(true);
-    }
+  const handleKeyUp = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && isValidDate) onEnter();
   };
 
   const handleChangeDate = (val: string) => {
-    setMaskedValue(val);
+    onChange(val);
     setFocusToTime(true);
   };
-
-  useEffect(() => {
-    const newValue = formatStringDate(value);
-    if (newValue !== maskedValue) {
-      setMaskedValue(newValue);
-    }
-
-    if (awaitChangeForEnter) {
-      onEnter();
-      setAwaitChangeForEnter(false);
-    }
-  }, [value]);
 
   useEffect(() => {
     if (focusToTime && inputRef) {
@@ -100,12 +69,11 @@ const DateTimeInput: FC<DateTimeInputProps> = ({
         inputRef={setInputRef}
         mask="9999-99-99 99:99:99.999999999"
         placeholder="YYYY-MM-DD HH:mm:ss.SSSSSSSSS"
-        value={maskedValue}
+        value={value}
         autoCapitalize={"none"}
         inputMode={"numeric"}
         maskChar={null}
         onChange={handleMaskedChange}
-        onBlur={handleBlur}
         onKeyUp={handleKeyUp}
       />
       {error && (

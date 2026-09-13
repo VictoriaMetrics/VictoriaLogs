@@ -210,8 +210,8 @@ func (st *StreamTags) checkCorrectness() error {
 		if err := CheckStreamFieldName(tagName); err != nil {
 			return fmt.Errorf("invalid stream tag name: %w", err)
 		}
-		if tagName <= prevTagName {
-			return fmt.Errorf("stream tags must be sorted in alphabetical order; got %q which is less or equal than %q; streamTags=%s", tagName, prevTagName, st)
+		if tagName < prevTagName {
+			return fmt.Errorf("stream tags must be sorted in alphabetical order; got %q which is less than %q; streamTags=%s", tagName, prevTagName, st)
 		}
 		prevTagName = tagName
 	}

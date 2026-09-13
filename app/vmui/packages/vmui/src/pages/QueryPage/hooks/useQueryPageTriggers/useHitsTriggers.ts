@@ -2,6 +2,7 @@ import { useMemo } from "preact/compat";
 import { GRAPH_QUERY_MODE } from "../../../../components/Chart/BarHitsChart/types";
 import { useSearchParams } from "react-router-dom";
 import { useHitsChartConfig } from "../../HitsPanel/hooks/useHitsChartConfig";
+import { useHideChart } from "../../HitsPanel/hooks/useHideChart";
 
 const graphQueryModes = new Set<string>(Object.values(GRAPH_QUERY_MODE));
 
@@ -15,7 +16,7 @@ export const useHitsTriggers = () => {
   const rawMode = searchParams.get("graph_mode");
   const graphQueryMode = isValidMode(rawMode) ? rawMode : GRAPH_QUERY_MODE.hits;
 
-  const isChartHidden = searchParams.get("hide_chart") === "true";
+  const [isChartHidden] = useHideChart();
 
   const {
     topHits: { value: topHits },

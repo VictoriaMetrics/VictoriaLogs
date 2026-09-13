@@ -67,6 +67,7 @@ func (sv *statsJSONValues) newStatsProcessor(a *chunkedAllocator) statsProcessor
 
 	svp := a.newStatsJSONValuesTopkProcessor()
 	svp.sortFieldsLen = sortFieldsLen
+	svp.h.sortFields = sv.sortFields
 	return svp
 }
 

@@ -1,14 +1,20 @@
-import { useEffect, useState, useRef, useCallback } from "preact/compat";
-import { ContextData, ContextType } from "./types";
-import { FunctionIcon, LabelIcon, MetricIcon, ValueIcon } from "../../../Main/Icons";
-import { AutocompleteOptions } from "../../../Main/Autocomplete/Autocomplete";
-import { useAppState } from "../../../../state/common/StateContext";
-import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
-import { AUTOCOMPLETE_LIMITS } from "../../../../constants/queryAutocomplete";
-import { LogsFieldValues } from "../../../../api/types";
-import { useLogsDispatch, useLogsState } from "../../../../state/logsPanel/LogsStateContext";
-import { useTenant } from "../../../../hooks/useTenant";
-import { generateQuery } from "./utils";
+import { useEffect, useState, useRef, useCallback, ReactNode } from "preact/compat";
+import { ContextData, ContextType } from "../types";
+import { SuggestFunctionIcon, SuggestLabelIcon, SuggestMetricIcon, SuggestValueIcon } from "../../../../Main/Icons";
+import { AutocompleteOptions } from "../../../../Main/Autocomplete/Autocomplete";
+import { useAppState } from "../../../../../state/common/StateContext";
+import { useTimePeriod } from "../../../../../pages/QueryPage/hooks/useTimePeriod";
+import { AUTOCOMPLETE_LIMITS } from "../../../../../constants/queryAutocomplete";
+import { LogsFieldValues } from "../../../../../api/types";
+import { useLogsDispatch, useLogsState } from "../../../../../state/logsPanel/LogsStateContext";
+import { useTenant } from "../../../../../hooks/useTenant";
+import { generateQuery } from "../helpers/utils";
+import { DEFAULT_QUERY } from "../../../../../pages/QueryPage/hooks/useQueryController";
+
+type UseLogsQLFetchOptions = {
+  contextData?: ContextData;
+  extraParams?: URLSearchParams;
+}
 
 type FetchDataArgs = {
   urlSuffix: string;
@@ -16,17 +22,17 @@ type FetchDataArgs = {
   params?: URLSearchParams;
 }
 
-const icons = {
-  [ContextType.FilterName]: <MetricIcon/>,
-  [ContextType.FilterUnknown]: <MetricIcon/>,
-  [ContextType.FilterValue]: <ValueIcon/>,
-  [ContextType.PipeName]: <FunctionIcon/>,
-  [ContextType.PipeValue]: <LabelIcon/>,
-  [ContextType.Unknown]: <ValueIcon/>,
-  [ContextType.FilterOrPipeName]: <FunctionIcon/>
+const icons: Partial<Record<ContextType, ReactNode>> = {
+  [ContextType.FilterName]: <SuggestMetricIcon/>,
+  [ContextType.FilterUnknown]: <SuggestMetricIcon/>,
+  [ContextType.FilterValue]: <SuggestValueIcon/>,
+  [ContextType.PipeName]: <SuggestFunctionIcon/>,
+  [ContextType.PipeValue]: <SuggestLabelIcon/>,
+  [ContextType.Unknown]: <SuggestValueIcon/>,
+  [ContextType.FilterOrPipeName]: <SuggestFunctionIcon/>,
 };
 
-export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: URLSearchParams) => {
+export const useLogsQLFetchOptions = ({ contextData, extraParams }: UseLogsQLFetchOptions) => {
   const { serverUrl } = useAppState();
   const { period: { start, end } } = useTimePeriod();
   const { autocompleteCache } = useLogsState();
@@ -37,6 +43,8 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
 
   const [fieldNames, setFieldNames] = useState<AutocompleteOptions[]>([]);
   const [fieldValues, setFieldValues] = useState<AutocompleteOptions[]>([]);
+
+  const requestIdRef = useRef(0);
 
   const abortControllerRef = useRef(new AbortController());
 
@@ -55,24 +63,29 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
     return values.map(v => ({
       value: v.value,
       type: `${type}`,
-      icon: icons[type]
+      group: "Autocomplete",
+      icon: icons[type],
     }));
   };
 
   const fetchData = async ({ urlSuffix, setter, params }: FetchDataArgs) => {
     abortControllerRef.current.abort();
+
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
-    const tenantString = new URLSearchParams(tenant).toString();
 
+    const requestId = ++requestIdRef.current;
+    const isLatestRequest = () => requestIdRef.current === requestId;
+
+    const tenantString = new URLSearchParams(tenant).toString();
     const key = `${urlSuffix}?${params?.toString()}&${tenantString}`;
 
     setLoading(true);
+
     try {
       const cachedData = autocompleteCache.get(key);
       if (cachedData) {
-        setter(cachedData);
-        setLoading(false);
+        if (isLatestRequest()) setter(cachedData);
         return;
       }
 
@@ -85,17 +98,20 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
 
       if (response.ok) {
         const data = await response.json();
+
+        if (!isLatestRequest()) return;
+
         const value = (data?.values || []) as LogsFieldValues[];
         setter(value || []);
         dispatch({ type: "SET_AUTOCOMPLETE_CACHE", payload: { key, value } });
       }
-      setLoading(false);
     } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
+      if (e instanceof Error && e.name !== "AbortError" && isLatestRequest()) {
         dispatch({ type: "SET_AUTOCOMPLETE_CACHE", payload: { key, value: [] } });
-        setLoading(false);
         console.error(e);
       }
+    } finally {
+      if (isLatestRequest()) setLoading(false);
     }
   };
 
@@ -103,7 +119,9 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
   useEffect(() => {
     const validContexts = [ContextType.FilterName, ContextType.FilterUnknown, ContextType.FilterOrPipeName];
     const isInvalidContext = !validContexts.includes(contextData?.contextType || ContextType.Unknown);
-    if (!serverUrl || isInvalidContext) {
+    const isDefaultQuery = contextData?.valueContext === DEFAULT_QUERY;
+
+    if (!serverUrl || isInvalidContext || isDefaultQuery) {
       return;
     }
 
@@ -143,6 +161,13 @@ export const useFetchLogsQLOptions = (contextData?: ContextData, extraParams?: U
 
     return () => abortControllerRef.current?.abort();
   }, [serverUrl, contextData, getQueryParams, extraParams?.toString()]);
+
+  useEffect(() => {
+    return () => {
+      requestIdRef.current += 1;
+      abortControllerRef.current.abort();
+    };
+  }, []);
 
   return {
     fieldNames,

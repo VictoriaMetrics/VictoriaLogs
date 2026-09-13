@@ -1,6 +1,6 @@
 import { expect } from "vitest";
 import { generateQuery } from "./utils";
-import { ContextType } from "./types";
+import { ContextType } from "../types";
 
 describe("utils", () => {
   describe("_time", () => {

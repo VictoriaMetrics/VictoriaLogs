@@ -13,7 +13,7 @@ type pipeUnpackLogfmt struct {
 	// fromField is the field to unpack logfmt fields from
 	fromField string
 
-	// filterFields is list of field filters to extract from logfmt.
+	// fieldFilters is list of field filters to extract from logfmt.
 	fieldFilters []string
 
 	// resultPrefix is prefix to add to unpacked field names
@@ -58,9 +58,7 @@ func (pu *pipeUnpackLogfmt) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackLogfmt) canReturnLastNResults() bool {
-	// TODO: verify that the unpacked fields do not overwrite _time with non-timestamp values.
-
-	return true
+	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
 func (pu *pipeUnpackLogfmt) isFixedOutputFieldsOrder() bool {
@@ -75,8 +73,8 @@ func (pu *pipeUnpackLogfmt) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnpackLogfmt) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnpackLogfmt) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

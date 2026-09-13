@@ -71,7 +71,7 @@ func (app *Vlcluster) ForceFlush(t *testing.T) {
 
 	url := fmt.Sprintf("http://%s/internal/force_flush", app.insertNode.httpListenAddr)
 
-	_, statusCode := app.insertNode.cli.Get(t, url)
+	_, statusCode := app.insertNode.cli.Post(t, url, "", nil)
 	if statusCode != http.StatusOK {
 		t.Fatalf("unexpected status code when querying %s: got %d; want %d", url, statusCode, http.StatusOK)
 	}
@@ -79,7 +79,7 @@ func (app *Vlcluster) ForceFlush(t *testing.T) {
 
 // JSONLineWrite is a test helper function that inserts a
 // collection of records in json line format by sending a HTTP
-// POST request to /insert/jsonline vlsingle endpoint.
+// POST request to /insert/jsonline endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
 func (app *Vlcluster) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
@@ -250,7 +250,12 @@ func (app *Vlcluster) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts)
 	values.Add("query", query)
 
 	url := fmt.Sprintf("http://%s/select/logsql/query", app.selectNode.httpListenAddr)
-	return app.selectNode.cli.PostForm(t, url, values)
+	return app.selectNode.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
+}
+
+// StorageNode returns the i-th storage node, allowing direct log ingestion that bypasses the insert node.
+func (app *Vlcluster) StorageNode(i int) *Vlsingle {
+	return app.storageNodes[i]
 }
 
 // String returns the string representation of the app state.

@@ -2,20 +2,24 @@ package logstorage
 
 import (
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestStorageSearchStreamIDs(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
 	const partitionName = "foobar"
+
 	s := newTestStorage()
+	defer closeTestStorage(s)
+
+	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
+
 	idb := mustOpenIndexdb(path, partitionName, s)
+	defer mustCloseIndexdb(idb)
 
 	tenantID := TenantID{
 		AccountID: 123,
@@ -246,24 +250,18 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 		}
 	}
 	f(`{instance="instance-2",job!="job-1"}`, streamIDs)
-
-	mustCloseIndexdb(idb)
-	fs.MustRemoveDir(path)
-
-	closeTestStorage(s)
 }
 
 func TestGetTenantsIDs(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
 	const partitionName = "foobar"
 
 	s := newTestStorage()
 	defer closeTestStorage(s)
 
+	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
-	defer fs.MustRemoveDir(path)
 
 	idb := mustOpenIndexdb(path, partitionName, s)
 	defer mustCloseIndexdb(idb)
@@ -313,7 +311,7 @@ func TestGetTenantsIDs(t *testing.T) {
 	idb.debugFlush()
 
 	// run the test
-	result := idb.searchTenants()
+	result := idb.getTenantIDs()
 	if !reflect.DeepEqual(result, tenantIDs) {
 		t.Fatalf("unexpected tensntIds; got %v; want %v", result, tenantIDs)
 	}

@@ -1,4 +1,5 @@
 import { Logs } from "../api/types";
+
 export * from "./uplot";
 
 declare global {
@@ -67,4 +68,9 @@ export type OrderDir = "asc" | "desc";
 export interface NavigateOptions {
   /** Replace the current entry in the history stack instead of pushing a new one */
   replace?: boolean;
+}
+
+export type IntervalOption = {
+  duration: string,
+  valueNs: bigint
 }

@@ -1,5 +1,7 @@
 @use "src/styles/variables" as *;
 
+$popper-border-radius: $border-radius-medium;
+
 .vm-popper {
   position: fixed;
   background-color: $color-background-block;
@@ -8,7 +10,7 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 100ms ease-in-out;
-  border-radius: $border-radius-small;
+  border-radius: $popper-border-radius;
 
   &_open {
     z-index: 101;
@@ -38,7 +40,7 @@
     justify-content: space-between;
     background-color: $color-background-block;
     padding: $padding-small $padding-global;
-    border-radius: $border-radius-small $border-radius-small 0 0;
+    border-radius: $popper-border-radius $popper-border-radius 0 0;
     color: $color-text;
     border-bottom: $border-divider;
     margin-bottom: $padding-global;

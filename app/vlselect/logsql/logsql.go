@@ -1347,6 +1347,8 @@ func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []b
 }
 
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants
 func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	accountID := r.Header.Get("AccountID")
 	if accountID != "" {
@@ -1389,13 +1391,13 @@ func ProcessTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
-	tenants, err := vlstorage.GetTenantIDs(ctx, start, end)
+	tenantIDs, err := vlstorage.GetTenantIDs(ctx, start, end)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantIDs: %s", err)
 		return
 	}
 
-	data, err := json.Marshal(tenants)
+	data, err := json.Marshal(tenantIDs)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot marshal tenantIDs to JSON: %s", err)
 		return
@@ -1493,14 +1495,13 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		return nil, err
 	}
 
-	currTimestamp := time.Now().UnixNano()
 	if !timeOK {
 		// If time arg is missing, then evaluate query either at the end timestamp (if it is set)
 		// or at the current timestamp (if end query arg isn't set)
 		if endOK {
 			timestamp = end
 		} else {
-			timestamp = currTimestamp
+			timestamp = time.Now().UnixNano()
 		}
 	}
 

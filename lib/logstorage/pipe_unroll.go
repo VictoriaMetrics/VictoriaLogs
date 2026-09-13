@@ -42,7 +42,7 @@ func (pu *pipeUnroll) canLiveTail() bool {
 }
 
 func (pu *pipeUnroll) canReturnLastNResults() bool {
-	return true
+	return !slices.Contains(pu.fields, "_time")
 }
 
 func (pu *pipeUnroll) isFixedOutputFieldsOrder() bool {
@@ -53,8 +53,8 @@ func (pu *pipeUnroll) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnroll) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnroll) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

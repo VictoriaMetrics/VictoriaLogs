@@ -11,9 +11,9 @@ import { FetchHitsParams } from "../useFetchHits";
 import { useDebounceCallback } from "../../../../hooks/useDebounceCallback";
 import { useFetchQueryTime } from "../useFetchQueryTime";
 import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
-import { useQueryHistory } from "../../../../components/Configurators/QueryEditor/hooks/useQueryHistory";
 import { TimeParams } from "../../../../types";
 import { normalizeTimeParams, timeParamsToDateRange } from "../../../../utils/time";
+import { addQueryToHistoryStorage } from "../../../../components/QueryHistory/utils";
 
 export type UseQueryPageControllerProps = {
   query: string;
@@ -71,7 +71,6 @@ const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
 };
 
 export const useQueryPageController = (props: UseQueryPageControllerProps) => {
-  const { updateHistory } = useQueryHistory();
   const queryDispatch = useQueryDispatch();
 
   const { runLogs, ...logsRequestState } = useLogsController();
@@ -159,7 +158,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     // The next base change should run time sync again.
     lastSyncedTimeFilterKeyRef.current = "";
 
-    updateHistory(baseTriggers.query);
+    addQueryToHistoryStorage(baseTriggers.query);
 
     const logsParams = buildLogsParams(baseTriggers, logsTriggers);
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);

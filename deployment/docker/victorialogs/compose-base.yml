@@ -1,7 +1,7 @@
 services:
   # meta service will be ignored by compose
   .victorialogs:
-    image: docker.io/victoriametrics/victoria-logs:v1.51.0
+    image: docker.io/victoriametrics/victoria-logs:v1.52.0
     command:
       - -storageDataPath=/vlogs
       - -loggerFormat=json
@@ -41,7 +41,7 @@ services:
       replicas: 1
 
   vlagent:
-    image: victoriametrics/vlagent:v1.51.0
+    image: victoriametrics/vlagent:v1.52.0
     volumes:
       - vlagent:/vlagent
     command:

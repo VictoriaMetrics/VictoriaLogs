@@ -67,9 +67,7 @@ func (pu *pipeUnpackJSON) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
-	// TODO: verify that the unpacked fields do not overwrite _time with non-timestamp values.
-
-	return true
+	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
 func (pu *pipeUnpackJSON) isFixedOutputFieldsOrder() bool {
@@ -84,8 +82,8 @@ func (pu *pipeUnpackJSON) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnpackJSON) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnpackJSON) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

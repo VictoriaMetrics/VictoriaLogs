@@ -135,7 +135,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
             </div>
           )}
 
-          <div className="vm-select-limits-list">
+          <div className="vm-list vm-select-limits-list">
             {!isLoading && !error && filteredLimits.map(n => (
               <div
                 className={classNames({

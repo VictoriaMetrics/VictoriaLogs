@@ -4,9 +4,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $padding-large;
+  gap: calc($padding-global * 2);
   width: 600px;
-  padding-bottom: $padding-medium;
+  padding-inline: $padding-large;
+  padding-bottom: calc($padding-large * 2);
 
   &_mobile {
     grid-auto-rows: min-content;
@@ -54,18 +55,5 @@
     &__button {
       margin-top: $padding-small;
     }
-  }
-
-  &-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: $padding-small;
-    width: 100%;
-  }
-
-  &_mobile &-footer {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
   }
 }
