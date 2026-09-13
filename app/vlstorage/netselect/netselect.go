@@ -426,6 +426,7 @@ func (s *Storage) RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.
 	if err != nil {
 		return err
 	}
+	defer nqr.MustReleaseMemory()
 
 	search := func(stopCh <-chan struct{}, q *logstorage.Query, writeBlock logstorage.WriteDataBlockFunc) error {
 		qctxLocal := qctx.WithQuery(q)
