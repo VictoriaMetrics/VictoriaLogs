@@ -1013,7 +1013,6 @@ See also:
 - [Empty value filter](https://docs.victoriametrics.com/victorialogs/logsql/#empty-value-filter)
 - [Any value filter](https://docs.victoriametrics.com/victorialogs/logsql/#any-value-filter)
 
-
 ### Exact filter
 
 The [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) and [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
@@ -2780,7 +2779,6 @@ See also:
 
 - [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
 
-
 ### json_array_concat pipe
 
 The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
@@ -3369,7 +3367,6 @@ See also:
 - [`running_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe)
 - [`running_stats` pipe functions](https://docs.victoriametrics.com/victorialogs/logsql/#running_stats-pipe-functions)
 
-
 ### sample pipe
 
 The `<q> | sample N` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) returns `1/N`th random sample of logs for the `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax).
@@ -3546,7 +3543,6 @@ See also:
 - [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
-
 
 ### stats pipe
 
@@ -4020,7 +4016,6 @@ See also:
 
 - [`total_stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe)
 - [`total_stats` pipe functions](https://docs.victoriametrics.com/victorialogs/logsql/#total_stats-pipe-functions)
-
 
 ### union pipe
 

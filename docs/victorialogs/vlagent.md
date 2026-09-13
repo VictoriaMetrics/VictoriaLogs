@@ -121,10 +121,10 @@ A different location can be specified via `-kubernetesCollector.checkpointsPath`
 [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and
 [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 
-Default `_msg` fields (first match wins): `message`, `msg`, `log`.  
+Default `_msg` fields (first match wins): `message`, `msg`, `log`.
 Override with `-kubernetesCollector.msgField=field1,field2`.
 
-Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.  
+Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.
 Override with `-kubernetesCollector.timeField=field1,field2`.
 
 If none of the `_time` fields are present, `vlagent` uses the timestamp written by the container runtime.
@@ -530,10 +530,10 @@ To remove ANSI color codes from specific fields:
 [`_msg`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field) and
 [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
 
-Default `_msg` fields (first match wins): `message`, `msg`, `log`.  
+Default `_msg` fields (first match wins): `message`, `msg`, `log`.
 Override with `-fileCollector.msgField=field1,field2`.
 
-Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.  
+Default `_time` fields (first match wins): `time`, `timestamp`, `ts`.
 Override with `-fileCollector.timeField=field1,field2`.
 
 If none of the `_time` fields are found, `vlagent` uses the time the log line was read from disk.
@@ -1006,9 +1006,11 @@ This will build the `vlagent-prod` executable inside the `bin` folder.
 `vlagent` can be fine-tuned with various command-line flags. Run `./vlagent -help` in order to see the full list of these flags with their descriptions and default values:
 
 ### Common flags
+
 These flags are available in both VictoriaLogs OSS and VictoriaLogs Enterprise.
 {{% content "vlagent_common_flags.md" %}}
 
 ### Enterprise flags
+
 These flags are available only in [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 {{% content "vlagent_enterprise_flags.md" %}}

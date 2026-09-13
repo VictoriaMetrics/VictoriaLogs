@@ -17,7 +17,6 @@ make vmui-build
 
 The built static contents is put into `app/vmui/packages/vmui/` directory.
 
-
 ### Updating vmui embedded into VictoriaLogs
 
 Run the following command from the root of VictoriaLogs repository for updating `vmui` embedded into VictoriaLogs:

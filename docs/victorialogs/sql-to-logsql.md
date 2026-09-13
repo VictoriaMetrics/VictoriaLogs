@@ -15,7 +15,7 @@ This is a tutorial for the migration from SQL to [LogsQL](https://docs.victoriam
 It is expected that you are familiar with SQL and know [how to execute queries at VictoriaLogs](https://docs.victoriametrics.com/victorialogs/querying/).
 
 See also [this playground, which automatically converts SQL queries to LogsQL queries](https://play-sql.victoriametrics.com/).
-The source code of this project is available [here](https://github.com/VictoriaMetrics-community/sql-to-logsql/).
+The source code of this project is available in our GitHub [community repository](https://github.com/VictoriaMetrics-community/sql-to-logsql/).
 
 ## Data Model
 

@@ -660,7 +660,7 @@ func ProcessStreamsRequest(ctx context.Context, w http.ResponseWriter, r *http.R
 	WriteValuesWithHitsJSON(w, streams)
 }
 
-// ProcessLiveTailRequest processes live tailing request to /select/logsq/tail
+// ProcessLiveTailRequest processes live tailing request to /select/logsql/tail
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {

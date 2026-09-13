@@ -313,7 +313,7 @@ See also:
 ## Docker demos
 
 Docker Compose demos for the single-node and cluster versions of VictoriaLogs that include log collection,
-monitoring, alerting, and Grafana are available [here](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker#readme).
+monitoring, alerting, and Grafana are available in our GitHub [repository](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker#readme).
 
 Docker Compose demos that integrate VictoriaLogs and various log collectors:
 
