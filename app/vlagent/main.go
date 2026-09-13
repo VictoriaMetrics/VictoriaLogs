@@ -40,7 +40,7 @@ func main() {
 	flag.Usage = usage
 	envflag.Parse()
 	buildinfo.Init()
-	remotewrite.InitSecretFlags()
+	initSecretFlags()
 	logger.Init()
 
 	listenAddrs := *httpListenAddrs
@@ -80,7 +80,7 @@ func main() {
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())
 }
 
-// RequestHandler handles insert requests for VictoriaLogs
+// requestHandler handles insert requests for VictoriaLogs
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 	if r.URL.Path == "/" {
 		if r.Method != http.MethodGet {
@@ -106,4 +106,10 @@ vlagent collects logs via popular data ingestion protocols and routes it to Vict
 See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 `
 	flagutil.Usage(s)
+}
+
+// initSecretFlags manage the default secret flags for vlagent application.
+func initSecretFlags() {
+	remotewrite.InitSecretFlags()
+	pushmetrics.InitSecretFlags()
 }

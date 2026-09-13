@@ -1,6 +1,7 @@
 ---
 weight: 10
 title: Journald Setup
+description: "Stream systemd journal logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

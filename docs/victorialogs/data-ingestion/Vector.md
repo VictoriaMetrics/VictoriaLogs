@@ -1,6 +1,7 @@
 ---
 weight: 20
 title: Vector Setup
+description: "Configure Vector to send logs to VictoriaLogs via Elasticsearch or HTTP JSON."
 disableToc: true
 menu:
   docs:
@@ -96,7 +97,7 @@ sinks:
       ignore_fields: log.offset,event.original
 ```
 
-By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/keyconcepts/#multitenancy).
+By default, the ingested logs are stored in the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 If you need storing logs in other tenant, then specify the needed tenant via `sinks.vlogs.request.headers` section.
 For example, the following `vector.yaml` config instructs Vector to store the data to `(AccountID=12, ProjectID=34)` tenant:
 
@@ -145,7 +146,7 @@ sinks:
 
 Replace `your_input` with the name of the `inputs` section, which collects logs. See [these docs](https://vector.dev/docs/reference/configuration/sources/) for details.
 
-Substitute the `localhost:9428` address inside `endpoints` section with the real TCP address of VictoriaLogs.
+Substitute the `localhost:9428` address inside the `uri` with the real TCP address of VictoriaLogs.
 
 See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) for details on parameters specified
 in the query args of the uri (`_stream_fields`, `_msg_field` and `_time_field`).

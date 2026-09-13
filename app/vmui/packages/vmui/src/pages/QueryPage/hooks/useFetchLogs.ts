@@ -2,15 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/compat
 import { getLogsUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { Logs } from "../../../api/types";
-import dayjs from "dayjs";
 import { useTenant } from "../../../hooks/useTenant";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { mergeSearchParams } from "../../../utils/query-string";
 import { TenantType } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
+import { nanosToIsoString, secondsToMilliseconds } from "../../../utils/time";
 
-interface FetchLogsParams {
-  query?: string;
+export interface FetchLogsParams {
+  query: string;
   period?: TimeParams;
   limit?: number;
   extraParams?: URLSearchParams;
@@ -25,7 +25,7 @@ export type BeforeFetchResult =
 
 export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFetchResult>;
 
-export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
+export const useFetchLogs = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,8 +55,8 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     }
 
     if (period) {
-      body.set("start", dayjs(period.start * 1000).tz().toISOString());
-      body.set("end", dayjs(period.end * 1000).tz().toISOString());
+      body.set("start", nanosToIsoString(period.start));
+      body.set("end", nanosToIsoString(period.end));
     }
 
     return body;
@@ -74,14 +74,21 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
   };
 
   const updateTenant = ({ accountId, projectId }: Partial<TenantType>) => {
-    if (accountId) searchParams.set("accountID", accountId);
-    if (projectId) searchParams.set("projectID", projectId);
-    setSearchParams(searchParams);
+    if (accountId === undefined && projectId === undefined) return;
+
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+
+      if (accountId) next.set("accountID", accountId);
+      if (projectId) next.set("projectID", projectId);
+
+      return next;
+    });
   };
 
   const fetchLogs = useCallback(async ({
-    query = defaultQuery,
-    limit = defaultLimit,
+    query,
+    limit,
     period,
     extraParams,
     beforeFetch,
@@ -130,7 +137,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
       if (changedProjectId) updateTenant({ projectId: vlProjectId });
 
       const duration = response.headers.get("vl-request-duration-seconds");
-      setDurationMs(duration ? Number(duration) * 1000 : undefined);
+      setDurationMs(duration ? secondsToMilliseconds(Number(duration)) : undefined);
 
       const text = await response.text();
       if (!response.ok || !response.body) {
@@ -157,7 +164,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
         return rest;
       });
     }
-  }, [url, defaultQuery, defaultLimit, tenant]);
+  }, [url, tenant]);
 
   useEffect(() => {
     return () => abortControllerRef.current.abort();
@@ -177,7 +184,7 @@ export const useFetchLogs = (defaultQuery?: string, defaultLimit?: number) => {
     error,
     fetchLogs,
     durationMs,
-    abortController: abortControllerRef.current
+    abort: useCallback(() => abortControllerRef.current?.abort(), [])
   };
 };
 

@@ -1,6 +1,7 @@
 ---
 weight: 3
 title: Logstash Setup
+description: "Configure Logstash to send logs to VictoriaLogs via Elasticsearch or HTTP JSON output."
 disableToc: true
 menu:
   docs:

@@ -1,6 +1,7 @@
 ---
 weight: 21
 title: Metrics of vlagent
+description: "Prometheus metrics exposed by vlagent for monitoring log collection and remote write operations."
 menu:
   docs:
     parent: victorialogs
@@ -24,6 +25,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 - [HTTP Request Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#http-request-metrics)
 - [Data Ingestion Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#data-ingestion-metrics)
+- [Remote Write Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#remote-write-metrics)
 - [Error and Network Metrics](https://docs.victoriametrics.com/victorialogs/vlagent-metrics/#error-and-network-metrics)
 
 ## HTTP Request Metrics
@@ -86,7 +88,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Labels:**
 - `type`: ingestion protocol
 
-**Description:** Time taken to flush accumulated logs from memory buffers to storage. Triggered when buffers fill up or during periodic flushes (every ~1 second with jitter). High values suggest storage bottlenecks or slow disk performance.
+**Description:** Time taken to serialize a batch of buffered logs and queue it for sending to the configured remote storage via remote-write (`-remoteWrite.url`). Triggered when the buffer fills up or during periodic flushes (every ~1 second). High values suggest CPU pressure or heavy ingestion load.
 
 ### vl_too_long_lines_skipped_total
 **Type:** Counter
@@ -172,6 +174,15 @@ These metrics follow the Prometheus exposition format and can be used for monito
 - `url`: remote storage URL
 
 **Description:** Queue write status where 1 means blocked and 0 means accepting data. Becomes 1 when persistent queue reaches `-remoteWrite.maxDiskUsagePerURL` limit, causing new data to be dropped to prevent disk exhaustion.
+
+### vm_fs_info
+**Type:** Gauge
+
+**Labels:**
+- `path`: remote write data directory
+- `fs_type`: filesystem type
+
+**Description:** Filesystem metadata for the remote write persistent queue path. The value is always 1. This metric helps identify filesystem-specific issues during troubleshooting.
 
 ### vlagent_remotewrite_rate_limit_reached_total
 **Type:** Counter

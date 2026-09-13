@@ -14,7 +14,7 @@ import GroupLogsHeader from "./GroupLogsHeader";
 import { LOGS_DISPLAY_FIELDS, LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
 import Pagination from "../../Main/Pagination/Pagination";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
-import { usePaginateGroups } from "../../../pages/QueryPage/hooks/usePaginateGroups";
+import { usePaginateGroups } from "./hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import GroupLogsItemWrapper from "./GroupLogsItemWrapper";

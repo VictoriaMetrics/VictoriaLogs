@@ -3,29 +3,24 @@ package tests
 import (
 	"fmt"
 	"os"
-	"path"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
 	// test data ingestion into
 	const instance = "vlsingle"
-	const r1Port = "50425"
 	sutFlags := []string{
-		"-httpListenAddr=127.0.0.1:" + r1Port,
-		"-storageDataPath=" + tc.Dir() + "/" + instance,
+		"-storageDataPath=" + t.TempDir(),
 	}
 
 	sut := tc.MustStartVlsingle(instance, sutFlags)
+	sutFlags = append(sutFlags, "-httpListenAddr="+sut.HTTPAddr())
 	remoteWriteURL := fmt.Sprintf("http://%s/insert/native", sut.HTTPAddr())
 
 	vlagent := tc.MustStartDefaultVlagent([]string{remoteWriteURL})
@@ -33,6 +28,7 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, "1:"+remoteWriteURL, 1)
 
 	sut.ForceFlush(t)
 	got := sut.LogsQLQuery(t, "ingest jsonline", apptest.QueryOpts{})
@@ -66,7 +62,6 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 }
 
 func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -91,6 +86,7 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 		AccountID:    "1",
 		StreamFields: "foo,bar",
 	})
+	vlagent.WaitRemoteWriteRequests(t, "1:"+remoteWriteURL, 2)
 
 	sut.ForceFlush(t)
 
@@ -120,28 +116,24 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 }
 
 func TestVlagentRemoteWriteReplication(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
 	const (
 		instanceReplica0 = "vlsingle-0"
-		vlsinglePortR0   = "53541"
 		instanceReplica1 = "vlsingle-1"
-		vlsinglePortR1   = "53124"
 		vlagentInstance  = "vlagent"
 	)
 	sutFlagsR0 := []string{
-		"-httpListenAddr=127.0.0.1:" + vlsinglePortR0,
-		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica0),
+		"-storageDataPath=" + t.TempDir(),
 	}
 	sutFlagsR1 := []string{
-		"-httpListenAddr=127.0.0.1:" + vlsinglePortR1,
-		"-storageDataPath=" + path.Join(tc.Dir(), instanceReplica1),
+		"-storageDataPath=" + t.TempDir(),
 	}
 
 	sutR0 := tc.MustStartVlsingle(instanceReplica0, sutFlagsR0)
 	sutR1 := tc.MustStartVlsingle(instanceReplica1, sutFlagsR1)
+	sutFlagsR0 = append(sutFlagsR0, "-httpListenAddr="+sutR0.HTTPAddr())
 
 	vlagentRemoteWriteURLs := []string{
 		fmt.Sprintf("http://%s/insert/native", sutR0.HTTPAddr()),
@@ -151,12 +143,18 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		"-remoteWrite.tmpDataPath=" + fmt.Sprintf("%s/%s-%d", os.TempDir(), vlagentInstance, time.Now().UnixNano()),
 	}
 	vlagent := tc.MustStartVlagent(vlagentInstance, vlagentRemoteWriteURLs, vlagentFlags)
+	vlagentRemoteWriteMetricURLs := []string{
+		"1:" + vlagentRemoteWriteURLs[0],
+		"2:" + vlagentRemoteWriteURLs[1],
+	}
 
 	// ingest data and check if it properly replicated to the vlsingles
 	vlagent.JSONLineWrite(t, []string{
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "foo":"bar"}`,
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[0], 1)
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 1)
 
 	wantLogLines := []string{
 		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
@@ -179,6 +177,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
 		`{"_msg":"ingest jsonline2","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
 	}, apptest.IngestOpts{})
+	vlagent.WaitRemoteWriteRequests(t, vlagentRemoteWriteMetricURLs[1], 2)
 
 	// check alive storage received data
 	wantLogLines = []string{
@@ -190,7 +189,7 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	gotR1 = sutR1.LogsQLQuery(t, "ingest jsonline2", apptest.QueryOpts{})
 	assertLogsQLResponseEqual(t, gotR1, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
-	// stop vmagent, it must buffer data on-disk
+	// stop vlagent, it must buffer data on-disk
 	tc.StopApp(vlagentInstance)
 
 	vlagent = tc.MustStartVlagent(vlagentInstance, vlagentRemoteWriteURLs, vlagentFlags)

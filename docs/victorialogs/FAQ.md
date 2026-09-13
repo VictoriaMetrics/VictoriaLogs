@@ -1,6 +1,7 @@
 ---
 weight: 13
 title: FAQ
+description: "Frequently asked questions about VictoriaLogs, including comparisons with Elasticsearch, Loki, and ClickHouse, disk usage, field limits, and sizing."
 menu:
   docs:
     identifier: "victorialogs-faq"
@@ -112,6 +113,7 @@ VictoriaLogs is designed solely for logs. VictoriaLogs uses [similar design idea
 VictoriaLogs accepts logs as [JSON entries](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 Then it stores log fields into distinct data blocks. E.g. values for the same log field across multiple log entries
 are stored in a single data block. This allows reading data blocks only for the needed fields during querying.
+See [how each field is stored as a column on disk](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for details.
 
 Data blocks are compressed before being saved to persistent storage. This allows saving disk space and improving query performance
 when it is limited by disk read IO bandwidth.
@@ -148,6 +150,7 @@ for limiting the amounts of exported logs.
 
 VictoriaLogs [accepts](https://docs.victoriametrics.com/victorialogs/data-ingestion/) logs without [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 In this case the `_msg` field is set to the default value, which can be configured via `-defaultMsgValue` command-line flag.
+See [what the message field is and how it fits the log data model](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#message) for details.
 
 ## What if my logs have multiple message fields candidates?
 
@@ -363,7 +366,7 @@ The `hits` field in the returned results contains an estimated number of logs wi
 
 ## How to get the number of unique log streams on the given time range?
 
-Use [`count_uniq` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-pipe)
+Use [`count_uniq(...)` stats function](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats)
 over [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field.
 For example, the following [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query
 returns the number of unique [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)

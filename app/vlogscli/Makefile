@@ -45,30 +45,6 @@ vlogscli-openbsd-amd64-prod:
 vlogscli-windows-amd64-prod:
 	APP_NAME=vlogscli $(MAKE) app-via-docker-windows-amd64
 
-package-vlogscli:
-	APP_NAME=vlogscli $(MAKE) package-via-docker
-
-package-vlogscli-pure:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-pure
-
-package-vlogscli-amd64:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-amd64
-
-package-vlogscli-arm:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-arm
-
-package-vlogscli-arm64:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-arm64
-
-package-vlogscli-ppc64le:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-ppc64le
-
-package-vlogscli-s390x:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-s390x
-
-package-vlogscli-386:
-	APP_NAME=vlogscli $(MAKE) package-via-docker-386
-
 publish-vlogscli:
 	APP_NAME=vlogscli $(MAKE) publish-via-docker
 
@@ -110,6 +86,3 @@ vlogscli-windows-amd64:
 
 vlogscli-pure:
 	APP_NAME=vlogscli $(MAKE) app-local-pure
-
-run-vlogscli:
-	APP_NAME=vlogscli $(MAKE) run-via-docker

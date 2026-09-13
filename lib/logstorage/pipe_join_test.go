@@ -16,7 +16,7 @@ func TestParsePipeJoinSuccess(t *testing.T) {
 	f(`join by (foo) (a:b) prefix c`)
 	f(`join by (foo) (bar | join by (x, z) (y))`)
 	f(`join by (x) (y) inner`)
-	f(`join by (x) (y) inner prefix a.b`)
+	f(`join by (x) (y) inner prefix "a.b"`)
 
 	// inline rows
 	f(`join by (x) rows({"x":"y","z":"qwe"},{"x":"123","z":"456"})`)

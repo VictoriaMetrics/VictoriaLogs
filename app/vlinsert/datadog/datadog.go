@@ -164,7 +164,6 @@ func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage
 						Value: bytesutil.ToUnsafeString(val),
 					})
 				})
-
 			}
 		})
 	default:

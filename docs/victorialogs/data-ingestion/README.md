@@ -37,7 +37,8 @@ VictoriaLogs supports the following data ingestion HTTP APIs:
 - JSON stream API aka [ndjson](https://jsonlines.org/). See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api).
 - Loki JSON API. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#loki-json-api).
 - OpenTelemetry API. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/#opentelemetry-api).
-- Journald export format.
+- Journald export format. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/).
+- Splunk. See [these docs](https://docs.victoriametrics.com/victorialogs/data-ingestion/splunk/).
 
 VictoriaLogs accepts optional [HTTP parameters](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-parameters) at data ingestion HTTP APIs.
 
@@ -377,7 +378,8 @@ VictoriaLogs exposes various [metrics](https://docs.victoriametrics.com/victoria
     in this case. Instead, they are logged, so they can be investigated later.
     The [`vl_rows_dropped_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_rows_dropped_total) metric is incremented for each logged row.
   - By passing `-logIngestedRows` command-line flag to VictoriaLogs. In this case it logs all the ingested data, so it can be investigated later.
-- [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of created [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
-  since the last VictoriaLogs restart. If this metric grows rapidly during extended periods of time, then this may lead
-  to [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
+- [`vl_streams_created_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_streams_created_total) - the number of [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields)
+  registered in daily partitions since the last VictoriaLogs restart. The same stream is counted again when it is registered
+  in another daily partition. If this metric increases much faster than expected outside the normal creation of daily partitions, it may indicate
+  [high cardinality issues](https://docs.victoriametrics.com/victorialogs/keyconcepts/#high-cardinality).
   The newly created log streams can be inspected in logs - see [these docs](https://docs.victoriametrics.com/victorialogs/#logging-new-streams).

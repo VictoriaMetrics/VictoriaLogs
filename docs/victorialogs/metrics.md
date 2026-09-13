@@ -1,6 +1,7 @@
 ---
 weight: 20
 title: Metrics of VictoriaLogs
+description: "Prometheus metrics exposed by VictoriaLogs for operational monitoring."
 menu:
   docs:
     parent: victorialogs
@@ -319,7 +320,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_streams_created_total
 **Type:** Counter
 
-**Description:** New unique combinations of stream fields first encountered during log ingestion. Only counts streams not previously seen since startup, shows growth in stream cardinality and high-cardinality detection.
+**Description:** The number of log streams registered in daily partitions since the last VictoriaLogs restart. The same stream is counted again when it is registered in another daily partition. If this metric increases much faster than expected outside the normal creation of daily partitions, it may indicate high cardinality.
 
 ### vl_indexdb_rows
 **Type:** Gauge
@@ -337,6 +338,15 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Description:** Total index blocks storing compressed index data. Smallest units of index storage across in-memory and file-based components. Index storage organization and efficiency.
 
 ## System Resource Metrics
+
+### vm_fs_info
+**Type:** Gauge
+
+**Labels:**
+- `path`: storage directory
+- `fs_type`: filesystem type
+
+**Description:** Filesystem metadata for the storage path. The value is always 1. This metric helps identify filesystem-specific issues during troubleshooting.
 
 ### vl_free_disk_space_bytes
 **Type:** Gauge

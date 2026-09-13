@@ -1,12 +1,22 @@
 @use "src/styles/variables" as *;
 
 .vm-list {
+  display: grid;
+  gap: 2px;
+  padding: calc($padding-small / 2);
+
   &-item {
-    padding: 12px $padding-global;
+    display: flex;
+    gap: $padding-small;
+    align-items: center;
+    justify-content: flex-start;
+    padding: $padding-small $padding-global;
     cursor: pointer;
     background-color: transparent;
     transition: background-color 200ms ease;
-
+    line-height: 1.2;
+    border-radius: $border-radius-medium;
+    font-size: $font-size-small;
     &_mobile {
       padding: $padding-global $padding-global;
     }
@@ -24,6 +34,8 @@
       justify-content: flex-start;
 
       svg {
+        max-width: 10px;
+        min-width: 10px;
         animation: vm-scale 150ms cubic-bezier(0.280, 0.840, 0.420, 1);
       }
 
@@ -36,12 +48,36 @@
       }
     }
 
-    &_with-icon {
+    &__title {
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+    }
+
+    &__icon {
+      flex: 1 1 auto;
       display: grid;
-      grid-template-columns: 14px 1fr;
-      gap: calc($padding-small/2);
+      min-width: 14px;
+      max-width: 14px;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
+      color: $color-text-secondary;
+    }
+
+    &__meta {
+      flex: 0 9999 auto;
+      min-width: 0;
+      font-size: $font-size-small;
+      color: $color-text-secondary;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &_mobile &__meta {
+      display: none;
     }
   }
 }

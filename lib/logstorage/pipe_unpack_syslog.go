@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -57,6 +58,8 @@ func (pu *pipeUnpackSyslog) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackSyslog) canReturnLastNResults() bool {
+	// TODO: `[_time=x]` structured data and `@cee:` JSON messages may overwrite the _time
+	// field, but detecting this requires reading the log content, and such logs are uncommon.
 	return true
 }
 
@@ -72,8 +75,8 @@ func (pu *pipeUnpackSyslog) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnpackSyslog) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnpackSyslog) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +94,7 @@ func (pu *pipeUnpackSyslog) newPipeProcessor(_ int, _ <-chan struct{}, _ func(),
 		year := currentYear.Load()
 		p := GetSyslogParser(int(year), pu.offsetTimezone)
 
+		s = strings.TrimLeft(s, " \t\n\r")
 		p.Parse(s)
 		for _, f := range p.Fields {
 			uctx.addField(f.Name, f.Value)
@@ -135,7 +139,7 @@ func parsePipeUnpackSyslog(lex *lexer) (pipe, error) {
 	}
 
 	fromField := "_msg"
-	if !lex.isKeyword("offset", "result_prefix", "keep_original_fields", ")", "|", "") {
+	if !lex.isKeyword("offset", "result_prefix", "keep_original_fields") && !lex.isQueryPartTrailer() {
 		if lex.isKeyword("from") {
 			lex.nextToken()
 		}

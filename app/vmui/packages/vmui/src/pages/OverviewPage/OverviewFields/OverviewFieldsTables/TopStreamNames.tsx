@@ -1,5 +1,4 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { LogsFieldValues } from "../../../../api/types";
 import { useStreamFieldFilter } from "../../hooks/useFieldFilter";
@@ -13,9 +12,10 @@ import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { CopyIcon, FilterIcon, FilterOffIcon, FocusIcon, UnfocusIcon } from "../../../../components/Main/Icons";
 import TopRowMenu from "../FieldRowMenu/TopRowMenu";
 import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
+import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
 
 const TopStreamNames: FC = () => {
-  const { period: { start, end } } = useTimeState();
+  const { period: { start, end } } = useTimePeriod();
   const { fetchStreamFieldNames, streamFieldNames, loading, error } = useFetchStreamFieldNames();
   const { extraParams, addNewFilter } = useExtraFilters();
   const { streamFieldFilter, setStreamFieldFilter } = useStreamFieldFilter();
@@ -66,7 +66,8 @@ const TopStreamNames: FC = () => {
   };
 
   useEffect(() => {
-    fetchStreamFieldNames({ start, end, extraParams });
+    const period = { start, end };
+    void fetchStreamFieldNames({ period, extraParams });
   }, [start, end, extraParams.toString(), fetchStreamFieldNames]);
 
   const TableAction = (row: LogsFieldValues) => {

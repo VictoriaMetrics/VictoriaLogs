@@ -29,3 +29,17 @@
     }
   }
 }
+
+.vm-autocomplete-status {
+  position: relative;
+  display: inline-block;
+
+  &__placeholder {
+    visibility: hidden;
+  }
+
+  &__value {
+    position: absolute;
+    inset: 0;
+  }
+}
