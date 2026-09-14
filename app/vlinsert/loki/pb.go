@@ -165,9 +165,7 @@ func decodeLabelPair(src []byte, fs *logstorage.Fields) error {
 		return fmt.Errorf("cannot read value: %w", err)
 	}
 
-	if value != "" {
-		fs.Add(name, value)
-	}
+	fs.Add(name, value)
 
 	return nil
 }

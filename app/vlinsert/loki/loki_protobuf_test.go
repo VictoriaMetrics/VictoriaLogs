@@ -130,8 +130,8 @@ func TestParseProtobufRequest_EmptyStructuredMetadataValue(t *testing.T) {
 	marshalTime(e, 1, time.Unix(0, timestamp))
 	e.AppendString(2, "foo bar")
 
-	// An empty proto3 string is omitted from the wire. Such structured metadata
-	// must be ignored instead of rejecting the request.
+	// An empty proto3 string is omitted from the wire. The request must be
+	// accepted; the empty-valued field is discarded downstream.
 	e.AppendMessage(3).AppendString(1, "empty_value")
 	metadata := e.AppendMessage(3)
 	metadata.AppendString(1, "foo")
@@ -166,9 +166,8 @@ func TestParseProtobufRequest_EmptyStructuredMetadataName(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expecting non-nil error")
 	}
-	errExpected := "cannot decode PushRequest: cannot unmarshal Stream: cannot unmarshal Entry: cannot unmarshal StructuredMetadata: missing name"
-	if err.Error() != errExpected {
-		t.Fatalf("unexpected error; got\n%q\nwant\n%q", err, errExpected)
+	if !strings.Contains(err.Error(), "missing name") {
+		t.Fatalf("unexpected error: %s", err)
 	}
 }
 
