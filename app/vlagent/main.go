@@ -80,7 +80,7 @@ func main() {
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())
 }
 
-// RequestHandler handles insert requests for VictoriaLogs
+// requestHandler handles insert requests for VictoriaLogs
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 	if r.URL.Path == "/" {
 		if r.Method != http.MethodGet {

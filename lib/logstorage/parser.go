@@ -46,7 +46,7 @@ type lexer struct {
 	// It is used for proper initializing of _time filters with relative time ranges.
 	currentTimestamp int64
 
-	// opts is a stack of options for nested parsed queries
+	// optss is a stack of options for nested parsed queries
 	optss []*queryOptions
 }
 
@@ -1054,7 +1054,7 @@ func optimizeFilters(f filter) filter {
 	// flatten nested OR filters
 	f = flattenFiltersOr(f)
 
-	// Substitute '*' prefixFilter with filterNoop in order to avoid reading _msg data.
+	// Substitute '*' filterPrefix with filterNoop in order to avoid reading _msg data.
 	f = removeStarFilters(f)
 
 	// Merge multiple {...} filters into a single one.
@@ -1068,7 +1068,7 @@ func (q *Query) visitSubqueries(visitFunc func(q *Query)) {
 		return
 	}
 
-	// call f for the query itself.
+	// call visitFunc for the query itself.
 	visitFunc(q)
 
 	// Visit subqueries in all the filters at q.
@@ -1831,7 +1831,7 @@ func (q *Query) HasGlobalTimeFilter() bool {
 
 // ParseQueryAtTimestamp parses s in the context of the given timestamp.
 //
-// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, duration].
+// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, timestamp).
 func ParseQueryAtTimestamp(s string, timestamp int64) (*Query, error) {
 	lex := newLexer(s, timestamp)
 

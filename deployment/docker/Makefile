@@ -14,6 +14,8 @@ DOCKER_BUILD ?= $(DOCKER) build
 DOCKER_COMPOSE ?= $(DOCKER) compose
 DOCKER_IMAGE_LS ?= $(DOCKER) image ls --format '{{.Repository}}:{{.Tag}}'
 
+include deployment/docker/rules/Makefile
+
 package-builder:
 	($(DOCKER_IMAGE_LS) | grep -q '$(BUILDER_IMAGE)$$') \
 		|| $(DOCKER_BUILD) \

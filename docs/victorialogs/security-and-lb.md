@@ -504,6 +504,8 @@ This may be needed if the corresponding VictoriaLogs components are exposed to u
   Use `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations.
   Use `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/delete/*`](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) - deletes the ingested logs.
+  Use `-deleteAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be accessed by specifying `authKey` query arg with the value matching the corresponding `-*AuthKey` command-line flag.
 

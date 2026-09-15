@@ -114,7 +114,7 @@ type storageSearchOptions struct {
 	// maxTimestamp is the maximum timestamp for the search
 	maxTimestamp int64
 
-	// sf is an optional stream filter to use for the search before applying the filter
+	// streamFilter is an optional stream filter to use for the search before applying the filter
 	streamFilter *StreamFilter
 
 	// filter is the filter to use for the search
@@ -1294,7 +1294,7 @@ func (db *DataBlock) mustInitFromBlockResult(br *blockResult) {
 	}
 }
 
-// search searches for the matching rows according to sso.
+// searchParallel searches for the matching rows according to sso.
 //
 // It uses workersCount parallel workers for the search and calls writeBlock for each matching block.
 func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
@@ -1379,7 +1379,7 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 func (s *Storage) getPartitionsForTimeRange(minTimestamp, maxTimestamp int64) (ptws []*partitionWrapper, ptwsDecRef func()) {
 	s.partitionsLock.Lock()
 
-	// s.partitions are sorted by s.day. Use binary search for finding partitions for the given [minTimestamp, maxTimestamp] time range.
+	// s.partitions are sorted by partitionWrapper.day. Use binary search for finding partitions for the given [minTimestamp, maxTimestamp] time range.
 	ptwsTmp := s.partitions
 	minDay := minTimestamp / nsecsPerDay
 	n := sort.Search(len(ptwsTmp), func(i int) bool {

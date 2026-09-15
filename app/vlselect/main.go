@@ -37,6 +37,8 @@ var (
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	deleteAuthKey = flagutil.NewPassword("deleteAuthKey", "authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
@@ -69,7 +71,7 @@ func Init() {
 
 	vmalertproxy.Init(*vmalertProxyURL)
 
-	internalselect.Init()
+	internalselect.Init(*logSlowQueryDuration)
 }
 
 // Stop stops vlselect
@@ -106,6 +108,9 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		if !*enableDelete {
 			httpserver.Errorf(w, r, "requests to /delete/* are disabled; pass -delete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+			return true
+		}
+		if !httpserver.CheckAuthFlag(w, r, deleteAuthKey) {
 			return true
 		}
 		deleteHandler(w, r, path)
@@ -173,7 +178,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 
 	if path == "/select/vmui" {
 		// VMUI access via incomplete url without `/` in the end. Redirect to complete url.
-		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaMetrics
+		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaLogs
 		// is hidden behind vmauth or similar proxy.
 		_ = r.ParseForm()
 		newURL := "vmui/?" + r.Form.Encode()
@@ -228,6 +233,8 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	}
 	defer decRequestConcurrency()
 
+	waitDuration := time.Since(startTime)
+
 	ok := processSelectRequest(ctxWithTimeout, w, r, path)
 	if !ok {
 		return false
@@ -239,8 +246,8 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		if d >= *logSlowQueryDuration {
 			remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 			requestURI := httpserver.GetRequestURI(r)
-			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, duration=%.3f seconds; requestURI: %q",
-				*logSlowQueryDuration, remoteAddr, d.Seconds(), requestURI)
+			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, totalDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
+				*logSlowQueryDuration, remoteAddr, d.Seconds(), waitDuration.Seconds(), requestURI)
 			slowQueries.Inc()
 		}
 	}
