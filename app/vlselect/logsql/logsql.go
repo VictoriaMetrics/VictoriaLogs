@@ -677,10 +677,6 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 			"see https://docs.victoriametrics.com/victorialogs/querying/#live-tailing for details", ca.q)
 		return
 	}
-	if !ca.q.PreservesTimeField() {
-		httpserver.Errorf(w, r, "the query [%s] must return the _time field for live tailing", ca.q)
-		return
-	}
 
 	refreshInterval, err := parseDuration(r, "refresh_interval", "1s")
 	if err != nil {
@@ -719,15 +715,12 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		logger.Panicf("BUG: it is expected that http.ResponseWriter (%T) supports http.Flusher interface", w)
 	}
 
-	w.Header().Set("Content-Type", "application/x-ndjson")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	flusher.Flush()
-
 	qctx := ca.newQueryContext(ctxWithCancel)
 	defer ca.updatePerQueryStatsMetrics()
 
 	q := ca.q
 	qOrig := q
+	responseStarted := false
 	for {
 		q = qOrig.CloneWithTimeFilter(end, start, end)
 		qctxLocal := qctx.WithQuery(q)
@@ -739,6 +732,13 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		if err != nil {
 			httpserver.Errorf(w, r, "cannot get tail results for query [%q]: %s", q, err)
 			return
+		}
+		if !responseStarted {
+			// Delay headers until the first query succeeds, so its errors can return an HTTP error status.
+			w.Header().Set("Content-Type", "application/x-ndjson")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			flusher.Flush()
+			responseStarted = true
 		}
 		if len(resultRows) > 0 {
 			WriteJSONRows(w, resultRows)
@@ -809,7 +809,7 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	// Make sure columns contain _time field, since it is needed for proper tail work.
 	timestamps, ok := db.GetTimestamps(nil)
 	if !ok {
-		tp.err = fmt.Errorf("missing _time field")
+		tp.err = fmt.Errorf("missing or invalid _time field")
 		tp.cancel()
 		return
 	}
