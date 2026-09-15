@@ -235,7 +235,7 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte, st
 	}
 
 	outputStreamField := logstorage.Field{
-		Name:  "_output_stream",
+		Name:  "output_stream",
 		Value: "stderr",
 	}
 	if stream == streamStdout {
@@ -258,8 +258,8 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte, st
 	lfp.addRow(timestamp, parser.Fields)
 
 	lfp.rowsIngestedLocal++
-	// 26 is the estimated length of the '_output_stream' field
-	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line) + 26
+	// 25 is the estimated length of the 'output_stream' field
+	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line) + 25
 	if lfp.rowsIngestedLocal > 128 {
 		lfp.flushMetrics()
 	}
