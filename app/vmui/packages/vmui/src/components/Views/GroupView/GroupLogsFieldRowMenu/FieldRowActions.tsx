@@ -11,10 +11,11 @@ import Popper from "../../../Main/Popper/Popper";
 type Props = {
   field: string;
   value: string;
+  isStreamField: boolean;
   hideGroupButton: boolean;
 }
 
-const FieldRowActions: FC<Props> = ({ field, value, hideGroupButton }) => {
+const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButton }) => {
   const {
     value: openContextMenu,
     setFalse: handleCloseContextMenu,
@@ -34,11 +35,13 @@ const FieldRowActions: FC<Props> = ({ field, value, hideGroupButton }) => {
       <FieldFilterInclude
         field={field}
         value={value}
+        isStreamField={isStreamField}
       />
 
       <FieldFilterExclude
         field={field}
         value={value}
+        isStreamField={isStreamField}
       />
 
       <div ref={buttonRef}>
