@@ -1,5 +1,5 @@
-github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1 h1:SxIwHUSVjk7zEzs1ILq5zefzzfphuH8LQL9X8xnpE0g=
-github.com/VictoriaMetrics/VictoriaMetrics v1.146.1-0.20260630165203-c82127b6d4d1/go.mod h1:FWe3dbLkCbDB5kVBm4xJKHYZnKHFNPGGBrzIuuf7eE8=
+github.com/VictoriaMetrics/VictoriaMetrics v1.149.1-0.20260811205936-d4a40004ef28 h1:1QtRR4hHxi0QM0PMa8yHCbDA15ZU1GDwyjMs7ClxHEQ=
+github.com/VictoriaMetrics/VictoriaMetrics v1.149.1-0.20260811205936-d4a40004ef28/go.mod h1:+Fs7Clqfwqszv0uz2bqH8Wi9aWjI6d+QgiiXOFb9Kdg=
 github.com/VictoriaMetrics/easyproto v1.2.0 h1:FJT9uNXA2isppFuJErbLqD306KoFlehl7Wn2dg/6oIE=
 github.com/VictoriaMetrics/easyproto v1.2.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/VictoriaMetrics/metrics v1.44.0 h1:Fr8yqQSV+ZfYaDD/anqk1E8e9YPgfleSleJmAI0M0Tw=

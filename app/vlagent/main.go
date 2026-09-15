@@ -80,7 +80,7 @@ func main() {
 	logger.Infof("successfully stopped vlagent in %.3f seconds", time.Since(startTime).Seconds())
 }
 
-// RequestHandler handles insert requests for VictoriaLogs
+// requestHandler handles insert requests for VictoriaLogs
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 	if r.URL.Path == "/" {
 		if r.Method != http.MethodGet {
@@ -111,4 +111,5 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
 // initSecretFlags manage the default secret flags for vlagent application.
 func initSecretFlags() {
 	remotewrite.InitSecretFlags()
+	pushmetrics.InitSecretFlags()
 }
