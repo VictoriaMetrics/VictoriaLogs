@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -23,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/stringsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastjson"
@@ -1244,6 +1246,10 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}()
 
 	startTime := time.Now()
+
+	qid := activeQueriesV.Add(ca, httpserver.GetQuotedRemoteAddr(r), startTime)
+	defer activeQueriesV.Remove(qid)
+
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
@@ -1346,6 +1352,94 @@ func appendJSONRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []b
 	return dst
 }
 
+// ProcessActiveQueriesRequest handles /select/logsql/active_queries request.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#active-queries
+func ProcessActiveQueriesRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	aqes := activeQueriesV.GetAll()
+
+	w.Header().Set("Content-Type", "application/json")
+	sort.Slice(aqes, func(i, j int) bool {
+		return aqes[i].startTime.Sub(aqes[j].startTime) < 0
+	})
+	now := time.Now()
+	fmt.Fprintf(w, `{"status":"success","data":[`)
+	for i, aqe := range aqes {
+		d := now.Sub(aqe.startTime)
+		fmt.Fprintf(w, `{"duration":"%.3fs","id":"%016X","remote_addr":%s,"query":%s,"tenant_id":"%s","start":%d,"end":%d,"step":%d}`,
+			d.Seconds(), aqe.qid, aqe.quotedRemoteAddr, stringsutil.JSONString(aqe.q), aqe.tenantID, aqe.start, aqe.end, aqe.step)
+		if i+1 < len(aqes) {
+			fmt.Fprintf(w, `,`)
+		}
+	}
+	fmt.Fprintf(w, `]}`)
+}
+
+var activeQueriesV = newActiveQueries()
+
+type activeQueries struct {
+	mu sync.Mutex
+	m  map[uint64]activeQueryEntry
+}
+
+type activeQueryEntry struct {
+	start            int64
+	end              int64
+	step             int64
+	qid              uint64
+	quotedRemoteAddr string
+	q                string
+	tenantID         logstorage.TenantID
+	startTime        time.Time
+}
+
+func newActiveQueries() *activeQueries {
+	return &activeQueries{
+		m: make(map[uint64]activeQueryEntry),
+	}
+}
+
+func (aq *activeQueries) Add(ca *commonArgs, addr string, startTime time.Time) uint64 {
+	var aqe activeQueryEntry
+	aqe.start = ca.start
+	aqe.end = ca.end
+	aqe.step = ca.step
+	aqe.qid = nextActiveQueryID.Add(1)
+	aqe.quotedRemoteAddr = addr
+	aqe.q = ca.q.String()
+	if len(ca.tenantIDs) == 1 {
+		aqe.tenantID = ca.tenantIDs[0]
+	}
+	aqe.startTime = startTime
+
+	aq.mu.Lock()
+	aq.m[aqe.qid] = aqe
+	aq.mu.Unlock()
+	return aqe.qid
+}
+
+func (aq *activeQueries) Remove(qid uint64) {
+	aq.mu.Lock()
+	delete(aq.m, qid)
+	aq.mu.Unlock()
+}
+
+func (aq *activeQueries) GetAll() []activeQueryEntry {
+	aq.mu.Lock()
+	aqes := make([]activeQueryEntry, 0, len(aq.m))
+	for _, aqe := range aq.m {
+		aqes = append(aqes, aqe)
+	}
+	aq.mu.Unlock()
+	return aqes
+}
+
+var nextActiveQueryID = func() *atomic.Uint64 {
+	var x atomic.Uint64
+	x.Store(uint64(time.Now().UnixNano()))
+	return &x
+}()
+
 // ProcessTenantIDsRequest processes /select/tenant_ids request.
 //
 // See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants
@@ -1445,6 +1539,10 @@ type commonArgs struct {
 
 	// endAligned is the aligned end of the selected time range aligned to the given step.
 	endAligned int64
+
+	start int64
+	end   int64
+	step  int64
 }
 
 func (ca *commonArgs) newQueryContext(ctx context.Context) *logstorage.QueryContext {
@@ -1520,6 +1618,8 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.DropAllPipes()
 	}
 
+	step := int64(0)
+
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
 		if !startOK {
@@ -1530,7 +1630,8 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		}
 
 		if stepStr := r.FormValue("step"); stepStr != "" {
-			if step, ok := logstorage.TryParseDuration(stepStr); ok {
+			var ok bool
+			if step, ok = logstorage.TryParseDuration(stepStr); ok {
 				offset := int64(0)
 				if offsetStr := r.FormValue("offset"); offsetStr != "" {
 					nsecs, ok := logstorage.TryParseDuration(offsetStr)
@@ -1595,6 +1696,16 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		return nil, err
 	}
 
+	startMs := int64(math.MinInt64)
+	if startAligned != math.MinInt64 {
+		startMs = startAligned / 1e6
+	}
+	endMs := int64(math.MaxInt64)
+	if endAligned != math.MaxInt64 {
+		endMs = endAligned / 1e6
+	}
+	stepMs := step / 1e6
+
 	ca := &commonArgs{
 		q:         q,
 		tenantIDs: tenantIDs,
@@ -1604,6 +1715,10 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 
 		startAligned: startAligned,
 		endAligned:   endAligned,
+
+		start: startMs,
+		end:   endMs,
+		step:  stepMs,
 	}
 	return ca, nil
 }

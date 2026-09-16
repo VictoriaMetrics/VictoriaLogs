@@ -23,6 +23,7 @@ VictoriaLogs provides the following HTTP endpoints:
 - [`/select/logsql/tail`](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) for live tailing of query results.
 - [`/select/logsql/hits`](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats) for querying log hits stats over the given time range.
 - [`/select/logsql/facets`](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets) for querying the most frequent values per each field seen in the selected logs.
+- [`/select/logsql/active_queries`](https://docs.victoriametrics.com/victorialogs/querying/#active-queries) for inspecting currently running queries.
 - [`/select/logsql/stats_query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats) for querying log stats at the given time.
 - [`/select/logsql/stats_query_range`](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-range-stats) for querying log stats over the given time range.
 - [`/select/logsql/stream_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-stream_ids) for querying `_stream_id` values of [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
@@ -467,6 +468,51 @@ See also:
 
 - [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
 - [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
+- [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
+
+### Active queries
+
+VictoriaLogs provides `/select/logsql/active_queries` HTTP endpoint, which returns information about the currently running [queries](https://docs.victoriametrics.com/victorialogs/logsql/).
+
+```sh
+curl http://localhost:9428/select/logsql/active_queries
+```
+
+Below is an example JSON output returned from this endpoint:
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "duration": "7.450s",
+      "id": "18D35D4CB88532FD",
+      "remote_addr": "127.0.0.1:60778",
+      "query": "_time:[2026-09-08T13:01:36.528000000Z,2026-09-08T14:01:36.527999999Z] level:in(error,warn,fatal) | sort by (_time) desc limit 50",
+      "tenant_id": "{accountID=0,projectID=0}",
+      "start": 1788872496528,
+      "end": 1788876096527,
+      "step": 0
+    },
+    {
+      "duration": "3.524s",
+      "id": "18D35D4CB88532FE",
+      "remote_addr": "127.0.0.1:60766",
+      "query": "_time:[2026-09-08T13:01:40.487000000Z,2026-09-08T14:01:40.486999999Z] \"connection refused\" | sort by (_time) desc limit 50",
+      "tenant_id": "{accountID=0,projectID=0}",
+      "start": 1788872500487,
+      "end": 1788876100486,
+      "step": 0
+    }
+  ]
+}
+```
+
+The `/select/logsql/active_queries` API is useful for seeing which queries are stuck running for a long time.
+
+See also:
+
+- [Querying logs](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs)
 - [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
 
 ### Querying log stats
