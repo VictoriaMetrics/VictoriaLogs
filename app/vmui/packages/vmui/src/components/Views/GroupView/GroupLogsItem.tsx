@@ -6,7 +6,6 @@ import { ArrowDownIcon, CopyIcon } from "../../Main/Icons";
 import classNames from "classnames";
 import { useLogsState } from "../../../state/logsPanel/LogsStateContext";
 import { useTimeState } from "../../../state/time/TimeStateContext";
-import { marked } from "marked";
 import { useSearchParams } from "react-router-dom";
 import { LOGS_DATE_FORMAT, LOGS_URL_PARAMS } from "../../../constants/logs";
 import { parseAnsiToHtml } from "../../../utils/ansiParser";
@@ -21,6 +20,7 @@ import { vmDate } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { getLogLevel } from "../../../utils/logLevel";
 import { LOG_LEVEL_COLORS } from "../../../constants/logLevel";
+import SafeHtml from "../../Main/SafeHtml/SafeHtml";
 
 interface Props {
   log: Logs;
@@ -73,7 +73,7 @@ const GroupLogsItem: FC<Props> = ({
 
   const formattedMarkdown = useMemo(() => {
     if (!markdownParsing || !log._msg || !displayFields.includes("_msg")) return "";
-    return marked(log._msg.replace(/```/g, "\n```\n")) as string;
+    return log._msg.replace(/```/g, "\n```\n");
   }, [log._msg, markdownParsing, displayFields]);
 
   const hasFields = Object.keys(log).length > 0;
@@ -185,7 +185,13 @@ const GroupLogsItem: FC<Props> = ({
             "vm-group-logs-row-content__msg_single-line": noWrapLines,
           })}
         >
-          {formattedMarkdown && <span dangerouslySetInnerHTML={{ __html: formattedMarkdown }}/>}
+          {formattedMarkdown && (
+            <SafeHtml
+              tagName="div"
+              value={formattedMarkdown}
+              format="markdown"
+            />
+          )}
           {displayMessage.map((msg, i) => (
             <span
               className="vm-group-logs-row-content__sub-msg"
