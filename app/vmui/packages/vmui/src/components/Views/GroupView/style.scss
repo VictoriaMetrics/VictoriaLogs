@@ -331,6 +331,11 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         padding-right: $padding-global;
       }
 
+      &__field-name {
+        color: $color-text-secondary;
+        margin-right: calc($padding-small / 2);
+      }
+
       &__actions {
         position: absolute;
         right: 2px;
@@ -478,3 +483,4 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
     }
   }
 }
+
