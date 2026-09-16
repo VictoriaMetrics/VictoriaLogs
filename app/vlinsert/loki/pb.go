@@ -260,6 +260,7 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 			return fmt.Errorf("missing `,` char at %s", s)
 		}
 		s = s[1:]
+		s = strings.TrimPrefix(s, " ")
 	}
 	return nil
 }
