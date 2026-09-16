@@ -13,13 +13,15 @@ export const sortSidebarItems = (
 
     if (selectedDiff) return selectedDiff;
 
-    const nameDiff = a.value.localeCompare(b.value, undefined, { numeric: true });
-
     if (sort.by === "name") {
-      return nameDiff * direction;
+      return nameComparator(a.value, b.value) * direction;
     }
 
     const hitsDiff = (a.hits - b.hits) * direction;
-    return hitsDiff || nameDiff;
+    return hitsDiff || nameComparator(a.value, b.value);
   });
+};
+
+const nameComparator = (a: string, b: string): number => {
+  return a.localeCompare(b, undefined, { numeric: true });
 };
