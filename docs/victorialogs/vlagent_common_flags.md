@@ -358,6 +358,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
      The minimum delay between retry attempts to send a block of data to the corresponding -remoteWrite.url. Every next retry attempt will double the delay to prevent hammering of remote database. See also -remoteWrite.retryMaxTime (default 1s)
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to default value.
+  -remoteWrite.retryOn404 array
+    	Whether to retry sending a block of data instead of dropping it when a 404 status code is received from the corresponding -remoteWrite.url.
+    	Supports array of values separated by comma or specified via multiple flags.
+    	Empty values are set to false.
   -remoteWrite.sendTimeout array
      Timeout for sending a single block of data to the corresponding -remoteWrite.url (default 1m0s)
      Supports array of values separated by comma or specified via multiple flags.

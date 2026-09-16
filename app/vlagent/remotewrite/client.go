@@ -28,6 +28,7 @@ var (
 	sendTimeout      = flagutil.NewArrayDuration("remoteWrite.sendTimeout", time.Minute, "Timeout for sending a single block of data to the corresponding -remoteWrite.url")
 	retryMinInterval = flagutil.NewArrayDuration("remoteWrite.retryMinInterval", time.Second, "The minimum delay between retry attempts to send a block of data to the corresponding -remoteWrite.url. Every next retry attempt will double the delay to prevent hammering of remote database. See also -remoteWrite.retryMaxTime")
 	retryMaxTime     = flagutil.NewArrayDuration("remoteWrite.retryMaxTime", time.Minute, "The max time spent on retry attempts to send a block of data to the corresponding -remoteWrite.url. Change this value if it is expected for -remoteWrite.url to be unreachable for more than -remoteWrite.retryMaxTime. See also -remoteWrite.retryMinInterval")
+	retryOn404       = flagutil.NewArrayBool("remoteWrite.retryOn404", "Whether to retry sending a block of data instead of dropping it when a 404 status code is received from the corresponding -remoteWrite.url.")
 	proxyURL         = flagutil.NewArrayString("remoteWrite.proxyURL", "Optional proxy URL for writing data to the corresponding -remoteWrite.url. "+
 		"Supported proxies: http, https, socks5. Example: -remoteWrite.proxyURL=socks5://proxy:1234")
 
@@ -73,6 +74,7 @@ type client struct {
 
 	retryMinInterval time.Duration
 	retryMaxTime     time.Duration
+	retryOn404       bool
 
 	sendBlock func(block []byte) bool
 	authCfg   *promauth.Config
@@ -128,6 +130,7 @@ func newHTTPClient(argIdx int, remoteWriteURL, sanitizedURL string, fq *persiste
 		hc:               hc,
 		retryMinInterval: retryMinInterval.GetOptionalArg(argIdx),
 		retryMaxTime:     retryMaxTime.GetOptionalArg(argIdx),
+		retryOn404:       retryOn404.GetOptionalArg(argIdx),
 		stopCh:           make(chan struct{}),
 	}
 	c.sendBlock = c.sendBlockHTTP
@@ -355,7 +358,7 @@ again:
 	}
 
 	metrics.GetOrCreateCounter(fmt.Sprintf(`vlagent_remotewrite_requests_total{url=%q, status_code="%d"}`, c.sanitizedURL, statusCode)).Inc()
-	if statusCode == 400 || statusCode == 404 {
+	if statusCode == 400 || (!c.retryOn404 && statusCode == 404) {
 		logBlockRejected(block, c.sanitizedURL, resp)
 		_ = resp.Body.Close()
 		c.packetsDropped.Inc()
