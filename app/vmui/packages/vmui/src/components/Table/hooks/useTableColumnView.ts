@@ -24,7 +24,18 @@ export const useTableColumnView = (
 
   const primaryKeysSignature = primaryKeys?.join("\u001F") ?? "";
 
+  const displayFieldsRaw = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || "";
+
   const defaultKeys = useMemo(() => {
+    // Seed the DEFAULTS from the Group view's display fields, so a Group -> Table
+    // switch carries the field selection instead of falling back to
+    // DEFAULT_COMMON_FIELDS. An explicit Table selection still wins: syncKeys
+    // prefers the `columns` URL param and localStorage over these defaults.
+    const displayFields = displayFieldsRaw.split(",").filter(f => f && availableColumnKeys.includes(f));
+    if (displayFields.length) {
+      return [...new Set(["_time", ...displayFields])];
+    }
+
     const result = new Set<string>(DEFAULT_COMMON_FIELDS);
 
     primaryKeys?.forEach(col => {
@@ -32,7 +43,7 @@ export const useTableColumnView = (
     });
 
     return [...result];
-  }, [primaryKeysSignature, availableColumnKeys]);
+  }, [primaryKeysSignature, availableColumnKeys, displayFieldsRaw]);
 
   const [viewColumnKeys, setViewColumnKeys] = useState<string[]>(defaultKeys);
 
