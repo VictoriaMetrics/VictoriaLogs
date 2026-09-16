@@ -39,6 +39,7 @@ according to the following docs:
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): persist the Hits chart visibility preference in browser local storage. See [#1559](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1559).
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show the selected time zone UTC offset next to the date/time controls and allow opening time zone settings from it.
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): hide the `Stacked` toggle on the Hits chart when `Group by` is set to `none`. See [#1629](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1629).
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): move auto-refresh settings from the header to the Execute button dropdown. See [#11343](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11343).
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): add `waitDuration` to the slow query log line emitted according to `-search.logSlowQueryDuration`, so it is easy to tell whether a slow query spent its time waiting for a free concurrency slot or actually executing. See [#1683](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1683).
 * FEATURE: [docs/integrations](https://docs.victoriametrics.com/victorialogs/integrations/): add [integration with Logchef](https://docs.victoriametrics.com/victorialogs/integrations/logchef/), a query and UI layer that uses VictoriaLogs as datasource.
 
