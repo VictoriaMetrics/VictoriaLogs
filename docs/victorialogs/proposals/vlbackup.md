@@ -4,36 +4,111 @@ Author: YurDuiachenko
 
 ## Background
 
-Currently, there is no dedicated VictoriaLogs backup and restore tooling:
+Currently, there is no dedicated VictoriaLogs backup and restore tooling.
 
-- VictoriaMetrics already provides `vmbackup` and `vmrestore`, but these tools are designed around the VictoriaMetrics storage lifecycle and don't support VictoriaLogs-specific partition snapshot and restore operations.
-- The VictoriaLogs documentation currently describes the backup process as a sequence of manual steps: create a partition snapshot, copy it to external storage with `rsync` or `rclone`, and delete the snapshot afterward.
+VictoriaMetrics already provides `vmbackup` and `vmrestore`, but these tools are designed around the VictoriaMetrics storage lifecycle and don't support VictoriaLogs-specific per-day partition snapshot and restore operations. 
+
+VictoriaLogs documentation currently describes the backup process as a sequence of manual steps: create a partition snapshot, copy it to external storage with `rsync` or `rclone`, and delete the snapshot afterward.
+
+This is a simple and flexible workflow, but it has several drawbacks:
+
+- snapshot lifecycle, multi-partition consistency, and failed-backup handling must be orchestrated externally; interrupted backups may leave stale snapshots or incomplete backup state which requires manual cleanup;
+- keeping multiple historical recovery points may duplicate immutable storage parts, increasing backup storage usage even when most partition data hasn't changed;
+- repeated backups may transfer large amounts of already stored data unless incremental reuse is explicitly organized by the operator.
 
 ## High-level proposal
 
 The proposal is to introduce two VictoriaLogs-specific binaries:
 
-- `vlbackup` - creates full and incremental backups of VictoriaLogs;
+- `vlbackup` - creates full and selective backups of VictoriaLogs;
 - `vlrestore` - restores VictoriaLogs from backups.
 
-Both tools reuse the existing backup and restore libraries where possible instead of introducing a new backup engine or adding VictoriaLogs-specific logic to `vmbackup` and `vmrestore`.
+They will manage the VictoriaLogs-specific snapshot lifecycle and add a specific layout on top of the existing backup destination to support point-in-time recovery, 
+reuse unchanged partition data without requiring server-side copies, and preserve historical partitions independently of VictoriaLogs retention.
 
-A `vlbackupmanager` may be introduced later to provide scheduling, retention, and recovery-point management on top of `vlbackup` and `vlrestore`.
+Both tools will reuse the existing backup and restore libraries where possible instead of introducing a new backup engine or adding VictoriaLogs-specific logic to `vmbackup` and `vmrestore`.
+
+A `vlbackupmanager` may be introduced later to provide scheduling on top of `vlbackup` and `vlrestore`.
 
 ## Goals
 
 - Provide dedicated `vlbackup` and `vlrestore` tools for VictoriaLogs.
 - Support full-storage and selective partition backup and restore.
-- Support incremental backups and independent recovery points using `origin`.
-- Handle VictoriaLogs partition snapshot lifecycle and partition-set synchronization automatically.
+- Support independent recovery points while reusing unchanged partition data without server-side copies.
+- Handle VictoriaLogs partition snapshot lifecycle and partition-set capture automatically.
 
 ## Non-Goals
 
 - Implementing a new backup or remote storage engine.
 - Changing the VictoriaLogs storage format or partition layout.
-- Implementing scheduling, retention, or cluster-wide orchestration in the initial implementation.
+- Implementing scheduling or cluster-wide orchestration.
+
+---
 
 ## Detailed design
+
+There are the following popular ways to make backups:
+
+- Point in time backups for all the data currently stored at VictoriaLogs. Such backups are good for recovery of all the data seen during the backup moment (aka point in time recovery).
+- Historical archives - to store data for historical days at the backup storage, so it could be restored and investigated if needed, even if this data is dropped at VictoriaLogs because of the configured retention.
+
+Proposed binaries will provide functionality for both of this use cases due to the specific backup destination hierarchy: data only stored once, and then just referenced in backup metafiles.
+That allows making very fast and cheap incremental backups, while they still can be properly restored.
+
+Backup destination hierarchy looks like this:
+
+![Backup destination hierarchy](vlbackup.svg)
+
+Or more detailed like this:
+
+```text
+partitions/
+  <partition>/
+    data/
+      datadb/
+        <part-id>/...
+      indexdb/
+        <part-id>/...
+    states/
+      <state-id>/
+        datadb/
+          parts.json
+        indexdb/
+          parts.json
+
+recovery-points/
+  <recovery-point>.json
+
+refs/
+  <partition>/
+    <recovery-point>
+```
+
+A recovery point contains a set of daily partition states.
+
+Each partition has its own shared physical data pool under `partitions/<partition>/data/`.
+
+The snapshot-specific metadata `datadb/parts.json` and `indexdb/parts.json` files are stored under an immutable `states/<state-id>/` directory.
+
+`<state-id>` identifies the contents of these state files. Therefore, identical partition states may be shared by multiple recovery points, while a change in parts.json creates a new state.
+
+A recovery-point manifest maps every partition included in the backup to the corresponding state:
+
+```json
+{
+   "version": 1, 
+   "id": "20260830T100000Z", 
+   "created_at": "2026-08-30T10:00:00Z", 
+   "scope": "full",
+   "partitions": {
+      "20260828": "<state-id-1>", 
+      "20260829": "<state-id-2>", 
+      "20260830": "<state-id-3>"
+   }
+}
+```
+
+`refs/<partition>/<recovery-point>` provides the reverse mapping for fast GC and retention mechanisms.
 
 ### vlbackup
 
@@ -49,11 +124,16 @@ The interface is intentionally similar to `vmbackup`:
 
 `-partitionManage.authKey` can be used when the partition management API is protected with `-partitionManageAuthKey`.
 
-When `-partition` isn't set, `vlbackup` discovers all available VictoriaLogs partitions and backs each partition up independently under `<dst>/<YYYYMMDD>`.
-For example, partition `20260828` is stored under `s3://<bucket>/<path/to/backup>/20260828`.
+When `-partition` isn't specified, `vlbackup`:
 
-For each partition, `vlbackup` creates a VictoriaLogs snapshot, passes it to the shared backup library, and attempts to delete the snapshot after the backup finishes or fails.
-As with `vmbackup`, a new partition destination results in a full backup, while an existing one is updated incrementally.
+1. Creates snapshots for all active VictoriaLogs partitions in a single partition snapshot API request.
+2. For each partition snapshot:
+   - uploads physical storage parts which aren't already present under `partitions/<partition>/data/`
+   - stores snapshot metadata under `partitions/<partition>/states/<state-id>/`
+   - adds `<partition>:<state-id>` records in the recovery-point manifest being built locally;
+   - deletes the partition snapshot immediately after its data and state have been stored successfully.
+3. Creates in batch `refs/<partition>/<recovery-point>` for every partition in the RP.
+4. Writes the recovery-point manifest last as the commit record.
 
 #### Partition selection
 
@@ -66,89 +146,153 @@ A particular partition can be selected with `-partition`:
   -dst=s3://<bucket>/<path/to/backup>
 ```
 
-In this case, only `<dst>/20260828` is created or updated (other partitions aren't touched) and partition reconciliation isn't performed.
+In this case, the same RP creation workflow is performed as for full storage backup, but only for one partition.
 
-#### Partition reconciliation
+#### Recovery point deletion
 
-When `-partition` isn't set, `vlbackup` also synchronizes the set of destination partitions with the partitions currently present in VictoriaLogs.
-
-For example, if the destination contains partitions `[20260801, 20260802, 20260803, 20260804]`,
-while VictoriaLogs currently contains only `[20260801, 20260803, 20260804]`, then `20260802` is removed from the destination after the remaining partitions have been backed up successfully.
-
-This follows the same synchronization semantics as `vmbackup`, but at the partition level.
-
-The operation is performed in the following order:
-
-1. Mark the backup as incomplete.
-2. Discover source and destination partitions.
-3. Back up all current partitions.
-4. Remove stale destination partitions if all partition backups succeeded.
-5. Mark the backup as complete.
-
-If a backup fails before reconciliation completes, the destination remains incomplete and can be retried.
-For backups without `-partition`, `vlbackup` keeps an overall completion state in addition to the per-partition completion state provided by the shared backup library.
-
-#### Origin backup
-
-Updating an existing destination provides an incremental backup but doesn't preserve its previous state as an independent recovery point.
-
-A new destination can use an existing backup as `origin` to create an independent recovery point without re-uploading unchanged data:
+A recovery point can be deleted with:
 
 ```bash
-./vlbackup \
-  -partitionManage.url=http://localhost:9428/internal/partition \
-  -dst=s3://<bucket>/<path/to/new/backup> \
-  -origin=s3://<bucket>/<path/to/existing/backup>
+./vlbackup delete \
+  -dst=s3://<bucket>/<path/to/backup> \
+  -recoveryPoint=20260830T100000Z
 ```
 
-Origin reuse is performed between corresponding partitions. For example, when backing up partition `20260828`, `vlbackup` uses `<origin>/20260828` as the origin for `<dst>/20260828`.
+`vlbackup` reads the recovery-point manifest and removes:
 
-Only partitions currently present in VictoriaLogs are created in the new destination. Within each partition, unchanged data can be reused server-side from `origin`, while new or changed data is uploaded.
+```text
+recovery-points/<recovery-point>.json
+refs/<partition>/<recovery-point>
+```
 
-When `-partition` is specified, the corresponding `<origin>/<partition>` is used for `<dst>/<partition>`.
+for every partition referenced by the recovery point (batch operation if possible).
 
-The origin isn't modified.
+Physical partition data isn't touched.
+
+### Garbage collection
+
+Physical destination cleanup and optional recovery-point retention are handled by `vlbackup gc`.
+
+When retention policy isn't specified:
+
+```bash
+./vlbackup gc \
+  -dst=s3://<bucket>/<path/to/repository>
+```
+
+GC only deletes unreferenced partitions, so it
+
+1. Lists the stored partitions and performs a lightweight check for each one `LIST refs/<partition>/ MaxKeys=1`
+2. If at least one object is returned, the partition is still referenced and is kept.
+3. If the prefix is empty, no recovery point references the partition, so GC can remove `partitions/<partition>/`.
+
+#### Recovery point retention
+
+Recovery-point retention can be applied during GC:
+
+```bash
+./vlbackup gc \
+  -dst=s3://<bucket>/<path/to/repository> \
+  -recoveryPoint.retention=30d
+```
+
+The default value of `-recoveryPoint.retention` is `0`, which disables automatic recovery-point expiration.
+
+When retention is enabled, GC first lists `recovery-points/` and determines expired recovery points from their timestamp-based IDs.
+
+For every recovery point older than the configured retention period, GC:
+
+1. reads its manifest to determine referenced partitions;
+2. removes `recovery-points/<recovery-point>.json`;
+3. removes the corresponding `refs/<partition>/<recovery-point>` objects (batch if possible).
+
+It then performs the normal partition garbage collection.
+
+#### Soft garbage collection
+
+Physical partition deletion can be delayed with a grace period:
+
+```bash
+./vlbackup gc \
+  -dst=s3://<bucket>/<path/to/repository> \
+  -recoveryPoint.retention=30d \
+  -soft \
+  -gracePeriod=24h
+```
+
+When `-soft` is enabled and `refs/<partition>/` is empty, the partition isn't removed immediately. 
+Instead, GC creates `gc-candidates/<partition>.json` containing the time when the partition was first observed as unreferenced.
+
+On a later GC run, if the candidate is older than `-gracePeriod` (default is 24h), GC performs `LIST refs/<partition>/ MaxKeys=1` again and if the partition is still unreferenced, it is removed.
+
+The grace period applies only to physical partition deletion. Recovery points which exceed `-recoveryPoint.retention` are removed immediately during the retention pass.
 
 ### vlrestore
 
-The interface is similar to `vmrestore`:
+A full recovery point can be restored with:
 
 ```bash
 ./vlrestore \
   -src=s3://<bucket>/<path/to/backup> \
+  -recoveryPoint=20260830T100000Z \
   -storageDataPath=</path/to/victoria-logs-data> \
   -partitionManage.url=http://localhost:9428/internal/partition
 ```
 
 `-partitionManage.url` is used for partition detach and attach operations. `-partitionManage.authKey` can be used when the partition management API is protected with `-partitionManageAuthKey`.
 
-Before a full restore, `vlrestore` verifies that the source represents a completed backup and discovers partition backups directly from `-src`.
+When `-partition` isn't specified, `vlrestore`:
 
-When `-partition` isn't set, the local VictoriaLogs partitions are synchronized with the backup. For example, if the backup contains `[20260801, 20260803, 20260804]`, while the local storage additionally contains `20260802`, then `20260802` is removed after the restore completes.
+1. Reads `recovery-points/<recovery-point>.json` and gets partitions list and their states.
+2. For each partition in the recovery point:
+   - loads the corresponding `datadb/parts.json` and `indexdb/parts.json` from `partitions/<partition>/states/<state-id>/`;
+   - resolves the physical parts referenced by this state under `partitions/<partition>/data/`;
+   - restores the selected partition into a temporary directory using the shared restore library;
+   - writes the snapshot-specific `parts.json` files into the restored partition;
+   - validates the restored partition;
+   - detaches the corresponding local VictoriaLogs partition if it exists;
+   - replaces the local partition data with the restored data;
+   - attaches the restored partition.
+3. After all partitions referenced by the recovery point have been restored successfully, removes local partitions which aren't present in the selected full recovery point.
 
-This follows the synchronization model of `vmrestore`: the local partition set is synchronized with the backup rather than merged with it.
+Physical parts from other historical states of the same partition may coexist in `partitions/<partition>/data/`. During restore, only the parts referenced by the selected partition state are exposed to the shared restore logic.
 
-Partitions are restored independently:
+#### Selective partition restore
 
-1. Restore a partition into a temporary directory and validate it.
-2. Detach the corresponding local partition if it exists.
-3. Replace the partition data.
-4. Attach the restored partition.
-5. Continue with the next partition.
-
-Local partitions which aren't present in the backup are detached and removed only after all backup partitions have been restored successfully.
-
-A particular partition can be restored with `-partition`. The selected partition backup must be complete:
+A partition can be restored from a specific recovery point:
 
 ```bash
 ./vlrestore \
   -src=s3://<bucket>/<path/to/backup> \
+  -recoveryPoint=20260830T100000Z \
+  -partition=20260828 \
   -storageDataPath=</path/to/victoria-logs-data> \
-  -partitionManage.url=http://localhost:9428/internal/partition \
-  -partition=20260828
+  -partitionManage.url=http://localhost:9428/internal/partition
 ```
 
-In this case, the backup is read from `<src>/20260828`, and only that partition is restored and replaced.
+In this case, `vlrestore` takes the partition state from the selected recovery-point manifest and restores only that partition.
+
+A partition can also be restored without explicitly selecting a recovery point:
+
+```bash
+./vlrestore \
+  -src=s3://<bucket>/<path/to/backup> \
+  -partition=20260828 \
+  -storageDataPath=</path/to/victoria-logs-data> \
+  -partitionManage.url=http://localhost:9428/internal/partition
+```
+
+`vlrestore` lists: `refs/20260828/` and selects the newest recovery-point. Since recovery-point IDs contain sortable timestamps, no separate `latest` pointer is needed.
+
+The recovery-point manifest is then read to resolve the exact snapshot state for `20260828`.
+
+Available recovery points can be listed with:
+
+```bash
+./vlrestore \
+  -src=s3://<bucket>/<path/to/backup> \
+  -list
+```
 
 ### Backups on VLCluster
 
@@ -162,7 +306,9 @@ vlstorage-2$ ./vlbackup -partitionManage.url=http://vlstorage-2:9491/internal/pa
 vlstorage-3$ ./vlbackup -partitionManage.url=http://vlstorage-3:9491/internal/partition -dst=s3://<bucket>/vlstorage-3
 ```
 
-### Metrics
+---
+
+## Metrics
 
 `vlbackup` and `vlrestore` expose Prometheus-compatible metrics through the standard `/metrics` endpoint.
 
@@ -177,9 +323,8 @@ Metrics provided by the shared backup and restore libraries, such as `vm_backups
 
 VictoriaLogs-specific metrics should cover:
 
-- successfully processed and failed partitions;
+- successfully processed and failed partitions and recovery points;
 - backup and restore errors;
-- stale partitions removed during reconciliation;
 - backup and restore duration.
 
 ## Testing
@@ -188,9 +333,9 @@ VictoriaLogs-specific metrics should cover:
 
 Unit tests should cover VictoriaLogs-specific logic introduced by `vlbackup` and `vlrestore`, including:
 
-- partition discovery, selection, and destination mapping;
-- VictoriaLogs snapshot and partition management API handling;
-- partition reconciliation and overall backup completion state.
+- partition discovery, selection, snapshot mapping, and destination mapping;
+- VictoriaLogs snapshot and partition management API handling, including snapshot cleanup;
+- recovery-point, partition-state, and reverse-reference handling, including incomplete backup state.
 
 Generic backup and restore behavior is covered by the existing shared-library tests.
 
@@ -199,12 +344,12 @@ Generic backup and restore behavior is covered by the existing shared-library te
 Application tests should run VictoriaLogs with temporary storage and cover:
 
 - full and selective partition backup and restore;
-- incremental backup and recovery-point creation with `origin`;
-- partition reconciliation when the source partition set changes;
-- failed or incomplete multi-partition backups.
+- incremental backup with physical data reuse and creation of multiple recovery points for the same partition;
+- restoring an older recovery point after a newer partition state has already been backed up;
+- failed or incomplete multi-partition backups without exposing an incomplete recovery point.
 
 Performance and resource usage should also be compared with the existing `rclone`-based workflow under ingestion and query load.
 
 ## Documentation
 
-This proposal can serve as the basis for the `vlbackup` and `vlrestore` documentation, covering CLI usage, backup and restore workflows, `origin`, metrics, and VLCluster usage.
+This proposal can serve as the basis for the `vlbackup` and `vlrestore` documentation, covering CLI usage, backup and restore workflows, metrics, and VLCluster usage.
