@@ -158,8 +158,7 @@ func assertLogsQLResponseEventually(tc *apptest.TestCase, get func() *apptest.Lo
 			sort.Strings(got.LogLines)
 			return got
 		},
-		Want: normalizeLogsQLResponse(t, want),
-		// Allow the same retry budget as the remote write recovery tests.
+		Want:    normalizeLogsQLResponse(t, want),
 		Retries: 70,
 		FailNow: true,
 	})
