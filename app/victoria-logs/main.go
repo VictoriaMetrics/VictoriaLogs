@@ -50,6 +50,8 @@ func main() {
 	insertutil.SetLogRowsStorage(&vlstorage.Storage{})
 	vlinsert.Init()
 
+	httpserver.RegisterAuthKeyProtectedPathsFunc(isAuthKeyProtectedPath)
+
 	go httpserver.Serve(listenAddrs, requestHandler, httpserver.ServeOptions{
 		UseProxyProtocol: useProxyProtocol,
 	})
@@ -101,6 +103,10 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+func isAuthKeyProtectedPath(r *http.Request) bool {
+	return vlselect.IsAuthKeyProtectedPath(r) || vlstorage.IsAuthKeyProtectedPath(r)
 }
 
 func usage() {
