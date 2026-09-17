@@ -57,6 +57,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent manually entered time ranges from shifting after Apply when using non-UTC time zones.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bar chart tap, pan, and pinch-to-zoom interactions on mobile devices.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix the `Table` view to show all logs when `All` is selected for `Rows per page`. Previously, the table showed no rows in this case. See [#1661](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1661).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): Add maxProtobufNestingDepth limits as recursion depth when decoding nested protobuf messages to prevent stack overflow and OOM from maliciously crafted deeply-nested payloads. See [#1321](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1321).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 

@@ -9,7 +9,7 @@ import (
 )
 
 // decodeArrayValueToJSON decodes a protobuf ArrayValue message into a JSON array represented by fastjson.Value.
-func decodeArrayValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
+func decodeArrayValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer, depth int) (*fastjson.Value, error) {
 	// message ArrayValue {
 	//   repeated AnyValue values = 1;
 	// }
@@ -32,7 +32,7 @@ func decodeArrayValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fast
 				return nil, fmt.Errorf("cannot read Value data")
 			}
 
-			v, err := decodeAnyValueToJSON(data, a, fb)
+			v, err := decodeAnyValueToJSON(data, a, fb, depth)
 			if err != nil {
 				return nil, fmt.Errorf("cannot decode AnyValue: %w", err)
 			}
@@ -44,7 +44,11 @@ func decodeArrayValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fast
 	return dst, nil
 }
 
-func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
+func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer, depth int) (*fastjson.Value, error) {
+	if depth > maxProtobufNestingDepth {
+		return nil, fmt.Errorf("protobuf nesting depth exceeds the limit of %d", maxProtobufNestingDepth)
+	}
+
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -101,7 +105,7 @@ func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjs
 			if !ok {
 				return nil, fmt.Errorf("cannot read ArrayValue")
 			}
-			arr, err := decodeArrayValueToJSON(data, a, fb)
+			arr, err := decodeArrayValueToJSON(data, a, fb, depth+1)
 			if err != nil {
 				return nil, fmt.Errorf("cannot decode ArrayValue: %w", err)
 			}
@@ -111,7 +115,7 @@ func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjs
 			if !ok {
 				return nil, fmt.Errorf("cannot read KeyValueList")
 			}
-			obj, err := decodeKeyValueListToJSON(data, a, fb)
+			obj, err := decodeKeyValueListToJSON(data, a, fb, depth+1)
 			if err != nil {
 				return nil, fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
@@ -128,7 +132,7 @@ func decodeAnyValueToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjs
 	return a.NewNull(), nil
 }
 
-func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fastjson.Value, error) {
+func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer, depth int) (*fastjson.Value, error) {
 	// message KeyValueList {
 	//   repeated KeyValue values = 1;
 	// }
@@ -149,7 +153,7 @@ func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fa
 				return nil, fmt.Errorf("cannot read Value data")
 			}
 
-			if err := decodeKeyValueToJSON(data, dst, a, fb); err != nil {
+			if err := decodeKeyValueToJSON(data, dst, a, fb, depth); err != nil {
 				return nil, fmt.Errorf("cannot decode KeyValue: %w", err)
 			}
 		}
@@ -157,7 +161,7 @@ func decodeKeyValueListToJSON(src []byte, a *fastjson.Arena, fb *fmtBuffer) (*fa
 	return dst, nil
 }
 
-func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb *fmtBuffer) error {
+func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb *fmtBuffer, depth int) error {
 	// message KeyValue {
 	//   string key = 1;
 	//   AnyValue value = 2;
@@ -184,7 +188,7 @@ func decodeKeyValueToJSON(src []byte, dst *fastjson.Value, a *fastjson.Arena, fb
 		return nil
 	}
 
-	v, err := decodeAnyValueToJSON(valueData, a, fb)
+	v, err := decodeAnyValueToJSON(valueData, a, fb, depth)
 	if err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}

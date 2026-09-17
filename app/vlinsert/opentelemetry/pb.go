@@ -9,6 +9,10 @@ import (
 	"github.com/VictoriaMetrics/easyproto"
 )
 
+// maxProtobufNestingDepth limits the recursion depth when decoding nested protobuf messages
+// to prevent stack overflow and OOM from maliciously crafted deeply-nested payloads.
+const maxProtobufNestingDepth = 64
+
 // the pushLogsHandler must store log entry with the given args.
 //
 // The handler must copy resource and attributes before returning,
@@ -119,7 +123,7 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 				return fmt.Errorf("cannot read Attributes data")
 			}
 
-			if err := decodeKeyValue(data, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(data, fs, fb, "", 0); err != nil {
 				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
@@ -232,7 +236,7 @@ func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer
 			if !ok {
 				return fmt.Errorf("cannot read Attributes data")
 			}
-			if err := decodeKeyValue(attributesData, fs, fb, "scope.attributes"); err != nil {
+			if err := decodeKeyValue(attributesData, fs, fb, "scope.attributes", 0); err != nil {
 				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
@@ -298,7 +302,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Body")
 			}
-			if err := decodeAnyValue(body, fs, fb, ""); err != nil {
+			if err := decodeAnyValue(body, fs, fb, "", 0); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:
@@ -306,7 +310,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Attributes data")
 			}
-			if err := decodeKeyValue(attributesData, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(attributesData, fs, fb, "", 0); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		case 9:
@@ -352,7 +356,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 	return eventName, timestamp, nil
 }
 
-func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) error {
+func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string, depth int) error {
 	// message KeyValue {
 	//   string key = 1;
 	//   AnyValue value = 2;
@@ -380,14 +384,18 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return nil
 	}
 
-	if err := decodeAnyValue(valueData, fs, fb, fieldName); err != nil {
+	if err := decodeAnyValue(valueData, fs, fb, fieldName, depth); err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
 
 	return nil
 }
 
-func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
+func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string, depth int) (err error) {
+	if depth > maxProtobufNestingDepth {
+		return fmt.Errorf("protobuf nesting depth exceeds the limit of %d", maxProtobufNestingDepth)
+	}
+
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -442,7 +450,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 
 			a := jsonArenaPool.Get()
 			// Encode arrays as JSON to match the behavior of /insert/jsonline
-			arr, err := decodeArrayValueToJSON(data, a, fb)
+			arr, err := decodeArrayValueToJSON(data, a, fb, depth+1)
 			if err != nil {
 				jsonArenaPool.Put(a)
 				return fmt.Errorf("cannot decode ArrayValue: %w", err)
@@ -456,7 +464,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 			if !ok {
 				return fmt.Errorf("cannot read KeyValueList")
 			}
-			if err := decodeKeyValueList(data, fs, fb, fieldName); err != nil {
+			if err := decodeKeyValueList(data, fs, fb, fieldName, depth+1); err != nil {
 				return fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 		case 7:
@@ -471,7 +479,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 	return nil
 }
 
-func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string) (err error) {
+func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNamePrefix string, depth int) (err error) {
 	// message KeyValueList {
 	//   repeated KeyValue values = 1;
 	// }
@@ -488,7 +496,7 @@ func decodeKeyValueList(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldN
 			if !ok {
 				return fmt.Errorf("cannot read KeyValue data")
 			}
-			if err := decodeKeyValue(data, fs, fb, fieldNamePrefix); err != nil {
+			if err := decodeKeyValue(data, fs, fb, fieldNamePrefix, depth); err != nil {
 				return fmt.Errorf("cannot decode KeyValue: %w", err)
 			}
 		}
