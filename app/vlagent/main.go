@@ -23,7 +23,8 @@ import (
 )
 
 var (
-	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "TCP address to listen for incoming http requests. "+
+	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "Addresses to listen for incoming http requests. "+
+		"Use unix:/path/to/socket to listen on Unix domain socket. Note that -tls and -httpListenAddr.useProxyProtocol cannot be used with Unix sockets. "+
 		"Set this flag to empty value in order to disable listening on any port. This mode may be useful for running multiple vlagent instances on the same server. "+
 		"Note that /targets and /metrics pages aren't available if -httpListenAddr=''. See also -tls and -httpListenAddr.useProxyProtocol")
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
