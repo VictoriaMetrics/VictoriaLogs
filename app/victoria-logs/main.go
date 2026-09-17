@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "Addresses to listen for incoming http requests. "+
-		"Use unix:/path/to/socket to listen on Unix domain socket. Note that -tls and -httpListenAddr.useProxyProtocol cannot be used with Unix sockets")
+	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "TCP address (e.g. :9428) or Unix domain socket (e.g. unix:/run/victoria-logs.sock) to listen for incoming http requests. "+
+		"See also -tls and -httpListenAddr.useProxyProtocol, which are supported only for TCP addresses")
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the given -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")

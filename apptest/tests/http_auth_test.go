@@ -56,8 +56,7 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 		f(baseURL+p.path+"?authKey="+p.authKey, http.StatusOK)
 	}
 
-	// The remaining paths must still require the -httpAuth.* credentials,
-	// including the paths ending with /reload, which used to skip HTTP Basic Auth.
+	// The paths without -*AuthKey must require the -httpAuth.* credentials, whatever their suffix is.
 	f(baseURL+"/select/logsql/query?query=*", http.StatusUnauthorized)
 	f(basicAuthURL+"/select/logsql/query?query=*", http.StatusOK)
 	f(baseURL+"/select/vmalert/-/reload", http.StatusUnauthorized)

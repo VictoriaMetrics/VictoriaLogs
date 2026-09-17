@@ -123,7 +123,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/vlagent/ .
   -httpAuth.username string
      Username for HTTP server's Basic Auth. The authentication is disabled if empty. See also -httpAuth.password
   -httpListenAddr array
-     Addresses to listen for incoming http requests. Set this flag to empty value in order to disable listening on any port. This mode may be useful for running multiple vlagent instances on the same server. Note that /targets and /metrics pages aren't available if -httpListenAddr=''. Use unix:/path/to/socket to listen on Unix domain socket. Note that -tls and -httpListenAddr.useProxyProtocol cannot be used with Unix sockets
+     TCP address (e.g. :9429) or Unix domain socket (e.g. unix:/run/vlagent.sock) to listen for incoming http requests. Set this flag to empty value in order to disable listening on any port. This mode may be useful for running multiple vlagent instances on the same server. Note that /targets and /metrics pages aren't available if -httpListenAddr=''. See also -tls and -httpListenAddr.useProxyProtocol, which are supported only for TCP addresses
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -httpListenAddr.useProxyProtocol array
