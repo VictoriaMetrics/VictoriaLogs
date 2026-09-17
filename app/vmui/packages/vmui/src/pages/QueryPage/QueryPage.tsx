@@ -39,7 +39,15 @@ const QueryPage: FC = () => {
 
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { extraFilters, extraParams, addNewFilter, removeFilterByValue, removeFilterByField } = useExtraFilters();
+  const {
+    extraFilters,
+    extraParams,
+    addNewFilter,
+    replaceFiltersByField,
+    removeFilterByValue,
+    removeStreamFilterByValue,
+  } = useExtraFilters();
+
   const { isVisible: isVisibleFilterSidebar, setHidden: onCloseFilterSidebar } = useFilterSidebarVisible();
 
   const handleUpdateQuery = (nextQuery?: string) => {
@@ -84,8 +92,8 @@ const QueryPage: FC = () => {
           extraFilters={extraFilters}
           extraParams={extraParams}
           onAddFilter={addNewFilter}
-          onRemoveByValue={removeFilterByValue}
-          onRemoveByField={removeFilterByField}
+          onReplaceFiltersByField={replaceFiltersByField}
+          onRemoveByValue={removeStreamFilterByValue}
           onClose={onCloseFilterSidebar}
         />
       )}

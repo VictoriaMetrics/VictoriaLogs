@@ -1,41 +1,53 @@
 import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import { LogsFieldValues } from "../../../api/types";
 import { formatNumberShort } from "../../../utils/number";
-import { ArrowDownIcon, MinusIcon } from "../../Main/Icons";
+import { ArrowDownIcon } from "../../Main/Icons";
 import "./style.scss";
 import classNames from "classnames";
 import { useFetchStreamValues } from "../../../pages/OverviewPage/hooks/useFetchStreamValues";
 import LineLoader from "../../Main/LineLoader/LineLoader";
-import { OrderDir } from "../../../types";
 import { ExtraFilter, ExtraFilterOperator } from "../../ExtraFilters/types";
 import FilterSidebarAlert from "../FilterSidebarAlert/FilterSidebarAlert";
 import FilterSidebarValue from "../FilterSidebarValue/FilterSidebarValue";
-import Checkbox from "../../Main/Checkbox/Checkbox";
-import { useAppState } from "../../../state/common/StateContext";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { buildExtraFilterParams } from "../../ExtraFilters/utils/buildExtraFilterParams";
 import { useTimePeriod } from "../../../pages/QueryPage/hooks/useTimePeriod";
+import { SortOptions } from "../types";
+import { sortSidebarItems } from "../utils/sortSidebarItems";
+import {
+  filterFilterSidebarValues,
+  matchesFilterSidebarSearch,
+} from "../utils/filterSidebarItems";
+import { isStreamFilter } from "../../ExtraFilters/utils/isStreamFilter";
+
+const ANY_VALUE_OPTION: LogsFieldValues = {
+  value: "",
+  hits: 0,
+};
+
+const ANY_VALUE_LABEL = "Any value";
 
 type Props = {
   field: LogsFieldValues;
   query?: string;
   extraFilters: ExtraFilter[];
-  orderDir?: OrderDir;
+  sort: SortOptions;
+  search: string;
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
-  onRemoveByField: (field: string) => void;
+  onReplaceFiltersByField: (filter: ExtraFilter) => void;
 }
 
 const FilterSidebarField: FC<Props> = ({
   field,
   query,
   extraFilters,
-  orderDir,
+  sort,
+  search,
   onAddFilter,
   onRemoveByValue,
-  onRemoveByField,
+  onReplaceFiltersByField,
 }) => {
-  const { isDarkTheme } = useAppState();
   const { period } = useTimePeriod();
   const [isValuesOpen, setValuesOpen] = useState(false);
   const { fetchStreamValues, streamValues, loading, error, abort } = useFetchStreamValues();
@@ -46,7 +58,7 @@ const FilterSidebarField: FC<Props> = ({
   }, [field.value, extraFilters]);
 
   const filtersByName = useMemo(() => {
-    return extraFilters.filter(f => f.field === field.value); // for field name
+    return extraFilters.filter(f => isStreamFilter(f) && (f.field === field.value)); // for field name
   }, [field.value, extraFilters]);
 
   const missingSelectedValues: LogsFieldValues[] = useMemo(() => {
@@ -59,11 +71,25 @@ const FilterSidebarField: FC<Props> = ({
     return uniqMissingValues.map(value => ({ value, hits: 0 }));
   }, [streamValues, filtersByName]);
 
+  const allValues = useMemo(() => {
+    return [...streamValues, ...missingSelectedValues];
+  }, [streamValues, missingSelectedValues]);
+
+  const sortedValues = useMemo(() => {
+    const selectedValues = new Set(filtersByName
+      .filter(filter => filter.value !== "")
+      .map(filter => filter.value));
+
+    return sortSidebarItems(allValues, sort, selectedValues);
+  }, [allValues, filtersByName, sort]);
+
   const values = useMemo(() => {
-    const allValues = [...streamValues, ...missingSelectedValues];
-    if (!orderDir || orderDir === "desc") return allValues;
-    return allValues.toSorted((a, b) => a.hits - b.hits);
-  }, [streamValues, orderDir, missingSelectedValues]);
+    return filterFilterSidebarValues(sortedValues, field.value, search);
+  }, [sortedValues, field.value, search]);
+
+  const isVisible = useMemo(() => {
+    return matchesFilterSidebarSearch(field.value, allValues, search);
+  }, [field.value, allValues, search]);
 
   const requestRef = useRef({
     query,
@@ -91,23 +117,30 @@ const FilterSidebarField: FC<Props> = ({
   }, [streamValues, filtersByName]);
 
   const handleToggleValues = () => {
-    setValuesOpen(prev => !prev);
+    setValuesOpen(value => !value);
   };
 
-  const handleClickCheckbox = (e: MouseEvent) => {
-    e.stopPropagation();
-
-    if (hasFilter) {
-      onRemoveByField(field.value);
+  const handleSelectAnyValue = () => {
+    if (hasAnyValueFilter) {
+      onRemoveByValue(field.value, "");
       return;
     }
 
-    onAddFilter({
+    onReplaceFiltersByField({
       field: field.value,
       value: "",
       operator: ExtraFilterOperator.NotEquals,
       isStream: true,
     });
+  };
+
+  const handleSelectValue = (filter: ExtraFilter) => {
+    if (hasAnyValueFilter) {
+      onReplaceFiltersByField(filter);
+      return;
+    }
+
+    onAddFilter(filter);
   };
 
   const badgeTooltip = useMemo(() => {
@@ -152,6 +185,8 @@ const FilterSidebarField: FC<Props> = ({
     setValuesOpen(true);
   }, []);
 
+  if (!isVisible) return null;
+
   return (
     <div
       className={classNames({
@@ -167,18 +202,6 @@ const FilterSidebarField: FC<Props> = ({
         className="vm-filter-sidebar-field-header"
         onClick={handleToggleValues}
       >
-        <div
-          className="vm-filter-sidebar-field__checkbox"
-          onClick={handleClickCheckbox}
-        >
-          <Checkbox
-            icon={hasFilter && !isCheckedAll && !hasAnyValueFilter && <MinusIcon/>}
-            size="small"
-            color={hasFilter ? (isDarkTheme ? "secondary" : "primary") : "gray"}
-            checked={hasFilter}
-          />
-        </div>
-
         <div className="vm-filter-sidebar-field-label">
           <span className="vm-filter-sidebar-field-label__title">{field.value}</span>
           <span className="vm-filter-sidebar-field-label__hits">{" "}({hitsShort})</span>
@@ -216,14 +239,28 @@ const FilterSidebarField: FC<Props> = ({
             title="Failed to load stream values"
             message={error}
           />
+
+          <FilterSidebarValue
+            isAnyValueFilter
+            checked={hasAnyValueFilter}
+            fieldName={field.value}
+            key="any-value-option"
+            label={ANY_VALUE_LABEL}
+            field={ANY_VALUE_OPTION}
+            extraFilters={filtersByName}
+            onAddFilter={handleSelectAnyValue}
+            onRemoveByValue={handleSelectAnyValue}
+          />
+
+          <div className="vm-filter-sidebar-field-values__divider"/>
+
           {values.map(streamFieldValue => (
             <FilterSidebarValue
               fieldName={field.value}
               key={streamFieldValue.value}
               field={streamFieldValue}
               extraFilters={filtersByName}
-              isAnyValueFilter={hasAnyValueFilter}
-              onAddFilter={onAddFilter}
+              onAddFilter={handleSelectValue}
               onRemoveByValue={onRemoveByValue}
             />
           ))}
