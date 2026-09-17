@@ -58,6 +58,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent manually entered time ranges from shifting after Apply when using non-UTC time zones.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bar chart tap, pan, and pinch-to-zoom interactions on mobile devices.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix the `Table` view to show all logs when `All` is selected for `Rows per page`. Previously, the table showed no rows in this case. See [#1661](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1661).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): show a dash placeholder for a log entry that has none of the selected display fields in the Group view, instead of dumping the whole entry. See [#1653](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1653).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
