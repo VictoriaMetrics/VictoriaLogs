@@ -57,6 +57,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): prevent manually entered time ranges from shifting after Apply when using non-UTC time zones.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix bar chart tap, pan, and pinch-to-zoom interactions on mobile devices.
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix the `Table` view to show all logs when `All` is selected for `Rows per page`. Previously, the table showed no rows in this case. See [#1661](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1661).
+* BUGFIX: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): reject fields with names exceeding [128 bytes](https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length) to prevent high memory consumption when processing deeply nested structures. See [#1321](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1321).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
