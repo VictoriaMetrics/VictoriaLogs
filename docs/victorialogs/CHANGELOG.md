@@ -25,7 +25,7 @@ according to the following docs:
 
 **Update note:** the `/internal/force_merge`, `/internal/force_flush`, `/internal/log_new_streams` and `/internal/partition/*` HTTP endpoints now require the `POST` method. Update any scripts or automation calling these endpoints via `GET` to use `POST`.
 
-* SECURITY: upgrade Go builder from Go1.26.5 to Go1.26.6. See [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved).
+* SECURITY: upgrade Go builder from Go1.26.5 to Go1.27.1. See [the list of issues addressed in Go1.26.6](https://github.com/golang/go/issues?q=milestone%3AGo1.26.6%20label%3ACherryPickApproved), [Go1.27 release notes](https://go.dev/doc/go1.27) and [the list of issues addressed in Go1.27.1](https://github.com/golang/go/issues?q=milestone%3AGo1.27.1%20label%3ACherryPickApproved).
 * SECURITY: [deletion API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs): restrict the `/delete/run_task` endpoint to the `POST` method only in order to prevent some [SSRF](https://en.wikipedia.org/wiki/Server-side_request_forgery)-based log deletion attacks. See [#1635](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635).
 * SECURITY: require the `POST` method for the `/internal/force_merge`, `/internal/force_flush`, `/internal/log_new_streams` and `/internal/partition/*` HTTP endpoints in order to prevent GET-based [SSRF](https://en.wikipedia.org/wiki/Server-side_request_forgery) attacks. See the related [#1635](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635).
 
