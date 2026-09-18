@@ -139,8 +139,9 @@ func (h *hllSketch) unmarshalState(src []byte) (int, error) {
 	if uint64(len(src)) != payloadLen {
 		return 0, fmt.Errorf("unexpected hll payload length; got %d; want %d", len(src), payloadLen)
 	}
+	// Empty payload is a no-op: local mode may import multiple remote states into the
+	// same group processor, so never clear previously accumulated sketch data.
 	if payloadLen == 0 {
-		h.sk = nil
 		return 0, nil
 	}
 
@@ -151,8 +152,19 @@ func (h *hllSketch) unmarshalState(src []byte) (int, error) {
 	if err := sk.UnmarshalBinary(src); err != nil {
 		return 0, fmt.Errorf("cannot unmarshal axiom hll payload: %w", err)
 	}
-	h.sk = sk
-	return hllStateBudgetBytes, nil
+
+	// Merge into existing state so repeated importState for the same group key
+	// (multiple vlstorage nodes) unions sketches instead of replacing them.
+	var tmp hllSketch
+	tmp.sk = sk
+	stateSizeIncrease := 0
+	if h.isEmpty() {
+		stateSizeIncrease = h.ensureInit()
+	}
+	if err := h.sk.Merge(tmp.sk); err != nil {
+		logger.Panicf("BUG: HLL merge during importState failed: %s", err)
+	}
+	return stateSizeIncrease, nil
 }
 
 func hllHashUnsigned(n uint64) uint64 {
@@ -192,18 +204,49 @@ func hllHashGenericString(v string) uint64 {
 	}
 	if len(v) > 0 && v[0] == '-' {
 		if n, ok := tryParseInt64AllowLeadingZeros(v); ok {
+			// "-0" / "-00" normalize to unsigned zero, matching numeric zero.
+			if n == 0 {
+				return hllHashUnsigned(0)
+			}
 			return hllHashNegative(n)
 		}
 	}
 	return hllHashString(bytesutil.ToUnsafeBytes(v))
 }
 
+// appendHLLCanonicalField appends a normalized encoding of v for multi-field tuples,
+// so numeric strings like "01" and "1" collide the same way as in the single-field path.
+func appendHLLCanonicalField(dst []byte, v string) []byte {
+	if n, ok := tryParseUint64AllowLeadingZeros(v); ok {
+		dst = append(dst, hllDomainUnsigned)
+		var b [8]byte
+		binary.BigEndian.PutUint64(b[:], n)
+		return append(dst, b[:]...)
+	}
+	if len(v) > 0 && v[0] == '-' {
+		if n, ok := tryParseInt64AllowLeadingZeros(v); ok {
+			if n == 0 {
+				dst = append(dst, hllDomainUnsigned)
+				var b [8]byte
+				return append(dst, b[:]...)
+			}
+			dst = append(dst, hllDomainNegative)
+			var b [8]byte
+			binary.BigEndian.PutUint64(b[:], uint64(n))
+			return append(dst, b[:]...)
+		}
+	}
+	dst = append(dst, hllDomainString)
+	return encoding.MarshalBytes(dst, bytesutil.ToUnsafeBytes(v))
+}
+
 func tryParseUint64AllowLeadingZeros(s string) (uint64, bool) {
-	if len(s) == 0 || len(s) > len("18_446_744_073_709_551_615")+8 {
+	if len(s) == 0 {
 		return 0, false
 	}
 	n := uint64(0)
 	digits := 0
+	significant := false
 	for i := range len(s) {
 		ch := s[i]
 		if ch == '_' {
@@ -213,6 +256,12 @@ func tryParseUint64AllowLeadingZeros(s string) (uint64, bool) {
 			return 0, false
 		}
 		digits++
+		if !significant {
+			if ch == '0' {
+				continue
+			}
+			significant = true
+		}
 		if n > ((1<<64)-1)/10 {
 			return 0, false
 		}

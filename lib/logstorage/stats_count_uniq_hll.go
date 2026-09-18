@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
@@ -70,7 +67,7 @@ func (sup *statsCountUniqHLLProcessor) updateStatsForAllRows(sf statsFunc, br *b
 			if v != "" {
 				allEmptyValues = false
 			}
-			keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(v))
+			keyBuf = appendHLLCanonicalField(keyBuf, v)
 		}
 		if allEmptyValues {
 			continue
@@ -96,7 +93,7 @@ func (sup *statsCountUniqHLLProcessor) updateStatsForRow(sf statsFunc, br *block
 		if v != "" {
 			allEmptyValues = false
 		}
-		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(v))
+		keyBuf = appendHLLCanonicalField(keyBuf, v)
 	}
 	sup.keyBuf = keyBuf
 	if allEmptyValues {

@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -65,6 +66,15 @@ func TestStatsCountUniqHLL(t *testing.T) {
 		{{"x", "2"}},
 	})
 
+	// Multi-field path applies the same numeric normalization as single-field.
+	f("stats count_uniq_hll(a, b) as x", [][]Field{
+		{{"a", "1"}, {"b", "x"}},
+		{{"a", "01"}, {"b", "x"}},
+		{{"a", "2"}, {"b", "x"}},
+	}, [][]Field{
+		{{"x", "2"}},
+	})
+
 	f("stats by (a) count_uniq_hll(b) as x", [][]Field{
 		{{"a", "foo"}, {"b", "1"}},
 		{{"a", "foo"}, {"b", "2"}},
@@ -91,14 +101,32 @@ func TestHLLHashSchemaGolden(t *testing.T) {
 	if hllHashUnsigned(1) != hllHashGenericString("01") {
 		t.Fatalf("string 01 must parse as unsigned 1")
 	}
+	if hllHashUnsigned(42) != hllHashGenericString(strings.Repeat("0", 40)+"42") {
+		t.Fatalf("heavily zero-padded numeric string must parse as unsigned")
+	}
 	if hllHashUnsigned(1) == hllHashGenericString("1.0") {
 		t.Fatalf("string 1.0 must stay in string domain")
 	}
 	if hllHashNegative(-1) != hllHashGenericString("-1") {
 		t.Fatalf("negative int and string -1 must share negative domain hash")
 	}
+	if hllHashUnsigned(0) != hllHashGenericString("-0") {
+		t.Fatalf("-0 must hash as unsigned zero")
+	}
+	if hllHashUnsigned(0) != hllHashGenericString("-00") {
+		t.Fatalf("-00 must hash as unsigned zero")
+	}
 	if hllHashTimestamp(1) == hllHashUnsigned(1) {
 		t.Fatalf("_time domain must differ from unsigned domain")
+	}
+
+	var key1, key2 []byte
+	key1 = appendHLLCanonicalField(key1, "1")
+	key1 = appendHLLCanonicalField(key1, "x")
+	key2 = appendHLLCanonicalField(key2, "01")
+	key2 = appendHLLCanonicalField(key2, "x")
+	if hllHashTuple(key1) != hllHashTuple(key2) {
+		t.Fatalf("multi-field canonical encoding must normalize 1 and 01")
 	}
 }
 
@@ -197,6 +225,42 @@ func TestStatsCountUniqHLL_ExportImportState(t *testing.T) {
 	want := string(sup.finalizeStats(sf, nil, nil))
 	if got != want {
 		t.Fatalf("unexpected estimate after import; got %q; want %q", got, want)
+	}
+}
+
+func TestHLLImportStateMerges(t *testing.T) {
+	var a, b hllSketch
+	for i := 0; i < 500; i++ {
+		a.addHash(hllHashUnsigned(uint64(i)))
+	}
+	for i := 250; i < 750; i++ {
+		b.addHash(hllHashUnsigned(uint64(i)))
+	}
+	stateA := a.appendState(nil)
+	stateB := b.appendState(nil)
+
+	var merged hllSketch
+	if _, err := merged.unmarshalState(stateA); err != nil {
+		t.Fatalf("import a: %s", err)
+	}
+	n, err := merged.unmarshalState(stateB)
+	if err != nil {
+		t.Fatalf("import b: %s", err)
+	}
+	if n != 0 {
+		t.Fatalf("second import must not re-charge budget; got %d", n)
+	}
+
+	// Empty import must not clear accumulated state.
+	empty := (&hllSketch{}).appendState(nil)
+	if _, err := merged.unmarshalState(empty); err != nil {
+		t.Fatalf("import empty: %s", err)
+	}
+
+	got := merged.estimate()
+	const want = 750
+	if relErr(got, want) > 0.05 {
+		t.Fatalf("merged-via-import estimate=%d want~%d", got, want)
 	}
 }
 
