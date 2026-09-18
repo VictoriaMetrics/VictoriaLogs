@@ -12,8 +12,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
-	rows, err := getLastNQueryResults(qctx, offset+limit)
+func runOptimizedLastNResultsQuery(s *logstorage.Storage, qctx *logstorage.QueryContext, offset, limit uint64, writeBlock logstorage.WriteDataBlockFunc) error {
+	rows, err := getLastNQueryResults(s, qctx, offset+limit)
 	if err != nil {
 		return err
 	}
@@ -39,13 +39,13 @@ func runOptimizedLastNResultsQuery(qctx *logstorage.QueryContext, offset, limit 
 	return nil
 }
 
-func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow, error) {
+func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, limit uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 
 	q := qctx.Query.Clone(timestamp)
 	q.AddPipeOffsetLimit(0, 2*limit)
 	qctxLocal := qctx.WithQuery(q)
-	rows, err := getQueryResults(qctxLocal)
+	rows, err := getQueryResults(s, qctxLocal)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
-		rows, err := getQueryResults(qctxLocal)
+		rows, err := getQueryResults(s, qctxLocal)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +90,7 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
 			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
 				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsLastN(qctx, start, end, n)
+				rows, err := getLogRowsLastN(s, qctx, start, end, n)
 				if err != nil {
 					return nil, err
 				}
@@ -122,16 +122,16 @@ func getLastNQueryResults(qctx *logstorage.QueryContext, limit uint64) ([]logRow
 	}
 }
 
-func getLogRowsLastN(qctx *logstorage.QueryContext, start, end int64, n uint64) ([]logRow, error) {
+func getLogRowsLastN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, n uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)
 	q.AddPipeSortByTimeDesc()
 	q.AddPipeOffsetLimit(0, n)
 	qctxLocal := qctx.WithQuery(q)
-	return getQueryResults(qctxLocal)
+	return getQueryResults(s, qctxLocal)
 }
 
-func getQueryResults(qctx *logstorage.QueryContext) ([]logRow, error) {
+func getQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext) ([]logRow, error) {
 	var rowsLock sync.Mutex
 	var rows []logRow
 
@@ -151,7 +151,7 @@ func getQueryResults(qctx *logstorage.QueryContext) ([]logRow, error) {
 		rowsLock.Unlock()
 	}
 
-	err := RunQuery(qctx, writeBlock)
+	err := s.RunQuery(qctx, writeBlock)
 	if errLocal != nil {
 		return nil, errLocal
 	}

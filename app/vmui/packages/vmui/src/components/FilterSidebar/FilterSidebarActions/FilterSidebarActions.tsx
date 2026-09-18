@@ -10,10 +10,12 @@ import useBoolean from "../../../hooks/useBoolean";
 import "./style.scss";
 import "../../Chart/BarHitsChart/LegendHitsMenu/style.scss";
 import FilterSidebarActionsMore from "./FilterSidebarActionsMore";
+import { SortOptions } from "../types";
 
 export type MenuAction = {
   id: string;
-  icon: ReactNode;
+  icon?: ReactNode;
+  isActive?: boolean;
   title?: string;
   ref?: RefObject<HTMLDivElement>;
   visible?: boolean;
@@ -21,52 +23,90 @@ export type MenuAction = {
 }
 
 type Props = {
-  onToggleSort: () => void;
+  sort: SortOptions;
+  onChangeSort: (sort: SortOptions) => void;
   onResetWidth: () => void;
   onClose: () => void;
 }
 
 const FilterSidebarActions: FC<Props> = ({
-  onToggleSort,
+  sort,
+  onChangeSort,
   onResetWidth,
   onClose,
 }) => {
   const {
-    value: isOpenMenu,
-    toggle: onToggleMenu,
-    setFalse: onCloseMenu,
+    value: isOpenMoreMenu,
+    toggle: onToggleMoreMenu,
+    setFalse: onCloseMoreMenu,
   } = useBoolean(false);
 
-  const menuRef = useRef<HTMLDivElement>(null);
+  const {
+    value: isOpenSortMenu,
+    toggle: onToggleSortMenu,
+    setFalse: onCloseSortMenu,
+  } = useBoolean(false);
+
+
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   const isVisible = (action: MenuAction) => action.visible !== false;
 
   // Reserved for future actions. Currently empty since we only have 3 actions.
   const moreMenuActions: MenuAction[] = [].filter(isVisible);
 
+  const sortMenuActions: MenuAction[] = [
+    {
+      id: "hits-desc",
+      title: "Hits: high to low",
+      isActive: sort.by === "hits" && sort.direction === "desc",
+      onClick: () => onChangeSort({ by: "hits", direction: "desc" }),
+    },
+    {
+      id: "hits-asc",
+      title: "Hits: low to high",
+      isActive: sort.by === "hits" && sort.direction === "asc",
+      onClick: () => onChangeSort({ by: "hits", direction: "asc" }),
+    },
+    {
+      id: "name-asc",
+      title: "Name: A to Z",
+      isActive: sort.by === "name" && sort.direction === "asc",
+      onClick: () => onChangeSort({ by: "name", direction: "asc" }),
+    },
+    {
+      id: "name-desc",
+      title: "Name: Z to A",
+      isActive: sort.by === "name" && sort.direction === "desc",
+      onClick: () => onChangeSort({ by: "name", direction: "desc" }),
+    },
+  ];
+
   const baseActions: MenuAction[] = [
     {
       id: "sort",
-      icon: <SortIcon />,
-      title: "Sort direction",
-      onClick: onToggleSort,
+      icon: <SortIcon/>,
+      ref: sortMenuRef,
+      title: "Sort by",
+      onClick: onToggleSortMenu,
     },
     {
       id: "reset-width",
-      icon: <WidthIcon />,
+      icon: <WidthIcon/>,
       title: "Reset width",
       onClick: onResetWidth,
     },
     {
       id: "more",
-      icon: <MoreIcon />,
-      ref: menuRef,
-      onClick: onToggleMenu,
+      icon: <MoreIcon/>,
+      ref: moreMenuRef,
+      onClick: onToggleMoreMenu,
       visible: !!moreMenuActions.length,
     },
     {
       id: "close",
-      icon: <CloseIcon />,
+      icon: <CloseIcon/>,
       onClick: onClose,
     },
   ].filter(isVisible);
@@ -89,13 +129,20 @@ const FilterSidebarActions: FC<Props> = ({
             />
           </div>
         </Tooltip>
-        ))}
+      ))}
 
       <FilterSidebarActionsMore
         actions={moreMenuActions}
-        isOpen={isOpenMenu}
-        buttonRef={menuRef}
-        onClose={onCloseMenu}
+        isOpen={isOpenMoreMenu}
+        buttonRef={moreMenuRef}
+        onClose={onCloseMoreMenu}
+      />
+
+      <FilterSidebarActionsMore
+        actions={sortMenuActions}
+        isOpen={isOpenSortMenu}
+        buttonRef={sortMenuRef}
+        onClose={onCloseSortMenu}
       />
     </div>
   );

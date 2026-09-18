@@ -85,9 +85,7 @@ const GroupLogsItem: FC<Props> = ({
 
     if (!hasFields) {
       values.push("-");
-    }
-
-    if (displayFields.some(field => log[field])) {
+    } else if (displayFields.some(field => log[field])) {
       displayFields.filter(field => log[field]).forEach((field) => {
         let value: string | ReactNode[] = log[field];
 
@@ -103,6 +101,8 @@ const GroupLogsItem: FC<Props> = ({
 
         value && values.push(value);
       });
+    } else if (displayFields.length) {
+      values.push("—");
     } else {
       Object.entries(log).forEach(([key, value]) => {
         values.push(`${key}: ${value}`);

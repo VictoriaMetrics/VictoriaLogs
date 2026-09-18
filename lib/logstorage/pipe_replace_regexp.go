@@ -55,7 +55,7 @@ func (pr *pipeReplaceRegexp) canLiveTail() bool {
 }
 
 func (pr *pipeReplaceRegexp) canReturnLastNResults() bool {
-	return true
+	return pr.field != "_time"
 }
 
 func (pr *pipeReplaceRegexp) isFixedOutputFieldsOrder() bool {

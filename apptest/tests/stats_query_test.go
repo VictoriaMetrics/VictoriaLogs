@@ -5,11 +5,9 @@ import (
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestVlsingleStatsQuery_Success(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -68,7 +66,6 @@ func TestVlsingleStatsQuery_Success(t *testing.T) {
 }
 
 func TestVlclusterStatsQueryRateWithTimeBucket(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -98,7 +95,6 @@ func TestVlclusterStatsQueryRateWithTimeBucket(t *testing.T) {
 }
 
 func TestVlsingleStatsQuery_Failure(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -129,7 +125,6 @@ func TestVlsingleStatsQuery_Failure(t *testing.T) {
 }
 
 func TestStatsQueryHistogram(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 
@@ -177,7 +172,6 @@ func TestStatsQueryHistogram(t *testing.T) {
 }
 
 func TestStatsQueryRelativeTime(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 

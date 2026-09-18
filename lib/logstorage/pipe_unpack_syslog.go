@@ -58,6 +58,8 @@ func (pu *pipeUnpackSyslog) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackSyslog) canReturnLastNResults() bool {
+	// TODO: `[_time=x]` structured data and `@cee:` JSON messages may overwrite the _time
+	// field, but detecting this requires reading the log content, and such logs are uncommon.
 	return true
 }
 

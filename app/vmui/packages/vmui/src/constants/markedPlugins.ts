@@ -9,11 +9,11 @@ marked.use(markedEmoji({ emojis, renderer: (token) => token.emoji }));
 marked.use({
   renderer: {
     link({ href, title, tokens, raw }) {
-      const text = this.parser.parseInline(tokens);
       if (!isExplicitInlineMarkdownLink(raw) || !isAllowedMarkdownLink(href)) {
         return escapeHTML(raw);
       }
 
+      const text = this.parser.parseInline(tokens);
       const titleAttr = title ? ` title="${escapeHTML(title)}"` : "";
       return `<a href="${escapeHTML(href)}"${titleAttr}>${text}</a>`;
     },

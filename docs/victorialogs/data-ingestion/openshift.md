@@ -1,6 +1,7 @@
 ---
 weight: 4
 title: OpenShift
+description: "Collect OpenShift cluster logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

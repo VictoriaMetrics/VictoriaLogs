@@ -31,7 +31,7 @@ const JsonLogsView: FC<ViewProps> = ({ data, settingsRef }) => {
   if (!data.length) return <EmptyLogs />;
 
   return (
-    <div className={"vm-json-view"}>
+    <div className="vm-json-view">
       {renderSettings()}
       <MemoizedJsonView
         data={data}

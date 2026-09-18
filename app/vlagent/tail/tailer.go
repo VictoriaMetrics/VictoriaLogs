@@ -27,12 +27,12 @@ type Processor interface {
 	// - Batching multiple log lines for efficiency.
 	// - Custom log parsing that needs context from multiple lines.
 	//
-	// Note: when a log file is rotated, no checkpoint will be written until tryAddLine returns true,
+	// Note: when a log file is rotated, no checkpoint will be written until TryAddLine returns true,
 	// ensuring log entries spanning multiple files are handled correctly.
 	TryAddLine(line []byte) bool
 
 	// Flush flushes any internally accumulated state.
-	// The caller is responsible for invoking flush when no new log lines are expected for a while,
+	// The caller is responsible for invoking Flush when no new log lines are expected for a while,
 	// ensuring the accumulated state is propagated without waiting for the next line.
 	Flush()
 

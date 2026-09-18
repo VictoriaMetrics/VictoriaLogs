@@ -1,7 +1,5 @@
 import { FC, useRef } from "preact/compat";
-import { PlayIcon, SpinnerIcon } from "../../../components/Main/Icons";
 import "./style.scss";
-import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
 import LogsLimitInput from "../../../components/Configurators/LogsLimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete
@@ -15,6 +13,7 @@ import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPane
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
 import { getHistoryFromStorage } from "../../../components/QueryHistory/utils";
+import ExecuteButton from "../../../components/Configurators/ExecutionControls/ExecuteButton/ExecuteButton";
 
 interface Props {
   query: string;
@@ -102,20 +101,10 @@ const QueryPageHeader: FC<Props> = ({
         <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
         <QueryHistory handleSelectQuery={handleChangeAndRun}/>
-        <div className="vm-query-page-header-bottom-execute">
-          <Button
-            startIcon={isLoading ? <SpinnerIcon/> : <PlayIcon/>}
-            onClick={() => onRun()}
-            fullWidth
-          >
-            <div>
-              <span className="vm-query-page-header-bottom-execute__text">
-                {isLoading ? "Cancel" : "Execute"}
-              </span>
-              <span className="vm-query-page-header-bottom-execute__text_hidden">Execute</span>
-            </div>
-          </Button>
-        </div>
+        <ExecuteButton
+          onClick={onRun}
+          isLoading={isLoading}
+        />
       </div>
     </>
   );
