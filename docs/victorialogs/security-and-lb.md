@@ -440,7 +440,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/security
 want exposing individual VictoriaLogs components to untrusted networks such as Internet, then secure access to them via Basic Auth according to the docs below.
 
 All the VictoriaLogs components support request authentication via [Basic Auth](https://en.wikipedia.org/wiki/Basic_access_authentication)
-for the HTTP requests received at the address specified via `-httpListenAddr` command-line flag.
+for the HTTP requests received at TCP address specified via `-httpListenAddr` command-line flag.
 
 Specify the needed username and password via `-httpAuth.username` and `-httpAuth.password` command-line flags in order to enable Basic Auth in any VictoriaLogs component.
 
@@ -520,19 +520,6 @@ curl 'http://victoria-logs:9428/metrics?authKey=top-secret'
 Enable HTTPS on the VictoriaLogs components which accept `authKey` in order to prevent from stealing the `authKey` by attackers
 who listen for the requests over untrusted networks such as the Internet.
 See [how to enable TLS](https://docs.victoriametrics.com/victorialogs/security-and-lb/#enabling-tls-on-the-server).
-
-## Unix domain socket
-
-Pass `-httpListenAddr=unix:/path/to/socket` command-line flag to VictoriaLogs component in order to accept HTTP requests
-over a Unix domain socket instead of a TCP address. This limits access to the component to the processes running on the same host, such as a reverse proxy:
-
-```sh
-./victoria-logs -httpListenAddr=unix:/run/victoria-logs.sock
-```
-
-The socket file is created with `0600` permissions, so the clients must run under the same user as the VictoriaLogs component.
-`-httpListenAddr` can be specified multiple times in order to accept requests at both TCP addresses and Unix domain sockets.
-Note that `-tls` and `-httpListenAddr.useProxyProtocol` cannot be used with Unix domain sockets.
 
 ## TLS/SSL
 
