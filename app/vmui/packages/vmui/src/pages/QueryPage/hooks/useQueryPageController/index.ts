@@ -84,6 +84,11 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const lastSyncedTimeFilterKeyRef = useRef("");
   const isFirstRender = useRef(true);
 
+  const isLogsHiddenRef = useRef(logsTriggers.isLogsHidden);
+  isLogsHiddenRef.current = logsTriggers.isLogsHidden;
+
+  const pendingLogsRef = useRef(false);
+
   const prevRef = useRef<TriggersState>({
     baseTriggers,
     logsTriggers,
@@ -94,6 +99,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     hitsRequestState.abort?.();
     logsRequestState.abort?.();
     timeRequestState.abort?.();
+    pendingLogsRef.current = false;
   };
 
   const resolveTimeFilter = async (baseTriggersArg: BaseTriggers) => {
@@ -120,12 +126,18 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
     const changed = getChanged(prev, next);
 
+    if (changed.base) {
+      logsRequestState.abort();
+    }
+
     const { baseTriggers, logsTriggers, hitsTriggers } = next;
     const { isLogsHidden } = logsTriggers;
     const { isChartHidden } = hitsTriggers;
 
-    const shouldRunLogs = (isFirstRun || changed.base || changed.logs) && !isLogsHidden;
+    const shouldRunLogs = (isFirstRun || changed.base || changed.logs || pendingLogsRef.current) && !isLogsHidden;
     const shouldRunHits = (isFirstRun || changed.base || changed.hits) && !isChartHidden;
+
+    const forceHitsOnce = prev.hitsTriggers.executeHitsOnceTrigger !== next.hitsTriggers.executeHitsOnceTrigger;
 
     prevRef.current = next;
     if (isFirstRun) {
@@ -163,13 +175,20 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     const logsParams = buildLogsParams(baseTriggers, logsTriggers);
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);
 
-    if (shouldRunLogs) {
-      const logsOk = await runLogs(logsParams);
-      if (!logsOk) return;
-    }
+    if (shouldRunLogs) pendingLogsRef.current = true;
 
     if (shouldRunHits) {
-      await runHits(hitsParams);
+      const isHitsSuccess = await runHits({
+        ...hitsParams,
+        allowIterative: !forceHitsOnce,
+      });
+
+      if (!isHitsSuccess) return;
+    }
+
+    if (pendingLogsRef.current && !isLogsHiddenRef.current) {
+      pendingLogsRef.current = false;
+      await runLogs(logsParams);
     }
   };
 
