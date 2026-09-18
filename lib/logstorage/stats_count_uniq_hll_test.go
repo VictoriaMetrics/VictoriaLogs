@@ -5,6 +5,8 @@ import (
 	"math"
 	"strings"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 )
 
 func TestParseStatsCountUniqHLLSuccess(t *testing.T) {
@@ -186,6 +188,19 @@ func TestHLLWireValidation(t *testing.T) {
 	f("algo", func(b []byte) []byte { b[5] = 99; return b })
 	f("precision", func(b []byte) []byte { b[6] = 13; return b })
 	f("hashSchema", func(b []byte) []byte { b[7] = 99; return b })
+	f("axiomPrecision", func(b []byte) []byte {
+		// Keep VL header precision=14, but corrupt Axiom payload precision byte.
+		payload, nSize := encoding.UnmarshalVarUint64(b[8:])
+		if nSize <= 0 || payload == 0 {
+			t.Skip("no axiom payload")
+		}
+		off := 8 + nSize
+		if uint64(len(b))-uint64(off) < 2 {
+			t.Skip("payload too short")
+		}
+		b[off+1] = 13
+		return b
+	})
 }
 
 func TestHLLEmptyStateRoundTrip(t *testing.T) {

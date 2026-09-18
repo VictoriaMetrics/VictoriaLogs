@@ -149,20 +149,28 @@ func (h *hllSketch) unmarshalState(src []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("cannot create hll sketch: %w", err)
 	}
+	// Axiom payload encodes its own precision; reject mismatches before mutating state.
+	// Format: version(1) | precision(1) | ...
+	if len(src) < 2 {
+		return 0, fmt.Errorf("axiom hll payload too short: %d bytes", len(src))
+	}
+	if src[1] != hllPrecision {
+		return 0, fmt.Errorf("axiom hll payload precision %d; want %d", src[1], hllPrecision)
+	}
 	if err := sk.UnmarshalBinary(src); err != nil {
 		return 0, fmt.Errorf("cannot unmarshal axiom hll payload: %w", err)
 	}
 
 	// Merge into existing state so repeated importState for the same group key
 	// (multiple vlstorage nodes) unions sketches instead of replacing them.
-	var tmp hllSketch
-	tmp.sk = sk
 	stateSizeIncrease := 0
 	if h.isEmpty() {
-		stateSizeIncrease = h.ensureInit()
+		h.sk = sk
+		return hllStateBudgetBytes, nil
 	}
-	if err := h.sk.Merge(tmp.sk); err != nil {
-		logger.Panicf("BUG: HLL merge during importState failed: %s", err)
+	if err := h.sk.Merge(sk); err != nil {
+		// Imported wire data is untrusted; never panic the query process on merge failure.
+		return 0, fmt.Errorf("cannot merge HLL state: %w", err)
 	}
 	return stateSizeIncrease, nil
 }
