@@ -258,8 +258,7 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte, st
 	lfp.addRow(timestamp, parser.Fields)
 
 	lfp.rowsIngestedLocal++
-	// 25 is the estimated length of the 'output_stream' field
-	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line) + 25
+	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line) + len(`"output_stream":"stderr",`)
 	if lfp.rowsIngestedLocal > 128 {
 		lfp.flushMetrics()
 	}
@@ -603,8 +602,8 @@ func parseCRILineJSON(parser *fastjson.Parser, b []byte) (criLine, error) {
 
 	return criLine{
 		timestamp: timestamp,
+		stream:    stream,
 		// Assume the entire log content is always completely written.
-		stream:  stream,
 		partial: false,
 		content: logContent,
 	}, nil
