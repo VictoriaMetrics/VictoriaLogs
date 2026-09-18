@@ -23,10 +23,10 @@ import (
 )
 
 var (
-	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "TCP address (e.g. :9429) or Unix domain socket (e.g. unix:/run/vlagent.sock) to listen for incoming http requests. "+
+	httpListenAddrs = flagutil.NewArrayString("httpListenAddr", "Addresses to listen for incoming http requests. "+
 		"Set this flag to empty value in order to disable listening on any port. This mode may be useful for running multiple vlagent instances on the same server. "+
 		"Note that /targets and /metrics pages aren't available if -httpListenAddr=''. "+
-		"See also -tls and -httpListenAddr.useProxyProtocol, which are supported only for TCP addresses")
+		"Use unix:/path/to/socket to listen on Unix domain socket. Note that -tls and -httpListenAddr.useProxyProtocol cannot be used with Unix sockets")
 	useProxyProtocol = flagutil.NewArrayBool("httpListenAddr.useProxyProtocol", "Whether to use proxy protocol for connections accepted at the corresponding -httpListenAddr . "+
 		"See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt . "+
 		"With enabled proxy protocol http server cannot serve regular /metrics endpoint. Use -pushmetrics.url for metrics pushing")
