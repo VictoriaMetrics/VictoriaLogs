@@ -6,6 +6,7 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.149.1-0.20260811205936-d4a40004ef28
 	github.com/VictoriaMetrics/easyproto v1.2.0
 	github.com/VictoriaMetrics/metrics v1.44.0
+	github.com/axiomhq/hyperloglog v0.3.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
@@ -21,6 +22,8 @@ require (
 
 require (
 	github.com/VictoriaMetrics/metricsql v0.87.3 // indirect
+	github.com/dgryski/go-metro v0.0.0-20250106013310-edb8663e5e33 // indirect
+	github.com/kamstrup/intmap v0.5.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/valyala/gozstd v1.25.0 // indirect
