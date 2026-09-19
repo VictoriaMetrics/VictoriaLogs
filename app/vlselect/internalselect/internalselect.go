@@ -51,7 +51,7 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 		<-concurrencyLimitCh
 
 		// Log slow queries executed by this vlstorage node.
-		if strings.HasPrefix(path, "/internal/select/") && logSlowQueryDuration > 0 {
+		if strings.HasPrefix(path, "/internal/rpc/select/") && logSlowQueryDuration > 0 {
 			if totalDuration := time.Since(startTime); totalDuration >= logSlowQueryDuration {
 				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 				requestURI := httpserver.GetRequestURI(r)
