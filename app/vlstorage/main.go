@@ -243,6 +243,27 @@ func Stop() {
 	}
 }
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	switch path {
+	case "/internal/log_new_streams",
+		"/internal/force_merge",
+		"/internal/force_flush",
+		"/internal/partition/attach",
+		"/internal/partition/detach",
+		"/internal/partition/list",
+		"/internal/partition/snapshot/create",
+		"/internal/partition/snapshot/list",
+		"/internal/partition/snapshot/delete",
+		"/internal/partition/snapshot/delete_stale":
+		return true
+	}
+	return false
+}
+
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")

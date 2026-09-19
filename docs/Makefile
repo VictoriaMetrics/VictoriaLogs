@@ -106,9 +106,10 @@ docs-update-victoria-logs-flags:
 
 	# adjust flags with dynamic default values
 	sed -i.bak '/Default number of parallel data readers to use for executing every query/ s/(default [0-9]\+)/(default 2x CPU cores)/' docs/victorialogs/victoria_logs_common_flags.md
-	sed -i.bak '/The maximum number of concurrent insert requests/ s/(default [0-9]\+)/(default 2x CPU cores)/' docs/victorialogs/victoria_logs_common_flags.md
+	sed -i.bak '/The maximum number of concurrent insert requests/ s/(default [0-9]\+ = .*)$$/(default 2x CPU cores)/' docs/victorialogs/victoria_logs_common_flags.md
 	sed -i.bak '/The maximum number of concurrent search requests\./ s/(default [0-9]\+)/(default vlselect.getDefaultMaxConcurrentRequests())/' docs/victorialogs/victoria_logs_common_flags.md
-	sed -i.bak '/The maximum number of concurrent goroutines to work with files;/ s/(default [0-9]\+)/(default 16x CPU cores, default capped at 256)/' docs/victorialogs/victoria_logs_common_flags.md
+	sed -i.bak '/The maximum number of concurrent goroutines to work with files;/ s/(default [0-9]\+ = .*)$$/(default 16x CPU cores, default capped at 256)/' docs/victorialogs/victoria_logs_common_flags.md
+	sed -i.bak 's/(default [0-9]\+ = \(.*\))$$/(default \1)/' docs/victorialogs/victoria_logs_common_flags.md
 	rm -f docs/victorialogs/victoria_logs_common_flags.md.bak docs/victorialogs/victoria_logs_enterprise_flags.md.bak
 
 docs-update-vlagent-flags:
@@ -131,9 +132,10 @@ docs-update-vlagent-flags:
 	sed -i.bak 's/\t/ /g' docs/victorialogs/vlagent_enterprise_flags.md
 
 	# adjust flags with dynamic default values
-	sed -i.bak '/The maximum number of concurrent insert requests/ s/(default [0-9]\+)/(default 2x CPU cores)/' docs/victorialogs/vlagent_common_flags.md
+	sed -i.bak '/The maximum number of concurrent insert requests/ s/(default [0-9]\+ = .*)$$/(default 2x CPU cores)/' docs/victorialogs/vlagent_common_flags.md
 	sed -i.bak '/The number of concurrent queues to each -remoteWrite.url/ s/(default [0-9]\+)/(default 2x CPU cores)/' docs/victorialogs/vlagent_common_flags.md
-	sed -i.bak '/The maximum number of concurrent goroutines to work with files;/ s/(default [0-9]\+)/(default 16x CPU cores, default capped at 256)/' docs/victorialogs/vlagent_common_flags.md
+	sed -i.bak '/The maximum number of concurrent goroutines to work with files;/ s/(default [0-9]\+ = .*)$$/(default 16x CPU cores, default capped at 256)/' docs/victorialogs/vlagent_common_flags.md
+	sed -i.bak 's/(default [0-9]\+ = \(.*\))$$/(default \1)/' docs/victorialogs/vlagent_common_flags.md
 	rm -f docs/victorialogs/vlagent_common_flags.md.bak docs/victorialogs/vlagent_enterprise_flags.md.bak
 
 docs-update-vlogscli-flags:
