@@ -44,6 +44,10 @@ func (pc *pipeJSONArrayConcat) canReturnLastNResults() bool {
 	return pc.resultField != "_time"
 }
 
+func (pc *pipeJSONArrayConcat) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pc *pipeJSONArrayConcat) isFixedOutputFieldsOrder() bool {
 	return false
 }

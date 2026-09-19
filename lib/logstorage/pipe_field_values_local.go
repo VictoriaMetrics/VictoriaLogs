@@ -38,6 +38,10 @@ func (pf *pipeFieldValuesLocal) canReturnLastNResults() bool {
 	return false
 }
 
+func (pf *pipeFieldValuesLocal) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pf *pipeFieldValuesLocal) isFixedOutputFieldsOrder() bool {
 	return true
 }

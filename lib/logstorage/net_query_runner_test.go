@@ -43,6 +43,8 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`foo | sort by (_time desc) | limit 0 | keep a, _time`, `foo | limit 0 | fields _time, a`, `limit 0 | fields a, _time`)
 	f(`foo | sort by (_time desc) | offset 0 | limit 30 | keep a, _time`, `foo | sort by (_time desc) limit 30 | fields _time, a`, `sort by (_time desc) limit 30 | fields a, _time`)
 	f(`foo | sort by (_time desc) | offset 10 | limit 30 | keep a, _time`, `foo | sort by (_time desc) limit 40 | fields _time, a`, `sort by (_time desc) offset 10 limit 30 | fields a, _time`)
+	f(`foo | sort by (_time desc) | fields a, _time | limit 30`, `foo | sort by (_time desc) limit 30 | fields _time, a`, `sort by (_time desc) limit 30 | fields a, _time`)
+	f(`foo | sort by (_time desc) | pack_json | limit 30`, `foo | sort by (_time desc) limit 30`, `sort by (_time desc) limit 30 | pack_json`)
 
 	f(`foo | blocks_count`, `foo | blocks_count`, `stats sum("blocks_count") as "blocks_count"`)
 	f(`foo | blocks_count as x`, `foo | blocks_count as x`, `stats sum(x) as x`)

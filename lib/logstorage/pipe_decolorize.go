@@ -35,6 +35,10 @@ func (pd *pipeDecolorize) canReturnLastNResults() bool {
 	return true
 }
 
+func (pd *pipeDecolorize) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pd *pipeDecolorize) isFixedOutputFieldsOrder() bool {
 	return false
 }

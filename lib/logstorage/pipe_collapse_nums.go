@@ -49,6 +49,10 @@ func (pc *pipeCollapseNums) canReturnLastNResults() bool {
 	return pc.field != "_time"
 }
 
+func (pc *pipeCollapseNums) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pc *pipeCollapseNums) isFixedOutputFieldsOrder() bool {
 	return false
 }
