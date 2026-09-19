@@ -69,8 +69,8 @@ func TestVlsingleDeprecatedInternalRPCPaths(t *testing.T) {
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 
-	// A request to the deprecated /internal/* path must reach the same handler as the
-	// corresponding /internal/rpc/* path and return the same 200 response.
+	// A request to the deprecated /internal/* path must be accepted with 200
+	// in the same way as the corresponding /internal/rpc/* path.
 	// The insert request carries an empty body, so it adds no rows and just exercises routing.
 	insertValues := url.Values{
 		"version": {netinsert.ProtocolVersion},
