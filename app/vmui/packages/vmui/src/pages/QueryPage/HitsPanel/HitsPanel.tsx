@@ -22,9 +22,10 @@ interface Props {
   error?: string;
   isLoading: boolean;
   isOverview?: boolean;
+  isIterative?: boolean;
 }
 
-const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
+const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, isIterative }) => {
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
   const [hideChart] = useHideChart();
@@ -33,10 +34,13 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     return logHits.map(hits => {
       const timestampValueMap = new Map();
       hits.timestamps.forEach((ts, idx) => {
-        timestampValueMap.set(toEpochSeconds(ts), hits.values[idx] || null);
+        timestampValueMap.set(
+          toEpochSeconds(ts),
+          hits._isLoading ? 0 : (hits.values[idx] || null),
+        );
       });
 
-      return timestamps.map(t => timestampValueMap.get(t) || null);
+      return timestamps.map(t => timestampValueMap.get(t) ?? null);
     });
   };
 
@@ -104,6 +108,7 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
       {data && (
         <BarHitsChart
           isOverview={isOverview}
+          isIterative={isIterative}
           logHits={logHits}
           durationMs={durationMs}
           query={query}

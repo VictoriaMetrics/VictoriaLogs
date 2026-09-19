@@ -30,6 +30,7 @@ const OverviewHits: FC = () => {
       step,
       field: groupFieldHits,
       fieldsLimit: topHits,
+      allowIterative: false,
     });
 
   }, [hideChart, period, extraParams.toString(), step, topHits, groupFieldHits]);

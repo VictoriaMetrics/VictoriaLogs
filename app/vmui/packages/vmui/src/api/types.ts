@@ -36,6 +36,7 @@ export interface LogHits {
   total: number;
   fields: { [key: string]: string; };
   _isOther: boolean;
+  _isLoading?: boolean;
 }
 
 export interface LegendLogHits {
