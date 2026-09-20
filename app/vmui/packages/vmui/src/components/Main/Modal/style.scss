@@ -52,20 +52,24 @@ $padding-modal: $padding-medium;
     max-height: calc($vh * 90);
     overflow: auto;
 
-    &-header {
+    &-header,
+    &-footer {
       position: sticky;
+      background-color: $color-background-body;
+      z-index: 3;
+    }
+
+    &-header {
       top: 0;
       display: grid;
       grid-template-columns: 1fr auto;
       gap: $padding-small;
       align-items: center;
       justify-content: space-between;
-      background-color: $color-background-body;
       padding: $padding-small $padding-modal;
       border-radius: $border-radius-medium $border-radius-medium 0 0;
       color: $color-text;
       border-bottom: $border-divider;
-      z-index: 3;
 
       &__title {
         font-weight: 500;
@@ -98,6 +102,12 @@ $padding-modal: $padding-medium;
     &-body {
       position: relative;
       padding: $padding-modal;
+    }
+
+    &-footer {
+      bottom: 0;
+      border-top: $border-divider;
+      padding: $padding-small $padding-modal;
     }
   }
 }

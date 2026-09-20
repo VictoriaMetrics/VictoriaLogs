@@ -1,5 +1,4 @@
 import { Component, FC, useRef, useState, ReactNode, useEffect } from "preact/compat";
-import { getCssVariable } from "../../../utils/theme";
 import TabItem from "./TabItem";
 import "./style.scss";
 import useWindowSize from "../../../hooks/useWindowSize";
@@ -14,7 +13,6 @@ export interface TabItemType {
 interface TabsProps {
   activeItem: string
   items: TabItemType[]
-  color?: string
   onChange?: (value: string) => void
   indicatorPlacement?: "bottom" | "top"
   isNavLink?: boolean
@@ -23,7 +21,6 @@ interface TabsProps {
 const Tabs: FC<TabsProps> = ({
   activeItem,
   items,
-  color = getCssVariable("color-primary"),
   onChange,
   indicatorPlacement = "bottom",
   isNavLink,
@@ -47,14 +44,13 @@ const Tabs: FC<TabsProps> = ({
         activeItem={activeItem}
         item={item}
         onChange={onChange}
-        color={color}
         activeNavRef={activeNavRef}
         isNavLink={isNavLink}
       />
     ))}
     <div
       className="vm-tabs__indicator"
-      style={{ ...indicatorPosition, borderColor: color }}
+      style={{ ...indicatorPosition }}
     />
   </div>;
 };

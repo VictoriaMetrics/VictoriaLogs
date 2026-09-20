@@ -1,6 +1,7 @@
 import { LOGS_LIMIT_HITS } from "../../../constants/logs";
 import { LogHits, MetricResult } from "../../../api/types";
 import { buildMetricLabel, promValueToNumber } from "../../../utils/metric";
+import { nanosToIsoString, secondsToNanoseconds } from "../../../utils/time";
 
 export type Props = {
   setError: (error: string) => void;
@@ -77,7 +78,7 @@ const useProcessStatsQueryRange = ({ setLogHits, setError }:Props) => {
 
     if (restMetaTotals.length > 0) {
       const tsNumbers = Array.from(valuesByTs.keys()).sort((a, b) => a - b);
-      const otherTimestamps = tsNumbers.map((ts) => new Date(ts * 1000).toISOString());
+      const otherTimestamps = tsNumbers.map((ts) => nanosToIsoString(secondsToNanoseconds(ts)));
       const otherValues = tsNumbers.map((tsSec) => valuesByTs.get(tsSec) ?? 0);
       const otherSeries: LogHits = {
         timestamps: otherTimestamps,
@@ -101,7 +102,7 @@ const useProcessStatsQueryRange = ({ setLogHits, setError }:Props) => {
 
       for (let j = 0; j < len; j++) {
         const [ts, v] = s.values[j];
-        timestamps[j] = new Date(ts * 1000).toISOString();
+        timestamps[j] = nanosToIsoString(secondsToNanoseconds(ts));
         values[j] = promValueToNumber(v);
       }
 

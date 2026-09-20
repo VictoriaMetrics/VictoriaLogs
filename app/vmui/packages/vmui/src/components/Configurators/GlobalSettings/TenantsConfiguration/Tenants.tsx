@@ -1,4 +1,4 @@
-import { FC, useRef } from "preact/compat";
+import { FC, useRef, useState } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
 import { useFetchAccountIds } from "./hooks/useFetchAccountIds";
 import TenantsSelect from "./TenantsSelect";
@@ -11,7 +11,7 @@ import useBoolean from "../../../../hooks/useBoolean";
 import Popper from "../../../Main/Popper/Popper";
 import { ArrowDownIcon, StorageIcon } from "../../../Main/Icons";
 import "./style.scss";
-import "../../TimeRangeSettings/ExecutionControls/style.scss";
+import "../../ExecutionControls/AutoRefreshControl/style.scss";
 
 export type TenantType = {
   accountId: string;
@@ -28,6 +28,7 @@ const Tenants: FC = () => {
   const tenantId = `${accountId}:${projectId}`;
 
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState("");
 
   const {
     value: openPopup,
@@ -47,6 +48,8 @@ const Tenants: FC = () => {
     accountIds,
     accountId,
     projectId,
+    search,
+    onSearch: setSearch,
     onChange,
   };
 
@@ -76,8 +79,8 @@ const Tenants: FC = () => {
               endIcon={(
                 <div
                   className={classNames({
-                    "vm-execution-controls-buttons__arrow": true,
-                    "vm-execution-controls-buttons__arrow_open": openPopup,
+                    "vm-auto-refresh-control-button__arrow": true,
+                    "vm-auto-refresh-control-button__arrow_open": openPopup,
                   })}
                 >
                   <ArrowDownIcon/>

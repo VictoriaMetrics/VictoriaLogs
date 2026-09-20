@@ -80,7 +80,6 @@ func TestPipeQueryStats(t *testing.T) {
 			{"QueryDurationNsecs", "0"},
 		},
 	})
-
 }
 
 func TestPipeQueryStatsUpdateNeededFields(t *testing.T) {

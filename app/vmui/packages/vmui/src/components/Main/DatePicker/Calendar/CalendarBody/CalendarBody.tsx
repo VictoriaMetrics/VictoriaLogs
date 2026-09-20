@@ -1,64 +1,73 @@
 import { FC, useMemo } from "preact/compat";
-import dayjs, { Dayjs } from "dayjs";
 import classNames from "classnames";
 import Tooltip from "../../../Tooltip/Tooltip";
+import { DATE_FORMAT } from "../../../../../constants/date";
+import { getNowInTimezone, type VmDate } from "../../../../../utils/time";
 
 interface CalendarBodyProps {
-  viewDate: Dayjs
-  selectDate: Dayjs
-  onChangeSelectDate: (date: Dayjs) => void
+  viewDate: VmDate
+  selectDate: VmDate
+  onChangeSelectDate: (date: VmDate) => void
 }
 
-const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_FORMAT = "D";
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const CALENDAR_CELLS_COUNT = 42;
 
-const CalendarBody: FC<CalendarBodyProps> = ({ viewDate: date, selectDate, onChangeSelectDate }) => {
-  const format = "YYYY-MM-DD";
-  const today = dayjs.tz();
-  const viewDate = dayjs(date.format(format));
+const CalendarBody: FC<CalendarBodyProps> = ({ viewDate, selectDate, onChangeSelectDate }) => {
+  const todayKey = getNowInTimezone().format(DATE_FORMAT);
+  const selectedDateKey = useMemo(() => selectDate.format(DATE_FORMAT), [selectDate]);
 
-  const days: (Dayjs|null)[] = useMemo(() => {
-    const result = new Array(42).fill(null);
+  const days: (VmDate | null)[] = useMemo(() => {
+    const result = Array<VmDate | null>(CALENDAR_CELLS_COUNT).fill(null);
     const startDate = viewDate.startOf("month");
     const endDate = viewDate.endOf("month");
-    const days = endDate.diff(startDate, "day") + 1;
-    const monthDays = new Array(days).fill(startDate).map((d,i) => d.add(i, "day"));
+    const daysCount = endDate.diff(startDate, "day") + 1;
+    const monthDays = Array.from({ length: daysCount }, (_, i) => startDate.add(i, "day"));
     const startOfWeek = startDate.day();
-    result.splice(startOfWeek, days, ...monthDays);
+
+    result.splice(startOfWeek, daysCount, ...monthDays);
+
     return result;
   }, [viewDate]);
 
-  const createHandlerSelectDate = (d: Dayjs | null) => () => {
-    if (d) onChangeSelectDate(d);
+  const createHandlerSelectDate = (date: VmDate | null) => () => {
+    if (!date) return;
+    onChangeSelectDate(date);
   };
 
   return (
     <div className="vm-calendar-body">
-      {weekday.map(w => (
+      {WEEKDAYS.map(weekday => (
         <Tooltip
-          title={w}
-          key={w}
+          title={weekday}
+          key={weekday}
         >
           <div className="vm-calendar-body-cell vm-calendar-body-cell_weekday">
-            {w[0]}
+            {weekday[0]}
           </div>
         </Tooltip>
       ))}
 
-      {days.map((d, i) => (
-        <div
-          className={classNames({
-            "vm-calendar-body-cell": true,
-            "vm-calendar-body-cell_day": true,
-            "vm-calendar-body-cell_day_empty": !d,
-            "vm-calendar-body-cell_day_active": (d && d.format(format)) === selectDate.format(format),
-            "vm-calendar-body-cell_day_today": (d && d.format(format)) === today.format(format)
-          })}
-          key={d ? d.format(format) : i}
-          onClick={createHandlerSelectDate(d)}
-        >
-          {d && d.format("D")}
-        </div>
-      ))}
+      {days.map((date, i) => {
+        const dateKey = date?.format(DATE_FORMAT);
+
+        return (
+          <div
+            className={classNames({
+              "vm-calendar-body-cell": true,
+              "vm-calendar-body-cell_day": true,
+              "vm-calendar-body-cell_day_empty": !date,
+              "vm-calendar-body-cell_day_active": dateKey === selectedDateKey,
+              "vm-calendar-body-cell_day_today": dateKey === todayKey
+            })}
+            key={dateKey ?? i}
+            onClick={createHandlerSelectDate(date)}
+          >
+            {date?.format(DAY_FORMAT)}
+          </div>
+        );
+      })}
     </div>
   );
 };

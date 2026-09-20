@@ -1,12 +1,15 @@
-import { useMemo, useCallback } from "preact/compat";
+import { useMemo, useCallback, useEffect, useRef } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
 import {
   getDurationFromPeriod,
-  getTimeperiodForDuration,
-  relativeTimeOptions
+  getTimeParamsForDuration,
+  isValidDate,
+  normalizeTimeParams,
+  relativeTimeOptions,
+  timeParamsToDateRange,
+  timePeriodToTimeParams,
 } from "../../../utils/time";
 import { NavigateOptions, RelativeTimeOption, TimeParams, TimePeriod } from "../../../types";
-import dayjs from "dayjs";
 
 const TIME_QUERY_PARAMS = {
   RELATIVE: "relative_time",
@@ -26,8 +29,16 @@ const defaultRelativeTime = relativeTimeOptions.find(d => d.isDefault) || relati
 
 const NO_RELATIVE_TIME = "none";
 
+const normalizeTimePeriod = (period: TimePeriod): TimePeriod => {
+  const timeParams = timePeriodToTimeParams(period);
+  const normalizedTimeParams = normalizeTimeParams(timeParams);
+
+  return normalizedTimeParams === timeParams ? period : timeParamsToDateRange(normalizedTimeParams);
+};
+
 export const useTimePeriod = (groupN: number = 0) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
 
   const keys = useMemo(() => ({
     relative: getGroupKey(TIME_QUERY_PARAMS.RELATIVE, groupN),
@@ -48,13 +59,14 @@ export const useTimePeriod = (groupN: number = 0) => {
     const params = new URLSearchParams();
 
     if ("nextPeriod" in payload) {
+      const nextPeriod = normalizeTimePeriod(payload.nextPeriod);
       // for absolute time
-      params.set(keys.end, payload.nextPeriod.to.toISOString());
-      params.set(keys.duration, getDurationFromPeriod(payload.nextPeriod));
+      params.set(keys.end, nextPeriod.to);
+      params.set(keys.duration, getDurationFromPeriod(nextPeriod));
       params.set(keys.relative, NO_RELATIVE_TIME);
     } else {
       // for relative time
-      params.set(keys.end, payload.nextRelativeTime.until().toISOString());
+      params.set(keys.end, payload.nextRelativeTime.until());
       params.set(keys.duration, payload.nextRelativeTime.duration);
       params.set(keys.relative, payload.nextRelativeTime.id);
     }
@@ -65,33 +77,29 @@ export const useTimePeriod = (groupN: number = 0) => {
   const setPeriod = useCallback((payload: SetPeriodOptions, navigateOpts?: NavigateOptions) => {
     const timeParams = getUrlParams(payload);
 
-    setSearchParams(prev => {
+    setSearchParamsRef.current(prev => {
       const nextParams = new URLSearchParams(prev);
       timeParams.forEach((value, key) => nextParams.set(key, value));
       return nextParams;
     }, navigateOpts);
-  }, [setSearchParams, getUrlParams]);
+  }, [getUrlParams]);
 
   const period: TimeParams = useMemo(() => {
     if (relativeTime) {
-      return getTimeperiodForDuration(relativeTime.duration, relativeTime.until());
+      return getTimeParamsForDuration(relativeTime.duration, relativeTime.until());
     }
 
-    if (endTimeStr) {
-      const parsedEnd = dayjs(endTimeStr);
-
-      if (parsedEnd.isValid()) {
-        return getTimeperiodForDuration(durationStr || defaultRelativeTime.duration, parsedEnd.toDate());
-      }
+    if (endTimeStr && isValidDate(endTimeStr)) {
+      return getTimeParamsForDuration(durationStr || defaultRelativeTime.duration, endTimeStr);
     }
 
-    return getTimeperiodForDuration(defaultRelativeTime.duration, defaultRelativeTime.until());
+    return getTimeParamsForDuration(defaultRelativeTime.duration, defaultRelativeTime.until());
   }, [durationStr, endTimeStr, relativeTime]);
 
   const getCurrentPeriod = useCallback(() => {
     if (!relativeTime) return period;
     const { duration, until } = relativeTime;
-    return getTimeperiodForDuration(duration, until());
+    return getTimeParamsForDuration(duration, until());
   }, [relativeTime, period]);
 
   const refreshPeriod = useCallback(() => {
@@ -104,6 +112,10 @@ export const useTimePeriod = (groupN: number = 0) => {
 
     return true;
   }, [relativeTime, setPeriod, endTimeStr]);
+
+  useEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  }, [setSearchParams]);
 
   return {
     period,

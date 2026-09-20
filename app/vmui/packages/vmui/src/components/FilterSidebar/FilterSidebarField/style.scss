@@ -30,18 +30,8 @@ $icon-width: 14px;
     align-items: center;
     justify-content: center;
     min-height: 28px;
-    padding-inline: 0 $padding-small;
+    padding-inline: $padding-global $padding-small;
     cursor: pointer;
-    transition: background-color 200ms ease-in;
-
-    &:hover {
-      background-color: $color-hover-black;
-    }
-  }
-
-  &__checkbox {
-    padding: $padding-small;
-
     transition: background-color 200ms ease-in;
 
     &:hover {
@@ -97,5 +87,11 @@ $icon-width: 14px;
     flex-direction: column;
     gap: 2px;
     padding: $padding-smaller;
+
+    &__divider {
+      width: 100%;
+      height: $border-divider-width;
+      background-color: $border-divider-color;
+    }
   }
 }

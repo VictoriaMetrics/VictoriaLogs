@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 func TestPartitionLifecycle(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := filepath.Join(t.TempDir(), "partition")
 	var ddbStats DatadbStats
 
 	s := newTestStorage()
@@ -53,7 +54,7 @@ func TestPartitionLifecycle(t *testing.T) {
 func TestPartitionMustAddRowsSerial(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := filepath.Join(t.TempDir(), "partition")
 	var ddbStats DatadbStats
 
 	s := newTestStorage()
@@ -135,15 +136,13 @@ func TestPartitionMustAddRowsSerial(t *testing.T) {
 	}
 
 	mustClosePartition(pt)
-	mustDeletePartition(path)
-
 	closeTestStorage(s)
 }
 
 func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
+	path := filepath.Join(t.TempDir(), "partition")
 	s := newTestStorage()
 
 	mustCreatePartition(path)
@@ -180,8 +179,6 @@ func TestPartitionMustAddRowsConcurrent(t *testing.T) {
 	}
 
 	mustClosePartition(pt)
-	mustDeletePartition(path)
-
 	closeTestStorage(s)
 }
 

@@ -1,8 +1,9 @@
 import { TimeParams } from "../types";
-import dayjs from "dayjs";
 import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../components/Chart/BarHitsChart/hooks/useBarHitsOptions";
+import { nanosecondsToMilliseconds, nanosToIsoString } from "./time";
+import { getDefaultIntervalOption } from "./intervals";
 
 export const getStreamPairs = (stream: string): string[] => {
   const s = stream.trim();
@@ -77,12 +78,21 @@ export const getAllStreamKeys = (data: Array<Record<string, unknown>>): string[]
   return [...keys];
 };
 
-export const getHitsTimeParams = (period: TimeParams) => {
-  const start = dayjs(period.start * 1000);
-  const end = dayjs(period.end * 1000);
-  const totalMs = Math.max(1, end.diff(start, "ms"));
+type HitsTimeParams = {
+  /** ISO 8601 string with up to nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"` */
+  start: string;
+  /** ISO 8601 string with up to nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"` */
+  end: string;
+  /** Step size. */
+  step: string;
+}
 
-  const step = Math.max(1, Math.ceil(totalMs / LOGS_BAR_COUNT_DEFAULT));
+export const getHitsTimeParams = (period: TimeParams): HitsTimeParams => {
+  const start = nanosToIsoString(period.start);
+  const end = nanosToIsoString(period.end);
+
+  const totalMs = Math.max(1, nanosecondsToMilliseconds(period.end - period.start));
+  const step = getDefaultIntervalOption(period)?.duration || `${totalMs / LOGS_BAR_COUNT_DEFAULT}ms`;
 
   return { start, end, step };
 };
@@ -116,6 +126,6 @@ export const isEqualLogByKeys = (a: Logs, b: Logs, keys: Array<keyof Logs>): boo
   return keys.every(key => a[key] === b[key]);
 };
 
-export const removeExactLog = (logs: Logs[], target: Logs, keys: Array<keyof Logs>): Logs[] => {
+export const removeLogsByKeys = (logs: Logs[], target: Logs, keys: Array<keyof Logs>): Logs[] => {
   return logs.filter(log => !isEqualLogByKeys(log, target, keys));
 };

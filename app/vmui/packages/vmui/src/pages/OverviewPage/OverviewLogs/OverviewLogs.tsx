@@ -13,10 +13,12 @@ import Button from "../../../components/Main/Button/Button";
 import { CopyIcon, DoneIcon, OpenNewIcon } from "../../../components/Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
+import { getTenantSearchParams } from "../../../hooks/useTenant";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 import { TimePeriod } from "../../../types";
+import { timeParamsToDateRange } from "../../../utils/time";
 
 const operator = ExtraFilterOperator.Equals;
 
@@ -69,10 +71,7 @@ const OverviewLogs:FC = () => {
   }, [period, fieldFilter, fieldValueFilters, streamFieldFilter, streamFieldValueFilters, extraParams]);
 
   const linkToLogs = useMemo(() => {
-    const nextPeriod: TimePeriod = {
-      from: new Date(period.start * 1000),
-      to: new Date(period.end * 1000)
-    };
+    const nextPeriod: TimePeriod = timeParamsToDateRange(period);
 
     const params = new URLSearchParams({ query });
     const periodOptions = relativeTime ? { nextRelativeTime: relativeTime } : { nextPeriod };
@@ -82,8 +81,10 @@ const OverviewLogs:FC = () => {
       params.set(key, value);
     });
 
+    getTenantSearchParams(searchParams).forEach((val, key) => params.set(key, val));
+
     return `${router.home}?${params.toString()}`;
-  }, [query, period, relativeTime]);
+  }, [query, period, relativeTime, searchParams]);
 
   const handleCopyQuery  = async () => {
     await copyToClipboard(query, "Query has been copied");

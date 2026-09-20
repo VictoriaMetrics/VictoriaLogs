@@ -107,11 +107,11 @@ func readLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []s
 	defer logstorage.PutJSONParser(p)
 
 	if err := p.ParseLogMessage(line, preserveKeys, ""); err != nil {
-		return true, fmt.Errorf("%s; line contents: %q", err, line)
+		return true, fmt.Errorf("%w; line contents: %q", err, line)
 	}
 	ts, err := insertutil.ExtractTimestampFromFields(timeFields, p.Fields)
 	if err != nil {
-		return true, fmt.Errorf("%s; line contents: %q", err, line)
+		return true, fmt.Errorf("%w; line contents: %q", err, line)
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
 	lmp.AddRow(ts, p.Fields, -1)

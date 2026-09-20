@@ -35,13 +35,13 @@ func (c *Client) CloseConnections() {
 // Get sends a HTTP GET request, returns the response body and status code to the caller.
 func (c *Client) Get(t *testing.T, url string) (string, int) {
 	t.Helper()
-	return c.do(t, http.MethodGet, url, "", nil)
+	return c.Do(t, http.MethodGet, url, "", nil)
 }
 
 // Post sends a HTTP POST request, returns the response body and status code to the caller.
 func (c *Client) Post(t *testing.T, url, contentType string, data []byte) (string, int) {
 	t.Helper()
-	return c.do(t, http.MethodPost, url, contentType, data)
+	return c.Do(t, http.MethodPost, url, contentType, data)
 }
 
 // PostWithTenant sends HTTP POST request with the given (accountID, projectID) tenant headers and returns the response body together with status code.
@@ -75,11 +75,11 @@ func (c *Client) PostFormSuccess(t *testing.T, url string, data url.Values) stri
 // Delete sends a HTTP DELETE request and returns the response body and status code to the caller.
 func (c *Client) Delete(t *testing.T, url string) (string, int) {
 	t.Helper()
-	return c.do(t, http.MethodDelete, url, "", nil)
+	return c.Do(t, http.MethodDelete, url, "", nil)
 }
 
-// do prepares a HTTP request, sends it to the server, receives the response from the server, returns the response body and status code to the caller.
-func (c *Client) do(t *testing.T, method, url, contentType string, data []byte) (string, int) {
+// Do prepares a HTTP request, sends it to the server, receives the response from the server, returns the response body and status code to the caller.
+func (c *Client) Do(t *testing.T, method, url, contentType string, data []byte) (string, int) {
 	t.Helper()
 	return c.doWithTenant(t, method, "", "", url, contentType, data)
 }

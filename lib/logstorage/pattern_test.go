@@ -224,7 +224,6 @@ func TestParsePatternStepsSuccess(t *testing.T) {
 			field:  "foo:bar:baz",
 		},
 	})
-
 }
 
 func TestParsePatternStepsFailure(t *testing.T) {

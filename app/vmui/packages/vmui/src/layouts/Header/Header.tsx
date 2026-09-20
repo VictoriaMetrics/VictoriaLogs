@@ -1,4 +1,4 @@
-import { FC, useMemo, ComponentType } from "preact/compat";
+import { FC, useMemo } from "preact/compat";
 import { NavLink, useNavigate } from "react-router-dom";
 import router from "../../router";
 import { getAppModeEnable, getAppModeParams } from "../../utils/app-mode";
@@ -9,16 +9,13 @@ import classNames from "classnames";
 import { useAppState } from "../../state/common/StateContext";
 import HeaderNav from "./HeaderNav/HeaderNav";
 import SidebarHeader from "./SidebarNav/SidebarHeader";
-import HeaderControls, { ControlsProps } from "./HeaderControls/HeaderControls";
+import HeaderControls from "./HeaderControls/HeaderControls";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import useWindowSize from "../../hooks/useWindowSize";
 
-export interface HeaderProps {
-  controlsComponent: ComponentType<ControlsProps>
-}
 const Logo = () => <NavLink to={router.home}><LogoLogsIcon/></NavLink>;
 
-const Header: FC<HeaderProps> = ({ controlsComponent }) => {
+const Header: FC = () => {
   const { isMobile } = useDeviceDetect();
 
   const windowSize = useWindowSize();
@@ -98,7 +95,6 @@ const Header: FC<HeaderProps> = ({ controlsComponent }) => {
       </div>
     )}
     <HeaderControls
-      controlsComponent={controlsComponent}
       displaySidebar={displaySidebar}
       isMobile={isMobile}
     />
