@@ -92,39 +92,43 @@ func (fc *Tailer) StartRead(relPath string, proc Processor) {
 	})
 }
 
-func (fc *Tailer) openLogFile(filepath string) *logFile {
-	cp, ok := fc.checkpointsDB.get(filepath)
+func (fc *Tailer) openLogFile(filePath string) *logFile {
+	cp, ok := fc.checkpointsDB.get(filePath)
 	if !ok {
 		// No checkpoint found - start reading from the beginning of the file.
-		return newLogFile(filepath)
+		return newLogFile(filePath)
 	}
 
-	lf, ok := tryResumeFromCheckpoint(filepath, cp)
+	lf, ok := tryResumeFromCheckpoint(filePath, cp)
 	if !ok {
-		fc.checkpointsDB.delete(filepath)
-		return newLogFile(filepath)
+		fc.checkpointsDB.delete(filePath)
+		return newLogFile(filePath)
 	}
 	return lf
 }
 
-func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
-	f, inode, ok := openFileWithInode(cp.Path)
+func tryResumeFromCheckpoint(filePath string, cp checkpoint) (*logFile, bool) {
+	// Do not ignore permission denied errors for files that vlagent processed before.
+	const ignorePermissionErr = false
+	f, inode, ok := openFileWithInode(cp.Path, ignorePermissionErr)
 	if !ok {
 		// The file was deleted just after StartRead was called.
 		logger.Warnf("log file %q was deleted before being fully read; "+
-			"this is expected if the file was deleted while vlagent was starting", filepath)
+			"this is expected if the file was deleted while vlagent was starting", filePath)
 		return nil, false
 	}
 
 	if inode != cp.Inode {
+		// Saved inode does not equal the actual inode. It usually means
+		// vlagent was down when logrotate rotated the log file. Typically,
+		// the last rotated file is located in the same directory uncompressed
+		// with the same inode. Find it and continue reading to avoid log loss.
+		// See also how kubelet manages log rotation:
+		// https://github.com/kubernetes/kubernetes/blob/f794aa12d78f5b1f9579ce8a991a116a99a2c43c/pkg/kubelet/logs/container_log_manager.go#L414-L416
+
 		_ = f.Close()
 
-		// When kubelet or logrotate rotates log files, it typically keeps the previous log file uncompressed
-		// in the same directory with a different name (typically with a timestamp suffix).
-		// We attempt to find this renamed file to continue reading from our last offset.
-		// See https://github.com/kubernetes/kubernetes/blob/f794aa12d78f5b1f9579ce8a991a116a99a2c43c/pkg/kubelet/logs/container_log_manager.go#L416
-		var ok bool
-		f, ok = findRenamedFile(cp.Path, cp.Inode)
+		renamedFile, ok := findRenamedFile(cp.Path, cp.Inode)
 		if !ok {
 			// Could not find the rotated file with matching inode.
 			// This means the file was rotated and potentially removed before we could process it.
@@ -132,9 +136,10 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 				"some log lines may have been lost; "+
 				"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
 				"consider increasing kubelet's --container-log-max-size to reduce log rotation frequency",
-				filepath, cp.Inode)
+				filePath, cp.Inode)
 			return nil, false
 		}
+		f = renamedFile
 	}
 
 	fp := getFileFingerprint(f)
@@ -144,7 +149,8 @@ func tryResumeFromCheckpoint(filepath string, cp checkpoint) (*logFile, bool) {
 			"some log lines may have been lost; "+
 			"this typically happens when logs rotate faster than vlagent can process them during startup or downtime; "+
 			"consider reducing log rotation frequency",
-			filepath, cp.Fingerprint, fp)
+			filePath, cp.Fingerprint, fp)
+		_ = f.Close()
 		return nil, false
 	}
 
@@ -274,7 +280,11 @@ func findRenamedFile(logPath string, inode uint64) (*os.File, bool) {
 		}
 
 		filePath := path.Join(dir, fileName)
-		file, fileInode, ok := openFileWithInode(filePath)
+		// Ignore permission denied errors when trying to find renamed
+		// file, since dir may contain non-log files.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1796
+		const ignorePermissionErr = true
+		file, fileInode, ok := openFileWithInode(filePath, ignorePermissionErr)
 		if !ok {
 			continue
 		}
@@ -350,10 +360,16 @@ func needStop(ch <-chan struct{}) bool {
 	}
 }
 
-func openFileWithInode(p string) (*os.File, uint64, bool) {
+// openFileWithInode returns a file and its inode for the given path. If the file does not exist, it returns false instead.
+//
+// When ignorePermissionErr is true, a permission denied error is treated as if the file does not exist.
+func openFileWithInode(p string, ignorePermissionErr bool) (*os.File, uint64, bool) {
 	f, err := os.Open(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
+			return nil, 0, false
+		}
+		if ignorePermissionErr && errors.Is(err, os.ErrPermission) {
 			return nil, 0, false
 		}
 		logger.Panicf("FATAL: cannot open file: %s", err)

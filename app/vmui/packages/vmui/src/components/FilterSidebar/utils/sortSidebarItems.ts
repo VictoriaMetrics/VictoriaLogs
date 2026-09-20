@@ -1,6 +1,8 @@
 import { LogsFieldValues } from "../../../api/types";
 import { SortOptions } from "../types";
 
+const nameCollator = new Intl.Collator(undefined, { numeric: true });
+
 export const sortSidebarItems = (
   items: LogsFieldValues[],
   sort: SortOptions,
@@ -23,5 +25,5 @@ export const sortSidebarItems = (
 };
 
 const nameComparator = (a: string, b: string): number => {
-  return a.localeCompare(b, undefined, { numeric: true });
+  return nameCollator.compare(a, b);
 };

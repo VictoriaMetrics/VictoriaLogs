@@ -417,6 +417,10 @@ then `-delete.enable` command-line flag must be passed to `vlselect` nodes (this
 while `-internaldelete.enable` command-line flag must be passed to `vlstorage` nodes (this enables internal cluster API
 for receiving deletion requests from `vlselect` nodes). The `-deleteAuthKey` command-line flag, if used, must be passed to `vlselect` nodes as well.
 
+In [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) the lower-level `vlselect` nodes
+receive deletion requests from the top-level `vlselect` nodes, so `-internaldelete.enable` command-line flag must be passed to them as well,
+while `-delete.enable` and `-deleteAuthKey` command-line flags must be passed to the top-level `vlselect` nodes only.
+
 ## High Availability
 
 ### High Availability (HA) Setup with VictoriaLogs Single-Node Instances
