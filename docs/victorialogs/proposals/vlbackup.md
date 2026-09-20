@@ -6,7 +6,7 @@ Author: YurDuiachenko
 
 Currently, there is no dedicated VictoriaLogs backup and restore tooling.
 
-VictoriaMetrics already provides `vmbackup` and `vmrestore`, but these tools are designed around the VictoriaMetrics storage lifecycle and don't support VictoriaLogs-specific per-day partition snapshot and restore operations. 
+VictoriaMetrics already provides `vmbackup` and `vmrestore`, but these tools are designed around the VictoriaMetrics storage lifecycle and don't support VictoriaLogs-specific per-day partition snapshot and restore operations.
 
 VictoriaLogs documentation currently describes the backup process as a sequence of manual steps: create a partition snapshot, copy it to external storage with `rsync` or `rclone`, and delete the snapshot afterward.
 
@@ -23,7 +23,7 @@ The proposal is to introduce two VictoriaLogs-specific binaries:
 - `vlbackup` - creates full and selective backups of VictoriaLogs;
 - `vlrestore` - restores VictoriaLogs from backups.
 
-They will manage the VictoriaLogs-specific snapshot lifecycle and add a specific layout on top of the existing backup destination to support point-in-time recovery, 
+They will manage the VictoriaLogs-specific snapshot lifecycle and add a specific layout on top of the existing backup destination to support point-in-time recovery,
 reuse unchanged partition data without requiring server-side copies, and preserve historical partitions independently of VictoriaLogs retention.
 
 Both tools will reuse the existing backup and restore libraries where possible instead of introducing a new backup engine or adding VictoriaLogs-specific logic to `vmbackup` and `vmrestore`.
@@ -52,14 +52,10 @@ There are the following popular ways to make backups:
 - Point in time backups for all the data currently stored at VictoriaLogs. Such backups are good for recovery of all the data seen during the backup moment (aka point in time recovery).
 - Historical archives - to store data for historical days at the backup storage, so it could be restored and investigated if needed, even if this data is dropped at VictoriaLogs because of the configured retention.
 
-Proposed binaries will provide functionality for both of this use cases due to the specific backup destination hierarchy: data only stored once, and then just referenced in backup metafiles.
+Proposed binaries will provide functionality for both use cases due to the specific backup destination hierarchy: data is stored only once and then referenced by recovery-point metadata.
 That allows making very fast and cheap incremental backups, while they still can be properly restored.
 
 Backup destination hierarchy looks like this:
-
-![Backup destination hierarchy](vlbackup.svg)
-
-Or more detailed like this:
 
 ```text
 partitions/
@@ -78,10 +74,7 @@ partitions/
 
 recovery-points/
   <recovery-point>.json
-
-refs/
-  <partition>/
-    <recovery-point>
+  <recovery-point>.pending
 ```
 
 A recovery point contains a set of daily partition states.
@@ -90,25 +83,29 @@ Each partition has its own shared physical data pool under `partitions/<partitio
 
 The snapshot-specific metadata `datadb/parts.json` and `indexdb/parts.json` files are stored under an immutable `states/<state-id>/` directory.
 
-`<state-id>` identifies the contents of these state files. Therefore, identical partition states may be shared by multiple recovery points, while a change in parts.json creates a new state.
+`<state-id>` identifies the contents of these state files. Therefore, identical partition states may be shared by multiple recovery points, while a change in `parts.json` creates a new state.
 
 A recovery-point manifest maps every partition included in the backup to the corresponding state:
 
 ```json
 {
-   "version": 1, 
-   "id": "20260830T100000Z", 
-   "created_at": "2026-08-30T10:00:00Z", 
+   "version": 1,
+   "id": "20260830T100000Z",
+   "created_at": "2026-08-30T10:00:00Z",
    "scope": "full",
    "partitions": {
-      "20260828": "<state-id-1>", 
-      "20260829": "<state-id-2>", 
+      "20260828": "<state-id-1>",
+      "20260829": "<state-id-2>",
       "20260830": "<state-id-3>"
    }
 }
 ```
 
-`refs/<partition>/<recovery-point>` provides the reverse mapping for fast GC and retention mechanisms.
+`recovery-points/<recovery-point>.json` is written last and acts as the commit record for the recovery point.
+
+Before uploading partition data, `vlbackup` creates `recovery-points/<recovery-point>.pending` containing the complete set of partitions included in the backup.
+
+A pending recovery point isn't available for restore, but its partitions are treated as referenced by garbage collection while the backup is in progress.
 
 ### vlbackup
 
@@ -127,13 +124,17 @@ The interface is intentionally similar to `vmbackup`:
 When `-partition` isn't specified, `vlbackup`:
 
 1. Creates snapshots for all active VictoriaLogs partitions in a single partition snapshot API request.
-2. For each partition snapshot:
-   - uploads physical storage parts which aren't already present under `partitions/<partition>/data/`
-   - stores snapshot metadata under `partitions/<partition>/states/<state-id>/`
-   - adds `<partition>:<state-id>` records in the recovery-point manifest being built locally;
+2. Creates `recovery-points/<recovery-point>.pending` containing the complete set of partitions included in the recovery point.
+3. Periodically refreshes the pending recovery point while the backup is running.
+4. For each partition snapshot:
+   - uploads physical storage parts which aren't already present under `partitions/<partition>/data/`;
+   - stores snapshot metadata under `partitions/<partition>/states/<state-id>/`;
+   - adds `<partition>:<state-id>` records to the recovery-point manifest being built locally;
    - deletes the partition snapshot immediately after its data and state have been stored successfully.
-3. Creates in batch `refs/<partition>/<recovery-point>` for every partition in the RP.
-4. Writes the recovery-point manifest last as the commit record.
+5. Writes `recovery-points/<recovery-point>.json` last as the commit record.
+6. Removes `recovery-points/<recovery-point>.pending`.
+
+If the backup is interrupted before the recovery-point manifest is written, the recovery point isn't available for restore. Its pending manifest continues to protect the affected partitions from garbage collection until it becomes stale.
 
 #### Partition selection
 
@@ -158,16 +159,13 @@ A recovery point can be deleted with:
   -recoveryPoint=20260830T100000Z
 ```
 
-`vlbackup` reads the recovery-point manifest and removes:
+`vlbackup` removes:
 
 ```text
 recovery-points/<recovery-point>.json
-refs/<partition>/<recovery-point>
 ```
 
-for every partition referenced by the recovery point (batch operation if possible).
-
-Physical partition data isn't touched.
+Physical partition data and partition states aren't touched. They are reclaimed later by garbage collection when they are no longer referenced by any retained recovery point.
 
 ### Garbage collection
 
@@ -180,11 +178,17 @@ When retention policy isn't specified:
   -dst=s3://<bucket>/<path/to/repository>
 ```
 
-GC only deletes unreferenced partitions, so it
+GC:
 
-1. Lists the stored partitions and performs a lightweight check for each one `LIST refs/<partition>/ MaxKeys=1`
-2. If at least one object is returned, the partition is still referenced and is kept.
-3. If the prefix is empty, no recovery point references the partition, so GC can remove `partitions/<partition>/`.
+1. Lists `recovery-points/`.
+2. Reads committed recovery-point manifests and pending recovery points.
+3. Removes pending recovery points which haven't been refreshed for longer than `-pendingGracePeriod`.
+4. Builds the set of partitions referenced by committed or active pending recovery points.
+5. Lists the stored partitions under `partitions/`.
+6. Treats partitions which aren't present in the referenced partition set as garbage-collection candidates.
+7. Before removing a candidate partition, re-reads the current recovery-point metadata and removes the partition only if it is still unreferenced.
+
+The default value of `-pendingGracePeriod` is 24 hours. A pending recovery point older than this period since its last refresh is considered abandoned and no longer protects its partitions from garbage collection.
 
 #### Recovery point retention
 
@@ -198,15 +202,15 @@ Recovery-point retention can be applied during GC:
 
 The default value of `-recoveryPoint.retention` is `0`, which disables automatic recovery-point expiration.
 
-When retention is enabled, GC first lists `recovery-points/` and determines expired recovery points from their timestamp-based IDs.
+When retention is enabled, GC first lists committed recovery-point manifests and determines expired recovery points from their timestamp-based IDs.
 
-For every recovery point older than the configured retention period, GC:
+For every recovery point older than the configured retention period, GC removes:
 
-1. reads its manifest to determine referenced partitions;
-2. removes `recovery-points/<recovery-point>.json`;
-3. removes the corresponding `refs/<partition>/<recovery-point>` objects (batch if possible).
+```text
+recovery-points/<recovery-point>.json
+```
 
-It then performs the normal partition garbage collection.
+It then rebuilds the referenced partition set from the remaining committed and active pending recovery points and performs the normal partition garbage collection.
 
 #### Soft garbage collection
 
@@ -220,10 +224,13 @@ Physical partition deletion can be delayed with a grace period:
   -gracePeriod=24h
 ```
 
-When `-soft` is enabled and `refs/<partition>/` is empty, the partition isn't removed immediately. 
-Instead, GC creates `gc-candidates/<partition>.json` containing the time when the partition was first observed as unreferenced.
+When `-soft` is enabled and a partition isn't referenced by any committed or active pending recovery point, the partition isn't removed immediately.
 
-On a later GC run, if the candidate is older than `-gracePeriod` (default is 24h), GC performs `LIST refs/<partition>/ MaxKeys=1` again and if the partition is still unreferenced, it is removed.
+Instead, GC:
+
+1. Creates `gc-candidates/<partition>.json` containing the time when the partition was first observed as unreferenced.
+2. If a later GC run observes that the partition is referenced again, the existing GC candidate is removed.
+3. If the partition remains continuously unreferenced for longer than `-gracePeriod` (default is 24h), GC revalidates its current references and removes it only if it is still unreferenced.
 
 The grace period applies only to physical partition deletion. Recovery points which exceed `-recoveryPoint.retention` are removed immediately during the retention pass.
 
@@ -243,7 +250,7 @@ A full recovery point can be restored with:
 
 When `-partition` isn't specified, `vlrestore`:
 
-1. Reads `recovery-points/<recovery-point>.json` and gets partitions list and their states.
+1. Reads `recovery-points/<recovery-point>.json`, verifies that its `scope` is `full`, and gets the partition list and their states.
 2. For each partition in the recovery point:
    - loads the corresponding `datadb/parts.json` and `indexdb/parts.json` from `partitions/<partition>/states/<state-id>/`;
    - resolves the physical parts referenced by this state under `partitions/<partition>/data/`;
@@ -254,6 +261,8 @@ When `-partition` isn't specified, `vlrestore`:
    - replaces the local partition data with the restored data;
    - attaches the restored partition.
 3. After all partitions referenced by the recovery point have been restored successfully, removes local partitions which aren't present in the selected full recovery point.
+
+A recovery point with `scope: "partition"` can't be used for a full-storage restore.
 
 Physical parts from other historical states of the same partition may coexist in `partitions/<partition>/data/`. During restore, only the parts referenced by the selected partition state are exposed to the shared restore logic.
 
@@ -282,9 +291,9 @@ A partition can also be restored without explicitly selecting a recovery point:
   -partitionManage.url=http://localhost:9428/internal/partition
 ```
 
-`vlrestore` lists: `refs/20260828/` and selects the newest recovery-point. Since recovery-point IDs contain sortable timestamps, no separate `latest` pointer is needed.
+`vlrestore` lists committed recovery points in reverse timestamp order and selects the newest recovery-point manifest which contains `20260828`.
 
-The recovery-point manifest is then read to resolve the exact snapshot state for `20260828`.
+Pending recovery points aren't considered for restore.
 
 Available recovery points can be listed with:
 
@@ -335,7 +344,7 @@ Unit tests should cover VictoriaLogs-specific logic introduced by `vlbackup` and
 
 - partition discovery, selection, snapshot mapping, and destination mapping;
 - VictoriaLogs snapshot and partition management API handling, including snapshot cleanup;
-- recovery-point, partition-state, and reverse-reference handling, including incomplete backup state.
+- committed and pending recovery-point handling, including incomplete backup state and stale pending recovery points.
 
 Generic backup and restore behavior is covered by the existing shared-library tests.
 
@@ -346,7 +355,9 @@ Application tests should run VictoriaLogs with temporary storage and cover:
 - full and selective partition backup and restore;
 - incremental backup with physical data reuse and creation of multiple recovery points for the same partition;
 - restoring an older recovery point after a newer partition state has already been backed up;
-- failed or incomplete multi-partition backups without exposing an incomplete recovery point.
+- failed or incomplete multi-partition backups without exposing an incomplete recovery point;
+- garbage collection during an active backup without removing partitions referenced by the pending recovery point;
+- cleanup of stale pending recovery points left by interrupted backups.
 
 Performance and resource usage should also be compared with the existing `rclone`-based workflow under ingestion and query load.
 
