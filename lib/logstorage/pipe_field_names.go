@@ -136,6 +136,13 @@ func (pfp *pipeFieldNamesProcessor) writeBlock(workerID uint, br *blockResult) {
 		shard.updateColumnHits("_time", filter, hits)
 		shard.updateColumnHits("_stream", filter, hits)
 		shard.updateColumnHits("_stream_id", filter, hits)
+		if br.bs.bsw.pso.isMultiTenant {
+			for _, columnName := range tenantColumns {
+				if !br.bs.isHiddenField(columnName) {
+					shard.updateColumnHits(columnName, filter, hits)
+				}
+			}
+		}
 	}
 }
 
@@ -143,6 +150,10 @@ func (shard *pipeFieldNamesProcessorShard) updateHits(refs []columnHeaderRef, br
 	for _, cr := range refs {
 		columnName := br.bs.getColumnNameByID(cr.columnNameID)
 		if br.bs.isHiddenField(columnName) {
+			continue
+		}
+		if br.bs.bsw.pso.isMultiTenant && isTenantColumn(columnName) {
+			// The stored column is shadowed by the automatically generated tenant column.
 			continue
 		}
 		shard.updateColumnHits(columnName, filter, hits)

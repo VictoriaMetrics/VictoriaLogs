@@ -431,6 +431,19 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 		}
 	}
 
+	// Add tenant ID columns if multi-tenant search is enabled
+	bs := br.bs
+	so := bs.bsw.pso
+	bh := bs.bsw.bh
+	if so.isMultiTenant {
+		if pf.MatchString("vl_account_id") {
+			br.addConstColumn("vl_account_id", bh.streamID.tenantID.accountIDString())
+		}
+		if pf.MatchString("vl_project_id") {
+			br.addConstColumn("vl_project_id", bh.streamID.tenantID.projectIDString())
+		}
+	}
+
 	if pf.MatchString("_msg") {
 		// Add _msg column
 		v := br.bs.getConstColumnValue("_msg")
@@ -444,13 +457,16 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 	}
 
 	// Add other const columns
-	bs := br.bs
 	csh := bs.getColumnsHeader()
 	for _, cc := range csh.constColumns {
 		if isSpecialColumn(cc.Name) {
 			// Special columns have been added above.
 			continue
 		}
+		if so.isMultiTenant && isTenantColumn(cc.Name) {
+			continue
+		}
+
 		if pf.MatchString(cc.Name) && !bs.isHiddenField(cc.Name) {
 			br.addConstColumn(cc.Name, cc.Value)
 		}
@@ -464,6 +480,10 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 			// Special columns have been added above.
 			continue
 		}
+		if so.isMultiTenant && isTenantColumn(ch.name) {
+			continue
+		}
+
 		if pf.MatchString(ch.name) && !bs.isHiddenField(ch.name) {
 			br.addColumn(ch)
 		}
@@ -482,6 +502,12 @@ func isSpecialColumn(c string) bool {
 }
 
 var specialColumns = []string{"_msg", "_time", "_stream", "_stream_id"}
+
+func isTenantColumn(c string) bool {
+	return slices.Contains(tenantColumns, c)
+}
+
+var tenantColumns = []string{"vl_account_id", "vl_project_id"}
 
 // mustInit initializes br with the given bs and bm.
 //

@@ -258,6 +258,15 @@ func (bs *blockSearch) getConstColumnValue(name string) string {
 	}
 
 	name = getCanonicalFieldName(name)
+	if bs.bsw.pso.isMultiTenant {
+		tenantID := bs.bsw.bh.streamID.tenantID
+		if name == "vl_account_id" {
+			return tenantID.accountIDString()
+		}
+		if name == "vl_project_id" {
+			return tenantID.projectIDString()
+		}
+	}
 
 	if bs.partFormatVersion() < 1 {
 		csh := bs.getColumnsHeader()
