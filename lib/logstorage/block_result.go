@@ -431,16 +431,14 @@ func (br *blockResult) initColumnsByFilter(pf *prefixfilter.Filter) {
 		}
 	}
 
-	// Add tenant ID columns if multi-tenant search is enabled
 	bs := br.bs
 	so := bs.bsw.pso
-	bh := bs.bsw.bh
+	// Add vl_account_id and vl_project_id columns for multitenant queries.
 	if so.isMultiTenant {
-		if pf.MatchString("vl_account_id") {
-			br.addConstColumn("vl_account_id", bh.streamID.tenantID.accountIDString())
-		}
-		if pf.MatchString("vl_project_id") {
-			br.addConstColumn("vl_project_id", bh.streamID.tenantID.projectIDString())
+		for _, name := range tenantColumns {
+			if pf.MatchString(name) {
+				br.addConstColumn(name, bs.getConstColumnValue(name))
+			}
 		}
 	}
 
