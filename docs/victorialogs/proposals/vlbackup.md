@@ -176,7 +176,7 @@ When retention policy isn't specified:
 
 ```bash
 ./vlbackup gc \
-  -dst=s3://<bucket>/<path/to/repository>
+  -dst=s3://<bucket>/<path/to/backup>
 ```
 
 GC:
@@ -199,7 +199,7 @@ Recovery-point retention can be applied during GC:
 
 ```bash
 ./vlbackup gc \
-  -dst=s3://<bucket>/<path/to/repository> \
+  -dst=s3://<bucket>/<path/to/backup> \
   -recoveryPoint.retention=30d
 ```
 
@@ -223,7 +223,7 @@ Physical partition deletion can be delayed with a grace period:
 
 ```bash
 ./vlbackup gc \
-  -dst=s3://<bucket>/<path/to/repository> \
+  -dst=s3://<bucket>/<path/to/backup> \
   -recoveryPoint.retention=30d \
   -soft \
   -gracePeriod=24h
