@@ -105,7 +105,8 @@ A recovery-point manifest maps every partition included in the backup to the cor
 
 Before uploading partition data, `vlbackup` creates `recovery-points/<recovery-point>.pending` containing the complete set of partitions included in the backup.
 
-A pending recovery point isn't available for restore, but its partitions are treated as referenced by garbage collection while the backup is in progress.
+A pending recovery point isn't available for restore, but it acts as a GC root in the same way as a committed recovery point. 
+If the backup is interrupted, the pending recovery point remains in the repository until it is explicitly deleted or removed by the configured recovery-point retention policy.
 
 ### vlbackup
 
@@ -125,16 +126,15 @@ When `-partition` isn't specified, `vlbackup`:
 
 1. Creates snapshots for all active VictoriaLogs partitions in a single partition snapshot API request.
 2. Creates `recovery-points/<recovery-point>.pending` containing the complete set of partitions included in the recovery point.
-3. Periodically refreshes the pending recovery point while the backup is running.
-4. For each partition snapshot:
+3. For each partition snapshot:
    - uploads physical storage parts which aren't already present under `partitions/<partition>/data/`;
    - stores snapshot metadata under `partitions/<partition>/states/<state-id>/`;
    - adds `<partition>:<state-id>` records to the recovery-point manifest being built locally;
    - deletes the partition snapshot immediately after its data and state have been stored successfully.
-5. Writes `recovery-points/<recovery-point>.json` last as the commit record.
-6. Removes `recovery-points/<recovery-point>.pending`.
+4. Writes `recovery-points/<recovery-point>.json` last as the commit record.
+5. Removes `recovery-points/<recovery-point>.pending`.
 
-If the backup is interrupted before the recovery-point manifest is written, the recovery point isn't available for restore. Its pending manifest continues to protect the affected partitions from garbage collection until it becomes stale.
+If the backup is interrupted before the recovery-point manifest is written, the recovery point isn't available for restore. Its pending manifest remains in the repository and continues to protect the affected partitions from garbage collection until it is explicitly deleted or expires according to the recovery-point retention policy.
 
 #### Partition selection
 
@@ -159,13 +159,19 @@ A recovery point can be deleted with:
   -recoveryPoint=20260830T100000Z
 ```
 
-`vlbackup` removes:
+`vlbackup` removes the recovery-point metadata matching the selected ID:
 
 ```text
 recovery-points/<recovery-point>.json
 ```
 
-Physical partition data and partition states aren't touched. They are reclaimed later by garbage collection when they are no longer referenced by any retained recovery point.
+or, for an incomplete recovery point:
+
+```text
+recovery-points/<recovery-point>.pending
+```
+
+Physical partition data and partition states aren't touched. They are reclaimed later by garbage collection when they are no longer referenced by any retained committed or pending recovery point.
 
 ### Garbage collection
 
@@ -181,14 +187,13 @@ When retention policy isn't specified:
 GC:
 
 1. Lists `recovery-points/`.
-2. Reads committed recovery-point manifests and pending recovery points.
-3. Removes pending recovery points which haven't been refreshed for longer than `-pendingGracePeriod`.
-4. Builds the set of partitions referenced by committed or active pending recovery points.
-5. Lists the stored partitions under `partitions/`.
-6. Treats partitions which aren't present in the referenced partition set as garbage-collection candidates.
-7. Before removing a candidate partition, re-reads the current recovery-point metadata and removes the partition only if it is still unreferenced.
+2. Reads committed and pending recovery-point metadata.
+3. Builds the set of partitions referenced by committed or pending recovery points.
+4. Lists the stored partitions under `partitions/`.
+5. Treats partitions which aren't present in the referenced partition set as garbage-collection candidates.
+6. Before removing a candidate partition, re-reads the current recovery-point metadata and removes the partition only if it is still unreferenced.
 
-The default value of `-pendingGracePeriod` is 24 hours. A pending recovery point older than this period since its last refresh is considered abandoned and no longer protects its partitions from garbage collection.
+Pending recovery points are treated as GC roots until they are explicitly deleted or removed by the recovery-point retention policy.
 
 #### Recovery point retention
 
@@ -202,15 +207,18 @@ Recovery-point retention can be applied during GC:
 
 The default value of `-recoveryPoint.retention` is `0`, which disables automatic recovery-point expiration.
 
-When retention is enabled, GC first lists committed recovery-point manifests and determines expired recovery points from their timestamp-based IDs.
+When retention is enabled, GC lists both committed and pending recovery points and determines expired recovery points from their timestamp-based IDs.
 
-For every recovery point older than the configured retention period, GC removes:
+For every committed or pending recovery point older than the configured retention period, GC removes the corresponding recovery-point metadata:
 
 ```text
 recovery-points/<recovery-point>.json
+recovery-points/<recovery-point>.pending
 ```
 
-It then rebuilds the referenced partition set from the remaining committed and active pending recovery points and performs the normal partition garbage collection.
+It then rebuilds the referenced partition set from the remaining committed and pending recovery points and performs the normal partition garbage collection.
+
+When `-recoveryPoint.retention=0`, neither committed nor pending recovery points are expired automatically.
 
 #### Soft garbage collection
 
@@ -224,7 +232,7 @@ Physical partition deletion can be delayed with a grace period:
   -gracePeriod=24h
 ```
 
-When `-soft` is enabled and a partition isn't referenced by any committed or active pending recovery point, the partition isn't removed immediately.
+When `-soft` is enabled and a partition isn't referenced by any committed or pending recovery point, the partition isn't removed immediately.
 
 Instead, GC:
 
@@ -344,7 +352,7 @@ Unit tests should cover VictoriaLogs-specific logic introduced by `vlbackup` and
 
 - partition discovery, selection, snapshot mapping, and destination mapping;
 - VictoriaLogs snapshot and partition management API handling, including snapshot cleanup;
-- committed and pending recovery-point handling, including incomplete backup state and stale pending recovery points.
+- committed and pending recovery-point handling, including incomplete backup state and recovery-point retention.
 
 Generic backup and restore behavior is covered by the existing shared-library tests.
 
@@ -357,7 +365,7 @@ Application tests should run VictoriaLogs with temporary storage and cover:
 - restoring an older recovery point after a newer partition state has already been backed up;
 - failed or incomplete multi-partition backups without exposing an incomplete recovery point;
 - garbage collection during an active backup without removing partitions referenced by the pending recovery point;
-- cleanup of stale pending recovery points left by interrupted backups.
+- retention and explicit deletion of pending recovery points left by interrupted backups.
 
 Performance and resource usage should also be compared with the existing `rclone`-based workflow under ingestion and query load.
 
