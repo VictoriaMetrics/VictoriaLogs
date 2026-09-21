@@ -100,6 +100,13 @@ var vmuiFiles embed.FS
 
 var vmuiFileServer = http.FileServer(http.FS(vmuiFiles))
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+	return strings.HasPrefix(path, "/delete/")
+}
+
 // RequestHandler handles select requests for VictoriaLogs
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")

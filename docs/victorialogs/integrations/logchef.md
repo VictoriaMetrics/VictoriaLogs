@@ -46,7 +46,7 @@ level="error" and service="api"
 
 Use native LogsQL for VictoriaLogs-specific syntax and pipes:
 
-```text
+```logsql
 level:="error" service:="api" | fields _time, _msg, service, level
 ```
 
@@ -58,7 +58,7 @@ With a VictoriaLogs source, Logchef provides field discovery, histograms, result
 
 ![Logchef dashboard with log monitoring panels](logchef-dashboard.webp)
 
-For explorer histograms and dashboard stat, time-series, and breakdown panels, use filter expressions. Table queries can use full native LogsQL pipes.
+For explorer histograms and dashboard stat, time-series, and breakdown panels, use filter expressions. Pipes are ignored for these histograms and panels, so their counts may differ from the results of the full query. Table queries can use full native LogsQL pipes.
 
 ## Limitations
 
