@@ -118,7 +118,7 @@ When `-partition` isn't specified, `vlbackup`:
 
 1. Creates snapshots for all active VictoriaLogs partitions in a single partition snapshot API request.
 2. For each partition snapshot:
-   - uploads physical storage parts which aren't already present under `partitions/<partition>/data/`;
+   - uploads missing physical storage parts under `partitions/<partition>/data/` using the shared backup library, including its existing handling of incomplete or broken remote parts;
    - stores snapshot metadata under `partitions/<partition>/states/<state-id>/`;
    - adds `<partition>:<state-id>` records to the recovery-point manifest being built locally;
    - deletes the partition snapshot immediately after its data and state have been stored successfully.
@@ -198,9 +198,7 @@ A partition can also be restored without explicitly selecting a recovery point:
   -partitionManage.url=http://localhost:9428/internal/partition
 ```
 
-When `-recoveryPoint` isn't specified, `vlrestore` considers only committed recovery points with `scope: "partition"` which contain the selected partition and restores it from the newest matching recovery point.
-
-Recovery points with `scope: "full"` aren't considered for implicit partition restore.
+When `-recoveryPoint` isn't specified, `vlrestore` considers all committed recovery points which contain the selected partition and restores it from the newest matching recovery point, regardless of whether its scope is `full` or `partition`.
 
 Available recovery points can be listed with:
 
