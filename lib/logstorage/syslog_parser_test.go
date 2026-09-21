@@ -65,6 +65,7 @@ func TestSyslogParser(t *testing.T) {
 
 	// Incomplete RFC 5424
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47 [foo@123]`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com app_name=appname proc_id=12345 msg_id=ID47 foo@123=`)
+	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47 [foo@123 bar=`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com app_name=appname proc_id=12345 msg_id=ID47`)
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345 ID47`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com app_name=appname proc_id=12345 msg_id=ID47`)
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname 12345`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com app_name=appname proc_id=12345`)
 	f(`<165>1 2023-06-03T17:42:32.123456789Z mymachine.example.com appname`, time.UTC, `priority=165 facility_keyword=local4 level=notice facility=20 severity=5 format=rfc5424 timestamp=2023-06-03T17:42:32.123456789Z hostname=mymachine.example.com app_name=appname`)
