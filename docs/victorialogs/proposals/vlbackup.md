@@ -200,10 +200,10 @@ Recovery-point retention can be applied during GC:
 ```bash
 ./vlbackup gc \
   -dst=s3://<bucket>/<path/to/backup> \
-  -recoveryPoint.retention=30d
+  -recoveryPoint.retentionPeriod=30d
 ```
 
-The default value of `-recoveryPoint.retention` is `0`, which disables automatic recovery-point expiration.
+The default value of `-recoveryPoint.retentionPeriod` is `0`, which disables automatic recovery-point expiration.
 
 When retention is enabled, GC lists committed recovery-point manifests and determines expired recovery points from their timestamp-based IDs.
 
@@ -215,7 +215,7 @@ recovery-points/<recovery-point>.json
 
 It then rebuilds the referenced partition set from the remaining committed recovery points and non-expired pending recovery points and performs the normal partition garbage collection.
 
-`-recoveryPoint.retention` applies only to committed recovery points. Pending recovery points are cleaned independently according to `-recoveryPoint.pendingMaxAge`.
+`-recoveryPoint.retentionPeriod` applies only to committed recovery points. Pending recovery points are cleaned independently according to `-recoveryPoint.pendingMaxAge`.
 
 #### Soft garbage collection
 
@@ -224,7 +224,7 @@ Physical partition deletion can be delayed with a grace period:
 ```bash
 ./vlbackup gc \
   -dst=s3://<bucket>/<path/to/backup> \
-  -recoveryPoint.retention=30d \
+  -recoveryPoint.retentionPeriod=30d \
   -soft \
   -gracePeriod=24h
 ```
