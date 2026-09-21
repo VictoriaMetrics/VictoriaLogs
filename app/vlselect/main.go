@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	maxConcurrentRequests = flag.Int("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "The maximum number of concurrent search requests. "+
+	maxConcurrentRequests = flagutil.NewIntWithDynamicDefault("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "2x CPU cores when there are 4 or fewer; otherwise CPU cores, capped at 16", "The maximum number of concurrent search requests. "+
 		"It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. "+
 		"See also -search.maxQueueDuration")
 	maxQueueDuration = flag.Duration("search.maxQueueDuration", 10*time.Second, "The maximum time the search request waits for execution when -search.maxConcurrentRequests "+

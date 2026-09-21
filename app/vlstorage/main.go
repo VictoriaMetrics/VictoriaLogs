@@ -30,7 +30,7 @@ var (
 		"log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent")
 
-	defaultParallelReaders = flag.Int("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "Default number of parallel data readers to use for executing every query; "+
+	defaultParallelReaders = flagutil.NewIntWithDynamicDefault("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "2x CPU cores", "Default number of parallel data readers to use for executing every query; "+
 		"higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; "+
 		"see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option")
 

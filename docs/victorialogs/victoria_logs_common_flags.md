@@ -247,7 +247,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -search.logSlowQueryDuration duration
      Log queries with execution time exceeding this value. Zero disables slow query logging (default 5s)
   -search.maxConcurrentRequests int
-     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default vlselect.getDefaultMaxConcurrentRequests())
+     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 2x CPU cores when there are 4 or fewer; otherwise CPU cores, capped at 16)
   -search.maxQueryDuration duration
      The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size
