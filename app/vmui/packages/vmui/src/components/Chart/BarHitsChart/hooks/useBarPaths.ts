@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "preact/compat";
 import uPlot, { Series } from "uplot";
-import { LOADING_HITS_LABEL } from "../../../../constants/logs";
+import { HitsSeries } from "../types";
 
 type BarsLayout = {
   idx0: number;
@@ -40,7 +40,8 @@ const useBarPaths = () => {
   const barPaths = useCallback((u: uPlot, seriesIdx: number, idx0: number, idx1: number): Series.Paths | null => {
     if (seriesIdx === 0) return null;
 
-    const isPlaceholderBar = u.series[seriesIdx].label === LOADING_HITS_LABEL;
+    const series = u.series[seriesIdx] as HitsSeries;
+    const isPlaceholderBar = series._isLoading;
     const placeholderPath = isPlaceholderBar ? new Path2D() : null;
 
     const idx1Excl = idx1 + 1;
@@ -166,7 +167,7 @@ const useBarPaths = () => {
   }, [findHoverHit]);
 
   const getLoadingBarRect = useCallback((u: uPlot) => {
-    const seriesIdx = u.series.findIndex(s => s.label === LOADING_HITS_LABEL);
+    const seriesIdx = u.series.findIndex(s => (s as HitsSeries)._isLoading);
 
     if (seriesIdx === -1 || !u.series[seriesIdx].show) return null;
 

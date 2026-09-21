@@ -1,10 +1,10 @@
 import { useMemo, useState } from "preact/compat";
 import { getAxes, getMinMaxBuffer, handleDestroy, setSelect } from "../../../../utils/uplot";
-import uPlot, { AlignedData, Band, Options, Series } from "uplot";
+import uPlot, { AlignedData, Band, Options } from "uplot";
 import { useAppState } from "../../../../state/common/StateContext";
 import { MinMax, SetMinMax, TimePeriod } from "../../../../types";
 import { LogHits } from "../../../../api/types";
-import { GraphOptions, GRAPH_STYLES } from "../types";
+import { GraphOptions, GRAPH_STYLES, HitsSeries } from "../types";
 import useBarPaths from "./useBarPaths";
 import useBarClickHooks from "./useBarClickHooks";
 import { Size } from "../../../../hooks/useResizeObserver";
@@ -121,7 +121,7 @@ const useBarHitsOptions = ({
     return "";
   };
 
-  const series: Series[] = useMemo(() => {
+  const series: HitsSeries[] = useMemo(() => {
     let visibleColorIndex = 0;
 
     return data.map((_d, i) => {
@@ -144,6 +144,7 @@ const useBarHitsOptions = ({
         fill: getFillBar(color, graphOptions.fill, isOther, isLoading),
         paths: barPaths,
         points: { show: false },
+        _isLoading: isLoading
       };
     });
   }, [isDarkTheme, data, graphOptions, logHits, barPaths]);
