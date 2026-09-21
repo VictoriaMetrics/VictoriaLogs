@@ -32,6 +32,8 @@ export const fetchHitsIterative = async ({
 
     const { hits, durationMs } = await fetchHitsOnce({ ...init, url, body });
 
+    init.signal.throwIfAborted();
+
     onUpdate(hits, durationMs);
   }
 };
