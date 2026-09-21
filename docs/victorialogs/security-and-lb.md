@@ -447,7 +447,9 @@ In [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/clu
 run in different data centers. In this case it is recommended running [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) in
 front of every lower-level cluster for authorizing access to its internal RPC endpoints.
 
-The following configuration can be used at the `vmauth` in front of a single lower-level cluster:
+Every lower-level cluster needs its own `vmauth`, which routes requests only to the nodes of this cluster.
+The following configuration can be used at the `vmauth` in front of a single lower-level cluster
+with two `vlinsert` nodes (`vlinsert-1` and `vlinsert-2`) and two `vlselect` nodes (`vlselect-1` and `vlselect-2`):
 
 ```yaml
 users:
@@ -468,9 +470,8 @@ users:
     - "http://vlselect-2:9428/"
 ```
 
-In this example, `vlinsert-1` and `vlinsert-2` are the insert nodes and `vlselect-1` and `vlselect-2` are the select nodes of the same
-lower-level cluster. Do not list the `vlstorage` nodes under `url_prefix`, because `vmauth` load-balances each request to a single node,
-even when a query needs data from all of them.
+Do not list the `vlstorage` nodes or the nodes of other lower-level clusters under `url_prefix`, because `vmauth` load-balances
+each request to a single node, which silently turns query results into partial ones.
 
 This configuration blocks unauthorized access to the `vlinsert` and `vlselect` nodes of the lower-level cluster via Basic Auth.
 The top-level `vlinsert` and `vlselect` must send requests to the `vmauth` addresses specified via `-storageNode`
