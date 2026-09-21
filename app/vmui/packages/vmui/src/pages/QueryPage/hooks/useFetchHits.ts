@@ -84,7 +84,6 @@ export const useFetchHits = () => {
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));
-    setError(undefined);
 
     let timeoutId: number | undefined = undefined;
 
@@ -95,6 +94,11 @@ export const useFetchHits = () => {
     }
 
     const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
+
+    isIterative.current = false;
+    setLogHits([]);
+    setDurationMs(undefined);
+    setError(undefined);
 
     try {
       const options = getOptions({ ...params, signal: firstSignal });
@@ -118,8 +122,6 @@ export const useFetchHits = () => {
         }
       }
 
-      setLogHits([]);
-      setDurationMs(0);
       init.signal = loadController.signal;
       isIterative.current = true;
 
