@@ -10,8 +10,7 @@ import { fetchHitsStats } from "../utils/fetchHitsStats";
 import { fetchHitsOnce } from "../utils/fetchHitsOnce";
 import { fetchHitsIterative } from "../utils/fetchHitsIterative";
 import { mergeLogHits } from "../utils/mergeLogHits";
-
-const HITS_ITERATIVE_FALLBACK_DELAY_MS = 3_000;
+import { useIncrementalTimeout } from "../HitsPanel/hooks/useIncrementalTimeout";
 
 export interface FetchHitsParams {
   query: string;
@@ -32,6 +31,7 @@ export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [hideChart] = useHideChart();
+  const { incrementalTimeoutMs } = useIncrementalTimeout();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean; }>([]);
@@ -87,10 +87,10 @@ export const useFetchHits = () => {
 
     let timeoutId: number | undefined = undefined;
 
-    if (!isStatsMode && (params.allowIterative ?? true)) {
+    if (!isStatsMode && (params.allowIterative ?? true) && incrementalTimeoutMs) {
       timeoutId = window.setTimeout(() => {
         firstRequestController.abort();
-      }, HITS_ITERATIVE_FALLBACK_DELAY_MS);
+      }, incrementalTimeoutMs);
     }
 
     const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
@@ -154,7 +154,7 @@ export const useFetchHits = () => {
         handleUpdateLoadingHits();
       }
     }
-  }, [serverUrl, tenant]);
+  }, [serverUrl, tenant, incrementalTimeoutMs]);
 
   useEffect(() => {
     return () => {
