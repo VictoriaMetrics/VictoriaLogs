@@ -18,14 +18,13 @@ func isTerminal() bool {
 }
 
 func readWithLess(r io.Reader, disableColors, wrapLongLines bool) error {
-	if !isTerminal() {
-		// Just write everything to stdout if no terminal is available.
+	// Write everything to stdout if there is no terminal or 'less' isn't available in $PATH.
+	// The latter happens e.g. inside the distroless Docker image, which doesn't ship 'less'.
+	path, err := exec.LookPath("less")
+	if !isTerminal() || err != nil {
 		_, err := io.Copy(os.Stdout, r)
 		if err != nil && !isErrPipe(err) {
 			return fmt.Errorf("error when forwarding data to stdout: %w", err)
-		}
-		if err := os.Stdout.Sync(); err != nil {
-			return fmt.Errorf("cannot sync data to stdout: %w", err)
 		}
 		return nil
 	}
@@ -44,10 +43,6 @@ func readWithLess(r io.Reader, disableColors, wrapLongLines bool) error {
 	defer cancel()
 
 	// Start 'less' process
-	path, err := exec.LookPath("less")
-	if err != nil {
-		return fmt.Errorf("cannot find 'less' command: %w", err)
-	}
 	opts := []string{"less", "-F", "-X"}
 	if !disableColors {
 		opts = append(opts, "-R")
