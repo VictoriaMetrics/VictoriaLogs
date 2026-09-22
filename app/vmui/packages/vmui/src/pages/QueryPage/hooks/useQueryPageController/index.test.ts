@@ -5,6 +5,8 @@ import { useQueryPageController } from "./index";
 const mocks = vi.hoisted(() => ({
   runHits: vi.fn(),
   runLogs: vi.fn(),
+  resetHits: vi.fn(),
+  resetLogs: vi.fn(),
   abortHits: vi.fn(),
   abortLogs: vi.fn(),
   fetchQueryTime: vi.fn(),
@@ -36,10 +38,10 @@ vi.mock("../useQueryPageTriggers/", () => ({
   useLogsTriggers: () => logsTriggers,
 }));
 vi.mock("./useHitsController", () => ({
-  useHitsController: () => ({ runHits: mocks.runHits, abort: mocks.abortHits }),
+  useHitsController: () => ({ runHits: mocks.runHits, abort: mocks.abortHits, resetHits: mocks.resetHits }),
 }));
 vi.mock("./useLogsController", () => ({
-  useLogsController: () => ({ runLogs: mocks.runLogs, abort: mocks.abortLogs }),
+  useLogsController: () => ({ runLogs: mocks.runLogs, abort: mocks.abortLogs, resetLogs: mocks.resetLogs }),
 }));
 vi.mock("../useFetchQueryTime", () => ({
   useFetchQueryTime: () => ({ fetchQueryTime: mocks.fetchQueryTime, abort: mocks.abortTime }),
@@ -100,12 +102,39 @@ describe("useQueryPageController: logs waiting for hits", () => {
     await flushDebounce();
 
     expect(mocks.runHits).toHaveBeenCalledTimes(1);
+    expect(mocks.resetLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.resetHits).toHaveBeenCalledTimes(1);
+    expect(mocks.resetLogs.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
+    expect(mocks.resetHits.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
     expect(mocks.runLogs).not.toHaveBeenCalled();
 
     await completeHits();
 
     expect(mocks.runLogs).toHaveBeenCalledTimes(1);
     expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({ query: "*" }));
+  });
+
+  it("preserves loaded logs when only the chart step changes", async () => {
+    const { rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    await completeHits();
+
+    mocks.resetLogs.mockClear();
+    mocks.resetHits.mockClear();
+    mocks.runLogs.mockClear();
+
+    hitsTriggers = { ...initialHits, step: "1h" };
+    rerender();
+    await flushDebounce();
+
+    expect(mocks.resetHits).toHaveBeenCalledTimes(1);
+    expect(mocks.resetLogs).not.toHaveBeenCalled();
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+
+    await completeHits();
+
+    expect(mocks.resetLogs).not.toHaveBeenCalled();
+    expect(mocks.runLogs).not.toHaveBeenCalled();
   });
 
   it("loads the new query's logs after changing step while its hits are pending", async () => {

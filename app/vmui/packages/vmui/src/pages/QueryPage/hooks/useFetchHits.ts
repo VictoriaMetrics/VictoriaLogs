@@ -156,6 +156,13 @@ export const useFetchHits = () => {
     }
   }, [serverUrl, tenant, incrementalTimeoutMs]);
 
+  const resetHits = () => {
+    setLogHits([]);
+    setDurationMs(undefined);
+    setError(undefined);
+    isIterative.current = false;
+  };
+
   useEffect(() => {
     return () => {
       abortControllerRef.current.abort();
@@ -165,10 +172,7 @@ export const useFetchHits = () => {
   useEffect(() => {
     if (hideChart) {
       abortControllerRef.current.abort();
-      setLogHits([]);
-      setDurationMs(undefined);
-      setError(undefined);
-      isIterative.current = false;
+      resetHits();
     }
   }, [hideChart]);
 
@@ -179,6 +183,7 @@ export const useFetchHits = () => {
     error,
     fetchHits,
     durationMs,
-    abort: useCallback(() => abortControllerRef.current?.abort(), [])
+    abort: useCallback(() => abortControllerRef.current?.abort(), []),
+    resetHits
   };
 };

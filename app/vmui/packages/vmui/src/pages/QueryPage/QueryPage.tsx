@@ -140,6 +140,7 @@ const QueryPage: FC = () => {
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}
           isLoading={logsRequestState.isLoading}
+          isPending={logsRequestState.isPending}
         />
       </div>
     </div>

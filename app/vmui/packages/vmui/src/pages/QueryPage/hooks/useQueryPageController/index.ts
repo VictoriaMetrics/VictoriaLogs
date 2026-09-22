@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/compat";
+import { useEffect, useRef, useState } from "preact/compat";
 import { useHitsController } from "./useHitsController";
 import { useLogsController } from "./useLogsController";
 import {
@@ -73,8 +73,8 @@ const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
 export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const queryDispatch = useQueryDispatch();
 
-  const { runLogs, ...logsRequestState } = useLogsController();
-  const { runHits, ...hitsRequestState } = useHitsController();
+  const { runLogs, resetLogs, ...logsRequestState } = useLogsController();
+  const { runHits, resetHits, ...hitsRequestState } = useHitsController();
   const { fetchQueryTime, ...timeRequestState } = useFetchQueryTime();
 
   const baseTriggers = useBaseTriggers(props);
@@ -87,7 +87,8 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const isLogsHiddenRef = useRef(logsTriggers.isLogsHidden);
   isLogsHiddenRef.current = logsTriggers.isLogsHidden;
 
-  const pendingLogsRef = useRef(false);
+  const pendingLogsRef = useRef<symbol | null>(null);
+  const [isPendingLogs, setIsPendingLogs] = useState(false);
 
   const prevRef = useRef<TriggersState>({
     baseTriggers,
@@ -95,11 +96,16 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     hitsTriggers,
   });
 
+  const updatePendingLogs = (id: symbol | null) => {
+    pendingLogsRef.current = id;
+    setIsPendingLogs(id !== null);
+  };
+
   const cancelAll = () => {
     hitsRequestState.abort?.();
     logsRequestState.abort?.();
     timeRequestState.abort?.();
-    pendingLogsRef.current = false;
+    updatePendingLogs(null);
   };
 
   const resolveTimeFilter = async (baseTriggersArg: BaseTriggers) => {
@@ -175,19 +181,29 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     const logsParams = buildLogsParams(baseTriggers, logsTriggers);
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);
 
-    if (shouldRunLogs) pendingLogsRef.current = true;
+    if (shouldRunLogs) {
+      updatePendingLogs(Symbol());
+      resetLogs();
+    }
 
     if (shouldRunHits) {
+      const pendingId = pendingLogsRef.current;
+
+      resetHits();
+
       const isHitsSuccess = await runHits({
         ...hitsParams,
         allowIterative: !forceHitsOnce,
       });
 
-      if (!isHitsSuccess) return;
+      if (!isHitsSuccess) {
+        pendingLogsRef.current === pendingId && updatePendingLogs(null);
+        return;
+      }
     }
 
     if (pendingLogsRef.current && !isLogsHiddenRef.current) {
-      pendingLogsRef.current = false;
+      updatePendingLogs(null);
       await runLogs(logsParams);
     }
   };
@@ -204,7 +220,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
   return {
     cancelAll,
-    logsRequestState,
+    logsRequestState: { ...logsRequestState, isPending: isPendingLogs },
     hitsRequestState,
   };
 };
