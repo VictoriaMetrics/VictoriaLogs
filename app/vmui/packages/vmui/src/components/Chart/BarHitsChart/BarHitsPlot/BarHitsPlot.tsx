@@ -19,7 +19,6 @@ import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import { cumulativeMatrix } from "../../../../utils/uplot/cumulative";
 import { Size, useResizeObserver } from "../../../../hooks/useResizeObserver";
 import BarHitsLoadingOverlay from "../BarHitsLoadingOverlay/BarHitsLoadingOverlay";
-import BarHitsIterativeWarning from "../BarHitsIterativeWarning/BarHitsIterativeWarning";
 
 interface Props {
   logHits: LogHits[];
@@ -106,7 +105,7 @@ const BarHitsPlot: FC<Props> = ({
   }, [logHits, totalHits, series]);
 
   const isSingleOtherSeries = useMemo(() => {
-    return legendDetails.length === 1 && legendDetails.every(l => l.isOther);
+    return legendDetails.length < 2 && legendDetails.every(l => l.isOther);
   }, [legendDetails]);
 
   useEffect(() => {
@@ -199,8 +198,6 @@ const BarHitsPlot: FC<Props> = ({
           legendDetails={legendDetails}
         />
       )}
-
-      {isIterative && !isSingleOtherSeries && <BarHitsIterativeWarning/>}
     </>
   );
 };

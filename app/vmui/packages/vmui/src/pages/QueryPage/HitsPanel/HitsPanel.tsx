@@ -12,6 +12,12 @@ import { getNanosecondsFromDuration, nanosecondsToSeconds, toEpochSeconds } from
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 import { useTimePeriod } from "../hooks/useTimePeriod";
 import { roundToStepPrecision } from "../../../utils/number";
+import Alert from "../../../components/Main/Alert/Alert";
+import { useIncrementalTimeout } from "./hooks/useIncrementalTimeout";
+import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
+import { WITHOUT_GROUPING } from "../../../constants/logs";
+import BarHitsIterativeWarning
+  from "../../../components/Chart/BarHitsChart/BarHitsIterativeWarning/BarHitsIterativeWarning";
 
 interface Props {
   query: string;
@@ -29,6 +35,10 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
   const [hideChart] = useHideChart();
+  const { incrementalTimeoutLabel } = useIncrementalTimeout();
+
+  const { groupFieldHits } = useHitsChartConfig();
+  const isGroupEnable = groupFieldHits.value !== WITHOUT_GROUPING;
 
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
@@ -96,29 +106,42 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   };
 
   return (
-    <section
-      className={classNames({
-        "vm-query-page-chart": true,
-        "vm-block": true,
-        "vm-block_mobile": isMobile,
-      })}
-    >
-      {isLoading && <LineLoader/>}
+    <>
+      <section
+        className={classNames({
+          "vm-query-page-chart": true,
+          "vm-block": true,
+          "vm-block_mobile": isMobile,
+        })}
+      >
+        {isLoading && <LineLoader/>}
 
-      {data && (
-        <BarHitsChart
-          isOverview={isOverview}
-          isIterative={isIterative}
-          logHits={logHits}
-          durationMs={durationMs}
-          query={query}
-          data={data}
-          period={period}
-          setPeriod={handleSetPeriod}
-          alertData={alertData}
-        />
+        {data && (
+          <BarHitsChart
+            isOverview={isOverview}
+            isIterative={isIterative}
+            logHits={logHits}
+            durationMs={durationMs}
+            query={query}
+            data={data}
+            period={period}
+            setPeriod={handleSetPeriod}
+            alertData={alertData}
+          />
+        )}
+      </section>
+
+      {isIterative && isLoading && (
+        <Alert variant="info">
+          The chart couldn&rsquo;t load in full within {incrementalTimeoutLabel}.
+          Switching to incremental loading with step={step}.
+        </Alert>
       )}
-    </section>
+
+      {isIterative && !isLoading && isGroupEnable && (
+        <BarHitsIterativeWarning/>
+      )}
+    </>
   );
 };
 
