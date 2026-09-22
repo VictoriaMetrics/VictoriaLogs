@@ -65,7 +65,7 @@ See [quick start docs](https://docs.victoriametrics.com/victorialogs/quickstart/
 
 If you want playing with VictoriaLogs web UI and [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query language,
 then go to [VictoriaLogs demo playground](https://play-vmlogs.victoriametrics.com/) and
-to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
+to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/lajgcmm/victorialogs-explorer-for-kubernetes-logs).
 
 ## Tuning
 

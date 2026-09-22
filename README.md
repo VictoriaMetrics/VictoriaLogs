@@ -14,7 +14,7 @@ Both the single-node and cluster versions of VictoriaLogs are open source and fr
 
 Here are some resources to help you get started with VictoriaLogs:
 
-- Playgrounds: [built-in web UI](https://play-vmlogs.victoriametrics.com/), [Grafana plugin for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs), [SQL to LogsQL](https://play-sql.victoriametrics.com/), [LogQL to LogsQL](https://play-logql.victoriametrics.com/)
+- Playgrounds: [built-in web UI](https://play-vmlogs.victoriametrics.com/), [Grafana plugin for VictoriaLogs](https://play-grafana.victoriametrics.com/d/lajgcmm/victorialogs-explorer-for-kubernetes-logs), [SQL to LogsQL](https://play-sql.victoriametrics.com/), [LogQL to LogsQL](https://play-logql.victoriametrics.com/)
 - [Documentation](https://docs.victoriametrics.com/victorialogs/)
 - Available: [Binary releases](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest), docker images [Docker Hub](https://hub.docker.com/r/victoriametrics/victoria-logs/) and [Quay](https://quay.io/repository/victoriametrics/victoria-logs), [Source code](https://github.com/VictoriaMetrics/VictoriaLogs)
 - Deployment types: [Single-node version](https://docs.victoriametrics.com/victorialogs/), [Cluster version](https://docs.victoriametrics.com/victorialogs/cluster/)
