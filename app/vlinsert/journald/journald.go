@@ -131,7 +131,7 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
 	if err != nil {
 		errorsTotal.Inc()
-		logger.Errorf("cannot start reading journald request: %s", err)
+		httpserver.Errorf(w, r, "cannot start reading journald request: %s", err)
 		return
 	}
 	defer writeconcurrencylimiter.PutReader(wcr)
@@ -140,7 +140,7 @@ func handleJournald(r *http.Request, w http.ResponseWriter) {
 	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
 		errorsTotal.Inc()
-		logger.Errorf("cannot decode journald request: %s", err)
+		httpserver.Errorf(w, r, "cannot decode journald request: %s", err)
 		return
 	}
 
