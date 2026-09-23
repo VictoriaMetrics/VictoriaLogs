@@ -143,8 +143,12 @@ func TestStorageReroutesDataFromUnresponsiveNode(t *testing.T) {
 	}))
 	defer unresponsive.Close()
 
-	// The healthy node responds immediately.
-	healthy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	// The healthy node responds immediately and counts the received insert requests.
+	var insertRequests atomic.Int64
+	healthy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/internal/insert" {
+			insertRequests.Add(1)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer healthy.Close()
@@ -184,12 +188,19 @@ func TestStorageReroutesDataFromUnresponsiveNode(t *testing.T) {
 	}
 
 	// A further request to the saturated node must be rejected, not block.
+	limitReached := snUnresponsive.concurrencyLimitReached.Get()
 	if err := snUnresponsive.sendInsertRequest(data); !errors.Is(err, errConcurrencyLimitReached) {
 		t.Fatalf("unexpected error when sending to the saturated node; got %v; want %v", err, errConcurrencyLimitReached)
+	}
+	if n := snUnresponsive.concurrencyLimitReached.Get(); n != limitReached+1 {
+		t.Fatalf("unexpected number of concurrency limit hits; got %d; want %d", n, limitReached+1)
 	}
 
 	// The data must still reach the healthy node while the other node is unresponsive.
 	if !s.sendInsertRequestToAnyNode(data) {
 		t.Fatalf("cannot send data to any storage node while one node is unresponsive")
+	}
+	if n := insertRequests.Load(); n != 1 {
+		t.Fatalf("unexpected number of insert requests received by the healthy node; got %d; want 1", n)
 	}
 }
