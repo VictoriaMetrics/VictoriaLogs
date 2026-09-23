@@ -24,7 +24,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-// the maximum duration for sending a single data block to a storage node.
+// the maximum duration for a single request to a storage node.
 const sendTimeout = time.Minute
 
 // the maximum size of a single data block sent to storage node.
@@ -114,6 +114,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, co
 		s:      s,
 		c: &http.Client{
 			Transport: ac.NewRoundTripper(tr),
+			Timeout:   sendTimeout,
 		},
 		ac: ac,
 
@@ -287,14 +288,11 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 }
 
 func (sn *storageNode) doRequest(path string, body io.Reader) error {
-	ctx, cancel := context.WithTimeout(sn.s.sendCtx, sendTimeout)
-	defer cancel()
-
 	// All the internal endpoints require the POST method.
 	method := "POST"
 
 	reqURL := sn.getRequestURL(path)
-	req, err := http.NewRequestWithContext(ctx, method, reqURL, body)
+	req, err := http.NewRequestWithContext(sn.s.sendCtx, method, reqURL, body)
 	if err != nil {
 		return fmt.Errorf("cannot create http %s request for %s: %w", method, reqURL, err)
 	}
