@@ -32,6 +32,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Default number of parallel data readers to use for executing every query; higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option (default 2x CPU cores)
   -delete.enable
      Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
+  -deleteAuthKey value
+     authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs
+     Flag value can be read from the given file when using -deleteAuthKey=file:///abs/path/to/file or -deleteAuthKey=file://./relative/path/to/file.
+     Flag value can be read from the given http/https url when using -deleteAuthKey=http://host/path or -deleteAuthKey=https://host/path
   -elasticsearch.version string
      Elasticsearch version to report to client (default "8.9.0")
   -enableTCP6
@@ -94,7 +98,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -httpAuth.username string
      Username for HTTP server's Basic Auth. The authentication is disabled if empty. See also -httpAuth.password
   -httpListenAddr array
-     TCP address to listen for incoming http requests. See also -httpListenAddr.useProxyProtocol
+     Addresses to listen for incoming http requests. Use unix:/path/to/socket to listen on Unix domain socket. Note that -tls and -httpListenAddr.useProxyProtocol cannot be used with Unix sockets
      Supports an array of values separated by comma or specified via multiple flags.
      Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -httpListenAddr.useProxyProtocol array
@@ -109,6 +113,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -insert.disableCompression
      Whether to disable compression when sending the ingested data to -storageNode nodes. Disabled compression reduces CPU usage at the cost of higher network usage
+  -insert.drainTimeout duration
+     The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown; the logs, which cannot be drained within this duration, are dropped (default 5s)
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size
@@ -241,7 +247,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -search.logSlowQueryDuration duration
      Log queries with execution time exceeding this value. Zero disables slow query logging (default 5s)
   -search.maxConcurrentRequests int
-     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default vlselect.getDefaultMaxConcurrentRequests())
+     The maximum number of concurrent search requests. It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. See also -search.maxQueueDuration (default 2x CPU cores when there are 4 or fewer; otherwise CPU cores, capped at 16)
   -search.maxQueryDuration duration
      The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size

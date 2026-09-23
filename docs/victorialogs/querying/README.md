@@ -1197,7 +1197,7 @@ in order to build Web UI into a js bundle and embed it into VictoriaLogs executa
 ## Visualization in Grafana
 
 [VictoriaLogs Grafana datasource](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) allows you to query and visualize VictoriaLogs data in Grafana.
-Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
+Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victoriametrics.com/d/lajgcmm/victorialogs-explorer-for-kubernetes-logs).
 
 ## Command-line
 

@@ -5,6 +5,7 @@ menu:
     parent: victorialogs
     weight: 12
 title: Security and Load Balancing
+description: "Secure VictoriaLogs with vmauth, TLS termination, and multi-tenant proxying."
 tags:
   - logs
 ---
@@ -503,8 +504,12 @@ This may be needed if the corresponding VictoriaLogs components are exposed to u
   Use `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations.
   Use `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/delete/*`](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) - deletes the ingested logs.
+  Use `-deleteAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be accessed by specifying `authKey` query arg with the value matching the corresponding `-*AuthKey` command-line flag.
+If the `-*AuthKey` flag is set, then the endpoint accepts only the `authKey` and ignores the `-httpAuth.*` credentials.
+Otherwise it is protected with the `-httpAuth.*` credentials like all the other endpoints.
 
 For example, if VictoriaLogs is started with the `-metricsAuthKey=top-secret` command-line flag, then the `/metrics` endpoint can be accessed with the following command:
 

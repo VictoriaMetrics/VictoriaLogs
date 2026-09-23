@@ -36,7 +36,7 @@ var (
 	remoteWriteTmpDataPath = flag.String("remoteWrite.tmpDataPath", "", "Path to directory for storing pending data, which isn't sent to the configured -remoteWrite.url. "+
 		"If this flag isn't set, then pending data is stored in the vlagent-remotewrite-data subdirectory under the -tmpDataPath directory; "+
 		"see also -remoteWrite.maxDiskUsagePerURL")
-	queues = flag.Int("remoteWrite.queues", cgroup.AvailableCPUs()*2, "The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues "+
+	queues = flagutil.NewIntWithDynamicDefault("remoteWrite.queues", cgroup.AvailableCPUs()*2, "2x CPU cores", "The number of concurrent queues to each -remoteWrite.url. Set more queues if default number of queues "+
 		"isn't enough for sending high volume of collected data to remote storage. "+
 		"Default value depends on the number of available CPU cores. It should work fine in most cases since it minimizes resource usage")
 
@@ -105,7 +105,7 @@ func Init(tmpDataPath string) {
 
 // Stop stops remotewrite.
 //
-// It is expected that nobody calls TryPush during and after the call to this func.
+// It is expected that nobody calls Storage.MustAddRows during or after the call to this func.
 func Stop() {
 	for _, rwctx := range rwctxsGlobal {
 		rwctx.mustStop()
@@ -182,7 +182,7 @@ func pushToRemoteStorages(lr *logstorage.LogRows) {
 		rwctxs[0].push(lr)
 		return
 	}
-	// Push samples to remote storage systems in parallel in order to reduce
+	// Push log rows to remote storage systems in parallel in order to reduce
 	// the time needed for sending the data to multiple remote storage systems.
 	var wg sync.WaitGroup
 	for _, rwctx := range rwctxs {
@@ -258,7 +258,7 @@ func newRemoteWriteCtx(argIdx int, remoteWriteURL *url.URL, maxInmemoryBlocks in
 	// Initialize pls
 	plsLen := *queues
 	if n := cgroup.AvailableCPUs(); plsLen > n {
-		// There is no sense in running more than availableCPUs concurrent pendingLogs,
+		// There is no sense in running more concurrent pendingLogs than available CPUs,
 		// since every pendingLogs can saturate up to a single CPU.
 		plsLen = n
 	}

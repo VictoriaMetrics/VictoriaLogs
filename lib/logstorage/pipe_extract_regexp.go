@@ -59,8 +59,14 @@ func (pe *pipeExtractRegexp) canLiveTail() bool {
 }
 
 func (pe *pipeExtractRegexp) canReturnLastNResults() bool {
-	// TODO: properly verify that the extracted fields do not overwrite the _time field with non-timestamp values.
-
+	if pe.keepOriginalFields {
+		return true
+	}
+	for _, f := range pe.reFields {
+		if f == "_time" {
+			return false
+		}
+	}
 	return true
 }
 
@@ -329,7 +335,7 @@ func parsePipeExtractRegexp(lex *lexer) (pipe, error) {
 }
 
 func regexpCompile(s string) (*regexp.Regexp, error) {
-	// Make sure that '.' inside the patternStr matches newline chars.
+	// Make sure that '.' inside s matches newline chars.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/88
 	s = "(?s)(?:" + s + ")"
 

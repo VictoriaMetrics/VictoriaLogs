@@ -1,6 +1,7 @@
 package netselect
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -112,7 +113,7 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 	tr.DisableCompression = true
 
 	// Set the idle connection timeout to the value smaller than the default timeout at the server side
-	// (60 seconds - see -http.idleConntimeout) in order to avoid EOF errors.
+	// (60 seconds - see -http.idleConnTimeout) in order to avoid EOF errors.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1440
 	tr.IdleConnTimeout = 5 * time.Second
 
@@ -384,7 +385,11 @@ func newMultipartRequestBody(args url.Values) (io.Reader, string) {
 		logger.Panicf("BUG: cannot close in-memory multipart request body: %s", err)
 	}
 
-	return bb.NewReader(), w.FormDataContentType()
+	// Wrap bb.B in bytes.Reader, so net/http sends "Content-Length" instead of
+	// "Transfer-Encoding: chunked". See https://pkg.go.dev/net/http#NewRequestWithContext
+	// ParseMultipartForm may return before reading the chunked terminator to EOF if it arrives late.
+	// See https://github.com/golang/go/issues/32935#issuecomment-5247812654
+	return bytes.NewReader(bb.B), w.FormDataContentType()
 }
 
 func (sn *storageNode) getRequestURL(path string) string {
@@ -830,7 +835,7 @@ type errUnavailableBackend struct {
 	err error
 }
 
-// Unwrap returns e.Err.
+// Unwrap returns e.err.
 //
 // This is used by standard errors package. See https://golang.org/pkg/errors
 func (e *errUnavailableBackend) Unwrap() error {

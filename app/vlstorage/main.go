@@ -30,7 +30,7 @@ var (
 		"log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent")
 
-	defaultParallelReaders = flag.Int("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "Default number of parallel data readers to use for executing every query; "+
+	defaultParallelReaders = flagutil.NewIntWithDynamicDefault("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "2x CPU cores", "Default number of parallel data readers to use for executing every query; "+
 		"higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; "+
 		"see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option")
 
@@ -243,9 +243,36 @@ func Stop() {
 	}
 }
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	switch path {
+	case "/internal/log_new_streams",
+		"/internal/force_merge",
+		"/internal/force_flush",
+		"/internal/partition/attach",
+		"/internal/partition/detach",
+		"/internal/partition/list",
+		"/internal/partition/snapshot/create",
+		"/internal/partition/snapshot/list",
+		"/internal/partition/snapshot/delete",
+		"/internal/partition/snapshot/delete_stale":
+		return true
+	}
+	return false
+}
+
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	if strings.HasPrefix(path, "/internal/") && r.Method != "POST" {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return true
+	}
+
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)
@@ -556,15 +583,21 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
-	if qOpt != nil {
-		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedLastNResultsQuery(qctxOpt, offset, limit, writeBlock)
-	}
-
 	if localStorage != nil {
+		// Optimize the query, which returns last N rows with the biggest timestamps,
+		// only at the leaf vlstorage nodes. There is no need in optimizing the query
+		// at vlselect because the optimization usually leads in 20-30 sequentially run
+		// queries - this is slow because of network latencies between vlselect and vlstorage.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
+		qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+		if qOpt != nil {
+			qctxOpt := qctx.WithQuery(qOpt)
+			return runOptimizedLastNResultsQuery(localStorage, qctxOpt, offset, limit, writeBlock)
+		}
+
 		return localStorage.RunQuery(qctx, writeBlock)
 	}
+
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 
