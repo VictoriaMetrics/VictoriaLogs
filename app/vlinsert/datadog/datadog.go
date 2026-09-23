@@ -52,6 +52,7 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 		var err error
 		ts, err = strconv.ParseInt(tsValue, 10, 64)
 		if err != nil {
+			v2LogsErrorsTotal.Inc()
 			httpserver.Errorf(w, r, "could not parse dd-message-timestamp header value: %s", err)
 			return true
 		}
@@ -62,12 +63,14 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
+		v2LogsErrorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return true
 	}
 
 	if len(cp.StreamFields) == 0 {
 		if err := logstorage.CheckStreamFieldNames(*datadogStreamFields); err != nil {
+			v2LogsErrorsTotal.Inc()
 			httpserver.Errorf(w, r, "invalid stream field names at -datadog.streamFields=%s: %s", datadogStreamFields, err)
 			return true
 		}
@@ -79,6 +82,7 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if err := insertutil.CanWriteData(); err != nil {
+		v2LogsErrorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return true
 	}
@@ -91,6 +95,7 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 		return err
 	})
 	if err != nil {
+		v2LogsErrorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read DataDog protocol data: %s", err)
 		return true
 	}
@@ -106,6 +111,7 @@ func datadogLogsIngestion(w http.ResponseWriter, r *http.Request) bool {
 
 var (
 	v2LogsRequestsTotal   = metrics.NewCounter(`vl_http_requests_total{path="/insert/datadog/api/v2/logs"}`)
+	v2LogsErrorsTotal     = metrics.NewCounter(`vl_http_errors_total{path="/insert/datadog/api/v2/logs"}`)
 	v2LogsRequestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/datadog/api/v2/logs"}`)
 )
 
