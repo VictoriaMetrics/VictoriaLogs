@@ -45,6 +45,8 @@ type Storage struct {
 
 	srt *streamRowsTracker
 
+	pendingDataBuffers chan *bytesutil.ByteBuffer
+
 	stopCh chan struct{}
 
 	sendCtx    context.Context
@@ -210,16 +212,15 @@ var bbPool bytesutil.ByteBufferPool
 func (sn *storageNode) grabPendingDataForFlushLocked() *bytesutil.ByteBuffer {
 	sn.pendingDataLastFlush = time.Now()
 	pendingData := sn.pendingData
-	sn.pendingData = pendingDataPool.Get()
+	sn.pendingData = <-sn.s.pendingDataBuffers
 
 	return pendingData
 }
 
-var pendingDataPool bytesutil.ByteBufferPool
-
 func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) {
 	defer func() {
-		pendingDataPool.Put(pendingData)
+		pendingData.Reset()
+		sn.s.pendingDataBuffers <- pendingData
 	}()
 
 	err := sn.sendInsertRequest(pendingData)
@@ -352,9 +353,15 @@ var zstdBufPool bytesutil.ByteBufferPool
 //
 // Call MustStop on the returned storage when it is no longer needed.
 func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, concurrency int, disableCompression bool, drainTimeout time.Duration) *Storage {
+	pendingDataBuffers := make(chan *bytesutil.ByteBuffer, concurrency*len(addrs))
+	for range cap(pendingDataBuffers) {
+		pendingDataBuffers <- &bytesutil.ByteBuffer{}
+	}
+
 	s := &Storage{
 		disableCompression: disableCompression,
 		drainTimeout:       drainTimeout,
+		pendingDataBuffers: pendingDataBuffers,
 		stopCh:             make(chan struct{}),
 	}
 	s.sendCtx, s.sendCancel = context.WithCancel(context.Background())
