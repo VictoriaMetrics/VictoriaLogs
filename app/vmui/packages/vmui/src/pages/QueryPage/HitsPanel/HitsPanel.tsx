@@ -18,6 +18,7 @@ import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
 import { WITHOUT_GROUPING } from "../../../constants/logs";
 import BarHitsIterativeWarning
   from "../../../components/Chart/BarHitsChart/BarHitsIterativeWarning/BarHitsIterativeWarning";
+import { getHitsTimeParams } from "../../../utils/logs";
 
 interface Props {
   query: string;
@@ -36,6 +37,8 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   const { setPeriod } = useTimePeriod();
   const [hideChart] = useHideChart();
   const { incrementalTimeoutLabel } = useIncrementalTimeout();
+
+  const { step: fallbackStep } = getHitsTimeParams(period);
 
   const { groupFieldHits } = useHitsChartConfig();
   const isGroupEnable = groupFieldHits.value !== WITHOUT_GROUPING;
@@ -134,7 +137,7 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
       {isIterative && isLoading && (
         <Alert variant="info">
           The chart couldn&rsquo;t load in full within {incrementalTimeoutLabel}.
-          Switching to incremental loading with step={step}.
+          Switching to incremental loading with step={step || fallbackStep}.
         </Alert>
       )}
 

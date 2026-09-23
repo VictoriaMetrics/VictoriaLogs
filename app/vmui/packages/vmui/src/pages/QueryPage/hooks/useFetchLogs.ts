@@ -170,6 +170,7 @@ export const useFetchLogs = () => {
     setLogs([]);
     setError(undefined);
     setDurationMs(undefined);
+    setQueryParams({});
   };
 
   useEffect(() => {

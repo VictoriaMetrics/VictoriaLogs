@@ -74,7 +74,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPending, isP
 
   const showContent = !hideLogs && ActiveTabComponent;
   const isLiveTailing = activeTab === DisplayType.liveTailing;
-  const showWaiting = !isLiveTailing && (isPending || isLoading);
+  const showWaiting = !isLiveTailing && isPending;
 
   return (
     <div
