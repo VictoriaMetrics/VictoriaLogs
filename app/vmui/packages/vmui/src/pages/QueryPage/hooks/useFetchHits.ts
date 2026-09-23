@@ -39,7 +39,19 @@ export const useFetchHits = () => {
   const [durationMs, setDurationMs] = useState<number | undefined>();
   const abortControllerRef = useRef(new AbortController());
 
-  const isIterative = useRef(false);
+  const isIterativeRef = useRef(false);
+
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
+
+  const updatePaused = (value: boolean) => {
+    isPausedRef.current = value;
+    setIsPaused(value);
+  };
+
+  const togglePause = () => {
+    updatePaused(!isPausedRef.current);
+  };
 
   const getOptions = ({ signal, ...params }: OptionsParams) => {
     return {
@@ -95,10 +107,11 @@ export const useFetchHits = () => {
 
     const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
 
-    isIterative.current = false;
+    isIterativeRef.current = false;
     setLogHits([]);
     setDurationMs(undefined);
     setError(undefined);
+    updatePaused(false);
 
     try {
       const options = getOptions({ ...params, signal: firstSignal });
@@ -109,7 +122,7 @@ export const useFetchHits = () => {
 
         if (loadController.signal.aborted) return;
 
-        isIterative.current = false;
+        isIterativeRef.current = false;
         setDurationMs(durationMs);
         setLogHits(hits);
         return true;
@@ -123,10 +136,11 @@ export const useFetchHits = () => {
       }
 
       init.signal = loadController.signal;
-      isIterative.current = true;
+      isIterativeRef.current = true;
 
       await fetchHitsIterative({
         ...init,
+        isPausedRef,
         onUpdateLoading: handleUpdateLoadingHits,
         onUpdate: (hits, durationMs) => {
           if (loadController.signal.aborted) return;
@@ -142,7 +156,7 @@ export const useFetchHits = () => {
       if (isError && error.name === "AbortError") return;
       setError(isError ? error.message : String(error));
 
-      if (!isIterative.current) {
+      if (!isIterativeRef.current) {
         setLogHits([]);
         setDurationMs(undefined);
       }
@@ -152,6 +166,7 @@ export const useFetchHits = () => {
 
       if (abortControllerRef.current === loadController) {
         handleUpdateLoadingHits();
+        updatePaused(false);
       }
     }
   }, [serverUrl, tenant, incrementalTimeoutMs]);
@@ -160,7 +175,8 @@ export const useFetchHits = () => {
     setLogHits([]);
     setDurationMs(undefined);
     setError(undefined);
-    isIterative.current = false;
+    updatePaused(false);
+    isIterativeRef.current = false;
   };
 
   useEffect(() => {
@@ -178,12 +194,14 @@ export const useFetchHits = () => {
 
   return {
     logHits,
-    isIterative: isIterative.current,
+    isIterative: isIterativeRef.current,
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchHits,
     durationMs,
     abort: useCallback(() => abortControllerRef.current?.abort(), []),
-    resetHits
+    resetHits,
+    isPaused,
+    togglePause,
   };
 };

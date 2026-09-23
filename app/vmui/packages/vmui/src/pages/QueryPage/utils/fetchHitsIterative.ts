@@ -1,13 +1,16 @@
 import { LogHits } from "../../../api/types";
 import { fetchHitsOnce, FetchHitsOptions } from "./fetchHitsOnce";
 import { getHitsTimeRanges } from "./getHitsTimeRanges";
+import { MutableRef } from "preact/hooks";
 
 type FetchHitsIterativeOptions = FetchHitsOptions & {
+  isPausedRef: MutableRef<boolean>
   onUpdateLoading: (hit: LogHits) => void;
   onUpdate: (hits: LogHits[], durationMs?: number) => void;
 };
 
 export const fetchHitsIterative = async ({
+  isPausedRef,
   url,
   onUpdate,
   onUpdateLoading,
@@ -23,6 +26,13 @@ export const fetchHitsIterative = async ({
   });
 
   for (const range of timeRanges) {
+    while (isPausedRef.current) {
+      init.signal.throwIfAborted();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    init.signal.throwIfAborted();
+
     body.set("start", range.start);
     body.set("end", range.end);
     body.set("step", range.step);
