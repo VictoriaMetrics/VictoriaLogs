@@ -1,5 +1,5 @@
 import DOMPurify, { type Config } from "dompurify";
-import { marked } from "marked";
+import { vmuiMarked } from "../constants/markedPlugins";
 
 const HTML_SANITIZE_CONFIG: Config = {
   USE_PROFILES: { html: true },
@@ -13,5 +13,5 @@ export const sanitizeHtml = (value: string): string => {
 };
 
 export const markdownToSafeHtml = (value: string): string => {
-  return sanitizeHtml(marked.parse(value) as string);
+  return sanitizeHtml(vmuiMarked.parse(value) as string);
 };

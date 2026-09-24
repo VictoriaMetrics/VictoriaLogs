@@ -1,6 +1,7 @@
-import { marked } from "marked";
-import "./markedPlugins";
+import { vmuiMarked } from "./markedPlugins";
 import { describe, expect, it } from "vitest";
+
+const marked = (value: string) => vmuiMarked.parse(value);
 
 describe("markedPlugins", () => {
   it("renders explicit http and https links as active links", () => {

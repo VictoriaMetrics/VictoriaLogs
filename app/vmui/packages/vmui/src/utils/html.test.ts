@@ -50,18 +50,29 @@ describe("markdownToSafeHtml", () => {
     expect(result).toContain("<strong>description</strong>");
   });
 
-  it("should sanitize raw HTML rendered from markdown", () => {
+  it("should render raw HTML in markdown as text", () => {
     const result = markdownToSafeHtml(`<img src="data:," alt="test" ${onErrorAttribute}="alert(document.cookie)">`);
 
-    expect(result).toContain("<img src=\"data:,\" alt=\"test\">");
-    expect(result).not.toContain("onerror");
+    expect(result).toContain("&lt;img src=&quot;data:,&quot; alt=&quot;test&quot; onerror=&quot;alert(document.cookie)&quot;&gt;");
+    expect(result).not.toContain("<img");
   });
 
-  it("should remove unsafe link protocols", () => {
-    const result = markdownToSafeHtml("[link](javascript:alert(document.cookie))");
+  it("should render images and non-http links as text", () => {
+    const image = markdownToSafeHtml("![alt](https://example.com/image.png)");
+    const link = markdownToSafeHtml("[link](mailto:test@example.com)");
+    const unsafeLink = markdownToSafeHtml("[link](javascript:alert(1))");
 
-    expect(result).toContain("link");
-    expect(result).not.toContain("javascript:");
+    expect(image).toContain("![alt](https://example.com/image.png)");
+    expect(image).not.toContain("<img");
+    expect(link).toContain("[link](mailto:test@example.com)");
+    expect(link).not.toContain("<a");
+    expect(unsafeLink).toContain("[link](javascript:alert(1))");
+    expect(unsafeLink).not.toContain("<a");
+  });
+
+  it("should preserve explicit http links", () => {
+    expect(markdownToSafeHtml("[link](https://example.com)"))
+      .toContain("<a href=\"https://example.com\">link</a>");
   });
 
   it("removes style elements", () => {
