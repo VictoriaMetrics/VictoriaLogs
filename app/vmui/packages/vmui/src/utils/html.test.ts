@@ -20,7 +20,19 @@ describe("sanitizeHtml", () => {
   });
 
   it("should preserve safe relabeling markup", () => {
-    const value = "<span style=\"font-weight: bold; color: rgb(68, 149, 224);\" title=\"label\">metric_name</span>";
+    const value = "<span title=\"label\">metric_name</span>";
+
+    expect(sanitizeHtml(value)).toBe(value);
+  });
+
+  it("should remove inline styles", () => {
+    const value = "<span style=\"color:red;position:fixed\" title=\"label\">metric_name</span>";
+
+    expect(sanitizeHtml(value)).toBe("<span title=\"label\">metric_name</span>");
+  });
+
+  it("should preserve links opening in a new tab", () => {
+    const value = "<a href=\"https://docs.victoriametrics.com/victorialogs/logsql/#block_stats-pipe\" target=\"_blank\" rel=\"noreferrer\">block_stats pipe</a>";
 
     expect(sanitizeHtml(value)).toBe(value);
   });
@@ -50,34 +62,6 @@ describe("markdownToSafeHtml", () => {
 
     expect(result).toContain("link");
     expect(result).not.toContain("javascript:");
-  });
-
-  it("preserves allowed style properties", () => {
-    const result = sanitizeHtml(
-      "<span style=\"color:red;font-weight:bold\">text</span>",
-    );
-
-    expect(result).toContain("color: red");
-    expect(result).toContain("font-weight: bold");
-  });
-
-  it("removes disallowed style properties", () => {
-    const result = sanitizeHtml(
-      "<span style=\"color:red;position:fixed;background-image:url(https://example.com)\">text</span>",
-    );
-
-    expect(result).toContain("color: red");
-    expect(result).not.toContain("position");
-    expect(result).not.toContain("background-image");
-    expect(result).not.toContain("url(");
-  });
-
-  it("removes an empty style attribute", () => {
-    const result = sanitizeHtml(
-      "<span style=\"position:fixed\">text</span>",
-    );
-
-    expect(result).toBe("<span>text</span>");
   });
 
   it("removes style elements", () => {

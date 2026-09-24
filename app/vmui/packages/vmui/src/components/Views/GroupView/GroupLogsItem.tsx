@@ -187,7 +187,7 @@ const GroupLogsItem: FC<Props> = ({
         >
           {formattedMarkdown && (
             <SafeHtml
-              tagName="div"
+              tagName="span"
               value={formattedMarkdown}
               format="markdown"
             />
