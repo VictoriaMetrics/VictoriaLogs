@@ -3,10 +3,10 @@ module github.com/VictoriaMetrics/VictoriaLogs
 go 1.27.1
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.152.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.152.1-0.20260924162003-018bc7808882
 	github.com/VictoriaMetrics/easyproto v1.2.0
 	github.com/VictoriaMetrics/metrics v1.44.0
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
