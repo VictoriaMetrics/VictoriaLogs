@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/compat";
+import { useEffect, useRef, useState } from "preact/compat";
 import { useHitsController } from "./useHitsController";
 import { useLogsController } from "./useLogsController";
 import {
@@ -73,8 +73,8 @@ const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
 export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const queryDispatch = useQueryDispatch();
 
-  const { runLogs, ...logsRequestState } = useLogsController();
-  const { runHits, ...hitsRequestState } = useHitsController();
+  const { runLogs, resetLogs, ...logsRequestState } = useLogsController();
+  const { runHits, resetHits, ...hitsRequestState } = useHitsController();
   const { fetchQueryTime, ...timeRequestState } = useFetchQueryTime();
 
   const baseTriggers = useBaseTriggers(props);
@@ -84,16 +84,28 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const lastSyncedTimeFilterKeyRef = useRef("");
   const isFirstRender = useRef(true);
 
+  const isLogsHiddenRef = useRef(logsTriggers.isLogsHidden);
+  isLogsHiddenRef.current = logsTriggers.isLogsHidden;
+
+  const pendingLogsRef = useRef<symbol | null>(null);
+  const [isPendingLogs, setIsPendingLogs] = useState(false);
+
   const prevRef = useRef<TriggersState>({
     baseTriggers,
     logsTriggers,
     hitsTriggers,
   });
 
+  const updatePendingLogs = (id: symbol | null) => {
+    pendingLogsRef.current = id;
+    setIsPendingLogs(id !== null);
+  };
+
   const cancelAll = () => {
     hitsRequestState.abort?.();
     logsRequestState.abort?.();
     timeRequestState.abort?.();
+    updatePendingLogs(null);
   };
 
   const resolveTimeFilter = async (baseTriggersArg: BaseTriggers) => {
@@ -120,12 +132,18 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
     const changed = getChanged(prev, next);
 
+    if (changed.base) {
+      logsRequestState.abort();
+    }
+
     const { baseTriggers, logsTriggers, hitsTriggers } = next;
     const { isLogsHidden } = logsTriggers;
     const { isChartHidden } = hitsTriggers;
 
-    const shouldRunLogs = (isFirstRun || changed.base || changed.logs) && !isLogsHidden;
+    const shouldRunLogs = (isFirstRun || changed.base || changed.logs || pendingLogsRef.current) && !isLogsHidden;
     const shouldRunHits = (isFirstRun || changed.base || changed.hits) && !isChartHidden;
+
+    const forceHitsOnce = prev.hitsTriggers.executeHitsOnceTrigger !== next.hitsTriggers.executeHitsOnceTrigger;
 
     prevRef.current = next;
     if (isFirstRun) {
@@ -164,12 +182,29 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);
 
     if (shouldRunLogs) {
-      const logsOk = await runLogs(logsParams);
-      if (!logsOk) return;
+      updatePendingLogs(Symbol());
+      resetLogs();
     }
 
     if (shouldRunHits) {
-      await runHits(hitsParams);
+      const pendingId = pendingLogsRef.current;
+
+      resetHits();
+
+      const isHitsSuccess = await runHits({
+        ...hitsParams,
+        allowIterative: !forceHitsOnce,
+      });
+
+      if (!isHitsSuccess) {
+        pendingLogsRef.current === pendingId && updatePendingLogs(null);
+        return;
+      }
+    }
+
+    if (pendingLogsRef.current && !isLogsHiddenRef.current) {
+      updatePendingLogs(null);
+      await runLogs(logsParams);
     }
   };
 
@@ -185,7 +220,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
   return {
     cancelAll,
-    logsRequestState,
+    logsRequestState: { ...logsRequestState, isPending: isPendingLogs },
     hitsRequestState,
   };
 };

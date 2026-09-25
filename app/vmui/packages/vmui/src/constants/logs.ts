@@ -41,3 +41,7 @@ export const MAX_QUERIES_HISTORY = 25;
 // Default fields for the table.
 export const DEFAULT_COMMON_FIELDS = ["_time", "_msg" ];
 export const DEFAULT_STREAM_FIELDS = ["_stream"];
+
+// Hits chart labels.
+export const OTHER_HITS_LABEL = "other fields";
+export const LOADING_HITS_LABEL = "__vmui_loading_hits__";

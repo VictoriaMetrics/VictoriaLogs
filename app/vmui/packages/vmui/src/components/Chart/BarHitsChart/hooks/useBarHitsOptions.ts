@@ -1,16 +1,17 @@
 import { useMemo, useState } from "preact/compat";
 import { getAxes, getMinMaxBuffer, handleDestroy, setSelect } from "../../../../utils/uplot";
-import uPlot, { AlignedData, Band, Options, Series } from "uplot";
-import { getCssVariable } from "../../../../utils/theme";
+import uPlot, { AlignedData, Band, Options } from "uplot";
 import { useAppState } from "../../../../state/common/StateContext";
 import { MinMax, SetMinMax, TimePeriod } from "../../../../types";
 import { LogHits } from "../../../../api/types";
-import { GraphOptions, GRAPH_STYLES } from "../types";
-import { getColorFromString } from "../../../../utils/color";
+import { GraphOptions, GRAPH_STYLES, HitsSeries } from "../types";
 import useBarPaths from "./useBarPaths";
 import useBarClickHooks from "./useBarClickHooks";
 import { Size } from "../../../../hooks/useResizeObserver";
 import { secondsToMilliseconds } from "../../../../utils/time";
+import { getCssVariable } from "../../../../utils/theme";
+import { getColorFromString } from "../../../../utils/color";
+import { LOADING_HITS_LABEL, OTHER_HITS_LABEL } from "../../../../constants/logs";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -40,10 +41,9 @@ interface UseGetBarHitsOptionsArgs {
   setPeriod: (period: TimePeriod) => void;
 }
 
-export const OTHER_HITS_LABEL = "other fields";
-
 export const getLabelFromLogHit = (logHit: LogHits) => {
   if (logHit?._isOther) return OTHER_HITS_LABEL;
+  if (logHit?._isLoading) return LOADING_HITS_LABEL;
   const fields = Object.values(logHit?.fields || {});
   return fields.map((value) => value || "\"\"").join(", ");
 };
@@ -87,7 +87,7 @@ const useBarHitsOptions = ({
   setPeriod,
 }: UseGetBarHitsOptionsArgs) => {
   const { isDarkTheme } = useAppState();
-  const { barPaths, drawHoverBar, getHoverAbsIdxForBars } = useBarPaths();
+  const { barPaths, drawHoverBar, getHoverAbsIdxForBars, getLoadingBarRect } = useBarPaths();
   const barClickHooks = useBarClickHooks({
     getHoverAbsIdxForBars,
     onBarClick: setPeriod,
@@ -101,7 +101,27 @@ const useBarHitsOptions = ({
     requestAnimationFrame(() => u.redraw());
   };
 
-  const series: Series[] = useMemo(() => {
+  const getColor = (idx: number, label: string, isOther: boolean, isLoading: boolean) => {
+    if (isOther || isLoading) {
+      const colorVar = isOther ? "color-log-hits-bar-other" : "color-log-hits-bar-loading";
+      return getCssVariable(colorVar);
+    }
+
+    if (idx >= seriesColors.length) {
+      return getColorFromString(label);
+    }
+
+    return getCssVariable(seriesColors[idx]);
+  };
+
+  const getFillBar = (color: string, fill: boolean, isOther: boolean, isLoading: boolean) => {
+    if (isLoading) return color;
+    if (fill && !isOther) return `${color}80`;
+    if (fill) return color;
+    return "";
+  };
+
+  const series: HitsSeries[] = useMemo(() => {
     let visibleColorIndex = 0;
 
     return data.map((_d, i) => {
@@ -109,14 +129,11 @@ const useBarHitsOptions = ({
 
       const logHit = logHits?.[i - 1];
       const label = getLabelFromLogHit(logHit);
-      const isOther = logHit?._isOther;
-      const colorVar = isOther
-        ? "color-log-hits-bar-0"
-        : seriesColors[visibleColorIndex];
+      const isOther = !!logHit?._isOther;
+      const isLoading = !!logHit?._isLoading;
+      const color = getColor(visibleColorIndex, label, isOther, isLoading);
 
-      const color = visibleColorIndex >= 5 ? getColorFromString(label) : getCssVariable(colorVar);
-
-      if (!isOther) visibleColorIndex += 1;
+      if (!isOther && !isLoading) visibleColorIndex += 1;
 
       return {
         label,
@@ -124,9 +141,10 @@ const useBarHitsOptions = ({
         spanGaps: true,
         show: true,
         stroke: color,
-        fill: graphOptions.fill && !isOther ? `${color}80` : graphOptions.fill ? color : "",
+        fill: getFillBar(color, graphOptions.fill, isOther, isLoading),
         paths: barPaths,
         points: { show: false },
+        _isLoading: isLoading
       };
     });
   }, [isDarkTheme, data, graphOptions, logHits, barPaths]);
@@ -165,6 +183,7 @@ const useBarHitsOptions = ({
     options,
     series,
     focusDataIdx,
+    getLoadingBarRect,
   };
 };
 

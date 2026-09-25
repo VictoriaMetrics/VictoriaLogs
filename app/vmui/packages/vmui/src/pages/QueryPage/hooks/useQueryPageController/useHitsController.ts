@@ -4,8 +4,6 @@ export const useHitsController = () => {
   const { fetchHits, ...hitsRequestState } = useFetchHits();
 
   const runHits = async (params: FetchHitsParams): Promise<boolean> => {
-    hitsRequestState.abort();
-
     try {
       const isSuccess = await fetchHits(params);
 

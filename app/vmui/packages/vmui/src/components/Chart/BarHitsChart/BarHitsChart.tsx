@@ -20,6 +20,7 @@ interface Props {
   period: TimeParams;
   durationMs?: number
   isOverview?: boolean;
+  isIterative?: boolean;
   alertData: HitsChartAlert;
   setPeriod: (nextPeriod: TimePeriod) => void;
 }
@@ -32,6 +33,7 @@ const BarHitsChart: FC<Props> = ({
   setPeriod,
   durationMs,
   isOverview,
+  isIterative,
   alertData,
 }) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
@@ -133,6 +135,7 @@ const BarHitsChart: FC<Props> = ({
           period={period}
           setPeriod={handleChangePeriod}
           graphOptions={graphOptions}
+          isIterative={!!isIterative}
         />
       )}
     </div>
