@@ -99,7 +99,20 @@ const GroupLogsItem: FC<Props> = ({
           value = "";
         }
 
-        value && values.push(value);
+        if (!value) return;
+
+        // _msg carries no prefix: it is the field almost every entry displays,
+        // and labelling it adds noise without adding information
+        if (field === "_msg") {
+          values.push(value);
+        } else {
+          values.push(
+            <>
+              <span className="vm-group-logs-row-content__field-name">{field}:</span>
+              {value}
+            </>
+          );
+        }
       });
     } else if (displayFields.length) {
       values.push("—");
