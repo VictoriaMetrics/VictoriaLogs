@@ -29,10 +29,12 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 
 	cp, err := getCommonParams(r)
 	if err != nil {
+		errorsJSONTotal.Inc()
 		httpserver.Errorf(w, r, "cannot parse common params from request: %s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsJSONTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
@@ -46,6 +48,7 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 		return err
 	})
 	if err != nil {
+		errorsJSONTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read Loki json data: %s", err)
 		return
 	}
@@ -61,6 +64,7 @@ func handleJSON(r *http.Request, w http.ResponseWriter) {
 
 var (
 	requestsJSONTotal   = metrics.NewCounter(`vl_http_requests_total{path="/insert/loki/api/v1/push",format="json"}`)
+	errorsJSONTotal     = metrics.NewCounter(`vl_http_errors_total{path="/insert/loki/api/v1/push",format="json"}`)
 	requestJSONDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="json"}`)
 )
 

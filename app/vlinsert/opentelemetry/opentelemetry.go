@@ -40,10 +40,12 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot parse common params from request: %s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}

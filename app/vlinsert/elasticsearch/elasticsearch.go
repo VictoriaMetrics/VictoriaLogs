@@ -99,10 +99,12 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 
 		cp, err := insertutil.GetCommonParams(r)
 		if err != nil {
+			bulkErrorsTotal.Inc()
 			httpserver.Errorf(w, r, "%s", err)
 			return true
 		}
 		if err := insertutil.CanWriteData(); err != nil {
+			bulkErrorsTotal.Inc()
 			httpserver.Errorf(w, r, "%s", err)
 			return true
 		}
@@ -112,6 +114,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 		n, err := readBulkRequest(streamName, r.Body, encoding, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys, lmp)
 		lmp.MustClose()
 		if err != nil {
+			bulkErrorsTotal.Inc()
 			httpserver.Errorf(w, r, "cannot decode log message #%d in /_bulk request: %s, stream fields: %s", n, err, cp.StreamFields)
 			return true
 		}
@@ -135,6 +138,7 @@ func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
 
 var (
 	bulkRequestsTotal   = metrics.NewCounter(`vl_http_requests_total{path="/insert/elasticsearch/_bulk"}`)
+	bulkErrorsTotal     = metrics.NewCounter(`vl_http_errors_total{path="/insert/elasticsearch/_bulk"}`)
 	bulkRequestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/elasticsearch/_bulk"}`)
 )
 
