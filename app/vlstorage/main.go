@@ -485,17 +485,21 @@ func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 
+	partitionSnapshotDeleteRequests.Inc()
+
 	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
 		return true
 	}
 
 	snapshotPath := r.FormValue("path")
 	if snapshotPath == "" {
+		partitionSnapshotDeleteErrors.Inc()
 		httpserver.Errorf(w, r, "missing `path` query arg")
 		return true
 	}
 
 	if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+		partitionSnapshotDeleteErrors.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return true
 	}
@@ -792,4 +796,9 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 
 var activeForceMerges = metrics.NewCounter("vl_active_force_merges")
 
-var partitionSnapshotCreateRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/create"}`)
+var (
+	partitionSnapshotCreateRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/create"}`)
+
+	partitionSnapshotDeleteRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/delete"}`)
+	partitionSnapshotDeleteErrors   = metrics.NewCounter(`vl_http_errors_total{path="/internal/partition/snapshot/delete"}`)
+)
