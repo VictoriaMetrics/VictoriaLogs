@@ -157,6 +157,12 @@ func TestTailProcessorGetTailRows(t *testing.T) {
 	// Boundary is now ts+2 with D seen: A is dropped (older), D is dropped (duplicate).
 	f(streamA, []logRow{row(ts, "A"), row(ts+2, "D")})
 
+	// D with an extra empty field: dropped (duplicate).
+	f(streamA, []logRow{{
+		timestamp: ts + 2,
+		fields:    []logstorage.Field{{Name: "_msg", Value: "D"}, {Name: "foo", Value: ""}},
+	}})
+
 	// Per-stream state: streamB emits A even though streamA already deduped it.
 	f(streamB, []logRow{row(ts, "A")}, "A")
 

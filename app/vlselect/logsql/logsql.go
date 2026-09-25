@@ -843,10 +843,14 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	}
 }
 
-// hashLogRow returns an xxhash fingerprint of row's fields.
+// hashLogRow returns an xxhash fingerprint of row's non-empty fields,
+// since empty values are equivalent to missing fields.
 func hashLogRow(keyBuf []byte, row *logRow) (uint64, []byte) {
 	keyBuf = keyBuf[:0]
 	for _, f := range row.fields {
+		if f.Value == "" {
+			continue
+		}
 		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Name))
 		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Value))
 	}
