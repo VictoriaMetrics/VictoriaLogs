@@ -164,6 +164,11 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Number of daily partitions currently active in storage. Each partition typically represents one day of log data. Count decreases when old partitions are deleted due to retention policies.
 
+### vl_snapshots
+**Type:** Gauge
+
+**Description:** Number of [partition snapshots](https://docs.victoriametrics.com/victorialogs/#backup-and-restore) stored in active partitions right now. A new snapshot takes almost no disk space, but an old snapshot may take more space over time. Snapshots older than `-snapshotsMaxAge` (`3d` by default) are deleted automatically. See [how to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots). To check that backups run, use `vl_http_requests_total{path="/internal/partition/snapshot/create"}`, which counts requests to create snapshots.
+
 ### vl_storage_log_min_timestamp_seconds
 **Type:** Gauge
 

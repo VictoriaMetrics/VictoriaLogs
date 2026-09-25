@@ -428,6 +428,8 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return true
 	}
 
+	partitionSnapshotCreateRequests.Inc()
+
 	partitionPrefix := r.FormValue("partition_prefix")
 	if partitionPrefix == "" {
 		// Fall back to the deprecated argument.
@@ -759,6 +761,7 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="indexdb"}`, ss.IndexdbPendingItems)
 
 	metrics.WriteGaugeUint64(w, `vl_partitions`, ss.PartitionsCount)
+	metrics.WriteGaugeUint64(w, `vl_snapshots`, ss.SnapshotsCount)
 	metrics.WriteCounterUint64(w, `vl_streams_created_total`, ss.StreamsCreatedTotal)
 
 	metrics.WriteGaugeUint64(w, `vl_indexdb_rows`, ss.IndexdbItemsCount)
@@ -788,3 +791,5 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 }
 
 var activeForceMerges = metrics.NewCounter("vl_active_force_merges")
+
+var partitionSnapshotCreateRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/create"}`)
