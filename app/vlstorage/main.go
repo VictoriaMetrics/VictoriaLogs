@@ -424,11 +424,11 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 
+	partitionSnapshotCreateRequests.Inc()
+
 	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
 		return true
 	}
-
-	partitionSnapshotCreateRequests.Inc()
 
 	partitionPrefix := r.FormValue("partition_prefix")
 	if partitionPrefix == "" {
