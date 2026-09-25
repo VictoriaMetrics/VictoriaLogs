@@ -31,6 +31,10 @@ func (ps *pipeQueryStats) canReturnLastNResults() bool {
 	return false
 }
 
+func (ps *pipeQueryStats) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (ps *pipeQueryStats) isFixedOutputFieldsOrder() bool {
 	return true
 }

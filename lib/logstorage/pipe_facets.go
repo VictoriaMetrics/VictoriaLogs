@@ -83,6 +83,10 @@ func (pf *pipeFacets) canReturnLastNResults() bool {
 	return false
 }
 
+func (pf *pipeFacets) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pf *pipeFacets) isFixedOutputFieldsOrder() bool {
 	return true
 }

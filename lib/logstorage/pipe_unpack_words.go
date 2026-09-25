@@ -49,6 +49,10 @@ func (pu *pipeUnpackWords) canReturnLastNResults() bool {
 	return pu.dstField != "_time"
 }
 
+func (pu *pipeUnpackWords) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pu *pipeUnpackWords) isFixedOutputFieldsOrder() bool {
 	return false
 }

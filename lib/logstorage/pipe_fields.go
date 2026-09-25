@@ -35,6 +35,10 @@ func (pf *pipeFields) canReturnLastNResults() bool {
 	return prefixfilter.MatchFilters(pf.fieldFilters, "_time")
 }
 
+func (pf *pipeFields) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pf *pipeFields) isFixedOutputFieldsOrder() bool {
 	return !hasWildcardFilters(pf.fieldFilters)
 }

@@ -38,6 +38,10 @@ func (pl *pipeLen) canReturnLastNResults() bool {
 	return pl.resultField != "_time"
 }
 
+func (pl *pipeLen) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pl *pipeLen) isFixedOutputFieldsOrder() bool {
 	return false
 }

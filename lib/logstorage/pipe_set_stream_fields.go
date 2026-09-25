@@ -41,6 +41,10 @@ func (ps *pipeSetStreamFields) canReturnLastNResults() bool {
 	return true
 }
 
+func (ps *pipeSetStreamFields) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (ps *pipeSetStreamFields) isFixedOutputFieldsOrder() bool {
 	return false
 }
