@@ -280,6 +280,8 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processForceMerge(w, r)
 	case "/internal/force_flush":
 		return processForceFlush(w, r)
+	case "/internal/rpc/force_flush":
+		return forceFlush()
 	case "/internal/partition/attach":
 		return processPartitionAttach(w, r)
 	case "/internal/partition/detach":
@@ -349,6 +351,10 @@ func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 
+	return forceFlush()
+}
+
+func forceFlush() bool {
 	logger.Infof("flushing storage to make pending data available for reading")
 
 	if localStorage == nil {
