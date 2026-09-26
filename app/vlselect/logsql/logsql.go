@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
+	"github.com/cespare/xxhash/v2"
 	"github.com/valyala/fastjson"
 	"github.com/valyala/quicktemplate"
 
@@ -775,6 +776,9 @@ type tailProcessor struct {
 
 	perStreamRows  map[string][]logRow
 	lastTimestamps map[string]int64
+	// lastRowHashes contains xxhash fingerprints of rows already emitted at lastTimestamps[streamID].
+	// Used to dedup rows that share the boundary timestamp but differ in content.
+	lastRowHashes map[string][]uint64
 
 	err error
 }
@@ -787,6 +791,7 @@ func newTailProcessor(cancel func(), needSortFields bool) *tailProcessor {
 
 		perStreamRows:  make(map[string][]logRow),
 		lastTimestamps: make(map[string]int64),
+		lastRowHashes:  make(map[string][]uint64),
 	}
 }
 
@@ -836,26 +841,78 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	}
 }
 
+// hashLogRow returns an xxhash fingerprint of row's non-empty fields,
+// since empty values are equivalent to missing fields.
+func hashLogRow(keyBuf []byte, row *logRow) (uint64, []byte) {
+	keyBuf = keyBuf[:0]
+	for _, f := range row.fields {
+		if f.Value == "" {
+			continue
+		}
+		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Name))
+		keyBuf = encoding.MarshalBytes(keyBuf, bytesutil.ToUnsafeBytes(f.Value))
+	}
+	return xxhash.Sum64(keyBuf), keyBuf
+}
+
 func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 	if tp.err != nil {
 		return nil, tp.err
 	}
 
 	var resultRows []logRow
+	var keyBuf []byte
 	for streamID, rows := range tp.perStreamRows {
 		sortLogRows(rows)
 
 		lastTimestamp, ok := tp.lastTimestamps[streamID]
+		lastHashes := tp.lastRowHashes[streamID]
+
 		if ok {
-			// Skip already written rows
-			for len(rows) > 0 && rows[0].timestamp <= lastTimestamp {
-				rows = rows[1:]
+			filtered := rows[:0]
+			for i := range rows {
+				row := &rows[i]
+				// Ignore everything before the boundary timestamp
+				if row.timestamp < lastTimestamp {
+					continue
+				}
+				// Ignore rows with the same boundary timestamp, same content
+				if row.timestamp == lastTimestamp {
+					var h uint64
+					h, keyBuf = hashLogRow(keyBuf, row)
+					if slices.Contains(lastHashes, h) {
+						continue
+					}
+				}
+				filtered = append(filtered, *row)
+			}
+			rows = filtered
+		}
+
+		if len(rows) == 0 {
+			continue
+		}
+
+		resultRows = append(resultRows, rows...)
+
+		newLastTS := rows[len(rows)-1].timestamp
+		tp.lastTimestamps[streamID] = newLastTS
+
+		// Reuse the existing hashes when the boundary timestamp does not advance,
+		// so rows already emitted at this timestamp remain excluded. Otherwise start a new list.
+		hashes := lastHashes
+		if lastTimestamp != newLastTS {
+			hashes = nil
+		}
+		for i := range rows {
+			row := &rows[i]
+			if row.timestamp == newLastTS {
+				var h uint64
+				h, keyBuf = hashLogRow(keyBuf, row)
+				hashes = append(hashes, h)
 			}
 		}
-		if len(rows) > 0 {
-			resultRows = append(resultRows, rows...)
-			tp.lastTimestamps[streamID] = rows[len(rows)-1].timestamp
-		}
+		tp.lastRowHashes[streamID] = hashes
 	}
 	clear(tp.perStreamRows)
 

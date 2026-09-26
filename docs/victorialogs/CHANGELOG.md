@@ -71,6 +71,7 @@ according to the following docs:
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): display the systemd-compatible `notice`, `crit`, `alert`, and `emerg` log level labels instead of collapsing them into `info` and `fatal`. See [#1543](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1543).
 * BUGFIX: [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files): ignore permission denied error when trying to find a rotated log file from previous runs during startup. Previously, `vlagent` failed with non-zero error code if it couldn't open a file in the same directory as log file. See [#1796](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1796).
 * BUGFIX: [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files): properly add `file` and `hostname` fields when `-fileCollector.extraFields` contains more than 4 fields. Previously, specifying 5 or more fields caused file and hostname to be attached to the wrong files.
+* BUGFIX: [live tailing API](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing): fix silent log loss when multiple log entries share the same `_time`. See [#1459](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1459).
 
 ## [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0)
 
