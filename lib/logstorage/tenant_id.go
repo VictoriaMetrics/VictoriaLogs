@@ -34,6 +34,16 @@ func (tid TenantID) String() string {
 	return fmt.Sprintf("{accountID=%d,projectID=%d}", tid.AccountID, tid.ProjectID)
 }
 
+// accountIDString returns the string representation of tid.AccountID.
+func (tid TenantID) accountIDString() string {
+	return strconv.FormatUint(uint64(tid.AccountID), 10)
+}
+
+// projectIDString returns the string representation of tid.ProjectID.
+func (tid TenantID) projectIDString() string {
+	return strconv.FormatUint(uint64(tid.ProjectID), 10)
+}
+
 // Equal returns true if tid equals to a.
 func (tid *TenantID) Equal(a *TenantID) bool {
 	return tid.AccountID == a.AccountID && tid.ProjectID == a.ProjectID
@@ -94,6 +104,10 @@ func (tid *TenantID) unmarshal(src []byte) ([]byte, error) {
 	tid.AccountID = encoding.UnmarshalUint32(src[:4])
 	tid.ProjectID = encoding.UnmarshalUint32(src[4:])
 	return src[8:], nil
+}
+
+func HasTenantIDFromRequest(r *http.Request) bool {
+	return r.Header.Get("AccountID") != "" || r.Header.Get("ProjectID") != ""
 }
 
 // GetTenantIDFromRequest returns tenantID from r.

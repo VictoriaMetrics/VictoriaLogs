@@ -156,6 +156,14 @@ var requestHandlers = map[string]func(ctx context.Context, w http.ResponseWriter
 	"/internal/select/stream_ids":          processStreamIDsRequest,
 	"/internal/select/tenant_ids":          processTenantIDsRequest,
 
+	"/internal/select/query_multitenant":               processQueryRequest,
+	"/internal/select/field_names_multitenant":         processFieldNamesRequest,
+	"/internal/select/field_values_multitenant":        processFieldValuesRequest,
+	"/internal/select/stream_field_names_multitenant":  processStreamFieldNamesRequest,
+	"/internal/select/stream_field_values_multitenant": processStreamFieldValuesRequest,
+	"/internal/select/streams_multitenant":             processStreamsRequest,
+	"/internal/select/stream_ids_multitenant":          processStreamIDsRequest,
+
 	"/internal/delete/run_task":     processDeleteRunTask,
 	"/internal/delete/stop_task":    processDeleteStopTask,
 	"/internal/delete/active_tasks": processDeleteActiveTasks,
@@ -480,8 +488,9 @@ func processTenantIDsRequest(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 type commonParams struct {
-	TenantIDs []logstorage.TenantID
-	Query     *logstorage.Query
+	TenantIDs     []logstorage.TenantID
+	IsMultiTenant bool
+	Query         *logstorage.Query
 
 	// Whether to disable compression of the response sent to the vlselect.
 	DisableCompression bool
@@ -497,7 +506,7 @@ type commonParams struct {
 }
 
 func (cp *commonParams) NewQueryContext(ctx context.Context) *logstorage.QueryContext {
-	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
+	return logstorage.NewQueryContext(ctx, &cp.qs, cp.TenantIDs, cp.IsMultiTenant, cp.Query, cp.AllowPartialResponse, cp.HiddenFieldsFilters)
 }
 
 func (cp *commonParams) UpdatePerQueryStatsMetrics() {
@@ -542,8 +551,9 @@ func getCommonParams(r *http.Request, expectedProtocolVersion string) (*commonPa
 	}
 
 	cp := &commonParams{
-		TenantIDs: tenantIDs,
-		Query:     q,
+		TenantIDs:     tenantIDs,
+		IsMultiTenant: strings.HasSuffix(r.URL.Path, "_multitenant"),
+		Query:         q,
 
 		DisableCompression: disableCompression,
 
