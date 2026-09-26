@@ -7,6 +7,7 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
@@ -32,9 +33,6 @@ const (
 
 // IndexdbStats contains indexdb stats
 type IndexdbStats struct {
-	// StreamsCreatedTotal is the number of log streams created since the indexdb initialization.
-	StreamsCreatedTotal uint64
-
 	// IndexdbSizeBytes is the size of data in indexdb.
 	IndexdbSizeBytes uint64
 
@@ -70,9 +68,6 @@ type IndexdbStats struct {
 }
 
 type indexdb struct {
-	// streamsCreatedTotal is the number of log streams created since the indexdb initialization.
-	streamsCreatedTotal atomic.Uint64
-
 	// the generation of the filterStreamCache.
 	// It is updated each time new item is added to tb.
 	filterStreamCacheGeneration atomic.Uint32
@@ -105,7 +100,7 @@ func mustOpenIndexdb(path, partitionName string, s *Storage) *indexdb {
 		s:             s,
 	}
 	var isReadOnly atomic.Bool
-	idb.tb = mergeset.MustOpenTable(path, s.flushInterval, idb.invalidateStreamFilterCache, mergeTagToStreamIDsRows, &isReadOnly)
+	idb.tb = mergeset.MustOpenTable(path, s.flushInterval, idb.invalidateStreamFilterCache, time.Second, mergeTagToStreamIDsRows, &isReadOnly)
 	return idb
 }
 
@@ -126,8 +121,6 @@ func (idb *indexdb) mustCreateSnapshotAt(dstDir string) {
 }
 
 func (idb *indexdb) updateStats(d *IndexdbStats) {
-	d.StreamsCreatedTotal += idb.streamsCreatedTotal.Load()
-
 	var tm mergeset.TableMetrics
 	idb.tb.UpdateMetrics(&tm)
 
@@ -136,8 +129,8 @@ func (idb *indexdb) updateStats(d *IndexdbStats) {
 	d.IndexdbPendingItems += tm.PendingItems
 	d.IndexdbPartsCount += tm.InmemoryPartsCount + tm.FilePartsCount
 	d.IndexdbBlocksCount += tm.InmemoryBlocksCount + tm.FileBlocksCount
-	d.IndexdbActiveFileMerges = tm.ActiveFileMerges
-	d.IndexdbActiveInmemoryMerges = tm.ActiveInmemoryMerges
+	d.IndexdbActiveFileMerges += tm.ActiveFileMerges
+	d.IndexdbActiveInmemoryMerges += tm.ActiveInmemoryMerges
 	d.IndexdbFileMergesCount += tm.FileMergesCount
 	d.IndexdbInmemoryMergesCount += tm.InmemoryMergesCount
 	d.IndexdbFileItemsMerged += tm.FileItemsMerged
@@ -573,7 +566,7 @@ func (idb *indexdb) mustRegisterStream(streamID *streamID, streamTagsCanonical s
 	bi.items = items
 	putBatchItems(bi)
 
-	idb.streamsCreatedTotal.Add(1)
+	idb.s.streamsCreatedTotal.Add(1)
 }
 
 func (idb *indexdb) invalidateStreamFilterCache() {
@@ -639,7 +632,7 @@ func (idb *indexdb) storeStreamIDsToCache(tenantIDs []TenantID, sf *StreamFilter
 	bbPool.Put(bb)
 }
 
-func (idb *indexdb) searchTenants() []TenantID {
+func (idb *indexdb) getTenantIDs() []TenantID {
 	is := idb.getIndexSearch()
 	defer idb.putIndexSearch(is)
 

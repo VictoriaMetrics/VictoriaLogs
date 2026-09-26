@@ -18,7 +18,7 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#uniq-pipe
 type pipeUniq struct {
-	// fields contains field names for returning unique values
+	// byFields contains field names for returning unique values
 	byFields []string
 
 	// if the filter is non-empty then only the values containing the given filter substring are returned.
@@ -550,8 +550,8 @@ func parsePipeUniq(lex *lexer) (pipe, error) {
 			return nil, fmt.Errorf("cannot parse 'by(...)': %w", err)
 		}
 		byFields = bfs
-	} else if !lex.isKeyword("filter", "with", "hits", "limit", ")", "|", "") {
-		bfs, err := parseCommaSeparatedFields(lex)
+	} else if !lex.isKeyword("filter", "with", "hits", "limit") && !lex.isQueryPartTrailer() {
+		bfs, err := parseCommaSeparatedFieldNames(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse 'by ...': %w", err)
 		}

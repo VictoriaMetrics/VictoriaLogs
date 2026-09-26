@@ -26,6 +26,7 @@ func TestParsePipeUrollFailure(t *testing.T) {
 	f(`unroll by ()`)
 	f(`unroll by (*)`)
 	f(`unroll by (f, x*)`)
+	f(`unroll by a*`)
 	f(`unroll by`)
 	f(`unroll (`)
 	f(`unroll by (foo) bar`)
@@ -220,7 +221,6 @@ func TestPipeUnroll(t *testing.T) {
 			{"q", "abc"},
 		},
 	})
-
 }
 
 func TestPipeUnrollUpdateNeededFields(t *testing.T) {

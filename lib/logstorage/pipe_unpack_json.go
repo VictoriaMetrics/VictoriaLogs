@@ -41,7 +41,7 @@ func (pu *pipeUnpackJSON) String() string {
 		s += " from " + quoteTokenIfNeeded(pu.fromField)
 	}
 	if !prefixfilter.MatchAll(pu.fieldFilters) {
-		s += " fields (" + fieldNamesString(pu.fieldFilters) + ")"
+		s += " fields (" + fieldFiltersString(pu.fieldFilters) + ")"
 	}
 	if len(pu.preserveKeys) > 0 {
 		s += " preserve_keys (" + fieldNamesString(pu.preserveKeys) + ")"
@@ -67,9 +67,7 @@ func (pu *pipeUnpackJSON) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
-	// TODO: verify that the unpacked fields do not overwrite _time with non-timestamp values.
-
-	return true
+	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
 func (pu *pipeUnpackJSON) isFixedOutputFieldsOrder() bool {
@@ -84,8 +82,8 @@ func (pu *pipeUnpackJSON) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnpackJSON) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnpackJSON) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +158,7 @@ func parsePipeUnpackJSON(lex *lexer) (pipe, error) {
 	}
 
 	fromField := "_msg"
-	if !lex.isKeyword("fields", "preserve_keys", "result_prefix", "keep_original_fields", "skip_empty_results", ")", "|", "") {
+	if !lex.isKeyword("fields", "preserve_keys", "result_prefix", "keep_original_fields", "skip_empty_results") && !lex.isQueryPartTrailer() {
 		if lex.isKeyword("from") {
 			lex.nextToken()
 		}

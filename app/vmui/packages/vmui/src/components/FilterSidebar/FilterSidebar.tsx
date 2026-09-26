@@ -8,9 +8,7 @@ import DragResizeHandle from "../Main/DragResizeHandle/DragResizeHandle";
 import { useFilterSidebarWidth } from "./hooks/useFilterSidebarWidth";
 import { CSSProperties } from "preact";
 import FilterSidebarActions from "./FilterSidebarActions/FilterSidebarActions";
-import { useFilterSidebarVisible } from "./hooks/useFilterSidebarVisible";
 import classNames from "classnames";
-import useBoolean from "../../hooks/useBoolean";
 import { ExtraFilter } from "../ExtraFilters/types";
 import FilterSidebarAlert from "./FilterSidebarAlert/FilterSidebarAlert";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
@@ -19,14 +17,19 @@ import { useFetchStreamFieldNames } from "../../pages/OverviewPage/hooks/useFetc
 import { useTimePeriod } from "../../pages/QueryPage/hooks/useTimePeriod";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import { LogsFieldValues } from "../../api/types";
+import { sortSidebarItems } from "./utils/sortSidebarItems";
+import { useFilterSidebarSort } from "./hooks/useFilterSidebarSort";
+import TextField, { TextFieldKeyboardEvent } from "../Main/TextField/TextField";
+import { SearchIcon } from "../Main/Icons";
 
 type Props = {
   query: string;
   extraFilters: ExtraFilter[];
   extraParams: URLSearchParams;
   onAddFilter: (filter: ExtraFilter) => void;
+  onReplaceFiltersByField: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
-  onRemoveByField: (field: string) => void;
+  onClose: () => void;
 }
 
 const FilterSidebar: FC<Props> = ({
@@ -34,22 +37,22 @@ const FilterSidebar: FC<Props> = ({
   extraFilters,
   extraParams,
   onAddFilter,
+  onReplaceFiltersByField,
   onRemoveByValue,
-  onRemoveByField,
+  onClose,
 }) => {
   const { isMobile } = useDeviceDetect();
   const { getCurrentPeriod } = useTimePeriod();
 
   const { fetchStreamFieldNames, streamFieldNames, loading, error, abort } = useFetchStreamFieldNames();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [search, setSearch] = useState("");
 
   const sidebarRef = useRef<HTMLElement>(null);
   const { height, top } = useFilterSidebarSticky(sidebarRef);
   const { size: parentSize, width, setWidth, clearWidth } = useFilterSidebarWidth(sidebarRef);
-  const { isVisible, setHidden } = useFilterSidebarVisible();
 
-  const { value: isDescOrder, toggle: toggleSortOrder } = useBoolean(true);
-  const orderDir = isDescOrder ? "desc" : "asc";
+  const { sort, setSort } = useFilterSidebarSort();
 
   const missingSelectedFields: LogsFieldValues[] = useMemo(() => {
     const missingFields = extraFilters.filter(f =>
@@ -62,10 +65,14 @@ const FilterSidebar: FC<Props> = ({
 
   const fields = useMemo(() => {
     const allFields = [...streamFieldNames, ...missingSelectedFields];
-    return isDescOrder
-      ? allFields // API already returns fields in desc order, so no need to sort
-      : allFields.toSorted((a, b) => a.hits - b.hits);
-  }, [streamFieldNames, missingSelectedFields, isDescOrder]);
+    const selectedFields = new Set(extraFilters.filter(isStreamFilter).map(filter => filter.field));
+
+    return sortSidebarItems(allFields, sort, selectedFields);
+  }, [streamFieldNames, missingSelectedFields, extraFilters, sort.by, sort.direction]);
+
+  const handleSearchKeyDown = (event: TextFieldKeyboardEvent) => {
+    if (event.key === "Escape") setSearch("");
+  };
 
   const sidebarStyles: CSSProperties | undefined = useMemo(() => {
     if (isMobile) return;
@@ -76,11 +83,10 @@ const FilterSidebar: FC<Props> = ({
     return styles;
   }, [height, top, width, isMobile]);
 
-
   const fetchStreams = useCallback(async () => {
     try {
       const period = getCurrentPeriod();
-      await fetchStreamFieldNames({ ...period, query, extraParams });
+      await fetchStreamFieldNames({ period, query, extraParams });
       setIsLoaded(true);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -99,7 +105,6 @@ const FilterSidebar: FC<Props> = ({
     <section
       className={classNames({
         "vm-filter-sidebar": true,
-        "vm-filter-sidebar_hidden": !isVisible,
         "vm-filter-sidebar_mobile": isMobile,
       })}
       style={sidebarStyles}
@@ -110,9 +115,21 @@ const FilterSidebar: FC<Props> = ({
       <div className="vm-filter-sidebar-header vm-table-settings-section-header">
         <div className="vm-table-settings-section-header__title">Stream fields</div>
         <FilterSidebarActions
-          onToggleSort={toggleSortOrder}
+          sort={sort}
+          onChangeSort={setSort}
           onResetWidth={clearWidth}
-          onClose={setHidden}
+          onClose={onClose}
+        />
+      </div>
+
+      <div className="vm-filter-sidebar-search">
+        <TextField
+          type="search"
+          placeholder="Search fields and expanded values"
+          startIcon={<SearchIcon/>}
+          value={search}
+          onChange={setSearch}
+          onKeyDown={handleSearchKeyDown}
         />
       </div>
 
@@ -136,13 +153,24 @@ const FilterSidebar: FC<Props> = ({
             query={query}
             field={field}
             extraFilters={extraFilters}
-            orderDir={orderDir}
+            sort={sort}
+            search={search}
             onAddFilter={onAddFilter}
             onRemoveByValue={onRemoveByValue}
-            onRemoveByField={onRemoveByField}
+            onReplaceFiltersByField={onReplaceFiltersByField}
           />
         ))}
       </div>
+
+      {!!search.trim() && fields.length > 0 && !error && !loading && isLoaded && (
+        <div className="vm-filter-sidebar-empty">
+          <FilterSidebarAlert
+            isVisible
+            variant="info"
+            title="No fields or values match your search"
+          />
+        </div>
+      )}
 
       <DragResizeHandle
         targetRef={sidebarRef}

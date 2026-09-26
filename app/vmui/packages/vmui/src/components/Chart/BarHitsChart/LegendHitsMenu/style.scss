@@ -36,6 +36,11 @@
       font-weight: 500;
       font-style: italic;
     }
+
+    button {
+      width: 100%;
+      text-align: left;
+    }
   }
 
   &-row {
@@ -48,6 +53,10 @@
     transition: background-color 0.3s;
     color: $color-text;
     border-radius:  $border-radius-small;
+
+    &_active {
+      font-weight: 600;
+    }
 
     &_interactive {
       cursor: pointer;
@@ -64,6 +73,13 @@
       width: 14px;
       height: 14px;
       color: $color-text-secondary;
+
+      &_active {
+        width: 12px;
+        height: 12px;
+        margin-left: calc($padding-global * 2);
+        color: currentColor;
+      }
 
       &_drop {
         transform: rotate(-90deg);

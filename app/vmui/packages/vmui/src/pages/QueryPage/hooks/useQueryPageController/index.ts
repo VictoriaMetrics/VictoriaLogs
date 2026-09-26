@@ -11,8 +11,9 @@ import { FetchHitsParams } from "../useFetchHits";
 import { useDebounceCallback } from "../../../../hooks/useDebounceCallback";
 import { useFetchQueryTime } from "../useFetchQueryTime";
 import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
-import { useQueryHistory } from "../../../../components/Configurators/QueryEditor/hooks/useQueryHistory";
 import { TimeParams } from "../../../../types";
+import { normalizeTimeParams, timeParamsToDateRange } from "../../../../utils/time";
+import { addQueryToHistoryStorage } from "../../../../components/QueryHistory/utils";
 
 export type UseQueryPageControllerProps = {
   query: string;
@@ -63,13 +64,13 @@ const getSyncTimeFilterKey = ({ query, period }: BaseTriggers) => {
 };
 
 const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
-  const isStartEqual = prevPeriod.start === nextPeriod.start;
-  const isEndEqual = prevPeriod.end === nextPeriod.end;
+  const normalizeNext = normalizeTimeParams(nextPeriod);
+  const isStartEqual = prevPeriod.start === normalizeNext.start;
+  const isEndEqual = prevPeriod.end === normalizeNext.end;
   return isStartEqual && isEndEqual;
 };
 
 export const useQueryPageController = (props: UseQueryPageControllerProps) => {
-  const { updateHistory } = useQueryHistory();
   const queryDispatch = useQueryDispatch();
 
   const { runLogs, ...logsRequestState } = useLogsController();
@@ -141,12 +142,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
       if (hasTimeFilter && !isSamePeriod) {
         baseTriggers.setPeriod(
-          {
-            nextPeriod: {
-              from: new Date(nextPeriod.start * 1000),
-              to: new Date(nextPeriod.end * 1000),
-            },
-          },
+          { nextPeriod: timeParamsToDateRange(nextPeriod) },
           { replace: true }
         );
 
@@ -162,7 +158,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     // The next base change should run time sync again.
     lastSyncedTimeFilterKeyRef.current = "";
 
-    updateHistory(baseTriggers.query);
+    addQueryToHistoryStorage(baseTriggers.query);
 
     const logsParams = buildLogsParams(baseTriggers, logsTriggers);
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);

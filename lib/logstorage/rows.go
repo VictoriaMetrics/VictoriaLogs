@@ -366,7 +366,7 @@ func (rs *rows) skipRowsByDropFilter(dropFilter *partitionSearchOptions, dropFil
 			// when obtaining the next block to merge via blockStreamReadersHeap.Less.
 			//
 			// It is safe to use an empty row here, since it is treated as non-existing row
-			// during filtering because of VictoraLogs data model - https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+			// during filtering because of VictoriaLogs data model - https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
 			//
 			// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/825
 			dstTimestamps = append(dstTimestamps, srcTimestamp)

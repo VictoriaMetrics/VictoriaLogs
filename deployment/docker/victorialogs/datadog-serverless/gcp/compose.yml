@@ -19,8 +19,8 @@ services:
       DD_LOGS_CONFIG_LOGS_DD_URL: http://vmauth:8427
     depends_on:
       vmauth:
-        condition: service_healthy
+        condition: service_started
       vlagent:
-        condition: service_healthy
+        condition: service_started
       victoriametrics:
-        condition: service_healthy
+        condition: service_started

@@ -1,21 +1,22 @@
 import { FC } from "preact/compat";
-import { Dayjs } from "dayjs";
 import { ArrowDownIcon, ArrowDropDownIcon } from "../../../Icons";
+import type { VmDate } from "../../../../../utils/time";
 
 interface CalendarHeaderProps {
-  viewDate: Dayjs
-  onChangeViewDate: (date: Dayjs) => void
+  viewDate: VmDate
+  onChangeViewDate: (date: VmDate) => void
   showArrowNav: boolean
   toggleDisplayYears: () => void
 }
 
-const CalendarHeader: FC<CalendarHeaderProps> = ({ viewDate, showArrowNav, onChangeViewDate, toggleDisplayYears }) => {
+const HEADER_DATE_FORMAT = "MMMM YYYY";
 
-  const setPrevMonth = () => {
+const CalendarHeader: FC<CalendarHeaderProps> = ({ viewDate, showArrowNav, onChangeViewDate, toggleDisplayYears }) => {
+  const handlePrevMonthClick = () => {
     onChangeViewDate(viewDate.subtract(1, "month"));
   };
 
-  const setNextMonth = () => {
+  const handleNextMonthClick = () => {
     onChangeViewDate(viewDate.add(1, "month"));
   };
 
@@ -26,7 +27,7 @@ const CalendarHeader: FC<CalendarHeaderProps> = ({ viewDate, showArrowNav, onCha
         onClick={toggleDisplayYears}
       >
         <span className="vm-calendar-header-left__date">
-          {viewDate.format("MMMM YYYY")}
+          {viewDate.format(HEADER_DATE_FORMAT)}
         </span>
         <div className="vm-calendar-header-left__select-year">
           <ArrowDropDownIcon/>
@@ -36,13 +37,13 @@ const CalendarHeader: FC<CalendarHeaderProps> = ({ viewDate, showArrowNav, onCha
         <div className="vm-calendar-header-right">
           <div
             className="vm-calendar-header-right__prev"
-            onClick={setPrevMonth}
+            onClick={handlePrevMonthClick}
           >
             <ArrowDownIcon/>
           </div>
           <div
             className="vm-calendar-header-right__next"
-            onClick={setNextMonth}
+            onClick={handleNextMonthClick}
           >
             <ArrowDownIcon/>
           </div>

@@ -3,14 +3,11 @@ package tests
 import (
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestVlsingleIngestionProtocols(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -79,7 +76,6 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 			`{"_msg":"ingest native","_time":"2025-06-05T16:41:37.409Z", "_stream":"{foo=\"bar\"}", "foo": "bar", "qwe": "rty"}`,
 		},
 	})
-
 }
 
 func canonicalStreamTagsFromSet(set map[string]string) string {

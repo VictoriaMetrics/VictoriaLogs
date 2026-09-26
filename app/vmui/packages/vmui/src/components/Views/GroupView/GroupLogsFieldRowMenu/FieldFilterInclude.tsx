@@ -8,15 +8,16 @@ import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 interface Props {
   field: string;
   value: string;
+  isStreamField: boolean;
 }
 
-const FieldFilterInclude: FC<Props> = ({ field, value }) => {
+const FieldFilterInclude: FC<Props> = ({ field, value, isStreamField }) => {
   const { extraFilters, addNewFilter, removeFilterByValue } = useExtraFilters();
   const filtersByValue = extraFilters.filter(f => f.field === field && f.value === value);
   const isIncludeFilter = filtersByValue.some(f => f.operator === ExtraFilterOperator.Equals);
 
   const handleClickFilter = () => {
-    const newFilter = { field, value, operator: ExtraFilterOperator.Equals };
+    const newFilter = { field, value, operator: ExtraFilterOperator.Equals, isStream: isStreamField };
     if (isIncludeFilter) {
       // If the same filter already exists, we remove it by setting the value to an empty string
       removeFilterByValue(field, value);
@@ -33,6 +34,7 @@ const FieldFilterInclude: FC<Props> = ({ field, value }) => {
         size="small"
         startIcon={<FilterIcon/>}
         onClick={handleClickFilter}
+        aria-label={isIncludeFilter ? "Remove include filter" : "Filter by this value"}
       />
     </Tooltip>
   );

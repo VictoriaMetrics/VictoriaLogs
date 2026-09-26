@@ -25,7 +25,7 @@ const pipeTopDefaultLimit = 10
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe
 type pipeTop struct {
-	// fields contains field names for returning top values for.
+	// byFields contains field names for returning top values for.
 	byFields []string
 
 	// limit is the number of top (byFields) sets to return.
@@ -620,8 +620,8 @@ func parsePipeTop(lex *lexer) (pipe, error) {
 			return nil, fmt.Errorf("cannot parse 'by(...)': %w", err)
 		}
 		byFields = bfs
-	} else if !lex.isKeyword("hits", "rank", ")", "|", "") {
-		bfs, err := parseCommaSeparatedFields(lex)
+	} else if !lex.isKeyword("hits", "rank") && !lex.isQueryPartTrailer() {
+		bfs, err := parseCommaSeparatedFieldNames(lex)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse 'by ...': %w", err)
 		}
@@ -674,11 +674,11 @@ func parseRankFieldName(lex *lexer) (string, error) {
 	rankFieldName := "rank"
 	if lex.isKeyword("as") {
 		lex.nextToken()
-		if lex.isKeyword("", "|", ")", "(") {
+		if lex.isKeyword("(") || lex.isQueryPartTrailer() {
 			return "", fmt.Errorf("missing rank name")
 		}
 	}
-	if !lex.isKeyword("", "|", ")", "limit") {
+	if !lex.isKeyword("limit") && !lex.isQueryPartTrailer() {
 		s, err := parseFieldName(lex)
 		if err != nil {
 			return "", err

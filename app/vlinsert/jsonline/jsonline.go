@@ -40,7 +40,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
 	if err != nil {
-		logger.Errorf("cannot start reading jsonline request: %s", err)
+		httpserver.Errorf(w, r, "cannot start reading jsonline request: %s", err)
 		return
 	}
 	defer writeconcurrencylimiter.PutReader(wcr)
@@ -48,7 +48,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	encoding := r.Header.Get("Content-Encoding")
 	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
-		logger.Errorf("cannot decode jsonline request: %s", err)
+		httpserver.Errorf(w, r, "cannot decode jsonline request: %s", err)
 		return
 	}
 	defer protoparserutil.PutUncompressedReader(reader)
@@ -107,11 +107,11 @@ func readLine(lr *insertutil.LineReader, timeFields, msgFields, preserveKeys []s
 	defer logstorage.PutJSONParser(p)
 
 	if err := p.ParseLogMessage(line, preserveKeys, ""); err != nil {
-		return true, fmt.Errorf("%s; line contents: %q", err, line)
+		return true, fmt.Errorf("%w; line contents: %q", err, line)
 	}
 	ts, err := insertutil.ExtractTimestampFromFields(timeFields, p.Fields)
 	if err != nil {
-		return true, fmt.Errorf("%s; line contents: %q", err, line)
+		return true, fmt.Errorf("%w; line contents: %q", err, line)
 	}
 	logstorage.RenameField(p.Fields, msgFields, "_msg")
 	lmp.AddRow(ts, p.Fields, -1)

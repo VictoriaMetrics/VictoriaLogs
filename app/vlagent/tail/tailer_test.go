@@ -78,6 +78,27 @@ func TestTailer(t *testing.T) {
 	linesExpected = 1
 	offsetExpected = len("buz\n")
 	f(resultExpected, linesExpected, inode, offsetExpected)
+
+	// vlagent must not fail on permission denied
+	// error for files while finding renamed log file.
+	rotateRenameCreate(t, logFilePath)
+	inode = updateInode(t, logFilePath, inode)
+	writeLinesToFile(t, logFilePath, "foobar")
+	logDirPath := filepath.Dir(tryResolveSymlink(logFilePath))
+	createFile(t, filepath.Join(logDirPath, "_permission-denied.txt"), 000)
+	resultExpected = "foobar\n"
+	linesExpected = 1
+	offsetExpected = len("foobar\n")
+	f(resultExpected, linesExpected, inode, offsetExpected)
+}
+
+func createFile(t *testing.T, path string, perm os.FileMode) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE, perm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
 }
 
 // TestHandleRotationRenameCreate verifies that vlagent switches to the new log file by tracking inode changes.

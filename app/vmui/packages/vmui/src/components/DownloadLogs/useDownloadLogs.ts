@@ -1,9 +1,9 @@
 import { useCallback, useState } from "preact/compat";
-import dayjs from "dayjs";
 import { TimeParams } from "../../types";
 import { useFetchLogs } from "../../pages/QueryPage/hooks/useFetchLogs";
 import showSaveFilePicker from "../../utils/nativeFileSystemAdapter/showSaveFilePicker";
 import { useExtraFilters } from "../ExtraFilters/hooks/useExtraFilters";
+import { vmDate } from "../../utils/time";
 
 type DownloadLog = {
   filename: string;
@@ -33,8 +33,8 @@ const useDownloadLogs = () => {
     setSavingFile(true);
     try {
       const period: TimeParams = {
-        start: dayjs(start).unix(),
-        end: dayjs(end).unix(),
+        start: vmDate(start).nano().timestamp(),
+        end: vmDate(end).nano().timestamp(),
       };
 
       if (format === "csv") {

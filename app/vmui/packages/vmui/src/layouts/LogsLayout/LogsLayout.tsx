@@ -7,17 +7,20 @@ import classNames from "classnames";
 import Footer from "../Footer/Footer";
 import { RouterOptions, routerOptions } from "../../router";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
-import ControlsLogsLayout from "./ControlsLogsLayout";
 import { footerLinksToLogs } from "../../constants/footerLinks";
 import WebStorageCheck from "../../components/WebStorageCheck/WebStorageCheck";
 import { migrateStorageToPrefixedKeys } from "../../utils/storage";
 import { useAppState } from "../../state/common/StateContext";
+import {
+  useBrowserTabSync
+} from "../../components/Configurators/GlobalSettings/BrowserTabController/hooks/useBrowserTabSync";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
   const { isMobile } = useDeviceDetect();
   const { pathname } = useLocation();
   const { isDarkTheme } = useAppState();
+  useBrowserTabSync();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {
@@ -44,7 +47,7 @@ const LogsLayout: FC = () => {
     "vm-container_dark": isDarkTheme
   })}
   >
-    <Header controlsComponent={ControlsLogsLayout}/>
+    <Header/>
     <div
       id="vm-body"
       className={classNames({

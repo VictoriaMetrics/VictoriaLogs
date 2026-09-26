@@ -53,10 +53,10 @@
   &__content {
     font-size: $font-size-small;
     padding-top: $padding-medium;
-    overflow: scroll;
 
     &_table:not(&_hide) {
       padding-top: 0;
+      overflow: scroll;
     }
 
     &_mobile {

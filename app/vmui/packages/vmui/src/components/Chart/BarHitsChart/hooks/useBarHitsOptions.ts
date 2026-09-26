@@ -10,6 +10,7 @@ import { getColorFromString } from "../../../../utils/color";
 import useBarPaths from "./useBarPaths";
 import useBarClickHooks from "./useBarClickHooks";
 import { Size } from "../../../../hooks/useResizeObserver";
+import { secondsToMilliseconds } from "../../../../utils/time";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -157,7 +158,7 @@ const useBarHitsOptions = ({
     },
     legend: { show: false },
     axes: getAxes([{}, { scale: "y" }]),
-    tzDate: ts => uPlot.tzDate(new Date(Math.round(ts * 1000)), timezone),
+    tzDate: ts => uPlot.tzDate(new Date(Math.round(secondsToMilliseconds(ts))), timezone),
   };
 
   return {

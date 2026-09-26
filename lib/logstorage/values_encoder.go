@@ -37,7 +37,7 @@ const (
 	// Every value occupies 2 bytes.
 	valueTypeUint16 = valueType(4)
 
-	// uint values up to 2^31-1 are encoded into valueTypeUint32.
+	// uint values up to 2^32-1 are encoded into valueTypeUint32.
 	// Every value occupies 4 bytes.
 	valueTypeUint32 = valueType(5)
 

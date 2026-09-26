@@ -404,6 +404,9 @@ func (p *SyslogParser) parseRFC5424SDLine(s string) (string, bool) {
 			return s, false
 		}
 		i += n + 1
+		if i == len(s) {
+			return s, false
+		}
 
 		// Parse value
 		if s[i] == '"' {
@@ -655,7 +658,6 @@ func (p *SyslogParser) parseCEFExtension(s string) bool {
 		p.AddField(keyName, unescapeCEFValue(s[:n]))
 		s = s[n+1:]
 	}
-
 }
 
 func (p *SyslogParser) tryParseTimestampRFC3164(s string) bool {

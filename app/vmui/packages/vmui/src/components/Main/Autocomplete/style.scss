@@ -1,10 +1,21 @@
 @use "src/styles/variables" as *;
 
 .vm-autocomplete {
-  display: flex;
-  align-items: stretch;
+  &__title {
+    padding: $padding-small;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: $font-size-extra-small;
+    color: $color-text-secondary;
+  }
+
+  &__content {
+    display: flex;
+    align-items: stretch;
+  }
 
   &-base-panel {
+    min-width: 0;
     flex-grow: 1;
   }
 
@@ -15,29 +26,20 @@
     font-style: italic;
   }
 
-  &__loader {
-    display: grid;
-    grid-template-columns: 14px auto;
-    align-items: center;
-    justify-content: center;
-    gap: $padding-small;
-    padding: $padding-global;
-    color: $color-text-secondary;
-    z-index: 2;
-    pointer-events: none;
-
-    svg {
-      animation: vm-spinner-animation 1s infinite linear;
-    }
-  }
-
   &__warning {
     position: relative;
-    padding: $padding-global;
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: calc($padding-small / 2);
+    align-items: center;
+    padding: $padding-small $padding-global;
     background-color: $color-background-block;
     border-top: $border-divider;
-    color: $color-warning;
     font-size: $font-size-small;
+
+    svg {
+      color: $color-warning;
+    }
 
     &:after {
       content: '';
@@ -47,7 +49,7 @@
       width: 100%;
       height: 100%;
       background: $color-warning;
-      opacity: 0.1;
+      opacity: 0.04;
     }
   }
 }
