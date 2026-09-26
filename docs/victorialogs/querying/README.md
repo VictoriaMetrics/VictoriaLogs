@@ -197,6 +197,9 @@ The `<query>` must conform the following rules:
 - It is recommended to return [`_stream_id`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field for more accurate live tailing
   across multiple streams.
 
+- It isn't recommended using [`join` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) and `now()` or `rand()` functions
+  at [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe), since this may result in returning the same logs multiple times.
+
 The log fields are returned in alphabetical order unless the query ends with [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes),
 which explicitly set the order of the returned fields, such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe)
 or [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
