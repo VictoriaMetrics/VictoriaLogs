@@ -1512,16 +1512,16 @@ func (ddb *datadb) deleteRows(pso *partitionSearchOptions, stopCh <-chan struct{
 	// The parts, which are in merge now, must be processed again for the rows' deletion in the future.
 	needRepeat := len(pwsToSearch) < len(pws)
 
-	// Search for parts, which contain logs matching pso for the deletion, and release the remaining parts.
-	var pwsToMerge, pwsToRelease []*partWrapper
+	// Search for parts, which contain logs matching pso for the deletion.
+	// Release the remaining parts as soon as possible, so they could be flushed and merged by background workers.
+	var pwsToMerge []*partWrapper
 	for _, pw := range pwsToSearch {
 		if pw.p.hasMatchingRows(pso, stopCh) {
 			pwsToMerge = append(pwsToMerge, pw)
 		} else {
-			pwsToRelease = append(pwsToRelease, pw)
+			ddb.releasePartsToMerge([]*partWrapper{pw})
 		}
 	}
-	ddb.releasePartsToMerge(pwsToRelease)
 
 	// merge pwsToMerge while dropping logs matching pso.
 	if !ddb.mustMergePartsInternal(pwsToMerge, false, pso, stopCh) {
