@@ -21,7 +21,7 @@ import (
 func TestStorageDrainsPendingDataOnShutdown(t *testing.T) {
 	var insertRequests atomic.Int64
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/internal/insert" {
+		if r.URL.Path == "/internal/rpc/insert" {
 			insertRequests.Add(1)
 		}
 		w.WriteHeader(http.StatusOK)

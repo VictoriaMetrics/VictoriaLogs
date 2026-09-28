@@ -60,6 +60,8 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 	f(baseURL+"/select/logsql/query?query=*", http.StatusUnauthorized)
 	f(basicAuthURL+"/select/logsql/query?query=*", http.StatusOK)
 	f(baseURL+"/select/vmalert/-/reload", http.StatusUnauthorized)
+	f(baseURL+"/internal/rpc/force_flush", http.StatusUnauthorized)
+	f(basicAuthURL+"/internal/rpc/force_flush", http.StatusOK)
 
 	// The paths must fall back to -httpAuth.* when the corresponding -*AuthKey isn't set.
 	sut = tc.MustStartVlsingle("vlsingle-basicauth", []string{
