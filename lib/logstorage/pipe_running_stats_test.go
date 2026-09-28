@@ -48,7 +48,7 @@ func TestParsePipeRunningStatsFailure(t *testing.T) {
 	f(`running_stats first(a*) as x`)
 	f(`running_stats last(a*) as x`)
 
-	// multiple args arg for the first() and last()
+	// multiple args for the first() and last()
 	f(`running_stats first(a, b)`)
 	f(`running_stats last(a, b)`)
 	f(`running_stats first(a, b, c)`)
