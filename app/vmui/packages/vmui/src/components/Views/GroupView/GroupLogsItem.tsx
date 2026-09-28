@@ -103,12 +103,12 @@ const GroupLogsItem: FC<Props> = ({
 
         // _msg carries no prefix: it is the field almost every entry displays,
         // and labelling it adds noise without adding information
-        if (field === "_msg") {
+        if (isMessageField) {
           values.push(value);
         } else {
           values.push(
             <>
-              <span className="vm-group-logs-row-content__field-name">{field}:</span>
+              <span className="vm-group-logs-row-content__field-name">{field}: </span>
               {value}
             </>
           );
