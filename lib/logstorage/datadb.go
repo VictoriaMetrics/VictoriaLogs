@@ -117,8 +117,6 @@ type partWrapper struct {
 	refCount atomic.Int32
 
 	// The flag, which is set when the part must be deleted after refCount reaches zero.
-	// This field should be updated only after partWrapper
-	// was removed from the list of active parts.
 	mustDrop atomic.Bool
 
 	// p is an opened part
@@ -1503,29 +1501,27 @@ func (ddb *datadb) mustForceMergeAllParts() {
 }
 
 func (ddb *datadb) deleteRows(pso *partitionSearchOptions, stopCh <-chan struct{}) bool {
-	// Get all the parts and make sure they are kept open.
-	pws, pwsDecRef := ddb.getPartsForTimeRange(pso.minTimestamp, pso.maxTimestamp)
-	defer pwsDecRef()
+	// Mark the parts on the given time range as being in merge under a single lock,
+	// so they cannot be replaced by concurrently running merges while searching them below.
+	ddb.partsLock.Lock()
+	pws := ddb.getPartsForTimeRangeLocked(pso.minTimestamp, pso.maxTimestamp)
+	// The rows are deleted via merge, so take the parts in the same way as background merges do.
+	pwsToSearch := appendAllPartsForMergeLocked(nil, pws)
+	ddb.partsLock.Unlock()
 
-	// Search for parts, which contain logs matching pso for the deletion and which aren't in merge at the moment.
-	var pwsToMerge []*partWrapper
-	needRepeat := false
-	for _, pw := range pws {
-		if !pw.p.hasMatchingRows(pso, stopCh) {
-			continue
-		}
+	// The parts, which are in merge now, must be processed again for the rows' deletion in the future.
+	needRepeat := len(pwsToSearch) < len(pws)
 
-		ddb.partsLock.Lock()
-		if !pw.isInMerge && !pw.mustDrop.Load() {
-			pw.isInMerge = true
+	// Search for parts, which contain logs matching pso for the deletion, and release the remaining parts.
+	var pwsToMerge, pwsToRelease []*partWrapper
+	for _, pw := range pwsToSearch {
+		if pw.p.hasMatchingRows(pso, stopCh) {
 			pwsToMerge = append(pwsToMerge, pw)
 		} else {
-			// The pw is being merged or has been replaced,
-			// so it must be processed again for the rows' deletion in the future.
-			needRepeat = true
+			pwsToRelease = append(pwsToRelease, pw)
 		}
-		ddb.partsLock.Unlock()
 	}
+	ddb.releasePartsToMerge(pwsToRelease)
 
 	// merge pwsToMerge while dropping logs matching pso.
 	if !ddb.mustMergePartsInternal(pwsToMerge, false, pso, stopCh) {
