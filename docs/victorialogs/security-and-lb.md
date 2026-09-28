@@ -32,7 +32,7 @@ This document contains the following configuration examples for `vmauth`:
 * [How to set up authorization for search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization)
 * [How to set up authorization for data ingestion](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization)
 * [Routing search requests among multiple VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#cluster-routing)
-* [Auhtorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
+* [Authorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
 * [Authorizing per-tenant data ingestion requests](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests)
 * [Proxying requests to the given tenants](https://docs.victoriametrics.com/victorialogs/security-and-lb/#proxying-requests-to-the-given-tenants)
 * [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
@@ -329,7 +329,7 @@ See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-b
 
 Enumerate all the `vlinsert` instances in the cluster under the `url_prefix` option above in order to spread load among them.
 
-Note that `vmauth` doesn't replicate data amont the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
+Note that `vmauth` doesn't replicate data among the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
 Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replicating the data to multiple VictoriaLogs instances or multiple VictoriaLogs clusters.
 
 See also [how to set up authorization for search queries at VitoriaLogs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).

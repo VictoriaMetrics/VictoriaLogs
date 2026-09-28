@@ -906,7 +906,7 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 
 func addTimeFilter(f filter, start, end, offset int64) filter {
 	// use nanosecond precision for [start, end] time range in order to avoid
-	// automatic adjustement of timestamps for its' string representation.
+	// automatic adjustment of timestamps for its' string representation.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/587
 	//
 	// Do not use numeric representation of timestamps, since they are improperly parsed
@@ -4058,7 +4058,7 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 	return qStr
 }
 
-// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overlow int64.
+// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overflow int64.
 //
 // It clamps the result to the int64 value range.
 func SubInt64NoOverflow(a, b int64) int64 {

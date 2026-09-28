@@ -11,7 +11,7 @@ tags:
   - logs
 ---
 
-VictoriaLogs accpets logs via [Splunk HEC API](https://help.splunk.com/en/splunk-enterprise/get-started/get-data-in/9.0/get-data-with-http-event-collector/set-up-and-use-http-event-collector-in-splunk-web) at `/insert/splunk/services/collector/event` or `/insert/splunk/services/collector/event/1.0` HTTP paths.
+VictoriaLogs accepts logs via [Splunk HEC API](https://help.splunk.com/en/splunk-enterprise/get-started/get-data-in/9.0/get-data-with-http-event-collector/set-up-and-use-http-event-collector-in-splunk-web) at `/insert/splunk/services/collector/event` or `/insert/splunk/services/collector/event/1.0` HTTP paths.
 Additionally paths without `/insert/splunk/` prefix are supported to simplify integration.
 
 ## Collect docker logs using Splunk driver
