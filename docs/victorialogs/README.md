@@ -527,6 +527,17 @@ The `vl_account_id` and `vl_project_id` fields are generated from tenant IDs dur
 They are returned in query results unless they are removed by LogsQL pipes such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe).
 They can also be used in LogsQL filters for selecting the needed tenants.
 
+Tenant filters apply only to the query or [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries) they are written in, like any other LogsQL filter.
+Use [`global_filter`](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option) query option
+or [`extra_filters`](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) query arg for applying them to all the subqueries.
+For example, the following query searches only `(AccountID=12, ProjectID=34)` tenant, including the `in(...)` subquery:
+
+```logsql
+options(global_filter=(vl_account_id:=12 vl_project_id:=34)) error user_id:in(login | keep user_id)
+```
+
+Without `global_filter`, the `in(...)` subquery in this query searches all the tenants.
+
 The `/select/multitenant/logsql/*` endpoints can query all the stored tenants, so they must be protected with proper authorization.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 
