@@ -46,6 +46,12 @@ type QueryContext struct {
 	// Prefixes match all the fields starting with the given prefix.
 	HiddenFieldsFilters []string
 
+	// IsMultiTenant is set for queries to /select/multitenant/logsql/* endpoints.
+	//
+	// If TenantIDs is empty, then the query searches all the tenants matching vl_account_id and vl_project_id filters in the query.
+	// Otherwise it searches only TenantIDs.
+	IsMultiTenant bool
+
 	// startTime is creation time for the QueryContext.
 	//
 	// It is used for calculating query duration.
@@ -53,24 +59,24 @@ type QueryContext struct {
 }
 
 // NewQueryContext returns new context for the given query.
-func NewQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string) *QueryContext {
+func NewQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, isMultiTenant bool, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string) *QueryContext {
 	startTime := time.Now()
-	return newQueryContext(ctx, qs, tenantIDs, q, allowPartialResponse, hiddenFieldsFilters, startTime)
+	return newQueryContext(ctx, qs, tenantIDs, isMultiTenant, q, allowPartialResponse, hiddenFieldsFilters, startTime)
 }
 
 // WithQuery returns new QueryContext with the given q, while preserving other fields from qctx.
 func (qctx *QueryContext) WithQuery(q *Query) *QueryContext {
-	return newQueryContext(qctx.Context, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
+	return newQueryContext(qctx.Context, qctx.QueryStats, qctx.TenantIDs, qctx.IsMultiTenant, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // WithContext returns new QueryContext with the given ctx, while preserving other fields from qctx.
 func (qctx *QueryContext) WithContext(ctx context.Context) *QueryContext {
-	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.Query, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.IsMultiTenant, qctx.Query, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // WithContextAndQuery returns new QueryContext with the given ctx and q, while preserving other fields from qctx.
 func (qctx *QueryContext) WithContextAndQuery(ctx context.Context, q *Query) *QueryContext {
-	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
+	return newQueryContext(ctx, qctx.QueryStats, qctx.TenantIDs, qctx.IsMultiTenant, q, qctx.AllowPartialResponse, qctx.HiddenFieldsFilters, qctx.startTime)
 }
 
 // QueryDurationNsecs returns the duration in nanoseconds since the NewQueryContext call.
@@ -78,17 +84,18 @@ func (qctx *QueryContext) QueryDurationNsecs() int64 {
 	return time.Since(qctx.startTime).Nanoseconds()
 }
 
-func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string, startTime time.Time) *QueryContext {
+func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, isMultiTenant bool, q *Query, allowPartialResponse bool, hiddenFieldsFilters []string, startTime time.Time) *QueryContext {
 	if q.opts.allowPartialResponse != nil {
 		// query options override other settings for allowPartialResponse.
 		allowPartialResponse = *q.opts.allowPartialResponse
 	}
 
 	return &QueryContext{
-		Context:    ctx,
-		QueryStats: qs,
-		TenantIDs:  tenantIDs,
-		Query:      q,
+		Context:       ctx,
+		QueryStats:    qs,
+		TenantIDs:     tenantIDs,
+		IsMultiTenant: isMultiTenant,
+		Query:         q,
 
 		AllowPartialResponse: allowPartialResponse,
 		HiddenFieldsFilters:  hiddenFieldsFilters,
@@ -103,6 +110,9 @@ func newQueryContext(ctx context.Context, qs *QueryStats, tenantIDs []TenantID, 
 type storageSearchOptions struct {
 	// tenantIDs must contain the list of tenantIDs for the search.
 	tenantIDs []TenantID
+
+	// isMultiTenant is set for multitenant queries.
+	isMultiTenant bool
 
 	// streamIDs is an optional sorted list of streamIDs for the search.
 	// If it is empty, then the search is performed by tenantIDs
@@ -140,6 +150,10 @@ type partitionSearchOptions struct {
 	// Optional sorted list of tenantIDs for the search.
 	// If it is empty, then the search is performed by streamIDs
 	tenantIDs []TenantID
+
+	// isMultiTenant is set for multitenant queries.
+	// In this case vl_account_id and vl_project_id fields contain the tenant of every block.
+	isMultiTenant bool
 
 	// Optional sorted list of streamIDs for the search.
 	// If it is empty, then the search is performed by tenantIDs
@@ -223,8 +237,18 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 	}
 	q := qNew
 
-	sso := s.getSearchOptions(qctx.TenantIDs, q, qctx.HiddenFieldsFilters)
+	// Multitenant queries search the tenants matching the query filter.
+	// If TenantIDs is already set, then search only these tenants.
+	// For example, the stream_context pipe sets the tenant of the stream it reads.
+	tenantIDs := qctx.TenantIDs
+	if qctx.IsMultiTenant && len(qctx.TenantIDs) == 0 {
+		tenantIDs, err = s.getTenantIDsForQuery(qctx.Context, q)
+		if err != nil {
+			return err
+		}
+	}
 
+	sso := s.getSearchOptions(tenantIDs, qctx.IsMultiTenant, q, qctx.HiddenFieldsFilters)
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
 		workersCount := q.GetParallelReaders(s.defaultParallelReaders)
 		s.searchParallel(workersCount, sso, qctx.QueryStats, stopCh, writeBlockToPipes)
@@ -235,7 +259,78 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 	return runPipes(qctx, q.pipes, search, writeBlock, concurrency)
 }
 
-func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
+func (s *Storage) getTenantIDsForQuery(ctx context.Context, q *Query) ([]TenantID, error) {
+	start, end := q.GetFilterTimeRange()
+	allTenantIDs, err := s.getTenantIDs(ctx, start, end)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get tenant IDs: %w", err)
+	}
+
+	if len(allTenantIDs) == 0 {
+		return allTenantIDs, nil
+	}
+
+	f := getTenantFilter(q)
+	var tenantIDs []TenantID
+	for _, tenantID := range allTenantIDs {
+		rows := []Field{
+			{
+				Name:  "vl_account_id",
+				Value: tenantID.accountIDString(),
+			},
+			{
+				Name:  "vl_project_id",
+				Value: tenantID.projectIDString(),
+			},
+		}
+		if f.matchRow(rows) {
+			tenantIDs = append(tenantIDs, tenantID)
+		}
+	}
+
+	return tenantIDs, nil
+}
+
+// getTenantFilter returns a filter, which keeps only vl_account_id and vl_project_id filters from q.
+//
+// Other filters are replaced with noop filter, which matches everything, so the returned filter may match more tenants than q.
+// This is OK, since the full q filter is applied to every block later.
+func getTenantFilter(q *Query) filter {
+	qf := q.getFinalFilter()
+
+	isNonTenantFieldFilter := func(fg *filterGeneric) bool {
+		return fg.isWildcard || !isTenantColumn(fg.fieldName)
+	}
+
+	visitFunc := func(f filter) bool {
+		switch t := f.(type) {
+		case *filterAnd, *filterOr:
+			return false
+		case *filterGeneric:
+			return isNonTenantFieldFilter(t)
+		case *filterNot:
+			// Keep only NOT filters over a single tenant field. Other NOT filters are replaced with noop,
+			// since replacing only their inner filters with noop may drop the matching tenants.
+			fg, ok := t.f.(*filterGeneric)
+			return !ok || isNonTenantFieldFilter(fg)
+		default:
+			return true
+		}
+	}
+
+	copyFunc := func(f filter) (filter, error) {
+		return newFilterNoop(), nil
+	}
+
+	f, err := copyFilter(qf, visitFunc, copyFunc)
+	if err != nil {
+		logger.Panicf("BUG: unexpected error: %s", err)
+	}
+
+	return f
+}
+
+func (s *Storage) getSearchOptions(tenantIDs []TenantID, isMultiTenant bool, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
 	// tenantIDs must be sorted, since block search performs binary search over them.
 	sortTenantIDs(tenantIDs)
 
@@ -260,6 +355,7 @@ func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsF
 	return &storageSearchOptions{
 		tenantIDs:          tenantIDs,
 		streamIDs:          streamIDs,
+		isMultiTenant:      isMultiTenant,
 		minTimestamp:       minTimestamp,
 		maxTimestamp:       maxTimestamp,
 		streamFilter:       sf,
@@ -1448,6 +1544,7 @@ func (pt *partition) getSearchOptions(sso *storageSearchOptions) *partitionSearc
 	}
 	return &partitionSearchOptions{
 		tenantIDs:          tenantIDs,
+		isMultiTenant:      sso.isMultiTenant,
 		streamIDs:          streamIDs,
 		minTimestamp:       sso.minTimestamp,
 		maxTimestamp:       sso.maxTimestamp,
