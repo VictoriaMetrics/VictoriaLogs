@@ -33,6 +33,13 @@ func TestParsePromLabels_Success(t *testing.T) {
 	f(`{ level="INFO", application="xxx"}`, `{level="INFO", application="xxx"}`)
 	f(`{ level =" INFO "}`, `{level=" INFO "}`)
 	f(`{level="INFO", }`, `{level="INFO"}`)
+	f(`{level="INFO",  }`, `{level="INFO"}`)
+	f(`{ level="INFO" }`, `{level="INFO"}`)
+	f(`{level="INFO" , app="x"}`, `{level="INFO", app="x"}`)
+	f(`{level= "INFO"}`, `{level="INFO"}`)
+	f(`{level = "INFO"}`, `{level="INFO"}`)
+	f("{level=\"INFO\",\tapp=\"x\"}", `{level="INFO", app="x"}`)
+	f("{level=\"INFO\"\n, app=\"x\"\r\n}", `{level="INFO", app="x"}`)
 }
 
 func TestParsePromLabels_Failure(t *testing.T) {

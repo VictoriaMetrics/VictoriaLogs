@@ -235,14 +235,14 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 			return fmt.Errorf("cannot find `=` char for label value at %s", s)
 		}
 		name := strings.TrimSpace(s[:n])
-		s = s[n+1:]
+		s = skipLeadingWhitespace(s[n+1:])
 
 		// Parse label value
 		qs, err := strconv.QuotedPrefix(s)
 		if err != nil {
 			return fmt.Errorf("cannot parse value for label %q at %s: %w", name, s, err)
 		}
-		s = s[len(qs):]
+		s = skipLeadingWhitespace(s[len(qs):])
 		value, err := strconv.Unquote(qs)
 		if err != nil {
 			return fmt.Errorf("cannot unquote value %q for label %q: %w", qs, name, err)
@@ -258,8 +258,17 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 		if !strings.HasPrefix(s, ",") {
 			return fmt.Errorf("missing `,` char at %s", s)
 		}
-		s = s[1:]
-		s = strings.TrimPrefix(s, " ")
+		s = skipLeadingWhitespace(s[1:])
 	}
 	return nil
+}
+
+// skipLeadingWhitespace removes leading whitespace from s.
+//
+// It treats ' ', '\t', '\n' and '\r' as whitespace like Loki does when parsing labels.
+func skipLeadingWhitespace(s string) string {
+	for len(s) > 0 && (s[0] == ' ' || s[0] == '\t' || s[0] == '\n' || s[0] == '\r') {
+		s = s[1:]
+	}
+	return s
 }
