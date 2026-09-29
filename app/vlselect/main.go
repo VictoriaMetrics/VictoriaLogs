@@ -34,8 +34,9 @@ var (
 	disableSelect         = flag.Bool("select.disable", false, "Whether to disable both /select/* and /internal/select/* HTTP endpoints. Useful for dedicated vlinsert nodes. See also -internalselect.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 	disableInternalSelect = flag.Bool("internalselect.disable", false, "Whether to disable /internal/select/* HTTP endpoints. See also -select.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 
-	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
-	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
+	enableMultitenantSelect = flag.Bool("multitenantselect.enable", false, "Whether to enable /select/multitenant/logsql/* HTTP endpoints. See https://docs.victoriametrics.com/victorialogs/#multitenant-querying")
+	enableDelete            = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	enableInternalDelete    = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	deleteAuthKey = flagutil.NewPassword("deleteAuthKey", "authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . "+
 		"See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
@@ -208,7 +209,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		logsqlTailRequests.Inc()
 		// Process live tailing request without timeout, since it is OK to run live tailing requests for very long time.
 		// Also do not apply concurrency limit to tail requests, since these limits are intended for non-tail requests.
-		logsql.ProcessLiveTailRequest(ctx, w, r)
+		logsql.ProcessLiveTailRequest(ctx, w, r, false)
 		return true
 	}
 	if strings.HasPrefix(path, "/select/vmalert/") {
@@ -222,6 +223,18 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		}
 		path = strings.TrimPrefix(path, "/select")
 		vmalertproxy.HandleRequest(w, r, path)
+		return true
+	}
+
+	if strings.HasPrefix(path, "/select/multitenant/logsql/") && !*enableMultitenantSelect {
+		httpserver.Errorf(w, r, "requests to /select/multitenant/logsql/* endpoints are disabled; pass -multitenantselect.enable command-line flag for enabling them; "+
+			"see https://docs.victoriametrics.com/victorialogs/#multitenant-querying")
+		return true
+	}
+	if path == "/select/multitenant/logsql/tail" {
+		multitenantLogsqlTailRequests.Inc()
+		// Process live tailing requests without timeout and concurrency limit, like /select/logsql/tail above.
+		logsql.ProcessLiveTailRequest(ctx, w, r, true)
 		return true
 	}
 
@@ -337,63 +350,118 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return true
 	case "/select/logsql/facets":
 		logsqlFacetsRequests.Inc()
-		logsql.ProcessFacetsRequest(ctx, w, r)
+		logsql.ProcessFacetsRequest(ctx, w, r, false)
 		logsqlFacetsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/field_names":
 		logsqlFieldNamesRequests.Inc()
-		logsql.ProcessFieldNamesRequest(ctx, w, r)
+		logsql.ProcessFieldNamesRequest(ctx, w, r, false)
 		logsqlFieldNamesDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/field_values":
 		logsqlFieldValuesRequests.Inc()
-		logsql.ProcessFieldValuesRequest(ctx, w, r)
+		logsql.ProcessFieldValuesRequest(ctx, w, r, false)
 		logsqlFieldValuesDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/hits":
 		logsqlHitsRequests.Inc()
-		logsql.ProcessHitsRequest(ctx, w, r)
+		logsql.ProcessHitsRequest(ctx, w, r, false)
 		logsqlHitsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/query":
 		logsqlQueryRequests.Inc()
-		logsql.ProcessQueryRequest(ctx, w, r)
+		logsql.ProcessQueryRequest(ctx, w, r, false)
 		logsqlQueryDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/stats_query":
 		logsqlStatsQueryRequests.Inc()
-		logsql.ProcessStatsQueryRequest(ctx, w, r)
+		logsql.ProcessStatsQueryRequest(ctx, w, r, false)
 		logsqlStatsQueryDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/stats_query_range":
 		logsqlStatsQueryRangeRequests.Inc()
-		logsql.ProcessStatsQueryRangeRequest(ctx, w, r)
+		logsql.ProcessStatsQueryRangeRequest(ctx, w, r, false)
 		logsqlStatsQueryRangeDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/stream_field_names":
 		logsqlStreamFieldNamesRequests.Inc()
-		logsql.ProcessStreamFieldNamesRequest(ctx, w, r)
+		logsql.ProcessStreamFieldNamesRequest(ctx, w, r, false)
 		logsqlStreamFieldNamesDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/stream_field_values":
 		logsqlStreamFieldValuesRequests.Inc()
-		logsql.ProcessStreamFieldValuesRequest(ctx, w, r)
+		logsql.ProcessStreamFieldValuesRequest(ctx, w, r, false)
 		logsqlStreamFieldValuesDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/stream_ids":
 		logsqlStreamIDsRequests.Inc()
-		logsql.ProcessStreamIDsRequest(ctx, w, r)
+		logsql.ProcessStreamIDsRequest(ctx, w, r, false)
 		logsqlStreamIDsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/logsql/streams":
 		logsqlStreamsRequests.Inc()
-		logsql.ProcessStreamsRequest(ctx, w, r)
+		logsql.ProcessStreamsRequest(ctx, w, r, false)
 		logsqlStreamsDuration.UpdateDuration(startTime)
 		return true
 	case "/select/tenant_ids":
 		tenantIDsRequests.Inc()
 		logsql.ProcessTenantIDsRequest(ctx, w, r)
 		tenantIDsDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/facets":
+		multitenantLogsqlFacetsRequests.Inc()
+		logsql.ProcessFacetsRequest(ctx, w, r, true)
+		multitenantLogsqlFacetsDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/field_names":
+		multitenantLogsqlFieldNamesRequests.Inc()
+		logsql.ProcessFieldNamesRequest(ctx, w, r, true)
+		multitenantLogsqlFieldNamesDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/field_values":
+		multitenantLogsqlFieldValuesRequests.Inc()
+		logsql.ProcessFieldValuesRequest(ctx, w, r, true)
+		multitenantLogsqlFieldValuesDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/hits":
+		multitenantLogsqlHitsRequests.Inc()
+		logsql.ProcessHitsRequest(ctx, w, r, true)
+		multitenantLogsqlHitsDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/query":
+		multitenantLogsqlQueryRequests.Inc()
+		logsql.ProcessQueryRequest(ctx, w, r, true)
+		multitenantLogsqlQueryDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/stats_query":
+		multitenantLogsqlStatsQueryRequests.Inc()
+		logsql.ProcessStatsQueryRequest(ctx, w, r, true)
+		multitenantLogsqlStatsQueryDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/stats_query_range":
+		multitenantLogsqlStatsQueryRangeRequests.Inc()
+		logsql.ProcessStatsQueryRangeRequest(ctx, w, r, true)
+		multitenantLogsqlStatsQueryRangeDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/stream_field_names":
+		multitenantLogsqlStreamFieldNamesRequests.Inc()
+		logsql.ProcessStreamFieldNamesRequest(ctx, w, r, true)
+		multitenantLogsqlStreamFieldNamesDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/stream_field_values":
+		multitenantLogsqlStreamFieldValuesRequests.Inc()
+		logsql.ProcessStreamFieldValuesRequest(ctx, w, r, true)
+		multitenantLogsqlStreamFieldValuesDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/stream_ids":
+		multitenantLogsqlStreamIDsRequests.Inc()
+		logsql.ProcessStreamIDsRequest(ctx, w, r, true)
+		multitenantLogsqlStreamIDsDuration.UpdateDuration(startTime)
+		return true
+	case "/select/multitenant/logsql/streams":
+		multitenantLogsqlStreamsRequests.Inc()
+		logsql.ProcessStreamsRequest(ctx, w, r, true)
+		multitenantLogsqlStreamsDuration.UpdateDuration(startTime)
 		return true
 	default:
 		return false
@@ -539,6 +607,42 @@ var (
 
 	// no need to track the duration for query_time_range requests, since they are instant
 	logsqlQueryTimeRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/query_time_range"}`)
+
+	multitenantLogsqlFacetsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/facets"}`)
+	multitenantLogsqlFacetsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/facets"}`)
+
+	multitenantLogsqlFieldNamesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/field_names"}`)
+	multitenantLogsqlFieldNamesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/field_names"}`)
+
+	multitenantLogsqlFieldValuesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/field_values"}`)
+	multitenantLogsqlFieldValuesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/field_values"}`)
+
+	multitenantLogsqlHitsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/hits"}`)
+	multitenantLogsqlHitsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/hits"}`)
+
+	multitenantLogsqlQueryRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/query"}`)
+	multitenantLogsqlQueryDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/query"}`)
+
+	multitenantLogsqlStatsQueryRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/stats_query"}`)
+	multitenantLogsqlStatsQueryDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/stats_query"}`)
+
+	multitenantLogsqlStatsQueryRangeRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/stats_query_range"}`)
+	multitenantLogsqlStatsQueryRangeDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/stats_query_range"}`)
+
+	multitenantLogsqlStreamFieldNamesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/stream_field_names"}`)
+	multitenantLogsqlStreamFieldNamesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/stream_field_names"}`)
+
+	multitenantLogsqlStreamFieldValuesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/stream_field_values"}`)
+	multitenantLogsqlStreamFieldValuesDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/stream_field_values"}`)
+
+	multitenantLogsqlStreamIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/stream_ids"}`)
+	multitenantLogsqlStreamIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/stream_ids"}`)
+
+	multitenantLogsqlStreamsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/streams"}`)
+	multitenantLogsqlStreamsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/multitenant/logsql/streams"}`)
+
+	// no need to track duration for tail requests, as they usually take long time
+	multitenantLogsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/multitenant/logsql/tail"}`)
 
 	vmalertRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/vmalert"}`)
 
