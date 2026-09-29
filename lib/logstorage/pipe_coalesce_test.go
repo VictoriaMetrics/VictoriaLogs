@@ -210,13 +210,13 @@ func TestPipeCoalesceUpdateNeededFields(t *testing.T) {
 	// the destination field intersects with the source field
 	f("coalesce(s1, s2) as s1", "*", "", "*", "")
 
-	// all the needed fields, unneded fields do not intersect with source fields
+	// all the needed fields, unneeded fields do not intersect with source fields
 	f("coalesce(s1, s2) as d", "*", "f1,f2", "*", "d,f1,f2")
 
 	// all the needed fields, unneeded fields intersect with the source fields
 	f("coalesce(s1, s2) as d", "*", "s1,f1,f2", "*", "d,f1,f2")
 
-	// all the needed fields, unneded field intersects with the destination
+	// all the needed fields, unneeded field intersects with the destination
 	f("coalesce(s1, s2) as d", "*", "d,f1,f2", "*", "d,f1,f2")
 	f("coalesce(s1, s2) as s1", "*", "s1,f1,f2", "*", "f1,f2,s1")
 

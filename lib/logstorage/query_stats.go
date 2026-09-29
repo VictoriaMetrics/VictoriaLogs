@@ -36,7 +36,7 @@ type QueryStats struct {
 	// RowsFound is the number of rows found by the query.
 	RowsFound uint64
 
-	// ValuesRead is the number of log field values read during query exection.
+	// ValuesRead is the number of log field values read during query execution.
 	ValuesRead uint64
 
 	// TimestampsRead is the number of timestamps read during query execution.
