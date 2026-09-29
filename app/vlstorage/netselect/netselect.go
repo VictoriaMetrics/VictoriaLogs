@@ -143,6 +143,9 @@ func (sn *storageNode) runQuery(qctx *logstorage.QueryContext, processBlock func
 	defer qctx.QueryStats.UpdateAtomic(qsLocal)
 
 	path := "/internal/select/query"
+	if qctx.IsMultiTenant {
+		path += "_multitenant"
+	}
 	responseBody, reqURL, err := sn.getResponseBodyForPathAndArgs(qctx.Context, path, args)
 	if err != nil {
 		return err
@@ -294,6 +297,9 @@ func (sn *storageNode) getCommonArgs(version string, qctx *logstorage.QueryConte
 }
 
 func (sn *storageNode) getValuesWithHits(qctx *logstorage.QueryContext, path string, args url.Values) ([]logstorage.ValueWithHits, error) {
+	if qctx.IsMultiTenant {
+		path += "_multitenant"
+	}
 	data, err := sn.getResponseForPathAndArgs(qctx.Context, path, args)
 	if err != nil {
 		return nil, err
