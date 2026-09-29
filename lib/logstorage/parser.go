@@ -906,7 +906,7 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 
 func addTimeFilter(f filter, start, end, offset int64) filter {
 	// use nanosecond precision for [start, end] time range in order to avoid
-	// automatic adjustment of timestamps for it's string representation.
+	// automatic adjustment of timestamps for its string representation.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/587
 	//
 	// Do not use numeric representation of timestamps, since they are improperly parsed
