@@ -144,12 +144,14 @@ const Table = <T extends object>({
             </TableRow>
 
             {renderExpandedRow && expandedRows.has(rowIndex) && (
-              <tr className="vm-table-row vm-table-row_expanded">
+              <tr className="vm-table-expanded-row">
                 <td
                   className="vm-table-cell vm-table-cell_expanded-content"
                   colSpan={1 + columns.length + (actionsRender ? 1 : 0) + 1}
                 >
-                  {renderExpandedRow(row as T)}
+                  <div className="vm-table__expanded-panel">
+                    {renderExpandedRow(row as T)}
+                  </div>
                 </td>
               </tr>
             )}
