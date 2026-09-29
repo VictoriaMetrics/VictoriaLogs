@@ -267,6 +267,11 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** The number of log entries processed during query execution. This counts all the rows that pass initial filtering for further query processing. High values suggest queries are scanning many rows and may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter). See also [`vl_storage_per_query_processed_blocks`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_processed_blocks).
 
+### vl_storage_per_query_found_rows
+**Type:** Histogram
+
+**Description:** The number of logs found per query. If it is much lower than [`vl_storage_per_query_processed_rows`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_processed_rows), queries scan many logs to find a few of them, so they may need more narrow [time filters](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) or [log stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
+
 ### vl_storage_per_query_read_values
 **Type:** Histogram
 
@@ -281,6 +286,11 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Histogram
 
 **Description:** Uncompressed bytes processed when reading field values during query execution. See also [`vl_storage_per_query_values_read_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_values_read_bytes) and [`vl_storage_per_query_read_values`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_storage_per_query_read_values).
+
+### vl_slow_queries_total
+**Type:** Counter
+
+**Description:** The number of queries logged as slow because they took longer than `-search.logSlowQueryDuration` including the time spent waiting in the queue. In [cluster](https://docs.victoriametrics.com/victorialogs/cluster/) `vlstorage` nodes expose this metric too, which helps finding the slow node.
 
 
 ## Concurrency and Resource Metrics
