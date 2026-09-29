@@ -15,6 +15,7 @@ export interface QueryEditorAutocompleteProps {
   anchorEl: RefObject<HTMLElement>;
   caretPosition: [number, number]; // [start, end]
   onSelect: (val: string, caretPosition: number) => void;
+  onPointerDownDetails: () => void;
 }
 
 export interface QueryEditorProps {
@@ -53,10 +54,12 @@ const QueryEditor: FC<QueryEditorProps> = ({
     setFalse: onBlurred,
   } = useBoolean(false);
 
+  const [autocompleteKey, setAutocompleteKey] = useState(0);
   const [autocompleteDismissed, setAutocompleteDismissed] = useState(false);
   const [caretPositionAutocomplete, setCaretPositionAutocomplete] = useState<[number, number]>([0, 0]);
   const [caretPositionInput, setCaretPositionInput] = useState<[number, number]>([value.length, value.length]);
   const autocompleteAnchorEl = useRef<HTMLDivElement>(null);
+  const pointerDownInDetails = useRef(false);
 
   const executionTimeMs = stats?.executionTimeMs;
   const labelPostfix = executionTimeMs ? ` (${formatRequestDuration(executionTimeMs)})` : "";
@@ -77,8 +80,23 @@ const QueryEditor: FC<QueryEditorProps> = ({
   };
 
   const handleFocus = () => {
+    pointerDownInDetails.current = false;
     onFocused();
     setAutocompleteDismissed(false);
+    setAutocompleteKey(key => key + 1);
+  };
+
+  const handlePointerDownDetails = () => {
+    pointerDownInDetails.current = true;
+  };
+
+  const handleBlur = () => {
+    if (pointerDownInDetails.current) {
+      pointerDownInDetails.current = false;
+      return;
+    }
+
+    onBlurred();
   };
 
   const handleKeyDown = (e: TextFieldKeyboardEvent) => {
@@ -150,15 +168,17 @@ const QueryEditor: FC<QueryEditorProps> = ({
         inputmode={"search"}
         caretPosition={caretPositionInput}
         onFocus={handleFocus}
-        onBlur={onBlurred}
+        onBlur={handleBlur}
         endIcon={<QueryEditorHotkeysTip/>}
       />
       {AutocompleteEl && isShowAutocomplete && isFocused && !autocompleteDismissed && (
         <AutocompleteEl
+          key={autocompleteKey}
           value={value}
           anchorEl={autocompleteAnchorEl}
           caretPosition={caretPositionAutocomplete}
           onSelect={handleSelect}
+          onPointerDownDetails={handlePointerDownDetails}
         />
       )}
     </div>
