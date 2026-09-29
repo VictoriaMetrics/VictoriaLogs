@@ -32,10 +32,6 @@ import { TimeParams } from "../../../../types";
 import { DATE_TIME_FORMAT } from "../../../../constants/date";
 import { useTimeState } from "../../../../state/time/TimeStateContext";
 import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHideChart";
-import {
-  INCREMENTAL_OPTIONS,
-  useIncrementalTimeout
-} from "../../../../pages/QueryPage/HitsPanel/hooks/useIncrementalTimeout";
 
 interface Props {
   query?: string;
@@ -73,7 +69,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
   const [hideChart, setHideChart] = useHideChart();
 
-  const { incrementalTimeoutLabel, setIncrementalTimeout } = useIncrementalTimeout();
 
   const prevPeriodFormatted = useMemo(() => {
     if (!prevPeriod) return;
@@ -178,18 +173,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
             onChange={step.set}
           />
         </div>
-        {isHitsMode && !isOverview && (
-          <Tooltip title="Delay before switching to incremental loading">
-            <div className="vm-bar-hits-options-item">
-              <SelectLimit
-                label="Incremental"
-                limit={incrementalTimeoutLabel}
-                options={INCREMENTAL_OPTIONS}
-                onChange={setIncrementalTimeout}
-              />
-            </div>
-          </Tooltip>
-        )}
         {isHitsMode && (
           <>
             <div className="vm-bar-hits-options-item">
