@@ -424,6 +424,8 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 
+	partitionSnapshotCreateRequests.Inc()
+
 	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
 		return true
 	}
@@ -483,17 +485,21 @@ func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool
 		return false
 	}
 
+	partitionSnapshotDeleteRequests.Inc()
+
 	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
 		return true
 	}
 
 	snapshotPath := r.FormValue("path")
 	if snapshotPath == "" {
+		partitionSnapshotDeleteErrors.Inc()
 		httpserver.Errorf(w, r, "missing `path` query arg")
 		return true
 	}
 
 	if err := localStorage.PartitionSnapshotDelete(snapshotPath); err != nil {
+		partitionSnapshotDeleteErrors.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return true
 	}
@@ -759,6 +765,7 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="indexdb"}`, ss.IndexdbPendingItems)
 
 	metrics.WriteGaugeUint64(w, `vl_partitions`, ss.PartitionsCount)
+	metrics.WriteGaugeUint64(w, `vl_snapshots`, ss.SnapshotsCount)
 	metrics.WriteCounterUint64(w, `vl_streams_created_total`, ss.StreamsCreatedTotal)
 
 	metrics.WriteGaugeUint64(w, `vl_indexdb_rows`, ss.IndexdbItemsCount)
@@ -788,3 +795,10 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 }
 
 var activeForceMerges = metrics.NewCounter("vl_active_force_merges")
+
+var (
+	partitionSnapshotCreateRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/create"}`)
+
+	partitionSnapshotDeleteRequests = metrics.NewCounter(`vl_http_requests_total{path="/internal/partition/snapshot/delete"}`)
+	partitionSnapshotDeleteErrors   = metrics.NewCounter(`vl_http_errors_total{path="/internal/partition/snapshot/delete"}`)
+)

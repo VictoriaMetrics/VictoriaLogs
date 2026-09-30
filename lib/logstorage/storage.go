@@ -35,6 +35,9 @@ type StorageStats struct {
 	// PartitionsCount is the number of partitions in the storage.
 	PartitionsCount uint64
 
+	// SnapshotsCount is the number of partition snapshots in the storage.
+	SnapshotsCount uint64
+
 	// MaxDiskSpaceUsageBytes is the maximum disk space logs can use.
 	MaxDiskSpaceUsageBytes int64
 
@@ -1327,6 +1330,12 @@ func (s *Storage) UpdateStats(ss *StorageStats) {
 		_, ss.MaxTimestamp = pLast.pt.ddb.getMinMaxTimestamps()
 	}
 	s.partitionsLock.Unlock()
+
+	// Count snapshots outside partitionsLock, since reading directories on disk may be slow,
+	// while partitionsLock is used during data ingestion.
+	ptws := s.getPartitions()
+	ss.SnapshotsCount += uint64(len(getSnapshotPaths(ptws)))
+	s.putPartitions(ptws)
 
 	ss.IsReadOnly = s.IsReadOnly()
 }
