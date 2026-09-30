@@ -378,7 +378,7 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
 
 - `POST /delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
   The `<logsql_filter>` may contain arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
-  For example, request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
+  For example, a `POST` request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
   `{app="nginx"}` [log stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
   When calling this endpoint via `curl`, make sure to URL-encode the `{...}` filter (aka [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)),
   otherwise `curl` may strip the curly braces and the filter will fail to parse. For example, `{app=nginx}` becomes `%7Bapp%3Dnginx%7D`, so the full request is:
@@ -402,8 +402,8 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
   - `filter` - the [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters) passed to `/delete/run_task?filter=...`.
   - `start_time` - the start time of the deletion task.
 
-The logs scheduled for the deletion via `/delete/run_task` endpoint main remain visible until the deletion task is complete.
-The deletion task is complete when the `/delete/active_task` endpoint stops returning it.
+The logs scheduled for the deletion via `/delete/run_task` endpoint may remain visible until the deletion task is complete.
+The deletion task is complete when the `/delete/active_tasks` endpoint stops returning it.
 
 After deleting some logs from a [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields),
 the stream may contain empty logs with only `_time`, `_stream` and `_stream_id` fields.
