@@ -128,6 +128,10 @@ publish-release:
 	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish && \
 		git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
 
+publish-release-enterprise:
+	rm -rf bin/*
+	git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
+
 release: \
 	release-victoria-logs \
 	release-vlutils
