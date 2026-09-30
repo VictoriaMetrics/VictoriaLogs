@@ -1,0 +1,50 @@
+@use "src/styles/variables" as *;
+
+.vm-bar-hits-loading-overlay {
+  position: absolute;
+  height: 100%;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        transparent 10%,
+        $color-background-block 50%,
+        transparent 90%
+    );
+    transform: translateY(-100%);
+    animation: bar-hits-shimmer 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      transform: none;
+      opacity: 0.35;
+    }
+  }
+}
+
+@keyframes bar-hits-shimmer {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  20%,
+  75% {
+    opacity: 0.8;
+  }
+
+  90%,
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}

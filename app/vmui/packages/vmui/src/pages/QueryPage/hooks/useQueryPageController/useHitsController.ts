@@ -1,18 +1,10 @@
-import { FetchHitsParams, useFetchHits } from "../useFetchHits";
+import { FetchHitsParams, FetchHitsResult, useFetchHits } from "../useFetchHits";
 
 export const useHitsController = () => {
   const { fetchHits, ...hitsRequestState } = useFetchHits();
 
-  const runHits = async (params: FetchHitsParams): Promise<boolean> => {
-    hitsRequestState.abort();
-
-    try {
-      const isSuccess = await fetchHits(params);
-
-      return Boolean(isSuccess);
-    } catch {
-      return false;
-    }
+  const runHits = async (params: FetchHitsParams): Promise<FetchHitsResult> => {
+    return fetchHits(params);
   };
 
   return {

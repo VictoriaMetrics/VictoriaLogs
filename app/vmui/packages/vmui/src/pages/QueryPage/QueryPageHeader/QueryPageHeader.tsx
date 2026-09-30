@@ -14,6 +14,8 @@ import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
 import { getHistoryFromStorage } from "../../../components/QueryHistory/utils";
 import ExecuteButton from "../../../components/Configurators/ExecutionControls/ExecuteButton/ExecuteButton";
+import Button from "../../../components/Main/Button/Button";
+import { PauseIcon, PlayIcon } from "../../../components/Main/Icons";
 
 interface Props {
   query: string;
@@ -21,9 +23,13 @@ interface Props {
   limit: number;
   error?: string;
   isLoading: boolean;
+  isLoadingHits: boolean;
+  isIterative: boolean;
+  isPaused: boolean;
   onChange: (val: string) => void;
   onChangeLimit: (val: number) => void;
   onRun: (query?: string) => void;
+  onTogglePause: () => void;
 }
 
 const QueryPageHeader: FC<Props> = ({
@@ -32,9 +38,13 @@ const QueryPageHeader: FC<Props> = ({
   limit,
   error,
   isLoading,
+  isLoadingHits,
+  isIterative,
+  isPaused,
   onChange,
   onChangeLimit,
   onRun,
+  onTogglePause,
 }) => {
   const { autocompleteQuick } = useQueryState();
   const setQuickAutocomplete = useQuickAutocomplete();
@@ -101,6 +111,17 @@ const QueryPageHeader: FC<Props> = ({
         <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
         <QueryHistory handleSelectQuery={handleChangeAndRun}/>
+
+        {isIterative && isLoadingHits && (
+          <Button
+            onClick={onTogglePause}
+            color="secondary"
+            startIcon={isPaused ? <PlayIcon /> : <PauseIcon />}
+          >
+            {isPaused ? "Resume" : "Pause"}
+          </Button>
+        )}
+
         <ExecuteButton
           onClick={onRun}
           isLoading={isLoading}

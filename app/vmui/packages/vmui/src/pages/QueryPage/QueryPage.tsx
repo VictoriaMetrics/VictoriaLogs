@@ -114,7 +114,11 @@ const QueryPage: FC = () => {
             onChange={setInputQuery}
             onChangeLimit={setLimit}
             onRun={handleExecuteQuery}
+            onTogglePause={hitsRequestState.togglePause}
             isLoading={isLoading}
+            isLoadingHits={hitsRequestState.isLoading}
+            isPaused={hitsRequestState.isPaused}
+            isIterative={hitsRequestState.isIterative}
           />
           <ExtraFiltersPanel
             extraFilters={extraFilters}
@@ -140,6 +144,7 @@ const QueryPage: FC = () => {
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}
           isLoading={logsRequestState.isLoading}
+          isPending={logsRequestState.isPending}
         />
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "preact/compat";
 import uPlot, { Series } from "uplot";
+import { HitsSeries } from "../types";
 
 type BarsLayout = {
   idx0: number;
@@ -39,6 +40,10 @@ const useBarPaths = () => {
   const barPaths = useCallback((u: uPlot, seriesIdx: number, idx0: number, idx1: number): Series.Paths | null => {
     if (seriesIdx === 0) return null;
 
+    const series = u.series[seriesIdx] as HitsSeries;
+    const isPlaceholderBar = series._isLoading;
+    const placeholderPath = isPlaceholderBar ? new Path2D() : null;
+
     const idx1Excl = idx1 + 1;
 
     ensureBarsLayout(seriesIdx, idx0, idx1Excl);
@@ -51,6 +56,13 @@ const useBarPaths = () => {
       gap: 1,
       size: [1],
       each: (_u, _sidx, idx, left, _top, width) => {
+        placeholderPath?.rect(
+          left,
+          u.bbox.top,
+          width,
+          u.bbox.height,
+        );
+
         const j = idx - layout.idx0;
         if (j < 0 || j >= layout.n) return;
 
@@ -63,7 +75,8 @@ const useBarPaths = () => {
       },
     });
 
-    return builder ? builder(u, seriesIdx, idx0, idx1) : null;
+    const paths = builder ? builder(u, seriesIdx, idx0, idx1) : null;
+    return placeholderPath ? { fill: placeholderPath } : paths;
   }, []);
 
   const getPxRatio = (u: uPlot) => {
@@ -153,7 +166,27 @@ const useBarPaths = () => {
     return findHoverHit(u)?.absIdx ?? -1;
   }, [findHoverHit]);
 
-  return { barPaths, drawHoverBar, getHoverAbsIdxForBars };
+  const getLoadingBarRect = useCallback((u: uPlot) => {
+    const seriesIdx = u.series.findIndex(s => (s as HitsSeries)._isLoading);
+
+    if (seriesIdx === -1 || !u.series[seriesIdx].show) return null;
+
+    const layout = layoutsRef.current.get(seriesIdx);
+    const j = layout?.valid[0];
+
+    if (!layout || j == null) return null;
+
+    const ratio = getPxRatio(u);
+
+    return {
+      x: (layout.lefts[j] - u.bbox.left) / ratio,
+      y: 0,
+      width: layout.widths[j] / ratio,
+      height: u.bbox.height / ratio,
+    };
+  }, []);
+
+  return { barPaths, drawHoverBar, getHoverAbsIdxForBars, getLoadingBarRect };
 };
 
 export default useBarPaths;

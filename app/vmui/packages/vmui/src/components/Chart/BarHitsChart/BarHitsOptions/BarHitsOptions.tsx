@@ -69,6 +69,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
   const [hideChart, setHideChart] = useHideChart();
 
+
   const prevPeriodFormatted = useMemo(() => {
     if (!prevPeriod) return;
 
