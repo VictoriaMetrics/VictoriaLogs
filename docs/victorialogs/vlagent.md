@@ -130,6 +130,9 @@ Override with `-kubernetesCollector.timeField=field1,field2`.
 If none of the `_time` fields are present, `vlagent` uses the timestamp written by the container runtime.
 This is usually accurate to within a millisecond.
 
+`vlagent` also adds the `output_stream` field to every collected log entry.
+It contains the name of the stream the container wrote the log line to: `stdout` or `stderr`.
+
 ### Stream fields
 
 By default, `vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields:
