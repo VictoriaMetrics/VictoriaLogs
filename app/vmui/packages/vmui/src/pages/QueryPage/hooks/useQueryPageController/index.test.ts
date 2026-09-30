@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useQueryPageController } from "./index";
+import type { FetchHitsResult } from "../useFetchHits";
 
 const mocks = vi.hoisted(() => ({
   runHits: vi.fn(),
@@ -30,7 +31,7 @@ const initialHits = {
 const logsTriggers = { isLogsHidden: false, beforeFetch: undefined };
 let baseTriggers = initialBase;
 let hitsTriggers = initialHits;
-let finishHits: ((success: boolean) => void) | undefined;
+let finishHits: ((result: FetchHitsResult) => void) | undefined;
 
 vi.mock("../useQueryPageTriggers/", () => ({
   useBaseTriggers: () => baseTriggers,
@@ -59,10 +60,10 @@ const flushDebounce = async () => {
   });
 };
 
-const completeHits = async () => {
+const completeHits = async (result: FetchHitsResult = "success") => {
   expect(finishHits).toBeDefined();
   await act(async () => {
-    finishHits!(true);
+    finishHits!(result);
     finishHits = undefined;
   });
 };
@@ -77,13 +78,13 @@ describe("useQueryPageController: logs waiting for hits", () => {
     mocks.fetchQueryTime.mockResolvedValue(undefined);
     mocks.runLogs.mockResolvedValue(true);
     mocks.abortHits.mockImplementation(() => {
-      finishHits?.(false);
+      finishHits?.("aborted");
       finishHits = undefined;
     });
     // Match useFetchHits: starting another hits request cancels the previous one.
     mocks.runHits.mockImplementation(() => {
       mocks.abortHits();
-      return new Promise<boolean>(resolve => {
+      return new Promise<FetchHitsResult>(resolve => {
         finishHits = resolve;
       });
     });
@@ -91,7 +92,7 @@ describe("useQueryPageController: logs waiting for hits", () => {
 
   afterEach(() => {
     cleanup();
-    finishHits?.(false);
+    finishHits?.("aborted");
     finishHits = undefined;
     vi.clearAllTimers();
     vi.useRealTimers();
@@ -112,6 +113,38 @@ describe("useQueryPageController: logs waiting for hits", () => {
 
     expect(mocks.runLogs).toHaveBeenCalledTimes(1);
     expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({ query: "*" }));
+  });
+
+  it("loads pending logs after hits fail", async () => {
+    const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+
+    expect(result.current.logsRequestState.isPending).toBe(true);
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+
+    await completeHits("error");
+
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({
+      query: baseTriggers.query,
+      period: baseTriggers.period,
+    }));
+    expect(result.current.logsRequestState.isPending).toBe(false);
+  });
+
+  it("clears pending logs without loading them after cancellation", async () => {
+    const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    expect(result.current.logsRequestState.isPending).toBe(true);
+    mocks.abortHits.mockClear();
+
+    await act(async () => {
+      result.current.cancelAll();
+    });
+
+    expect(mocks.abortHits).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+    expect(result.current.logsRequestState.isPending).toBe(false);
   });
 
   it("preserves loaded logs when only the chart step changes", async () => {

@@ -27,6 +27,8 @@ interface OptionsParams extends FetchHitsParams {
   signal: AbortSignal;
 }
 
+export type FetchHitsResult = "success" | "error" | "aborted";
+
 export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
@@ -75,7 +77,7 @@ export const useFetchHits = () => {
     });
   };
 
-  const fetchHits = useCallback(async (params: FetchHitsParams) => {
+  const fetchHits = useCallback(async (params: FetchHitsParams): Promise<FetchHitsResult> => {
     const queryMode = params.queryMode || GRAPH_QUERY_MODE.hits;
     const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
@@ -120,14 +122,14 @@ export const useFetchHits = () => {
       try {
         const { hits, durationMs } = await fetchFunc(init);
 
-        if (loadController.signal.aborted) return;
+        if (loadController.signal.aborted) return "aborted";
 
         isIterativeRef.current = false;
         setDurationMs(durationMs);
         setLogHits(hits);
-        return true;
+        return "success";
       } catch (error) {
-        if (loadController.signal.aborted) return;
+        if (loadController.signal.aborted) return "aborted";
         const isAbortError = error instanceof Error && error.name === "AbortError";
         if (!firstRequestController.signal.aborted || !isAbortError) {
           // noinspection ExceptionCaughtLocallyJS
@@ -148,18 +150,20 @@ export const useFetchHits = () => {
         },
       });
 
-      return !loadController.signal.aborted;
+      return !loadController.signal.aborted ? "success" : "aborted";
     } catch (error) {
-      if (loadController.signal.aborted) return;
+      if (loadController.signal.aborted) return "aborted";
 
       const isError = error instanceof Error;
-      if (isError && error.name === "AbortError") return;
+      if (isError && error.name === "AbortError") return "aborted";
       setError(isError ? error.message : String(error));
 
       if (!isIterativeRef.current) {
         setLogHits([]);
         setDurationMs(undefined);
       }
+
+      return "error";
     } finally {
       setIsLoading(prev => ({ ...prev, [id]: false }));
       clearTimeout(timeoutId);

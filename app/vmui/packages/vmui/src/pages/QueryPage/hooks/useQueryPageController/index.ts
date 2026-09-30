@@ -191,15 +191,18 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
       resetHits();
 
-      const isHitsSuccess = await runHits({
+      const hitsResult = await runHits({
         ...hitsParams,
         allowIterative: !forceHitsOnce,
       });
 
-      if (!isHitsSuccess) {
-        pendingLogsRef.current === pendingId && updatePendingLogs(null);
-        return;
+      const isAbortedHits = hitsResult === "aborted";
+
+      if (isAbortedHits && pendingLogsRef.current === pendingId) {
+        updatePendingLogs(null);
       }
+
+      if (isAbortedHits) return;
     }
 
     if (pendingLogsRef.current && !isLogsHiddenRef.current) {
