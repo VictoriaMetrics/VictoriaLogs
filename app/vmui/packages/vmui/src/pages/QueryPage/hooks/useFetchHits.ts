@@ -85,10 +85,7 @@ export const useFetchHits = () => {
 
     const loadController = new AbortController();
     const firstRequestController = new AbortController();
-    const firstSignal = AbortSignal.any([
-      firstRequestController.signal,
-      loadController.signal,
-    ]);
+    loadController.signal.addEventListener("abort", () => firstRequestController.abort(), { once: true });
 
     abortControllerRef.current = loadController;
 
@@ -116,7 +113,7 @@ export const useFetchHits = () => {
     updatePaused(false);
 
     try {
-      const options = getOptions({ ...params, signal: firstSignal });
+      const options = getOptions({ ...params, signal: firstRequestController.signal });
       const init = { ...options, url: serverUrl };
 
       try {
