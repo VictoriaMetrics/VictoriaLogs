@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -828,6 +829,7 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 	if !isNumberPrefix(lex.token) {
 		return nil, fmt.Errorf("cannot parse number from %q", lex.token)
 	}
+	isQuoted := lex.isQuotedToken()
 	numStr, err := lex.nextCompoundMathToken()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse number: %w", err)
@@ -835,6 +837,11 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 	f := parseMathNumber(numStr)
 	if math.IsNaN(f) {
 		return nil, fmt.Errorf("cannot parse number from %q", numStr)
+	}
+	if isQuoted {
+		// Keep the quotes, so the number can be parsed again from me.String().
+		// For example, "2025-01-01T00:00:00Z" without quotes is parsed as 2025 - 01 - 01T00:00:00Z.
+		numStr = strconv.Quote(numStr)
 	}
 	me := &mathExpr{
 		isConst:       true,
