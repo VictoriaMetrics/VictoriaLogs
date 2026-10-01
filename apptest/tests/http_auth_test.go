@@ -74,4 +74,12 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 		f(http.MethodPost, baseURL+p.path, http.StatusUnauthorized)
 		f(http.MethodPost, basicAuthURL+p.path, http.StatusOK)
 	}
+
+	// The /delete/* paths must verify -deleteAuthKey before reporting that -delete.enable isn't set.
+	sut = tc.MustStartVlsingle("vlsingle-delete-disabled", []string{
+		"-deleteAuthKey=delete-key",
+	})
+	baseURL = "http://" + sut.HTTPAddr()
+	f(http.MethodPost, baseURL+"/delete/active_tasks", http.StatusUnauthorized)
+	f(http.MethodPost, baseURL+"/delete/active_tasks?authKey=delete-key", http.StatusBadRequest)
 }
