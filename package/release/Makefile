@@ -1,6 +1,14 @@
 GITHUB_RELEASE_SPEC_FILE="/tmp/vm-github-release"
 GITHUB_DEBUG_FILE="/tmp/vm-github-debug"
 
+# The commit for the release tag, which GitHub creates when the release is published, if the tag doesn't exist yet.
+# Set it for enterprise-only releases such as LTS releases, since they have no tag in the public repository.
+# GitHub creates the tag at the master HEAD if it is empty.
+GITHUB_RELEASE_TARGET_COMMITISH ?=
+ifneq ($(GITHUB_RELEASE_TARGET_COMMITISH),)
+GITHUB_RELEASE_TARGET_COMMITISH_ARG := "target_commitish":"$(GITHUB_RELEASE_TARGET_COMMITISH)",
+endif
+
 github-token-check:
 ifndef GITHUB_TOKEN
 	$(error missing GITHUB_TOKEN env var. It must contain github token for VictoriaMetrics project obtained from https://github.com/settings/tokens)
@@ -17,7 +25,7 @@ github-create-release: github-token-check github-tag-check
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: token $(GITHUB_TOKEN)" \
 		https://api.github.com/repos/VictoriaMetrics/VictoriaLogs/releases \
-		-d '{"tag_name":"$(TAG)","name":"$(TAG)","body":"TODO: put here the changelog for $(TAG) release from docs/CHANGELOG.md","draft":true,"prerelease":false,"generate_release_notes":false}'); \
+		-d '{"tag_name":"$(TAG)",$(GITHUB_RELEASE_TARGET_COMMITISH_ARG)"name":"$(TAG)","body":"TODO: put here the changelog for $(TAG) release from docs/CHANGELOG.md","draft":true,"prerelease":false,"generate_release_notes":false}'); \
 		if [ $${result} = 201 ]; then \
 			release_id=$$(cat $(GITHUB_RELEASE_SPEC_FILE) | grep '"id"' -m 1 | sed -E 's/.* ([[:digit:]]+)\,/\1/'); \
 			printf "Created release $(TAG) with id=$${release_id}\n"; \
