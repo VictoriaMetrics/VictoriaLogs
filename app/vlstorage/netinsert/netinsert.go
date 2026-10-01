@@ -24,6 +24,9 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
+// the maximum duration for a single request to a storage node.
+const sendTimeout = time.Minute
+
 // the maximum size of a single data block sent to storage node.
 const maxInsertBlockSize = 2 * 1024 * 1024
 
@@ -81,9 +84,16 @@ type storageNode struct {
 
 	// isReachable is set to true if the given storageNode is available for data writing.
 	isReachable atomic.Bool
+
+	// concurrencyCh limits the number of concurrent in-flight insert requests to addr.
+	// When it is full, the data is re-routed to less busy storage nodes.
+	concurrencyCh chan struct{}
+
+	// concurrencyLimitReached counts insert requests rejected because concurrencyCh is full.
+	concurrencyLimitReached *metrics.Counter
 }
 
-func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *storageNode {
+func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool, concurrency int) *storageNode {
 	tr := httputil.NewTransport(false, "vlinsert_backend")
 	tr.TLSHandshakeTimeout = 20 * time.Second
 	tr.DisableCompression = true
@@ -104,12 +114,17 @@ func newStorageNode(s *Storage, addr string, ac *promauth.Config, isTLS bool) *s
 		s:      s,
 		c: &http.Client{
 			Transport: ac.NewRoundTripper(tr),
+			Timeout:   sendTimeout,
 		},
 		ac: ac,
 
 		sendErrors: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_insert_remote_send_errors_total{addr=%q}`, addr)),
 
 		pendingData: &bytesutil.ByteBuffer{},
+
+		concurrencyCh: make(chan struct{}, concurrency),
+
+		concurrencyLimitReached: metrics.GetOrCreateCounter(fmt.Sprintf(`vl_insert_remote_concurrency_limit_reached_total{addr=%q}`, addr)),
 	}
 
 	sn.isReachable.Store(true)
@@ -214,17 +229,17 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 		return
 	}
 
-	if !errors.Is(err, errTemporarilyDisabled) {
+	if !errors.Is(err, errTemporarilyDisabled) && !errors.Is(err, errConcurrencyLimitReached) {
 		logger.Warnf("%s; re-routing the data block to the remaining nodes", err)
 	}
 	for !sn.s.sendInsertRequestToAnyNode(pendingData) {
-		logger.Errorf("cannot send pending data to storage nodes, since all of them are unavailable; re-trying to send the data in a second")
+		logger.Errorf("cannot send pending data to storage nodes, since all of them are unavailable or overloaded; re-trying to send the data in a second")
 
 		t := timerpool.Get(time.Second)
 		select {
 		case <-sn.s.sendCtx.Done():
 			timerpool.Put(t)
-			logger.Errorf("dropping %d bytes of data, since there are no available storage nodes", pendingData.Len())
+			logger.Errorf("dropping %d bytes of data, since all storage nodes are unavailable or overloaded", pendingData.Len())
 			return
 		case <-t.C:
 			timerpool.Put(t)
@@ -243,6 +258,16 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 		sn.sendErrors.Inc()
 		return errTemporarilyDisabled
 	}
+
+	select {
+	case sn.concurrencyCh <- struct{}{}:
+	default:
+		sn.concurrencyLimitReached.Inc()
+		return errConcurrencyLimitReached
+	}
+	defer func() {
+		<-sn.concurrencyCh
+	}()
 
 	var body io.Reader
 	if !sn.s.disableCompression {
@@ -320,7 +345,7 @@ var zstdBufPool bytesutil.ByteBufferPool
 
 // NewStorage returns new Storage for the given addrs with the given authCfgs.
 //
-// The concurrency is the average number of concurrent connections per every addr.
+// The concurrency limits the number of concurrent insert requests sent to every addr.
 //
 // If disableCompression is set, then the data is sent uncompressed to the remote storage.
 //
@@ -341,7 +366,7 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 
 	sns := make([]*storageNode, len(addrs))
 	for i, addr := range addrs {
-		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i])
+		sns[i] = newStorageNode(s, addr, authCfgs[i], isTLSs[i], concurrency)
 	}
 	s.sns = sns
 
@@ -395,13 +420,13 @@ func (s *Storage) AddRow(streamHash uint64, r *logstorage.InsertRow) {
 	sn.addRow(r)
 }
 
-// sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable.
+// sendInsertRequestToAnyNode controls the rerouting logic when storage node is unavailable or overloaded.
 func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) bool {
 	// collect available storage node indexes
 	availableIdx := make([]int, 0, len(s.sns))
 	currentTime := fasttime.UnixTimestamp()
 	for idx, sn := range s.sns {
-		if sn.disabledUntil.Load() <= currentTime {
+		if sn.disabledUntil.Load() <= currentTime && len(sn.concurrencyCh) < cap(sn.concurrencyCh) {
 			availableIdx = append(availableIdx, idx)
 		}
 	}
@@ -415,7 +440,7 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 		if err == nil {
 			return true
 		}
-		if !errors.Is(err, errTemporarilyDisabled) {
+		if !errors.Is(err, errTemporarilyDisabled) && !errors.Is(err, errConcurrencyLimitReached) {
 			logger.Warnf("cannot send pending data to the storage node %q: %s; trying to send it to another storage node", sn.addr, err)
 		}
 	}
@@ -423,6 +448,8 @@ func (s *Storage) sendInsertRequestToAnyNode(pendingData *bytesutil.ByteBuffer) 
 }
 
 var errTemporarilyDisabled = fmt.Errorf("writing to the node is temporarily disabled")
+
+var errConcurrencyLimitReached = fmt.Errorf("the node has too many in-flight insert requests")
 
 type streamRowsTracker struct {
 	mu sync.Mutex
