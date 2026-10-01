@@ -23,6 +23,10 @@ according to the following docs:
 
 ## tip
 
+## [v1.53.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.53.0)
+
+Released at 2026-10-01
+
 **Update note 1:** the `/internal/force_merge`, `/internal/force_flush`, `/internal/log_new_streams` and `/internal/partition/*` HTTP endpoints now require the `POST` method for security reasons, in order to prevent GET-based [SSRF](https://en.wikipedia.org/wiki/Server-side_request_forgery) attacks. Update any scripts or automation calling these endpoints via `GET` to use `POST`. See [#1635](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1635).
 
 **Update note 2:** requests to `/select/vmalert/-/reload` and other `/select/vmalert/*` paths ending with `/config` or `/reload` now require the `-httpAuth.*` credentials for security reasons. Previously, such requests were proxied to vmalert without checking the credentials. Add the credentials to any scripts calling these paths. See [VictoriaMetrics#11548](https://github.com/VictoriaMetrics/VictoriaMetrics/pull/11548).
