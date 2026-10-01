@@ -410,7 +410,7 @@ the stream may contain empty logs with only `_time`, `_stream` and `_stream_id` 
 These empty logs are shown in queries that use only a [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter), such as `{app="nginx"}`.
 Add `-_msg:""` to hide them, for example `{app="nginx"} -_msg:""`.
 
-The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey`{{% available_from "#" %}} command-line flag.
+The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey`{{% available_from "v1.53.0" %}} command-line flag.
 When it is set, every request to `/delete/*` must pass the matching `authKey` query arg, which overrides `-httpAuth.*`. For example:
 
 ```bash
