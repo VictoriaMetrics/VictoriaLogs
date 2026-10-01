@@ -1,8 +1,10 @@
 GITHUB_RELEASE_SPEC_FILE="/tmp/vm-github-release"
 GITHUB_DEBUG_FILE="/tmp/vm-github-debug"
 
-# LTS releases have only the -enterprise tag, so GitHub creates the release tag when the release is published.
-# GitHub creates the tag at the master HEAD by default. Set BASE_TAG=v1.XX.0 for v1.XX.x LTS releases in order to create the tag at v1.XX.0.
+# The public repository has no tags for LTS releases, since they are released from the enterprise repository.
+# So GitHub creates the tag at the master HEAD when the release is published.
+# Then GitHub shows the LTS tag on commits with new features, which aren't included in LTS releases, and this confuses users.
+# Set BASE_TAG=v1.XX.0 for LTS releases, so the tag is created at v1.XX.0 instead.
 BASE_TAG ?= $(TAG)
 
 github-token-check:
@@ -35,7 +37,7 @@ github-upload-assets:
 	@release_id=$$(cat $(GITHUB_RELEASE_SPEC_FILE) | grep '"id"' -m 1 | sed -E 's/.* ([[:digit:]]+)\,/\1/'); \
 	$(foreach file, $(wildcard bin/*.zip), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="application/zip" $(MAKE) github-upload-asset || exit 1;) \
 	$(foreach file, $(wildcard bin/*.tar.gz), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="application/x-gzip" $(MAKE) github-upload-asset || exit 1;) \
-	$(foreach file, $(wildcard bin/*_checksums.txt), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="text/plain" $(MAKE) github-upload-asset || exit 1;) 
+	$(foreach file, $(wildcard bin/*_checksums.txt), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="text/plain" $(MAKE) github-upload-asset || exit 1;)
 
 github-upload-asset: github-token-check
 ifndef FILE
