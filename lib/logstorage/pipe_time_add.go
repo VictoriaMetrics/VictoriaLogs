@@ -39,6 +39,10 @@ func (pa *pipeTimeAdd) canReturnLastNResults() bool {
 	return true
 }
 
+func (pa *pipeTimeAdd) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pa *pipeTimeAdd) isFixedOutputFieldsOrder() bool {
 	return false
 }

@@ -29,6 +29,10 @@ func (pf *pipeFirst) canReturnLastNResults() bool {
 	return false
 }
 
+func (pf *pipeFirst) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pf *pipeFirst) isFixedOutputFieldsOrder() bool {
 	return false
 }

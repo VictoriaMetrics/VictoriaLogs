@@ -34,6 +34,10 @@ func (po *pipeOffset) canReturnLastNResults() bool {
 	return false
 }
 
+func (po *pipeOffset) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (po *pipeOffset) isFixedOutputFieldsOrder() bool {
 	return false
 }

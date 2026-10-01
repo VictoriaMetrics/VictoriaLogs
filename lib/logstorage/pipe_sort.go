@@ -93,6 +93,10 @@ func (ps *pipeSort) canReturnLastNResults() bool {
 	return false
 }
 
+func (ps *pipeSort) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (ps *pipeSort) isFixedOutputFieldsOrder() bool {
 	return false
 }

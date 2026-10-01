@@ -65,6 +65,10 @@ func (pu *pipeUniq) canReturnLastNResults() bool {
 	return false
 }
 
+func (pu *pipeUniq) isOneToOneRowLocalTransform() bool {
+	return false
+}
+
 func (pu *pipeUniq) isFixedOutputFieldsOrder() bool {
 	return true
 }

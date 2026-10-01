@@ -47,6 +47,10 @@ func (ps *pipeSplit) canReturnLastNResults() bool {
 	return ps.dstField != "_time"
 }
 
+func (ps *pipeSplit) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (ps *pipeSplit) isFixedOutputFieldsOrder() bool {
 	return false
 }

@@ -70,6 +70,10 @@ func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
 	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
+func (pu *pipeUnpackJSON) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pu *pipeUnpackJSON) isFixedOutputFieldsOrder() bool {
 	return false
 }

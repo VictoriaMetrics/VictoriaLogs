@@ -40,6 +40,10 @@ func (pp *pipePackLogfmt) canReturnLastNResults() bool {
 	return pp.resultField != "_time"
 }
 
+func (pp *pipePackLogfmt) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pp *pipePackLogfmt) isFixedOutputFieldsOrder() bool {
 	return false
 }

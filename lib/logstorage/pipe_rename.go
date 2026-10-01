@@ -51,6 +51,10 @@ func (pr *pipeRename) canReturnLastNResults() bool {
 	return true
 }
 
+func (pr *pipeRename) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pr *pipeRename) isFixedOutputFieldsOrder() bool {
 	return false
 }

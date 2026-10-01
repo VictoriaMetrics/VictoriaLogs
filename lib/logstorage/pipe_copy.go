@@ -45,6 +45,10 @@ func (pc *pipeCopy) canReturnLastNResults() bool {
 	return !prefixfilter.MatchFilters(pc.dstFieldFilters, "_time")
 }
 
+func (pc *pipeCopy) isOneToOneRowLocalTransform() bool {
+	return true
+}
+
 func (pc *pipeCopy) isFixedOutputFieldsOrder() bool {
 	return false
 }
