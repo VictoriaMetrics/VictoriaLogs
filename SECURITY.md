@@ -7,6 +7,7 @@ The following versions of VictoriaLogs receive regular security fixes:
 | Version | Supported          |
 |---------|--------------------|
 | [latest release](https://docs.victoriametrics.com/victorialogs/changelog/) | :white_check_mark: |
+| v1.52.x [LTS line](https://docs.victoriametrics.com/victoriametrics/lts-releases/) of [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) | :white_check_mark: |
 | other releases  | :x:                |
 
 See [this page](https://victoriametrics.com/security/)
