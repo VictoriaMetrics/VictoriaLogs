@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 	"github.com/VictoriaMetrics/metrics"
@@ -72,7 +71,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	}
 
 	debug := false
-	if dv := httputil.GetRequestValue(r, "debug", "VL-Debug"); dv != "" {
+	if dv := GetQueryArgOrHeader(r, "debug", "VL-Debug"); dv != "" {
 		debug, err = strconv.ParseBool(dv)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse debug=%q: %w", dv, err)
@@ -81,7 +80,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	debugRequestURI := ""
 	debugRemoteAddr := ""
 	if debug {
-		debugRequestURI = httpserver.GetRequestURI(r)
+		debugRequestURI = r.RequestURI
 		debugRemoteAddr = httpserver.GetQuotedRemoteAddr(r)
 	}
 
@@ -125,8 +124,22 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 }
 
 func getArray(r *http.Request, argKey, headerKey string) []string {
-	a := httputil.GetArray(r, argKey, headerKey)
-	return removeEmptyTokens(a)
+	v := GetQueryArgOrHeader(r, argKey, headerKey)
+	if v == "" {
+		return nil
+	}
+	return removeEmptyTokens(strings.Split(v, ","))
+}
+
+// GetQueryArgOrHeader returns the value of the given argKey query arg or the given headerKey header from r.
+//
+// The query arg is read only from the request URL, since the request body contains the ingested logs.
+func GetQueryArgOrHeader(r *http.Request, argKey, headerKey string) string {
+	v := r.URL.Query().Get(argKey)
+	if v == "" {
+		v = r.Header.Get(headerKey)
+	}
+	return v
 }
 
 func removeEmptyTokens(a []string) []string {
