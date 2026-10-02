@@ -33,8 +33,9 @@ type hashTokenizer struct {
 	buckets [hashTokenizerBucketsCount]hashTokenizerBucket
 	bm      bitmap
 
-	// masks is a scratch buffer for tokenizeStringSIMD.
-	masks []uint64
+	// hashTokenizerSIMDState holds scratch buffers for tokenizeStringSIMD.
+	// It is empty if SIMD isn't available in this build.
+	hashTokenizerSIMDState
 }
 
 type hashTokenizerBucket struct {

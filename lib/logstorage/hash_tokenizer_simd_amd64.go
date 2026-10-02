@@ -9,6 +9,12 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 )
 
+// hashTokenizerSIMDState holds scratch buffers for tokenizeStringSIMD.
+type hashTokenizerSIMDState struct {
+	// masks holds token char masks for the string being tokenized.
+	masks []uint64
+}
+
 // tokenizeStringSIMD tokenizes ASCII strings in two passes:
 //
 //  1. Every 64 bytes of s are classified with SIMD instructions into a uint64,
