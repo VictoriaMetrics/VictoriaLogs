@@ -37,7 +37,10 @@ func TestTokenizeHashesSIMD(t *testing.T) {
 
 	inputs = append(inputs, strings.Split(benchLogs, "\n"))
 
-	modes := []int{hashTokenizerSIMD128}
+	var modes []int
+	if archsimd.X86.AVX() {
+		modes = append(modes, hashTokenizerSIMD128)
+	}
 	if archsimd.X86.AVX512VBMI() {
 		modes = append(modes, hashTokenizerSIMD512)
 	}
@@ -72,7 +75,9 @@ func BenchmarkTokenizeHashesSIMD(b *testing.B) {
 	}
 
 	f("off", hashTokenizerSIMDOff)
-	f("128", hashTokenizerSIMD128)
+	if archsimd.X86.AVX() {
+		f("128", hashTokenizerSIMD128)
+	}
 	if archsimd.X86.AVX512VBMI() {
 		f("512", hashTokenizerSIMD512)
 	}
