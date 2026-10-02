@@ -16,8 +16,9 @@ import (
 //  2. m ^ (m<<1) has a bit set at every token start and at every token end,
 //     so token boundaries are obtained by walking its set bits with bits.TrailingZeros64.
 //
-// It returns false if s contains non-ASCII chars or if SIMD isn't supported by the CPU.
-// In this case s must be tokenized by the scalar code.
+// Strings with non-ASCII chars are tokenized by tokenizeStringUnicode.
+//
+// It returns false if SIMD isn't supported by the CPU. In this case s must be tokenized by the scalar code.
 func (t *hashTokenizer) tokenizeStringSIMD(dst []uint64, s string) ([]uint64, bool) {
 	b := bytesutil.ToUnsafeBytes(s)
 	var ok bool
@@ -30,7 +31,8 @@ func (t *hashTokenizer) tokenizeStringSIMD(dst []uint64, s string) ([]uint64, bo
 		return dst, false
 	}
 	if !ok {
-		return dst, false
+		// s contains non-ASCII chars, which have been already detected, so there is no need in isASCII check.
+		return t.tokenizeStringUnicode(dst, s), true
 	}
 	return t.tokenizeMasks(dst, s, t.masks), true
 }
@@ -111,7 +113,7 @@ func init() {
 
 // appendTokenMasks512 appends token char masks for b to masks and returns the result.
 //
-// It returns false if b contains non-ASCII chars.
+// It returns false as soon as a non-ASCII char is found in b.
 //
 // Every 64 bytes are classified with a single VPERMI2B, which looks up the lower 7 bits of every byte
 // in simdTokenCharTable held in two 512-bit registers.
@@ -120,19 +122,20 @@ func appendTokenMasks512(masks []uint64, b []byte) ([]uint64, bool) {
 	hi := archsimd.LoadUint8x64Array((*[64]uint8)(simdTokenCharTable[64:]))
 	var zero archsimd.Uint8x64
 	var zeroInt archsimd.Int8x64
-	var nonASCII uint64
 	for len(b) > 0 {
 		v, n := archsimd.LoadUint8x64Part(b)
-		nonASCII |= v.AsInt8x64().Less(zeroInt).ToBits()
+		if v.AsInt8x64().Less(zeroInt).ToBits() != 0 {
+			return masks, false
+		}
 		masks = append(masks, lo.ConcatPermute(hi, v).NotEqual(zero).ToBits())
 		b = b[n:]
 	}
-	return masks, nonASCII == 0
+	return masks, true
 }
 
 // appendTokenMasks128 appends token char masks for b to masks and returns the result.
 //
-// It returns false if b contains non-ASCII chars.
+// It returns false as soon as a non-ASCII char is found in b. Non-ASCII chars are checked once per 64 bytes.
 //
 // Every 16 bytes are classified with two PSHUFB lookups - one per nibble. Four steps fill a single uint64 mask.
 func appendTokenMasks128(masks []uint64, b []byte) ([]uint64, bool) {
@@ -154,9 +157,12 @@ func appendTokenMasks128(masks []uint64, b []byte) ([]uint64, bool) {
 			nonASCII |= zeroInt.Greater(v.AsInt8x16()).ToBits()
 			b = b[n:]
 		}
+		if nonASCII != 0 {
+			return masks, false
+		}
 		masks = append(masks, m)
 	}
-	return masks, nonASCII == 0
+	return masks, true
 }
 
 // tokenizeMasks registers tokens from s according to the token char masks for s.
