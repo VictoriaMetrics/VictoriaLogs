@@ -86,7 +86,7 @@ Released at 2026-10-01
 
 Released at 2026-10-02
 
-**v1.52.x is a line of [LTS releases](https://docs.victoriametrics.com/victoriametrics/lts-releases/). It contains important up-to-date bugfixes for [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+**v1.52.x is a line of [LTS releases](https://docs.victoriametrics.com/victorialogs/lts-releases/). It contains important up-to-date bugfixes for [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
 All these fixes are also included in [the latest community release](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest).
 The v1.52.x line will be supported for at least 12 months since [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0) release**
 
