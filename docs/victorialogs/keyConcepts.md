@@ -58,6 +58,10 @@ since they have only one identical non-empty field - [`_msg`](https://docs.victo
 }
 ```
 
+If a log entry contains multiple fields with the same name, then only the first field with non-empty value is stored,
+while the rest of the fields with this name are dropped.
+The same value is used for the corresponding stream field if the field name is included in the stream fields.
+
 VictoriaLogs automatically transforms multi-level JSON (aka nested JSON) into single-level JSON
 during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/) according to the following rules:
 
