@@ -257,6 +257,41 @@ func TestPipeTotalStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	// timestamps with a different number of digits after the decimal point
+	f("total_stats first(a) as first_a, last(a) as last_a", [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"a", "middle"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "first"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"a", "last"},
+		},
+	}, [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "first"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.990844Z"},
+			{"a", "middle"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.999324Z"},
+			{"a", "last"},
+			{"first_a", "first"},
+			{"last_a", "last"},
+		},
+	})
 }
 
 func TestPipeTotalStatsUpdateNeededFields(t *testing.T) {
@@ -293,18 +328,18 @@ func TestPipeTotalStatsUpdateNeededFields(t *testing.T) {
 	f("total_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "*", "r1,r3", "*", "r1,r2,r3")
 
 	// needed fields do not intersect with stats fields
-	f("total_stats count() r1", "r2", "", "r2", "")
-	f("total_stats count(*) r1", "r2", "", "r2", "")
-	f("total_stats count(f1,f2) r1", "r2", "", "r2", "")
-	f("total_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "r3", "")
-	f("total_stats by (b1,b2) count(f1,f2) r1", "r2", "", "b1,b2,r2", "")
-	f("total_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "b1,b2,r3", "")
+	f("total_stats count() r1", "r2", "", "_time,r2", "")
+	f("total_stats count(*) r1", "r2", "", "_time,r2", "")
+	f("total_stats count(f1,f2) r1", "r2", "", "_time,r2", "")
+	f("total_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "_time,r3", "")
+	f("total_stats by (b1,b2) count(f1,f2) r1", "r2", "", "_time,b1,b2,r2", "")
+	f("total_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "_time,b1,b2,r3", "")
 
 	// needed fields intersect with stats fields
-	f("total_stats count() r1", "r1,r2", "", "r2", "")
-	f("total_stats count(*) r1", "r1,r2", "", "r2", "")
-	f("total_stats count(f1,f2) r1", "r1,r2", "", "f1,f2,r2", "")
-	f("total_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "f1,f2,r3", "")
-	f("total_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "b1,b2,f1,f2,r2", "")
-	f("total_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "b1,b2,f1,f2,r3", "")
+	f("total_stats count() r1", "r1,r2", "", "_time,r2", "")
+	f("total_stats count(*) r1", "r1,r2", "", "_time,r2", "")
+	f("total_stats count(f1,f2) r1", "r1,r2", "", "_time,f1,f2,r2", "")
+	f("total_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "_time,f1,f2,r3", "")
+	f("total_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "_time,b1,b2,f1,f2,r2", "")
+	f("total_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "_time,b1,b2,f1,f2,r3", "")
 }

@@ -103,8 +103,11 @@ func (ps *pipeRunningStats) isFixedOutputFieldsOrder() bool {
 }
 
 func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
-	pfOrig := pf.Clone()
+	if pf.MatchNothing() {
+		return
+	}
 
+	pfOrig := pf.Clone()
 	for _, f := range ps.funcs {
 		pf.AddDenyFilter(f.resultName)
 		if pfOrig.MatchString(f.resultName) {
@@ -112,7 +115,10 @@ func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
 		}
 	}
 
-	// byFields are needed unconditionally, since the output depends on them.
+	// The _time field is needed when the caller needs output fields, since running stats depend on row order.
+	pf.AddAllowFilter("_time")
+
+	// byFields are needed when the caller needs output fields, since the output depends on them.
 	for _, bf := range ps.byFields {
 		pf.AddAllowFilter(bf)
 	}
@@ -159,9 +165,21 @@ type pipeRunningStatsProcessor struct {
 	stateSizeBudget atomic.Int64
 }
 
+type pipeRunningStatsRow struct {
+	fields       []Field
+	timestampStr string
+	timestamp    int64
+	isTime       bool
+}
+
+const (
+	pipeRunningStatsRowSize    = int(unsafe.Sizeof(pipeRunningStatsRow{}))
+	pipeRunningStatsRowPtrSize = int(unsafe.Sizeof((*pipeRunningStatsRow)(nil)))
+)
+
 type pipeRunningStatsProcessorShard struct {
 	// rows tracks all the rows collected by the shard.
-	rows [][]Field
+	rows []pipeRunningStatsRow
 
 	columnValues [][]string
 
@@ -170,6 +188,10 @@ type pipeRunningStatsProcessorShard struct {
 
 func (shard *pipeRunningStatsProcessorShard) writeBlock(br *blockResult) {
 	cs := br.getColumns()
+	var timestamps []int64
+	if br.getColumnByName("_time").isTime {
+		timestamps = br.getTimestamps()
+	}
 
 	columnValues := slicesutil.SetLength(shard.columnValues, len(cs))
 	for i, c := range cs {
@@ -181,17 +203,33 @@ func (shard *pipeRunningStatsProcessorShard) writeBlock(br *blockResult) {
 		fields := make([]Field, len(cs))
 		shard.stateSizeBudget -= int(unsafe.Sizeof(fields[0])) * len(fields)
 
+		timestamp := ""
 		for j, c := range cs {
 			v := columnValues[j][rowIdx]
+			vCopy := strings.Clone(v)
 			fields[j] = Field{
 				Name:  strings.Clone(c.name),
-				Value: strings.Clone(v),
+				Value: vCopy,
 			}
 			shard.stateSizeBudget -= len(c.name) + len(v)
+			if c.name == "_time" {
+				timestamp = vCopy
+			}
 		}
 
-		shard.rows = append(shard.rows, fields)
-		shard.stateSizeBudget -= int(unsafe.Sizeof(fields))
+		row := pipeRunningStatsRow{
+			timestampStr: timestamp,
+			fields:       fields,
+		}
+		if timestamps != nil {
+			row.timestamp = timestamps[rowIdx]
+			row.isTime = true
+		} else {
+			row.timestamp, row.isTime = TryParseTimestampRFC3339Nano(timestamp)
+		}
+		shard.rows = append(shard.rows, row)
+		// Account for row metadata and the pointer added during flush.
+		shard.stateSizeBudget -= pipeRunningStatsRowSize + pipeRunningStatsRowPtrSize
 	}
 }
 
@@ -233,25 +271,17 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 		return string(key)
 	}
 
-	type rowWithTimestamp struct {
-		timestamp string
-		fields    []Field
-	}
-
-	m := make(map[string][]rowWithTimestamp)
+	m := make(map[string][]*pipeRunningStatsRow)
 	shards := psp.shards.All()
 	for _, shard := range shards {
-		for _, row := range shard.rows {
+		for i := range shard.rows {
 			if needStop(psp.stopCh) {
 				return nil
 			}
 
-			key := getKeyForRow(row)
-			timestamp := getFieldValueByName(row, "_time")
-			m[key] = append(m[key], rowWithTimestamp{
-				timestamp: timestamp,
-				fields:    row,
-			})
+			row := &shard.rows[i]
+			key := getKeyForRow(row.fields)
+			m[key] = append(m[key], row)
 		}
 	}
 
@@ -271,7 +301,7 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	for _, key := range keys {
 		rows := m[key]
 		sort.Slice(rows, func(i, j int) bool {
-			return rows[i].timestamp < rows[j].timestamp
+			return lessRunningStatsRow(rows[i], rows[j])
 		})
 
 		if needStop(psp.stopCh) {
@@ -312,6 +342,16 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	wctx.flush()
 
 	return nil
+}
+
+func lessRunningStatsRow(a, b *pipeRunningStatsRow) bool {
+	if a.isTime != b.isTime {
+		return a.isTime
+	}
+	if a.isTime && a.timestamp != b.timestamp {
+		return a.timestamp < b.timestamp
+	}
+	return a.timestampStr < b.timestampStr
 }
 
 type pipeRunningStatsWriter struct {
