@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): fix the `Drilldown` links in the `Persistent queue size`, `RSS memory % usage`, `CPU % usage` and `Disk writes/reads` panels. Previously, these links opened the vmagent dashboard, and the opened panels showed no data because the selected datasource, `job` and `instance` were passed incorrectly. See [#1826](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1826).
+
 ## [v1.53.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.53.0)
 
 Released at 2026-10-01
