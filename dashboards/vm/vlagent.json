@@ -988,7 +988,7 @@
             {
               "targetBlank": true,
               "title": "Drilldown",
-              "url": "/d/Y5Z9GzMGz_vm?viewPanel=125&var-url=${__field.labels.url}&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
+              "url": "/d/${__dashboard.uid}?viewPanel=125&var-url=${__field.labels.url}&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
             }
           ],
           "mappings": [],
@@ -1616,7 +1616,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/Y5Z9GzMGz_vm?viewPanel=117&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=117&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
@@ -1726,7 +1726,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/Y5Z9GzMGz_vm?viewPanel=119&var-instance=${__field.labels.instance}&${DS_PROMETHEUS:queryparam}&${job:queryparam}&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=119&var-instance=${__field.labels.instance}&${DS_PROMETHEUS:queryparam}&${job:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
@@ -2180,7 +2180,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/Y5Z9GzMGz_vm?viewPanel=121&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=121&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
