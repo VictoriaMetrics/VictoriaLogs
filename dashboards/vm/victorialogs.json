@@ -69,14 +69,10 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
+        "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
         "hide": true,
         "iconColor": "blue",
         "name": "version change",
-        "target": {
-          "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "{{short_version}}",
         "titleFormat": "Version change"
       },
@@ -86,14 +82,10 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
+        "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(instance)",
         "hide": false,
         "iconColor": "orange",
         "name": "restarts",
-        "target": {
-          "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(instance)",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "{{instance}} restarted"
       },
       {
@@ -102,6 +94,7 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": false,
+        "expr": "go_memstats_last_gc_time_seconds{job=~\"$job\", instance=~\"$instance\"} * 1000",
         "filter": {
           "exclude": false,
           "ids": [
@@ -111,11 +104,6 @@
         "hide": false,
         "iconColor": "#57f26d1c",
         "name": "gc",
-        "target": {
-          "expr": "go_memstats_last_gc_time_seconds{job=~\"$job\", instance=~\"$instance\"} * 1000",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "GC event",
         "useValueForTime": true
       }
