@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bufferedwriter"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
@@ -1031,7 +1032,10 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
-	WriteStatsQueryRangeResponse(w, rows)
+	bw := bufferedwriter.Get(w)
+	defer bufferedwriter.Put(bw)
+	WriteStatsQueryRangeResponse(bw, rows)
+	_ = bw.Flush()
 }
 
 type statsSeries struct {
@@ -1154,7 +1158,10 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
-	WriteStatsQueryResponse(w, rows)
+	bw := bufferedwriter.Get(w)
+	defer bufferedwriter.Put(bw)
+	WriteStatsQueryResponse(bw, rows)
+	_ = bw.Flush()
 }
 
 type statsRow struct {
