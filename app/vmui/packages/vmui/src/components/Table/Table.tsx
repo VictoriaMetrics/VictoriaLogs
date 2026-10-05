@@ -48,18 +48,18 @@ const Table = <T extends object>({
     return stableSort<T>(rows, getComparator(orderDir, orderBy)).slice(offsetStart, offsetEnd);
   }, [rows, orderBy, orderDir, offsetStart, offsetEnd]);
 
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  // expanded rows are tracked by the row itself, not by its position on the page,
+  // so sorting or paging never shows the panel under another row
+  const [expandedRows, setExpandedRows] = useState<Set<T>>(new Set());
 
   useEffect(() => {
     setExpandedRows(new Set());
-    // reset on pagination bounds change, not on the paginationOffset tuple identity
-    // (the parent may recreate that array every render)
-  }, [rows, orderBy, orderDir, offsetStart, offsetEnd]);
+  }, [rows]);
 
-  const toggleExpanded = (idx: number) => {
+  const toggleExpanded = (row: T) => {
     setExpandedRows(prev => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      next.has(row) ? next.delete(row) : next.add(row);
       return next;
     });
   };
@@ -114,10 +114,10 @@ const Table = <T extends object>({
             >
               {renderExpandedRow && (
                 <TableExpandCell
-                  expanded={expandedRows.has(rowIndex)}
+                  expanded={expandedRows.has(row)}
                   onToggle={(e) => {
                     e.stopPropagation();
-                    toggleExpanded(rowIndex);
+                    toggleExpanded(row);
                   }}
                 />
               )}
@@ -143,7 +143,7 @@ const Table = <T extends object>({
               <td className="vm-table-cell vm-table-cell_empty"/>
             </TableRow>
 
-            {renderExpandedRow && expandedRows.has(rowIndex) && (
+            {renderExpandedRow && expandedRows.has(row) && (
               <tr className="vm-table-expanded-row">
                 <td
                   className="vm-table-cell vm-table-cell_expanded-content"
