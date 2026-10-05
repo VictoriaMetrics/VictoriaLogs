@@ -1181,7 +1181,7 @@ at `http://localhost:9428/select/vmui/`. Try [VictoriaLogs web UI demo playgroun
 Web UI provides the following modes for displaying query results:
 
 - `Group` - results are displayed as a table with rows grouped by [stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-- `Table` - displays query results as a table.
+- `Table` - displays query results as a table. Click the arrow at the start of a row to see all the fields of that log entry.
 - `JSON` - displays raw JSON response from [`/select/logsql/query` HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs).
 - `Live` - displays [live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) results for the given query.
 

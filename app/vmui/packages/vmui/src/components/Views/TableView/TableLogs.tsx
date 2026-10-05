@@ -5,6 +5,7 @@ import Pagination from "../../Main/Pagination/Pagination";
 import { useTableLogsColumns } from "./hooks/useTableLogsColumns";
 import { useTableLogsPaginate } from "./hooks/useTableLogsPaginate";
 import { ViewColumnsAction } from "../../Table/hooks/useTableColumnView";
+import GroupLogsFields from "../GroupView/GroupLogsFields";
 
 interface TableLogsProps {
   tableId: string;
@@ -33,6 +34,14 @@ const TableLogs: FC<TableLogsProps> = ({ tableId, logs, columns, rowsPerPage, ap
         defaultOrder={{ key: "_time", dir: "desc" }}
         paginationOffset={offset}
         applyViewColumns={applyViewColumns}
+        renderExpandedRow={(log) => (
+          <GroupLogsFields
+            log={log}
+            // grouping and "Show as message" only affect the Group view
+            hideGroupButton
+            hideMessageButton
+          />
+        )}
       />
       <Pagination
         currentPage={page}

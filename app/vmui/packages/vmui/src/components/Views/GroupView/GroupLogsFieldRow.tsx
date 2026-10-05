@@ -10,9 +10,10 @@ interface Props {
   value: string;
   isStreamField: boolean;
   hideGroupButton?: boolean;
+  hideMessageButton?: boolean;
 }
 
-const GroupLogsFieldRow: FC<Props> = ({ field, value, isStreamField, hideGroupButton = false }) => {
+const GroupLogsFieldRow: FC<Props> = ({ field, value, isStreamField, hideGroupButton = false, hideMessageButton = false }) => {
   const { isMobile } = useDeviceDetect();
 
   return (
@@ -28,6 +29,7 @@ const GroupLogsFieldRow: FC<Props> = ({ field, value, isStreamField, hideGroupBu
           value={value}
           isStreamField={isStreamField}
           hideGroupButton={hideGroupButton}
+          hideMessageButton={hideMessageButton}
         />
       </td>
       <td className="vm-group-logs-row-fields-item__icon">

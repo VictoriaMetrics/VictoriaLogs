@@ -12,9 +12,10 @@ import { getStreamKeys } from "../../../utils/logs";
 interface Props {
   log: Logs;
   hideGroupButton?: boolean;
+  hideMessageButton?: boolean;
 }
 
-const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
+const GroupLogsFields: FC<Props> = ({ log, hideGroupButton, hideMessageButton }) => {
   const { isMobile } = useDeviceDetect();
   const [search, setSearch] = useState("");
 
@@ -67,6 +68,7 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton }) => {
               value={value}
               isStreamField={streamFields.includes(key) || key === "_stream"}
               hideGroupButton={hideGroupButton}
+              hideMessageButton={hideMessageButton}
             />
         ))}
         </tbody>
