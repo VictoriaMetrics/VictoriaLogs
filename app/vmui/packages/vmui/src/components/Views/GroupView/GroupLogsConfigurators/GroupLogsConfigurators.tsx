@@ -1,4 +1,4 @@
-import { FC, useMemo } from "preact/compat";
+import { FC, useCallback, useMemo } from "preact/compat";
 import useBoolean from "../../../../hooks/useBoolean";
 import { RestartIcon, TuneIcon } from "../../../Main/Icons";
 import Button from "../../../Main/Button/Button";
@@ -13,13 +13,16 @@ import {
   LOGS_DISPLAY_FIELDS,
   LOGS_GROUP_BY,
   LOGS_URL_PARAMS,
-  WITHOUT_GROUPING
 } from "../../../../constants/logs";
 import LogParsingSwitches from "../../../Configurators/LogsSettings/LogParsingSwitches";
 import { useLocalStorageBoolean } from "../../../../hooks/useLocalStorageBoolean";
+import { useGroupByFields } from "../../../../hooks/useGroupByFields";
+import { getUniqueFieldNames } from "../../../../utils/groupByFields";
+import { DEFAULT_QUERY } from "../../../../pages/QueryPage/hooks/useQueryController";
+import { TimeParams } from "../../../../types";
 
 const {
-  GROUP_BY,
+  QUERY,
   NO_WRAP_LINES,
   COMPACT_GROUP_HEADER,
   DISPLAY_FIELDS,
@@ -29,12 +32,12 @@ const title = "Group view settings";
 
 interface Props {
   logs: Logs[];
+  period?: TimeParams;
 }
 
-const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
+const GroupLogsConfigurators: FC<Props> = ({ logs, period }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const groupBy = searchParams.get(GROUP_BY) || LOGS_GROUP_BY;
   const noWrapLines = searchParams.get(NO_WRAP_LINES) === "true";
   const compactGroupHeader = searchParams.get(COMPACT_GROUP_HEADER) === "true";
   const displayFieldsString = searchParams.get(DISPLAY_FIELDS) || "";
@@ -42,6 +45,12 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
 
   const [disabledHovers, setDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
   const [disabledLevelDetection, setDisabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
+
+  const logsKeys = useMemo(() => getUniqueFieldNames(logs), [logs]);
+
+  const query = searchParams.get(QUERY) || DEFAULT_QUERY;
+  const groupByFields = useGroupByFields({ query, period, loadedFieldNames: logsKeys });
+  const groupBy = groupByFields.value;
 
   const isGroupChanged = groupBy !== LOGS_GROUP_BY;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
@@ -52,21 +61,17 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
     compactGroupHeader,
   ].some(Boolean);
 
-  const logsKeys = useMemo(() => {
-    const uniqueKeys = new Set(logs.map(l => Object.keys(l)).flat());
-    return Array.from(uniqueKeys).sort((a, b) => a.localeCompare(b));
-  }, [logs]);
-
   const {
     value: openModal,
     toggle: toggleOpen,
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const handleSelectGroupBy = (key: string) => {
-    searchParams.set(GROUP_BY, key);
-    setSearchParams(searchParams);
-  };
+  const handleSelectGroupBy = groupByFields.selectField;
+
+  const handleOpenGroupBy = useCallback((open: boolean) => {
+    if (open) groupByFields.loadFields();
+  }, [groupByFields.loadFields]);
 
   const handleSelectDisplayField = (value: string) => {
     const prev = displayFields;
@@ -128,10 +133,12 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
             <div className="vm-group-logs-configurator-item">
               <Select
                 value={groupBy}
-                list={[WITHOUT_GROUPING, ...logsKeys]}
+                list={groupByFields.options}
                 label="Group by"
                 placeholder="Group by"
+                isLoading={groupByFields.isLoading}
                 onChange={handleSelectGroupBy}
+                onOpen={handleOpenGroupBy}
                 searchable
               />
               <Tooltip title={"Reset grouping"}>

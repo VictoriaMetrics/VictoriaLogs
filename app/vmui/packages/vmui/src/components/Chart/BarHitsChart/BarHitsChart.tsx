@@ -17,6 +17,7 @@ interface Props {
   logHits: LogHits[];
   data: AlignedData;
   query?: string;
+  loadedFieldNames?: string[];
   period: TimeParams;
   durationMs?: number
   isOverview?: boolean;
@@ -29,6 +30,7 @@ const BarHitsChart: FC<Props> = ({
   logHits,
   data: _data,
   query,
+  loadedFieldNames,
   period,
   setPeriod,
   durationMs,
@@ -113,6 +115,8 @@ const BarHitsChart: FC<Props> = ({
 
         <BarHitsOptions
           query={query}
+          period={period}
+          loadedFieldNames={loadedFieldNames}
           isHitsMode={isHitsMode}
           isOverview={isOverview}
           prevPeriod={prevPeriod}
