@@ -13,9 +13,12 @@ type Props = {
   value: string;
   isStreamField: boolean;
   hideGroupButton: boolean;
+  // "Show as message" only affects the Group view, so views that embed this
+  // list elsewhere (e.g. the Table view expanded row) hide it
+  hideMessageButton?: boolean;
 }
 
-const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButton }) => {
+const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButton, hideMessageButton }) => {
   const {
     value: openContextMenu,
     setFalse: handleCloseContextMenu,
@@ -44,37 +47,43 @@ const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButt
         isStreamField={isStreamField}
       />
 
-      <div ref={buttonRef}>
-        <Button
-          startIcon={<MoreIcon/>}
-          color="gray"
-          variant="text"
-          size="small"
-          onClick={handleClick}
-        />
-      </div>
-
-      <Popper
-        placement="bottom-right"
-        open={openContextMenu}
-        buttonRef={buttonRef}
-        onClose={handleCloseContextMenu}
-      >
-        <div className="vm-legend-hits-menu">
-          <div className="vm-legend-hits-menu-section">
-            <FieldMessageToggle
-              field={field}
-              onClose={handleCloseContextMenu}
+      {!(hideMessageButton && hideGroupButton) && (
+        <>
+          <div ref={buttonRef}>
+            <Button
+              startIcon={<MoreIcon/>}
+              color="gray"
+              variant="text"
+              size="small"
+              onClick={handleClick}
             />
-            {!hideGroupButton && (
-              <FieldGroupingToggle
-                field={field}
-                onClose={handleCloseContextMenu}
-              />
-            )}
           </div>
-        </div>
-      </Popper>
+
+          <Popper
+            placement="bottom-right"
+            open={openContextMenu}
+            buttonRef={buttonRef}
+            onClose={handleCloseContextMenu}
+          >
+            <div className="vm-legend-hits-menu">
+              <div className="vm-legend-hits-menu-section">
+                {!hideMessageButton && (
+                  <FieldMessageToggle
+                    field={field}
+                    onClose={handleCloseContextMenu}
+                  />
+                )}
+                {!hideGroupButton && (
+                  <FieldGroupingToggle
+                    field={field}
+                    onClose={handleCloseContextMenu}
+                  />
+                )}
+              </div>
+            </div>
+          </Popper>
+        </>
+      )}
     </div>
   );
 };
