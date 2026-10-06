@@ -86,8 +86,9 @@ export const useTimePeriod = (groupN: number = 0) => {
     }, navigateOpts);
   }, [getUrlParams]);
 
-  const isMovingWindow = Boolean(relativeTime) || !endTimeStr;
-  const movingWindowTick = isMovingWindow ? executeQueryTrigger : 0;
+  // A relative range must be recalculated on every query run, since the URL is not rewritten then.
+  // An absolute range stays the same, so it must not change on query runs.
+  const movingWindowTick = relativeTime || !endTimeStr ? executeQueryTrigger : 0;
 
   const period: TimeParams = useMemo(() => {
     if (relativeTime) {

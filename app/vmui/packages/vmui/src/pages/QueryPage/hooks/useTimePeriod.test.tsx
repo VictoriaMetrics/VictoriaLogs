@@ -71,22 +71,7 @@ describe("useTimePeriod", () => {
       setSearchParamsCalls = 0;
 
       expect(result.current.refreshPeriod()).toBe(true);
-      expect(setSearchParamsCalls).toBe(0);
-    });
-
-    it("does not rewrite the URL on repeated refreshes", () => {
-      setUrlParams({
-        "g0.relative_time": "last_1_hour",
-        "g0.range_input": "1h",
-      });
-
-      const { result } = renderHook(() => useTimePeriod());
-      setSearchParamsCalls = 0;
-
-      result.current.refreshPeriod();
-      result.current.refreshPeriod();
-      result.current.refreshPeriod();
-
+      expect(result.current.refreshPeriod()).toBe(true);
       expect(setSearchParamsCalls).toBe(0);
     });
 
