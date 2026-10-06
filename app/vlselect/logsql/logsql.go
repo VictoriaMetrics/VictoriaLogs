@@ -1190,11 +1190,12 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	var rows []statsRow
-	var rowsLock sync.Mutex
+	var shards atomicutil.Slice[[]statsRow]
 
 	timestamp := ca.q.GetTimestamp()
-	writeBlock := func(_ uint, db *logstorage.DataBlock) {
+	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
+		shardRows := shards.Get(workerID)
+
 		rowsCount := db.RowsCount()
 
 		columns := db.GetColumns(false)
@@ -1226,32 +1227,33 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 				buckets, ok = appendHistogramBuckets(buckets[:0], c.Values[i])
 				if ok {
 					name := clonedColumnNames[j] + "_bucket"
-					bucketRows := make([]statsRow, 0, len(buckets))
+
+					// Allocate the labels for all the buckets at once.
+					bucketFields := make([]logstorage.Field, 0, len(buckets)*(len(labels)+1))
 					for _, bucket := range buckets {
-						bucketRows = append(bucketRows, statsRow{
+						n := len(bucketFields)
+						bucketFields = append(bucketFields, labels...)
+						bucketFields = append(bucketFields, logstorage.Field{
+							Name:  "vmrange",
+							Value: bytesutil.InternString(bucket.VMRange),
+						})
+						*shardRows = append(*shardRows, statsRow{
 							Name:      name,
-							Labels:    newHistogramBucketLabels(labels, bucket),
+							Labels:    bucketFields[n:len(bucketFields):len(bucketFields)],
 							Timestamp: timestamp,
 							Value:     strconv.FormatUint(bucket.Hits, 10),
 						})
 					}
-					rowsLock.Lock()
-					rows = append(rows, bucketRows...)
-					rowsLock.Unlock()
 
 					continue
 				}
 
-				r := statsRow{
+				*shardRows = append(*shardRows, statsRow{
 					Name:      clonedColumnNames[j],
 					Labels:    labels,
 					Timestamp: timestamp,
 					Value:     strings.Clone(c.Values[i]),
-				}
-
-				rowsLock.Lock()
-				rows = append(rows, r)
-				rowsLock.Unlock()
+				})
 			}
 		}
 	}
@@ -1272,6 +1274,21 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 
 	h.Set("Content-Type", "application/json")
 	ca.writeResponseHeaders(h, startTime)
+
+	shardsAll := shards.All()
+	var rows []statsRow
+	if len(shardsAll) == 1 {
+		rows = *shardsAll[0]
+	} else {
+		rowsCount := 0
+		for _, shardRows := range shardsAll {
+			rowsCount += len(*shardRows)
+		}
+		rows = make([]statsRow, 0, rowsCount)
+		for _, shardRows := range shardsAll {
+			rows = append(rows, *shardRows...)
+		}
+	}
 
 	// Write response
 	bw := bufferedwriter.Get(w)
