@@ -464,8 +464,9 @@ Use an empty string `''` as a placeholder when a specific position requires no e
 
 ### Log rotation
 
-`vlagent` fully supports the `create` log rotation strategy (the default in `logrotate`).
+`vlagent` fully supports the `create` (the default in `logrotate`) and `nocreate` log rotation strategies.
 When the active log file is renamed, `vlagent` finishes reading it before switching to the new file.
+With `nocreate`, `vlagent` keeps reading the renamed file until the application creates a new file at the original path.
 Rotated files in the same directory are tracked automatically, even after `vlagent` restart.
 
 Example `logrotate` config:
