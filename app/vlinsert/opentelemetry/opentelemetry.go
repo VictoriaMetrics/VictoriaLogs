@@ -59,6 +59,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 		return err
 	})
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read OpenTelemetry protocol data: %s", err)
 		return
 	}
@@ -88,7 +89,6 @@ func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFie
 	}
 
 	if err := decodeLogsData(data, pushLogs); err != nil {
-		errorsTotal.Inc()
 		return fmt.Errorf("cannot decode LogsData request from %d bytes: %w", len(data), err)
 	}
 	return nil

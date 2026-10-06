@@ -152,6 +152,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		return processEvent(data, lmp, cp.TimeFields, cp.MsgFields, cp.PreserveJSONKeys)
 	})
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read Splunk request: %s", err)
 		return
 	}
@@ -179,8 +180,8 @@ func processEvent(data []byte, lmp insertutil.LogMessageProcessor, timeFields, m
 		n++
 	}
 	if err := s.Error(); err != nil {
-		errorsTotal.Add(1)
 		if n > 0 {
+			errorsTotal.Add(1)
 			logger.Warnf("splunk: failed to parse JSON message #%d: %s", n+1, err)
 			return nil
 		}
