@@ -56,7 +56,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 For data ingestion endpoints, the counter is incremented in two cases:
 
-- A request is rejected, for example because of invalid request args, broken request body or because the storage is in read-only mode.
+- A request is counted at `vl_http_requests_total` and then rejected, for example because of invalid request args, broken request body or because the storage is in read-only mode. Requests rejected earlier, such as requests with unsupported HTTP method, content type or protocol version, are counted neither at `vl_http_requests_total` nor at `vl_http_errors_total`.
 - A request is accepted, but some of its log lines or events are invalid and skipped. In this case the counter is incremented per every skipped log line or event, e.g. at `/insert/jsonline`.
 
 So the counter can be bigger than the number of failed requests.
