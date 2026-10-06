@@ -57,17 +57,15 @@ func (fp *filterPatternMatch) initTokens() {
 		}
 
 		sep := skipFirstToken(separators[0])
-		if sep != "" && isSpecialNumStart(sep[len(sep)-1]) {
-			sep = skipLastToken(sep)
-		}
+		// Always drop the last token, since the placeholder may go right after it, e.g. `foo<N>` matches `foo123`.
+		sep = skipLastToken(sep)
 		a = append(a, sep)
 		separators = separators[1:]
 
 		if len(separators) > 0 {
 			sep := skipLastToken(separators[len(separators)-1])
-			if sep != "" && isSpecialNumEnd(sep[0]) {
-				sep = skipFirstToken(sep)
-			}
+			// Always drop the first token, since the placeholder may go right before it, e.g. `<DATETIME>foo` matches `2025-10-20T08:09:11Zfoo`.
+			sep = skipFirstToken(sep)
 			a = append(a, sep)
 			separators = separators[:len(separators)-1]
 		}
@@ -79,17 +77,13 @@ func (fp *filterPatternMatch) initTokens() {
 		}
 
 		sep := separators[0]
-		if sep != "" && isSpecialNumStart(sep[len(sep)-1]) {
-			sep = skipLastToken(sep)
-		}
+		sep = skipLastToken(sep)
 		a = append(a, sep)
 		separators = separators[1:]
 
 		if len(separators) > 0 {
 			sep := separators[len(separators)-1]
-			if sep != "" && isSpecialNumEnd(sep[0]) {
-				sep = skipFirstToken(sep)
-			}
+			sep = skipFirstToken(sep)
 			a = append(a, sep)
 			separators = separators[:len(separators)-1]
 		}
@@ -102,17 +96,13 @@ func (fp *filterPatternMatch) initTokens() {
 		}
 
 		sep := separators[0]
-		if sep != "" && isSpecialNumStart(sep[len(sep)-1]) {
-			sep = skipLastToken(sep)
-		}
+		sep = skipLastToken(sep)
 		a = append(a, sep)
 		separators = separators[1:]
 
 		if len(separators) > 0 {
 			sep := skipLastToken(separators[len(separators)-1])
-			if sep != "" && isSpecialNumEnd(sep[0]) {
-				sep = skipFirstToken(sep)
-			}
+			sep = skipFirstToken(sep)
 			a = append(a, sep)
 			separators = separators[:len(separators)-1]
 		}
@@ -125,17 +115,13 @@ func (fp *filterPatternMatch) initTokens() {
 		}
 
 		sep := skipFirstToken(separators[0])
-		if sep != "" && isSpecialNumStart(sep[len(sep)-1]) {
-			sep = skipLastToken(sep)
-		}
+		sep = skipLastToken(sep)
 		a = append(a, sep)
 		separators = separators[1:]
 
 		if len(separators) > 0 {
 			sep := separators[len(separators)-1]
-			if sep != "" && isSpecialNumEnd(sep[0]) {
-				sep = skipFirstToken(sep)
-			}
+			sep = skipFirstToken(sep)
 			a = append(a, sep)
 			separators = separators[:len(separators)-1]
 		}
@@ -144,12 +130,8 @@ func (fp *filterPatternMatch) initTokens() {
 	}
 
 	for _, sep := range separators {
-		if sep != "" && isSpecialNumEnd(sep[0]) {
-			sep = skipFirstToken(sep)
-		}
-		if sep != "" && isSpecialNumStart(sep[len(sep)-1]) {
-			sep = skipLastToken(sep)
-		}
+		sep = skipFirstToken(sep)
+		sep = skipLastToken(sep)
 		a = append(a, sep)
 	}
 
