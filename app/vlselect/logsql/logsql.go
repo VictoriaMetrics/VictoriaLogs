@@ -935,6 +935,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
+		var buckets []histogramBucket
 		for i := range rowsCount {
 			// Do not move q.GetTimestamp() outside writeBlock, since ts
 			// must be initialized to query timestamp for every processed log row.
@@ -963,36 +964,28 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 					continue
 				}
 
-				v := strings.Clone(c.Values[i])
-				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
-					// Special case - the value is the result of histogram() stats function.
-					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
-					// Convert it to values for individual buckets.
-					var buckets []histogramBucket
-					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
-						name := clonedColumnNames[j] + "_bucket"
-						for _, bucket := range buckets {
-							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
-							bucketLabels = append(bucketLabels, labels...)
-							bucketLabels = append(bucketLabels, logstorage.Field{
-								Name:  "vmrange",
-								Value: bucket.VMRange,
-							})
-							p := statsPoint{
-								Timestamp: ts,
-								Value:     strconv.FormatUint(bucket.Hits, 10),
-							}
-							addPoint(name, columnIdx, bucketLabels, p)
+				// Special case - the value is the result of histogram() stats function.
+				// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+				// Convert it to values for individual buckets.
+				var ok bool
+				buckets, ok = appendHistogramBuckets(buckets[:0], c.Values[i])
+				if ok {
+					name := clonedColumnNames[j] + "_bucket"
+					for _, bucket := range buckets {
+						p := statsPoint{
+							Timestamp: ts,
+							Value:     strconv.FormatUint(bucket.Hits, 10),
 						}
-						columnIdx++
-
-						continue
+						addPoint(name, columnIdx, newHistogramBucketLabels(labels, bucket), p)
 					}
+					columnIdx++
+
+					continue
 				}
 
 				p := statsPoint{
 					Timestamp: ts,
-					Value:     v,
+					Value:     strings.Clone(c.Values[i]),
 				}
 				addPoint(clonedColumnNames[j], columnIdx, labels, p)
 				columnIdx++
@@ -1075,6 +1068,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
+		var buckets []histogramBucket
 		for i := range rowsCount {
 			labels := make([]logstorage.Field, 0, len(labelFields))
 			for j, c := range columns {
@@ -1091,42 +1085,34 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 					continue
 				}
 
-				v := strings.Clone(c.Values[i])
-				if v == "[]" || strings.HasPrefix(v, `[{"vmrange":"`) {
-					// Special case - the value is the result of histogram() stats function.
-					// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
-					// Convert it to values for individual buckets.
-					var buckets []histogramBucket
-					if err := json.Unmarshal([]byte(v), &buckets); err == nil {
-						name := clonedColumnNames[j] + "_bucket"
-						bucketRows := make([]statsRow, 0, len(buckets))
-						for _, bucket := range buckets {
-							bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
-							bucketLabels = append(bucketLabels, labels...)
-							bucketLabels = append(bucketLabels, logstorage.Field{
-								Name:  "vmrange",
-								Value: bucket.VMRange,
-							})
-							bucketRows = append(bucketRows, statsRow{
-								Name:      name,
-								Labels:    bucketLabels,
-								Timestamp: timestamp,
-								Value:     strconv.FormatUint(bucket.Hits, 10),
-							})
-						}
-						rowsLock.Lock()
-						rows = append(rows, bucketRows...)
-						rowsLock.Unlock()
-
-						continue
+				// Special case - the value is the result of histogram() stats function.
+				// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
+				// Convert it to values for individual buckets.
+				var ok bool
+				buckets, ok = appendHistogramBuckets(buckets[:0], c.Values[i])
+				if ok {
+					name := clonedColumnNames[j] + "_bucket"
+					bucketRows := make([]statsRow, 0, len(buckets))
+					for _, bucket := range buckets {
+						bucketRows = append(bucketRows, statsRow{
+							Name:      name,
+							Labels:    newHistogramBucketLabels(labels, bucket),
+							Timestamp: timestamp,
+							Value:     strconv.FormatUint(bucket.Hits, 10),
+						})
 					}
+					rowsLock.Lock()
+					rows = append(rows, bucketRows...)
+					rowsLock.Unlock()
+
+					continue
 				}
 
 				r := statsRow{
 					Name:      clonedColumnNames[j],
 					Labels:    labels,
 					Timestamp: timestamp,
-					Value:     v,
+					Value:     strings.Clone(c.Values[i]),
 				}
 
 				rowsLock.Lock()
@@ -1162,11 +1148,6 @@ type statsRow struct {
 	Labels    []logstorage.Field
 	Timestamp int64
 	Value     string
-}
-
-type histogramBucket struct {
-	VMRange string `json:"vmrange"`
-	Hits    uint64 `json:"hits"`
 }
 
 // ProcessQueryRequest handles /select/logsql/query request.
