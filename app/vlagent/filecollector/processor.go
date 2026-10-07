@@ -49,7 +49,8 @@ type processor struct {
 }
 
 func newProcessor(argIdx int, filePath string, storage insertutil.LogRowsStorage) *processor {
-	efs := getExtraFields(argIdx)
+	var efs []logstorage.Field
+	efs = append(efs, getExtraFields(argIdx)...)
 	var defaultStreamFields []string
 
 	if *fileField != "" {

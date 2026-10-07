@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestMatchIPv4Range(t *testing.T) {
@@ -338,7 +336,4 @@ func TestFilterIPv4Range(t *testing.T) {
 		fr := newFilterIPv4Range("_msg", 0, 0xffffffff)
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

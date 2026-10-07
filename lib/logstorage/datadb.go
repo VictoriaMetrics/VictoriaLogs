@@ -551,7 +551,7 @@ func (ddb *datadb) mustMergePartsInternal(pws []*partWrapper, isFinal bool, drop
 	// Prepare blockStreamReaders for source parts.
 	bsrs := mustOpenBlockStreamReaders(pws)
 
-	// Prepare BlockStreamWriter for destination part.
+	// Prepare blockStreamWriter for destination part.
 	srcSize := uint64(0)
 	srcRowsCount := uint64(0)
 	srcBlocksCount := uint64(0)
@@ -952,7 +952,7 @@ func (ddb *datadb) updateStats(s *DatadbStats) {
 	ddb.partsLock.Unlock()
 }
 
-// getMinMaxTimestampsFast returns min and max timestamps across parts in ddb.
+// getMinMaxTimestamps returns min and max timestamps across parts in ddb.
 func (ddb *datadb) getMinMaxTimestamps() (int64, int64) {
 	minTs := int64(math.MaxInt64)
 	maxTs := int64(math.MinInt64)

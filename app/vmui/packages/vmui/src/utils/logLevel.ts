@@ -13,7 +13,7 @@ const LEVEL_NORMALIZE: Record<string, LogLevel> = {
   info: "info",
   information: "info",
   informational: "info",
-  notice: "info",
+  notice: "notice",
 
   warn: "warn",
   warning: "warn",
@@ -23,11 +23,11 @@ const LEVEL_NORMALIZE: Record<string, LogLevel> = {
   severe: "error",
 
   fatal: "fatal",
-  critical: "fatal",
-  crit: "fatal",
-  alert: "fatal",
-  emergency: "fatal",
-  emerg: "fatal",
+  critical: "critical",
+  crit: "critical",
+  alert: "alert",
+  emergency: "emergency",
+  emerg: "emergency",
   panic: "fatal",
 };
 

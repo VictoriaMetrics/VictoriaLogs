@@ -27,13 +27,13 @@ type fieldFilter interface {
 	// String returns string representation of the filter
 	String() string
 
-	// matchRow must return true if the current filter for the given fieldName matches a row with the given fields
+	// matchRowByField must return true if the current filter for the given fieldName matches a row with the given fields
 	matchRowByField(fields []Field, fieldName string) bool
 
-	// applyToBlockSearch must update bm according to the filter for the given fieldName applied to the given bs block
+	// applyToBlockSearchByField must update bm according to the filter for the given fieldName applied to the given bs block
 	applyToBlockSearchByField(bs *blockSearch, bm *bitmap, fieldName string)
 
-	// applyToBlockResult must update bm according to the filter for the given fieldName applied to the given br block
+	// applyToBlockResultByField must update bm according to the filter for the given fieldName applied to the given br block
 	applyToBlockResultByField(br *blockResult, bm *bitmap, fieldName string)
 }
 

@@ -34,6 +34,10 @@
     padding-inline: $padding-global $padding-small;
   }
 
+  &-search {
+    padding-inline: calc($padding-small / 2);
+  }
+
   &-list {
     display: grid;
     grid-auto-rows: min-content;
@@ -43,5 +47,18 @@
     gap: 2px;
     margin-right: -$padding-small;
     scrollbar-gutter: stable;
+  }
+
+  &-empty {
+    display: none;
+    padding-inline: calc($padding-small / 2);
+  }
+
+  &-list:empty {
+    display: none;
+  }
+
+  &-list:empty + &-empty {
+    display: block;
   }
 }

@@ -39,7 +39,15 @@ const QueryPage: FC = () => {
 
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { extraFilters, extraParams, addNewFilter, removeFilterByValue, removeFilterByField } = useExtraFilters();
+  const {
+    extraFilters,
+    extraParams,
+    addNewFilter,
+    replaceFiltersByField,
+    removeFilterByValue,
+    removeStreamFilterByValue,
+  } = useExtraFilters();
+
   const { isVisible: isVisibleFilterSidebar, setHidden: onCloseFilterSidebar } = useFilterSidebarVisible();
 
   const handleUpdateQuery = (nextQuery?: string) => {
@@ -84,8 +92,8 @@ const QueryPage: FC = () => {
           extraFilters={extraFilters}
           extraParams={extraParams}
           onAddFilter={addNewFilter}
-          onRemoveByValue={removeFilterByValue}
-          onRemoveByField={removeFilterByField}
+          onReplaceFiltersByField={replaceFiltersByField}
+          onRemoveByValue={removeStreamFilterByValue}
           onClose={onCloseFilterSidebar}
         />
       )}
@@ -106,7 +114,11 @@ const QueryPage: FC = () => {
             onChange={setInputQuery}
             onChangeLimit={setLimit}
             onRun={handleExecuteQuery}
+            onTogglePause={hitsRequestState.togglePause}
             isLoading={isLoading}
+            isLoadingHits={hitsRequestState.isLoading}
+            isPaused={hitsRequestState.isPaused}
+            isIterative={hitsRequestState.isIterative}
           />
           <ExtraFiltersPanel
             extraFilters={extraFilters}
@@ -132,6 +144,7 @@ const QueryPage: FC = () => {
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}
           isLoading={logsRequestState.isLoading}
+          isPending={logsRequestState.isPending}
         />
       </div>
     </div>

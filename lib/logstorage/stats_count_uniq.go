@@ -336,7 +336,7 @@ func (sup *statsCountUniqProcessor) updateStatsForAllRows(sf statsFunc, br *bloc
 
 	// Slow path for multiple columns.
 
-	// Pre-calculate column values for byFields in order to speed up building group key in the loop below.
+	// Pre-calculate column values for su.fields in order to speed up building group key in the loop below.
 	columnValues := sup.columnValues[:0]
 	for _, f := range su.fields {
 		c := br.getColumnByName(f)

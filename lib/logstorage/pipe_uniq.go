@@ -18,7 +18,7 @@ import (
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#uniq-pipe
 type pipeUniq struct {
-	// fields contains field names for returning unique values
+	// byFields contains field names for returning unique values
 	byFields []string
 
 	// if the filter is non-empty then only the values containing the given filter substring are returned.

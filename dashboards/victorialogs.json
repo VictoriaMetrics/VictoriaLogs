@@ -68,14 +68,10 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
+        "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
         "hide": true,
         "iconColor": "blue",
         "name": "version change",
-        "target": {
-          "expr": "sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"}) by(short_version) unless (sum(vm_app_version{job=~\"$job\", instance=~\"$instance\"} offset $__interval) by(short_version))",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "{{short_version}}",
         "titleFormat": "Version change"
       },
@@ -85,14 +81,10 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": true,
+        "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(instance)",
         "hide": false,
         "iconColor": "orange",
         "name": "restarts",
-        "target": {
-          "expr": "sum(changes(vm_app_start_timestamp{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by(instance)",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "{{instance}} restarted"
       },
       {
@@ -101,6 +93,7 @@
           "uid": "$DS_PROMETHEUS"
         },
         "enable": false,
+        "expr": "go_memstats_last_gc_time_seconds{job=~\"$job\", instance=~\"$instance\"} * 1000",
         "filter": {
           "exclude": false,
           "ids": [
@@ -110,11 +103,6 @@
         "hide": false,
         "iconColor": "#57f26d1c",
         "name": "gc",
-        "target": {
-          "expr": "go_memstats_last_gc_time_seconds{job=~\"$job\", instance=~\"$instance\"} * 1000",
-          "interval": "",
-          "refId": "Anno"
-        },
         "textFormat": "GC event",
         "useValueForTime": true
       }
@@ -5215,6 +5203,113 @@
           ],
           "title": "Storage read-only ($instance)",
           "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "$DS_PROMETHEUS"
+          },
+          "description": "The ratio between the original size of the stored logs and their compressed size over time. The ratio excludes indexdb size.\n\nUse it for checking how changes such as new stream fields or log parsing at ingestion affect the disk space needed for the retention period. The ratio covers all the stored data, so the effect of such changes becomes fully visible only after the older data is removed by retention.\n\nThe ratio can go up or down as the system performs automatic maintenance and applies retention policies. For example:\n- Background merges: [Merges](https://docs.victoriametrics.com/victorialogs/#forced-merge) improve compression by combining data into larger, more efficiently compressed blocks\n- Retention policies: When old data is deleted due to retention settings, the ratio changes as different time periods have varying compression characteristics\n",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic-by-name"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 1,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 126
+          },
+          "id": 160,
+          "options": {
+            "legend": {
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "sortBy": "Last *",
+              "sortDesc": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "12.3.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$DS_PROMETHEUS"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(vl_uncompressed_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) by (instance)\n  /\nsum(vl_compressed_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) by (instance)",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "{{instance}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Compression ratio ($instance)",
+          "type": "timeseries"
         }
       ],
       "title": "Storage",
@@ -7964,7 +8059,7 @@
   "timezone": "",
   "title": "VictoriaLogs - single-node",
   "uid": "OqPIZTX4z",
-  "version": 9,
+  "version": 10,
   "weekStart": "",
   "id": null
 }

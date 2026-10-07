@@ -7,8 +7,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestComplexFilters(t *testing.T) {
@@ -81,11 +79,10 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 	t.Helper()
 
 	// Create the test storage
-	storagePath := t.Name()
 	cfg := &StorageConfig{
 		Retention: time.Duration(100 * 365 * nsecsPerDay),
 	}
-	s := MustOpenStorage(storagePath, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	// Generate rows
 	tenantID := TenantID{
@@ -110,9 +107,8 @@ func testFilterMatchForColumns(t *testing.T, columns []column, f filter, neededC
 
 	testFilterMatchForStorage(t, s, tenantID, f, neededColumnName, expectedResults, expectedTimestamps)
 
-	// Close and delete the test storage
+	// Close the test storage
 	s.MustClose()
-	fs.MustRemoveDir(storagePath)
 }
 
 func testFilterMatchForStorage(t *testing.T, s *Storage, tenantID TenantID, f filter, neededColumnName string, expectedValues []string, expectedTimestamps []int64) {

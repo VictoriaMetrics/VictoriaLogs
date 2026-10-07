@@ -45,17 +45,17 @@ func TestTailer(t *testing.T) {
 	}
 
 	// Test that the tailer reads all log lines from the given log file.
+	writeLinesToFile(t, logFilePath, "line1", "line2", "line3", "line4", "line5")
 	resultExpected := "line1\nline2\nline3\nline4\nline5\n"
 	linesExpected := 5
 	offsetExpected := len(resultExpected)
-	writeLinesToFile(t, logFilePath, resultExpected)
 	f(resultExpected, linesExpected, inode, offsetExpected)
 
 	// Test that the tailer continues reading from the last read offset after restart.
+	writeLinesToFile(t, logFilePath, "line6", "line7")
 	resultExpected = "line6\nline7\n"
 	linesExpected = 2
 	offsetExpected += len(resultExpected)
-	writeLinesToFile(t, logFilePath, resultExpected)
 	f(resultExpected, linesExpected, inode, offsetExpected)
 
 	// Verify 'rename-create' rotation: the tailer should detect the new log file and successfully resume reading after a restart.
@@ -72,12 +72,43 @@ func TestTailer(t *testing.T) {
 	// Verify 'copy-truncate' rotation: the tailer should detect the truncation and start reading the file from the beginning after a restart.
 	writeLinesToFile(t, logFilePath, "foo", "bar")
 	rotateCopyTruncate(t, logFilePath)
-	writeLinesToFile(t, logFilePath, "buz")
+	writeLinesToFile(t, logFilePath, "baz")
 	// It's expected that 'foo' and 'bar' are lost by vlagent due to truncation.
-	resultExpected = "buz\n"
+	resultExpected = "baz\n"
 	linesExpected = 1
-	offsetExpected = len("buz\n")
+	offsetExpected = len("baz\n")
 	f(resultExpected, linesExpected, inode, offsetExpected)
+
+	// vlagent must not fail on permission denied
+	// error for files while finding renamed log file.
+	rotateRenameCreate(t, logFilePath)
+	inode = updateInode(t, logFilePath, inode)
+	writeLinesToFile(t, logFilePath, "foobar")
+	logDirPath := filepath.Dir(tryResolveSymlink(logFilePath))
+	createFile(t, filepath.Join(logDirPath, "_permission-denied.txt"), 000)
+	resultExpected = "foobar\n"
+	linesExpected = 1
+	offsetExpected = len("foobar\n")
+	f(resultExpected, linesExpected, inode, offsetExpected)
+
+	// vlagent must not join incomplete log files split across multiple files.
+	writeToFile(t, logFilePath, "foo\nbar")
+	rotateRenameCreate(t, logFilePath)
+	inode = updateInode(t, logFilePath, inode)
+	writeToFile(t, logFilePath, "baz\n")
+	resultExpected = "foo\nbaz\n"
+	linesExpected = 2
+	offsetExpected = len("baz\n")
+	f(resultExpected, linesExpected, inode, offsetExpected)
+}
+
+func createFile(t *testing.T, path string, perm os.FileMode) {
+	t.Helper()
+	f, err := os.OpenFile(path, os.O_CREATE, perm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
 }
 
 // TestHandleRotationRenameCreate verifies that vlagent switches to the new log file by tracking inode changes.
@@ -91,7 +122,7 @@ func TestHandleRotationRenameCreate(t *testing.T) {
 	proc := newTestProcessor(nil)
 	tailer.StartRead(logFilePath, proc)
 
-	for _, s := range []string{"foo", "bar", "buz"} {
+	for _, s := range []string{"foo", "bar", "baz"} {
 		proc.expect(1)
 		writeLinesToFile(t, logFilePath, s)
 		proc.wait()
@@ -114,7 +145,7 @@ func TestHandleRotationRenameCreate(t *testing.T) {
 
 	expected := `foo
 bar
-buz
+baz
 1
 2
 3
@@ -138,7 +169,7 @@ func TestHandleRotationCopyTruncate(t *testing.T) {
 	proc := newTestProcessor(nil)
 	tailer.StartRead(logFilePath, proc)
 
-	for _, s := range []string{"foo", "bar", "buz"} {
+	for _, s := range []string{"foo", "bar", "baz"} {
 		proc.expect(1)
 		writeLinesToFile(t, logFilePath, s)
 		proc.wait()
@@ -154,7 +185,7 @@ func TestHandleRotationCopyTruncate(t *testing.T) {
 
 	expected := `foo
 bar
-buz
+baz
 ping
 pong
 `
@@ -215,13 +246,15 @@ func TestCommitPartialLines(t *testing.T) {
 	f(isFull, readLinesExpected, inode, offsetExpected)
 
 	// Write a final line to the rotated log file and verify that the tailer commits the full line to the checkpointsDB.
-	writeLinesToFile(t, logFilePath, "2025-10-16T15:37:36.1Z stderr F buz")
+	writeLinesToFile(t, logFilePath, "2025-10-16T15:37:36.1Z stderr F baz")
 	readLinesExpected = 3
 	isFull = []bool{false, false, true}
-	offsetExpected = len("2025-10-16T15:37:36.1Z stderr P bar\n" + "2025-10-16T15:37:36.1Z stderr F buz\n")
+	offsetExpected = len("2025-10-16T15:37:36.1Z stderr P bar\n" + "2025-10-16T15:37:36.1Z stderr F baz\n")
 	f(isFull, readLinesExpected, newInode, offsetExpected)
 }
 
+// TestRestoringFromFingerprint verifies that vlagent restores checkpoints
+// for a file with the same inode based on its fingerprint.
 func TestRestoringFromFingerprint(t *testing.T) {
 	f := func(file1, file2 string, outExpected string) {
 		t.Helper()
@@ -234,13 +267,10 @@ func TestRestoringFromFingerprint(t *testing.T) {
 		for _, s := range []string{file1, file2} {
 			proc.expect(1)
 
-			f, err := os.Create(logFilePath)
-			if err != nil {
-				t.Fatalf("failed to create log file: %s", err)
+			if err := os.Truncate(logFilePath, 0); err != nil {
+				t.Fatalf("cannot truncate %q: %s", logFilePath, err)
 			}
-			writeToFile(t, f, s)
-			_ = f.Sync()
-			_ = f.Close()
+			writeToFile(t, logFilePath, s)
 
 			tailer := Start(checkpointsPath)
 
@@ -280,7 +310,7 @@ func TestRestoringFromFingerprint(t *testing.T) {
 	f(file1, file2, expected)
 
 	// Content length more than maxFingerprintDataLen.
-	file1 = "2025-10-16T15:37:36.6Z stderr F foo bar buz 01234567890123456789001234567890\n"
+	file1 = "2025-10-16T15:37:36.6Z stderr F foo bar baz 01234567890123456789001234567890\n"
 	file2 = "2025-10-16T15:37:36.7Z stderr F bar\n"
 	expected = file1 + file2
 	f(file1, file2, expected)

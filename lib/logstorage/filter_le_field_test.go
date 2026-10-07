@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterLeField(t *testing.T) {
@@ -1036,7 +1034,4 @@ func TestFilterLeField(t *testing.T) {
 		fe = newFilterLeField("bar", "non-existing-column", true)
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

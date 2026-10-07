@@ -42,6 +42,13 @@ describe("logLevel utils", () => {
       expect(getLogLevel(log({ level: "custom", severity: "error" }))).toBe("error");
     });
 
+    it.each(["notice", "critical", "alert", "emergency"])(
+      "preserves systemd level \"%s\"",
+      (level) => {
+        expect(getLogLevel(log({ level }))).toBe(level);
+      },
+    );
+
     it("normalizes aliases", () => {
       expect(getLogLevel(log({ level: "verbose" }))).toBe("debug");
       expect(getLogLevel(log({ level: "information" }))).toBe("info");
@@ -49,11 +56,8 @@ describe("logLevel utils", () => {
       expect(getLogLevel(log({ level: "warning" }))).toBe("warn");
       expect(getLogLevel(log({ level: "err" }))).toBe("error");
       expect(getLogLevel(log({ level: "severe" }))).toBe("error");
-      expect(getLogLevel(log({ level: "critical" }))).toBe("fatal");
-      expect(getLogLevel(log({ level: "crit" }))).toBe("fatal");
-      expect(getLogLevel(log({ level: "alert" }))).toBe("fatal");
-      expect(getLogLevel(log({ level: "emergency" }))).toBe("fatal");
-      expect(getLogLevel(log({ level: "emerg" }))).toBe("fatal");
+      expect(getLogLevel(log({ level: "crit" }))).toBe("critical");
+      expect(getLogLevel(log({ level: "emerg" }))).toBe("emergency");
       expect(getLogLevel(log({ level: "panic" }))).toBe("fatal");
     });
 
@@ -100,6 +104,21 @@ describe("logLevel utils", () => {
       );
       expect(getLogLevelColor(log({ level: "information" }))).toBe(
         LOG_LEVEL_COLORS.info,
+      );
+    });
+
+    it("groups systemd levels into existing color families", () => {
+      expect(getLogLevelColor(log({ level: "notice" }))).toBe(
+        LOG_LEVEL_COLORS.info,
+      );
+      expect(getLogLevelColor(log({ level: "critical" }))).toBe(
+        LOG_LEVEL_COLORS.fatal,
+      );
+      expect(getLogLevelColor(log({ level: "alert" }))).toBe(
+        LOG_LEVEL_COLORS.fatal,
+      );
+      expect(getLogLevelColor(log({ level: "emergency" }))).toBe(
+        LOG_LEVEL_COLORS.fatal,
       );
     });
   });

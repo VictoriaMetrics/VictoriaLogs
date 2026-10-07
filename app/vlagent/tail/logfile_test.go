@@ -56,25 +56,25 @@ func TestReadLines(t *testing.T) {
 	offset = len(expected)
 	f(in, expected, offset)
 
-	// Lines with maxLineSize
+	// Lines with maxLogLineSize
 	in = []string{strings.Repeat("a", maxLogLineSize)}
 	expected = strings.Join(in, "\n") + "\n"
 	offset = maxLogLineSize + len("\n")
 	f(in, expected, offset)
 
-	// Lines with maxLineSize in the middle
+	// Lines with maxLogLineSize in the middle
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize), "bar"}
 	expected = strings.Join(in, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
-	// Line exceeding maxLineSize
+	// Line exceeding maxLogLineSize
 	in = []string{"foo", strings.Repeat("b", maxLogLineSize+1), "bar"}
 	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 1 + len("\n") + len("bar\n")
 	f(in, expected, offset)
 
-	// Multiple lines exceeding maxLineSize
+	// Multiple lines exceeding maxLogLineSize
 	in = []string{"foo", strings.Repeat("c", maxLogLineSize+10), strings.Repeat("d", maxLogLineSize+20), "bar"}
 	expected = strings.Join([]string{"foo", "bar"}, "\n") + "\n"
 	offset = len("foo\n") + maxLogLineSize + 10 + len("\n") + maxLogLineSize + 20 + len("\n") + len("bar\n")
@@ -117,6 +117,19 @@ func createTestLogFile(t *testing.T) (string, uint64) {
 
 func writeLinesToFile(t testing.TB, filePath string, lines ...string) {
 	t.Helper()
+	if len(lines) == 0 {
+		return
+	}
+	data := strings.Join(lines, "\n") + "\n"
+	writeToFile(t, filePath, data)
+}
+
+func writeToFile(t testing.TB, filePath, data string) {
+	t.Helper()
+
+	if len(data) == 0 {
+		return
+	}
 
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -124,22 +137,10 @@ func writeLinesToFile(t testing.TB, filePath string, lines ...string) {
 	}
 	defer f.Close()
 
-	for _, s := range lines {
-		s = strings.TrimRight(s, "\n")
-		writeToFile(t, f, s+"\n")
+	if _, err := f.WriteString(data); err != nil {
+		t.Fatalf("failed to write to file: %s", err)
 	}
 	if err := f.Sync(); err != nil {
 		t.Fatalf("failed to sync file: %s", err)
-	}
-}
-
-func writeToFile(t testing.TB, f *os.File, data string) {
-	t.Helper()
-
-	if len(data) == 0 {
-		return
-	}
-	if _, err := f.WriteString(data); err != nil {
-		t.Fatalf("failed to write to file: %s", err)
 	}
 }

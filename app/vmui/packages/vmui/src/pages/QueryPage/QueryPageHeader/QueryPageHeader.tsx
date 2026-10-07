@@ -1,7 +1,5 @@
 import { FC, useRef } from "preact/compat";
-import { PlayIcon, SpinnerIcon } from "../../../components/Main/Icons";
 import "./style.scss";
-import Button from "../../../components/Main/Button/Button";
 import QueryEditor from "../../../components/Configurators/QueryEditor/QueryEditor";
 import LogsLimitInput from "../../../components/Configurators/LogsLimitController/LogsLimitInput";
 import LogsQueryEditorAutocomplete
@@ -15,6 +13,9 @@ import ExtraFiltersReset from "../../../components/ExtraFilters/ExtraFiltersPane
 import ExtraFiltersCopy from "../../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersCopy";
 import QueryExamplesButton from "../../../components/Configurators/QueryEditor/QueryExamples/QueryExamplesButton";
 import { getHistoryFromStorage } from "../../../components/QueryHistory/utils";
+import ExecuteButton from "../../../components/Configurators/ExecutionControls/ExecuteButton/ExecuteButton";
+import Button from "../../../components/Main/Button/Button";
+import { PauseIcon, PlayIcon } from "../../../components/Main/Icons";
 
 interface Props {
   query: string;
@@ -22,9 +23,13 @@ interface Props {
   limit: number;
   error?: string;
   isLoading: boolean;
+  isLoadingHits: boolean;
+  isIterative: boolean;
+  isPaused: boolean;
   onChange: (val: string) => void;
   onChangeLimit: (val: number) => void;
   onRun: (query?: string) => void;
+  onTogglePause: () => void;
 }
 
 const QueryPageHeader: FC<Props> = ({
@@ -33,9 +38,13 @@ const QueryPageHeader: FC<Props> = ({
   limit,
   error,
   isLoading,
+  isLoadingHits,
+  isIterative,
+  isPaused,
   onChange,
   onChangeLimit,
   onRun,
+  onTogglePause,
 }) => {
   const { autocompleteQuick } = useQueryState();
   const setQuickAutocomplete = useQuickAutocomplete();
@@ -102,20 +111,21 @@ const QueryPageHeader: FC<Props> = ({
         <QueryExamplesButton onApply={handleChangeAndRun}/>
         <AutocompleteToggle/>
         <QueryHistory handleSelectQuery={handleChangeAndRun}/>
-        <div className="vm-query-page-header-bottom-execute">
+
+        {isIterative && isLoadingHits && (
           <Button
-            startIcon={isLoading ? <SpinnerIcon/> : <PlayIcon/>}
-            onClick={() => onRun()}
-            fullWidth
+            onClick={onTogglePause}
+            color="secondary"
+            startIcon={isPaused ? <PlayIcon /> : <PauseIcon />}
           >
-            <div>
-              <span className="vm-query-page-header-bottom-execute__text">
-                {isLoading ? "Cancel" : "Execute"}
-              </span>
-              <span className="vm-query-page-header-bottom-execute__text_hidden">Execute</span>
-            </div>
+            {isPaused ? "Resume" : "Pause"}
           </Button>
-        </div>
+        )}
+
+        <ExecuteButton
+          onClick={onRun}
+          isLoading={isLoading}
+        />
       </div>
     </>
   );

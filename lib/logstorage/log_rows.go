@@ -239,7 +239,7 @@ func (lr *LogRows) ForEachRow(callback func(streamHash uint64, r *InsertRow)) {
 
 		callback(streamHash, r)
 	}
-	// remove reference to logRows fields
+	// remove reference to LogRows fields
 	// since reset of r can modify actual LogRows
 	r.Fields = nil
 	PutInsertRow(r)

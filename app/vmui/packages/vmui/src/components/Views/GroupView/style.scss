@@ -331,6 +331,10 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         padding-right: $padding-global;
       }
 
+      &__field-name {
+        color: $color-text-secondary;
+      }
+
       &__actions {
         position: absolute;
         right: 2px;
@@ -439,7 +443,8 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
         }
 
         &-controls {
-          padding: 1px $padding-small 1px calc($padding-small / 2);
+          padding-block: 1px;
+          padding-left: 1px;
 
           &__wrapper {
             display: flex;
@@ -452,6 +457,22 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
             width: 22px;
             height: 22px;
             min-height: 22px;
+          }
+        }
+
+        &__icon {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          max-width: 24px;
+          min-width: 24px;
+          padding: calc($padding-small / 2);
+          margin-left: calc($padding-small / 2);
+          aspect-ratio: 1;
+          color: $color-text-secondary;
+
+          svg {
+            width: 12px;
           }
         }
 
@@ -478,3 +499,4 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
     }
   }
 }
+

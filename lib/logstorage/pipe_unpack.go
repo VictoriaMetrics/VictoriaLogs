@@ -1,11 +1,35 @@
 package logstorage
 
 import (
+	"strings"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
+
+func canReturnLastNResultsAfterUnpack(fieldFilters []string, resultPrefix string, keepOriginalFields bool) bool {
+	if keepOriginalFields {
+		return true
+	}
+
+	// resultPrefix is not the beginning of "_time", so the pipe can't overwrite the _time field.
+	if !strings.HasPrefix("_time", resultPrefix) {
+		return true
+	}
+
+	for _, f := range fieldFilters {
+		if resultPrefix+f == "_time" {
+			return false
+		}
+	}
+
+	// TODO: wildcard filters (including the default "*") may still unpack a field named "_time" if
+	// the log data contains it. Detecting this requires reading the data, so it is ignored for now
+	// in order to keep the optimization for the common case.
+	return true
+}
 
 func updateNeededFieldsForUnpackPipe(fromField, outFieldPrefix string, outFieldFilters []string, keepOriginalFields, skipEmptyResults bool, iff *ifFilter, pf *prefixfilter.Filter) {
 	if pf.MatchNothing() {

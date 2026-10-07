@@ -13,7 +13,7 @@ import (
 type pipePackLogfmt struct {
 	resultField string
 
-	// the fields and/or field name prefixes to put inside the packed json
+	// the fields and/or field name prefixes to put inside the packed logfmt
 	fieldFilters []string
 }
 

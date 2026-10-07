@@ -139,7 +139,7 @@ func readCheckpoints(path string) ([]checkpoint, error) {
 	return checkpoints, nil
 }
 
-// startPeriodicFlushCheckpoints periodically persists in-memory checkpoints to disk.
+// startPeriodicSyncCheckpoints periodically persists in-memory checkpoints to disk.
 //
 // It complements the explicit sync performed on graceful stop,
 // ensuring regular persistence even when the process is killed.

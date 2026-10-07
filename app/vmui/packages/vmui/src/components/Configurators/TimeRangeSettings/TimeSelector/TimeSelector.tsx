@@ -205,13 +205,14 @@ export const TimeSelector: FC<Props> = ({ onOpenSettings }) => {
               onEnter={setTimeAndClosePicker}
             />
           </div>
-          <div
+          <button
+            type="button"
             className="vm-time-selector-left-timezone"
             onClick={handleOpenSettings}
           >
-            <div className="vm-time-selector-left-timezone__title">{activeTimezone.region}</div>
-            <div className="vm-time-selector-left-timezone__utc">{activeTimezone.utc}</div>
-          </div>
+            <span className="vm-time-selector-left-timezone__title">{activeTimezone.region}</span>
+            <span className="vm-time-selector-left-timezone__utc">{activeTimezone.utc}</span>
+          </button>
           <div className="vm-time-selector-left__controls">
             <Button
               color="error"

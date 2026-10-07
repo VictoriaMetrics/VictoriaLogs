@@ -46,7 +46,7 @@ type lexer struct {
 	// It is used for proper initializing of _time filters with relative time ranges.
 	currentTimestamp int64
 
-	// opts is a stack of options for nested parsed queries
+	// optss is a stack of options for nested parsed queries
 	optss []*queryOptions
 }
 
@@ -906,7 +906,7 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 
 func addTimeFilter(f filter, start, end, offset int64) filter {
 	// use nanosecond precision for [start, end] time range in order to avoid
-	// automatic adjustement of timestamps for its' string representation.
+	// automatic adjustment of timestamps for its string representation.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/587
 	//
 	// Do not use numeric representation of timestamps, since they are improperly parsed
@@ -1054,7 +1054,7 @@ func optimizeFilters(f filter) filter {
 	// flatten nested OR filters
 	f = flattenFiltersOr(f)
 
-	// Substitute '*' prefixFilter with filterNoop in order to avoid reading _msg data.
+	// Substitute '*' filterPrefix with filterNoop in order to avoid reading _msg data.
 	f = removeStarFilters(f)
 
 	// Merge multiple {...} filters into a single one.
@@ -1068,7 +1068,7 @@ func (q *Query) visitSubqueries(visitFunc func(q *Query)) {
 		return
 	}
 
-	// call f for the query itself.
+	// call visitFunc for the query itself.
 	visitFunc(q)
 
 	// Visit subqueries in all the filters at q.
@@ -1239,7 +1239,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			// These pipes do not change the set of fields.
 		case *pipeLimit, *pipeOffset:
 			if step > 0 {
-				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individualley per each step; step=%d", p, step)
+				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individually for each step; step=%d", p, step)
 			}
 			// limit and offset pipes do not change the set of fields, so they are allowed in instant queries.
 		case *pipeRunningStats:
@@ -1831,7 +1831,7 @@ func (q *Query) HasGlobalTimeFilter() bool {
 
 // ParseQueryAtTimestamp parses s in the context of the given timestamp.
 //
-// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, duration].
+// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, timestamp).
 func ParseQueryAtTimestamp(s string, timestamp int64) (*Query, error) {
 	lex := newLexer(s, timestamp)
 
@@ -4058,7 +4058,7 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 	return qStr
 }
 
-// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overlow int64.
+// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overflow int64.
 //
 // It clamps the result to the int64 value range.
 func SubInt64NoOverflow(a, b int64) int64 {

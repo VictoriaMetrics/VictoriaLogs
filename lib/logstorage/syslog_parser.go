@@ -404,6 +404,9 @@ func (p *SyslogParser) parseRFC5424SDLine(s string) (string, bool) {
 			return s, false
 		}
 		i += n + 1
+		if i == len(s) {
+			return s, false
+		}
 
 		// Parse value
 		if s[i] == '"' {
