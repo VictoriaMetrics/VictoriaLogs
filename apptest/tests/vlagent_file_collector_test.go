@@ -45,8 +45,8 @@ func TestVlagentFileCollector(t *testing.T) {
 		`{"_msg":"insert file", "time":"2025-06-05T14:30:19.088007Z"}`,
 	})
 	wantLogLines := []string{
-		fmt.Sprintf(`{"_msg":"insert file","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
-		fmt.Sprintf(`{"_msg":"insert file","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
+		fmt.Sprintf(`{"_msg":"insert file","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
+		fmt.Sprintf(`{"_msg":"insert file","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)
@@ -59,8 +59,8 @@ func TestVlagentFileCollector(t *testing.T) {
 		`{"_msg":"insert file2", "time":"2025-06-05T14:30:19.088007Z"}`,
 	})
 	wantLogLines = []string{
-		fmt.Sprintf(`{"_msg":"insert file2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
-		fmt.Sprintf(`{"_msg":"insert file2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
+		fmt.Sprintf(`{"_msg":"insert file2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
+		fmt.Sprintf(`{"_msg":"insert file2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","file":%q,"hostname":%q}`, logPath, hostname),
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)

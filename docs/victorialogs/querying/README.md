@@ -105,8 +105,8 @@ where each line contains JSON-encoded log entry in the form `{field1="value1",..
 Example response:
 
 ```
-{"_msg":"error: disconnect from 19.54.37.22: Auth fail [preauth]","_stream":"{}","_time":"2023-01-01T13:32:13Z"}
-{"_msg":"some other error","_stream":"{}","_time":"2023-01-01T13:32:15Z"}
+{"_msg":"error: disconnect from 19.54.37.22: Auth fail [preauth]","_stream":"{}","_time":"2023-01-01T13:32:13.000000000Z"}
+{"_msg":"some other error","_stream":"{}","_time":"2023-01-01T13:32:15.000000000Z"}
 ```
 
 Logs lines are sent to the response stream as soon as they are found in VictoriaLogs storage.
