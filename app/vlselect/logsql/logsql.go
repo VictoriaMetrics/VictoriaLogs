@@ -65,8 +65,8 @@ func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r 
 
 	w.Header().Set("Content-Type", "application/json")
 
-	startStr := timestampToRFC3339Nano(minTimestamp)
-	endStr := timestampToRFC3339Nano(maxTimestamp)
+	startStr := timestampToString(minTimestamp)
+	endStr := timestampToString(maxTimestamp)
 	fmt.Fprintf(w, `{"start":%q,"end":%q,"hasTimeFilter":%t}`, startStr, endStr, hasTimeFilter)
 }
 
@@ -117,10 +117,6 @@ func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query,
 		return nil, fmt.Errorf("cannot parse `query` arg [%s]: %w", qStr, err)
 	}
 	return q, nil
-}
-
-func timestampToRFC3339Nano(nsec int64) string {
-	return time.Unix(0, nsec).UTC().Format(time.RFC3339Nano)
 }
 
 // ProcessFacetsRequest handles /select/logsql/facets request.
@@ -1638,9 +1634,9 @@ func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 	return start, end
 }
 
+// timestampToString returns RFC3339-formatted nsecs with 9 digits after the decimal point.
 func timestampToString(nsecs int64) string {
-	t := time.Unix(nsecs/1e9, nsecs%1e9).UTC()
-	return t.Format(time.RFC3339Nano)
+	return time.Unix(0, nsecs).UTC().Format("2006-01-02T15:04:05.000000000Z07:00")
 }
 
 func getTimeNsec(r *http.Request, argName string) (int64, bool, error) {
