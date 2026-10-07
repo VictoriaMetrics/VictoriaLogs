@@ -1435,3 +1435,8 @@ const iso8601Timestamp = "2006-01-02T15:04:05.000Z"
 func marshalTimestampRFC3339NanoString(dst []byte, nsecs int64) []byte {
 	return time.Unix(0, nsecs).UTC().AppendFormat(dst, "2006-01-02T15:04:05.000000000Z07:00")
 }
+
+// FormatTimestampRFC3339Nano returns RFC3339-formatted nsecs with 9 digits after the decimal point.
+func FormatTimestampRFC3339Nano(nsecs int64) string {
+	return string(marshalTimestampRFC3339NanoString(nil, nsecs))
+}
