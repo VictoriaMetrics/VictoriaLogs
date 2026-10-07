@@ -36,7 +36,7 @@ type QueryStats struct {
 	// RowsFound is the number of rows found by the query.
 	RowsFound uint64
 
-	// ValuesRead is the number of log field values read during query exection.
+	// ValuesRead is the number of log field values read during query execution.
 	ValuesRead uint64
 
 	// TimestampsRead is the number of timestamps read during query execution.
@@ -68,7 +68,7 @@ func (qs *QueryStats) UpdateAtomic(src *QueryStats) {
 	atomic.AddUint64(&qs.BytesProcessedUncompressedValues, src.BytesProcessedUncompressedValues)
 }
 
-// UpdateAtomicFromDataBlock adds query stats from db to qs.
+// UpdateFromDataBlock adds query stats from db to qs.
 func (qs *QueryStats) UpdateFromDataBlock(db *DataBlock) error {
 	rowsCount := db.RowsCount()
 	if rowsCount != 1 {

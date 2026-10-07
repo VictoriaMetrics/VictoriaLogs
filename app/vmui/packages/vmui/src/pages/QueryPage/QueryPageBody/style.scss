@@ -57,6 +57,9 @@
     &_table:not(&_hide) {
       padding-top: 0;
       overflow: scroll;
+      // size container for the table's expanded-row panel (100cqw), so the
+      // panel matches the scrollport width instead of the full table width
+      container-type: inline-size;
     }
 
     &_mobile {

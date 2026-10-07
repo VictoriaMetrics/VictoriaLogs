@@ -20,7 +20,7 @@ import { useAppState } from "../../../state/common/StateContext";
 import { vmDate } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { getLogLevel } from "../../../utils/logLevel";
-import { LOG_LEVEL_COLORS } from "../../../constants/logLevel";
+import { LOG_LEVEL_ABBREVIATIONS, LOG_LEVEL_COLORS, LOG_LEVEL_UNKNOWN } from "../../../constants/logLevel";
 
 interface Props {
   log: Logs;
@@ -59,9 +59,11 @@ const GroupLogsItem: FC<Props> = ({
   const logLevel = useMemo(() => {
     if (disabledLevelDetection) return null;
     const level = getLogLevel(log);
+    const detected = level === LOG_LEVEL_UNKNOWN ? "Detected log level" : `Detected ${level} log level`;
     return {
-      label: level,
+      label: LOG_LEVEL_ABBREVIATIONS[level] ?? level,
       color: LOG_LEVEL_COLORS[level],
+      tooltip: `${detected}. Can be disabled in Group view settings.`,
     };
   }, [log, disabledLevelDetection, isDarkTheme]);
 
@@ -83,9 +85,7 @@ const GroupLogsItem: FC<Props> = ({
 
     if (!hasFields) {
       values.push("-");
-    }
-
-    if (displayFields.some(field => log[field])) {
+    } else if (displayFields.some(field => log[field])) {
       displayFields.filter(field => log[field]).forEach((field) => {
         let value: string | ReactNode[] = log[field];
 
@@ -99,8 +99,23 @@ const GroupLogsItem: FC<Props> = ({
           value = "";
         }
 
-        value && values.push(value);
+        if (!value) return;
+
+        // _msg carries no prefix: it is the field almost every entry displays,
+        // and labelling it adds noise without adding information
+        if (isMessageField) {
+          values.push(value);
+        } else {
+          values.push(
+            <>
+              <span className="vm-group-logs-row-content__field-name">{field}: </span>
+              {value}
+            </>
+          );
+        }
       });
+    } else if (displayFields.length) {
+      values.push("—");
     } else {
       Object.entries(log).forEach(([key, value]) => {
         values.push(`${key}: ${value}`);
@@ -166,7 +181,7 @@ const GroupLogsItem: FC<Props> = ({
         </div>
         {logLevel && (
         <Tooltip
-          title="Detected log level. Can be disabled in Group view settings."
+          title={logLevel.tooltip}
           placement="top-center"
         >
           <div

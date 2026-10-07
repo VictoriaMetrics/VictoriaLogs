@@ -130,6 +130,9 @@ Override with `-kubernetesCollector.timeField=field1,field2`.
 If none of the `_time` fields are present, `vlagent` uses the timestamp written by the container runtime.
 This is usually accurate to within a millisecond.
 
+`vlagent` also adds the `output_stream` field to every collected log entry.
+It contains the name of the stream the container wrote the log line to: `stdout` or `stderr`.
+
 ### Stream fields
 
 By default, `vlagent` uses the following fields as [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) fields:
@@ -311,7 +314,7 @@ spec:
       serviceAccountName: vlagent
       containers:
         - name: vlagent
-          image: victoriametrics/vlagent:v1.52.0
+          image: victoriametrics/vlagent:v1.53.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -352,7 +355,7 @@ See also: [How to exclude vlagent's own logs from collection](https://docs.victo
 `vlagent` can collect text-based logs directly from files on disk using the `-fileCollector.glob` flag.
 This is useful for collecting logs from applications that write to log files, such as nginx, Redis, ClickHouse.
 
-### Quick start
+### Quick start for file collector
 
 The following command starts `vlagent` to collect logs from the `/path/to/file` file
 and to send the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:

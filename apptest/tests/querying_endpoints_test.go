@@ -3,13 +3,10 @@ package tests
 import (
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
 func TestVlsingleFieldNamesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -66,7 +63,6 @@ func TestVlsingleFieldNamesResponse(t *testing.T) {
 }
 
 func TestVlclusterFieldNamesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -123,7 +119,6 @@ func TestVlclusterFieldNamesResponse(t *testing.T) {
 }
 
 func TestVlsingleFieldValuesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -199,7 +194,6 @@ func TestVlsingleFieldValuesResponse(t *testing.T) {
 }
 
 func TestVlclusterFieldValuesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -275,7 +269,6 @@ func TestVlclusterFieldValuesResponse(t *testing.T) {
 }
 
 func TestVlsingleStreamFieldNamesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -334,7 +327,6 @@ func TestVlsingleStreamFieldNamesResponse(t *testing.T) {
 }
 
 func TestVlclusterStreamFieldNamesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -393,7 +385,6 @@ func TestVlclusterStreamFieldNamesResponse(t *testing.T) {
 }
 
 func TestVlsingleStreamFieldValuesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -457,7 +448,6 @@ func TestVlsingleStreamFieldValuesResponse(t *testing.T) {
 }
 
 func TestVlclusterStreamFieldValuesResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -521,7 +511,6 @@ func TestVlclusterStreamFieldValuesResponse(t *testing.T) {
 }
 
 func TestVlsingleStreamsResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -573,7 +562,6 @@ func TestVlsingleStreamsResponse(t *testing.T) {
 }
 
 func TestVlclusterStreamsResponse(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()

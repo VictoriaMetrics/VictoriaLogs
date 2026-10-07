@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	maxConcurrentRequests = flag.Int("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "The maximum number of concurrent search requests. "+
+	maxConcurrentRequests = flagutil.NewIntWithDynamicDefault("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "2x CPU cores when there are 4 or fewer; otherwise CPU cores, capped at 16", "The maximum number of concurrent search requests. "+
 		"It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. "+
 		"See also -search.maxQueueDuration")
 	maxQueueDuration = flag.Duration("search.maxQueueDuration", 10*time.Second, "The maximum time the search request waits for execution when -search.maxConcurrentRequests "+
@@ -37,6 +37,8 @@ var (
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	deleteAuthKey = flagutil.NewPassword("deleteAuthKey", "authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
@@ -98,11 +100,22 @@ var vmuiFiles embed.FS
 
 var vmuiFileServer = http.FileServer(http.FS(vmuiFiles))
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+	return strings.HasPrefix(path, "/delete/")
+}
+
 // RequestHandler handles select requests for VictoriaLogs
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 
 	if strings.HasPrefix(path, "/delete/") {
+		// The paths reported by IsAuthKeyProtectedPath() must verify the -*AuthKey before any other check.
+		if !httpserver.CheckAuthFlag(w, r, deleteAuthKey) {
+			return true
+		}
 		if !*enableDelete {
 			httpserver.Errorf(w, r, "requests to /delete/* are disabled; pass -delete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
@@ -173,7 +186,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 
 	if path == "/select/vmui" {
 		// VMUI access via incomplete url without `/` in the end. Redirect to complete url.
-		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaMetrics
+		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaLogs
 		// is hidden behind vmauth or similar proxy.
 		_ = r.ParseForm()
 		newURL := "vmui/?" + r.Form.Encode()

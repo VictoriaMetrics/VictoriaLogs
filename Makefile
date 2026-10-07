@@ -14,7 +14,7 @@ endif
 GO_BUILDINFO = -X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GOLANGCI_LINT_VERSION := 2.12.2
+GOLANGCI_LINT_VERSION := 2.13.2
 
 .PHONY: $(MAKECMDGOALS)
 
@@ -127,6 +127,10 @@ publish-release:
 	rm -rf bin/*
 	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish && \
 		git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
+
+publish-release-enterprise:
+	rm -rf bin/*
+	git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
 
 release: \
 	release-victoria-logs \
@@ -302,7 +306,7 @@ test-full-386:
 
 apptest:
 	$(MAKE) victoria-logs-race vlagent-race vlogscli-race
-	go test ./apptest/...
+	GORACE="halt_on_error=1" go test ./apptest/...
 
 benchmark:
 	go test -run=NO_TESTS -bench=. ./lib/...
@@ -315,7 +319,7 @@ benchmark-pure:
 vendor-update:
 	go get -u ./lib/...
 	go get -u ./app/...
-	go mod tidy -compat=1.26
+	go mod tidy -compat=1.27
 	go mod vendor
 
 app-local:

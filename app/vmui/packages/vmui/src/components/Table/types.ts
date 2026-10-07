@@ -28,6 +28,7 @@ export interface TableProps<T> {
   isActiveRow?: (row: T) => boolean;
   onClickRow?: (row: T, e: MouseEvent) => void;
   actionsRender?: (row: T) => ReactNode
+  renderExpandedRow?: (row: T) => ReactNode;
   applyViewColumns?: (action: ViewColumnsAction) => void;
   paginationOffset: [number, number];
 }

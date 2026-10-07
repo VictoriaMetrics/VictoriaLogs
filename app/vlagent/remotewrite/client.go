@@ -364,7 +364,7 @@ again:
 	// Unexpected status code returned
 	retriesCount++
 	retryAfterHeader := parseRetryAfterHeader(resp.Header.Get("Retry-After"))
-	// retryAfterDuration has the highest priority duration
+	// retryAfterHeader takes precedence over the backoff delay.
 	if retryAfterHeader > 0 {
 		bt.SetDelay(retryAfterHeader)
 	}

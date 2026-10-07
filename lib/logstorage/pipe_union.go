@@ -86,12 +86,12 @@ func (pu *pipeUnion) isFixedOutputFieldsOrder() bool {
 }
 
 func (pu *pipeUnion) hasFilterInWithQuery() bool {
-	// The pu.q query with possible in(...) filters is processed independently at pu.flush(), so return false here.
+	// The pu.q query with possible in(...) filters is processed independently at pipeUnionProcessor.flush(), so return false here.
 	return false
 }
 
 func (pu *pipeUnion) initFilterInValues(_ *inValuesCache, _ getFieldValuesFunc) (pipe, error) {
-	// The values for in(..) filters at pu.q query are obtained independently at pu.flush().
+	// The values for in(..) filters at pu.q query are obtained independently at pipeUnionProcessor.flush().
 	return pu, nil
 }
 

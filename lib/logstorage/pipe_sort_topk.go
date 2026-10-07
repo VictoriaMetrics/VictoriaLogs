@@ -679,7 +679,7 @@ func topkLess(ps *pipeSort, a, b *pipeTopkRow) bool {
 			bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], a.timestamp)
 			vA = bytesutil.ToUnsafeString(bb.B)
 		} else if isTimeB[i] {
-			bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], a.timestamp)
+			bb.B = marshalTimestampRFC3339NanoString(bb.B[:0], b.timestamp)
 			vB = bytesutil.ToUnsafeString(bb.B)
 		}
 

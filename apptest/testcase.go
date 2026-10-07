@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -34,29 +33,20 @@ func (tc *TestCase) T() *testing.T {
 	return tc.t
 }
 
-// Dir returns the directory name that should be used by as the -storageDataDir.
-func (tc *TestCase) Dir() string {
-	return tc.t.Name()
-}
-
 // Client returns an instance of the client that can be used for interacting with
 // the app(s) under test.
 func (tc *TestCase) Client() *Client {
 	return tc.cli
 }
 
-// Stop performs the test case clean up, such as closing all client connections
-// and removing the -storageDataDir directory.
+// Stop closes all client connections and stops the apps started by the test case.
 //
-// Note that the -storageDataDir is not removed in case of test case failure to
-// allow for further manual debugging.
+// Directories created with testing.T.TempDir are removed by the test framework
+// after the test completes, including when the test fails.
 func (tc *TestCase) Stop() {
 	tc.cli.CloseConnections()
 	for _, app := range tc.startedApps {
 		app.Stop()
-	}
-	if !tc.t.Failed() {
-		fs.MustRemoveDir(tc.Dir())
 	}
 }
 
@@ -79,7 +69,7 @@ func (tc *TestCase) StopApp(instance string) {
 // well as the message that should be included into the assertion error message
 // in case of failure.
 //
-// In VictoriaMetrics (especially the cluster version) the inserted data does
+// In VictoriaLogs (especially the cluster version) the inserted data does
 // not become visible for querying right away. Therefore, the first comparisons
 // may fail. AssertOptions allow to configure how many times the actual result
 // must be retrieved and compared with the expected one and for long to wait
@@ -110,7 +100,7 @@ type AssertOptions struct {
 // Assert compares the actual result with the expected one possibly multiple
 // times in order to account for the fact that the inserted data does not become
 // available for querying right away (especially in cluster version of
-// VictoriaMetrics).
+// VictoriaLogs).
 func (tc *TestCase) Assert(opts *AssertOptions) {
 	tc.t.Helper()
 

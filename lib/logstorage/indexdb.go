@@ -33,9 +33,6 @@ const (
 
 // IndexdbStats contains indexdb stats
 type IndexdbStats struct {
-	// StreamsCreatedTotal is the number of log streams created since the indexdb initialization.
-	StreamsCreatedTotal uint64
-
 	// IndexdbSizeBytes is the size of data in indexdb.
 	IndexdbSizeBytes uint64
 
@@ -71,9 +68,6 @@ type IndexdbStats struct {
 }
 
 type indexdb struct {
-	// streamsCreatedTotal is the number of log streams created since the indexdb initialization.
-	streamsCreatedTotal atomic.Uint64
-
 	// the generation of the filterStreamCache.
 	// It is updated each time new item is added to tb.
 	filterStreamCacheGeneration atomic.Uint32
@@ -127,8 +121,6 @@ func (idb *indexdb) mustCreateSnapshotAt(dstDir string) {
 }
 
 func (idb *indexdb) updateStats(d *IndexdbStats) {
-	d.StreamsCreatedTotal += idb.streamsCreatedTotal.Load()
-
 	var tm mergeset.TableMetrics
 	idb.tb.UpdateMetrics(&tm)
 
@@ -574,7 +566,7 @@ func (idb *indexdb) mustRegisterStream(streamID *streamID, streamTagsCanonical s
 	bi.items = items
 	putBatchItems(bi)
 
-	idb.streamsCreatedTotal.Add(1)
+	idb.s.streamsCreatedTotal.Add(1)
 }
 
 func (idb *indexdb) invalidateStreamFilterCache() {
