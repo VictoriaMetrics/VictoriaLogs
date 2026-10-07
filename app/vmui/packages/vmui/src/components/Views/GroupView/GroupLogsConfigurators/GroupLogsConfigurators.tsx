@@ -67,8 +67,6 @@ const GroupLogsConfigurators: FC<Props> = ({ logs, period }) => {
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const handleSelectGroupBy = groupByFields.selectField;
-
   const handleOpenGroupBy = useCallback((open: boolean) => {
     if (open) groupByFields.loadFields();
   }, [groupByFields.loadFields]);
@@ -137,7 +135,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs, period }) => {
                 label="Group by"
                 placeholder="Group by"
                 isLoading={groupByFields.isLoading}
-                onChange={handleSelectGroupBy}
+                onChange={groupByFields.selectField}
                 onOpen={handleOpenGroupBy}
                 searchable
               />
@@ -146,7 +144,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs, period }) => {
                   variant="text"
                   color="primary"
                   startIcon={<RestartIcon/>}
-                  onClick={() => handleSelectGroupBy(LOGS_GROUP_BY)}
+                  onClick={() => groupByFields.selectField(LOGS_GROUP_BY)}
                 />
               </Tooltip>
               <span className="vm-group-logs-configurator-item__info">

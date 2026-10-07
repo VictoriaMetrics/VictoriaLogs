@@ -24,10 +24,10 @@ export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELD
   const { period: currentPeriod } = useTimePeriod();
   const { start, end } = period ?? currentPeriod;
   const { groupFieldHits: { value: groupBy, set: setGroupBy } } = useHitsChartConfig();
-  const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
+  const { fetchFieldNames, loading, error } = useFetchFieldNames();
   const { fieldNamesCache } = useOverviewState();
 
-  // Read the cache during render, so an already fetched list is shown on the first frame.
+  // Use only the cache entry for the current params, so a response for other params can't appear.
   const cachedFieldNames = fieldNamesCache.get(getFieldNamesCacheKey({ period: { start, end }, query, extraParams }, tenant));
 
   const [recentFields, setRecentFields] = useState<string[]>(() => getRecentGroupByFields(tenant));
@@ -50,16 +50,14 @@ export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELD
   }, [tenant, setGroupBy]);
 
   const options = useMemo(() => {
-    // Until the request succeeds, the fetched fields may belong to the previous params.
-    const fetchedRows = cachedFieldNames ?? (loading || error ? [] : fieldNames);
-    const fetchedFields = fetchedRows.map(f => f.value);
+    const fetchedFields = cachedFieldNames?.map(f => f.value) ?? EMPTY_FIELDS;
     return buildGroupByOptions({
       current: groupBy,
       recent: recentFields,
       loaded: loadedFieldNames,
       fetched: fetchedFields,
     });
-  }, [groupBy, recentFields, loadedFieldNames, cachedFieldNames, fieldNames, loading, error]);
+  }, [groupBy, recentFields, loadedFieldNames, cachedFieldNames]);
 
   return {
     value: groupBy,
