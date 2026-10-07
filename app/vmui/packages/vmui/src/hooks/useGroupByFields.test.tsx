@@ -130,6 +130,30 @@ describe("useGroupByFields", () => {
     expect(result.current.options).toEqual([WITHOUT_GROUPING, "host"]);
   });
 
+  it("does not show a response for the previous period after the period changes", async () => {
+    let resolveFetch: (values: string[]) => void = () => undefined;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(resolve => {
+      resolveFetch = (values) => resolve(jsonResponse(values));
+    })));
+
+    let period = { start: BigInt(0), end: BigInt(100) };
+    const { result, rerender } = renderHook(() => useGroupByFields({ period, loadedFieldNames: ["host"] }), { wrapper });
+
+    act(() => {
+      result.current.loadFields();
+    });
+
+    period = { start: BigInt(100), end: BigInt(200) };
+    rerender();
+
+    await act(async () => {
+      resolveFetch(["old_field"]);
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.options).toEqual([WITHOUT_GROUPING, "host"]);
+  });
+
   it("shares a single request between selectors with the same period", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(["host", "level"]));
     vi.stubGlobal("fetch", fetchMock);

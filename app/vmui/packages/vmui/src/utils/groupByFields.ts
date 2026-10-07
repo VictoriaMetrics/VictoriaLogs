@@ -1,20 +1,21 @@
 import { Logs } from "../api/types";
 import { GROUP_BY_RECENT_LIMIT, NOISE_FIELDS, WITHOUT_GROUPING } from "../constants/logs";
 import { getFromStorage, saveToStorage } from "./storage";
+import type { TenantUrlType } from "../hooks/useTenant";
 
 const STORAGE_KEY = "LOGS_GROUP_BY_RECENT";
 
-type Tenant = { AccountID: string; ProjectID: string };
-
 type RecentFieldsStorage = Record<string, string[]>;
 
-const getTenantKey = ({ AccountID, ProjectID }: Tenant) => `${AccountID}:${ProjectID}`;
+const getTenantKey = ({ AccountID, ProjectID }: TenantUrlType) => `${AccountID}:${ProjectID}`;
 
 const isGroupableField = (field: string) => {
   return !!field && field !== WITHOUT_GROUPING && !NOISE_FIELDS.includes(field);
 };
 
-const sortFields = (fields: string[]) => [...fields].sort((a, b) => a.localeCompare(b));
+const fieldNameCollator = new Intl.Collator();
+
+const sortFields = (fields: string[]) => [...fields].sort(fieldNameCollator.compare);
 
 const getRecentFieldsStorage = (): RecentFieldsStorage => {
   const value = getFromStorage(STORAGE_KEY);
@@ -22,13 +23,13 @@ const getRecentFieldsStorage = (): RecentFieldsStorage => {
   return value as RecentFieldsStorage;
 };
 
-export const getRecentGroupByFields = (tenant: Tenant): string[] => {
+export const getRecentGroupByFields = (tenant: TenantUrlType): string[] => {
   const fields = getRecentFieldsStorage()[getTenantKey(tenant)];
   if (!Array.isArray(fields)) return [];
   return fields.filter(f => typeof f === "string" && isGroupableField(f)).slice(0, GROUP_BY_RECENT_LIMIT);
 };
 
-export const addRecentGroupByField = (tenant: Tenant, field: string): string[] => {
+export const addRecentGroupByField = (tenant: TenantUrlType, field: string): string[] => {
   const fields = getRecentGroupByFields(tenant);
   if (!isGroupableField(field)) return fields;
 

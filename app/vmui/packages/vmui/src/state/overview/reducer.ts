@@ -2,7 +2,7 @@ import { LogsFieldValues } from "../../api/types";
 
 type ParamsKey = string;
 
-export const FIELD_NAMES_CACHE_LIMIT = 10;
+const FIELD_NAMES_CACHE_LIMIT = 10;
 
 export interface OverviewState {
   totalLogs: number;
