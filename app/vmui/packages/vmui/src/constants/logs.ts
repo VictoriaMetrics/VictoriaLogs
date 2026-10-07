@@ -8,8 +8,6 @@ export const LOGS_DEFAULT_LIMIT = 50;
 export const LOGS_CONFIRM_THRESHOLD = 1000;
 export const LOGS_MAX_LIMIT = 10000;
 
-export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
-
 export const LOGS_LIMIT_HITS = 5;
 
 export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
