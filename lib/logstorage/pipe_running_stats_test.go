@@ -266,6 +266,47 @@ func TestPipeRunningStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	// _time values with different number of fractional digits must be ordered by time
+	f("running_stats sum(a) s", [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "4"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.9Z"},
+			{"a", "3"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.1Z"},
+			{"a", "2"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45Z"},
+			{"a", "1"},
+		},
+	}, [][]Field{
+		{
+			{"_time", "2026-03-31T12:00:45Z"},
+			{"a", "1"},
+			{"s", "1"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.1Z"},
+			{"a", "2"},
+			{"s", "3"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.9Z"},
+			{"a", "3"},
+			{"s", "6"},
+		},
+		{
+			{"_time", "2026-03-31T12:00:45.99Z"},
+			{"a", "4"},
+			{"s", "10"},
+		},
+	})
 }
 
 func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {
@@ -302,18 +343,18 @@ func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {
 	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "*", "r1,r3", "*", "r1,r2,r3")
 
 	// needed fields do not intersect with stats fields
-	f("running_stats count() r1", "r2", "", "r2", "")
-	f("running_stats count(*) r1", "r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1", "r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "r3", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1", "r2", "", "b1,b2,r2", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "b1,b2,r3", "")
+	f("running_stats count() r1", "r2", "", "_time,r2", "")
+	f("running_stats count(*) r1", "r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1", "r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r3", "", "_time,r3", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1", "r2", "", "_time,b1,b2,r2", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r3", "", "_time,b1,b2,r3", "")
 
 	// needed fields intersect with stats fields
-	f("running_stats count() r1", "r1,r2", "", "r2", "")
-	f("running_stats count(*) r1", "r1,r2", "", "r2", "")
-	f("running_stats count(f1,f2) r1", "r1,r2", "", "f1,f2,r2", "")
-	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "f1,f2,r3", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "b1,b2,f1,f2,r2", "")
-	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "b1,b2,f1,f2,r3", "")
+	f("running_stats count() r1", "r1,r2", "", "_time,r2", "")
+	f("running_stats count(*) r1", "r1,r2", "", "_time,r2", "")
+	f("running_stats count(f1,f2) r1", "r1,r2", "", "_time,f1,f2,r2", "")
+	f("running_stats count(f1,f2) r1, sum(f3,f4) r2", "r1,r3", "", "_time,f1,f2,r3", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1", "r1,r2", "", "_time,b1,b2,f1,f2,r2", "")
+	f("running_stats by (b1,b2) count(f1,f2) r1, count(f1,f3) r2", "r1,r3", "", "_time,b1,b2,f1,f2,r3", "")
 }

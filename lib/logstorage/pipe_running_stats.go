@@ -116,6 +116,10 @@ func (ps *pipeRunningStats) updateNeededFields(pf *prefixfilter.Filter) {
 	for _, bf := range ps.byFields {
 		pf.AddAllowFilter(bf)
 	}
+
+	if !pfOrig.MatchNothing() {
+		pf.AddAllowFilter("_time")
+	}
 }
 
 func (ps *pipeRunningStats) hasFilterInWithQuery() bool {
@@ -271,7 +275,7 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	for _, key := range keys {
 		rows := m[key]
 		sort.Slice(rows, func(i, j int) bool {
-			return rows[i].timestamp < rows[j].timestamp
+			return lessString(rows[i].timestamp, rows[j].timestamp)
 		})
 
 		if needStop(psp.stopCh) {
