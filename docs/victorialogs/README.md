@@ -539,7 +539,7 @@ For example, the following query searches only `(AccountID=12, ProjectID=34)` te
 options(global_filter=(vl_account_id:=12 vl_project_id:=34)) error user_id:in(login | keep user_id)
 ```
 
-Without `global_filter`, this query returns an error, since the `in(...)` subquery doesn't contain filters on `vl_account_id` or `vl_project_id` fields.
+Without `global_filter` or `extra_filters`, this query returns an error, since the `in(...)` subquery doesn't contain filters on `vl_account_id` or `vl_project_id` fields.
 
 The `/select/multitenant/logsql/*` endpoints can query all the stored tenants, so they must be protected with proper authorization.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
