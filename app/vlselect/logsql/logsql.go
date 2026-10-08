@@ -1793,9 +1793,6 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 }
 
 // getStringSliceFromRequest returns the combined values for all the argName args from r.
-//
-// The values are combined, so the client cannot override the args set by auth proxy such as vmauth.
-// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1848
 func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
 	var result []string
 	for _, s := range r.Form[argName] {
