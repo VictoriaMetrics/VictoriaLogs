@@ -260,6 +260,10 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 }
 
 func (s *Storage) getTenantIDsForQuery(ctx context.Context, q *Query) ([]TenantID, error) {
+	if !hasTenantFilter(q.getFinalFilter()) {
+		return nil, fmt.Errorf("missing vl_account_id or vl_project_id filter in the query [%s]; see https://docs.victoriametrics.com/victorialogs/#multitenant-querying", q)
+	}
+
 	start, end := q.GetFilterTimeRange()
 	allTenantIDs, err := s.getTenantIDs(ctx, start, end)
 	if err != nil {
@@ -289,6 +293,29 @@ func (s *Storage) getTenantIDsForQuery(ctx context.Context, q *Query) ([]TenantI
 	}
 
 	return tenantIDs, nil
+}
+
+// hasTenantFilter returns true if every log matching f must match some vl_account_id or vl_project_id filter.
+func hasTenantFilter(f filter) bool {
+	switch t := f.(type) {
+	case *filterAnd:
+		return slices.ContainsFunc(t.filters, hasTenantFilter)
+	case *filterOr:
+		return !slices.ContainsFunc(t.filters, func(f filter) bool {
+			return !hasTenantFilter(f)
+		})
+	case *filterGeneric:
+		return isTenantFieldFilter(t)
+	case *filterNot:
+		fg, ok := t.f.(*filterGeneric)
+		return ok && isTenantFieldFilter(fg)
+	default:
+		return false
+	}
+}
+
+func isTenantFieldFilter(fg *filterGeneric) bool {
+	return !fg.isWildcard && isTenantColumn(fg.fieldName)
 }
 
 // getTenantFilter returns a filter, which keeps only vl_account_id and vl_project_id filters from q.

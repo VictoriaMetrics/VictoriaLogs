@@ -200,6 +200,23 @@ func TestStorageRunQuery(t *testing.T) {
 		f(t, `vl_account_id:2 OR vl_project_id:31`, 2*rowsPerTenant)
 		f(t, `!vl_account_id:2`, rowsTotal-rowsPerTenant)
 	})
+	t.Run("missing-multitenant-query-tenant-filter", func(t *testing.T) {
+		f := func(t *testing.T, query string) {
+			t.Helper()
+
+			q := mustParseQuery(query)
+			qs := &QueryStats{}
+			qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+
+			writeBlock := func(_ uint, _ *DataBlock) {}
+			if err := s.RunQuery(qctx, writeBlock); err == nil {
+				t.Fatalf("expecting non-nil error for the query [%s]", q)
+			}
+		}
+
+		f(t, `*`)
+		f(t, `vl_account_id:2 _msg:in(* | fields _msg)`)
+	})
 	t.Run("matching-in-filter", func(t *testing.T) {
 		q := mustParseQuery(`source-file:in(foobar,/foo/bar/baz)`)
 		var rowsCountTotal atomic.Uint32
@@ -1767,7 +1784,7 @@ func TestStorageGetFieldNamesMultitenant(t *testing.T) {
 	PutLogRows(lr)
 	s.DebugFlush()
 
-	q := mustParseQuery("*")
+	q := mustParseQuery("vl_account_id:*")
 	qs := &QueryStats{}
 	qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
 	results, err := s.GetFieldNames(qctx, "vl_")
@@ -1782,6 +1799,35 @@ func TestStorageGetFieldNamesMultitenant(t *testing.T) {
 	if !reflect.DeepEqual(results, resultsExpected) {
 		t.Fatalf("unexpected result; got\n%v\nwant\n%v", results, resultsExpected)
 	}
+}
+
+func TestHasTenantFilter(t *testing.T) {
+	t.Parallel()
+
+	f := func(query string, resultExpected bool) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		result := hasTenantFilter(q.getFinalFilter())
+		if result != resultExpected {
+			t.Fatalf("unexpected result for query %q; got %v; want %v", query, result, resultExpected)
+		}
+	}
+
+	f(`vl_account_id:1`, true)
+	f(`vl_account_id:*`, true)
+	f(`vl_account_id:1 error`, true)
+	f(`vl_account_id:1 OR vl_account_id:2`, true)
+	f(`(vl_account_id:1 vl_project_id:2) OR (vl_account_id:3 foo)`, true)
+	f(`!vl_account_id:1`, true)
+	f(`vl_project_id:2`, true)
+	f(`vl_account_id:1 OR vl_project_id:2`, true)
+
+	f(`*`, false)
+	f(`error`, false)
+	f(`vl_account_id:1 OR error`, false)
+	f(`!(vl_account_id:1 error)`, false)
+	f(`vl_*:1`, false)
 }
 
 func TestGetTenantFilter(t *testing.T) {
