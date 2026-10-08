@@ -10,6 +10,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/filestream"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs/fsutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 )
 
@@ -73,7 +74,7 @@ func (bsr *blockStreamReader) reset() {
 	bsr.isInmemoryBlock = false
 	bsr.currItemIdx = 0
 	bsr.path = ""
-	bsr.ph.Reset()
+	bsr.ph.reset()
 	bsr.mrs = nil
 	bsr.mrIdx = 0
 	bsr.bhs = bsr.bhs[:0]
@@ -143,7 +144,7 @@ func (bsr *blockStreamReader) MustInitFromFilePart(path string) {
 
 	path = filepath.Clean(path)
 
-	bsr.ph.MustReadMetadata(path)
+	bsr.ph.mustReadLocalMetadata(path)
 
 	metaindexPath := filepath.Join(path, metaindexFilename)
 	metaindexFile := filestream.MustOpen(metaindexPath, true)
@@ -157,20 +158,18 @@ func (bsr *blockStreamReader) MustInitFromFilePart(path string) {
 
 	bsr.path = path
 
-	// Open part files in parallel in order to speed up this process
-	// on high-latency storage systems such as NFS or Ceph.
-
-	var pfo filestream.ParallelFileOpener
-
 	indexPath := filepath.Join(path, indexFilename)
 	itemsPath := filepath.Join(path, itemsFilename)
 	lensPath := filepath.Join(path, lensFilename)
 
-	pfo.Add(indexPath, &bsr.indexReader, true)
-	pfo.Add(itemsPath, &bsr.itemsReader, true)
-	pfo.Add(lensPath, &bsr.lensReader, true)
+	// Open part files in parallel in order to speed up this process
+	// on high-latency storage systems such as NFS or Ceph.
 
-	pfo.Run()
+	var pe fsutil.ParallelExecutor
+	pe.Add(filestream.NewFileOpenerTask(indexPath, &bsr.indexReader, true))
+	pe.Add(filestream.NewFileOpenerTask(itemsPath, &bsr.itemsReader, true))
+	pe.Add(filestream.NewFileOpenerTask(lensPath, &bsr.lensReader, true))
+	pe.Run()
 }
 
 // MustClose closes the bsr.
@@ -180,12 +179,11 @@ func (bsr *blockStreamReader) MustClose() {
 	if !bsr.isInmemoryBlock {
 		// Close files in parallel in order to speed up this process on storage systems with high latency
 		// such as NFS or Ceph.
-		cs := []fs.MustCloser{
-			bsr.indexReader,
-			bsr.itemsReader,
-			bsr.lensReader,
-		}
-		fs.MustCloseParallel(cs)
+		var pe fsutil.ParallelExecutor
+		pe.Add(fs.NewMustCloserTask(bsr.indexReader))
+		pe.Add(fs.NewMustCloserTask(bsr.itemsReader))
+		pe.Add(fs.NewMustCloserTask(bsr.lensReader))
+		pe.Run()
 	}
 	bsr.reset()
 }

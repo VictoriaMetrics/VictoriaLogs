@@ -18,7 +18,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
 
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, nil)
 	defer mustCloseIndexdb(idb)
 
 	tenantID := TenantID{
@@ -263,7 +263,7 @@ func TestGetTenantsIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
 
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, nil)
 	defer mustCloseIndexdb(idb)
 
 	tenantIDs := []TenantID{
