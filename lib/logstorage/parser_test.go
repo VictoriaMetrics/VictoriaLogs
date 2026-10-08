@@ -3986,6 +3986,24 @@ func TestQueryClone(t *testing.T) {
 	f(`* | math ("round" / 2) as y`)
 }
 
+func TestQueryCloneWithTimeFilter(t *testing.T) {
+	f := func(qStr, resultExpected string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		result := q.CloneWithTimeFilter(q.GetTimestamp(), 0, 1).String()
+		if result != resultExpected {
+			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	}
+
+	f(`kind:app host:in(_time:1h kind:inventory | fields host)`,
+		`_time:[1970-01-01T00:00:00.000000000Z,1970-01-01T00:00:00.000000001Z] kind:app host:in(_time:1h kind:inventory | fields host)`)
+}
+
 func TestQueryGetFilterTimeRange(t *testing.T) {
 	f := func(qStr string, startExpected, endExpected int64) {
 		t.Helper()
