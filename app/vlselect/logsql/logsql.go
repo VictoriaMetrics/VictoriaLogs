@@ -1792,8 +1792,20 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 	return nil
 }
 
+// getStringSliceFromRequest returns the combined values for all the argName args from r.
 func getStringSliceFromRequest(r *http.Request, argName string) ([]string, error) {
-	s := r.FormValue(argName)
+	var result []string
+	for _, s := range r.Form[argName] {
+		a, err := parseStringSlice(argName, s)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, a...)
+	}
+	return result, nil
+}
+
+func parseStringSlice(argName, s string) ([]string, error) {
 	if s == "" {
 		return nil, nil
 	}
