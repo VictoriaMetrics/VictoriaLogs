@@ -272,7 +272,7 @@ describe("LiveTailingView scrolling behavior (issue #1842)", () => {
     // Target: Math.max(0, scrollY (600) + rect.bottom (40) - innerHeight (800)) = 0
     expect(scrollToSpy).toHaveBeenCalledWith({
       top: 0,
-      behavior: "smooth",
+      behavior: "instant",
     });
   });
 
@@ -291,7 +291,7 @@ describe("LiveTailingView scrolling behavior (issue #1842)", () => {
     expect(scrollToSpy).not.toHaveBeenCalled();
   });
 
-  it("maintains active resume during upward animation scroll events without re-pausing", () => {
+  it("recovers immediately on Resume and keeps following a batch arriving before the scroll event", () => {
     const geometry = createGeometryHelper();
     geometry.setHeader({ top: 0, bottom: 48 });
     geometry.setLogs({ top: 48, bottom: 400 });
@@ -324,29 +324,21 @@ describe("LiveTailingView scrolling behavior (issue #1842)", () => {
     expect(resumeLiveTailingSpy).toHaveBeenCalled();
     expect(scrollToSpy).toHaveBeenCalledWith({
       top: 0,
-      behavior: "smooth",
+      behavior: "instant",
     });
 
-    // Simulate smooth upward animation generating intermediate decreasing scroll events
-    // while logs are still scrolling down from above the header
-    setScrollPosition(500);
-    geometry.setLogs({ top: -200, bottom: -100 });
-    fireEvent.scroll(document);
-
-    setScrollPosition(400);
-    geometry.setLogs({ top: -150, bottom: -50 });
-    fireEvent.scroll(document);
-
-    setScrollPosition(300);
-    geometry.setLogs({ top: -100, bottom: 0 });
-    fireEvent.scroll(document);
-
-    // Landing frame once logs are brought into view
+    // Recovery lands immediately; a batch can arrive before its scroll event is delivered.
     setScrollPosition(0);
-    geometry.setLogs({ top: 48, bottom: 200 });
+    geometry.setLogs({ top: 48, bottom: 1000 });
+    updateHookState?.({
+      logs: [createSampleLog("1", "tailing log"), createSampleLog("2", "new batch")],
+    });
     fireEvent.scroll(document);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
 
-    // Verify tailing remained active and was not re-paused by intermediate upward scroll events
+    expect(scrollToSpy).toHaveBeenLastCalledWith({ top: 200, behavior: "smooth" });
     expect(pauseLiveTailingSpy).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Pause live tailing" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Resume live tailing" })).toBeNull();

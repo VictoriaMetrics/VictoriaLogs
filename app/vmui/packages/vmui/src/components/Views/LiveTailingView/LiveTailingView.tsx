@@ -61,7 +61,8 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
 
     window.scrollTo({
       top: targetScrollTop,
-      behavior: "smooth"
+      // An upward animation can look like manual scrolling when a new batch arrives.
+      behavior: targetScrollTop < scrollY ? "instant" : "smooth"
     });
   }, []);
 
