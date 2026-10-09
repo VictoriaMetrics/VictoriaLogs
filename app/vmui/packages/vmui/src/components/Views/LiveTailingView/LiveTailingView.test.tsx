@@ -1,11 +1,61 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, act, screen } from "@testing-library/preact";
+import { useState, useEffect, useCallback } from "preact/compat";
 import LiveTailingView from "./LiveTailingView";
-import { useLiveTailingLogs } from "./useLiveTailingLogs";
 import { Logs } from "../../../api/types";
 
+interface MockHookState {
+  logs: Logs[];
+  isPaused: boolean;
+  error?: string;
+  isLimitedLogsPerUpdate: boolean;
+}
+
+let currentHookState: MockHookState;
+let updateHookState: ((partial: Partial<MockHookState>) => void) | null = null;
+const pauseLiveTailingSpy = vi.fn();
+const resumeLiveTailingSpy = vi.fn();
+const startLiveTailingSpy = vi.fn();
+const stopLiveTailingSpy = vi.fn();
+const clearLogsSpy = vi.fn();
+
 vi.mock("./useLiveTailingLogs", () => ({
-  useLiveTailingLogs: vi.fn(),
+  useLiveTailingLogs: () => {
+    const [state, setState] = useState<MockHookState>(currentHookState);
+
+    useEffect(() => {
+      updateHookState = (partial: Partial<MockHookState>) => {
+        act(() => {
+          setState((prev) => ({ ...prev, ...partial }));
+        });
+      };
+      return () => {
+        updateHookState = null;
+      };
+    }, []);
+
+    const pauseLiveTailing = useCallback(() => {
+      pauseLiveTailingSpy();
+      setState((prev) => ({ ...prev, isPaused: true }));
+    }, []);
+
+    const resumeLiveTailing = useCallback(() => {
+      resumeLiveTailingSpy();
+      setState((prev) => ({ ...prev, isPaused: false }));
+    }, []);
+
+    return {
+      logs: state.logs,
+      isPaused: state.isPaused,
+      error: state.error,
+      startLiveTailing: startLiveTailingSpy,
+      stopLiveTailing: stopLiveTailingSpy,
+      pauseLiveTailing,
+      resumeLiveTailing,
+      clearLogs: clearLogsSpy,
+      isLimitedLogsPerUpdate: state.isLimitedLogsPerUpdate,
+    };
+  },
 }));
 
 vi.mock("../GroupView/GroupLogsItem", () => ({
@@ -37,32 +87,113 @@ const createSampleLog = (id: string, msg: string): Logs => ({
   _log_id: id,
 });
 
-describe("LiveTailingView scrolling behavior (issue #1842 baseline reproduction)", () => {
-  let mockLiveLogsState: ReturnType<typeof useLiveTailingLogs>;
+const setScrollPosition = (y: number) => {
+  window.scrollY = y;
+  document.documentElement.scrollTop = y;
+};
+
+const createGeometryHelper = () => {
+  let headerRect: DOMRect = {
+    top: 0,
+    bottom: 48,
+    height: 48,
+    width: 1000,
+    left: 0,
+    right: 1000,
+    x: 0,
+    y: 0,
+    toJSON: () => {},
+  };
+
+  let logsRect: DOMRect = {
+    top: 48,
+    bottom: 300,
+    height: 252,
+    width: 1000,
+    left: 0,
+    right: 1000,
+    x: 0,
+    y: 48,
+    toJSON: () => {},
+  };
+
+  const defaultRect: DOMRect = {
+    top: 0,
+    bottom: 0,
+    height: 0,
+    width: 0,
+    left: 0,
+    right: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => {},
+  };
+
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+    this: HTMLElement
+  ) {
+    if (this.classList.contains("vm-query-page-body-header")) {
+      return { ...headerRect, x: headerRect.left, y: headerRect.top, toJSON: () => {} } as DOMRect;
+    }
+    if (this.classList.contains("vm-live-tailing-view__logs")) {
+      return { ...logsRect, x: logsRect.left, y: logsRect.top, toJSON: () => {} } as DOMRect;
+    }
+    return defaultRect;
+  });
+
+  return {
+    setHeader: (rect: Partial<DOMRect>) => {
+      headerRect = { ...headerRect, ...rect };
+    },
+    setLogs: (rect: Partial<DOMRect>) => {
+      logsRect = { ...logsRect, ...rect };
+    },
+  };
+};
+
+const renderHarness = () => {
+  const settingsSlot = document.createElement("div");
+  const settingsRef = { current: settingsSlot };
+
+  const result = render(
+    <div className="vm-query-page-body">
+      <div className="vm-query-page-body-header">
+        <div ref={(el) => { if (el && !el.contains(settingsSlot)) el.appendChild(settingsSlot); }} />
+      </div>
+      <div className="vm-query-page-body__content">
+        <LiveTailingView
+          data={[]}
+          settingsRef={settingsRef}
+        />
+      </div>
+    </div>
+  );
+
+  return { ...result, settingsSlot, settingsRef };
+};
+
+describe("LiveTailingView scrolling behavior (issue #1842)", () => {
   let scrollToSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     mockRawJsonView = false;
     scrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
-    window.scrollY = 0;
-    document.documentElement.scrollTop = 0;
-    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 2000 });
-    Object.defineProperty(document.documentElement, "clientHeight", { configurable: true, value: 800 });
+    setScrollPosition(0);
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
 
-    mockLiveLogsState = {
+    currentHookState = {
       logs: [],
       isPaused: false,
       error: undefined,
-      startLiveTailing: vi.fn().mockResolvedValue(true),
-      stopLiveTailing: vi.fn().mockResolvedValue(undefined),
-      pauseLiveTailing: vi.fn(),
-      resumeLiveTailing: vi.fn(),
-      clearLogs: vi.fn(),
       isLimitedLogsPerUpdate: false,
     };
 
-    vi.mocked(useLiveTailingLogs).mockImplementation(() => mockLiveLogsState);
+    pauseLiveTailingSpy.mockClear();
+    resumeLiveTailingSpy.mockClear();
+    startLiveTailingSpy.mockClear().mockResolvedValue(true);
+    stopLiveTailingSpy.mockClear().mockResolvedValue(undefined);
+    clearLogsSpy.mockClear();
   });
 
   afterEach(() => {
@@ -71,63 +202,250 @@ describe("LiveTailingView scrolling behavior (issue #1842 baseline reproduction)
     vi.restoreAllMocks();
   });
 
-  it("scrolls to document bottom on initial mount with empty logs", () => {
-    render(
-      <LiveTailingView
-        data={[]}
-        settingsRef={{ current: null }}
-      />
-    );
+  it("does not scroll on initial mount with empty logs and starts live tailing", () => {
+    createGeometryHelper();
+    renderHarness();
     act(() => {
       vi.advanceTimersByTime(300);
     });
 
-    // Reproduces issue #1842: mount unconditionally scrolls to document.documentElement.scrollHeight
-    expect(scrollToSpy).toHaveBeenCalledWith({
-      top: 2000,
-      behavior: "smooth",
-    });
-    expect(mockLiveLogsState.startLiveTailing).toHaveBeenCalled();
+    expect(scrollToSpy).not.toHaveBeenCalled();
+    expect(startLiveTailingSpy).toHaveBeenCalled();
     expect(screen.getByText("Waiting for logs...")).toBeInTheDocument();
   });
 
-  it("renders incoming logs in grouped mode and scrolls to document bottom", () => {
-    mockLiveLogsState.logs = [createSampleLog("1", "first log")];
+  it("transitions from empty to incoming logs without jumping when logs fit", () => {
+    const geometry = createGeometryHelper();
+    renderHarness();
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(scrollToSpy).not.toHaveBeenCalled();
 
-    render(
-      <LiveTailingView
-        data={[]}
-        settingsRef={{ current: null }}
-      />
-    );
+    // Incoming logs that fit within the viewport (top: 48, bottom: 300 <= window.innerHeight 800)
+    geometry.setLogs({ top: 48, bottom: 300 });
+    updateHookState?.({
+      logs: [createSampleLog("1", "first log"), createSampleLog("2", "second log")],
+    });
     act(() => {
       vi.advanceTimersByTime(300);
     });
 
-    expect(screen.getByTestId("group-log-item")).toBeInTheDocument();
+    expect(screen.queryByText("Waiting for logs...")).toBeNull();
+    const renderedItems = screen.getAllByTestId("group-log-item");
+    expect(renderedItems).toHaveLength(2);
+    expect(renderedItems[0].textContent).toContain("first log");
+    expect(renderedItems[1].textContent).toContain("second log");
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("auto-follows incoming logs when they overflow the visible viewport", () => {
+    const geometry = createGeometryHelper();
+    geometry.setLogs({ top: 100, bottom: 1200 });
+    currentHookState.logs = [createSampleLog("1", "overflowing log")];
+
+    renderHarness();
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Positions rect.bottom at window.innerHeight: scrollY (0) + 1200 - 800 = 400
     expect(scrollToSpy).toHaveBeenCalledWith({
-      top: 2000,
+      top: 400,
       behavior: "smooth",
     });
   });
 
-  it("pauses live tailing on upward scroll based on document height", () => {
-    mockLiveLogsState.logs = [createSampleLog("1", "first log")];
+  it("recovers scroll when logs are hidden beneath the sticky header", () => {
+    const geometry = createGeometryHelper();
+    // Sticky header bottom is 48; logs bottom at 40 is behind/above the sticky header
+    geometry.setHeader({ top: 0, bottom: 48 });
+    geometry.setLogs({ top: -100, bottom: 40 });
+    currentHookState.logs = [createSampleLog("1", "partially hidden log")];
+    setScrollPosition(600);
 
-    render(
-      <LiveTailingView
-        data={[]}
-        settingsRef={{ current: null }}
-      />
-    );
+    renderHarness();
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
 
-    document.documentElement.scrollTop = 500;
-    fireEvent.scroll(document);
-    document.documentElement.scrollTop = 400;
-    fireEvent.scroll(document);
-    document.documentElement.scrollTop = 300;
+    // Target: Math.max(0, scrollY (600) + rect.bottom (40) - innerHeight (800)) = 0
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: 0,
+      behavior: "smooth",
+    });
+  });
+
+  it("causes no scroll when logs are already visible within usable viewport", () => {
+    const geometry = createGeometryHelper();
+    // Header bottom is 48; logs bottom is 500 (> 48 and <= window.innerHeight 800)
+    geometry.setHeader({ top: 0, bottom: 48 });
+    geometry.setLogs({ top: 48, bottom: 500 });
+    currentHookState.logs = [createSampleLog("1", "visible log")];
+
+    renderHarness();
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("maintains active resume during upward animation scroll events without re-pausing", () => {
+    const geometry = createGeometryHelper();
+    geometry.setHeader({ top: 0, bottom: 48 });
+    geometry.setLogs({ top: 48, bottom: 400 });
+    currentHookState.logs = [createSampleLog("1", "tailing log")];
+
+    renderHarness();
+
+    // User pauses live tailing
+    const pauseBtn = screen.getByRole("button", { name: "Pause live tailing" });
+    fireEvent.click(pauseBtn);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const resumeBtn = screen.getByRole("button", { name: "Resume live tailing" });
+    expect(resumeBtn).toBeInTheDocument();
+
+    // Scrolled down: scrollY = 600, logs are positioned above the usable viewport
+    setScrollPosition(600);
+    geometry.setLogs({ top: -300, bottom: -150 });
+
+    scrollToSpy.mockClear();
+    pauseLiveTailingSpy.mockClear();
+    resumeLiveTailingSpy.mockClear();
+
+    // User clicks Resume
+    fireEvent.click(resumeBtn);
+    act(() => {});
+
+    expect(resumeLiveTailingSpy).toHaveBeenCalled();
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    // Simulate smooth upward animation generating intermediate decreasing scroll events
+    // while logs are still scrolling down from above the header
+    setScrollPosition(500);
+    geometry.setLogs({ top: -200, bottom: -100 });
     fireEvent.scroll(document);
 
-    expect(mockLiveLogsState.pauseLiveTailing).toHaveBeenCalled();
+    setScrollPosition(400);
+    geometry.setLogs({ top: -150, bottom: -50 });
+    fireEvent.scroll(document);
+
+    setScrollPosition(300);
+    geometry.setLogs({ top: -100, bottom: 0 });
+    fireEvent.scroll(document);
+
+    // Landing frame once logs are brought into view
+    setScrollPosition(0);
+    geometry.setLogs({ top: 48, bottom: 200 });
+    fireEvent.scroll(document);
+
+    // Verify tailing remained active and was not re-paused by intermediate upward scroll events
+    expect(pauseLiveTailingSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Pause live tailing" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resume live tailing" })).toBeNull();
+  });
+
+  it("pauses live tailing on manual upward scroll and resumes when requested", () => {
+    const geometry = createGeometryHelper();
+    // Latest logs extend below the viewport lower boundary: rect.bottom = 1400 (> 800 + 100)
+    geometry.setLogs({ top: 400, bottom: 1400 });
+    currentHookState.isPaused = false;
+    currentHookState.logs = [createSampleLog("1", "streamed log")];
+    setScrollPosition(600);
+
+    renderHarness();
+
+    // User manually scrolls up away from latest logs
+    setScrollPosition(500);
+    fireEvent.scroll(document);
+    setScrollPosition(400);
+    fireEvent.scroll(document);
+    setScrollPosition(300);
+    fireEvent.scroll(document);
+
+    expect(pauseLiveTailingSpy).toHaveBeenCalled();
+    const resumeBtn = screen.getByRole("button", { name: "Resume live tailing" });
+    expect(resumeBtn).toBeInTheDocument();
+
+    // Resuming scrolls down to bring the latest logs back to the bottom
+    scrollToSpy.mockClear();
+    fireEvent.click(resumeBtn);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(resumeLiveTailingSpy).toHaveBeenCalled();
+    // scrollY (300) + 1400 - 800 = 900
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: 900,
+      behavior: "smooth",
+    });
+    expect(screen.getByRole("button", { name: "Pause live tailing" })).toBeInTheDocument();
+  });
+
+  it("ensures no scrolling occurs after unmount even if a throttled update was scheduled", () => {
+    const geometry = createGeometryHelper();
+    geometry.setLogs({ top: 100, bottom: 1200 });
+    currentHookState.logs = [createSampleLog("1", "log")];
+
+    const { unmount } = renderHarness();
+
+    // Initial mount executed leading throttled call
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+
+    // Queue a trailing throttled call within the 200ms throttle interval
+    updateHookState?.({
+      logs: [createSampleLog("1", "log"), createSampleLog("2", "next log")],
+    });
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+
+    // Unmount component before throttle timer triggers
+    unmount();
+
+    // Advance timers past the throttle window
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Observable guarantee: no scroll invocation occurred after unmount
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    expect(stopLiveTailingSpy).toHaveBeenCalled();
+  });
+
+  it.each([
+    { isRawJson: false, mode: "grouped" },
+    { isRawJson: true, mode: "raw JSON" },
+  ])("renders and auto-follows in $mode mode", ({ isRawJson }) => {
+    mockRawJsonView = isRawJson;
+    const geometry = createGeometryHelper();
+    geometry.setLogs({ top: 100, bottom: 1100 });
+    currentHookState.logs = [createSampleLog("1", `${isRawJson ? "raw" : "grouped"} log entry`)];
+
+    const { container } = renderHarness();
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    if (isRawJson) {
+      const rawRow = container.querySelector(".vm-live-tailing-view__log-row");
+      expect(rawRow).not.toBeNull();
+      expect(rawRow?.textContent).toContain("raw log entry");
+      expect(screen.queryByTestId("group-log-item")).toBeNull();
+    } else {
+      expect(screen.getByTestId("group-log-item")).toBeInTheDocument();
+      expect(container.querySelector(".vm-live-tailing-view__log-row")).toBeNull();
+    }
+
+    expect(scrollToSpy).toHaveBeenCalledWith({
+      top: 300,
+      behavior: "smooth",
+    });
   });
 });
