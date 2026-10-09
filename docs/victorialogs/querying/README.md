@@ -105,8 +105,8 @@ where each line contains JSON-encoded log entry in the form `{field1="value1",..
 Example response:
 
 ```
-{"_msg":"error: disconnect from 19.54.37.22: Auth fail [preauth]","_stream":"{}","_time":"2023-01-01T13:32:13Z"}
-{"_msg":"some other error","_stream":"{}","_time":"2023-01-01T13:32:15Z"}
+{"_msg":"error: disconnect from 19.54.37.22: Auth fail [preauth]","_stream":"{}","_time":"2023-01-01T13:32:13.000000000Z"}
+{"_msg":"some other error","_stream":"{}","_time":"2023-01-01T13:32:15.000000000Z"}
 ```
 
 Logs lines are sent to the response stream as soon as they are found in VictoriaLogs storage.
@@ -280,9 +280,9 @@ Below is an example JSON output returned from this endpoint:
     {
       "fields": {},
       "timestamps": [
-        "2024-01-01T00:00:00Z",
-        "2024-01-01T01:00:00Z",
-        "2024-01-01T02:00:00Z"
+        "2024-01-01T00:00:00.000000000Z",
+        "2024-01-01T01:00:00.000000000Z",
+        "2024-01-01T02:00:00.000000000Z"
       ],
       "values": [
         410339,
@@ -312,9 +312,9 @@ The grouped fields are put inside `"fields"` object:
         "level": "error"
       },
       "timestamps": [
-        "2024-01-01T00:00:00Z",
-        "2024-01-01T01:00:00Z",
-        "2024-01-01T02:00:00Z"
+        "2024-01-01T00:00:00.000000000Z",
+        "2024-01-01T01:00:00.000000000Z",
+        "2024-01-01T02:00:00.000000000Z"
       ],
       "values": [
         25,
@@ -328,9 +328,9 @@ The grouped fields are put inside `"fields"` object:
         "level": "info"
       },
       "timestamps": [
-        "2024-01-01T00:00:00Z",
-        "2024-01-01T01:00:00Z",
-        "2024-01-01T02:00:00Z"
+        "2024-01-01T00:00:00.000000000Z",
+        "2024-01-01T01:00:00.000000000Z",
+        "2024-01-01T02:00:00.000000000Z"
       ],
       "values": [
         25625,

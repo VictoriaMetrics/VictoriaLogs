@@ -27,8 +27,8 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 		`{"_msg":"ingest jsonline","_time": "2025-06-05T14:30:19.088007Z", "bar":"foo"}`,
 	}, apptest.IngestOpts{})
 	wantLogLines := []string{
-		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)
@@ -47,8 +47,8 @@ func TestVlagentRemoteWriteSingleTenant(t *testing.T) {
 	// start storage and check if buffered data correctly ingested
 	sut = tc.MustStartVlsingle(instance, sutFlags)
 	wantLogLines = []string{
-		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)
@@ -83,8 +83,8 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 	})
 	// Query logs from different tenants
 	wantLogLines := []string{
-		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"tenant 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)
@@ -95,8 +95,8 @@ func TestVlagentRemoteWriteMultiTenant(t *testing.T) {
 	}, &apptest.LogsQLQueryResponse{LogLines: wantLogLines})
 
 	wantLogLines = []string{
-		`{"_msg":"tenant 2","_stream":"{bar=\"foo\"}","_time":"2025-06-05T15:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"tenant 2","_stream":"{foo=\"bar\"}","_time":"2025-06-05T15:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"tenant 2","_stream":"{bar=\"foo\"}","_time":"2025-06-05T15:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"tenant 2","_stream":"{foo=\"bar\"}","_time":"2025-06-05T15:30:19.088007000Z","foo":"bar"}`,
 	}
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
 		sut.ForceFlush(t)
@@ -146,8 +146,8 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 	}, apptest.IngestOpts{})
 
 	wantLogLines := []string{
-		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 	}
 
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {
@@ -171,8 +171,8 @@ func TestVlagentRemoteWriteReplication(t *testing.T) {
 
 	// check alive storage received data
 	wantLogLines = []string{
-		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+		`{"_msg":"ingest jsonline2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 	}
 
 	assertLogsQLResponseEventually(tc, func() *apptest.LogsQLQueryResponse {

@@ -46,7 +46,7 @@ var (
 // ProcessQueryTimeRangeRequest handles /select/logsql/query_time_range request.
 //
 // This request returns JSON object with "start" and "end" fields containing
-// the really selected time range by the provided query in RFC3339Nano format.
+// the really selected time range by the provided query in RFC3339 format with 9 digits after the decimal point.
 // This is needed for https://github.com/VictoriaMetrics/VictoriaLogs/issues/558#issuecomment-3527811816
 //
 // The format of the returned JSON:
@@ -65,8 +65,8 @@ func ProcessQueryTimeRangeRequest(ctx context.Context, w http.ResponseWriter, r 
 
 	w.Header().Set("Content-Type", "application/json")
 
-	startStr := timestampToRFC3339Nano(minTimestamp)
-	endStr := timestampToRFC3339Nano(maxTimestamp)
+	startStr := logstorage.FormatTimestampRFC3339Nano(minTimestamp)
+	endStr := logstorage.FormatTimestampRFC3339Nano(maxTimestamp)
 	fmt.Fprintf(w, `{"start":%q,"end":%q,"hasTimeFilter":%t}`, startStr, endStr, hasTimeFilter)
 }
 
@@ -117,10 +117,6 @@ func parseQueryFromRequest(r *http.Request, timestamp int64) (*logstorage.Query,
 		return nil, fmt.Errorf("cannot parse `query` arg [%s]: %w", qStr, err)
 	}
 	return q, nil
-}
-
-func timestampToRFC3339Nano(nsec int64) string {
-	return time.Unix(0, nsec).UTC().Format(time.RFC3339Nano)
 }
 
 // ProcessFacetsRequest handles /select/logsql/facets request.
@@ -1580,7 +1576,7 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 			if queryTimeRange < 0 || queryTimeRange > maxRange.Nanoseconds() {
 				return nil, fmt.Errorf("too big time range selected: [%s, %s]; it cannot exceed -search.maxQueryTimeRange=%s; "+
 					"see https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits",
-					timestampToString(start), timestampToString(end), maxRange)
+					logstorage.FormatTimestampRFC3339Nano(start), logstorage.FormatTimestampRFC3339Nano(end), maxRange)
 			}
 		}
 	}
@@ -1636,11 +1632,6 @@ func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 	}
 
 	return start, end
-}
-
-func timestampToString(nsecs int64) string {
-	t := time.Unix(nsecs/1e9, nsecs%1e9).UTC()
-	return t.Format(time.RFC3339Nano)
 }
 
 func getTimeNsec(r *http.Request, argName string) (int64, bool, error) {

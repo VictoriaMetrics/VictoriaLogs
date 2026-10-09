@@ -87,7 +87,7 @@ curl http://localhost:9428/select/logsql/query -d 'query=host.name:host123'
 The command should return the following response:
 
 ```sh
-{"_msg":"cannot open file","_stream":"{}","_time":"2023-06-21T04:24:24Z","host.name":"host123"}
+{"_msg":"cannot open file","_stream":"{}","_time":"2023-06-21T04:24:24.000000000Z","host.name":"host123"}
 ```
 
 The response by default contains all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -148,9 +148,9 @@ curl http://localhost:9428/select/logsql/query -d 'query=log.level:*'
 The command should return the following response:
 
 ```sh
-{"_msg":"hello world","_stream":"{stream=\"stream2\"}","_time":"2023-06-20T13:35:11.56789Z","log.level":"info"}
-{"_msg":"hello world","_stream":"{stream=\"stream1\"}","_time":"2023-06-20T15:31:23Z","log.level":"info"}
-{"_msg":"oh no!","_stream":"{stream=\"stream1\"}","_time":"2023-06-20T15:32:10.567Z","log.level":"error"}
+{"_msg":"hello world","_stream":"{stream=\"stream2\"}","_time":"2023-06-20T13:35:11.567890000Z","log.level":"info"}
+{"_msg":"hello world","_stream":"{stream=\"stream1\"}","_time":"2023-06-20T15:31:23.000000000Z","log.level":"info"}
+{"_msg":"oh no!","_stream":"{stream=\"stream1\"}","_time":"2023-06-20T15:32:10.567000000Z","log.level":"error"}
 ```
 
 The response by default contains all the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).

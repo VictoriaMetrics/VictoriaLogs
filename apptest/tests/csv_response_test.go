@@ -37,8 +37,8 @@ func TestVlsingleQueryCSVResponse(t *testing.T) {
 	// query ending with fields pipe
 	query := "case | sort by (_time) | fields _time, _msg, host.name, is_error"
 	responseExpected := `_time,_msg,host.name,is_error
-2025-06-05T14:30:19.088007Z,"case 1"",2",foobar,
-2025-06-06T14:30:19.088007Z,case 2,,false
+2025-06-05T14:30:19.088007000Z,"case 1"",2",foobar,
+2025-06-06T14:30:19.088007000Z,case 2,,false
 `
 	f(query, responseExpected)
 
@@ -53,10 +53,10 @@ NaN,foobar,1
 	// 'select all' query
 	query = "* | rm _stream_id | sort by (_time, _msg desc)"
 	responseExpected = `_msg,_stream,_time,host.name,host.os.version,is_error,offset,tags
-stats_pipe,{},2025-06-05T14:30:19.088007Z,foobar,1.2.3,,,
-"case 1"",2",{},2025-06-05T14:30:19.088007Z,foobar,1.2.3,,,
-stats_pipe,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
-case 2,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
+stats_pipe,{},2025-06-05T14:30:19.088007000Z,foobar,1.2.3,,,
+"case 1"",2",{},2025-06-05T14:30:19.088007000Z,foobar,1.2.3,,,
+stats_pipe,{},2025-06-06T14:30:19.088007000Z,,,false,12345,"[""foo"",""bar""]"
+case 2,{},2025-06-06T14:30:19.088007000Z,,,false,12345,"[""foo"",""bar""]"
 `
 	f(query, responseExpected)
 }
@@ -92,8 +92,8 @@ func TestVlclusterQueryCSVResponse(t *testing.T) {
 	// query ending with fields pipe
 	query := "case | sort by (_time) | fields _time, _msg, host.name, is_error"
 	responseExpected := `_time,_msg,host.name,is_error
-2025-06-05T14:30:19.088007Z,"case 1"",2",foobar,
-2025-06-06T14:30:19.088007Z,case 2,,false
+2025-06-05T14:30:19.088007000Z,"case 1"",2",foobar,
+2025-06-06T14:30:19.088007000Z,case 2,,false
 `
 	f(query, responseExpected)
 
@@ -108,10 +108,10 @@ NaN,foobar,1
 	// 'select all' query
 	query = "* | rm _stream_id | sort by (_time, _msg desc)"
 	responseExpected = `_msg,_stream,_time,host.name,host.os.version,is_error,offset,tags
-stats_pipe,{},2025-06-05T14:30:19.088007Z,foobar,1.2.3,,,
-"case 1"",2",{},2025-06-05T14:30:19.088007Z,foobar,1.2.3,,,
-stats_pipe,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
-case 2,{},2025-06-06T14:30:19.088007Z,,,false,12345,"[""foo"",""bar""]"
+stats_pipe,{},2025-06-05T14:30:19.088007000Z,foobar,1.2.3,,,
+"case 1"",2",{},2025-06-05T14:30:19.088007000Z,foobar,1.2.3,,,
+stats_pipe,{},2025-06-06T14:30:19.088007000Z,,,false,12345,"[""foo"",""bar""]"
+case 2,{},2025-06-06T14:30:19.088007000Z,,,false,12345,"[""foo"",""bar""]"
 `
 	f(query, responseExpected)
 }
