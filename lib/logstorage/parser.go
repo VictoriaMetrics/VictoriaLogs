@@ -846,7 +846,7 @@ func getFixedFields(pipes []pipe) ([]string, int) {
 	for i := len(pipes) - 1; i >= 0; i-- {
 		p := pipes[i]
 		switch t := p.(type) {
-		case *pipeSort, *pipeLimit, *pipeOffset:
+		case *pipeFilter, *pipeSort, *pipeLimit, *pipeOffset:
 			// these pipes do not change the fixed fields, so they are allowed after `fields` and `stats`
 		case *pipeFields:
 			fields, ok := t.resultFields()
