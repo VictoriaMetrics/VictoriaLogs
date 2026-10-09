@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.2. See [the list of issues addressed in Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved).
+
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allow expanding a row in Table view to inspect all fields of a single log entry, reusing the Group view field list. See [#1630](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1630).
 
 * BUGFIX: [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): fix the `Drilldown` links in the `Persistent queue size`, `RSS memory % usage`, `CPU % usage` and `Disk writes/reads` panels. Previously, these links opened the vmagent dashboard, and the opened panels showed no data because the selected datasource, `job` and `instance` were passed incorrectly. See [#1826](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1826).
