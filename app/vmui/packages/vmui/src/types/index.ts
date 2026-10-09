@@ -53,6 +53,8 @@ export interface AppConfig {
   license?: {
     type?: "enterprise" | "opensource";
   }
+  /** Human-readable names for `accountID:projectID` tenants, set via `-vmui.tenantAliases` at VictoriaLogs. */
+  tenantAliases?: Record<string, string>;
 }
 
 export interface GroupLogsType {
