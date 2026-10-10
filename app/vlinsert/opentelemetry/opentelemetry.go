@@ -1,6 +1,7 @@
 package opentelemetry
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,7 +15,11 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-var maxRequestSize = flagutil.NewBytes("opentelemetry.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single OpenTelemetry request")
+var (
+	maxRequestSize   = flagutil.NewBytes("opentelemetry.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single OpenTelemetry request")
+	consistentPrefix = flag.Bool("opentelemetry.consistentPrefix", false, "Whether to prefix OpenTelemetry attribute names with their source for the logs ingested via OpenTelemetry protocol, "+
+		"e.g. resource.attribute.service.name instead of service.name. VictoriaMetrics and VictoriaTraces use the same field names when they run with the same flag; see https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#field-names")
+)
 
 // RequestHandler processes Opentelemetry insert requests
 func RequestHandler(path string, w http.ResponseWriter, r *http.Request) bool {
@@ -52,7 +57,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 	err = protoparserutil.ReadUncompressedData(r.Body, encoding, maxRequestSize, func(data []byte) error {
 		lmp := cp.NewLogMessageProcessor("opentelemetry_protobuf", false)
 		useDefaultStreamFields := len(cp.StreamFields) == 0
-		err := pushProtobufRequest(data, lmp, cp.MsgFields, useDefaultStreamFields)
+		err := pushProtobufRequest(data, lmp, cp.MsgFields, useDefaultStreamFields, *consistentPrefix)
 		lmp.MustClose()
 		return err
 	})
@@ -74,7 +79,7 @@ var (
 	requestProtobufDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/opentelemetry/v1/logs",format="protobuf"}`)
 )
 
-func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields bool) error {
+func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields, useConsistentPrefix bool) error {
 	pushLogs := func(timestamp int64, fields []logstorage.Field, streamFieldsLen int) {
 		logstorage.RenameField(fields[streamFieldsLen:], msgFields, "_msg")
 
@@ -85,7 +90,7 @@ func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFie
 		lmp.AddRow(timestamp, fields, streamFieldsLen)
 	}
 
-	if err := decodeLogsData(data, pushLogs); err != nil {
+	if err := decodeLogsData(data, pushLogs, useConsistentPrefix); err != nil {
 		errorsTotal.Inc()
 		return fmt.Errorf("cannot decode LogsData request from %d bytes: %w", len(data), err)
 	}

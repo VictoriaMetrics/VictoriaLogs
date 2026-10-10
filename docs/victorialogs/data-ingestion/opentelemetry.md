@@ -107,6 +107,83 @@ exporters:
       VL-Ignore-Fields: foo,bar
 ```
 
+## Field names
+
+By default, VictoriaLogs stores resource attributes, log record attributes and fields of a key-value log body without a prefix.
+For example, the `service.name` resource attribute is stored in the `service.name` field. This keeps field names short, but it causes two problems:
+
+- the same attribute may have different names in VictoriaLogs, VictoriaMetrics and VictoriaTraces, so it is harder to correlate logs with metrics and traces;
+- attributes from different sources may have the same name. For example, a resource attribute, a log record attribute and a log body field
+  may all be named `service.name`, or a log record attribute may be named `trace_id` like the built-in `trace_id` field.
+  Then some of these values are lost. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
+
+The `-opentelemetry.consistentPrefix`{{% available_from "#" %}} command-line flag solves both problems for logs ingested via `/insert/opentelemetry/v1/logs`.
+It adds a prefix to every attribute name, so the field name shows where the attribute comes from:
+
+- resource attributes are stored as `resource.attribute.<key>` instead of `<key>`;
+- scope attributes are stored as `scope.attribute.<key>` instead of `scope.attributes.<key>`;
+- log record attributes are stored as `log.attribute.<key>` instead of `<key>`;
+- fields of a key-value log body are stored as `body.<key>` instead of `<key>`.
+
+VictoriaMetrics and VictoriaTraces use the same field names when they run with the same flag.
+
+The flag doesn't change the names of the fields that VictoriaLogs creates from the built-in OpenTelemetry fields,
+such as `scope.name`, `scope.version`, `trace_id`, `span_id`, `severity_number`, `severity_text` and `event_name`.
+Other log body values, such as strings, are still stored in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+
+For example, the following log record:
+
+```json
+{
+  "resourceLogs": [{
+    "resource": {
+      "attributes": [{"key": "service.name", "value": {"stringValue": "checkout"}}]
+    },
+    "scopeLogs": [{
+      "scope": {
+        "name": "payment",
+        "version": "2.4.1",
+        "attributes": [{"key": "version", "value": {"stringValue": "1.0"}}]
+      },
+      "logRecords": [{
+        "severityNumber": 17,
+        "severityText": "ERROR",
+        "body": {"stringValue": "payment failed"},
+        "attributes": [{"key": "service.name", "value": {"stringValue": "payment-lib"}}]
+      }]
+    }]
+  }]
+}
+```
+
+is stored with the following fields when `-opentelemetry.consistentPrefix` is set:
+
+```json
+{
+  "resource.attribute.service.name": "checkout",
+  "scope.name": "payment",
+  "scope.version": "2.4.1",
+  "scope.attribute.version": "1.0",
+  "_msg": "payment failed",
+  "log.attribute.service.name": "payment-lib",
+  "severity_number": "17",
+  "severity_text": "ERROR"
+}
+```
+
+It is recommended to set the flag before ingesting OpenTelemetry logs, since it changes field names, including the names of
+[log stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields). Logs ingested before that keep the old field names,
+so queries over both old and new logs must use both names. If you use `VL-Stream-Fields`, `VL-Msg-Field`, `VL-Ignore-Fields`
+or `VL-Decolorize-Fields` [HTTP headers](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers),
+then update them to the new field names, for example `VL-Stream-Fields: resource.attribute.service.name` or `VL-Msg-Field: body.msg`.
+
+The prefixes make field names longer. Note that VictoriaLogs drops log entries with field names longer than 128 bytes,
+see [these docs](https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length).
+
+Set the flag on every component that accepts OpenTelemetry data: single-node VictoriaLogs, all the `vlinsert` nodes
+in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/).
+If some of these components run without the flag, then the stored field names depend on which component receives the logs.
+
 See also:
 
 * [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
