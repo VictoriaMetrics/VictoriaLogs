@@ -40,10 +40,12 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot parse common params from request: %s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
@@ -57,6 +59,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 		return err
 	})
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read OpenTelemetry protocol data: %s", err)
 		return
 	}
@@ -86,7 +89,6 @@ func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFie
 	}
 
 	if err := decodeLogsData(data, pushLogs); err != nil {
-		errorsTotal.Inc()
 		return fmt.Errorf("cannot decode LogsData request from %d bytes: %w", len(data), err)
 	}
 	return nil

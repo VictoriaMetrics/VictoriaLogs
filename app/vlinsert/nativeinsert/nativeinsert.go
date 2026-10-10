@@ -39,10 +39,12 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
