@@ -24,10 +24,12 @@ import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
 import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
+import { TimeParams } from "../../../types";
 
 interface Props {
   data: Logs[];
   queryParams?: Record<string, string>;
+  period?: TimeParams;
   isLoading: boolean;
   isPending?: boolean;
   isPreview?: boolean;
@@ -47,7 +49,7 @@ const tabs = [
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 
-const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPending, isPreview }) => {
+const QueryPageBody: FC<Props> = ({ data, queryParams, period, isLoading, isPending, isPreview }) => {
   const { isMobile } = useDeviceDetect();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
@@ -158,6 +160,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPending, isP
           <ActiveTabComponent
             data={data}
             settingsRef={settingsRef}
+            period={period}
           />
         )}
       </div>

@@ -19,6 +19,7 @@ interface SelectProps {
   searchable?: boolean
   autofocus?: boolean
   disabled?: boolean
+  isLoading?: boolean
   onChange: (value: string) => void
 
   onOpen?(open: boolean): void
@@ -34,6 +35,7 @@ const Select: FC<SelectProps> = ({
   searchable = false,
   autofocus,
   disabled,
+  isLoading,
   onChange,
   onOpen
 }) => {
@@ -187,6 +189,7 @@ const Select: FC<SelectProps> = ({
           minLength={0}
           fullWidth
           noOptionsText={noOptionsText}
+          loading={isLoading}
           onSelect={handleSelected}
           onOpenAutocomplete={setOpenList}
           onChangeWrapperRef={setWrapperRef}
