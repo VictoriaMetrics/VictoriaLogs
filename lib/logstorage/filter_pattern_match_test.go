@@ -204,6 +204,36 @@ func TestFilterPatternMatch(t *testing.T) {
 					"a !!,23.(!1)",
 				},
 			},
+			{
+				name: "bar",
+				values: []string{
+					"foo100",
+					"foo101",
+					"foo102",
+					"foo103",
+					"foo104",
+					"foo105",
+					"foo106",
+					"foo107",
+					"foo108 x",
+					"x foo109",
+				},
+			},
+			{
+				name: "baz",
+				values: []string{
+					"2025-10-20T08:09:10Zfoo",
+					"2025-10-20T08:09:11Zfoo",
+					"2025-10-20T08:09:12Zfoo",
+					"2025-10-20T08:09:13Zfoo",
+					"2025-10-20T08:09:14Zfoo",
+					"100é",
+					"101é",
+					"102é",
+					"103é",
+					"104é",
+				},
+			},
 		}
 
 		// match
@@ -228,7 +258,36 @@ func TestFilterPatternMatch(t *testing.T) {
 		fp = newFilterPatternMatch("foo", "", newPatternMatcher("bar", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", []int{1, 3, 4, 5, 6})
 
+		// The placeholder after a word
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("foo<N>", patternMatcherOptionAny))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9})
+
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("foo<N>", patternMatcherOptionFull))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7})
+
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("foo<N>", patternMatcherOptionPrefix))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
+
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("foo<N>", patternMatcherOptionSuffix))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 9})
+
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("f<W>", patternMatcherOptionFull))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7})
+
+		// The placeholder before a word
+		fp = newFilterPatternMatch("baz", "", newPatternMatcher("<DATETIME>foo", patternMatcherOptionFull))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4})
+
+		fp = newFilterPatternMatch("baz", "", newPatternMatcher("<DATETIME>foo", patternMatcherOptionSuffix))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4})
+
+		fp = newFilterPatternMatch("baz", "", newPatternMatcher("<N>é", patternMatcherOptionFull))
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{5, 6, 7, 8, 9})
+
 		// mismatch
+		fp = newFilterPatternMatch("bar", "", newPatternMatcher("baz<N>", patternMatcherOptionAny))
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
 		fp = newFilterPatternMatch("foo", "", newPatternMatcher("aa ax", patternMatcherOptionAny))
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 
