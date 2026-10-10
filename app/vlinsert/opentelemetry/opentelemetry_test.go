@@ -14,28 +14,7 @@ import (
 func TestPushProtobufRequest(t *testing.T) {
 	f := func(src string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-
-		var rls []resourceLogs
-		dec := json.NewDecoder(strings.NewReader(src))
-		// Throw an error if there are unknown fields in the JSON.
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&rls); err != nil {
-			t.Fatalf("unexpected error when parsing JSON: %s", err)
-		}
-
-		lr := logsData{
-			ResourceLogs: rls,
-		}
-
-		pData := lr.marshalProtobuf(nil)
-		tlp := &insertutil.TestLogMessageProcessor{}
-		if err := pushProtobufRequest(pData, tlp, nil, false); err != nil {
-			t.Fatalf("unexpected error when parsing protobuf data: %s", err)
-		}
-
-		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
-			t.Fatal(err)
-		}
+		testPushProtobufRequest(t, src, false, timestampsExpected, resultExpected)
 	}
 
 	// single line without resource attributes
@@ -374,6 +353,86 @@ func TestPushProtobufRequest(t *testing.T) {
 	timestampsExpected = []int64{1234}
 	resultsExpected = `{"_msg":"[null,null]","severity_number":"0","severity_text":"Unspecified"}`
 	f(data, timestampsExpected, resultsExpected)
+}
+
+func TestPushProtobufRequest_ConsistentPrefix(t *testing.T) {
+	f := func(src string, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+		testPushProtobufRequest(t, src, true, timestampsExpected, resultExpected)
+	}
+
+	// attributes with the same key in different sources
+	data := `[{
+		"resource": {
+			"attributes": [
+				{"key":"x","value":{"stringValue":"a"}}
+			]
+		},
+		"scopeLogs": [{
+			"scope": {
+				"attributes": [
+					{"key":"x","value":{"stringValue":"b"}}
+				]
+			},
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"body": {"stringValue":"foo"},
+				"attributes": [
+					{"key":"x","value":{"stringValue":"c"}}
+				]
+			}]
+		}]
+	}]`
+	timestampsExpected := []int64{1234}
+	resultsExpected := `{"resource.attribute.x":"a","scope.name":"unknown","scope.version":"unknown","scope.attribute.x":"b",` +
+		`"_msg":"foo","log.attribute.x":"c","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// decode KeyValueList body
+	data = `[{
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"body": {
+					"keyValueList": {
+						"values": [
+							{"key":"foo","value":{"stringValue":"bar"}},
+							{"key":"n","value":{"keyValueList":{"values":[{"key":"m","value":{"stringValue":"baz"}}]}}}
+						]
+					}
+				}
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"body.foo":"bar","body.n.m":"baz","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, timestampsExpected, resultsExpected)
+}
+
+func testPushProtobufRequest(t *testing.T, src string, useConsistentPrefix bool, timestampsExpected []int64, resultExpected string) {
+	t.Helper()
+
+	var rls []resourceLogs
+	dec := json.NewDecoder(strings.NewReader(src))
+	// Throw an error if there are unknown fields in the JSON.
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&rls); err != nil {
+		t.Fatalf("unexpected error when parsing JSON: %s", err)
+	}
+
+	lr := logsData{
+		ResourceLogs: rls,
+	}
+
+	pData := lr.marshalProtobuf(nil)
+	tlp := &insertutil.TestLogMessageProcessor{}
+	if err := pushProtobufRequest(pData, tlp, nil, false, useConsistentPrefix); err != nil {
+		t.Fatalf("unexpected error when parsing protobuf data: %s", err)
+	}
+
+	if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
+		t.Fatal(err)
+	}
 }
 
 var mp easyproto.MarshalerPool
