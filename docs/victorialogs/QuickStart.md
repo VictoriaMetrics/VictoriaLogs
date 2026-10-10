@@ -115,7 +115,7 @@ Enter a query in the input field and press `Enter`. For example:
 * `log.level:error` - only the logs with `error` level;
 * `hello` - the logs containing the word `hello` in their message.
 
-The `*` query should return the three log lines ingested at the previous step, grouped by log stream:
+The `*` query should return the three log lines ingested at the previous step:
 
 ![vmui with query results](quick-start-vmui.webp)
 
