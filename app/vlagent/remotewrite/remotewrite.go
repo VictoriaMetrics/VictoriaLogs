@@ -17,6 +17,7 @@ import (
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/cespare/xxhash/v2"
 
+	"github.com/VictoriaMetrics/VictoriaLogs/app/vlagent/localstorage"
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlstorage/netinsert"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
@@ -47,11 +48,20 @@ var (
 // rwctxsGlobal contains statically populated entries when -remoteWrite.url is specified.
 var rwctxsGlobal []*remoteWriteCtx
 
-// Storage implements insertutil.LogRowsStorage interface
-type Storage struct{}
+// Storage implements insertutil.LogRowsStorage interface.
+type Storage struct {
+	localFileName string
+}
+
+// NewStorage returns a storage that uses localFileName for the local copy.
+// An empty localFileName disables the local copy.
+func NewStorage(localFileName string) *Storage {
+	return &Storage{localFileName: localFileName}
+}
 
 // MustAddRows implements insertutil.LogRowsStorage interface
-func (*Storage) MustAddRows(lr *logstorage.LogRows) {
+func (s *Storage) MustAddRows(lr *logstorage.LogRows) {
+	localstorage.MustAddRows(lr, s.localFileName)
 	pushToRemoteStorages(lr)
 }
 
@@ -86,8 +96,12 @@ func InitSecretFlags() {
 //
 // Stop must be called for graceful shutdown.
 func Init(tmpDataPath string) {
-	if len(*remoteWriteURLs) == 0 {
+	localstorage.Init()
+	if len(*remoteWriteURLs) == 0 && !localstorage.Enabled() {
 		logger.Fatalf("at least one `-remoteWrite.url` command-line flag must be set")
+	}
+	if len(*remoteWriteURLs) == 0 {
+		return
 	}
 	if *queues > maxQueues {
 		*queues = maxQueues
@@ -111,6 +125,7 @@ func Stop() {
 		rwctx.mustStop()
 	}
 	rwctxsGlobal = nil
+	localstorage.Stop()
 }
 
 func dropDanglingQueues(tmpDataPath string) {
