@@ -151,6 +151,8 @@ Expose these endpoints only to trusted users, or block them in `vmauth` configs 
 If a user must access only some tenants via these endpoints, then set `extra_filters` query arg with the allowed tenants at `url_prefix`,
 for example `extra_filters=vl_account_id:in(12,13)`. `extra_filters` are applied to all the subqueries, so the user cannot bypass them,
 while tenant filters in the query itself apply only to the query or subquery they are written in.
+Note that such `extra_filters` limit the tenants only for `/select/multitenant/logsql/*` endpoints.
+Other `/select/*` endpoints still need `AccountID` and `ProjectID` headers to limit users to a single tenant.
 See [these docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#access-control-inside-a-single-tenant) for details.
 
 See also [tenant-based data ingestion request proxying](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests).

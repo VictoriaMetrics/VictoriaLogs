@@ -180,8 +180,14 @@ func (tc *TestCase) MustStartVlagent(instance string, remoteWriteURLs []string, 
 func (tc *TestCase) MustStartDefaultVlcluster() *Vlcluster {
 	tc.t.Helper()
 
-	instance := "vlcluster"
-	app := MustStartVlcluster(tc.t, instance, nil, tc.cli)
+	return tc.MustStartVlcluster("vlcluster", nil, nil)
+}
+
+// MustStartVlcluster starts Vlcluster with the given storageFlags for storage nodes and selectFlags for the select node.
+func (tc *TestCase) MustStartVlcluster(instance string, storageFlags, selectFlags []string) *Vlcluster {
+	tc.t.Helper()
+
+	app := MustStartVlcluster(tc.t, instance, storageFlags, selectFlags, tc.cli)
 	tc.addApp(instance, app)
 	return app
 }
