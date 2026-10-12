@@ -260,8 +260,8 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 }
 
 func (s *Storage) getTenantIDsForQuery(ctx context.Context, q *Query) ([]TenantID, error) {
-	if !hasTenantFilter(q.getFinalFilter()) {
-		return nil, fmt.Errorf("missing vl_account_id or vl_project_id filter in the query [%s]; see https://docs.victoriametrics.com/victorialogs/#multitenant-querying", q)
+	if err := q.CheckTenantFilters(); err != nil {
+		return nil, err
 	}
 
 	start, end := q.GetFilterTimeRange()
@@ -293,6 +293,19 @@ func (s *Storage) getTenantIDsForQuery(ctx context.Context, q *Query) ([]TenantI
 	}
 
 	return tenantIDs, nil
+}
+
+// CheckTenantFilters returns an error if q or any of its subqueries has no vl_account_id or vl_project_id filter.
+//
+// Multitenant queries must select the needed tenants via these filters.
+func (q *Query) CheckTenantFilters() error {
+	var err error
+	q.visitSubqueries(func(sq *Query) {
+		if err == nil && !hasTenantFilter(sq.getFinalFilter()) {
+			err = fmt.Errorf("missing vl_account_id or vl_project_id filter in the query [%s]; see https://docs.victoriametrics.com/victorialogs/#multitenant-querying", sq)
+		}
+	})
+	return err
 }
 
 // hasTenantFilter returns true if every log matching f must match some vl_account_id or vl_project_id filter.

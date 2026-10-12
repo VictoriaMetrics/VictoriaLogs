@@ -182,6 +182,20 @@ func TestStorageRunQuery(t *testing.T) {
 			var rowsCountTotal atomic.Uint32
 			writeBlock := func(_ uint, db *DataBlock) {
 				rowsCountTotal.Add(uint32(db.RowsCount()))
+
+				// Verify that vl_account_id and vl_project_id columns contain the tenant of every row.
+				accountIDs := db.GetColumnByName("vl_account_id")
+				projectIDs := db.GetColumnByName("vl_project_id")
+				tenantIDs := db.GetColumnByName("tenant.id")
+				if accountIDs == nil || projectIDs == nil || tenantIDs == nil {
+					panic(fmt.Errorf("missing vl_account_id, vl_project_id or tenant.id column for the query [%s]", q))
+				}
+				for i, tenantIDExpected := range tenantIDs.Values {
+					tenantID := fmt.Sprintf("{accountID=%s,projectID=%s}", accountIDs.Values[i], projectIDs.Values[i])
+					if tenantID != tenantIDExpected {
+						panic(fmt.Errorf("unexpected tenant for the query [%s]; got %s; want %s", q, tenantID, tenantIDExpected))
+					}
+				}
 			}
 			if err := s.RunQuery(qctx, writeBlock); err != nil {
 				t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)
@@ -1828,6 +1842,32 @@ func TestHasTenantFilter(t *testing.T) {
 	f(`vl_account_id:1 OR error`, false)
 	f(`!(vl_account_id:1 error)`, false)
 	f(`vl_*:1`, false)
+}
+
+func TestQueryCheckTenantFilters(t *testing.T) {
+	t.Parallel()
+
+	f := func(query string, isOK bool) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		err := q.CheckTenantFilters()
+		if isOK && err != nil {
+			t.Fatalf("unexpected error for query %q: %s", query, err)
+		}
+		if !isOK && err == nil {
+			t.Fatalf("expecting non-nil error for query %q", query)
+		}
+	}
+
+	f(`vl_account_id:1 error`, true)
+	f(`error`, false)
+
+	// subqueries must contain tenant filters too
+	f(`vl_account_id:1 x:in(vl_account_id:2 foo | fields x)`, true)
+	f(`vl_account_id:1 x:in(foo | fields x)`, false)
+	f(`vl_account_id:1 | join by (x) (foo | fields x, y)`, false)
+	f(`options(global_filter=(vl_account_id:1)) error x:in(foo | fields x)`, true)
 }
 
 func TestGetTenantFilter(t *testing.T) {

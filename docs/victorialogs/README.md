@@ -516,7 +516,9 @@ These endpoints are disabled by default and can be enabled by passing `-multiten
 Requests to `/select/multitenant/logsql/*` endpoints must not contain `AccountID` and `ProjectID` request headers.
 
 Use `vl_account_id` and `vl_project_id` fields in LogsQL filters for limiting the query to the needed tenants.
-The query must contain a filter on `vl_account_id` or `vl_project_id` field, otherwise it returns an error.
+Every log selected by the query must match a filter on `vl_account_id` or `vl_project_id` field, otherwise the query returns an error.
+For example, `vl_account_id:12 error` is accepted, while `vl_account_id:12 or error` is rejected, since `error` can match logs from any tenant.
+The same rule applies to every [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries).
 If the query contains only a filter on `vl_account_id` field, then it searches all the projects for the selected accounts.
 Use `vl_account_id:*` for searching all the tenants.
 For example, the following query searches logs containing the `error` word across `(AccountID=12, ProjectID=34)` and `(AccountID=13, ProjectID=34)` tenants:
