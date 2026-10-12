@@ -365,6 +365,16 @@ func processPartitionAttach(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
+	if partitionPrefix := r.FormValue("partition_prefix"); partitionPrefix != "" {
+		names := localStorage.PartitionAttachByPrefix(partitionPrefix)
+		if names == nil {
+			// This is needed in order to return `[]` instead of `null` to the client.
+			names = []string{}
+		}
+		writeJSONResponse(w, names)
+		return true
+	}
+
 	name := r.FormValue("name")
 	if err := localStorage.PartitionAttach(name); err != nil {
 		httpserver.Errorf(w, r, "%s", err)
@@ -378,6 +388,16 @@ func processPartitionDetach(w http.ResponseWriter, r *http.Request) bool {
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
+	}
+
+	if partitionPrefix := r.FormValue("partition_prefix"); partitionPrefix != "" {
+		names := localStorage.PartitionDetachByPrefix(partitionPrefix)
+		if names == nil {
+			// This is needed in order to return `[]` instead of `null` to the client.
+			names = []string{}
+		}
+		writeJSONResponse(w, names)
+		return true
 	}
 
 	name := r.FormValue("name")

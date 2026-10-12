@@ -3,6 +3,7 @@ package logstorage
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -652,5 +653,67 @@ func TestStorageDropStalePartitions(t *testing.T) {
 	s = MustOpenStorage(path, cfg)
 	s.dropStalePartitions()
 	expectPartitionsNumber(0)
+	s.MustClose()
+}
+
+func TestStoragePartitionAttachDetachByPrefix(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+
+	cfg := &StorageConfig{
+		Retention:       100 * 365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	allNames := []string{"20250131", "20250201", "20250202", "20250301"}
+	for _, name := range allNames {
+		day, err := getPartitionDayFromName(name)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, day*nsecsPerDay, []Field{{Name: "_msg", Value: "foo"}})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+	s.DebugFlush()
+
+	checkList := func(want []string) {
+		t.Helper()
+		if got := s.PartitionList(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("unexpected partitions\ngot\n%q\nwant\n%q", got, want)
+		}
+	}
+	checkNames := func(names, want []string) {
+		t.Helper()
+		if !reflect.DeepEqual(names, want) {
+			t.Fatalf("unexpected names\ngot\n%q\nwant\n%q", names, want)
+		}
+	}
+
+	checkList(allNames)
+
+	checkNames(s.PartitionDetachByPrefix("202502"), []string{"20250201", "20250202"})
+	checkList([]string{"20250131", "20250301"})
+
+	checkNames(s.PartitionDetachByPrefix("2024"), nil)
+	checkList([]string{"20250131", "20250301"})
+
+	checkNames(s.PartitionAttachByPrefix("2025"), []string{"20250201", "20250202"})
+	checkList(allNames)
+
+	checkNames(s.PartitionAttachByPrefix("2025"), nil)
+
+	checkNames(s.PartitionDetachByPrefix("2025"), allNames)
+	checkList([]string{})
+
+	fs.MustMkdirFailIfExist(filepath.Join(path, partitionsDirname, "2025foo"))
+	fs.MustWriteSync(filepath.Join(path, partitionsDirname, "2025foo", "file"), []byte("foo"))
+	checkNames(s.PartitionAttachByPrefix("2025"), allNames)
+	checkList(allNames)
+	fs.MustRemoveDir(filepath.Join(path, partitionsDirname, "2025foo"))
+
 	s.MustClose()
 }
