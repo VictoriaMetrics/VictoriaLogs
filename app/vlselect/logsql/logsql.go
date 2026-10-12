@@ -1461,7 +1461,7 @@ func parseCommonArgs(r *http.Request) (*commonArgs, error) {
 
 // parseCommonArgsExt parses commonArgs from r.
 //
-// If skipMaxQueryTimeRangeCheck is set, then the query time range isn't limited by -search.maxQueryTimeRange.
+// If skipMaxQueryTimeRangeCheck is set, then the time range of the top-level query isn't limited by -search.maxQueryTimeRange.
 // This is used by live tailing, since it processes only newly ingested logs
 // and doesn't scan historical data even if the query contains a wide time filter.
 func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
@@ -1573,15 +1573,11 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
-	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
-		start, end := q.GetFilterTimeRange()
-		if end > start {
-			queryTimeRange := end - start
-			if queryTimeRange < 0 || queryTimeRange > maxRange.Nanoseconds() {
-				return nil, fmt.Errorf("too big time range selected: [%s, %s]; it cannot exceed -search.maxQueryTimeRange=%s; "+
-					"see https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits",
-					timestampToString(start), timestampToString(end), maxRange)
-			}
+	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 {
+		// Live tailing adds its own _time filter to the top-level query on every iteration, so skip the check for it.
+		if err := q.CheckMaxFilterTimeRange(maxRange.Nanoseconds(), skipMaxQueryTimeRangeCheck); err != nil {
+			return nil, fmt.Errorf("%w; it cannot exceed -search.maxQueryTimeRange=%s; "+
+				"see https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits", err, maxRange)
 		}
 	}
 
