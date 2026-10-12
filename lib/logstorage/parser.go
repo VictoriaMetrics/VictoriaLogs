@@ -805,7 +805,11 @@ func (q *Query) CheckMaxFilterTimeRange(maxRange int64, skipTopLevelQuery bool) 
 		if end <= start {
 			return
 		}
-		// timeRange is negative on overflow, e.g. when sq has no time filter.
+		if start == math.MinInt64 && end == math.MaxInt64 {
+			err = fmt.Errorf("missing _time filter at [%s]", sq)
+			return
+		}
+		// timeRange is negative on overflow, e.g. when the time filter at sq is open-bounded.
 		timeRange := end - start
 		if timeRange < 0 || timeRange > maxRange {
 			startStr := marshalTimestampRFC3339NanoString(nil, start)
