@@ -23,11 +23,14 @@ according to the following docs:
 
 ## tip
 
+* SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.2. See [the list of issues addressed in Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved).
+
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allow expanding a row in Table view to inspect all fields of a single log entry, reusing the Group view field list. See [#1630](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1630).
 
 * BUGFIX: [dashboards/vlagent](https://grafana.com/grafana/dashboards/24513): fix the `Drilldown` links in the `Persistent queue size`, `RSS memory % usage`, `CPU % usage` and `Disk writes/reads` panels. Previously, these links opened the vmagent dashboard, and the opened panels showed no data because the selected datasource, `job` and `instance` were passed incorrectly. See [#1826](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1826).
 * BUGFIX: [dashboards/single](https://grafana.com/grafana/dashboards/22084): show the `version change`, `restarts` and `gc` annotations in the `VictoriaLogs - single-node (VM)` dashboard, which uses the [VictoriaMetrics datasource](https://github.com/VictoriaMetrics/victoriametrics-datasource). See [#1825](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1825).
 * BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): stop rewriting the time range in the URL on every auto-refresh. Previously, each refresh of a relative time range changed the URL, so an idle tab with a short refresh interval could add thousands of entries per hour to the browser history. See [#1676](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1676).
+* BUGFIX: [Datadog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/): fix incorrect [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) for logs without the `timestamp` field when they are sent after logs with the `timestamp` field in the same request. See [#1845](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1845).
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): properly return logs for queries with [subqueries](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries) at [live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) and at [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) with the `limit` query arg. Previously, subqueries such as `in(...)` were executed only on a part of their time range, so live tailing could return no logs, and the `limit` query arg could return older logs instead of the newest ones. See [#1850](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1850).
 
 ## [v1.53.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.53.0)
