@@ -2,6 +2,7 @@ package logsql
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"encoding/json"
 	"flag"
@@ -905,30 +906,14 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	m := make(map[string]*statsSeries)
-	var mLock sync.Mutex
+	var shards atomicutil.Slice[statsSeriesShard]
 
-	addPoint := func(name string, columnIdx int, labels []logstorage.Field, p statsPoint) {
-		dst := encoding.MarshalUint32(nil, uint32(columnIdx))
-		dst = append(dst, name...)
-		dst = logstorage.MarshalFieldsToJSON(dst, labels)
-		key := string(dst)
-
-		mLock.Lock()
-		ss := m[key]
-		if ss == nil {
-			ss = &statsSeries{
-				key:    key,
-				Name:   name,
-				Labels: labels,
-			}
-			m[key] = ss
+	writeBlock := func(workerID uint, db *logstorage.DataBlock) {
+		shard := shards.Get(workerID)
+		if shard.m == nil {
+			shard.m = make(map[string]*statsSeries)
 		}
-		ss.Points = append(ss.Points, p)
-		mLock.Unlock()
-	}
 
-	writeBlock := func(_ uint, db *logstorage.DataBlock) {
 		rowsCount := db.RowsCount()
 
 		columns := db.GetColumns(false)
@@ -936,13 +921,15 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
-		var buckets []histogramBucket
+		bucketNames := make([]string, len(columns))
 		for i := range rowsCount {
 			// Do not move q.GetTimestamp() outside writeBlock, since ts
 			// must be initialized to query timestamp for every processed log row.
 			// See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/8312
 			ts := ca.q.GetTimestamp()
-			labels := make([]logstorage.Field, 0, len(labelFields))
+
+			// The label values reference the block data. They are cloned only when a new series is created.
+			labels := shard.labels[:0]
 			for j, c := range columns {
 				if c.Name == "_time" {
 					nsec, ok := logstorage.TryParseTimestampRFC3339Nano(c.Values[i])
@@ -954,10 +941,12 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 				if slices.Contains(labelFields, c.Name) {
 					labels = append(labels, logstorage.Field{
 						Name:  clonedColumnNames[j],
-						Value: strings.Clone(c.Values[i]),
+						Value: c.Values[i],
 					})
 				}
 			}
+			shard.labels = labels
+			shard.labelsJSON = logstorage.MarshalFieldsToJSON(shard.labelsJSON[:0], labels)
 
 			columnIdx := 0
 			for j, c := range columns {
@@ -965,33 +954,64 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 					continue
 				}
 
+				v := c.Values[i]
 				// Special case - the value is the result of histogram() stats function.
 				// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
 				// Convert it to values for individual buckets.
 				var ok bool
-				buckets, ok = appendHistogramBuckets(buckets[:0], c.Values[i])
+				shard.buckets, ok = appendHistogramBuckets(shard.buckets[:0], v)
 				if ok {
-					name := clonedColumnNames[j] + "_bucket"
-					for _, bucket := range buckets {
-						p := statsPoint{
+					if bucketNames[j] == "" {
+						bucketNames[j] = clonedColumnNames[j] + "_bucket"
+					}
+					name := bucketNames[j]
+					for _, bucket := range shard.buckets {
+						shard.vmrange[0] = logstorage.Field{
+							Name:  "vmrange",
+							Value: bucket.VMRange,
+						}
+						shard.vmrangeJSON = logstorage.MarshalFieldsToJSON(shard.vmrangeJSON[:0], shard.vmrange[:])
+						shard.key = appendStatsSeriesKeyPrefix(shard.key[:0], columnIdx, name)
+						shard.key = appendMergedJSONObjects(shard.key, shard.labelsJSON, shard.vmrangeJSON)
+
+						ss, isNew := shard.getSeries(shard.key, name)
+						if isNew {
+							ss.Labels = make([]logstorage.Field, 0, len(labels)+1)
+							ss.Labels = appendClonedFields(ss.Labels, labels)
+							ss.Labels = append(ss.Labels, logstorage.Field{
+								Name:  "vmrange",
+								Value: bytesutil.InternString(bucket.VMRange),
+							})
+						}
+						ss.Points = append(ss.Points, statsPoint{
 							Timestamp: ts,
 							Value:     strconv.FormatUint(bucket.Hits, 10),
-						}
-						addPoint(name, columnIdx, newHistogramBucketLabels(labels, bucket), p)
+						})
 					}
 					columnIdx++
 
 					continue
 				}
 
-				p := statsPoint{
-					Timestamp: ts,
-					Value:     strings.Clone(c.Values[i]),
+				shard.key = appendStatsSeriesKeyPrefix(shard.key[:0], columnIdx, clonedColumnNames[j])
+				shard.key = append(shard.key, shard.labelsJSON...)
+
+				ss, isNew := shard.getSeries(shard.key, clonedColumnNames[j])
+				if isNew {
+					ss.Labels = appendClonedFields(make([]logstorage.Field, 0, len(labels)), labels)
 				}
-				addPoint(clonedColumnNames[j], columnIdx, labels, p)
+				ss.Points = append(ss.Points, statsPoint{
+					Timestamp: ts,
+					Value:     strings.Clone(v),
+				})
 				columnIdx++
 			}
 		}
+
+		// Drop the references to db values, since db cannot be referenced after writeBlock returns.
+		clear(shard.labels[:cap(shard.labels)])
+		clear(shard.buckets[:cap(shard.buckets)])
+		shard.vmrange[0] = logstorage.Field{}
 	}
 
 	qctx := ca.newQueryContext(ctx)
@@ -1005,18 +1025,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	// Sort the collected stats by _time
-	rows := make([]*statsSeries, 0, len(m))
-	for _, ss := range m {
-		points := ss.Points
-		sort.Slice(points, func(i, j int) bool {
-			return points[i].Timestamp < points[j].Timestamp
-		})
-		rows = append(rows, ss)
-	}
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i].key < rows[j].key
-	})
+	rows := sortAndMergeStatsSeries(shards.All())
 
 	// Write response headers
 	h := w.Header()
@@ -1065,6 +1074,132 @@ type statsSeries struct {
 type statsPoint struct {
 	Timestamp int64
 	Value     string
+}
+
+// statsSeriesShard holds the series collected by a single worker in ProcessStatsQueryRangeRequest.
+type statsSeriesShard struct {
+	m map[string]*statsSeries
+
+	labels      []logstorage.Field
+	labelsJSON  []byte
+	buckets     []histogramBucket
+	vmrange     [1]logstorage.Field
+	vmrangeJSON []byte
+	key         []byte
+}
+
+// getSeries returns the series for the given key. It creates the series if it is missing and returns isNew=true in this case.
+func (s *statsSeriesShard) getSeries(key []byte, name string) (ss *statsSeries, isNew bool) {
+	if ss := s.m[string(key)]; ss != nil {
+		return ss, false
+	}
+	ss = &statsSeries{
+		key:  string(key),
+		Name: name,
+	}
+	s.m[ss.key] = ss
+	return ss, true
+}
+
+// sortAndMergeStatsSeries returns the series from all the shards sorted by key, with points sorted by timestamp.
+//
+// Every shard is sorted in its own goroutine, and the sorted results are merged. This is faster than
+// putting all the series into a single map and sorting it, since the keys are long and share a prefix.
+func sortAndMergeStatsSeries(shards []*statsSeriesShard) []*statsSeries {
+	sorted := make([][]*statsSeries, len(shards))
+	var wg sync.WaitGroup
+	for i, shard := range shards {
+		wg.Go(func() {
+			a := make([]*statsSeries, 0, len(shard.m))
+			for _, ss := range shard.m {
+				slices.SortFunc(ss.Points, compareStatsPoints)
+				a = append(a, ss)
+			}
+			slices.SortFunc(a, func(x, y *statsSeries) int {
+				return strings.Compare(x.key, y.key)
+			})
+			sorted[i] = a
+		})
+	}
+	wg.Wait()
+
+	for len(sorted) > 1 {
+		merged := make([][]*statsSeries, (len(sorted)+1)/2)
+		for i := 0; i < len(sorted); i += 2 {
+			if i+1 == len(sorted) {
+				merged[i/2] = sorted[i]
+				continue
+			}
+			wg.Go(func() {
+				merged[i/2] = mergeSortedStatsSeries(sorted[i], sorted[i+1])
+			})
+		}
+		wg.Wait()
+		sorted = merged
+	}
+	if len(sorted) == 0 {
+		return nil
+	}
+	return sorted[0]
+}
+
+// mergeSortedStatsSeries merges a and b, which must be sorted by key. The points of series with identical keys are combined.
+func mergeSortedStatsSeries(a, b []*statsSeries) []*statsSeries {
+	dst := make([]*statsSeries, 0, len(a)+len(b))
+	for len(a) > 0 && len(b) > 0 {
+		switch c := strings.Compare(a[0].key, b[0].key); {
+		case c < 0:
+			dst = append(dst, a[0])
+			a = a[1:]
+		case c > 0:
+			dst = append(dst, b[0])
+			b = b[1:]
+		default:
+			ss := a[0]
+			ss.Points = append(ss.Points, b[0].Points...)
+			slices.SortFunc(ss.Points, compareStatsPoints)
+			dst = append(dst, ss)
+			a = a[1:]
+			b = b[1:]
+		}
+	}
+	dst = append(dst, a...)
+	return append(dst, b...)
+}
+
+func compareStatsPoints(a, b statsPoint) int {
+	return cmp.Compare(a.Timestamp, b.Timestamp)
+}
+
+func appendStatsSeriesKeyPrefix(dst []byte, columnIdx int, name string) []byte {
+	dst = encoding.MarshalUint32(dst, uint32(columnIdx))
+	return append(dst, name...)
+}
+
+// appendMergedJSONObjects appends to dst the JSON object, which contains the fields of a followed by the fields of b.
+//
+// a and b must be the results of logstorage.MarshalFieldsToJSON. The result equals to logstorage.MarshalFieldsToJSON
+// for the concatenated fields, since the series order in the response depends on these bytes.
+func appendMergedJSONObjects(dst, a, b []byte) []byte {
+	if len(a) == 2 {
+		return append(dst, b...)
+	}
+	if len(b) == 2 {
+		return append(dst, a...)
+	}
+	dst = append(dst, a[:len(a)-1]...)
+	dst = append(dst, ',')
+	return append(dst, b[1:]...)
+}
+
+func appendClonedFields(dst, fields []logstorage.Field) []logstorage.Field {
+	for _, f := range fields {
+		dst = append(dst, logstorage.Field{
+			Name:  f.Name,
+			Value: strings.Clone(f.Value),
+		})
+	}
+	return dst
 }
 
 // ProcessStatsQueryRequest handles /select/logsql/stats_query request.
