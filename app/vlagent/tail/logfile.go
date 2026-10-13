@@ -47,7 +47,7 @@ type logFile struct {
 	commitOffset int64
 
 	// tail contains the last incomplete line read from the file.
-	// Can be truncated if it exceeds maxLineSize.
+	// Can be truncated if it exceeds maxLogLineSize.
 	tail *bytesutil.ByteBuffer
 	// tailSize tracks the actual tail size.
 	tailSize int
@@ -217,11 +217,7 @@ func (lf *logFile) setTail(tail []byte) {
 	}
 
 	if len(tail) == 0 {
-		if lf.tail != nil {
-			tailByteBufferPool.Put(lf.tail)
-			lf.tail = nil
-		}
-		lf.tailSize = 0
+		lf.dropTail()
 		return
 	}
 
@@ -231,6 +227,14 @@ func (lf *logFile) setTail(tail []byte) {
 
 	lf.tailSize = len(tail)
 	lf.tail.B = append(lf.tail.B[:0], tail...)
+}
+
+func (lf *logFile) dropTail() {
+	if lf.tail != nil {
+		tailByteBufferPool.Put(lf.tail)
+		lf.tail = nil
+	}
+	lf.tailSize = 0
 }
 
 var tailByteBufferPool bytesutil.ByteBufferPool
@@ -324,8 +328,10 @@ func (lf *logFile) setOffset(offset int64) {
 }
 
 func (lf *logFile) tryReopen() bool {
-	newFile, newInode, exists := openFileWithInode(lf.path)
-	if !exists {
+	// Do not ignore permission denied errors for files that vlagent must tail.
+	const ignorePermissionErr = false
+	newFile, newInode, ok := openFileWithInode(lf.path, ignorePermissionErr)
+	if !ok {
 		return false
 	}
 

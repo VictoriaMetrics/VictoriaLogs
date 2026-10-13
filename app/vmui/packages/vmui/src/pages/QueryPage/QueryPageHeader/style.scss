@@ -36,20 +36,6 @@ $input-limit-width: 197px;
       flex-grow: 1;
     }
 
-    &-execute {
-      position: relative;
-      display: grid;
-
-      &__text {
-        position: absolute;
-
-        &_hidden {
-          position: relative;
-          visibility: hidden;
-        }
-      }
-    }
-
     &-helpful {
       display: flex;
       align-items: center;

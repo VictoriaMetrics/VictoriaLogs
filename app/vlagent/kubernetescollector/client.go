@@ -58,7 +58,7 @@ type watchEvent struct {
 //
 // watchNodePods accepts the resourceVersion argument to skip already processed events.
 // It is recommended to skip already processed events to significantly reduce the load on the Kubernetes API server.
-// The resourceVersion value can be obtained from the podListMetadata.ResourceVersion field returned by getNodePods
+// The resourceVersion value can be obtained from the podList.Metadata.ResourceVersion field returned by getNodePods
 // or from the watchEvent.Object.metadata.resourceVersion field.
 // See https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes
 func (c *kubeAPIClient) watchNodePods(ctx context.Context, nodeName, resourceVersion string) (podWatchStream, error) {
@@ -105,6 +105,9 @@ type podWatchStream struct {
 	r io.ReadCloser
 }
 
+// readEvents passes events from pws to h until the stream ends or h returns an error.
+//
+// It always returns a non-nil error.
 func (pws podWatchStream) readEvents(h func(event watchEvent) error) error {
 	d := json.NewDecoder(pws.r)
 	for {
@@ -254,7 +257,7 @@ func (c *kubeAPIClient) getNodes(ctx context.Context) ([]string, error) {
 	return nodes, nil
 }
 
-// getNodes returns a node by its name.
+// getNodeByName returns a node by its name.
 //
 // See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#read-node-v1-core
 func (c *kubeAPIClient) getNodeByName(ctx context.Context, nodeName string) (node, error) {

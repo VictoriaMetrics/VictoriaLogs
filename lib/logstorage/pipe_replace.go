@@ -48,7 +48,7 @@ func (pr *pipeReplace) canLiveTail() bool {
 }
 
 func (pr *pipeReplace) canReturnLastNResults() bool {
-	return true
+	return pr.field != "_time"
 }
 
 func (pr *pipeReplace) isFixedOutputFieldsOrder() bool {

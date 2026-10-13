@@ -166,14 +166,20 @@ export const useFetchLogs = () => {
     }
   }, [url, tenant]);
 
+  const resetLogs = () => {
+    setLogs([]);
+    setError(undefined);
+    setDurationMs(undefined);
+    setQueryParams({});
+  };
+
   useEffect(() => {
     return () => abortControllerRef.current.abort();
   }, []);
 
   useEffect(() => {
     if (hideLogs) {
-      setLogs([]);
-      setError(undefined);
+      resetLogs();
     }
   }, [hideLogs]);
 
@@ -184,7 +190,8 @@ export const useFetchLogs = () => {
     error,
     fetchLogs,
     durationMs,
-    abort: useCallback(() => abortControllerRef.current?.abort(), [])
+    abort: useCallback(() => abortControllerRef.current?.abort(), []),
+    resetLogs,
   };
 };
 

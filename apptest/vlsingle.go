@@ -26,9 +26,8 @@ type Vlsingle struct {
 func MustStartVlsingle(t *testing.T, instance string, flags []string, cli *Client) *Vlsingle {
 	t.Helper()
 
-	storageDataPath := fmt.Sprintf("%s/%s", t.Name(), instance)
 	flags = setDefaultFlags(flags, map[string]string{
-		"-storageDataPath": storageDataPath,
+		"-storageDataPath": t.TempDir(),
 		"-retentionPeriod": "100y",
 	})
 	node, extracts := mustStartVlnode(t, instance, flags, cli, []*regexp.Regexp{
@@ -93,7 +92,7 @@ func (app *Vlsingle) ForceFlush(t *testing.T) {
 
 // JSONLineWrite is a test helper function that inserts a
 // collection of records in json line format by sending a HTTP
-// POST request to /insert/jsonline vlsingle endpoint.
+// POST request to /insert/jsonline endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
 func (app *Vlsingle) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
