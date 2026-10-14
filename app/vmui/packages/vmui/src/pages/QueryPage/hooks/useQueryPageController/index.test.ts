@@ -149,6 +149,7 @@ describe("useQueryPageController: logs timeout fallback", () => {
   });
 
   it("preserves loaded logs when only the chart step changes", async () => {
+    mocks.runLogs.mockResolvedValue({ status: "success" });
     const { rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
     await flushDebounce();
     await completeHits();
