@@ -14,6 +14,8 @@ import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
 import { TimeParams } from "../../../../types";
 import { normalizeTimeParams, timeParamsToDateRange } from "../../../../utils/time";
 import { addQueryToHistoryStorage } from "../../../../components/QueryHistory/utils";
+import { useIncrementalTimeout } from "../../HitsPanel/hooks/useIncrementalTimeout";
+import { GRAPH_QUERY_MODE } from "../../../../components/Chart/BarHitsChart/types";
 
 export type UseQueryPageControllerProps = {
   query: string;
@@ -73,6 +75,10 @@ const isEqualPeriod = (prevPeriod: TimeParams, nextPeriod: TimeParams) => {
 export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const queryDispatch = useQueryDispatch();
 
+  const { incrementalTimeoutMs } = useIncrementalTimeout();
+  const incrementalTimeoutMsRef = useRef(incrementalTimeoutMs);
+  incrementalTimeoutMsRef.current = incrementalTimeoutMs;
+
   const { runLogs, resetLogs, ...logsRequestState } = useLogsController();
   const { runHits, resetHits, ...hitsRequestState } = useHitsController();
   const { fetchQueryTime, ...timeRequestState } = useFetchQueryTime();
@@ -87,8 +93,11 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const isLogsHiddenRef = useRef(logsTriggers.isLogsHidden);
   isLogsHiddenRef.current = logsTriggers.isLogsHidden;
 
-  const pendingLogsRef = useRef<symbol | null>(null);
-  const [isPendingLogs, setIsPendingLogs] = useState(false);
+  const pendingLogsRef = useRef(false);
+  const pendingHitsRef = useRef(false);
+  const pendingTimeFilterRef = useRef(false);
+  const syncIdRef = useRef<symbol | null>(null);
+  const [isWaitingForHits, setIsWaitingForHits] = useState(false);
 
   const prevRef = useRef<TriggersState>({
     baseTriggers,
@@ -96,23 +105,22 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     hitsTriggers,
   });
 
-  const updatePendingLogs = (id: symbol | null) => {
-    pendingLogsRef.current = id;
-    setIsPendingLogs(id !== null);
-  };
-
   const cancelAll = () => {
+    syncIdRef.current = null;
+    pendingHitsRef.current = false;
     hitsRequestState.abort?.();
     logsRequestState.abort?.();
     timeRequestState.abort?.();
-    updatePendingLogs(null);
+    pendingLogsRef.current = false;
+    setIsWaitingForHits(false);
   };
 
-  const resolveTimeFilter = async (baseTriggersArg: BaseTriggers) => {
+  const resolveTimeFilter = async (baseTriggersArg: BaseTriggers, syncId: symbol) => {
     const apiPeriod = await fetchQueryTime({
       query: baseTriggersArg.query,
       period: baseTriggersArg.period,
     });
+    if (syncId !== syncIdRef.current) return;
     const nextPeriod: TimeParams = apiPeriod ?? baseTriggersArg.period;
     const hasTimeFilter = Boolean(apiPeriod?.hasTimeFilter);
 
@@ -132,30 +140,46 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
     const changed = getChanged(prev, next);
 
-    if (changed.base) {
-      logsRequestState.abort();
-    }
-
     const { baseTriggers, logsTriggers, hitsTriggers } = next;
     const { isLogsHidden } = logsTriggers;
     const { isChartHidden } = hitsTriggers;
 
     const shouldRunLogs = (isFirstRun || changed.base || changed.logs || pendingLogsRef.current) && !isLogsHidden;
-    const shouldRunHits = (isFirstRun || changed.base || changed.hits) && !isChartHidden;
+    const shouldRunHits = (isFirstRun || changed.base || changed.hits || pendingHitsRef.current) && !isChartHidden;
 
     const forceHitsOnce = prev.hitsTriggers.executeHitsOnceTrigger !== next.hitsTriggers.executeHitsOnceTrigger;
+    const isStatsMode = hitsTriggers.graphQueryMode === GRAPH_QUERY_MODE.stats;
+    const timeoutMs = incrementalTimeoutMsRef.current;
+    const allowIterative = !isStatsMode && !forceHitsOnce && timeoutMs > 0;
+    const shouldUseLogsTimeout = shouldRunHits && allowIterative;
 
     prevRef.current = next;
     if (isFirstRun) {
       isFirstRender.current = false;
     }
 
+    const syncId = Symbol();
+    syncIdRef.current = syncId;
+
+    logsRequestState.abort();
+    hitsRequestState.abort();
+    timeRequestState.abort();
+
+    pendingHitsRef.current = shouldRunHits;
+    pendingLogsRef.current = shouldRunLogs;
+
+    setIsWaitingForHits(false);
+
     const currentTimeFilterKey = getSyncTimeFilterKey(baseTriggers);
     const timeFilterKeyChanged = currentTimeFilterKey !== lastSyncedTimeFilterKeyRef.current;
-    const shouldSyncTimeFilter = (isFirstRun || changed.base) && timeFilterKeyChanged;
+    const shouldSyncTimeFilter = (isFirstRun || changed.base || pendingTimeFilterRef.current) && timeFilterKeyChanged;
 
     if (shouldSyncTimeFilter) {
-      const { hasTimeFilter, nextPeriod } = await resolveTimeFilter(baseTriggers);
+      pendingTimeFilterRef.current = true;
+      const resolvedTime = await resolveTimeFilter(baseTriggers, syncId);
+      if (!resolvedTime) return;
+      pendingTimeFilterRef.current = false;
+      const { hasTimeFilter, nextPeriod } = resolvedTime;
       const isSamePeriod = isEqualPeriod(baseTriggers.period, nextPeriod);
 
       if (hasTimeFilter && !isSamePeriod) {
@@ -181,33 +205,48 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     const logsParams = buildLogsParams(baseTriggers, logsTriggers);
     const hitsParams = buildHitsParams(baseTriggers, hitsTriggers);
 
+    if (shouldRunHits) resetHits();
+    if (shouldRunLogs) resetLogs();
+
+    let didLogsTimeout = false;
+
     if (shouldRunLogs) {
-      updatePendingLogs(Symbol());
-      resetLogs();
+      const { status } = await runLogs({
+        ...logsParams,
+        shouldUseLogsTimeout,
+        incrementalTimeoutMs: timeoutMs,
+      });
+
+      if (syncId !== syncIdRef.current) return;
+
+      didLogsTimeout = status === "timeout";
+      pendingLogsRef.current = didLogsTimeout;
+
+      if (status === "aborted") {
+        pendingHitsRef.current = false;
+        return;
+      }
+
+      setIsWaitingForHits(didLogsTimeout);
     }
 
     if (shouldRunHits) {
-      const pendingId = pendingLogsRef.current;
+      const hitsResult = await runHits({ ...hitsParams, isIterative: didLogsTimeout && allowIterative });
+      if (syncId !== syncIdRef.current) return;
+      pendingHitsRef.current = false;
 
-      resetHits();
-
-      const hitsResult = await runHits({
-        ...hitsParams,
-        allowIterative: !forceHitsOnce,
-      });
-
-      const isAbortedHits = hitsResult === "aborted";
-
-      if (isAbortedHits && pendingLogsRef.current === pendingId) {
-        updatePendingLogs(null);
+      if (hitsResult === "aborted") {
+        pendingLogsRef.current = false;
+        setIsWaitingForHits(false);
+        return;
       }
-
-      if (isAbortedHits) return;
     }
 
-    if (pendingLogsRef.current && !isLogsHiddenRef.current) {
-      updatePendingLogs(null);
-      await runLogs(logsParams);
+    if (didLogsTimeout && pendingLogsRef.current && !isLogsHiddenRef.current) {
+      setIsWaitingForHits(false);
+      await runLogs({ ...logsParams, shouldUseLogsTimeout: false });
+      if (syncId !== syncIdRef.current) return;
+      pendingLogsRef.current = false;
     }
   };
 
@@ -223,7 +262,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
   return {
     cancelAll,
-    logsRequestState: { ...logsRequestState, isPending: isPendingLogs },
+    logsRequestState: { ...logsRequestState, isPending: isWaitingForHits },
     hitsRequestState,
   };
 };

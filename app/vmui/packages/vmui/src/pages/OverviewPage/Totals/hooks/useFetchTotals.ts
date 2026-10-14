@@ -34,8 +34,8 @@ export const useFetchTotals = () => {
           fetchLogs({ query, limit: 1, period: prevPeriod, extraParams }),
         ]);
 
-        const [curr] = (currRes || []) as Logs[];
-        const [prev] = (prevRes || []) as Logs[];
+        const [curr] = currRes.data ?? [];
+        const [prev] = prevRes.data ?? [];
 
         setTotals(curr);
         setTotalsPrev(prev);

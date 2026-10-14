@@ -38,7 +38,7 @@ export const useFetchStreamContext = () => {
   });
 
   const fetchLogsByTimeRange = async ({ log, dir, lines }: FetchSideParams) => {
-    const data = await fetchLogs({
+    const { data } = await fetchLogs({
       query: buildContextQuery(log, dir, lines),
     });
 

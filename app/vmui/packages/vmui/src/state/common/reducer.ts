@@ -9,7 +9,8 @@ export interface AppState {
   theme: Theme;
   isDarkTheme: boolean | null;
   flags: Record<string, string | null>;
-  appConfig: AppConfig
+  appConfig: AppConfig;
+  openSettingsTrigger: number;
 }
 
 export type Action =
@@ -18,13 +19,15 @@ export type Action =
   | { type: "SET_FLAGS", payload: Record<string, string | null> }
   | { type: "SET_APP_CONFIG", payload: AppConfig }
   | { type: "SET_DARK_THEME" }
+  | { type: "OPEN_SETTINGS" }
 
 export const initialState: AppState = {
   serverUrl: removeTrailingSlash(getDefaultServer()),
   theme: (getFromStorage("THEME") || Theme.system) as Theme,
   isDarkTheme: null,
   flags: {},
-  appConfig: {}
+  appConfig: {},
+  openSettingsTrigger: 0,
 };
 
 export function reducer(state: AppState, action: Action): AppState {
@@ -54,6 +57,11 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         appConfig: action.payload
+      };
+    case "OPEN_SETTINGS":
+      return {
+        ...state,
+        openSettingsTrigger: state.openSettingsTrigger + 1
       };
     default:
       throw new Error();

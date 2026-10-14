@@ -68,7 +68,7 @@ const completeHits = async (result: FetchHitsResult = "success") => {
   });
 };
 
-describe("useQueryPageController: logs waiting for hits", () => {
+describe("useQueryPageController: logs timeout fallback", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetAllMocks();
@@ -76,7 +76,7 @@ describe("useQueryPageController: logs waiting for hits", () => {
     hitsTriggers = initialHits;
     finishHits = undefined;
     mocks.fetchQueryTime.mockResolvedValue(undefined);
-    mocks.runLogs.mockResolvedValue(true);
+    mocks.runLogs.mockResolvedValue({ status: "timeout" });
     mocks.abortHits.mockImplementation(() => {
       finishHits?.("aborted");
       finishHits = undefined;
@@ -98,21 +98,22 @@ describe("useQueryPageController: logs waiting for hits", () => {
     vi.useRealTimers();
   });
 
-  it("loads logs only after hits finish", async () => {
+  it("retries timed-out logs after incremental hits finish", async () => {
     renderHook(() => useQueryPageController({ query: baseTriggers.query }));
     await flushDebounce();
 
     expect(mocks.runHits).toHaveBeenCalledTimes(1);
+    expect(mocks.runHits).toHaveBeenCalledWith(expect.objectContaining({ isIterative: true }));
     expect(mocks.resetLogs).toHaveBeenCalledTimes(1);
     expect(mocks.resetHits).toHaveBeenCalledTimes(1);
     expect(mocks.resetLogs.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
     expect(mocks.resetHits.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
-    expect(mocks.runLogs).not.toHaveBeenCalled();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
 
     await completeHits();
 
-    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
-    expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({ query: "*" }));
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({ query: "*", shouldUseLogsTimeout: false }));
   });
 
   it("loads pending logs after hits fail", async () => {
@@ -120,11 +121,11 @@ describe("useQueryPageController: logs waiting for hits", () => {
     await flushDebounce();
 
     expect(result.current.logsRequestState.isPending).toBe(true);
-    expect(mocks.runLogs).not.toHaveBeenCalled();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
 
     await completeHits("error");
 
-    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
     expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({
       query: baseTriggers.query,
       period: baseTriggers.period,
@@ -143,7 +144,7 @@ describe("useQueryPageController: logs waiting for hits", () => {
     });
 
     expect(mocks.abortHits).toHaveBeenCalledTimes(1);
-    expect(mocks.runLogs).not.toHaveBeenCalled();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
     expect(result.current.logsRequestState.isPending).toBe(false);
   });
 
@@ -170,35 +171,113 @@ describe("useQueryPageController: logs waiting for hits", () => {
     expect(mocks.runLogs).not.toHaveBeenCalled();
   });
 
-  it("loads the new query's logs after changing step while its hits are pending", async () => {
+  it("preserves the new query when its chart step changes during fallback", async () => {
     const { rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
     await flushDebounce();
     await completeHits();
-    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    mocks.runLogs.mockClear();
 
-    baseTriggers = { ...initialBase, query: "_msg:~\"(?i)(error|warning)\"" };
+    baseTriggers = { ...initialBase, query: "error" };
     rerender();
     await flushDebounce();
-    expect(mocks.runHits).toHaveBeenCalledTimes(2);
-    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
 
-    // Only hits settings change; the query, period and logs settings stay the same.
     hitsTriggers = { ...initialHits, step: "1h" };
     rerender();
     await flushDebounce();
-    expect(mocks.runHits).toHaveBeenCalledTimes(3);
     expect(mocks.runHits).toHaveBeenLastCalledWith(expect.objectContaining({
-      query: baseTriggers.query,
-      step: "1h",
+      query: "error", step: "1h", isIterative: true,
     }));
-    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
 
     await completeHits();
-
-    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
     expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
-      query: baseTriggers.query,
-      period: baseTriggers.period,
+      query: "error", shouldUseLogsTimeout: false,
     }));
+  });
+
+  it("loads successful logs before ordinary hits without retrying logs", async () => {
+    mocks.runLogs.mockResolvedValue({ status: "success" });
+    renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+
+    expect(mocks.runLogs.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
+    expect(mocks.runHits).toHaveBeenCalledWith(expect.objectContaining({ isIterative: false }));
+    await completeHits();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves the time filter after chart changes and ignores stale responses", async () => {
+    type TimeResult = typeof initialBase.period & { hasTimeFilter: boolean };
+    const finishTime: Array<(value: TimeResult | undefined) => void> = [];
+    mocks.fetchQueryTime.mockImplementation(() => new Promise<TimeResult | undefined>(resolve => {
+      finishTime.push(resolve);
+    }));
+    mocks.runLogs.mockResolvedValue({ status: "success" });
+    baseTriggers = { ...initialBase, query: "_time:7d" };
+
+    const { rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+
+    hitsTriggers = { ...initialHits, step: "1h" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(2);
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+    expect(mocks.runHits).not.toHaveBeenCalled();
+
+    await act(async () => { finishTime[0](undefined); });
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+
+    hitsTriggers = { ...initialHits, step: "2h" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(3);
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+
+    const resolvedPeriod = {
+      start: initialBase.period.start - 86_400_000_000_000n,
+      end: initialBase.period.end,
+    };
+    await act(async () => { finishTime[2]({ ...resolvedPeriod, hasTimeFilter: true }); });
+    expect(baseTriggers.setPeriod).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).not.toHaveBeenCalled();
+
+    baseTriggers = { ...baseTriggers, period: resolvedPeriod };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(3);
+    expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({ period: resolvedPeriod }));
+    expect(mocks.runHits).toHaveBeenCalledWith(expect.objectContaining({ period: resolvedPeriod, step: "2h" }));
+
+    await act(async () => { finishTime[1](undefined); });
+    expect(baseTriggers.setPeriod).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    await completeHits();
+
+    hitsTriggers = { ...initialHits, step: "3h" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(3);
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    await completeHits();
+  });
+
+  it("does not start hits after logs are aborted", async () => {
+    mocks.runLogs.mockResolvedValue({ status: "aborted" });
+    renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    expect(mocks.runHits).not.toHaveBeenCalled();
+  });
+
+  it("does not continue a cancelled logs request", async () => {
+    let finishLogs!: (result: { status: string }) => void;
+    mocks.runLogs.mockImplementation(() => new Promise(resolve => { finishLogs = resolve; }));
+    const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    await act(async () => {
+      result.current.cancelAll();
+      finishLogs({ status: "timeout" });
+    });
+    expect(mocks.runHits).not.toHaveBeenCalled();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
   });
 });
