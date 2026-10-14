@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	maxConcurrentRequests = flag.Int("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "The maximum number of concurrent search requests. "+
+	maxConcurrentRequests = flagutil.NewIntWithDynamicDefault("search.maxConcurrentRequests", getDefaultMaxConcurrentRequests(), "2x CPU cores when there are 4 or fewer; otherwise CPU cores, capped at 16", "The maximum number of concurrent search requests. "+
 		"It shouldn't be high, since a single request can saturate all the CPU cores, while many concurrently executed requests may require high amounts of memory. "+
 		"See also -search.maxQueueDuration")
 	maxQueueDuration = flag.Duration("search.maxQueueDuration", 10*time.Second, "The maximum time the search request waits for execution when -search.maxConcurrentRequests "+
@@ -37,10 +37,19 @@ var (
 	enableDelete         = flag.Bool("delete.enable", false, "Whether to enable /delete/* HTTP endpoints; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	enableInternalDelete = flag.Bool("internaldelete.enable", false, "Whether to enable /internal/delete/* HTTP endpoints, which are used by vlselect for deleting logs "+
 		"via delete API at vlstorage nodes; see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
+	deleteAuthKey = flagutil.NewPassword("deleteAuthKey", "authKey, which must be passed in query string to /delete/* . It overrides -httpAuth.* . "+
+		"See https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
 )
+
+// InitSecretFlags registers secret flags defined under `vlselect` pkg.
+//
+// It must be called after flag.Parse and before any logging by main function of an application (e.g. victoria-logs, vlagent).
+func InitSecretFlags() {
+	flagutil.RegisterSecretFlag("vmalert.proxyURL")
+}
 
 func getDefaultMaxConcurrentRequests() int {
 	n := cgroup.AvailableCPUs()
@@ -61,9 +70,8 @@ func Init() {
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
 
 	vmalertproxy.Init(*vmalertProxyURL)
-	flagutil.RegisterSecretFlag("vmalert.proxyURL")
 
-	internalselect.Init()
+	internalselect.Init(*logSlowQueryDuration)
 }
 
 // Stop stops vlselect
@@ -92,11 +100,22 @@ var vmuiFiles embed.FS
 
 var vmuiFileServer = http.FileServer(http.FS(vmuiFiles))
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+	return strings.HasPrefix(path, "/delete/")
+}
+
 // RequestHandler handles select requests for VictoriaLogs
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 
 	if strings.HasPrefix(path, "/delete/") {
+		// The paths reported by IsAuthKeyProtectedPath() must verify the -*AuthKey before any other check.
+		if !httpserver.CheckAuthFlag(w, r, deleteAuthKey) {
+			return true
+		}
 		if !*enableDelete {
 			httpserver.Errorf(w, r, "requests to /delete/* are disabled; pass -delete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
@@ -121,7 +140,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
@@ -134,7 +153,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 			httpserver.Errorf(w, r, "requests to /internal/select/* are disabled with -select.disable command-line flag")
 			return true
 		}
-		internalselect.RequestHandler(r.Context(), w, r)
+		internalselect.RequestHandler(r.Context(), w, r, path)
 		return true
 	}
 
@@ -167,7 +186,7 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 
 	if path == "/select/vmui" {
 		// VMUI access via incomplete url without `/` in the end. Redirect to complete url.
-		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaMetrics
+		// Use relative redirect, since the hostname and path prefix may be incorrect if VictoriaLogs
 		// is hidden behind vmauth or similar proxy.
 		_ = r.ParseForm()
 		newURL := "vmui/?" + r.Form.Encode()
@@ -222,6 +241,8 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	}
 	defer decRequestConcurrency()
 
+	waitDuration := time.Since(startTime)
+
 	ok := processSelectRequest(ctxWithTimeout, w, r, path)
 	if !ok {
 		return false
@@ -233,8 +254,8 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 		if d >= *logSlowQueryDuration {
 			remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 			requestURI := httpserver.GetRequestURI(r)
-			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, duration=%.3f seconds; requestURI: %q",
-				*logSlowQueryDuration, remoteAddr, d.Seconds(), requestURI)
+			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, totalDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
+				*logSlowQueryDuration, remoteAddr, d.Seconds(), waitDuration.Seconds(), requestURI)
 			slowQueries.Inc()
 		}
 	}
@@ -263,19 +284,24 @@ func logRequestErrorIfNeeded(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func incRequestConcurrency(ctx context.Context, w http.ResponseWriter, r *http.Request) bool {
-	startTime := time.Now()
-	stopCh := ctx.Done()
 	select {
 	case concurrencyLimitCh <- struct{}{}:
+		// Fast path - there is a free slot in the concurrency limiter for executing the request.
 		return true
 	default:
-		// Sleep for a while until giving up. This should resolve short bursts in requests.
+		// Slow path - there are no free slots in the concurrency limiter for executing the request.
+		// Wait for up to *maxQueueDuration for the query execution.
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, *maxQueueDuration)
+		defer cancel()
+
+		startTime := time.Now()
+
 		concurrencyLimitReached.Inc()
 		select {
 		case concurrencyLimitCh <- struct{}{}:
 			return true
-		case <-stopCh:
-			switch ctx.Err() {
+		case <-ctxWithTimeout.Done():
+			switch ctxWithTimeout.Err() {
 			case context.Canceled:
 				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 				requestURI := httpserver.GetRequestURI(r)
@@ -394,6 +420,11 @@ func deleteHandler(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 func processDeleteRunTaskRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
 	tenantID, err := logstorage.GetTenantIDFromRequest(r)
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot obtain tenantID: %s", err)

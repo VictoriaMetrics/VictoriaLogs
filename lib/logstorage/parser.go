@@ -46,7 +46,7 @@ type lexer struct {
 	// It is used for proper initializing of _time filters with relative time ranges.
 	currentTimestamp int64
 
-	// opts is a stack of options for nested parsed queries
+	// optss is a stack of options for nested parsed queries
 	optss []*queryOptions
 }
 
@@ -224,13 +224,6 @@ func (lex *lexer) checkPrevAdjacentToken(tokens ...string) error {
 	}
 
 	return nil
-}
-
-func (lex *lexer) isKeywordOrQueryPartTrailer(keywords ...string) bool {
-	if lex.isKeywordAny(keywords) {
-		return true
-	}
-	return lex.isQueryPartTrailer()
 }
 
 func (lex *lexer) isQueryPartTrailer() bool {
@@ -905,15 +898,12 @@ func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 
 	q.f = addTimeFilter(q.f, start, end, q.opts.timeOffset)
 
-	// Initialize rate functions with the step calculated from _time:[start, end] filter.
-	// This fixes the bug where rate_sum() doesn't divide by stepSeconds when
-	// time filter is specified via HTTP params instead of LogsQL expression
-	q.initStatsRateFuncsFromTimeFilter()
+	q.initStatsRateFuncStepsNoSubqueries()
 }
 
 func addTimeFilter(f filter, start, end, offset int64) filter {
 	// use nanosecond precision for [start, end] time range in order to avoid
-	// automatic adjustement of timestamps for its' string representation.
+	// automatic adjustment of timestamps for its string representation.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/587
 	//
 	// Do not use numeric representation of timestamps, since they are improperly parsed
@@ -1064,7 +1054,7 @@ func optimizeFilters(f filter) filter {
 	// flatten nested OR filters
 	f = flattenFiltersOr(f)
 
-	// Substitute '*' prefixFilter with filterNoop in order to avoid reading _msg data.
+	// Substitute '*' filterPrefix with filterNoop in order to avoid reading _msg data.
 	f = removeStarFilters(f)
 
 	// Merge multiple {...} filters into a single one.
@@ -1078,7 +1068,7 @@ func (q *Query) visitSubqueries(visitFunc func(q *Query)) {
 		return
 	}
 
-	// call f for the query itself.
+	// call visitFunc for the query itself.
 	visitFunc(q)
 
 	// Visit subqueries in all the filters at q.
@@ -1201,8 +1191,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 	// add _time:step to by (...) list at stats pipes.
 	q.addByTimeFieldToStatsPipes(step, offset)
 
-	// propagate the step into rate* funcs at stats pipes.
-	q.initStatsRateFuncs(step)
+	q.initStatsRateFuncStepsNoSubqueries()
 
 	// add 'partition by (_time)' to 'sort', 'first' and 'last' pipes.
 	q.addPartitionByTime(step)
@@ -1250,7 +1239,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			// These pipes do not change the set of fields.
 		case *pipeLimit, *pipeOffset:
 			if step > 0 {
-				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individualley per each step; step=%d", p, step)
+				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individually for each step; step=%d", p, step)
 			}
 			// limit and offset pipes do not change the set of fields, so they are allowed in instant queries.
 		case *pipeRunningStats:
@@ -1842,7 +1831,7 @@ func (q *Query) HasGlobalTimeFilter() bool {
 
 // ParseQueryAtTimestamp parses s in the context of the given timestamp.
 //
-// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, duration].
+// E.g. _time:duration filters are adjusted according to the provided timestamp as _time:[timestamp-duration, timestamp).
 func ParseQueryAtTimestamp(s string, timestamp int64) (*Query, error) {
 	lex := newLexer(s, timestamp)
 
@@ -1854,29 +1843,34 @@ func ParseQueryAtTimestamp(s string, timestamp int64) (*Query, error) {
 		return nil, fmt.Errorf("unexpected unparsed tail after [%s]; context: [%s]; tail: [%s]", q, lex.context(), lex.rawToken+lex.s)
 	}
 	q.optimize()
-	q.initStatsRateFuncsFromTimeFilter()
+	q.initStatsRateFuncSteps()
 
 	return q, nil
 }
 
-func (q *Query) initStatsRateFuncsFromTimeFilter() {
+func (q *Query) initStatsRateFuncSteps() {
+	q.visitSubqueries(func(q *Query) {
+		q.initStatsRateFuncStepsNoSubqueries()
+	})
+}
+
+func (q *Query) initStatsRateFuncStepsNoSubqueries() {
 	start, end := q.GetFilterTimeRange()
+	step := int64(0)
 	if start != math.MinInt64 && end != math.MaxInt64 {
-		step := end - start
+		step = end - start
 
 		// The HTTP layer already converted the exclusive end into end-1, and the _time
 		// filter is inclusive ([start, end]). So (end - start) is 1ns short of the real
 		// window, and step++ adds that 1ns back.
 		step++
-
-		q.initStatsRateFuncs(step)
 	}
-}
 
-func (q *Query) initStatsRateFuncs(step int64) {
 	for _, p := range q.pipes {
 		if ps, ok := p.(*pipeStats); ok {
-			ps.initRateFuncs(step)
+			if !ps.initRateFuncsFromTimeBucket() {
+				ps.initRateFuncs(step)
+			}
 		}
 	}
 }
@@ -1934,7 +1928,7 @@ func parseQuery(lex *lexer) (*Query, error) {
 	lex.pushQueryOptions(&q.opts)
 	defer lex.popQueryOptions()
 
-	f, err := parseFilter(lex, true)
+	f, err := parseFilter(lex)
 	if err != nil {
 		return nil, fmt.Errorf("%w; context: [%s]", err, lex.context())
 	}
@@ -2119,18 +2113,9 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 	}
 }
 
-func parseFilter(lex *lexer, allowPipeKeywords bool) (filter, error) {
+func parseFilter(lex *lexer) (filter, error) {
 	if lex.isQueryPartTrailer() {
 		return nil, fmt.Errorf("missing query")
-	}
-
-	if !allowPipeKeywords {
-		// Verify the first token in the filter doesn't match pipe names.
-		firstToken := strings.ToLower(lex.rawToken)
-		if firstToken == "by" || isPipeName(firstToken) || isStatsFuncName(firstToken) {
-			return nil, fmt.Errorf("query filter cannot start with pipe keyword %q; see https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax; "+
-				"please put the first word of the filter into quotes", firstToken)
-		}
 	}
 
 	fo, err := parseFilterOr(lex, "")
@@ -2170,7 +2155,7 @@ func parseFilterAnd(lex *lexer, fieldName string) (filter, error) {
 		}
 		filters = append(filters, f)
 		switch {
-		case lex.isKeywordOrQueryPartTrailer("or"):
+		case lex.isKeyword("or") || lex.isQueryPartTrailer():
 			if len(filters) == 1 {
 				return filters[0], nil
 			}
@@ -3881,7 +3866,7 @@ func quoteFieldFilterIfNeeded(s string) string {
 	if wildcard == "" || !needQuoteToken(wildcard) {
 		return s
 	}
-	return strconv.Quote(s)
+	return strconv.Quote(wildcard) + "*"
 }
 
 func quoteTokenIfNeeded(s string) string {
@@ -3918,7 +3903,7 @@ func isNumberPrefix(s string) bool {
 }
 
 func needQuoteToken(s string) bool {
-	if s == "." {
+	if !isWord(s) {
 		return true
 	}
 
@@ -3926,14 +3911,10 @@ func needQuoteToken(s string) bool {
 	if _, ok := reservedKeywords[sLower]; ok {
 		return true
 	}
-	if isPipeName(sLower) || isStatsFuncName(sLower) {
+	if isPipeName(sLower) || isStatsFuncName(sLower) || isMathFuncName(sLower) {
 		return true
 	}
-	for _, r := range s {
-		if !isTokenRune(r) && r != '.' {
-			return true
-		}
-	}
+
 	return false
 }
 
@@ -4014,6 +3995,9 @@ var reservedKeywords = func() map[string]struct{} {
 
 		// 'as' is used in various pipes such as `format ... as ...`
 		"as",
+
+		// 'from' is used in various pipes such as `split ... from ...` and `unpack_json from ...`
+		"from",
 	}
 	m := make(map[string]struct{}, len(kws))
 	for _, kw := range kws {
@@ -4063,18 +4047,18 @@ func toFieldsFilters(pf *prefixfilter.Filter) string {
 
 	denyFilters := pf.GetDenyFilters()
 	if len(denyFilters) > 0 {
-		qStr += " | delete " + fieldNamesString(denyFilters)
+		qStr += " | delete " + fieldFiltersString(denyFilters)
 	}
 
 	allowFilters := pf.GetAllowFilters()
 	if len(allowFilters) > 0 && !prefixfilter.MatchAll(allowFilters) {
-		qStr += " | fields " + fieldNamesString(allowFilters)
+		qStr += " | fields " + fieldFiltersString(allowFilters)
 	}
 
 	return qStr
 }
 
-// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overlow int64.
+// SubInt64NoOverflow calculates a-b and makes sure that the result doesn't overflow int64.
 //
 // It clamps the result to the int64 value range.
 func SubInt64NoOverflow(a, b int64) int64 {

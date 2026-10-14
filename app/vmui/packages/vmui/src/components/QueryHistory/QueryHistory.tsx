@@ -1,38 +1,28 @@
-import { FC, useEffect, useMemo, useState } from "preact/compat";
+import { FC, useMemo, useState } from "preact/compat";
 import Button from "../Main/Button/Button";
-import { ClockIcon, DeleteIcon } from "../Main/Icons";
+import { DeleteIcon, HistoryIcon } from "../Main/Icons";
 import useBoolean from "../../hooks/useBoolean";
 import Modal from "../Main/Modal/Modal";
-import Tabs from "../Main/Tabs/Tabs";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import useEventListener from "../../hooks/useEventListener";
-import { useQueryState } from "../../state/query/QueryStateContext";
-import { clearQueryHistoryStorage, getQueriesFromStorage, setFavoriteQueriesToStorage } from "./utils";
+import {
+  clearQueryHistoryStorage,
+  getHistoryFromStorage,
+  groupHistoryByDay,
+  removeQueryFromHistoryStorage
+} from "./utils";
 import QueryHistoryItem from "./QueryHistoryItem";
 import classNames from "classnames";
 import "./style.scss";
-import { StorageKeys } from "../../utils/storage";
-import { arrayEquals } from "../../utils/array";
+import { QueryHistoryGroup } from "./types";
 
 interface Props {
-  handleSelectQuery: (query: string, index: number) => void
-  historyKey: Extract<StorageKeys, "LOGS_QUERY_HISTORY">;
+  handleSelectQuery: (query: string) => void
 }
 
-export const HistoryTabTypes = {
-  session: "session",
-  storage: "saved",
-  favorite: "favorite",
-};
+const noDataText = "Query history is empty.\nTo see the history, please make a query.";
 
-export const historyTabs = [
-  { label: "Session history", value: HistoryTabTypes.session },
-  { label: "Saved history", value: HistoryTabTypes.storage },
-  { label: "Favorite queries", value: HistoryTabTypes.favorite },
-];
-
-const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
-  const { queryHistory: historyState } = useQueryState();
+const QueryHistory: FC<Props> = ({ handleSelectQuery }) => {
   const { isMobile } = useDeviceDetect();
 
   const {
@@ -41,68 +31,42 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
     setFalse: handleCloseModal,
   } = useBoolean(false);
 
-  const [activeTab, setActiveTab] = useState(historyTabs[0].value);
-  const [historyStorage, setHistoryStorage] = useState(getQueriesFromStorage(historyKey, "QUERY_HISTORY"));
-  const [historyFavorites, setHistoryFavorites] = useState(getQueriesFromStorage(historyKey, "QUERY_FAVORITES"));
+  const [historyStorage, setHistoryStorage] = useState(getHistoryFromStorage());
+  const isNoData = !historyStorage.length;
 
-  const historySession = useMemo(() => {
-    return historyState.map((h) => h.values.filter(q => q).reverse());
-  }, [historyState]);
+  const groupedData: QueryHistoryGroup[] = useMemo(() => groupHistoryByDay(historyStorage), [historyStorage]);
 
-  const list = useMemo(() => {
-    switch (activeTab) {
-      case HistoryTabTypes.favorite:
-        return historyFavorites;
-      case HistoryTabTypes.storage:
-        return historyStorage;
-      default:
-        return historySession;
-    }
-  }, [activeTab, historyFavorites, historyStorage, historySession]);
-
-  const isNoData = list?.every(s => !s.length);
-
-  const noDataText = useMemo(() => {
-    switch (activeTab) {
-      case HistoryTabTypes.favorite:
-        return "Favorites queries are empty.\nTo see your favorites, mark a query as a favorite.";
-      default:
-        return "Query history is empty.\nTo see the history, please make a query.";
-    }
-  }, [activeTab]);
-
-  const handleRunQuery = (group: number) => (value: string) => {
-    handleSelectQuery(value, group);
+  const handleRunQuery = (value: string) => {
+    handleSelectQuery(value);
     handleCloseModal();
   };
 
-  const handleToggleFavorite = (value: string, isFavorite: boolean) => {
-    setHistoryFavorites((prev) => {
-      const values = prev[0] || [];
-      if (isFavorite) return [values.filter(v => v !== value)];
-      if (!isFavorite && !values.includes(value)) return [[...values, value]];
-      return prev;
-    });
+  const handleRemoveHistory = (query: string) => {
+    removeQueryFromHistoryStorage(query);
   };
 
   const updateStageHistory = () => {
-    setHistoryStorage(getQueriesFromStorage(historyKey, "QUERY_HISTORY"));
-    setHistoryFavorites(getQueriesFromStorage(historyKey, "QUERY_FAVORITES"));
+    setHistoryStorage(getHistoryFromStorage());
   };
 
   const handleClearStorage = () => {
-    clearQueryHistoryStorage(historyKey, "QUERY_HISTORY");
+    clearQueryHistoryStorage();
   };
 
-  useEffect(() => {
-    const nextValue = historyFavorites[0] || [];
-    const prevValue = getQueriesFromStorage(historyKey, "QUERY_FAVORITES")[0] || [];
-    const isEqual = arrayEquals(nextValue, prevValue);
-    if (isEqual) return;
-    setFavoriteQueriesToStorage(historyKey, historyFavorites);
-  }, [historyFavorites]);
-
   useEventListener("storage", updateStageHistory);
+
+  const Footer = () => (
+    <div className="vm-query-history-footer">
+      <Button
+        color="error"
+        variant="text"
+        startIcon={<DeleteIcon/>}
+        onClick={handleClearStorage}
+      >
+        Clear all
+      </Button>
+    </div>
+  );
 
   return (
     <>
@@ -110,7 +74,7 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
         color="primary"
         variant="outlined"
         onClick={handleOpenModal}
-        startIcon={<ClockIcon/>}
+        startIcon={<HistoryIcon/>}
         aria-label={"Query history"}
       >
         {!isMobile && "History"}
@@ -118,8 +82,10 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
 
       {openModal && (
         <Modal
-          title={"Query history"}
+          title="Query history"
+          className="vm-query-history-modal"
           onClose={handleCloseModal}
+          footer={<Footer/>}
         >
           <div
             className={classNames({
@@ -127,57 +93,30 @@ const QueryHistory: FC<Props> = ({ handleSelectQuery, historyKey }) => {
               "vm-query-history_mobile": isMobile,
             })}
           >
-            <div
-              className={classNames({
-                "vm-query-history__tabs": true,
-                "vm-section-header__tabs": true,
-                "vm-query-history__tabs_mobile": isMobile,
-              })}
-            >
-              <Tabs
-                activeItem={activeTab}
-                items={historyTabs}
-                onChange={setActiveTab}
-              />
-            </div>
             <div className="vm-query-history-list">
               {isNoData && <div className="vm-query-history-list__no-data">{noDataText}</div>}
-              {list.map((queries, group) => (
-                <div key={group}>
-                  {list.length > 1 && (
-                    <div
-                      className={classNames({
-                        "vm-query-history-list__group-title": true,
-                        "vm-query-history-list__group-title_first": group === 0,
-                      })}
-                    >
-                      Query {group + 1}
-                    </div>
-                  )}
-                  {queries.map((query, index) => (
-                    <QueryHistoryItem
-                      key={index}
-                      query={query}
-                      favorites={historyFavorites.flat()}
-                      onRun={handleRunQuery(group)}
-                      onToggleFavorite={handleToggleFavorite}
-                    />
-                  ))}
+
+              {groupedData.map((group) => (
+                <div
+                  key={group.title}
+                  className="vm-query-history-list-group"
+                >
+                  <h3 className="vm-query-history-list-group__title">
+                    {group.title}
+                    <span>{group.entries.length} {group.entries.length === 1 ? "query" : "queries"}</span>
+                  </h3>
+                  <div className="vm-query-history-list-group__entries">
+                    {group.entries.map((entry) => (
+                      <QueryHistoryItem
+                        key={`${entry.query}-${entry.lastRunAt}`}
+                        entry={entry}
+                        onRun={handleRunQuery}
+                        onRemove={handleRemoveHistory}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
-              {(activeTab === HistoryTabTypes.storage) && !isNoData && (
-                <div className="vm-query-history-footer">
-                  <Button
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                    startIcon={<DeleteIcon/>}
-                    onClick={handleClearStorage}
-                  >
-                    Clear history
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         </Modal>

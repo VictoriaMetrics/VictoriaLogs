@@ -7,10 +7,18 @@ import { AlignedData } from "uplot";
 import BarHitsChart from "../../../components/Chart/BarHitsChart/BarHitsChart";
 import { TimeParams, TimePeriod } from "../../../types";
 import LineLoader from "../../../components/Main/LineLoader/LineLoader";
-import { useSearchParams } from "react-router-dom";
-import { getSecondsFromDuration, toEpochSeconds } from "../../../utils/time";
+import { useHideChart } from "./hooks/useHideChart";
+import { getNanosecondsFromDuration, nanosecondsToSeconds, toEpochSeconds } from "../../../utils/time";
 import { useHitsChartAlert } from "./hooks/useHitsChartAlert";
 import { useTimePeriod } from "../hooks/useTimePeriod";
+import { roundToStepPrecision } from "../../../utils/number";
+import Alert from "../../../components/Main/Alert/Alert";
+import { useIncrementalTimeout } from "./hooks/useIncrementalTimeout";
+import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
+import { WITHOUT_GROUPING } from "../../../constants/logs";
+import BarHitsIterativeWarning
+  from "../../../components/Chart/BarHitsChart/BarHitsIterativeWarning/BarHitsIterativeWarning";
+import { getHitsTimeParams } from "../../../utils/logs";
 
 interface Props {
   query: string;
@@ -21,22 +29,31 @@ interface Props {
   error?: string;
   isLoading: boolean;
   isOverview?: boolean;
+  isIterative?: boolean;
 }
 
-const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview }) => {
+const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, isIterative }) => {
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
-  const [searchParams] = useSearchParams();
-  const hideChart = useMemo(() => searchParams.get("hide_chart") === "true", [searchParams]);
+  const [hideChart] = useHideChart();
+  const { incrementalTimeoutLabel } = useIncrementalTimeout();
+
+  const { step: fallbackStep } = getHitsTimeParams(period);
+
+  const { groupFieldHits } = useHitsChartConfig();
+  const isGroupEnable = groupFieldHits.value !== WITHOUT_GROUPING;
 
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {
       const timestampValueMap = new Map();
       hits.timestamps.forEach((ts, idx) => {
-        timestampValueMap.set(toEpochSeconds(ts), hits.values[idx] || null);
+        timestampValueMap.set(
+          toEpochSeconds(ts),
+          hits._isLoading ? 0 : (hits.values[idx] || null),
+        );
       });
 
-      return timestamps.map(t => timestampValueMap.get(t) || null);
+      return timestamps.map(t => timestampValueMap.get(t) ?? null);
     });
   };
 
@@ -44,19 +61,25 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     const { start, end } = period;
     if (!step || !timestamps.length) return timestamps;
 
-    const stepSec = getSecondsFromDuration(step);
-    const minTime = start;
-    const maxTime = end;
+    const stepNano = getNanosecondsFromDuration(step);
+    const stepSec = nanosecondsToSeconds(stepNano);
+    const minTime = nanosecondsToSeconds(start);
+    const maxTime = nanosecondsToSeconds(end);
     const anchorUnix = timestamps[0];
 
-    const result: number[] = [anchorUnix];
+    const leftCount = Math.floor((anchorUnix - minTime) / stepSec);
+    const rightCount = Math.floor((maxTime - anchorUnix) / stepSec) + 1; // + right boundary
 
-    for (let unix = anchorUnix - stepSec; unix >= minTime; unix -= stepSec) {
-      result.unshift(unix);
+    const result: number[] = [];
+
+    for (let i = leftCount; i >= 1; i--) {
+      result.push(roundToStepPrecision(anchorUnix - i * stepSec, stepSec));
     }
 
-    for (let unix = anchorUnix + stepSec; unix <= maxTime; unix += stepSec) {
-      result.push(unix);
+    result.push(anchorUnix);
+
+    for (let i = 1; i <= rightCount; i++) {
+      result.push(roundToStepPrecision(anchorUnix + i * stepSec, stepSec));
     }
 
     return result;
@@ -86,28 +109,42 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   };
 
   return (
-    <section
-      className={classNames({
-        "vm-query-page-chart": true,
-        "vm-block": true,
-        "vm-block_mobile": isMobile,
-      })}
-    >
-      {isLoading && <LineLoader/>}
+    <>
+      <section
+        className={classNames({
+          "vm-query-page-chart": true,
+          "vm-block": true,
+          "vm-block_mobile": isMobile,
+        })}
+      >
+        {isLoading && <LineLoader/>}
 
-      {data && (
-        <BarHitsChart
-          isOverview={isOverview}
-          logHits={logHits}
-          durationMs={durationMs}
-          query={query}
-          data={data}
-          period={period}
-          setPeriod={handleSetPeriod}
-          alertData={alertData}
-        />
+        {data && (
+          <BarHitsChart
+            isOverview={isOverview}
+            isIterative={isIterative}
+            logHits={logHits}
+            durationMs={durationMs}
+            query={query}
+            data={data}
+            period={period}
+            setPeriod={handleSetPeriod}
+            alertData={alertData}
+          />
+        )}
+      </section>
+
+      {isIterative && isLoading && (
+        <Alert variant="info">
+          The chart couldn&rsquo;t load in full within {incrementalTimeoutLabel}.
+          Switching to incremental loading with step={step || fallbackStep}.
+        </Alert>
       )}
-    </section>
+
+      {isIterative && !isLoading && isGroupEnable && (
+        <BarHitsIterativeWarning/>
+      )}
+    </>
   );
 };
 

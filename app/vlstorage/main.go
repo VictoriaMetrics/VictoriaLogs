@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
@@ -29,7 +30,7 @@ var (
 		"log entries with timestamps outside the retention are also rejected during data ingestion; the minimum supported retention is 1d (one day); "+
 		"see https://docs.victoriametrics.com/victorialogs/#retention ; see also -retention.maxDiskSpaceUsageBytes and -retention.maxDiskUsagePercent")
 
-	defaultParallelReaders = flag.Int("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "Default number of parallel data readers to use for executing every query; "+
+	defaultParallelReaders = flagutil.NewIntWithDynamicDefault("defaultParallelReaders", 2*cgroup.AvailableCPUs(), "2x CPU cores", "Default number of parallel data readers to use for executing every query; "+
 		"higher number of readers may help increasing query performance on high-latency storage such as NFS or S3 at the cost of higher RAM usage; "+
 		"see https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option")
 
@@ -71,6 +72,8 @@ var (
 	insertConcurrency        = flag.Int("insert.concurrency", 2, "The average number of concurrent data ingestion requests, which can be sent to every -storageNode")
 	insertDisableCompression = flag.Bool("insert.disableCompression", false, "Whether to disable compression when sending the ingested data to -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
+	insertDrainTimeout = flag.Duration("insert.drainTimeout", 5*time.Second, "The maximum duration for draining the in-memory buffered logs to -storageNode nodes on graceful shutdown; "+
+		"the logs, which cannot be drained within this duration, are dropped")
 	selectDisableCompression = flag.Bool("select.disableCompression", false, "Whether to disable compression for select query responses received from -storageNode nodes. "+
 		"Disabled compression reduces CPU usage at the cost of higher network usage")
 
@@ -175,7 +178,7 @@ func initNetworkStorage() {
 	}
 
 	logger.Infof("starting insert service for nodes %s", *storageNodeAddrs)
-	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression)
+	netstorageInsert = netinsert.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *insertConcurrency, *insertDisableCompression, *insertDrainTimeout)
 
 	logger.Infof("initializing select service for nodes %s", *storageNodeAddrs)
 	netstorageSelect = netselect.NewStorage(*storageNodeAddrs, authCfgs, isTLSs, *selectDisableCompression)
@@ -240,9 +243,47 @@ func Stop() {
 	}
 }
 
+// IsAuthKeyProtectedPath returns true for paths, which verify the corresponding -*AuthKey flag
+// on their own at RequestHandler().
+func IsAuthKeyProtectedPath(r *http.Request) bool {
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+	return authKeyForPath(path) != nil
+}
+
+func authKeyForPath(path string) *flagutil.Password {
+	switch path {
+	case "/internal/log_new_streams":
+		return logNewStreamsAuthKey
+	case "/internal/force_merge":
+		return forceMergeAuthKey
+	case "/internal/force_flush":
+		return forceFlushAuthKey
+	case "/internal/partition/attach",
+		"/internal/partition/detach",
+		"/internal/partition/list",
+		"/internal/partition/snapshot/create",
+		"/internal/partition/snapshot/list",
+		"/internal/partition/snapshot/delete",
+		"/internal/partition/snapshot/delete_stale":
+		return partitionManageAuthKey
+	}
+	return nil
+}
+
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
+	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	// The paths reported by IsAuthKeyProtectedPath() must verify the -*AuthKey before any other check.
+	if authKey := authKeyForPath(path); authKey != nil && !httpserver.CheckAuthFlag(w, r, authKey) {
+		return true
+	}
+
+	if strings.HasPrefix(path, "/internal/") && r.Method != "POST" {
+		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
+		return true
+	}
+
 	switch path {
 	case "/internal/log_new_streams":
 		return processLogNewStreams(w, r)
@@ -274,10 +315,6 @@ func processLogNewStreams(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, logNewStreamsAuthKey) {
-		return true
-	}
-
 	seconds, err := httputil.GetInt(r, "seconds")
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot parse 'seconds' query arg: %s", err)
@@ -297,10 +334,6 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, forceMergeAuthKey) {
-		return true
-	}
-
 	// Run force merge in background
 	partitionPrefix := r.FormValue("partition_prefix")
 	go func() {
@@ -315,10 +348,6 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
-	if !httpserver.CheckAuthFlag(w, r, forceFlushAuthKey) {
-		return true
-	}
-
 	logger.Infof("flushing storage to make pending data available for reading")
 
 	if localStorage == nil {
@@ -336,10 +365,6 @@ func processPartitionAttach(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	name := r.FormValue("name")
 	if err := localStorage.PartitionAttach(name); err != nil {
 		httpserver.Errorf(w, r, "%s", err)
@@ -353,10 +378,6 @@ func processPartitionDetach(w http.ResponseWriter, r *http.Request) bool {
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	name := r.FormValue("name")
@@ -374,10 +395,6 @@ func processPartitionList(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	ptNames := localStorage.PartitionList()
 	if ptNames == nil {
 		// This is needed in order to return `[]` instead of `null` to the client.
@@ -392,10 +409,6 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	partitionPrefix := r.FormValue("partition_prefix")
@@ -433,10 +446,6 @@ func processPartitionSnapshotList(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	snapshotPaths := localStorage.PartitionSnapshotList()
 	if snapshotPaths == nil {
 		// This is needed in order to return `[]` instead of `null` to the client.
@@ -451,10 +460,6 @@ func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	snapshotPath := r.FormValue("path")
@@ -476,10 +481,6 @@ func processPartitionSnapshotDeleteStale(w http.ResponseWriter, r *http.Request)
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	maxAge := snapshotsMaxAge.Duration()
@@ -553,15 +554,21 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	qOpt, offset, limit, isDesc := qctx.Query.GetTimeSortedNResultsQuery()
-	if qOpt != nil {
-		qctxOpt := qctx.WithQuery(qOpt)
-		return runOptimizedTimeSortedNResultsQuery(qctxOpt, offset, limit, isDesc, writeBlock)
-	}
-
 	if localStorage != nil {
+		// Optimize the query, which returns N rows with the biggest or the smallest timestamps,
+		// only at the leaf vlstorage nodes. There is no need in optimizing the query
+		// at vlselect because the optimization usually leads in 20-30 sequentially run
+		// queries - this is slow because of network latencies between vlselect and vlstorage.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
+		qOpt, offset, limit, isDesc := qctx.Query.GetTimeSortedNResultsQuery()
+		if qOpt != nil {
+			qctxOpt := qctx.WithQuery(qOpt)
+			return runOptimizedTimeSortedNResultsQuery(localStorage, qctxOpt, offset, limit, isDesc, writeBlock)
+		}
+
 		return localStorage.RunQuery(qctx, writeBlock)
 	}
+
 	return netstorageSelect.RunQuery(qctx, writeBlock)
 }
 
@@ -665,7 +672,7 @@ func DeleteActiveTasks(ctx context.Context) ([]*logstorage.DeleteTask, error) {
 	return netstorageSelect.DeleteActiveTasks(ctx)
 }
 
-// GetTenantIDs returns tenantIDs from the storage by the given start and end.
+// GetTenantIDs returns sorted tenantIDs on the [start..end] time range.
 func GetTenantIDs(ctx context.Context, start, end int64) ([]logstorage.TenantID, error) {
 	if localStorage != nil {
 		return localStorage.GetTenantIDs(ctx, start, end)

@@ -1,6 +1,6 @@
-import dayjs from "dayjs";
 import { TimePeriod } from "../../../../types";
 import { useCallback, useEffect, useRef } from "preact/compat";
+import { secondsToNanoseconds, timeParamsToDateRange } from "../../../../utils/time";
 
 type Options = {
   getHoverAbsIdxForBars: (u: uPlot) => number;
@@ -35,10 +35,12 @@ const useBarTimePeriodClickHooks = ({
 
     const toTs = fromTs + step;
 
-    onBarClickRef.current({
-      from: dayjs(fromTs * 1000).toDate(),
-      to: dayjs(toTs * 1000).toDate(),
+    const nextPeriod = timeParamsToDateRange({
+      start: secondsToNanoseconds(fromTs),
+      end: secondsToNanoseconds(toTs),
     });
+
+    onBarClickRef.current(nextPeriod);
   }, []);
 
   const destroy = useCallback((u: uPlot) => {

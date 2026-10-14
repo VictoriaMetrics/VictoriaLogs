@@ -1,5 +1,6 @@
 ---
 title: LogsQL
+description: "LogsQL query language reference for VictoriaLogs. Full-text search, phrase/prefix filters, logical filters, stats calculations, and step-by-step tutorial."
 weight: 7
 menu:
   docs:
@@ -224,8 +225,9 @@ if you want to continue learning LogsQL.
 #### Word
 
 LogsQL treats [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values as sequences of words
-delimited by non-word chars such as whitespace, parens, punctuation chars, etc. For example, the `foo: (bar,"тест")!` string
-is split into `foo`, `bar` and `тест` words. Words can contain [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded Unicode letters and digits.
+delimited by non-word chars such as whitespace, parens, punctuation chars (except underscores), etc.
+A token is considered a word if it contains only [UTF-8](https://en.wikipedia.org/wiki/UTF-8)-encoded Unicode letters, digits, and underscores.
+For example, the string `foo_bar (baz-123,"тест45")!` is split into the following separate words: `foo_bar`, `baz`, `123`, and `тест45`.
 These words are taken into account by full-text search filters such as
 [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter), [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
 and [prefix filter](https://docs.victoriametrics.com/victorialogs/logsql/#prefix-filter).
@@ -389,6 +391,7 @@ VictoriaLogs scans all the logs for a query if it doesn't contain a filter on th
 It uses various optimizations in order to accelerate queries without the `_time` filter,
 but such queries can be slow if the storage contains large number of logs over long time range. The easiest way to optimize queries
 is to narrow down the search with a filter on the [`_time` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field).
+See [how VictoriaLogs splits data into daily partitions](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#2-daily-partitions) for why a time filter lets queries skip whole days of data.
 
 For example, the following query returns logs with [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) during the last hour,
 which contain the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
@@ -618,6 +621,7 @@ Performance tips:
 
 - It is recommended to use the most specific `{...}` filter matching the smallest number of log streams,
   which needs to be scanned by the rest of filters in the query.
+  See [how logs are grouped into blocks by stream and by time](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#41-logs-are-grouped-into-blocks-by-stream-and-by-time) for why a tighter stream filter scans fewer blocks.
 
 - While LogsQL supports arbitrary number of `{...}` filters at any level of [logical filters](https://docs.victoriametrics.com/victorialogs/logsql/#logical-filter),
   it is recommended specifying a single `{...}` filter at the top level of the query.
@@ -1889,6 +1893,7 @@ LogsQL supports the following pipes:
 - [`format`](https://docs.victoriametrics.com/victorialogs/logsql/#format-pipe) formats output field from input [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`generate_sequence`](https://docs.victoriametrics.com/victorialogs/logsql/#generate_sequence-pipe) generates output logs with messages containing integer sequence.
 - [`join`](https://docs.victoriametrics.com/victorialogs/logsql/#join-pipe) joins query results by the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`json_array_concat`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe) joins JSON array items stored at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) into a string using the given delimiter.
 - [`json_array_len`](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe) returns the length of JSON array stored
   at the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`hash`](https://docs.victoriametrics.com/victorialogs/logsql/#hash-pipe) returns the hash over the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value.
@@ -2521,7 +2526,7 @@ It is allowed to use `where` prefix instead of `filter` prefix for convenience. 
 _time:1h error | stats by (host) count() logs_count | where logs_count:> 1_000
 ```
 
-It is allowed to omit `filter` prefix if the used filters do not clash with [pipe names](https://docs.victoriametrics.com/victorialogs/logsql/#pipes).
+It is allowed to omit `filter` prefix if the used filters start with the field name followed by `:`.
 So the following query is equivalent to the previous one:
 
 ```logsql
@@ -2776,6 +2781,26 @@ See also:
 - [adding static logs](https://docs.victoriametrics.com/victorialogs/logsql/#adding-static-logs)
 
 
+### json_array_concat pipe
+
+The `<q> | json_array_concat [delimiter] [from <src_field>] [as <result_field>]` [pipe](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) joins items of the JSON array stored in `<src_field>` [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) obtained from `<q>` [query](https://docs.victoriametrics.com/victorialogs/logsql/#query-syntax) results into a string using the given `delimiter`, and stores the result into `<result_field>`.
+
+For example, the following query joins items of the `tags` JSON array with `,` and stores the result back into the `tags` field:
+
+```logsql
+_time:5m | json_array_concat "," from tags
+```
+
+The `delimiter`, `from <src_field>` and `as <result_field>` parts are optional. The default `delimiter` is an empty string, so items are concatenated without any separator. The default `<src_field>` is the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). The default `<result_field>` is `<src_field>`, so the result is stored in place.
+
+Non-string array items such as numbers, booleans, objects, arrays and `null` are converted to their JSON string representation before they are joined. For example, `json_array_concat ","` applied to `["foo",42,{"a":1},null]` produces `foo,42,{"a":1},null`. If `<src_field>` is empty, contains an empty array, or isn't a valid JSON array, the result is an empty string.
+
+See also:
+
+- [`split` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#split-pipe)
+- [`json_array_len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_len-pipe)
+- [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
+
 ### json_array_len pipe
 
 `<q> | json_array_len(field) as result_field` calculates the length of JSON array at the given [`field`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
@@ -2791,8 +2816,8 @@ _time:5m | unpack_words _msg as words | json_array_len (words) as words_count | 
 See also:
 
 - [`len` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#len-pipe)
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
-- [`first` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#first-pipe)
 
 ### hash pipe
 
@@ -3518,6 +3543,7 @@ _time:5m | split "," as items | unroll items | top 5 (items)
 
 See also:
 
+- [`json_array_concat` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#json_array_concat-pipe)
 - [`unroll` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unroll-pipe)
 - [`unpack_words` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#unpack_words-pipe)
 
@@ -5551,6 +5577,7 @@ Internally duration values are converted into nanoseconds.
 - It is recommended to specify the [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) you need in query results
   with the [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe), if the selected log entries contain a large number of fields that aren't interesting to you.
   This saves disk read IO and CPU time needed for reading and unpacking all the log fields from disk.
+  See [how VictoriaLogs stores each field as a separate column](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for why selecting fewer fields reads less data.
 - Move faster filters such as [word filter](https://docs.victoriametrics.com/victorialogs/logsql/#word-filter) and [phrase filter](https://docs.victoriametrics.com/victorialogs/logsql/#phrase-filter)
   to the beginning of the query.
   This rule doesn't apply to [time filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter) and [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter),

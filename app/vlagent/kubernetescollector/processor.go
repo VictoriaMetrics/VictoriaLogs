@@ -121,7 +121,7 @@ func (lfp *logFileProcessor) TryAddLine(logLine []byte) bool {
 			return true
 		}
 
-		lfp.addLineInternal(criLine.timestamp, criLine.content)
+		lfp.addLineInternal(criLine.timestamp, criLine.content, criLine.stream)
 
 		return true
 	}
@@ -155,7 +155,7 @@ func (lfp *logFileProcessor) TryAddLine(logLine []byte) bool {
 		return true
 	}
 
-	lfp.addLineInternal(timestamp, content)
+	lfp.addLineInternal(timestamp, content, criLine.stream)
 	return true
 }
 
@@ -163,7 +163,7 @@ var invalidCRILineLogger = logger.WithThrottler("invalid_cri_log_line", 5*time.S
 
 type partialCRILineState struct {
 	// content accumulates the content of partial CRI log lines.
-	// Can be truncated if it exceeds maxLineSize.
+	// Can be truncated if it exceeds maxLogLineSize.
 	content *bytesutil.ByteBuffer
 	// size tracks the actual size of the content.
 	size int
@@ -222,7 +222,7 @@ func (lfp *logFileProcessor) joinPartialLinesSlow(state *partialCRILineState, cr
 
 var logLineExceedsMaxLineSizeLogger = logger.WithThrottler("log_line_exceeds_max_line_size", 5*time.Second)
 
-func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
+func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte, stream stream) {
 	parser := logstorage.GetJSONParser()
 	defer logstorage.PutJSONParser(parser)
 
@@ -233,6 +233,15 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 			Value: bytesutil.ToUnsafeString(line),
 		})
 	}
+
+	outputStreamField := logstorage.Field{
+		Name:  "output_stream",
+		Value: "stderr",
+	}
+	if stream == streamStdout {
+		outputStreamField.Value = "stdout"
+	}
+	parser.Fields = append(parser.Fields, outputStreamField)
 
 	if timestamp <= 0 {
 		// Timestamp from the log line is missing or invalid, use the timestamp from Container Runtime Interface.
@@ -249,7 +258,7 @@ func (lfp *logFileProcessor) addLineInternal(criTimestamp int64, line []byte) {
 	lfp.addRow(timestamp, parser.Fields)
 
 	lfp.rowsIngestedLocal++
-	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line)
+	lfp.bytesIngestedLocal += lfp.commonFieldsJSONLen + len(line) + len(`"output_stream":"stderr",`)
 	if lfp.rowsIngestedLocal > 128 {
 		lfp.flushMetrics()
 	}
@@ -575,8 +584,25 @@ func parseCRILineJSON(parser *fastjson.Parser, b []byte) (criLine, error) {
 		return criLine{}, fmt.Errorf("invalid timestamp %q", timestampStr)
 	}
 
+	f = obj.Get("stream")
+	if f == nil {
+		return criLine{}, fmt.Errorf("missing 'stream' field")
+	}
+
+	streamContent, err := f.StringBytes()
+	if err != nil {
+		return criLine{}, err
+	}
+	streamStr := bytesutil.ToUnsafeString(streamContent)
+
+	stream := streamStderr
+	if streamStr == "stdout" {
+		stream = streamStdout
+	}
+
 	return criLine{
 		timestamp: timestamp,
+		stream:    stream,
 		// Assume the entire log content is always completely written.
 		partial: false,
 		content: logContent,

@@ -1,6 +1,7 @@
 ---
 weight: 51
 title: How To Convert Loki Queries to VictoriaLogs Queries
+description: "Convert Loki LogQL queries to VictoriaLogs LogsQL."
 menu:
   docs:
     parent: "victorialogs"

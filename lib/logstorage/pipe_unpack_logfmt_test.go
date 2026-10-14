@@ -300,7 +300,6 @@ func TestPipeUnpackLogfmt(t *testing.T) {
 			{"a", "b"},
 		},
 	})
-
 }
 
 func TestPipeUnpackLogfmtUpdateNeededFields(t *testing.T) {

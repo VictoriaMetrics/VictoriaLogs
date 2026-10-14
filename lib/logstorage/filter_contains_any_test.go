@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterContainsAny(t *testing.T) {
@@ -528,7 +526,4 @@ func TestFilterContainsAny(t *testing.T) {
 		fi = newFilterContainsAnyValues("_msg", []string{"2006-04-02T15:04:05.005Z"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

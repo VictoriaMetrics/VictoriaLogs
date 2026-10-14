@@ -164,7 +164,6 @@ func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage
 						Value: bytesutil.ToUnsafeString(val),
 					})
 				})
-
 			}
 		})
 	default:
@@ -175,7 +174,7 @@ func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage
 
 // readLogsRequest parses data according to DataDog logs format
 // https://docs.datadoghq.com/api/latest/logs/#send-logs
-func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) error {
+func readLogsRequest(defaultTs int64, data []byte, lmp insertutil.LogMessageProcessor) error {
 	p := parserPool.Get()
 	defer parserPool.Put(p)
 	v, err := p.ParseBytes(data)
@@ -193,6 +192,7 @@ func readLogsRequest(ts int64, data []byte, lmp insertutil.LogMessageProcessor) 
 		if err != nil {
 			return fmt.Errorf("could not extract log record: %w", err)
 		}
+		ts := defaultTs
 		o.Visit(func(k []byte, v *fastjson.Value) {
 			if err != nil {
 				return

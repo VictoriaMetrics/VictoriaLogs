@@ -6,10 +6,10 @@ import {
   useOverviewState
 } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
+import { TimeParams } from "../../../types";
 
 interface FetchOptions {
-  start: number;
-  end: number;
+  period: TimeParams;
   query?: string;
   extraParams?: URLSearchParams;
 }
@@ -51,8 +51,8 @@ export const useFetchStreamFieldNames = () => {
 
     try {
       const params = new URLSearchParams({
-        start: options.start.toString(),
-        end: options.end.toString(),
+        start: options.period.start.toString(),
+        end: options.period.end.toString(),
         ignore_pipes: "1",
         query,
       });

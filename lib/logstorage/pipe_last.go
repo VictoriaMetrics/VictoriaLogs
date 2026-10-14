@@ -102,7 +102,7 @@ func parsePipeLast(lex *lexer) (pipe, error) {
 func parsePipeLastFirst(lex *lexer) (*pipeSort, error) {
 	var ps pipeSort
 	ps.limit = 1
-	if !lex.isKeywordOrQueryPartTrailer("by", "partition", "rank", "(") {
+	if !lex.isKeyword("by", "partition", "rank", "(") && !lex.isQueryPartTrailer() {
 		s, err := lex.nextCompoundToken()
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse number: %w", err)

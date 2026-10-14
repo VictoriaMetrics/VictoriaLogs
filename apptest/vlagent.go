@@ -3,7 +3,6 @@ package apptest
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 	flags = setDefaultFlags(flags, map[string]string{
 		"-httpListenAddr":            "127.0.0.1:0",
 		"-remoteWrite.url":           strings.Join(remoteWriteURLs, ","),
-		"-remoteWrite.tmpDataPath":   fmt.Sprintf("%s/%s-%d", os.TempDir(), instance, time.Now().UnixNano()),
+		"-remoteWrite.tmpDataPath":   t.TempDir(),
 		"-remoteWrite.flushInterval": "10ms",
 		"-remoteWrite.showURL":       "true",
 	})
@@ -51,7 +50,7 @@ func MustStartVlagent(t *testing.T, instance string, remoteWriteURLs []string, f
 
 // JSONLineWrite is a test helper function that inserts a
 // collection of records in json line format by sending a HTTP
-// POST request to /insert/jsonline vlagent endpoint.
+// POST request to /insert/jsonline endpoint.
 //
 // See https://docs.victoriametrics.com/victorialogs/data-ingestion/#json-stream-api
 func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpts) {
@@ -73,38 +72,16 @@ func (app *Vlagent) JSONLineWrite(t *testing.T, records []string, opts IngestOpt
 	})
 }
 
-// WaitQueueEmptyAfter checks that persistent queue is empty
-// after execution of provided callback
-func (app *Vlagent) WaitQueueEmptyAfter(t *testing.T, cb func()) {
-	t.Helper()
-	const (
-		retries = 70
-		period  = 100 * time.Millisecond
-	)
-	// vlagent_remotewrite_blocks_sent_total
-	// take in account data replication
-	blocksSent := app.remoteWriteBlocksSent(t)
-	cb()
-	for range retries {
-		if app.remoteWriteBlocksSent(t) > blocksSent && app.persistentQueueSize(t) == 0 {
-			return
-		}
-		time.Sleep(period)
-	}
-	t.Fatalf("timed out while waiting for inserted logs to be flushed to remote storage")
-
-}
-
-// sendBlocking sends the data to remote write url by executing `send` function and
-// waits until the data is actually sent.
+// sendBlocking executes send and waits until the data is added to every remote
+// write queue.
 //
 // vlagent does not send the data immediately. It first puts the data into a
-// buffer. Then a background goroutine takes the data from the buffer sends it
-// to the vmstorage. This happens every 1s by default.
+// buffer. Then a background goroutine flushes the buffered data to the remote
+// write queues according to -remoteWrite.flushInterval.
 //
-// Waiting is implemented a retrieving the value of `vlagent_remotewrite_block_size_rows_sum`
+// Waiting is implemented by retrieving the value of `vlagent_remotewrite_block_size_rows_sum`
 // metric and checking whether it is equal or greater than the wanted value.
-// If it is, then the data has been sent to remote storage.
+// This doesn't guarantee that remote storage has received the data.
 //
 // Unreliable if the records are inserted concurrently.
 func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()) {
@@ -132,29 +109,9 @@ func (app *Vlagent) sendBlocking(t *testing.T, numRecordsToSend int, send func()
 	t.Fatalf("timed out while waiting for inserted rows to be sent to remote storage")
 }
 
-func (app *Vlagent) remoteWriteBlocksSent(t *testing.T) int {
-	total := 0.0
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_blocks_sent_total") {
-		total += v
-	}
-	return int(total)
-}
-
 func (app *Vlagent) remoteWriteRowsPushed(t *testing.T) int {
 	total := 0.0
-	// vlagent_remotewrite_blocks_sent_total
 	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_block_size_rows_sum") {
-		total += v
-	}
-	return int(total)
-}
-
-func (app *Vlagent) persistentQueueSize(t *testing.T) int {
-	total := 0.0
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_pending_data_bytes") {
-		total += v
-	}
-	for _, v := range app.GetMetricsByPrefix(t, "vlagent_remotewrite_pending_inmemory_blocks") {
 		total += v
 	}
 	return int(total)

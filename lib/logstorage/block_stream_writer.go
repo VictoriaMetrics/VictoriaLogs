@@ -301,7 +301,7 @@ func (bsw *blockStreamWriter) MustInitForFilePart(path string, nocache bool) {
 
 	fs.MustMkdirFailIfExist(path)
 
-	// Open part files in parallel in order to minimze the time needed for this operation
+	// Open part files in parallel in order to minimize the time needed for this operation
 	// on high-latency storage systems such as NFS and Ceph.
 
 	columnNamesPath := filepath.Join(path, columnNamesFilename)

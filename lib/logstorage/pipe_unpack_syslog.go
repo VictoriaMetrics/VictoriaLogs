@@ -58,6 +58,8 @@ func (pu *pipeUnpackSyslog) canLiveTail() bool {
 }
 
 func (pu *pipeUnpackSyslog) canReturnTimeSortedNResults() bool {
+	// TODO: `[_time=x]` structured data and `@cee:` JSON messages may overwrite the _time
+	// field, but detecting this requires reading the log content, and such logs are uncommon.
 	return true
 }
 
@@ -73,8 +75,8 @@ func (pu *pipeUnpackSyslog) hasFilterInWithQuery() bool {
 	return pu.iff.hasFilterInWithQuery()
 }
 
-func (pu *pipeUnpackSyslog) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pu *pipeUnpackSyslog) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pu.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +139,7 @@ func parsePipeUnpackSyslog(lex *lexer) (pipe, error) {
 	}
 
 	fromField := "_msg"
-	if !lex.isKeywordOrQueryPartTrailer("offset", "result_prefix", "keep_original_fields") {
+	if !lex.isKeyword("offset", "result_prefix", "keep_original_fields") && !lex.isQueryPartTrailer() {
 		if lex.isKeyword("from") {
 			lex.nextToken()
 		}

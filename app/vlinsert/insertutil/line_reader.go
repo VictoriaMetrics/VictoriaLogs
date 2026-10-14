@@ -127,7 +127,6 @@ func (lr *LineReader) readMoreData() bool {
 var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")
 
 func (lr *LineReader) skipUntilNextLine() (bool, int) {
-
 	// Initialize skipped bytes count with MaxLineSizeBytes because
 	// we've already read that many bytes without encountering a newline,
 	// indicating the line size exceeds the maximum allowed limit.

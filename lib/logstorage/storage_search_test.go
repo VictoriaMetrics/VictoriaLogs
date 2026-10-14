@@ -12,15 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
 func TestStorageRunQuery(t *testing.T) {
 	t.Parallel()
-
-	path := t.Name()
 
 	const tenantsCount = 11
 	const streamsPerTenant = 3
@@ -30,7 +26,7 @@ func TestStorageRunQuery(t *testing.T) {
 	sc := &StorageConfig{
 		Retention: 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, sc)
+	s := MustOpenStorage(t.TempDir(), sc)
 
 	// fill the storage with data
 	var allTenantIDs []TenantID
@@ -84,6 +80,7 @@ func TestStorageRunQuery(t *testing.T) {
 			}
 		}
 	}
+	sortTenantIDs(allTenantIDs)
 	s.DebugFlush()
 
 	mustRunQuery := func(t *testing.T, tenantIDs []TenantID, q *Query, writeBlock WriteDataBlockFunc) {
@@ -675,12 +672,6 @@ func TestStorageRunQuery(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
-		sort.Slice(tenantIDs, func(i, j int) bool {
-			return tenantIDs[i].less(&tenantIDs[j])
-		})
-		sort.Slice(allTenantIDs, func(i, j int) bool {
-			return allTenantIDs[i].less(&allTenantIDs[j])
-		})
 		if !reflect.DeepEqual(tenantIDs, allTenantIDs) {
 			t.Fatalf("unexpected GetTenantIDs result; got: %v, want: %v", tenantIDs, allTenantIDs)
 		}
@@ -1144,9 +1135,8 @@ func TestStorageRunQuery(t *testing.T) {
 		})
 	})
 
-	// Close the storage and delete its data
+	// Close the storage
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func mustParseQuery(query string) *Query {
@@ -1160,8 +1150,6 @@ func mustParseQuery(query string) *Query {
 func TestStorageSearch(t *testing.T) {
 	t.Parallel()
 
-	path := t.Name()
-
 	const tenantsCount = 11
 	const streamsPerTenant = 3
 	const blocksPerStream = 5
@@ -1170,7 +1158,7 @@ func TestStorageSearch(t *testing.T) {
 	sc := &StorageConfig{
 		Retention: 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, sc)
+	s := MustOpenStorage(t.TempDir(), sc)
 
 	// fill the storage with data.
 	var allTenantIDs []TenantID
@@ -1441,7 +1429,6 @@ func TestStorageSearch(t *testing.T) {
 	})
 
 	s.MustClose()
-	fs.MustRemoveDir(path)
 }
 
 func TestParseStreamFieldsSuccess(t *testing.T) {
@@ -1611,12 +1598,10 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 		},
 	}
 
-	path := t.Name()
-
 	cfg := &StorageConfig{
 		Retention: 30 * 24 * time.Hour,
 	}
-	s := MustOpenStorage(path, cfg)
+	s := MustOpenStorage(t.TempDir(), cfg)
 
 	now := time.Now().UnixNano()
 
@@ -1652,9 +1637,17 @@ func TestStorageSearchHiddenFieldsFilters(t *testing.T) {
 	hiddenFieldsFilters = []string{"tenant_id", "ho*"}
 	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
 
-	s.MustClose()
+	// Search the _msg field, which is stored with an empty column name.
+	q = `_msg:"value"`
+	hiddenFieldsFilters = []string{}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"3500"}`})
 
-	fs.MustRemoveDir(path)
+	// Search the hidden _msg field
+	q = `_msg:"value"`
+	hiddenFieldsFilters = []string{"_msg"}
+	check(q+" | count() rows", hiddenFieldsFilters, []string{`{"rows":"0"}`})
+
+	s.MustClose()
 }
 
 func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now int64) {

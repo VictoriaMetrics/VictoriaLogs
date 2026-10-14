@@ -94,7 +94,6 @@ func main() {
 		logger.Close()
 		logger2.Close()
 	}
-
 }
 
 func randomString() string {

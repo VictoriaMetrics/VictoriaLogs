@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
 )
 
@@ -15,7 +13,6 @@ import (
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/802#issuecomment-3584878274
 func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -96,7 +93,6 @@ func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/924
 func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -193,7 +189,6 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 }
 
 func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()

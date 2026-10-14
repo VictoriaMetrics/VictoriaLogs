@@ -1,8 +1,13 @@
-import { MinMax, TimePeriod } from "../../types";
-import { limitsDurations } from "../../utils/time";
-import { useEffect, useState } from "preact/compat";
-import { TimeParams } from "../../types";
-import dayjs from "dayjs";
+import { useEffect, useMemo, useState } from "preact/compat";
+import { MinMax, TimeParams, TimePeriod } from "../../types";
+import {
+  nanosecondsToSeconds,
+  secondsToNanoseconds,
+  timeParamsToDateRange,
+} from "../../utils/time";
+import { normalizeXRange } from "../../utils/uplot";
+
+const limitsDurations = { min: 0.001, max: 1.578e+8 }; // min: 1 ms, max: 5 years
 
 interface PlotScaleHook {
   setPeriod: (nextPeriod: TimePeriod) => void;
@@ -10,24 +15,39 @@ interface PlotScaleHook {
 }
 
 const usePlotScale = ({ period, setPeriod }: PlotScaleHook) => {
-  const [xRange, setXRange] = useState({ min: period.start, max: period.end });
+  const [xRangeNano, setXRangeNano] = useState({
+    min: period.start,
+    max: period.end,
+  });
+
+  const xRange: MinMax = useMemo(() => {
+    return normalizeXRange({
+      min: nanosecondsToSeconds(xRangeNano.min),
+      max: nanosecondsToSeconds(xRangeNano.max),
+    }, limitsDurations.min);
+  }, [xRangeNano]);
 
   const setPlotScale = ({ min, max }: MinMax) => {
-    const delta = (max - min) * 1000;
-    if ((delta < limitsDurations.min) || (delta > limitsDurations.max)) return;
-    setPeriod({
-      from: dayjs(min * 1000).toDate(),
-      to: dayjs(max * 1000).toDate()
-    });
+    const delta = max - min;
+
+    if (delta < limitsDurations.min || delta > limitsDurations.max) return;
+
+    setPeriod(timeParamsToDateRange({
+      start: secondsToNanoseconds(min),
+      end: secondsToNanoseconds(max),
+    }));
   };
 
   useEffect(() => {
-    setXRange({ min: period.start, max: period.end });
+    setXRangeNano({
+      min: period.start,
+      max: period.end,
+    });
   }, [period]);
 
   return {
     xRange,
-    setPlotScale
+    setPlotScale,
   };
 };
 

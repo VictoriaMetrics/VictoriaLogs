@@ -1,0 +1,41 @@
+@use "src/styles/variables" as *;
+
+.vm-autocomplete-keyboard-hints {
+  display: flex;
+  align-items: center;
+  gap: $padding-large;
+  padding: $padding-small $padding-global;
+  border-top: $border-divider;
+  background-color: rgba($color-black, 0.02);
+  overflow: hidden;
+
+  .vm-autocomplete_mobile & {
+    display: none;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: calc($padding-small / 2);
+    font-size: $font-size-small;
+    white-space: nowrap;
+    color: $color-text-secondary;
+
+    &:last-child {
+      flex-grow: 1;
+      justify-content: flex-end;
+    }
+
+    kbd {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-inline: calc($padding-global / 2);
+      font-size: $font-size-extra-small;
+      color: $color-text-secondary;
+      border: $border-divider;
+      border-radius: $border-radius-small;
+      min-height: 20px;
+    }
+  }
+}

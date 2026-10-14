@@ -92,7 +92,6 @@ func main() {
 	if err := rl.Close(); err != nil {
 		fatalf("cannot close readline: %s", err)
 	}
-
 }
 
 func runReadlineLoop(rl *readline.Instance, incompleteLine *string) {

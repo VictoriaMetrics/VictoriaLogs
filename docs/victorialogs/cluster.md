@@ -1,6 +1,7 @@
 ---
 weight: 3
 title: VictoriaLogs Cluster
+description: "Deploy VictoriaLogs in cluster mode with vlinsert, vlselect, and vlstorage components."
 menu:
   docs:
     parent: victorialogs
@@ -32,6 +33,7 @@ See [quick start guide](https://docs.victoriametrics.com/victorialogs/cluster/#q
 ## Architecture
 
 VictoriaLogs in cluster mode is composed of three main components: `vlinsert`, `vlselect`, and `vlstorage`.
+See [how these components fit together](https://victoriametrics.com/blog/victorialogs-architecture-basics/#components) for the big picture.
 
 - `vlinsert` accepts logs via [all supported protocols](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
   It distributes (shards) incoming logs evenly across the `vlstorage` nodes specified in the `-storageNode` command-line flag.
@@ -77,7 +79,7 @@ All the VictoriaLogs cluster components are horizontally scalable and can be dep
 Communication between `vlinsert` / `vlselect` and `vlstorage` is done via HTTP over the port specified by the `-httpListenAddr` flag (`9428` by default):
 
 - `vlinsert` sends data to the `/internal/insert` HTTP endpoint at `vlstorage`.
-- `vlselect` sends queries to `/internal/select/*` HTTP endponts at `vlstorage`.
+- `vlselect` sends queries to `/internal/select/*` HTTP endpoints at `vlstorage`.
 
 This HTTP-based communication model allows using reverse proxies for authorization, routing, and encryption between components.
 
@@ -92,9 +94,13 @@ without any delays. This allows performing maintenance tasks for `vlstorage` nod
 Make sure that the remaining `vlstorage` nodes have enough capacity for the increased data ingestion workload, in order to avoid availability problems.
 
 VictoriaLogs cluster returns `502 Bad Gateway` errors for [incoming queries](https://docs.victoriametrics.com/victorialogs/querying/)
-if some of the `vlstorage` nodes are unavailable. This guarantees consistent query responses
+if some of the `vlstorage` nodes are unavailable or expose an internal API version incompatible with `vlselect`. This guarantees consistent query responses
 (e.g. all the stored logs are taken into account during the query) during maintenance tasks at `vlstorage` nodes. Note that all the newly incoming logs are properly stored
 to the remaining `vlstorage` nodes - see the paragraph above, so they become available for querying immediately after all the `vlstorage` nodes return back to the cluster.
+
+A version mismatch usually happens during a rolling upgrade, when some `vlstorage` nodes are upgraded while others aren't.
+The [release notes](https://docs.victoriametrics.com/victorialogs/changelog/) list such incompatibilities, so check them before upgrading.
+The errors stop after all the components are upgraded to compatible versions.
 
 There are practical cases when it is preferred to return partial responses instead of `502 Bad Gateway` errors if some of `vlstorage` nodes are unavailable.
 See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#partial-responses) on how to achieve this.
@@ -150,7 +156,8 @@ so there is little practical sense in relying on automatic data recovery from th
 
 ## Single-node and cluster mode duality
 
-A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture):
+A single-node VictoriaLogs instance can be used as `vlstorage` node in [VictoriaLogs cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for the big picture on when to choose each:
 
 - It accepts data ingestion requests from `vlinsert` via `/internal/insert` HTTP endpoint at the TCP port specified via `-httpListenAddr` command-line flag.
   This endpoint can be disabled via `-internalinsert.disable` command-line flag. See [security docs](https://docs.victoriametrics.com/victorialogs/cluster/#security) for details.
@@ -300,8 +307,8 @@ If you want running VictoriaLogs cluster in Kubernetes, then please read [these 
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.50.0/victoria-logs-linux-amd64-v1.50.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.50.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.53.0/victoria-logs-linux-amd64-v1.53.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.53.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491`
@@ -329,7 +336,7 @@ them evenly across the two `vlstorage` nodes started above. The `-select.disable
 ```
 
 Start the `vlselect` node, which serves [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/) at the port `9471` and requests the needed data
-from `vlstorage` nodes started above. The `-insert.disable` command-line flag disables acceping insert requests at the started `vlselect` node:
+from `vlstorage` nodes started above. The `-insert.disable` command-line flag disables accepting insert requests at the started `vlselect` node:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9471 -storageNode=localhost:9491,localhost:9492 -insert.disable &

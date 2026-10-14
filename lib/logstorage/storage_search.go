@@ -114,7 +114,7 @@ type storageSearchOptions struct {
 	// maxTimestamp is the maximum timestamp for the search
 	maxTimestamp int64
 
-	// sf is an optional stream filter to use for the search before applying the filter
+	// streamFilter is an optional stream filter to use for the search before applying the filter
 	streamFilter *StreamFilter
 
 	// filter is the filter to use for the search
@@ -236,6 +236,9 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 }
 
 func (s *Storage) getSearchOptions(tenantIDs []TenantID, q *Query, hiddenFieldsFilters []string) *storageSearchOptions {
+	// tenantIDs must be sorted, since block search performs binary search over them.
+	sortTenantIDs(tenantIDs)
+
 	streamIDs := q.getStreamIDs()
 	sort.Slice(streamIDs, func(i, j int) bool {
 		return streamIDs[i].less(&streamIDs[j])
@@ -678,7 +681,7 @@ func (s *Storage) GetStreamIDs(qctx *QueryContext, limit uint64) ([]ValueWithHit
 	return s.GetFieldValues(qctx, "_stream_id", "", limit)
 }
 
-// GetTenantIDs returns tenantIDs for the given start and end.
+// GetTenantIDs returns sorted tenantIDs on the given [start..end] time range.
 func (s *Storage) GetTenantIDs(ctx context.Context, start, end int64) ([]TenantID, error) {
 	return s.getTenantIDs(ctx, start, end)
 }
@@ -687,7 +690,7 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 	workersCount := cgroup.AvailableCPUs()
 	stopCh := ctx.Done()
 
-	tenantIDByWorker := make([][]TenantID, workersCount)
+	tenantIDsByWorker := make([][]TenantID, workersCount)
 
 	// spin up workers
 	var wg sync.WaitGroup
@@ -699,8 +702,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 					// The search has been canceled. Just skip all the scheduled work in order to save CPU time.
 					continue
 				}
-				tenantIDs := pt.idb.searchTenants()
-				tenantIDByWorker[workerID] = append(tenantIDByWorker[workerID], tenantIDs...)
+				tenantIDs := pt.idb.getTenantIDs()
+				tenantIDsByWorker[workerID] = append(tenantIDsByWorker[workerID], tenantIDs...)
 			}
 		})
 	}
@@ -741,19 +744,8 @@ func (s *Storage) getTenantIDs(ctx context.Context, start, end int64) ([]TenantI
 		ptw.decRef()
 	}
 
-	uniqTenantIDs := make(map[TenantID]struct{})
-	for _, tenantIDs := range tenantIDByWorker {
-		for _, tenantID := range tenantIDs {
-			uniqTenantIDs[tenantID] = struct{}{}
-		}
-	}
-
-	tenants := make([]TenantID, 0, len(uniqTenantIDs))
-	for k := range uniqTenantIDs {
-		tenants = append(tenants, k)
-	}
-
-	return tenants, nil
+	tenantIDs := MergeTenantIDs(tenantIDsByWorker)
+	return tenantIDs, nil
 }
 
 func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, error) {
@@ -1302,7 +1294,7 @@ func (db *DataBlock) mustInitFromBlockResult(br *blockResult) {
 	}
 }
 
-// search searches for the matching rows according to sso.
+// searchParallel searches for the matching rows according to sso.
 //
 // It uses workersCount parallel workers for the search and calls writeBlock for each matching block.
 func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs *QueryStats, stopCh <-chan struct{}, writeBlock writeBlockResultFunc) {
@@ -1347,7 +1339,6 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 			putBlockSearch(bs)
 			putBitmap(bm)
 			qs.UpdateAtomic(qsLocal)
-
 		})
 	}
 
@@ -1388,7 +1379,7 @@ func (s *Storage) searchParallel(workersCount int, sso *storageSearchOptions, qs
 func (s *Storage) getPartitionsForTimeRange(minTimestamp, maxTimestamp int64) (ptws []*partitionWrapper, ptwsDecRef func()) {
 	s.partitionsLock.Lock()
 
-	// s.partitions are sorted by s.day. Use binary search for finding partitions for the given [minTimestamp, maxTimestamp] time range.
+	// s.partitions are sorted by partitionWrapper.day. Use binary search for finding partitions for the given [minTimestamp, maxTimestamp] time range.
 	ptwsTmp := s.partitions
 	minDay := minTimestamp / nsecsPerDay
 	n := sort.Search(len(ptwsTmp), func(i int) bool {
@@ -1601,7 +1592,6 @@ func (p *part) hasMatchingRows(pso *partitionSearchOptions, stopCh <-chan struct
 
 			putBlockSearch(bs)
 			putBitmap(bm)
-
 		})
 	}
 

@@ -7,7 +7,23 @@
   overflow: auto;
   overscroll-behavior: none;
 
-  &_mobile {
-    width: 100vw;
+  .vm-list-item:hover:not(.vm-list-item_active) {
+    background-color: transparent;
+  }
+
+  &-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+
+    &__title {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
   }
 }

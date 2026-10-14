@@ -1,12 +1,10 @@
 package tests
 
 import (
-	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/apptest"
@@ -14,7 +12,6 @@ import (
 
 // TestVlsingleKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-single.
 func TestVlsingleKeyConcepts(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -138,9 +135,63 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 	})
 }
 
+// assertLogsQLResponseEqual compares a parsed query response with expected JSON lines.
+func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	sort.Strings(got.LogLines)
+	want = normalizeLogsQLResponse(t, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected response (-want, +got):\n%s", diff)
+	}
+}
+
+// assertLogsQLResponseOrdered compares a parsed query response with expected JSON lines, including their order.
+func assertLogsQLResponseOrdered(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	want = parseLogsQLResponse(t, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected response (-want, +got):\n%s", diff)
+	}
+}
+
+// assertLogsQLResponseEventually retries get until the response matches want.
+// get must return a parsed query response, as returned by LogsQLQuery.
+// The caller is responsible for flushing storage if needed before each query.
+func assertLogsQLResponseEventually(tc *apptest.TestCase, get func() *apptest.LogsQLQueryResponse, want *apptest.LogsQLQueryResponse) {
+	t := tc.T()
+	t.Helper()
+	tc.Assert(&apptest.AssertOptions{
+		Msg: "unexpected response",
+		Got: func() any {
+			got := get()
+			sort.Strings(got.LogLines)
+			return got
+		},
+		Want:    normalizeLogsQLResponse(t, want),
+		Retries: 70,
+		FailNow: true,
+	})
+}
+
+func normalizeLogsQLResponse(t *testing.T, response *apptest.LogsQLQueryResponse) *apptest.LogsQLQueryResponse {
+	t.Helper()
+	normalized := parseLogsQLResponse(t, response)
+	sort.Strings(normalized.LogLines)
+	return normalized
+}
+
+// parseLogsQLResponse parses response lines in the same way as LogsQLQuery parses the returned lines.
+func parseLogsQLResponse(t *testing.T, response *apptest.LogsQLQueryResponse) *apptest.LogsQLQueryResponse {
+	t.Helper()
+	data := strings.Join(response.LogLines, "\n")
+	if len(response.LogLines) > 0 {
+		data += "\n"
+	}
+	return apptest.NewLogsQLQueryResponse(t, data)
+}
+
 // TestVlclusterKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-cluster.
 func TestVlclusterKeyConcepts(t *testing.T) {
-	fs.MustRemoveDir(t.Name())
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlcluster()
@@ -262,45 +313,4 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		query: "'issue 1294' | field_max(_time, a) a_max, field_min(_time, a) a_min, row_max(_time, a) a_max_row, row_min(_time, a) a_min_row",
 	})
-}
-
-func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
-	t.Helper()
-	sort.Strings(got.LogLines)
-	sort.Strings(want.LogLines)
-	assertLogsQLResponseLines(t, got.LogLines, want.LogLines)
-}
-
-// assertLogsQLResponseOrdered compares responses without sorting log lines.
-func assertLogsQLResponseOrdered(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
-	t.Helper()
-	assertLogsQLResponseLines(t, got.LogLines, want.LogLines)
-}
-
-func assertLogsQLResponseLines(t *testing.T, gotLines, wantLines []string) {
-	t.Helper()
-	if len(gotLines) != len(wantLines) {
-		t.Errorf("unexpected response len: -%d: +%d\ngot\n%s\nwant\n%s", len(wantLines), len(gotLines), strings.Join(gotLines, "\n"), strings.Join(wantLines, "\n"))
-		return
-	}
-	for i := range len(wantLines) {
-		gotLine, wantLine := gotLines[i], wantLines[i]
-		var gotLineJSON map[string]any
-		var wantLineJSON map[string]any
-		if err := json.Unmarshal([]byte(gotLine), &gotLineJSON); err != nil {
-			t.Errorf("cannot parse got line=%q: %s", gotLine, err)
-			return
-		}
-		if err := json.Unmarshal([]byte(wantLine), &wantLineJSON); err != nil {
-			t.Errorf("cannot parse want line=%q: %s", wantLine, err)
-			return
-		}
-		// stream_id is always unique, remove it from comparison
-		delete(gotLineJSON, "_stream_id")
-		delete(wantLineJSON, "_stream_id")
-		if diff := cmp.Diff(gotLineJSON, wantLineJSON); diff != "" {
-			t.Errorf("unexpected response at index %d (-want, +got):\n%s\n%s\n%s", i, diff, wantLine, gotLine)
-			return
-		}
-	}
 }

@@ -5,6 +5,7 @@ menu:
     parent: victorialogs
     weight: 12
 title: Security and Load Balancing
+description: "Secure VictoriaLogs with vmauth, TLS termination, and multi-tenant proxying."
 tags:
   - logs
 ---
@@ -31,7 +32,7 @@ This document contains the following configuration examples for `vmauth`:
 * [How to set up authorization for search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization)
 * [How to set up authorization for data ingestion](https://docs.victoriametrics.com/victorialogs/security-and-lb/#write-authorization)
 * [Routing search requests among multiple VictoriaLogs clusters](https://docs.victoriametrics.com/victorialogs/security-and-lb/#cluster-routing)
-* [Auhtorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
+* [Authorizing per-tenant search queries](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-request-proxying)
 * [Authorizing per-tenant data ingestion requests](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-based-proxying-of-data-ingestion-requests)
 * [Proxying requests to the given tenants](https://docs.victoriametrics.com/victorialogs/security-and-lb/#proxying-requests-to-the-given-tenants)
 * [Sending data to the specified tenant](https://docs.victoriametrics.com/victorialogs/security-and-lb/#tenant-assignment)
@@ -44,6 +45,7 @@ Both [VictoriaLogs single-node](https://docs.victoriametrics.com/victorialogs/)
 and [vlselect](https://docs.victoriametrics.com/victorialogs/cluster/) expose the same search API endpoints,
 which [start with the `/select/` prefix](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
 When configuring request authorization or load balancing at `vmauth`, it is important to allow access to this path prefix.
+See [single-node vs cluster](https://victoriametrics.com/blog/victorialogs-architecture-basics/#single-node-vs-cluster) for how these two deployment modes compare.
 
 The following [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) configuration can be used for authorizing requests
 to HTTP querying APIs at VictoriaLogs:
@@ -327,7 +329,7 @@ See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#load-b
 
 Enumerate all the `vlinsert` instances in the cluster under the `url_prefix` option above in order to spread load among them.
 
-Note that `vmauth` doesn't replicate data amont the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
+Note that `vmauth` doesn't replicate data among the backends specified in the `url_prefix` - it spreads (load balances) incoming requests among the configured backends.
 Use [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) for replicating the data to multiple VictoriaLogs instances or multiple VictoriaLogs clusters.
 
 See also [how to set up authorization for search queries at VitoriaLogs](https://docs.victoriametrics.com/victorialogs/security-and-lb/#search-authorization).
@@ -438,7 +440,7 @@ according to [these docs](https://docs.victoriametrics.com/victorialogs/security
 want exposing individual VictoriaLogs components to untrusted networks such as Internet, then secure access to them via Basic Auth according to the docs below.
 
 All the VictoriaLogs components support request authentication via [Basic Auth](https://en.wikipedia.org/wiki/Basic_access_authentication)
-for the HTTP requests received at TCP address specified via `-httpListenAddr` command-line flag.
+for the HTTP requests received at the address specified via `-httpListenAddr` command-line flag.
 
 Specify the needed username and password via `-httpAuth.username` and `-httpAuth.password` command-line flags in order to enable Basic Auth in any VictoriaLogs component.
 
@@ -487,7 +489,7 @@ curl -u "vlagent:$(cat /path/to/file)" http://localhost:9429/insert/jsonline -H 
 The following HTTP endpoints at VictoriaLogs components can be protected with keys specified via dedicated `-*AuthKey` command-line flags.
 This may be needed if the corresponding VictoriaLogs components are exposed to untrusted networks.
 
-- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaMetrics, vmagent, and Prometheus.
+- [`/metrics`](https://docs.victoriametrics.com/victorialogs/metrics/) - monitoring endpoint for VictoriaLogs components.
   Use `-metricsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - `/flags` - debugging endpoint that shows all active command-line flags.
   Use `-flagsAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
@@ -502,8 +504,12 @@ This may be needed if the corresponding VictoriaLogs components are exposed to u
   Use `-forceMergeAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 - [`/internal/partition/*`](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle) - manages partition lifecycle operations.
   Use `-partitionManageAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
+- [`/delete/*`](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) - deletes the ingested logs.
+  Use `-deleteAuthKey` [command-line flag](https://docs.victoriametrics.com/victorialogs/#list-of-command-line-flags).
 
 These endpoints can be accessed by specifying `authKey` query arg with the value matching the corresponding `-*AuthKey` command-line flag.
+If the `-*AuthKey` flag is set, then the endpoint accepts only the `authKey` and ignores the `-httpAuth.*` credentials.
+Otherwise it is protected with the `-httpAuth.*` credentials like all the other endpoints.
 
 For example, if VictoriaLogs is started with the `-metricsAuthKey=top-secret` command-line flag, then the `/metrics` endpoint can be accessed with the following command:
 
@@ -514,6 +520,24 @@ curl 'http://victoria-logs:9428/metrics?authKey=top-secret'
 Enable HTTPS on the VictoriaLogs components which accept `authKey` in order to prevent from stealing the `authKey` by attackers
 who listen for the requests over untrusted networks such as the Internet.
 See [how to enable TLS](https://docs.victoriametrics.com/victorialogs/security-and-lb/#enabling-tls-on-the-server).
+
+## Unix domain socket
+
+Pass `-httpListenAddr=unix:/path/to/socket` command-line flag to VictoriaLogs component in order to accept HTTP requests
+over a Unix domain socket instead of a TCP address. This limits access to the component to the processes running on the same host, such as a reverse proxy:
+
+```sh
+./victoria-logs -httpListenAddr=unix:/run/victoria-logs/victoria-logs.sock
+```
+
+The directory for the socket file must exist and be writable by the VictoriaLogs component,
+for example, via `RuntimeDirectory=victoria-logs` in the systemd unit.
+
+The socket file permissions are determined by the [umask](https://en.wikipedia.org/wiki/Umask) of the process.
+With the default systemd umask `0022`, only the owner of the socket file can connect to it.
+Set `UMask=0007` in the systemd unit and add other users to the group of the socket file in order to grant them access.
+
+`-httpListenAddr` can be specified multiple times in order to accept requests at both TCP addresses and Unix domain sockets.
 
 ## TLS/SSL
 

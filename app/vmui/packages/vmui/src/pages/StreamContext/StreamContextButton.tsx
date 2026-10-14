@@ -48,9 +48,10 @@ const StreamContextButton: FC<Props> = ({ log, displayFields }) => {
       </Tooltip>
       {isOpenContext && (
         <Modal
-          title={"Log context"}
+          title={"Log context (oldest to newest)"}
           isOpen={isOpenContext}
           onClose={handleCloseModal}
+          className="vm-steam-context__modal"
         >
           <StreamContextList
             log={log}

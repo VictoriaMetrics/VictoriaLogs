@@ -18,6 +18,7 @@ import { escapeForLogsQLString } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 import { TimePeriod } from "../../../types";
+import { timeParamsToDateRange } from "../../../utils/time";
 
 const operator = ExtraFilterOperator.Equals;
 
@@ -70,10 +71,7 @@ const OverviewLogs:FC = () => {
   }, [period, fieldFilter, fieldValueFilters, streamFieldFilter, streamFieldValueFilters, extraParams]);
 
   const linkToLogs = useMemo(() => {
-    const nextPeriod: TimePeriod = {
-      from: new Date(period.start * 1000),
-      to: new Date(period.end * 1000)
-    };
+    const nextPeriod: TimePeriod = timeParamsToDateRange(period);
 
     const params = new URLSearchParams({ query });
     const periodOptions = relativeTime ? { nextRelativeTime: relativeTime } : { nextPeriod };

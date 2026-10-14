@@ -3,10 +3,10 @@ import { useAppState } from "../../../state/common/StateContext";
 import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
+import { TimeParams } from "../../../types";
 
 interface FetchOptions {
-  start: number;
-  end: number;
+  period: TimeParams;
   query?: string;
   extraParams?: URLSearchParams;
   skipNoiseFields?: boolean;
@@ -42,8 +42,8 @@ export const useFetchFieldNames = () => {
 
     try {
       const baseParams = new URLSearchParams({
-        start: options.start.toString(),
-        end: options.end.toString(),
+        start: options.period.start.toString(),
+        end: options.period.end.toString(),
         query: options.query || "*"
       });
 

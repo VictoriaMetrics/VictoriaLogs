@@ -3,7 +3,9 @@ package logstorage
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -80,9 +82,11 @@ func (pm *pipeMath) canLiveTail() bool {
 }
 
 func (pm *pipeMath) canReturnTimeSortedNResults() bool {
-	// TODO: if math clobbers _time field, then time-sorted N results optimization may not be applicable.
-	// TODO: properly verify this case.
-
+	for _, e := range pm.entries {
+		if e.resultField == "_time" {
+			return false
+		}
+	}
 	return true
 }
 
@@ -481,7 +485,7 @@ func parseMathEntry(lex *lexer) (*mathEntry, error) {
 	}
 
 	resultField := ""
-	if lex.isKeywordOrQueryPartTrailer(",") {
+	if lex.isKeyword(",") || lex.isQueryPartTrailer() {
 		resultField = me.String()
 	} else {
 		if lex.isKeyword("as") {
@@ -567,32 +571,51 @@ func parseMathExprInParens(lex *lexer) (*mathExpr, error) {
 	return me, nil
 }
 
+type mathFuncParser func(lex *lexer) (*mathExpr, error)
+
+var mathFuncParsers map[string]mathFuncParser
+var mathFuncParsersOnce sync.Once
+
+func getMathFuncParsers() map[string]mathFuncParser {
+	mathFuncParsersOnce.Do(initMathFuncParsers)
+	return mathFuncParsers
+}
+
+func initMathFuncParsers() {
+	mathFuncParsers = map[string]mathFuncParser{
+		"abs":   parseMathExprAbs,
+		"ceil":  parseMathExprCeil,
+		"exp":   parseMathExprExp,
+		"floor": parseMathExprFloor,
+		"ln":    parseMathExprLn,
+		"max":   parseMathExprMax,
+		"min":   parseMathExprMin,
+		"now":   parseMathExprNow,
+		"rand":  parseMathExprRand,
+		"round": parseMathExprRound,
+	}
+}
+
+func isMathFuncName(s string) bool {
+	mps := getMathFuncParsers()
+	sLower := strings.ToLower(s)
+	return mps[sLower] != nil
+}
+
 func parseMathExprOperand(lex *lexer) (*mathExpr, error) {
 	if lex.isKeyword("(") {
 		return parseMathExprInParens(lex)
 	}
 
+	// A quoted token (e.g. "abs") isn't a keyword, so isKeyword() returns false for it
+	// and it falls through to parseMathExprFieldName below as a field name.
+	for funcName, parseFunc := range getMathFuncParsers() {
+		if lex.isKeyword(funcName) {
+			return parseFunc(lex)
+		}
+	}
+
 	switch {
-	case lex.isKeyword("abs"):
-		return parseMathExprAbs(lex)
-	case lex.isKeyword("exp"):
-		return parseMathExprExp(lex)
-	case lex.isKeyword("ln"):
-		return parseMathExprLn(lex)
-	case lex.isKeyword("max"):
-		return parseMathExprMax(lex)
-	case lex.isKeyword("min"):
-		return parseMathExprMin(lex)
-	case lex.isKeyword("now"):
-		return parseMathExprNow(lex)
-	case lex.isKeyword("rand"):
-		return parseMathExprRand(lex)
-	case lex.isKeyword("round"):
-		return parseMathExprRound(lex)
-	case lex.isKeyword("ceil"):
-		return parseMathExprCeil(lex)
-	case lex.isKeyword("floor"):
-		return parseMathExprFloor(lex)
 	case lex.isKeyword("-"):
 		return parseMathExprUnaryMinus(lex)
 	case lex.isKeyword("+"):
@@ -806,6 +829,7 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 	if !isNumberPrefix(lex.token) {
 		return nil, fmt.Errorf("cannot parse number from %q", lex.token)
 	}
+	isQuoted := lex.isQuotedToken()
 	numStr, err := lex.nextCompoundMathToken()
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse number: %w", err)
@@ -813,6 +837,11 @@ func parseMathExprConstNumber(lex *lexer) (*mathExpr, error) {
 	f := parseMathNumber(numStr)
 	if math.IsNaN(f) {
 		return nil, fmt.Errorf("cannot parse number from %q", numStr)
+	}
+	if isQuoted {
+		// Keep the quotes, so the number can be parsed again from me.String().
+		// For example, "2025-01-01T00:00:00Z" without quotes is parsed as 2025 - 01 - 01T00:00:00Z.
+		numStr = strconv.Quote(numStr)
 	}
 	me := &mathExpr{
 		isConst:       true,

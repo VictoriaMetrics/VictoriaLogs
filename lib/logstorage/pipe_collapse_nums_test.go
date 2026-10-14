@@ -137,7 +137,7 @@ func TestPipeCollapseNumsUpdateNeededFields(t *testing.T) {
 
 	// all the needed fields
 	f(`collapse_nums`, "*", "", "*", "")
-	f(`collaps_nums if (f1:q) at x`, "*", "", "*", "")
+	f(`collapse_nums if (f1:q) at x`, "*", "", "*", "")
 
 	// unneeded fields do not intersect with at field
 	f(`collapse_nums at x`, "*", "f1,f2", "*", "f1,f2")

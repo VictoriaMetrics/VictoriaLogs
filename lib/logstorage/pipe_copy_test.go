@@ -18,7 +18,7 @@ func TestParsePipeCopySuccess(t *testing.T) {
 
 	f(`copy foo as bar`)
 	f(`copy foo as bar, a as b`)
-	f(`copy * as foo.*`)
+	f(`copy * as "foo."*`)
 	f(`copy foo* as bar*`)
 }
 

@@ -13,13 +13,14 @@ export const LOGS_LIMIT_WARN_DISMISSED_KEY = "vmui.logs.limit.warn.dismissed";
 export const LOGS_LIMIT_HITS = 5;
 
 export const LOGS_BAR_COUNT_DEFAULT = getIsMobile() ? 24 : 96;
+export const LOGS_INTERVALS_COUNT = 7;
 
 export const WITHOUT_GROUPING = "none";
 
 // Default values for the logs configurators.
-export const LOGS_GROUP_BY = "_stream";
+export const LOGS_GROUP_BY = WITHOUT_GROUPING;
 export const LOGS_DISPLAY_FIELDS = "_msg";
-export const LOGS_DATE_FORMAT = `${DATE_TIME_FORMAT}.SSS`;
+export const LOGS_DATE_FORMAT = DATE_TIME_FORMAT;
 
 // URL parameters for the logs page.
 export const LOGS_URL_PARAMS = {
@@ -40,3 +41,7 @@ export const MAX_QUERIES_HISTORY = 25;
 // Default fields for the table.
 export const DEFAULT_COMMON_FIELDS = ["_time", "_msg" ];
 export const DEFAULT_STREAM_FIELDS = ["_stream"];
+
+// Hits chart labels.
+export const OTHER_HITS_LABEL = "other fields";
+export const LOADING_HITS_LABEL = "__vmui_loading_hits__";

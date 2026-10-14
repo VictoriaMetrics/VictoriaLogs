@@ -99,7 +99,7 @@ By default the `/select/logsql/query` returns all the log entries matching the g
 
 - By adding [`_time` filter](https://docs.victoriametrics.com/victorialogs/logsql/#time-filter). The time range for the query can be specified via optional
   `start` and `end` query args formatted according to [these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
-  The `end` arg is exclusive; HTTP time ranges use `[start, end)`.
+  The `end` arg is exclusive, so the `[start ... end)` time range is matched.
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting
@@ -175,7 +175,7 @@ if `format=csv` query arg is passed to this endpoint.
 Performance tip: it is recommended specifying the list of log fields to return via [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe)
 or via [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). If the query doesn't end with these pipes, then VictoriaLogs
 automatically detects the list of fields to return in CSV format across all the selected logs. This may take additional time, since it requires additional scanning
-for the selected logs.
+for the selected logs. See [how VictoriaLogs stores each field as a separate column](https://victoriametrics.com/blog/victorialogs-internals-columnar-storage-on-disk/#42-each-field-is-a-column-so-queries-read-only-what-they-ask-for) for why selecting fewer fields reads less data.
 
 ### Live tailing
 
@@ -208,6 +208,9 @@ The log fields are returned in alphabetical order unless the query ends with [pi
 which explicitly set the order of the returned fields, such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe)
 or [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe).
 
+Live tailing preserves the order of returned logs only within a single [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
+Logs from different streams may be returned out of order, since the order is tracked per stream.
+
 Live tailing supports returning historical logs, which were ingested into VictoriaLogs before the start of live tailing. Pass `start_offset=<d>` query
 arg to `/select/logsql/tail` where `<d>` is the duration for returning historical logs. For example, the following command returns historical logs
 which were ingested into VictoriaLogs during the last hour, before starting live tailing:
@@ -216,8 +219,9 @@ which were ingested into VictoriaLogs during the last hour, before starting live
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'start_offset=1h'
 ```
 
-Live tailing delays delivering new logs for one second, so they could be properly delivered from log collectors to VictoriaLogs.
-This delay can be changed via `offset` query arg. For example, the following command delays delivering new logs for 30 seconds:
+Live tailing delays returning new logs for 5 seconds, so they could be properly delivered from log collectors to VictoriaLogs.
+This delay is controlled by the `offset` query arg. If you see gaps in the logs delivered by live tailing, then increase the `offset` value in order to avoid the gaps.
+For example, the following command delays delivering new logs for 30 seconds:
 
 ```sh
 curl -N http://localhost:9428/select/logsql/tail -d 'query=*' -d 'offset=30s'
@@ -264,7 +268,7 @@ The returned timestamps are aligned to the `<step>` at the given timezone `<offs
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
@@ -383,7 +387,7 @@ by the given [`<query>`](https://docs.victoriametrics.com/victorialogs/logsql/) 
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns the most frequent values per each field seen in the logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 over the last hour:
@@ -481,6 +485,12 @@ in the format compatible with [Prometheus querying API](https://prometheus.io/do
 The `<t>` arg can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<t>` is missing, then it equals to the current time.
 
+The time range for the calculated stats can be additionally limited via optional `start` and `end` query args formatted according to
+[these docs](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats). The `end` arg is exclusive,
+so the `[start ... end)` time range is matched.
+If `start` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
+If `end` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
+
 The `<query>` must contain [`stats` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe). The calculated stats is converted into metrics
 with labels from `by(...)` clause of the `| stats by(...)` pipe.
 
@@ -559,7 +569,7 @@ See also:
 ### Querying log range stats
 
 VictoriaLogs provides `/select/logsql/stats_query_range?query=<query>&start=<start>&end=<end>&step=<step>&offset=<offset>` HTTP endpoint, which returns log stats
-for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[start ... end)` time range with the given `step` interval
+for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) on the given `[<start> ... <end>)` time range with the given `step` interval
 and the given optional timezone offset specified in the `<offset>`.
 The stats is returned in the format compatible with [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries).
 
@@ -567,7 +577,7 @@ The returned timestamps are aligned to the `<step>` at the given timezone `<offs
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 The `<step>` and `<offset>` args can contain values in [the format specified here](https://docs.victoriametrics.com/victorialogs/logsql/#duration-values).
 
@@ -682,7 +692,7 @@ The response also contains the number of log results per every `_stream_id`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns `_stream_id` values across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 for the last 5 minutes:
@@ -747,7 +757,7 @@ The response also contains the number of log results per every `_stream`.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns streams across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 for the last 5 minutes:
@@ -813,7 +823,7 @@ The response also contains the number of log results per every field name.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns stream field names across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 for the last 5 minutes:
@@ -877,7 +887,7 @@ The response also contains the number of log results per every field value.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns values for the stream field `host` across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 for the last 5 minutes:
@@ -934,7 +944,7 @@ See also:
 ### Querying tenants
 
 VictoriaLogs provides `/select/tenant_ids?start=<start>&end=<end>` endpoint, which returns [tenant ids](https://docs.victoriametrics.com/victorialogs/#multitenancy)
-for the ingested logs on the given `[start ... end)` time range.
+for the ingested logs on the given `[<start> ... <end>)` time range.
 
 This endpoint must be called with empty `AccountID` request header for security reasons - this prevents from unauthorized calls for this endpoint
 from clients who have access to the specified `AccountID` tenant. This can be enforced at `vmauth` side
@@ -959,7 +969,7 @@ The response also contains the number of log results per every field name.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns field names across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word)
 for the last 5 minutes:
@@ -1023,7 +1033,7 @@ The response also contains the number of log results per every field value.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
-If `<end>` is missing, then it equals to the maximum timestamp across logs stored in VictoriaLogs.
+If `<end>` is missing, then it equals to the maximum timestamp + 1ns across logs stored in VictoriaLogs.
 
 For example, the following command returns unique values for `host` [field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
 across logs with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) for the last 5 minutes:
@@ -1178,7 +1188,7 @@ at `http://localhost:9428/select/vmui/`. Try [VictoriaLogs web UI demo playgroun
 Web UI provides the following modes for displaying query results:
 
 - `Group` - results are displayed as a table with rows grouped by [stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
-- `Table` - displays query results as a table.
+- `Table` - displays query results as a table. Click the arrow at the start of a row to see all the fields of that log entry.
 - `JSON` - displays raw JSON response from [`/select/logsql/query` HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs).
 - `Live` - displays [live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing) results for the given query.
 
@@ -1194,7 +1204,7 @@ in order to build Web UI into a js bundle and embed it into VictoriaLogs executa
 ## Visualization in Grafana
 
 [VictoriaLogs Grafana datasource](https://docs.victoriametrics.com/victorialogs/integrations/grafana/) allows you to query and visualize VictoriaLogs data in Grafana.
-Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
+Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victoriametrics.com/d/lajgcmm/victorialogs-explorer-for-kubernetes-logs).
 
 ## Command-line
 

@@ -17,7 +17,7 @@ import ExtraFiltersPanel from "../../components/ExtraFilters/ExtraFiltersPanel/E
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import QueryPageAlerts from "./QueryPageAlerts";
 import { useTimePeriod } from "./hooks/useTimePeriod";
-import { useQueryController } from "./hooks/useQueryController";
+import { DEFAULT_QUERY, useQueryController } from "./hooks/useQueryController";
 import { useQueryPageController } from "./hooks/useQueryPageController";
 
 const QueryPage: FC = () => {
@@ -39,25 +39,31 @@ const QueryPage: FC = () => {
 
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
-  const { extraFilters, extraParams, addNewFilter, removeFilterByValue, removeFilterByField } = useExtraFilters();
-  const { isVisible: isVisibleFilterSidebar } = useFilterSidebarVisible();
+  const {
+    extraFilters,
+    extraParams,
+    addNewFilter,
+    replaceFiltersByField,
+    removeFilterByValue,
+    removeStreamFilterByValue,
+  } = useExtraFilters();
 
-  const handleUpdateQuery = () => {
-    if (!inputQueryRef.current) {
-      setQueryError(ErrorTypes.validQuery);
-      return;
-    }
+  const { isVisible: isVisibleFilterSidebar, setHidden: onCloseFilterSidebar } = useFilterSidebarVisible();
+
+  const handleUpdateQuery = (nextQuery?: string) => {
+    const queryToApply = (nextQuery ?? inputQueryRef.current).trim() || DEFAULT_QUERY;
+
     setQueryError("");
 
-    applyQuery();
+    applyQuery(queryToApply);
     queryDispatch({ type: "RUN_QUERY" });
   };
 
-  const handleExecuteQuery = () => {
+  const handleExecuteQuery = (nextQuery?: string) => {
     if (isLoading) {
       cancelAll();
     } else {
-      handleUpdateQuery();
+      handleUpdateQuery(nextQuery);
     }
   };
 
@@ -86,8 +92,9 @@ const QueryPage: FC = () => {
           extraFilters={extraFilters}
           extraParams={extraParams}
           onAddFilter={addNewFilter}
-          onRemoveByValue={removeFilterByValue}
-          onRemoveByField={removeFilterByField}
+          onReplaceFiltersByField={replaceFiltersByField}
+          onRemoveByValue={removeStreamFilterByValue}
+          onClose={onCloseFilterSidebar}
         />
       )}
 
@@ -107,7 +114,11 @@ const QueryPage: FC = () => {
             onChange={setInputQuery}
             onChangeLimit={setLimit}
             onRun={handleExecuteQuery}
+            onTogglePause={hitsRequestState.togglePause}
             isLoading={isLoading}
+            isLoadingHits={hitsRequestState.isLoading}
+            isPaused={hitsRequestState.isPaused}
+            isIterative={hitsRequestState.isIterative}
           />
           <ExtraFiltersPanel
             extraFilters={extraFilters}
@@ -133,6 +144,7 @@ const QueryPage: FC = () => {
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}
           isLoading={logsRequestState.isLoading}
+          isPending={logsRequestState.isPending}
         />
       </div>
     </div>

@@ -20,7 +20,8 @@ interface SelectProps {
   autofocus?: boolean
   disabled?: boolean
   onChange: (value: string) => void
-  onOpen? (open: boolean): void
+
+  onOpen?(open: boolean): void
 }
 
 const Select: FC<SelectProps> = ({
@@ -55,7 +56,7 @@ const Select: FC<SelectProps> = ({
     return Array.isArray(value) ? "" : value;
   }, [value, search, openList, isMultiple]);
 
-  const autocompleteValue = useMemo(() => !openList ? "" : search || "(.+)", [search, openList]);
+  const autocompleteValue = useMemo(() => openList && search ? search : "", [search, openList]);
 
   const clearFocus = () => {
     if (inputRef.current) {
@@ -154,6 +155,7 @@ const Select: FC<SelectProps> = ({
               onBlur={handleBlur}
               ref={inputRef}
               readOnly={isMobile || !searchable}
+              autoComplete="off"
             />
           )}
         </div>
@@ -175,19 +177,21 @@ const Select: FC<SelectProps> = ({
           <ArrowDropDownIcon/>
         </div>
       </div>
-      <Autocomplete
-        label={label}
-        value={autocompleteValue}
-        options={list.map(el => ({ value: el }))}
-        anchor={autocompleteAnchorEl}
-        selected={selectedValues}
-        minLength={1}
-        fullWidth
-        noOptionsText={noOptionsText}
-        onSelect={handleSelected}
-        onOpenAutocomplete={setOpenList}
-        onChangeWrapperRef={setWrapperRef}
-      />
+      {!disabled && openList && (
+        <Autocomplete
+          label={label}
+          value={autocompleteValue}
+          options={list.map(el => ({ value: el }))}
+          anchor={autocompleteAnchorEl}
+          selected={selectedValues}
+          minLength={0}
+          fullWidth
+          noOptionsText={noOptionsText}
+          onSelect={handleSelected}
+          onOpenAutocomplete={setOpenList}
+          onChangeWrapperRef={setWrapperRef}
+        />
+      )}
     </div>
   );
 };

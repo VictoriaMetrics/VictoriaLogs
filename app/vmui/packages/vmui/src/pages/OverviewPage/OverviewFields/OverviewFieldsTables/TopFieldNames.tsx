@@ -66,7 +66,8 @@ const TopFieldNames: FC = () => {
   };
 
   useEffect(() => {
-    fetchFieldNames({ start, end, extraParams, skipStreamFields: true });
+    const period = { start, end };
+    void fetchFieldNames({ period, extraParams, skipStreamFields: true });
   }, [start, end, extraParams.toString(), fetchFieldNames]);
 
   const TableAction = (row: LogsFieldValues) => {

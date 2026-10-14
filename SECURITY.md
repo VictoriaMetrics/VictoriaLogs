@@ -7,6 +7,7 @@ The following versions of VictoriaLogs receive regular security fixes:
 | Version | Supported          |
 |---------|--------------------|
 | [latest release](https://docs.victoriametrics.com/victorialogs/changelog/) | :white_check_mark: |
+| v1.52.x [LTS line](https://docs.victoriametrics.com/victorialogs/lts-releases/) of [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/) | :white_check_mark: |
 | other releases  | :x:                |
 
 See [this page](https://victoriametrics.com/security/)
@@ -14,7 +15,7 @@ for more details.
 
 ## Software Bill of Materials (SBOM)
 
-Every container{{% available_from "#" %}} image published to `docker.io` and
+Starting with v1.48.0, every container image published to `docker.io` and
 `quay.io` includes an SPDX SBOM attestation generated
 by BuildKit during `docker buildx build`.
 

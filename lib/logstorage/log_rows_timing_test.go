@@ -83,7 +83,7 @@ func newBenchRows(constFields map[string]string, messages []string) [][]Field {
 	return rows
 }
 
-func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
+func BenchmarkStreamTagsNormalize(b *testing.B) {
 	type case_ struct {
 		streamTags string
 		fields     string
@@ -238,26 +238,26 @@ func BenchmarkVerifyStreamTagsCanonical(b *testing.B) {
 	}
 
 	type caseReal struct {
-		streamTagsCanonical string
-		fields              []Field
+		fields     []Field
+		streamTags StreamTags
 	}
 	casesReal := make([]caseReal, len(cases))
 	for i, c := range cases {
-		casesReal[i] = caseReal{
-			streamTagsCanonical: toStreamTagsCanonical(c.streamTags),
-			fields:              toFields(c.fields),
+		casesReal[i].fields = toFields(c.fields)
+		streamTagsCanonical := toStreamTagsCanonical(c.streamTags)
+		if err := parseStreamTagsCanonical(&casesReal[i].streamTags, streamTagsCanonical); err != nil {
+			panic(fmt.Errorf("cannot parse canonical stream tags: %w", err))
 		}
 	}
 
 	b.ReportAllocs()
 	b.SetBytes(int64(len(casesReal)))
 	b.RunParallel(func(pb *testing.PB) {
+		var st StreamTags
 		for pb.Next() {
 			for _, c := range casesReal {
-				err := verifyStreamTagsCanonical(c.streamTagsCanonical, c.fields)
-				if err != nil {
-					panic(fmt.Errorf("unexpected error: %w", err))
-				}
+				st.CopyFrom(&c.streamTags)
+				st.normalize(c.fields)
 			}
 		}
 	})

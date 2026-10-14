@@ -1,48 +1,57 @@
 import { FC, useEffect, useMemo } from "preact/compat";
-import dayjs, { Dayjs } from "dayjs";
 import classNames from "classnames";
+import { getNowInTimezone, type VmDate } from "../../../../../utils/time";
 
 interface CalendarMonthsProps {
-  viewDate: Dayjs,
-  selectDate: Dayjs
-
-  onChangeViewDate: (date: Dayjs) => void
+  viewDate: VmDate,
+  selectDate: VmDate
+  onChangeViewDate: (date: VmDate) => void
 }
 
-const MonthsList: FC<CalendarMonthsProps> = ({ viewDate, selectDate, onChangeViewDate }) => {
+const MONTH_LABEL_FORMAT = "MMMM";
+const MONTH_KEY_FORMAT = "YYYY-MM";
+const MONTHS_COUNT = 12;
 
-  const today = dayjs().format("MM");
-  const currentMonths = useMemo(() => selectDate.format("MM"), [selectDate]);
-  const months: Dayjs[] = useMemo(() => {
-    return new Array(12).fill("").map((d, i) => dayjs(viewDate).month(i));
+const MonthsList: FC<CalendarMonthsProps> = ({ viewDate, selectDate, onChangeViewDate }) => {
+  const now = getNowInTimezone();
+  const todayMonthKey = now.format(MONTH_KEY_FORMAT);
+  const selectedMonthKey = useMemo(() => selectDate.format(MONTH_KEY_FORMAT), [selectDate]);
+
+  const months: VmDate[] = useMemo(() => {
+    return Array.from({ length: MONTHS_COUNT }, (_, i) => viewDate.month(i));
   }, [viewDate]);
 
   useEffect(() => {
-    const selectedEl = document.getElementById(`vm-calendar-year-${currentMonths}`);
+    const selectedEl = document.getElementById(`vm-calendar-year-${selectedMonthKey}`);
     if (!selectedEl) return;
     selectedEl.scrollIntoView({ block: "center" });
-  }, []);
+  }, [selectedMonthKey]);
 
-  const createHandlerClick = (date: Dayjs) => () => {
+  const createHandlerClick = (date: VmDate) => () => {
     onChangeViewDate(date);
   };
 
   return (
     <div className="vm-calendar-years">
-      {months.map(m => (
-        <div
-          className={classNames({
-            "vm-calendar-years__year": true,
-            "vm-calendar-years__year_selected": m.format("MM") === currentMonths,
-            "vm-calendar-years__year_today": m.format("MM") === today
-          })}
-          id={`vm-calendar-year-${m.format("MM")}`}
-          key={m.format("MM")}
-          onClick={createHandlerClick(m)}
-        >
-          {m.format("MMMM")}
-        </div>
-      ))}
+      {months.map(m => {
+        const monthKey = m.format(MONTH_KEY_FORMAT);
+        const monthLabel = m.format(MONTH_LABEL_FORMAT);
+
+        return (
+          <div
+            className={classNames({
+              "vm-calendar-years__year": true,
+              "vm-calendar-years__year_selected": monthKey === selectedMonthKey,
+              "vm-calendar-years__year_today": monthKey === todayMonthKey
+            })}
+            id={`vm-calendar-year-${monthKey}`}
+            key={monthKey}
+            onClick={createHandlerClick(m)}
+          >
+            {monthLabel}
+          </div>
+        );
+      })}
     </div>
   );
 };
