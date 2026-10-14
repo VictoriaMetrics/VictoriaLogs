@@ -236,7 +236,6 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
       pendingHitsRef.current = false;
 
       if (hitsResult === "aborted") {
-        pendingLogsRef.current = false;
         setIsWaitingForHits(false);
         return;
       }
