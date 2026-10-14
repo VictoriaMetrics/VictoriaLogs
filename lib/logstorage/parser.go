@@ -792,6 +792,34 @@ func (q *Query) CanReturnLastNResults() bool {
 	return true
 }
 
+// CheckMaxFilterTimeRange returns an error if q or any of its subqueries selects logs on a time range bigger than maxRange nanoseconds.
+//
+// The time range of q itself isn't checked if skipTopLevelQuery is set.
+func (q *Query) CheckMaxFilterTimeRange(maxRange int64, skipTopLevelQuery bool) error {
+	var err error
+	q.visitSubqueries(func(sq *Query) {
+		if err != nil || (sq == q && skipTopLevelQuery) {
+			return
+		}
+		start, end := sq.GetFilterTimeRange()
+		if end <= start {
+			return
+		}
+		if start == math.MinInt64 && end == math.MaxInt64 {
+			err = fmt.Errorf("missing _time filter at [%s]", sq)
+			return
+		}
+		// timeRange is negative on overflow, e.g. when the time filter at sq is open-bounded.
+		timeRange := end - start
+		if timeRange < 0 || timeRange > maxRange {
+			startStr := marshalTimestampRFC3339NanoString(nil, start)
+			endStr := marshalTimestampRFC3339NanoString(nil, end)
+			err = fmt.Errorf("too big time range selected at [%s]: [%s, %s]", sq, startStr, endStr)
+		}
+	})
+	return err
+}
+
 // GetFilterTimeRange returns filter time range for the given q.
 func (q *Query) GetFilterTimeRange() (int64, int64) {
 	f := q.getFinalFilter()

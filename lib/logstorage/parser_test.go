@@ -3986,6 +3986,43 @@ func TestQueryClone(t *testing.T) {
 	f(`* | math ("round" / 2) as y`)
 }
 
+func TestQueryCheckMaxFilterTimeRange(t *testing.T) {
+	f := func(qStr string, skipTopLevelQuery, isOK bool) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("cannot parse query [%s]: %s", qStr, err)
+		}
+		err = q.CheckMaxFilterTimeRange(nsecsPerHour, skipTopLevelQuery)
+		if isOK && err != nil {
+			t.Fatalf("unexpected error for query [%s]: %s", qStr, err)
+		}
+		if !isOK && err == nil {
+			t.Fatalf("expecting non-nil error for query [%s]", qStr)
+		}
+	}
+
+	// top-level query
+	f(`_time:5m foo`, false, true)
+	f(`_time:2h foo`, false, false)
+	f(`foo`, false, false)
+	f(`_time:2h foo`, true, true)
+	f(`foo`, true, true)
+
+	// subqueries
+	f(`_time:5m foo x:in(_time:30m bar | fields x)`, false, true)
+	f(`_time:5m foo x:in(_time:2h bar | fields x)`, false, false)
+	f(`_time:5m foo x:in(bar | fields x)`, false, false)
+	f(`_time:5m foo | join by (x) (_time:2h bar | fields x)`, false, false)
+	f(`options(global_filter=(_time:5m)) foo x:in(bar | fields x)`, false, true)
+
+	// subqueries are checked even if the top-level query is skipped
+	f(`foo x:in(_time:30m bar | fields x)`, true, true)
+	f(`foo x:in(_time:2h bar | fields x)`, true, false)
+	f(`foo x:in(bar | fields x)`, true, false)
+}
+
 func TestQueryGetFilterTimeRange(t *testing.T) {
 	f := func(qStr string, startExpected, endExpected int64) {
 		t.Helper()
