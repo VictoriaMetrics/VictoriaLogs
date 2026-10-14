@@ -898,9 +898,14 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
+	labelFields, resultColumns, err := ca.q.GetStatsLabelsAndResultColumns(step, offset)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
+	if r.FormValue("format") == "groups" {
+		processStatsQueryRangeGroupsRequest(ctx, ca, w, r, step, offset, labelFields, resultColumns)
 		return
 	}
 
@@ -1057,9 +1062,14 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	labelFields, err := ca.q.GetStatsLabels()
+	labelFields, resultColumns, err := ca.q.GetStatsLabelsAndResultColumns(0, 0)
 	if err != nil {
 		httpserver.SendPrometheusError(w, r, err)
+		return
+	}
+
+	if r.FormValue("format") == "groups" {
+		processStatsQueryGroupsRequest(ctx, ca, w, r, labelFields, resultColumns)
 		return
 	}
 
