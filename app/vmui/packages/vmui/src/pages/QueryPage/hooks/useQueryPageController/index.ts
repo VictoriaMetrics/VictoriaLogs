@@ -222,11 +222,6 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
       didLogsTimeout = status === "timeout";
       pendingLogsRef.current = didLogsTimeout;
 
-      if (status === "aborted") {
-        pendingHitsRef.current = false;
-        return;
-      }
-
       setIsWaitingForHits(didLogsTimeout);
     }
 

@@ -261,21 +261,29 @@ describe("useQueryPageController: logs timeout fallback", () => {
     await completeHits();
   });
 
-  it("does not start hits after logs are aborted", async () => {
+  it("loads hits without retrying logs when loading logs is declined", async () => {
     mocks.runLogs.mockResolvedValue({ status: "aborted" });
-    renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
     await flushDebounce();
-    expect(mocks.runHits).not.toHaveBeenCalled();
+
+    expect(mocks.runHits).toHaveBeenCalledTimes(1);
+    expect(mocks.runHits).toHaveBeenCalledWith(expect.objectContaining({ isIterative: false }));
+    expect(result.current.logsRequestState.isPending).toBe(false);
+
+    await completeHits();
+
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    expect(result.current.logsRequestState.isPending).toBe(false);
   });
 
-  it("does not continue a cancelled logs request", async () => {
+  it.each(["aborted", "timeout"])("does not continue a cancelled logs request returning %s", async (status) => {
     let finishLogs!: (result: { status: string }) => void;
     mocks.runLogs.mockImplementation(() => new Promise(resolve => { finishLogs = resolve; }));
     const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
     await flushDebounce();
     await act(async () => {
       result.current.cancelAll();
-      finishLogs({ status: "timeout" });
+      finishLogs({ status });
     });
     expect(mocks.runHits).not.toHaveBeenCalled();
     expect(mocks.runLogs).toHaveBeenCalledTimes(1);
