@@ -277,6 +277,20 @@ make victoria-logs-prod
 
 This will build the `victoria-logs-prod` executable inside the `bin` folder.
 
+It is also possible to build a VictoriaLogs Docker image for the host architecture and run it locally with command:
+
+```sh
+make package-victoria-logs
+```
+
+This will build the `victoriametrics/victoria-logs:<tag>` image. Run `docker images victoriametrics/victoria-logs` to see the tag, then start it:
+
+```sh
+docker run --rm -it -p 9428:9428 victoriametrics/victoria-logs:<tag>
+```
+
+Additionally, you can run `make package` to build images for VictoriaLogs, `vlagent` and `vlogscli` at once.
+
 See also:
 
 - [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/#how-to-configure-victorialogs)
