@@ -4472,7 +4472,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
-	// offset and limit pipes are disallowed, since they cannot be applied individually per each step
+	// offset and limit pipes are disallowed, since they cannot be applied individually for each step
 	f(`* | by (x) count() | offset 10`)
 	f(`* | by (x) count() | limit 20`)
 

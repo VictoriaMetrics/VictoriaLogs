@@ -14,7 +14,7 @@ endif
 GO_BUILDINFO = -X 'github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=$(APP_NAME)-$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GOLANGCI_LINT_VERSION := 2.13.2
+GOLANGCI_LINT_VERSION := 2.14.0
 
 .PHONY: $(MAKECMDGOALS)
 
@@ -127,6 +127,10 @@ publish-release:
 	rm -rf bin/*
 	git checkout $(TAG) && $(MAKE) release && $(MAKE) publish && \
 		git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
+
+publish-release-enterprise:
+	rm -rf bin/*
+	git checkout $(TAG)-enterprise && $(MAKE) release && $(MAKE) publish
 
 release: \
 	release-victoria-logs \

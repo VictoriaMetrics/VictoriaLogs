@@ -15,10 +15,10 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 	defer tc.Stop()
 
 	cli := tc.Client()
-	f := func(reqURL string, wantStatus int) {
+	f := func(method, reqURL string, wantStatus int) {
 		t.Helper()
-		if body, statusCode := cli.Do(t, http.MethodPost, reqURL, "", nil); statusCode != wantStatus {
-			t.Fatalf("unexpected status code for POST %s: got %d; want %d; body\n%s", reqURL, statusCode, wantStatus, body)
+		if body, statusCode := cli.Do(t, method, reqURL, "", nil); statusCode != wantStatus {
+			t.Fatalf("unexpected status code for %s %s: got %d; want %d; body\n%s", method, reqURL, statusCode, wantStatus, body)
 		}
 	}
 
@@ -50,16 +50,17 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 
 	// Requests must be accepted with the matching authKey alone and rejected otherwise.
 	for _, p := range paths {
-		f(baseURL+p.path, http.StatusUnauthorized)
-		f(basicAuthURL+p.path, http.StatusUnauthorized)
-		f(baseURL+p.path+"?authKey=wrong", http.StatusUnauthorized)
-		f(baseURL+p.path+"?authKey="+p.authKey, http.StatusOK)
+		f(http.MethodPost, baseURL+p.path, http.StatusUnauthorized)
+		f(http.MethodGet, baseURL+p.path, http.StatusUnauthorized)
+		f(http.MethodPost, basicAuthURL+p.path, http.StatusUnauthorized)
+		f(http.MethodPost, baseURL+p.path+"?authKey=wrong", http.StatusUnauthorized)
+		f(http.MethodPost, baseURL+p.path+"?authKey="+p.authKey, http.StatusOK)
 	}
 
 	// The paths without -*AuthKey must require the -httpAuth.* credentials.
-	f(baseURL+"/select/logsql/query?query=*", http.StatusUnauthorized)
-	f(basicAuthURL+"/select/logsql/query?query=*", http.StatusOK)
-	f(baseURL+"/select/vmalert/-/reload", http.StatusUnauthorized)
+	f(http.MethodPost, baseURL+"/select/logsql/query?query=*", http.StatusUnauthorized)
+	f(http.MethodPost, basicAuthURL+"/select/logsql/query?query=*", http.StatusOK)
+	f(http.MethodPost, baseURL+"/select/vmalert/-/reload", http.StatusUnauthorized)
 
 	// The paths must fall back to -httpAuth.* when the corresponding -*AuthKey isn't set.
 	sut = tc.MustStartVlsingle("vlsingle-basicauth", []string{
@@ -70,7 +71,15 @@ func TestVlsingleAuthKeyOverridesBasicAuth(t *testing.T) {
 	baseURL = "http://" + sut.HTTPAddr()
 	basicAuthURL = "http://user:pass@" + sut.HTTPAddr()
 	for _, p := range paths {
-		f(baseURL+p.path, http.StatusUnauthorized)
-		f(basicAuthURL+p.path, http.StatusOK)
+		f(http.MethodPost, baseURL+p.path, http.StatusUnauthorized)
+		f(http.MethodPost, basicAuthURL+p.path, http.StatusOK)
 	}
+
+	// The /delete/* paths must verify -deleteAuthKey before reporting that -delete.enable isn't set.
+	sut = tc.MustStartVlsingle("vlsingle-delete-disabled", []string{
+		"-deleteAuthKey=delete-key",
+	})
+	baseURL = "http://" + sut.HTTPAddr()
+	f(http.MethodPost, baseURL+"/delete/active_tasks", http.StatusUnauthorized)
+	f(http.MethodPost, baseURL+"/delete/active_tasks?authKey=delete-key", http.StatusBadRequest)
 }

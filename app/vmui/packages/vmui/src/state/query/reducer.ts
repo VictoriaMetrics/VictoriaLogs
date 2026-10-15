@@ -13,6 +13,7 @@ export interface QueryState {
   metricsQLFunctions: AutocompleteOptions[];
   queryHasTimeFilter: boolean;
   executeQueryTrigger: number;
+  executeHitsOnceTrigger: number;
 }
 
 export type QueryAction =
@@ -20,7 +21,8 @@ export type QueryAction =
   | { type: "SET_AUTOCOMPLETE_QUICK", payload: boolean }
   | { type: "SET_AUTOCOMPLETE_CACHE", payload: { key: QueryAutocompleteCacheItem, value: string[] } }
   | { type: "SET_QUERY_HAS_TIME_FILTER", payload: boolean }
-  | { type: "RUN_QUERY"}
+  | { type: "RUN_QUERY" }
+  | { type: "EXECUTE_HITS_ONCE" }
 
 export const initialQueryState: QueryState = {
   autocomplete: getFromStorage("AUTOCOMPLETE") as boolean || false,
@@ -29,6 +31,7 @@ export const initialQueryState: QueryState = {
   metricsQLFunctions: [],
   queryHasTimeFilter: false,
   executeQueryTrigger: 0,
+  executeHitsOnceTrigger: 0,
 };
 
 export function reducer(state: QueryState, action: QueryAction): QueryState {
@@ -59,6 +62,11 @@ export function reducer(state: QueryState, action: QueryAction): QueryState {
       return {
         ...state,
         executeQueryTrigger: state.executeQueryTrigger + 1
+      };
+    case "EXECUTE_HITS_ONCE":
+      return {
+        ...state,
+        executeHitsOnceTrigger: state.executeHitsOnceTrigger + 1
       };
     default:
       throw new Error();

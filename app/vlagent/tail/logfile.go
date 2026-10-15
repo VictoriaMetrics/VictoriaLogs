@@ -217,11 +217,7 @@ func (lf *logFile) setTail(tail []byte) {
 	}
 
 	if len(tail) == 0 {
-		if lf.tail != nil {
-			tailByteBufferPool.Put(lf.tail)
-			lf.tail = nil
-		}
-		lf.tailSize = 0
+		lf.dropTail()
 		return
 	}
 
@@ -231,6 +227,14 @@ func (lf *logFile) setTail(tail []byte) {
 
 	lf.tailSize = len(tail)
 	lf.tail.B = append(lf.tail.B[:0], tail...)
+}
+
+func (lf *logFile) dropTail() {
+	if lf.tail != nil {
+		tailByteBufferPool.Put(lf.tail)
+		lf.tail = nil
+	}
+	lf.tailSize = 0
 }
 
 var tailByteBufferPool bytesutil.ByteBufferPool

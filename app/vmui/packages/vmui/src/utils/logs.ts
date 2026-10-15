@@ -1,7 +1,7 @@
 import { TimeParams } from "../types";
 import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
-import { OTHER_HITS_LABEL } from "../components/Chart/BarHitsChart/hooks/useBarHitsOptions";
+import { OTHER_HITS_LABEL } from "../constants/logs";
 import { nanosecondsToMilliseconds, nanosToIsoString } from "./time";
 import { getDefaultIntervalOption } from "./intervals";
 
@@ -78,7 +78,7 @@ export const getAllStreamKeys = (data: Array<Record<string, unknown>>): string[]
   return [...keys];
 };
 
-type HitsTimeParams = {
+export type HitsTimeParams = {
   /** ISO 8601 string with up to nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"` */
   start: string;
   /** ISO 8601 string with up to nanosecond precision, e.g. `"2026-06-01T12:00:24.414146743Z"` */
