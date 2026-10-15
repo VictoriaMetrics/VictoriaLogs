@@ -22,8 +22,7 @@ import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
 import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
-import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
-import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
+import { useGroupByFields } from "../../../../hooks/useGroupByFields";
 import { getDefaultIntervalOption, getIntervalOptions } from "../../../../utils/intervals";
 import { nanosToIsoString, vmDate } from "../../../../utils/time";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
@@ -35,6 +34,8 @@ import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHid
 
 interface Props {
   query?: string;
+  period?: TimeParams;
+  loadedFieldNames?: string[];
   isHitsMode?: boolean;
   isOverview?: boolean;
   prevPeriod?: TimeParams;
@@ -42,7 +43,16 @@ interface Props {
   onChange: (options: GraphOptions) => void;
 }
 
-const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, onRevertPeriod, onChange }) => {
+const BarHitsOptions: FC<Props> = ({
+  query,
+  period,
+  loadedFieldNames,
+  isHitsMode,
+  isOverview,
+  prevPeriod,
+  onRevertPeriod,
+  onChange
+}) => {
   const { isMobile } = useDeviceDetect();
   const {
     value: openList,
@@ -55,9 +65,8 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const { topHits, groupFieldHits, step } = useHitsChartConfig();
   const { timezone } = useTimeState();
 
-  const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimePeriod();
-  const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
+  const groupByFields = useGroupByFields({ query, period, loadedFieldNames });
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
@@ -99,16 +108,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   }, [start, end]);
 
   const prevDefaultStep = usePrevious(defaultStep);
-
-  const fieldNamesOptions = useMemo(() => {
-    const fields = fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
-    return [WITHOUT_GROUPING, ...fields];
-  }, [fieldNames]);
-
-  const handleOpenFields = useCallback(() => {
-    const period = { start, end };
-    void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
-  }, [start, end, extraParams.toString(), fetchFieldNames, query]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
     const next = new URLSearchParams(searchParams);
@@ -179,13 +178,13 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
               <SelectLimit
                 searchable
                 label="Group by"
-                limit={groupFieldHits.value}
-                options={fieldNamesOptions}
+                limit={groupByFields.value}
+                options={groupByFields.options}
                 textNoOptions={"No fields found"}
-                isLoading={loading}
-                error={error ? String(error) : ""}
-                onOpenSelect={handleOpenFields}
-                onChange={groupFieldHits.set}
+                isLoading={groupByFields.isLoading}
+                error={groupByFields.error}
+                onOpenSelect={groupByFields.loadFields}
+                onChange={groupByFields.selectField}
               />
             </div>
           </>
