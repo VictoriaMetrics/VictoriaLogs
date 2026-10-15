@@ -45,6 +45,9 @@ vlogscli-openbsd-amd64-prod:
 vlogscli-windows-amd64-prod:
 	APP_NAME=vlogscli $(MAKE) app-via-docker-windows-amd64
 
+package-vlogscli:
+	APP_NAME=vlogscli $(MAKE) package-via-docker
+
 publish-vlogscli:
 	APP_NAME=vlogscli $(MAKE) publish-via-docker
 
