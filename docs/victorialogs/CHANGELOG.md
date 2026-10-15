@@ -24,6 +24,7 @@ according to the following docs:
 ## tip
 
 * SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.2. See [the list of issues addressed in Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved).
+* SECURITY: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): sanitize rendered HTML and Markdown in log messages and autocomplete descriptions to prevent cross-site scripting (XSS) attacks. See [#1746](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1746).
 
 * FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): allow expanding a row in Table view to inspect all fields of a single log entry, reusing the Group view field list. See [#1630](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1630).
 
