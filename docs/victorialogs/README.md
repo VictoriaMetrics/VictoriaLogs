@@ -258,11 +258,21 @@ VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` a
 - `/internal/partition/attach?name=YYYYMMDD` - attaches the partition directory with the given name `YYYYMMDD` to VictoriaLogs,
   so it becomes visible for querying and can be used for data ingestion.
   The directory must be placed inside `<-storageDataPath>/partitions` and it must contain valid data for the given `YYYYMMDD` day.
+- `/internal/partition/attach?partition_prefix=<prefix>` - attaches all the detached partition directories inside `<-storageDataPath>/partitions`
+  with names matching the given `<prefix>`. The `<prefix>` must match one of the following formats:
+  - `YYYYMMDD` - then the partition for the given day is attached.
+  - `YYYYMM` - then partitions for the given month are attached.
+  - `YYYY` - then partitions for the given year are attached.
+  Already attached partitions are skipped. The endpoint returns JSON-encoded array with names of the attached partitions.
+  This is useful for [restoring](https://docs.victoriametrics.com/victorialogs/#backup-and-restore) many partitions at once.
 - `/internal/partition/detach?name=YYYYMMDD` - detaches the partition directory with the given name `YYYYMMDD` from VictoriaLogs,
   so it is no longer visible for querying and cannot be used for data ingestion.
   The `/internal/partition/detach` endpoint waits until all the concurrently executed queries stop reading the data from the detached partition
   before returning. This allows safe on-disk manipulations of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
   Detached partitions are automatically attached after VictoriaLogs restart if the corresponding subdirectories at `<-storageDataPath>/partitions/` aren't removed.
+- `/internal/partition/detach?partition_prefix=<prefix>` - detaches all the attached partitions with names matching the given `<prefix>`.
+  The `<prefix>` supports the same formats as `/internal/partition/attach?partition_prefix=<prefix>`.
+  The endpoint returns JSON-encoded array with names of the detached partitions.
 - `/internal/partition/list` - returns JSON-encoded list of currently active partitions, which can be passed to `/internal/partition/detach` endpoint via `name` query arg.
 - `/internal/partition/snapshot/create?partition_prefix=<prefix>` - creates [snapshots](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
   for partitions matching the given `<prefix>`. The `<prefix>` must match the following formats:

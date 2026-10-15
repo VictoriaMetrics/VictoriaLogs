@@ -307,6 +307,60 @@ func (s *Storage) PartitionDetach(name string) error {
 	return nil
 }
 
+// PartitionAttachByPrefix attaches the detached partitions with names starting with the given partitionPrefix.
+//
+// The partitionPrefix must match one of the following formats:
+// - YYYYMMDD - matches the partition for the given day
+// - YYYYMM - matches partitions for the given month
+// - YYYY - matches partitions for the given year
+//
+// The function returns names of the attached partitions.
+func (s *Storage) PartitionAttachByPrefix(partitionPrefix string) []string {
+	attachedNames := s.PartitionList()
+
+	partitionsPath := filepath.Join(s.path, partitionsDirname)
+	var names []string
+	for _, de := range fs.MustReadDir(partitionsPath) {
+		name := de.Name()
+		if !de.IsDir() || !strings.HasPrefix(name, partitionPrefix) || slices.Contains(attachedNames, name) {
+			continue
+		}
+		if fs.IsPartiallyRemovedDir(filepath.Join(partitionsPath, name)) {
+			continue
+		}
+
+		if err := s.PartitionAttach(name); err != nil {
+			logger.Warnf("skipping partition %q: %s", name, err)
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
+// PartitionDetachByPrefix detaches the attached partitions with names starting with the given partitionPrefix.
+//
+// The partitionPrefix must match one of the following formats:
+// - YYYYMMDD - matches the partition for the given day
+// - YYYYMM - matches partitions for the given month
+// - YYYY - matches partitions for the given year
+//
+// The function returns names of the detached partitions.
+func (s *Storage) PartitionDetachByPrefix(partitionPrefix string) []string {
+	var names []string
+	for _, name := range s.PartitionList() {
+		if !strings.HasPrefix(name, partitionPrefix) {
+			continue
+		}
+		if err := s.PartitionDetach(name); err != nil {
+			logger.Warnf("skipping partition %q: %s", name, err)
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
 // PartitionList returns the list of the names for the currently attached partitions.
 //
 // Every partition name has YYYYMMDD format.
