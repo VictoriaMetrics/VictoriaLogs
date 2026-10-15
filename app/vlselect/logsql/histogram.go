@@ -1,29 +1,13 @@
 package logsql
 
 import (
+	"slices"
 	"strings"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 type histogramBucket struct {
 	VMRange string
 	Hits    uint64
-}
-
-// newHistogramBucketLabels returns a copy of labels with the vmrange label for b.
-//
-// The vmrange value is interned, so the returned labels do not reference the histogram value b was parsed from.
-// The number of distinct vmrange values is small, so interning doesn't allocate in the steady state.
-func newHistogramBucketLabels(labels []logstorage.Field, b histogramBucket) []logstorage.Field {
-	bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
-	bucketLabels = append(bucketLabels, labels...)
-	return append(bucketLabels, logstorage.Field{
-		Name:  "vmrange",
-		Value: bytesutil.InternString(b.VMRange),
-	})
 }
 
 // appendHistogramBuckets parses the output of histogram() stats function and appends the parsed buckets to dst.
@@ -92,4 +76,60 @@ func parseHistogramBucket(s string) (tail string, b histogramBucket, ok bool) {
 	}
 	s, ok = strings.CutPrefix(s[n:], "}")
 	return s, b, ok
+}
+
+// histogramBucketSeries contains the points of a single histogram bucket.
+type histogramBucketSeries struct {
+	VMRange string
+	Points  []histogramBucketPoint
+}
+
+type histogramBucketPoint struct {
+	vmrange   string
+	Timestamp int64
+	Hits      uint64
+}
+
+// histogramSeriesSplitter splits a series with histogram() results into series for individual buckets.
+type histogramSeriesSplitter struct {
+	buckets []histogramBucket
+	points  []histogramBucketPoint
+	series  []histogramBucketSeries
+}
+
+// split returns series for individual buckets in points sorted by vmrange.
+//
+// points must be sorted by timestamp and must contain histogram() results.
+// The returned series are valid until the next call to split.
+func (s *histogramSeriesSplitter) split(points []statsPoint) []histogramBucketSeries {
+	s.points = s.points[:0]
+	for _, p := range points {
+		s.buckets, _ = appendHistogramBuckets(s.buckets[:0], p.Value)
+		for _, b := range s.buckets {
+			s.points = append(s.points, histogramBucketPoint{
+				vmrange:   b.VMRange,
+				Timestamp: p.Timestamp,
+				Hits:      b.Hits,
+			})
+		}
+	}
+	// The stable sort keeps the points of every bucket sorted by timestamp.
+	slices.SortStableFunc(s.points, func(a, b histogramBucketPoint) int {
+		return strings.Compare(a.vmrange, b.vmrange)
+	})
+
+	s.series = s.series[:0]
+	for i := 0; i < len(s.points); {
+		vmrange := s.points[i].vmrange
+		j := i + 1
+		for j < len(s.points) && s.points[j].vmrange == vmrange {
+			j++
+		}
+		s.series = append(s.series, histogramBucketSeries{
+			VMRange: vmrange,
+			Points:  s.points[i:j],
+		})
+		i = j
+	}
+	return s.series
 }

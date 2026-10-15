@@ -957,35 +957,27 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 				v := c.Values[i]
 				// Special case - the value is the result of histogram() stats function.
 				// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
-				// Convert it to values for individual buckets.
+				// A single series holds all the buckets of the value. It is split into series for individual buckets
+				// when the response is written. This is much faster than a series per bucket for many distinct by (...) values.
 				var ok bool
 				shard.buckets, ok = appendHistogramBuckets(shard.buckets[:0], v)
 				if ok {
-					if bucketNames[j] == "" {
-						bucketNames[j] = clonedColumnNames[j] + "_bucket"
-					}
-					name := bucketNames[j]
-					for _, bucket := range shard.buckets {
-						shard.vmrange[0] = logstorage.Field{
-							Name:  "vmrange",
-							Value: bucket.VMRange,
+					if len(shard.buckets) > 0 {
+						if bucketNames[j] == "" {
+							bucketNames[j] = clonedColumnNames[j] + "_bucket"
 						}
-						shard.vmrangeJSON = logstorage.MarshalFieldsToJSON(shard.vmrangeJSON[:0], shard.vmrange[:])
+						name := bucketNames[j]
 						shard.key = appendStatsSeriesKeyPrefix(shard.key[:0], columnIdx, name)
-						shard.key = appendMergedJSONObjects(shard.key, shard.labelsJSON, shard.vmrangeJSON)
+						shard.key = appendHistogramSeriesKeyLabels(shard.key, shard.labelsJSON)
 
 						ss, isNew := shard.getSeries(shard.key, name)
 						if isNew {
-							ss.Labels = make([]logstorage.Field, 0, len(labels)+1)
-							ss.Labels = appendClonedFields(ss.Labels, labels)
-							ss.Labels = append(ss.Labels, logstorage.Field{
-								Name:  "vmrange",
-								Value: bytesutil.InternString(bucket.VMRange),
-							})
+							ss.Labels = string(appendStatsLabelsJSON(nil, labels))
+							ss.isHistogram = true
 						}
 						ss.Points = append(ss.Points, statsPoint{
 							Timestamp: ts,
-							Value:     strconv.FormatUint(bucket.Hits, 10),
+							Value:     strings.Clone(v),
 						})
 					}
 					columnIdx++
@@ -998,7 +990,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 
 				ss, isNew := shard.getSeries(shard.key, clonedColumnNames[j])
 				if isNew {
-					ss.Labels = appendClonedFields(make([]logstorage.Field, 0, len(labels)), labels)
+					ss.Labels = string(appendStatsLabelsJSON(nil, labels))
 				}
 				ss.Points = append(ss.Points, statsPoint{
 					Timestamp: ts,
@@ -1038,9 +1030,15 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 type statsSeries struct {
 	key string
 
-	Name   string
-	Labels []logstorage.Field
+	Name string
+
+	// Labels contains the labels marshaled with appendStatsLabelsJSON.
+	Labels string
+
+	// Points contain raw histogram() results if isHistogram is set.
 	Points []statsPoint
+
+	isHistogram bool
 }
 
 type statsPoint struct {
@@ -1052,12 +1050,10 @@ type statsPoint struct {
 type statsSeriesShard struct {
 	m map[string]*statsSeries
 
-	labels      []logstorage.Field
-	labelsJSON  []byte
-	buckets     []histogramBucket
-	vmrange     [1]logstorage.Field
-	vmrangeJSON []byte
-	key         []byte
+	labels     []logstorage.Field
+	labelsJSON []byte
+	buckets    []histogramBucket
+	key        []byte
 }
 
 // getSeries returns the series for the given key. It creates the series if it is missing and returns isNew=true in this case.
@@ -1148,28 +1144,27 @@ func appendStatsSeriesKeyPrefix(dst []byte, columnIdx int, name string) []byte {
 	return append(dst, name...)
 }
 
-// appendMergedJSONObjects appends to dst the JSON object, which contains the fields of a followed by the fields of b.
+// appendHistogramSeriesKeyLabels appends labelsJSON to dst, where the closing brace is replaced with the start of the vmrange field.
 //
-// a and b must be the results of logstorage.MarshalFieldsToJSON. The result equals to logstorage.MarshalFieldsToJSON
-// for the concatenated fields, since the series order in the response depends on these bytes.
-func appendMergedJSONObjects(dst, a, b []byte) []byte {
-	if len(a) == 2 {
-		return append(dst, b...)
+// labelsJSON must be the result of logstorage.MarshalFieldsToJSON. The order of the returned keys matches the order of
+// the keys for series of individual buckets, which have the vmrange label after the labels. The order of series in the response depends on it.
+func appendHistogramSeriesKeyLabels(dst, labelsJSON []byte) []byte {
+	dst = append(dst, labelsJSON[:len(labelsJSON)-1]...)
+	if len(labelsJSON) > 2 {
+		dst = append(dst, ',')
 	}
-	if len(b) == 2 {
-		return append(dst, a...)
-	}
-	dst = append(dst, a[:len(a)-1]...)
-	dst = append(dst, ',')
-	return append(dst, b[1:]...)
+	return append(dst, `"vmrange":"`...)
 }
 
-func appendClonedFields(dst, fields []logstorage.Field) []logstorage.Field {
-	for _, f := range fields {
-		dst = append(dst, logstorage.Field{
-			Name:  f.Name,
-			Value: strings.Clone(f.Value),
-		})
+// appendStatsLabelsJSON appends labels to dst as `,"name":"value"` pairs, which follow the `__name__` label in the response.
+//
+// The labels are escaped in the same way as in the response templates.
+func appendStatsLabelsJSON(dst []byte, labels []logstorage.Field) []byte {
+	for _, label := range labels {
+		dst = append(dst, ',')
+		dst = quicktemplate.AppendJSONString(dst, label.Name, true)
+		dst = append(dst, ':')
+		dst = quicktemplate.AppendJSONString(dst, label.Value, true)
 	}
 	return dst
 }
@@ -1203,56 +1198,55 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 		for i, c := range columns {
 			clonedColumnNames[i] = strings.Clone(c.Name)
 		}
+		bucketNames := make([]string, len(columns))
+		var labels []logstorage.Field
 		var buckets []histogramBucket
 		for i := range rowsCount {
-			labels := make([]logstorage.Field, 0, len(labelFields))
-			for j, c := range columns {
+			labels = labels[:0]
+			for _, c := range columns {
 				if slices.Contains(labelFields, c.Name) {
 					labels = append(labels, logstorage.Field{
-						Name:  clonedColumnNames[j],
-						Value: strings.Clone(c.Values[i]),
+						Name:  c.Name,
+						Value: c.Values[i],
 					})
 				}
 			}
+			labelsJSON := string(appendStatsLabelsJSON(nil, labels))
 
 			for j, c := range columns {
 				if slices.Contains(labelFields, c.Name) {
 					continue
 				}
 
+				v := c.Values[i]
 				// Special case - the value is the result of histogram() stats function.
 				// See https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats .
-				// Convert it to values for individual buckets.
+				// It is converted to values for individual buckets when the response is written.
+				// This is much faster than creating a row per bucket for many distinct by (...) values.
 				var ok bool
-				buckets, ok = appendHistogramBuckets(buckets[:0], c.Values[i])
+				buckets, ok = appendHistogramBuckets(buckets[:0], v)
 				if ok {
-					name := clonedColumnNames[j] + "_bucket"
-
-					// Allocate the labels for all the buckets at once.
-					bucketFields := make([]logstorage.Field, 0, len(buckets)*(len(labels)+1))
-					for _, bucket := range buckets {
-						n := len(bucketFields)
-						bucketFields = append(bucketFields, labels...)
-						bucketFields = append(bucketFields, logstorage.Field{
-							Name:  "vmrange",
-							Value: bytesutil.InternString(bucket.VMRange),
-						})
-						*shardRows = append(*shardRows, statsRow{
-							Name:      name,
-							Labels:    bucketFields[n:len(bucketFields):len(bucketFields)],
-							Timestamp: timestamp,
-							Value:     strconv.FormatUint(bucket.Hits, 10),
-						})
+					if len(buckets) == 0 {
+						continue
 					}
-
+					if bucketNames[j] == "" {
+						bucketNames[j] = clonedColumnNames[j] + "_bucket"
+					}
+					*shardRows = append(*shardRows, statsRow{
+						Name:        bucketNames[j],
+						Labels:      labelsJSON,
+						Timestamp:   timestamp,
+						Value:       strings.Clone(v),
+						isHistogram: true,
+					})
 					continue
 				}
 
 				*shardRows = append(*shardRows, statsRow{
 					Name:      clonedColumnNames[j],
-					Labels:    labels,
+					Labels:    labelsJSON,
 					Timestamp: timestamp,
-					Value:     strings.Clone(c.Values[i]),
+					Value:     strings.Clone(v),
 				})
 			}
 		}
@@ -1298,10 +1292,17 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 type statsRow struct {
-	Name      string
-	Labels    []logstorage.Field
+	Name string
+
+	// Labels contains the labels marshaled with appendStatsLabelsJSON.
+	Labels string
+
 	Timestamp int64
-	Value     string
+
+	// Value contains the raw histogram() result if isHistogram is set.
+	Value string
+
+	isHistogram bool
 }
 
 // ProcessQueryRequest handles /select/logsql/query request.

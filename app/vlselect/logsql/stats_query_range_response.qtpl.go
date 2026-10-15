@@ -3,186 +3,245 @@
 
 // StatsQueryRangeResponse generates response for /select/logsql/stats_query_range
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:4
+//line stats_query_range_response.qtpl:4
 package logsql
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:4
+//line stats_query_range_response.qtpl:4
 import (
 	qtio422016 "io"
 
 	qt422016 "github.com/valyala/quicktemplate"
 )
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:4
+//line stats_query_range_response.qtpl:4
 var (
 	_ = qtio422016.Copy
 	_ = qt422016.AcquireByteBuffer
 )
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:4
+//line stats_query_range_response.qtpl:4
 func StreamStatsQueryRangeResponse(qw422016 *qt422016.Writer, rows []*statsSeries) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:4
+//line stats_query_range_response.qtpl:4
 	qw422016.N().S(`{"status":"success","data":{"resultType":"matrix","result":[`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:10
-	if len(rows) > 0 {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:11
-		streamformatStatsSeries(qw422016, rows[0])
-//line app/vlselect/logsql/stats_query_range_response.qtpl:12
-		rows = rows[1:]
+//line stats_query_range_response.qtpl:10
+	var hss histogramSeriesSplitter
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:13
-		for i := range rows {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:13
+//line stats_query_range_response.qtpl:11
+	for i, ss := range rows {
+//line stats_query_range_response.qtpl:12
+		if i > 0 {
+//line stats_query_range_response.qtpl:12
 			qw422016.N().S(`,`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:14
-			streamformatStatsSeries(qw422016, rows[i])
-//line app/vlselect/logsql/stats_query_range_response.qtpl:15
+//line stats_query_range_response.qtpl:12
 		}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:16
+//line stats_query_range_response.qtpl:13
+		if ss.isHistogram {
+//line stats_query_range_response.qtpl:14
+			for j, bs := range hss.split(ss.Points) {
+//line stats_query_range_response.qtpl:15
+				if j > 0 {
+//line stats_query_range_response.qtpl:15
+					qw422016.N().S(`,`)
+//line stats_query_range_response.qtpl:15
+				}
+//line stats_query_range_response.qtpl:16
+				streamformatStatsHistogramBucketSeries(qw422016, ss, &bs)
+//line stats_query_range_response.qtpl:17
+			}
+//line stats_query_range_response.qtpl:18
+		} else {
+//line stats_query_range_response.qtpl:19
+			streamformatStatsSeries(qw422016, ss)
+//line stats_query_range_response.qtpl:20
+		}
+//line stats_query_range_response.qtpl:21
 	}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:16
+//line stats_query_range_response.qtpl:21
 	qw422016.N().S(`]}}`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 func WriteStatsQueryRangeResponse(qq422016 qtio422016.Writer, rows []*statsSeries) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	StreamStatsQueryRangeResponse(qw422016, rows)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 func StatsQueryRangeResponse(rows []*statsSeries) string {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	WriteStatsQueryRangeResponse(qb422016, rows)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 	return qs422016
-//line app/vlselect/logsql/stats_query_range_response.qtpl:20
+//line stats_query_range_response.qtpl:25
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:22
+//line stats_query_range_response.qtpl:27
 func streamformatStatsSeries(qw422016 *qt422016.Writer, ss *statsSeries) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:22
+//line stats_query_range_response.qtpl:27
 	qw422016.N().S(`{"metric":{"__name__":`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:25
+//line stats_query_range_response.qtpl:30
 	qw422016.N().Q(ss.Name)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:26
-	if len(ss.Labels) > 0 {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:27
-		for _, label := range ss.Labels {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:27
-			qw422016.N().S(`,`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:28
-			qw422016.N().Q(label.Name)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:28
-			qw422016.N().S(`:`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:28
-			qw422016.N().Q(label.Value)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:29
-		}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:30
-	}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:30
+//line stats_query_range_response.qtpl:31
+	qw422016.N().S(ss.Labels)
+//line stats_query_range_response.qtpl:31
 	qw422016.N().S(`},"values":[`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:33
-	points := ss.Points
-
-//line app/vlselect/logsql/stats_query_range_response.qtpl:34
-	if len(points) > 0 {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:35
-		streamformatStatsPoint(qw422016, &points[0])
-//line app/vlselect/logsql/stats_query_range_response.qtpl:36
-		points = points[1:]
-
-//line app/vlselect/logsql/stats_query_range_response.qtpl:37
-		for i := range points {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:37
+//line stats_query_range_response.qtpl:34
+	for i := range ss.Points {
+//line stats_query_range_response.qtpl:35
+		if i > 0 {
+//line stats_query_range_response.qtpl:35
 			qw422016.N().S(`,`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:38
-			streamformatStatsPoint(qw422016, &points[i])
-//line app/vlselect/logsql/stats_query_range_response.qtpl:39
+//line stats_query_range_response.qtpl:35
 		}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:40
+//line stats_query_range_response.qtpl:36
+		streamformatStatsPoint(qw422016, &ss.Points[i])
+//line stats_query_range_response.qtpl:37
 	}
-//line app/vlselect/logsql/stats_query_range_response.qtpl:40
+//line stats_query_range_response.qtpl:37
 	qw422016.N().S(`]}`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 func writeformatStatsSeries(qq422016 qtio422016.Writer, ss *statsSeries) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	streamformatStatsSeries(qw422016, ss)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 func formatStatsSeries(ss *statsSeries) string {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	writeformatStatsSeries(qb422016, ss)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 	return qs422016
-//line app/vlselect/logsql/stats_query_range_response.qtpl:43
+//line stats_query_range_response.qtpl:40
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:45
+//line stats_query_range_response.qtpl:42
 func streamformatStatsPoint(qw422016 *qt422016.Writer, p *statsPoint) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:45
+//line stats_query_range_response.qtpl:42
 	qw422016.N().S(`[`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:47
+//line stats_query_range_response.qtpl:44
 	qw422016.N().F(float64(p.Timestamp) / 1e9)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:47
+//line stats_query_range_response.qtpl:44
 	qw422016.N().S(`,`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:48
+//line stats_query_range_response.qtpl:45
 	qw422016.N().Q(p.Value)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:48
+//line stats_query_range_response.qtpl:45
 	qw422016.N().S(`]`)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 func writeformatStatsPoint(qq422016 qtio422016.Writer, p *statsPoint) {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	streamformatStatsPoint(qw422016, p)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	qt422016.ReleaseWriter(qw422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 }
 
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 func formatStatsPoint(p *statsPoint) string {
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	qb422016 := qt422016.AcquireByteBuffer()
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	writeformatStatsPoint(qb422016, p)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	qs422016 := string(qb422016.B)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	qt422016.ReleaseByteBuffer(qb422016)
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
 	return qs422016
-//line app/vlselect/logsql/stats_query_range_response.qtpl:50
+//line stats_query_range_response.qtpl:47
+}
+
+//line stats_query_range_response.qtpl:49
+func streamformatStatsHistogramBucketSeries(qw422016 *qt422016.Writer, ss *statsSeries, bs *histogramBucketSeries) {
+//line stats_query_range_response.qtpl:49
+	qw422016.N().S(`{"metric":{"__name__":`)
+//line stats_query_range_response.qtpl:52
+	qw422016.N().Q(ss.Name)
+//line stats_query_range_response.qtpl:53
+	qw422016.N().S(ss.Labels)
+//line stats_query_range_response.qtpl:53
+	qw422016.N().S(`,"vmrange":`)
+//line stats_query_range_response.qtpl:54
+	qw422016.N().Q(bs.VMRange)
+//line stats_query_range_response.qtpl:54
+	qw422016.N().S(`},"values":[`)
+//line stats_query_range_response.qtpl:57
+	for i := range bs.Points {
+//line stats_query_range_response.qtpl:58
+		if i > 0 {
+//line stats_query_range_response.qtpl:58
+			qw422016.N().S(`,`)
+//line stats_query_range_response.qtpl:58
+		}
+//line stats_query_range_response.qtpl:58
+		qw422016.N().S(`[`)
+//line stats_query_range_response.qtpl:60
+		qw422016.N().F(float64(bs.Points[i].Timestamp) / 1e9)
+//line stats_query_range_response.qtpl:60
+		qw422016.N().S(`,"`)
+//line stats_query_range_response.qtpl:61
+		qw422016.N().DUL(bs.Points[i].Hits)
+//line stats_query_range_response.qtpl:61
+		qw422016.N().S(`"]`)
+//line stats_query_range_response.qtpl:63
+	}
+//line stats_query_range_response.qtpl:63
+	qw422016.N().S(`]}`)
+//line stats_query_range_response.qtpl:66
+}
+
+//line stats_query_range_response.qtpl:66
+func writeformatStatsHistogramBucketSeries(qq422016 qtio422016.Writer, ss *statsSeries, bs *histogramBucketSeries) {
+//line stats_query_range_response.qtpl:66
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line stats_query_range_response.qtpl:66
+	streamformatStatsHistogramBucketSeries(qw422016, ss, bs)
+//line stats_query_range_response.qtpl:66
+	qt422016.ReleaseWriter(qw422016)
+//line stats_query_range_response.qtpl:66
+}
+
+//line stats_query_range_response.qtpl:66
+func formatStatsHistogramBucketSeries(ss *statsSeries, bs *histogramBucketSeries) string {
+//line stats_query_range_response.qtpl:66
+	qb422016 := qt422016.AcquireByteBuffer()
+//line stats_query_range_response.qtpl:66
+	writeformatStatsHistogramBucketSeries(qb422016, ss, bs)
+//line stats_query_range_response.qtpl:66
+	qs422016 := string(qb422016.B)
+//line stats_query_range_response.qtpl:66
+	qt422016.ReleaseByteBuffer(qb422016)
+//line stats_query_range_response.qtpl:66
+	return qs422016
+//line stats_query_range_response.qtpl:66
 }
