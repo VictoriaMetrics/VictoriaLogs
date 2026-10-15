@@ -7,12 +7,26 @@
 	"data":{
 		"resultType":"vector",
 		"result":[
-			{% code isFirst := true %}
+			{% code
+				isFirst := true
+				var buckets []histogramBucket
+			%}
 			{% for _, rows := range shards %}
 				{% for i := range *rows %}
 					{% if !isFirst %},{% endif %}
-					{% code isFirst = false %}
-					{%= formatStatsRow(&(*rows)[i]) %}
+					{% code
+						isFirst = false
+						r := &(*rows)[i]
+					%}
+					{% if r.isHistogram %}
+						{% code buckets, _ = appendHistogramBuckets(buckets[:0], r.Value) %}
+						{% for j := range buckets %}
+							{% if j > 0 %},{% endif %}
+							{%= formatStatsHistogramBucketRow(r, &buckets[j]) %}
+						{% endfor %}
+					{% else %}
+						{%= formatStatsRow(r) %}
+					{% endif %}
 				{% endfor %}
 			{% endfor %}
 		]
@@ -24,13 +38,20 @@
 {
 	"metric":{
 		"__name__":{%q= r.Name %}
-		{% if len(r.Labels) > 0 %}
-			{% for _, label := range r.Labels %}
-				,{%q= label.Name %}:{%q= label.Value %}
-			{% endfor %}
-		{% endif %}
+		{%s= r.Labels %}
 	},
 	"value":[{%f= float64(r.Timestamp)/1e9 %},{%q= r.Value %}]
+}
+{% endfunc %}
+
+{% func formatStatsHistogramBucketRow(r *statsRow, b *histogramBucket) %}
+{
+	"metric":{
+		"__name__":{%q= r.Name %}
+		{%s= r.Labels %}
+		,"vmrange":{%q= b.VMRange %}
+	},
+	"value":[{%f= float64(r.Timestamp)/1e9 %},"{%dul= b.Hits %}"]
 }
 {% endfunc %}
 

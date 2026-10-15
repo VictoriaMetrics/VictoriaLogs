@@ -7,13 +7,18 @@
 	"data":{
 		"resultType":"matrix",
 		"result":[
-			{% if len(rows) > 0 %}
-				{%= formatStatsSeries(rows[0]) %}
-				{% code rows = rows[1:] %}
-				{% for i := range rows %}
-					,{%= formatStatsSeries(rows[i]) %}
-				{% endfor %}
-			{% endif %}
+			{% code var hss histogramSeriesSplitter %}
+			{% for i, ss := range rows %}
+				{% if i > 0 %},{% endif %}
+				{% if ss.isHistogram %}
+					{% for j, bs := range hss.split(ss.Points) %}
+						{% if j > 0 %},{% endif %}
+						{%= formatStatsHistogramBucketSeries(ss, &bs) %}
+					{% endfor %}
+				{% else %}
+					{%= formatStatsSeries(ss) %}
+				{% endif %}
+			{% endfor %}
 		]
 	}
 }
@@ -23,21 +28,13 @@
 {
 	"metric":{
 		"__name__":{%q= ss.Name %}
-		{% if len(ss.Labels) > 0 %}
-			{% for _, label := range ss.Labels %}
-				,{%q= label.Name %}:{%q= label.Value %}
-			{% endfor %}
-		{% endif %}
+		{%s= ss.Labels %}
 	},
 	"values":[
-		{% code points := ss.Points %}
-		{% if len(points) > 0 %}
-			{%= formatStatsPoint(&points[0]) %}
-			{% code points = points[1:] %}
-			{% for i := range points %}
-				,{%= formatStatsPoint(&points[i]) %}
-			{% endfor %}
-		{% endif %}
+		{% for i := range ss.Points %}
+			{% if i > 0 %},{% endif %}
+			{%= formatStatsPoint(&ss.Points[i]) %}
+		{% endfor %}
 	]
 }
 {% endfunc %}
@@ -47,6 +44,25 @@
 	{%f= float64(p.Timestamp)/1e9 %},
 	{%q= p.Value %}
 ]
+{% endfunc %}
+
+{% func formatStatsHistogramBucketSeries(ss *statsSeries, bs *histogramBucketSeries) %}
+{
+	"metric":{
+		"__name__":{%q= ss.Name %}
+		{%s= ss.Labels %}
+		,"vmrange":{%q= bs.VMRange %}
+	},
+	"values":[
+		{% for i := range bs.Points %}
+			{% if i > 0 %},{% endif %}
+			[
+				{%f= float64(bs.Points[i].Timestamp)/1e9 %},
+				"{%dul= bs.Points[i].Hits %}"
+			]
+		{% endfor %}
+	]
+}
 {% endfunc %}
 
 {% endstripspace %}

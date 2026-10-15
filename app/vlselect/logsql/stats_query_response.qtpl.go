@@ -23,111 +23,73 @@ var (
 func StreamStatsQueryResponse(qw422016 *qt422016.Writer, shards []*[]statsRow) {
 //line stats_query_response.qtpl:4
 	qw422016.N().S(`{"status":"success","data":{"resultType":"vector","result":[`)
-//line stats_query_response.qtpl:10
-	isFirst := true
-
 //line stats_query_response.qtpl:11
-	for _, rows := range shards {
-//line stats_query_response.qtpl:12
-		for i := range *rows {
-//line stats_query_response.qtpl:13
-			if !isFirst {
-//line stats_query_response.qtpl:13
-				qw422016.N().S(`,`)
-//line stats_query_response.qtpl:13
-			}
+	isFirst := true
+	var buckets []histogramBucket
+
 //line stats_query_response.qtpl:14
-			isFirst = false
-
+	for _, rows := range shards {
 //line stats_query_response.qtpl:15
-			streamformatStatsRow(qw422016, &(*rows)[i])
+		for i := range *rows {
 //line stats_query_response.qtpl:16
-		}
-//line stats_query_response.qtpl:17
-	}
-//line stats_query_response.qtpl:17
-	qw422016.N().S(`]}}`)
-//line stats_query_response.qtpl:21
-}
+			if !isFirst {
+//line stats_query_response.qtpl:16
+				qw422016.N().S(`,`)
+//line stats_query_response.qtpl:16
+			}
+//line stats_query_response.qtpl:18
+			isFirst = false
+			r := &(*rows)[i]
 
 //line stats_query_response.qtpl:21
-func WriteStatsQueryResponse(qq422016 qtio422016.Writer, shards []*[]statsRow) {
-//line stats_query_response.qtpl:21
-	qw422016 := qt422016.AcquireWriter(qq422016)
-//line stats_query_response.qtpl:21
-	StreamStatsQueryResponse(qw422016, shards)
-//line stats_query_response.qtpl:21
-	qt422016.ReleaseWriter(qw422016)
-//line stats_query_response.qtpl:21
-}
-
-//line stats_query_response.qtpl:21
-func StatsQueryResponse(shards []*[]statsRow) string {
-//line stats_query_response.qtpl:21
-	qb422016 := qt422016.AcquireByteBuffer()
-//line stats_query_response.qtpl:21
-	WriteStatsQueryResponse(qb422016, shards)
-//line stats_query_response.qtpl:21
-	qs422016 := string(qb422016.B)
-//line stats_query_response.qtpl:21
-	qt422016.ReleaseByteBuffer(qb422016)
-//line stats_query_response.qtpl:21
-	return qs422016
-//line stats_query_response.qtpl:21
-}
+			if r.isHistogram {
+//line stats_query_response.qtpl:22
+				buckets, _ = appendHistogramBuckets(buckets[:0], r.Value)
 
 //line stats_query_response.qtpl:23
-func streamformatStatsRow(qw422016 *qt422016.Writer, r *statsRow) {
-//line stats_query_response.qtpl:23
-	qw422016.N().S(`{"metric":{"__name__":`)
+				for j := range buckets {
+//line stats_query_response.qtpl:24
+					if j > 0 {
+//line stats_query_response.qtpl:24
+						qw422016.N().S(`,`)
+//line stats_query_response.qtpl:24
+					}
+//line stats_query_response.qtpl:25
+					streamformatStatsHistogramBucketRow(qw422016, r, &buckets[j])
 //line stats_query_response.qtpl:26
-	qw422016.N().Q(r.Name)
+				}
 //line stats_query_response.qtpl:27
-	if len(r.Labels) > 0 {
+			} else {
 //line stats_query_response.qtpl:28
-		for _, label := range r.Labels {
-//line stats_query_response.qtpl:28
-			qw422016.N().S(`,`)
+				streamformatStatsRow(qw422016, r)
 //line stats_query_response.qtpl:29
-			qw422016.N().Q(label.Name)
-//line stats_query_response.qtpl:29
-			qw422016.N().S(`:`)
-//line stats_query_response.qtpl:29
-			qw422016.N().Q(label.Value)
+			}
 //line stats_query_response.qtpl:30
 		}
 //line stats_query_response.qtpl:31
 	}
 //line stats_query_response.qtpl:31
-	qw422016.N().S(`},"value":[`)
-//line stats_query_response.qtpl:33
-	qw422016.N().F(float64(r.Timestamp) / 1e9)
-//line stats_query_response.qtpl:33
-	qw422016.N().S(`,`)
-//line stats_query_response.qtpl:33
-	qw422016.N().Q(r.Value)
-//line stats_query_response.qtpl:33
-	qw422016.N().S(`]}`)
+	qw422016.N().S(`]}}`)
 //line stats_query_response.qtpl:35
 }
 
 //line stats_query_response.qtpl:35
-func writeformatStatsRow(qq422016 qtio422016.Writer, r *statsRow) {
+func WriteStatsQueryResponse(qq422016 qtio422016.Writer, shards []*[]statsRow) {
 //line stats_query_response.qtpl:35
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line stats_query_response.qtpl:35
-	streamformatStatsRow(qw422016, r)
+	StreamStatsQueryResponse(qw422016, shards)
 //line stats_query_response.qtpl:35
 	qt422016.ReleaseWriter(qw422016)
 //line stats_query_response.qtpl:35
 }
 
 //line stats_query_response.qtpl:35
-func formatStatsRow(r *statsRow) string {
+func StatsQueryResponse(shards []*[]statsRow) string {
 //line stats_query_response.qtpl:35
 	qb422016 := qt422016.AcquireByteBuffer()
 //line stats_query_response.qtpl:35
-	writeformatStatsRow(qb422016, r)
+	WriteStatsQueryResponse(qb422016, shards)
 //line stats_query_response.qtpl:35
 	qs422016 := string(qb422016.B)
 //line stats_query_response.qtpl:35
@@ -135,4 +97,102 @@ func formatStatsRow(r *statsRow) string {
 //line stats_query_response.qtpl:35
 	return qs422016
 //line stats_query_response.qtpl:35
+}
+
+//line stats_query_response.qtpl:37
+func streamformatStatsRow(qw422016 *qt422016.Writer, r *statsRow) {
+//line stats_query_response.qtpl:37
+	qw422016.N().S(`{"metric":{"__name__":`)
+//line stats_query_response.qtpl:40
+	qw422016.N().Q(r.Name)
+//line stats_query_response.qtpl:41
+	qw422016.N().S(r.Labels)
+//line stats_query_response.qtpl:41
+	qw422016.N().S(`},"value":[`)
+//line stats_query_response.qtpl:43
+	qw422016.N().F(float64(r.Timestamp) / 1e9)
+//line stats_query_response.qtpl:43
+	qw422016.N().S(`,`)
+//line stats_query_response.qtpl:43
+	qw422016.N().Q(r.Value)
+//line stats_query_response.qtpl:43
+	qw422016.N().S(`]}`)
+//line stats_query_response.qtpl:45
+}
+
+//line stats_query_response.qtpl:45
+func writeformatStatsRow(qq422016 qtio422016.Writer, r *statsRow) {
+//line stats_query_response.qtpl:45
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line stats_query_response.qtpl:45
+	streamformatStatsRow(qw422016, r)
+//line stats_query_response.qtpl:45
+	qt422016.ReleaseWriter(qw422016)
+//line stats_query_response.qtpl:45
+}
+
+//line stats_query_response.qtpl:45
+func formatStatsRow(r *statsRow) string {
+//line stats_query_response.qtpl:45
+	qb422016 := qt422016.AcquireByteBuffer()
+//line stats_query_response.qtpl:45
+	writeformatStatsRow(qb422016, r)
+//line stats_query_response.qtpl:45
+	qs422016 := string(qb422016.B)
+//line stats_query_response.qtpl:45
+	qt422016.ReleaseByteBuffer(qb422016)
+//line stats_query_response.qtpl:45
+	return qs422016
+//line stats_query_response.qtpl:45
+}
+
+//line stats_query_response.qtpl:47
+func streamformatStatsHistogramBucketRow(qw422016 *qt422016.Writer, r *statsRow, b *histogramBucket) {
+//line stats_query_response.qtpl:47
+	qw422016.N().S(`{"metric":{"__name__":`)
+//line stats_query_response.qtpl:50
+	qw422016.N().Q(r.Name)
+//line stats_query_response.qtpl:51
+	qw422016.N().S(r.Labels)
+//line stats_query_response.qtpl:51
+	qw422016.N().S(`,"vmrange":`)
+//line stats_query_response.qtpl:52
+	qw422016.N().Q(b.VMRange)
+//line stats_query_response.qtpl:52
+	qw422016.N().S(`},"value":[`)
+//line stats_query_response.qtpl:54
+	qw422016.N().F(float64(r.Timestamp) / 1e9)
+//line stats_query_response.qtpl:54
+	qw422016.N().S(`,"`)
+//line stats_query_response.qtpl:54
+	qw422016.N().DUL(b.Hits)
+//line stats_query_response.qtpl:54
+	qw422016.N().S(`"]}`)
+//line stats_query_response.qtpl:56
+}
+
+//line stats_query_response.qtpl:56
+func writeformatStatsHistogramBucketRow(qq422016 qtio422016.Writer, r *statsRow, b *histogramBucket) {
+//line stats_query_response.qtpl:56
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line stats_query_response.qtpl:56
+	streamformatStatsHistogramBucketRow(qw422016, r, b)
+//line stats_query_response.qtpl:56
+	qt422016.ReleaseWriter(qw422016)
+//line stats_query_response.qtpl:56
+}
+
+//line stats_query_response.qtpl:56
+func formatStatsHistogramBucketRow(r *statsRow, b *histogramBucket) string {
+//line stats_query_response.qtpl:56
+	qb422016 := qt422016.AcquireByteBuffer()
+//line stats_query_response.qtpl:56
+	writeformatStatsHistogramBucketRow(qb422016, r, b)
+//line stats_query_response.qtpl:56
+	qs422016 := string(qb422016.B)
+//line stats_query_response.qtpl:56
+	qt422016.ReleaseByteBuffer(qb422016)
+//line stats_query_response.qtpl:56
+	return qs422016
+//line stats_query_response.qtpl:56
 }
