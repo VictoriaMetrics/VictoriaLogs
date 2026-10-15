@@ -37,7 +37,7 @@ func (ps *pipeSetStreamFields) canLiveTail() bool {
 	return true
 }
 
-func (ps *pipeSetStreamFields) canReturnLastNResults() bool {
+func (ps *pipeSetStreamFields) canReturnTimeSortedNResults() bool {
 	return true
 }
 

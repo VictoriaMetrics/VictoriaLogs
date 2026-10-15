@@ -43,7 +43,7 @@ func (ps *pipeSplit) canLiveTail() bool {
 	return true
 }
 
-func (ps *pipeSplit) canReturnLastNResults() bool {
+func (ps *pipeSplit) canReturnTimeSortedNResults() bool {
 	return ps.dstField != "_time"
 }
 

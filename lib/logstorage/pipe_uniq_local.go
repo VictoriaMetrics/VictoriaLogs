@@ -35,7 +35,7 @@ func (pu *pipeUniqLocal) canLiveTail() bool {
 	return false
 }
 
-func (pu *pipeUniqLocal) canReturnLastNResults() bool {
+func (pu *pipeUniqLocal) canReturnTimeSortedNResults() bool {
 	return false
 }
 

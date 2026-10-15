@@ -28,7 +28,7 @@ func (pg *pipeGenerateSequence) canLiveTail() bool {
 	return false
 }
 
-func (pg *pipeGenerateSequence) canReturnLastNResults() bool {
+func (pg *pipeGenerateSequence) canReturnTimeSortedNResults() bool {
 	return false
 }
 

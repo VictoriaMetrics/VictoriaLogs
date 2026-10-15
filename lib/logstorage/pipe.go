@@ -28,10 +28,10 @@ type pipe interface {
 	// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 	canLiveTail() bool
 
-	// canReturnLastNResults must return true if the given pipe can return last N results ordered by _time desc
+	// canReturnTimeSortedNResults must return true if the given pipe can return N results sorted by _time in either direction.
 	//
-	// The pipe can return last N results if it doesn't modify the _time field.
-	canReturnLastNResults() bool
+	// The pipe can return time-sorted N results if it doesn't modify or remove the _time field.
+	canReturnTimeSortedNResults() bool
 
 	// isFixedOutputFieldsOrder must return true if the pipe returns the output log fields in a fixed order.
 	isFixedOutputFieldsOrder() bool

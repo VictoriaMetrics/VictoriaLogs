@@ -50,7 +50,7 @@ func (pl *pipeLast) canLiveTail() bool {
 	return false
 }
 
-func (pl *pipeLast) canReturnLastNResults() bool {
+func (pl *pipeLast) canReturnTimeSortedNResults() bool {
 	return false
 }
 

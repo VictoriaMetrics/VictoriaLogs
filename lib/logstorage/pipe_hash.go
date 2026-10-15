@@ -35,7 +35,7 @@ func (ph *pipeHash) canLiveTail() bool {
 	return true
 }
 
-func (ph *pipeHash) canReturnLastNResults() bool {
+func (ph *pipeHash) canReturnTimeSortedNResults() bool {
 	return ph.resultField != "_time"
 }
 

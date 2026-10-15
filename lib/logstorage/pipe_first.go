@@ -25,7 +25,7 @@ func (pf *pipeFirst) canLiveTail() bool {
 	return false
 }
 
-func (pf *pipeFirst) canReturnLastNResults() bool {
+func (pf *pipeFirst) canReturnTimeSortedNResults() bool {
 	return false
 }
 

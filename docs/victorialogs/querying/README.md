@@ -84,6 +84,12 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10'
   ```
 
+  By default `limit=N` returns the `N` most recent log entries (those with the biggest `_time` values). Pass `sort_direction=asc` to return the `N` oldest log entries instead:
+
+  ```sh
+  curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10' -d 'sort_direction=asc'
+  ```
+
 - By adding [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe) to the query. For example, the following command returns up to 10 **random** log entries
   with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
@@ -97,8 +103,8 @@ By default the `/select/logsql/query` returns all the log entries matching the g
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting
-up to `<N>` matching logs with the biggest [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values on the selected time range,
-while skipping `<M>` logs with the biggest `_time` value.
+up to `<N>` matching logs on the selected time range while skipping `<M>` logs from the same end.
+The end used for both `limit` and `offset` is controlled by `sort_direction`: `desc` (default) paginates from the most recent logs, `asc` paginates from the oldest logs.
 
 The `/select/logsql/query` endpoint returns [a stream of JSON lines](https://jsonlines.org/),
 where each line contains JSON-encoded log entry in the form `{field1="value1",...,fieldN="valueN"}`.
@@ -118,7 +124,8 @@ without worrying about resource usage at VictoriaLogs side. See [these docs](htt
 The returned lines aren't sorted by default, since sorting disables the ability to send matching log entries to response stream as soon as they are found.
 Query results can be sorted in the following ways:
 
-- By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned in the response.
+- By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned by default.
+  Pass `sort_direction=asc` to return the `N` oldest matching log entries instead.
 - By adding [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) to the query.
 - By using Unix `sort` command at client side according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 

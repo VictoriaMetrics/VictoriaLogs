@@ -31,7 +31,7 @@ func (pf *pipeFields) canLiveTail() bool {
 	return true
 }
 
-func (pf *pipeFields) canReturnLastNResults() bool {
+func (pf *pipeFields) canReturnTimeSortedNResults() bool {
 	return prefixfilter.MatchFilters(pf.fieldFilters, "_time")
 }
 
