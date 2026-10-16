@@ -62,3 +62,49 @@ func TestAppendHistogramBuckets_Failure(t *testing.T) {
 	f(`[{"vmrange":"a","hits":1,"x":2}]`)
 	f(`[{"hits":1,"vmrange":"a"}]`)
 }
+
+func TestHistogramSeriesSplitter(t *testing.T) {
+	type bucketPoint struct {
+		ts   int64
+		hits uint64
+	}
+	f := func(points []statsPoint, resultExpected map[string][]bucketPoint, vmrangesExpected []string) {
+		t.Helper()
+
+		var hss histogramSeriesSplitter
+		var vmranges []string
+		result := make(map[string][]bucketPoint)
+		for _, bs := range hss.split(points) {
+			vmranges = append(vmranges, bs.VMRange)
+			for _, p := range bs.Points {
+				result[bs.VMRange] = append(result[bs.VMRange], bucketPoint{ts: p.Timestamp, hits: p.Hits})
+			}
+		}
+		if !reflect.DeepEqual(vmranges, vmrangesExpected) {
+			t.Fatalf("unexpected vmranges\ngot\n%v\nwant\n%v", vmranges, vmrangesExpected)
+		}
+		if !reflect.DeepEqual(result, resultExpected) {
+			t.Fatalf("unexpected result\ngot\n%v\nwant\n%v", result, resultExpected)
+		}
+	}
+
+	// A single point
+	f([]statsPoint{
+		{Timestamp: 10, Value: `[{"vmrange":"b","hits":2},{"vmrange":"a","hits":1}]`},
+	}, map[string][]bucketPoint{
+		"a": {{10, 1}},
+		"b": {{10, 2}},
+	}, []string{"a", "b"})
+
+	// Buckets which are missing at some timestamps
+	f([]statsPoint{
+		{Timestamp: 10, Value: `[{"vmrange":"a","hits":1},{"vmrange":"c","hits":3}]`},
+		{Timestamp: 20, Value: `[]`},
+		{Timestamp: 30, Value: `[{"vmrange":"b","hits":4},{"vmrange":"c","hits":5}]`},
+		{Timestamp: 40, Value: `[{"vmrange":"a","hits":6}]`},
+	}, map[string][]bucketPoint{
+		"a": {{10, 1}, {40, 6}},
+		"b": {{30, 4}},
+		"c": {{10, 3}, {30, 5}},
+	}, []string{"a", "b", "c"})
+}
