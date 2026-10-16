@@ -1,19 +1,20 @@
 {% stripspace %}
 
 // StatsQueryResponse generates response for /select/logsql/stats_query
-{% func StatsQueryResponse(rows []statsRow) %}
+{% func StatsQueryResponse(shards []*[]statsRow) %}
 {
 	"status":"success",
 	"data":{
 		"resultType":"vector",
 		"result":[
-			{% if len(rows) > 0 %}
-				{%= formatStatsRow(&rows[0]) %}
-				{% code rows = rows[1:] %}
-				{% for i := range rows %}
-					,{%= formatStatsRow(&rows[i]) %}
+			{% code isFirst := true %}
+			{% for _, rows := range shards %}
+				{% for i := range *rows %}
+					{% if !isFirst %},{% endif %}
+					{% code isFirst = false %}
+					{%= formatStatsRow(&(*rows)[i]) %}
 				{% endfor %}
-			{% endif %}
+			{% endfor %}
 		]
 	}
 }

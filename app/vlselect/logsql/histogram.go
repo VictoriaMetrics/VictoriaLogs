@@ -2,28 +2,11 @@ package logsql
 
 import (
 	"strings"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-
-	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 type histogramBucket struct {
 	VMRange string
 	Hits    uint64
-}
-
-// newHistogramBucketLabels returns a copy of labels with the vmrange label for b.
-//
-// The vmrange value is interned, so the returned labels do not reference the histogram value b was parsed from.
-// The number of distinct vmrange values is small, so interning doesn't allocate in the steady state.
-func newHistogramBucketLabels(labels []logstorage.Field, b histogramBucket) []logstorage.Field {
-	bucketLabels := make([]logstorage.Field, 0, len(labels)+1)
-	bucketLabels = append(bucketLabels, labels...)
-	return append(bucketLabels, logstorage.Field{
-		Name:  "vmrange",
-		Value: bytesutil.InternString(b.VMRange),
-	})
 }
 
 // appendHistogramBuckets parses the output of histogram() stats function and appends the parsed buckets to dst.
