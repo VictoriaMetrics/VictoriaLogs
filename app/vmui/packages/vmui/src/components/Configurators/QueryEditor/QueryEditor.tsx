@@ -74,6 +74,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
     setCaretUpdateId(previous => previous + 1);
     setCaretPositionAutocomplete(caret);
     setAutocompleteDismissed(!keepOpen);
+    if (keepOpen) setAutocompleteKey(previous => previous + 1);
   };
 
   const handleChange = (val: string) => {

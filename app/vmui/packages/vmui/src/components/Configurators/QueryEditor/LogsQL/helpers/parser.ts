@@ -75,6 +75,16 @@ export const splitLogicalParts = (expr: string) => {
       if (!nextStr.startsWith(":") && !prevStr.endsWith(":")) {
         pushPart(currentPart + whitespace, false, [startIndex, endIndex - 1], parts, separator);
 
+        if (endIndex === input.length) {
+          parts.push({
+            id: parts.length,
+            value: "",
+            position: [endIndex, endIndex],
+            type: LogicalPartType.Filter,
+            separator: "",
+          });
+        }
+
         currentPart = "";
         startIndex = endIndex;
         i = endIndex - 1;
