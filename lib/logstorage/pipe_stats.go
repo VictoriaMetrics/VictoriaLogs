@@ -1577,6 +1577,7 @@ func initStatsFuncParsers() {
 		"count_empty":     parseStatsCountEmpty,
 		"count_uniq":      parseStatsCountUniq,
 		"count_uniq_hash": parseStatsCountUniqHash,
+		"count_uniq_hll":  parseStatsCountUniqHLL,
 		"field_max":       parseStatsFieldMax,
 		"field_min":       parseStatsFieldMin,
 		"histogram":       parseStatsHistogram,
