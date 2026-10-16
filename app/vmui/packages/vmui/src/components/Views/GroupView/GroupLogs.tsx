@@ -55,7 +55,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
       return {
         keys: item.keys,
-        keysString: item.keys.join(""),
+        keysString: JSON.stringify(item.keys),
         values,
         pairs,
         total: values.length,
