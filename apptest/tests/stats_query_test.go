@@ -171,6 +171,37 @@ func TestStatsQueryHistogram(t *testing.T) {
 	}
 }
 
+// Verifies the labels, values and order of series for histogram() mixed with other stats functions and several by (...) fields.
+func TestStatsQueryHistogramByMultipleFields(t *testing.T) {
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlsingle()
+
+	records := []string{
+		`{"_time":"2025-01-01T00:00:01Z","size":1,"x":"a","y":"p"}`,
+		`{"_time":"2025-01-01T00:00:02Z","size":2,"x":"a"}`,
+		`{"_time":"2025-01-01T00:00:04Z","size":1,"x":"a","y":"p"}`,
+		`{"_time":"2025-01-01T00:00:05Z","size":3,"x":"b","y":"q"}`,
+		`{"_time":"2025-01-01T00:00:07Z","size":3,"x":"b","y":"q"}`,
+		`{"_time":"2025-01-01T00:00:08Z","size":2,"y":"p"}`,
+		`{"_time":"2025-01-01T00:00:08Z","size":4}`,
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	query := "* | stats by (x, y) histogram(size) as size, count() as hits | sort by (x, y)"
+	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"size_bucket","x":"","y":"","vmrange":"3.594e+00...4.084e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"hits","x":"","y":""},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"","y":"p","vmrange":"1.896e+00...2.154e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"hits","x":"","y":"p"},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"a","y":"","vmrange":"1.896e+00...2.154e+00"},"value":[1735689600,"1"]},{"metric":{"__name__":"hits","x":"a","y":""},"value":[1735689600,"1"]},{"metric":{"__name__":"size_bucket","x":"a","y":"p","vmrange":"8.799e-01...1.000e+00"},"value":[1735689600,"2"]},{"metric":{"__name__":"hits","x":"a","y":"p"},"value":[1735689600,"2"]},{"metric":{"__name__":"size_bucket","x":"b","y":"q","vmrange":"2.783e+00...3.162e+00"},"value":[1735689600,"2"]},{"metric":{"__name__":"hits","x":"b","y":"q"},"value":[1735689600,"2"]}]}}`
+
+	response, statusCode := sut.StatsQueryRaw(t, query, apptest.StatsQueryOpts{Time: "2025-01-01T00:00:00Z"})
+	if statusCode != http.StatusOK {
+		t.Fatalf("unexpected statusCode when executing query %q; got %d; want %d", query, statusCode, http.StatusOK)
+	}
+	if response != responseExpected {
+		t.Fatalf("unexpected response\ngot\n%s\nwant\n%s", response, responseExpected)
+	}
+}
+
 func TestStatsQueryRelativeTime(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
