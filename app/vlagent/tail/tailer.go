@@ -189,7 +189,7 @@ func (fc *Tailer) process(lf *logFile, proc Processor) {
 	defer lf.close()
 	defer proc.MustClose()
 
-	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
+	bt := timeutil.NewBackoffTimer(200*time.Millisecond, 2*time.Second)
 
 	for {
 		if needStop(fc.stopCh) {
