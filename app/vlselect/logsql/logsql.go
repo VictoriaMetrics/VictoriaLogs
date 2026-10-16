@@ -1,6 +1,7 @@
 package logsql
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
@@ -1031,8 +1032,34 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
-	WriteStatsQueryRangeResponse(w, rows)
+	bw := getStatsResponseWriter(w)
+	defer putStatsResponseWriter(bw)
+	WriteStatsQueryRangeResponse(bw, rows)
+	_ = bw.Flush()
 }
+
+// getStatsResponseWriter returns a buffered writer for /select/logsql/stats_query and /select/logsql/stats_query_range responses.
+//
+// The writer must be returned to the pool with putStatsResponseWriter after use.
+//
+// These responses may take hundreds of megabytes for stats functions such as histogram() with many distinct by (...) values.
+// The 64KB buffers from bufferedwriter result in visible overhead for such responses, since every buffer is sent in a separate write call.
+func getStatsResponseWriter(w io.Writer) *bufio.Writer {
+	v := statsResponseWriterPool.Get()
+	if v == nil {
+		return bufio.NewWriterSize(w, 1024*1024)
+	}
+	bw := v.(*bufio.Writer)
+	bw.Reset(w)
+	return bw
+}
+
+func putStatsResponseWriter(bw *bufio.Writer) {
+	bw.Reset(nil)
+	statsResponseWriterPool.Put(bw)
+}
+
+var statsResponseWriterPool sync.Pool
 
 type statsSeries struct {
 	key string
@@ -1154,7 +1181,10 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	ca.writeResponseHeaders(h, startTime)
 
 	// Write response
-	WriteStatsQueryResponse(w, rows)
+	bw := getStatsResponseWriter(w)
+	defer putStatsResponseWriter(bw)
+	WriteStatsQueryResponse(bw, rows)
+	_ = bw.Flush()
 }
 
 type statsRow struct {
