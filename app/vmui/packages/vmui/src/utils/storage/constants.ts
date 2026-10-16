@@ -22,6 +22,7 @@ export const ALL_STORAGE_KEYS = [
   "LOGS_INCREMENTAL_TIMEOUT",
   "LOGS_LIMIT_WARN_DISMISSED",
   "LOGS_GROUP_BY_RECENT",
+  "GROUP_EXPANSION",
 ] as const;
 
 export const TABLE_KEYS = {

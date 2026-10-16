@@ -1,25 +1,40 @@
-import { StorageKeys, StorageValue } from "./types";
+import { StorageKeys, StorageOptions, StorageValue } from "./types";
 import { toPrefixedKey } from "./utils";
 
-export const saveToStorage = (key: StorageKeys, value: StorageValue, withPrefix = true): void => {
+const resolveStorageOptions = (options?: StorageOptions) => {
+  return {
+    withPrefix: options?.withPrefix ?? true,
+    storage: options?.storage === "session" ? window.sessionStorage : window.localStorage,
+  };
+};
+
+export const saveToStorage = (key: StorageKeys, value: StorageValue, options?: StorageOptions): void => {
   try {
+    const { withPrefix, storage } = resolveStorageOptions(options);
     const storageKey = withPrefix ? toPrefixedKey(key) : key;
 
     if (value) {
       // keeping object in storage so that keeping the string is not different from keeping
-      window.localStorage.setItem(storageKey, JSON.stringify({ value }));
+      storage.setItem(storageKey, JSON.stringify({ value }));
     } else {
-      window.localStorage.removeItem(storageKey);
+      storage.removeItem(storageKey);
     }
-    window.dispatchEvent(new StorageEvent("storage", { key: storageKey, newValue: JSON.stringify({ value }) }));
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: storageKey,
+        newValue: JSON.stringify({ value }),
+        storageArea: storage,
+      })
+    );
   } catch (e) {
     console.error(e);
   }
 };
 
-export const getFromStorage = (key: StorageKeys, withPrefix = true): undefined | StorageValue => {
+export const getFromStorage = (key: StorageKeys, options?: StorageOptions): undefined | StorageValue => {
+  const { withPrefix, storage } = resolveStorageOptions(options);
   const storageKey = withPrefix ? toPrefixedKey(key) : key;
-  const valueObj = window.localStorage.getItem(storageKey);
+  const valueObj = storage.getItem(storageKey);
 
   if (valueObj === null) return undefined;
 
@@ -30,10 +45,17 @@ export const getFromStorage = (key: StorageKeys, withPrefix = true): undefined |
   }
 };
 
-export const removeFromStorage = (keys: StorageKeys[], withPrefix = true): void => {
+export const removeFromStorage = (keys: StorageKeys[], options?: StorageOptions): void => {
+  const { withPrefix, storage } = resolveStorageOptions(options);
   const storageKeys = withPrefix ? keys.map(toPrefixedKey) : keys;
+
   storageKeys.forEach(k => {
-    window.localStorage.removeItem(k);
-    window.dispatchEvent(new StorageEvent("storage", { key: k }));
+    storage.removeItem(k);
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: k,
+        storageArea: storage,
+      })
+    );
   });
 };
