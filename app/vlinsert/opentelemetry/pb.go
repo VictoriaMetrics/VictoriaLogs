@@ -18,7 +18,7 @@ type pushLogsHandler func(timestamp int64, fields []logstorage.Field, streamFiel
 // decodeLogsData parses a LogsData protobuf message from src and calls the provided pushLogs for each decoded log record.
 //
 // See https://github.com/open-telemetry/opentelemetry-proto/blob/a5f0eac5b802f7ae51dfe41e5116fe5548955e64/opentelemetry/proto/logs/v1/logs.proto#L38
-func decodeLogsData(src []byte, pushLogs pushLogsHandler) (err error) {
+func decodeLogsData(src []byte, pushLogs pushLogsHandler, useConsistentPrefix bool) (err error) {
 	// message LogsData {
 	//   repeated ResourceLogs resource_logs = 1;
 	// }
@@ -36,7 +36,7 @@ func decodeLogsData(src []byte, pushLogs pushLogsHandler) (err error) {
 				return fmt.Errorf("cannot read ResourceLogs data")
 			}
 
-			if err := decodeResourceLogs(data, pushLogs); err != nil {
+			if err := decodeResourceLogs(data, pushLogs, useConsistentPrefix); err != nil {
 				return fmt.Errorf("cannot decode ResourceLogs: %w", err)
 			}
 		}
@@ -44,7 +44,7 @@ func decodeLogsData(src []byte, pushLogs pushLogsHandler) (err error) {
 	return nil
 }
 
-func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
+func decodeResourceLogs(src []byte, pushLogs pushLogsHandler, useConsistentPrefix bool) (err error) {
 	// message ResourceLogs {
 	//   Resource resource = 1;
 	//   repeated ScopeLogs scope_logs = 2;
@@ -67,7 +67,7 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 		return fmt.Errorf("cannot find Resource: %w", err)
 	}
 	if ok {
-		if err = decodeResource(resourceData, fs, fb); err != nil {
+		if err = decodeResource(resourceData, fs, fb, useConsistentPrefix); err != nil {
 			return fmt.Errorf("cannot decode Resource: %w", err)
 		}
 	}
@@ -89,7 +89,7 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 				return fmt.Errorf("cannot read ScopeLogs data")
 			}
 
-			if err := decodeScopeLogs(data, fs, fb, pushLogs); err != nil {
+			if err := decodeScopeLogs(data, fs, fb, pushLogs, useConsistentPrefix); err != nil {
 				return fmt.Errorf("cannot decode ScopeLogs: %w", err)
 			}
 
@@ -101,10 +101,15 @@ func decodeResourceLogs(src []byte, pushLogs pushLogsHandler) (err error) {
 	return nil
 }
 
-func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error) {
+func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer, useConsistentPrefix bool) (err error) {
 	// message Resource {
 	//   repeated KeyValue attributes = 1;
 	// }
+
+	attributesPrefix := ""
+	if useConsistentPrefix {
+		attributesPrefix = "resource.attribute"
+	}
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
@@ -119,7 +124,7 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 				return fmt.Errorf("cannot read Attributes data")
 			}
 
-			if err := decodeKeyValue(data, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(data, fs, fb, attributesPrefix); err != nil {
 				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
@@ -127,7 +132,7 @@ func decodeResource(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (err error
 	return nil
 }
 
-func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs pushLogsHandler) (err error) {
+func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs pushLogsHandler, useConsistentPrefix bool) (err error) {
 	// message ScopeLogs {
 	//   InstrumentationScope scope = 1;
 	//   repeated LogRecord log_records = 2;
@@ -140,7 +145,7 @@ func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs 
 		return fmt.Errorf("cannot read InstrumentationScope: %w", err)
 	}
 	if ok {
-		if err := decodeInstrumentationScope(scopeData, fs, fb); err != nil {
+		if err := decodeInstrumentationScope(scopeData, fs, fb, useConsistentPrefix); err != nil {
 			return fmt.Errorf("cannot decode InstrumentationScope: %w", err)
 		}
 	}
@@ -161,7 +166,7 @@ func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs 
 				return fmt.Errorf("cannot read LogRecord data")
 			}
 
-			eventName, timestamp, err := decodeLogRecord(data, fs, fb)
+			eventName, timestamp, err := decodeLogRecord(data, fs, fb, useConsistentPrefix)
 			if err != nil {
 				return fmt.Errorf("cannot decode LogRecord: %w", err)
 			}
@@ -191,7 +196,7 @@ func decodeScopeLogs(src []byte, fs *logstorage.Fields, fb *fmtBuffer, pushLogs 
 	return nil
 }
 
-func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer) error {
+func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer, useConsistentPrefix bool) error {
 	// See https://github.com/open-telemetry/opentelemetry-proto/blob/a5f0eac5b802f7ae51dfe41e5116fe5548955e64/opentelemetry/proto/common/v1/common.proto#L76
 	//
 	// message InstrumentationScope {
@@ -220,6 +225,11 @@ func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer
 	}
 	fs.Add("scope.version", version)
 
+	attributesPrefix := "scope.attributes"
+	if useConsistentPrefix {
+		attributesPrefix = "scope.attribute"
+	}
+
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
 		src, err = fc.NextField(src)
@@ -232,7 +242,7 @@ func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer
 			if !ok {
 				return fmt.Errorf("cannot read Attributes data")
 			}
-			if err := decodeKeyValue(attributesData, fs, fb, "scope.attributes"); err != nil {
+			if err := decodeKeyValue(attributesData, fs, fb, attributesPrefix); err != nil {
 				return fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		}
@@ -241,7 +251,7 @@ func decodeInstrumentationScope(src []byte, fs *logstorage.Fields, fb *fmtBuffer
 	return nil
 }
 
-func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, int64, error) {
+func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer, useConsistentPrefix bool) (string, int64, error) {
 	// See https://github.com/open-telemetry/opentelemetry-proto/blob/a5f0eac5b802f7ae51dfe41e5116fe5548955e64/opentelemetry/proto/logs/v1/logs.proto#L136
 	//
 	// message LogRecord {
@@ -263,6 +273,13 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 		severityNumber       int32
 		eventName            string
 	)
+
+	attributesPrefix := ""
+	bodyPrefix := ""
+	if useConsistentPrefix {
+		attributesPrefix = "log.attribute"
+		bodyPrefix = "body"
+	}
 
 	var fc easyproto.FieldContext
 	for len(src) > 0 {
@@ -298,7 +315,8 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Body")
 			}
-			if err := decodeAnyValue(body, fs, fb, ""); err != nil {
+			// The empty field name means the _msg field.
+			if err := decodeAnyValue(body, fs, fb, "", bodyPrefix); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:
@@ -306,7 +324,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Attributes data")
 			}
-			if err := decodeKeyValue(attributesData, fs, fb, ""); err != nil {
+			if err := decodeKeyValue(attributesData, fs, fb, attributesPrefix); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Attributes: %w", err)
 			}
 		case 9:
@@ -380,14 +398,15 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return nil
 	}
 
-	if err := decodeAnyValue(valueData, fs, fb, fieldName); err != nil {
+	if err := decodeAnyValue(valueData, fs, fb, fieldName, fieldName); err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
 
 	return nil
 }
 
-func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
+// decodeAnyValue stores scalar and array values in the fieldName field, while kvlist values are flattened into fields with the kvlistPrefix.
+func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName, kvlistPrefix string) (err error) {
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -456,7 +475,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 			if !ok {
 				return fmt.Errorf("cannot read KeyValueList")
 			}
-			if err := decodeKeyValueList(data, fs, fb, fieldName); err != nil {
+			if err := decodeKeyValueList(data, fs, fb, kvlistPrefix); err != nil {
 				return fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 		case 7:
