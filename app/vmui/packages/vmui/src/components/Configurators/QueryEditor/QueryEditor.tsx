@@ -14,7 +14,7 @@ export interface QueryEditorAutocompleteProps {
   value: string;
   anchorEl: RefObject<HTMLElement>;
   caretPosition: [number, number]; // [start, end]
-  onSelect: (val: string, caretPosition: number) => void;
+  onSelect: (val: string, caretPosition: number, keepOpen?: boolean) => void;
   onPointerDownDetails: () => void;
 }
 
@@ -58,16 +58,22 @@ const QueryEditor: FC<QueryEditorProps> = ({
   const [autocompleteDismissed, setAutocompleteDismissed] = useState(false);
   const [caretPositionAutocomplete, setCaretPositionAutocomplete] = useState<[number, number]>([0, 0]);
   const [caretPositionInput, setCaretPositionInput] = useState<[number, number]>([value.length, value.length]);
+  const [caretUpdateId, setCaretUpdateId] = useState(0);
   const autocompleteAnchorEl = useRef<HTMLDivElement>(null);
   const pointerDownInDetails = useRef(false);
 
   const executionTimeMs = stats?.executionTimeMs;
   const labelPostfix = executionTimeMs ? ` (${formatRequestDuration(executionTimeMs)})` : "";
 
-  const handleSelect = (val: string, caretPosition: number) => {
+  const handleSelect = (val: string, caretPosition: number, keepOpen = false) => {
+    const position = Math.min(caretPosition, val.length);
+    const caret: [number, number] = [position, position];
+
     onChange(val);
-    setCaretPositionInput([caretPosition, caretPosition]);
-    setAutocompleteDismissed(true);
+    setCaretPositionInput(caret);
+    setCaretUpdateId(previous => previous + 1);
+    setCaretPositionAutocomplete(caret);
+    setAutocompleteDismissed(!keepOpen);
   };
 
   const handleChange = (val: string) => {
@@ -100,7 +106,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
   };
 
   const handleKeyDown = (e: TextFieldKeyboardEvent) => {
-    const { key, ctrlKey, metaKey, shiftKey } = e;
+    const { key, code, ctrlKey, metaKey, shiftKey, altKey } = e;
     const target = e.target as HTMLTextAreaElement;
 
     const value = target.value || "";
@@ -111,6 +117,12 @@ const QueryEditor: FC<QueryEditorProps> = ({
     const arrowDown = key === "ArrowDown";
     const enter = key === "Enter";
     const isSlash = key === "/";
+
+    if (code === "Space" && (ctrlKey || altKey)) {
+      e.preventDefault();
+      setAutocompleteDismissed(false);
+      setAutocompleteKey(previous => previous + 1);
+    }
 
     // prev value from history
     if (arrowUp && ctrlMetaKey) {
@@ -167,6 +179,7 @@ const QueryEditor: FC<QueryEditorProps> = ({
         disabled={disabled}
         inputmode={"search"}
         caretPosition={caretPositionInput}
+        caretUpdateId={caretUpdateId}
         onFocus={handleFocus}
         onBlur={handleBlur}
         endIcon={<QueryEditorHotkeysTip/>}
