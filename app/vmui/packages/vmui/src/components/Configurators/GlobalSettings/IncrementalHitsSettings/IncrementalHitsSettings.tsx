@@ -24,7 +24,7 @@ const IncrementalHitsSettings: FC = () => {
         />
       </div>
       <div className="vm-time-override-controller__description vm-incremental-hits-settings__description">
-        Load slow hits queries incrementally after this delay. Select Off to disable.
+        If logs don’t load within this delay, load hits incrementally, then retry loading logs.
       </div>
     </div>
   );

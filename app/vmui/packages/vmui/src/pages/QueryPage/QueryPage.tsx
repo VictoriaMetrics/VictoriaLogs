@@ -132,14 +132,12 @@ const QueryPage: FC = () => {
           timeOverridden={queryHasTimeFilter}
         />
 
-        {!logsRequestState.error && (
-          <HitsPanel
-            {...hitsRequestState}
-            query={appliedQuery}
-            period={period}
-            step={step}
-          />
-        )}
+        <HitsPanel
+          {...hitsRequestState}
+          query={appliedQuery}
+          period={period}
+          step={step}
+        />
         <QueryPageBody
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}

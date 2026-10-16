@@ -10,7 +10,6 @@ import { fetchHitsStats } from "../utils/fetchHitsStats";
 import { fetchHitsOnce } from "../utils/fetchHitsOnce";
 import { fetchHitsIterative } from "../utils/fetchHitsIterative";
 import { mergeLogHits } from "../utils/mergeLogHits";
-import { useIncrementalTimeout } from "../HitsPanel/hooks/useIncrementalTimeout";
 
 export interface FetchHitsParams {
   query: string;
@@ -20,7 +19,7 @@ export interface FetchHitsParams {
   fieldsLimit?: number;
   step: string | null;
   queryMode?: GRAPH_QUERY_MODE
-  allowIterative?: boolean;
+  isIterative?: boolean;
 }
 
 interface OptionsParams extends FetchHitsParams {
@@ -33,7 +32,6 @@ export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
   const [hideChart] = useHideChart();
-  const { incrementalTimeoutMs } = useIncrementalTimeout();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean; }>([]);
@@ -84,8 +82,6 @@ export const useFetchHits = () => {
     abortControllerRef.current.abort();
 
     const loadController = new AbortController();
-    const firstRequestController = new AbortController();
-    loadController.signal.addEventListener("abort", () => firstRequestController.abort(), { once: true });
 
     abortControllerRef.current = loadController;
 
@@ -96,58 +92,42 @@ export const useFetchHits = () => {
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));
 
-    let timeoutId: number | undefined = undefined;
-
-    if (!isStatsMode && (params.allowIterative ?? true) && incrementalTimeoutMs) {
-      timeoutId = window.setTimeout(() => {
-        firstRequestController.abort();
-      }, incrementalTimeoutMs);
-    }
-
-    const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
-
-    isIterativeRef.current = false;
     setLogHits([]);
     setDurationMs(undefined);
     setError(undefined);
     updatePaused(false);
 
+    const isIterative = !isStatsMode && Boolean(params.isIterative);
+    isIterativeRef.current = isIterative;
+
     try {
-      const options = getOptions({ ...params, signal: firstRequestController.signal });
+      const options = getOptions({ ...params, signal: loadController.signal });
       const init = { ...options, url: serverUrl };
 
-      try {
+      if (isIterative) {
+        await fetchHitsIterative({
+          ...init,
+          isPausedRef,
+          onUpdateLoading: (hit) => {
+            if (loadController.signal.aborted) return;
+            handleUpdateLoadingHits(hit);
+          },
+          onUpdate: (hits, durationMs) => {
+            if (loadController.signal.aborted) return;
+            handleUpdateIterative(hits, durationMs);
+          },
+        });
+      } else {
+        const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
         const { hits, durationMs } = await fetchFunc(init);
 
         if (loadController.signal.aborted) return "aborted";
 
-        isIterativeRef.current = false;
         setDurationMs(durationMs);
         setLogHits(hits);
-        return "success";
-      } catch (error) {
-        if (loadController.signal.aborted) return "aborted";
-        const isAbortError = error instanceof Error && error.name === "AbortError";
-        if (!firstRequestController.signal.aborted || !isAbortError) {
-          // noinspection ExceptionCaughtLocallyJS
-          throw error;
-        }
       }
 
-      init.signal = loadController.signal;
-      isIterativeRef.current = true;
-
-      await fetchHitsIterative({
-        ...init,
-        isPausedRef,
-        onUpdateLoading: handleUpdateLoadingHits,
-        onUpdate: (hits, durationMs) => {
-          if (loadController.signal.aborted) return;
-          handleUpdateIterative(hits, durationMs);
-        },
-      });
-
-      return !loadController.signal.aborted ? "success" : "aborted";
+      return loadController.signal.aborted ? "aborted" : "success";
     } catch (error) {
       if (loadController.signal.aborted) return "aborted";
 
@@ -155,7 +135,7 @@ export const useFetchHits = () => {
       if (isError && error.name === "AbortError") return "aborted";
       setError(isError ? error.message : String(error));
 
-      if (!isIterativeRef.current) {
+      if (!isIterative) {
         setLogHits([]);
         setDurationMs(undefined);
       }
@@ -163,14 +143,13 @@ export const useFetchHits = () => {
       return "error";
     } finally {
       setIsLoading(prev => ({ ...prev, [id]: false }));
-      clearTimeout(timeoutId);
 
       if (abortControllerRef.current === loadController) {
         handleUpdateLoadingHits();
         updatePaused(false);
       }
     }
-  }, [serverUrl, tenant, incrementalTimeoutMs]);
+  }, [serverUrl, tenant]);
 
   const resetHits = () => {
     setLogHits([]);

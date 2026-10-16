@@ -10,16 +10,9 @@ export const useLogsController = () => {
 
   const { fetchLogs, ...logsRequestState } = useFetchLogs();
 
-  const runLogs = async (params: FetchLogsParams): Promise<boolean> => {
+  const runLogs = async (params: FetchLogsParams) => {
     logsRequestState.abort();
-
-    try {
-      const isSuccess = await fetchLogs({ ...params, limit: limitRef.current });
-
-      return Boolean(isSuccess);
-    } catch {
-      return false;
-    }
+    return fetchLogs({ ...params, limit: limitRef.current });
   };
 
   return {
