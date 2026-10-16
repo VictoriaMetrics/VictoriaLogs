@@ -1159,16 +1159,37 @@ func mergeFiltersStreamInternal(fss []*filterStream) []*filterStream {
 //
 // The remaining fields are considered metrics.
 func (q *Query) GetStatsLabels() ([]string, error) {
-	return q.GetStatsLabelsAddGroupingByTime(0, 0)
+	labelFields, _, err := q.GetStatsLabelsAndResultColumns(0, 0)
+	return labelFields, err
 }
 
 // GetStatsLabelsAddGroupingByTime returns stats labels from q for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints
 //
 // if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
 func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, error) {
+	labelFields, _, err := q.GetStatsLabelsAndResultColumns(step, offset)
+	return labelFields, err
+}
+
+// StatsResultColumn describes a single result column of q
+// for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints.
+type StatsResultColumn struct {
+	// Name is the name of the result column.
+	Name string
+
+	// IsHistogram is set to true if the column contains the result of the histogram() stats function.
+	// Such columns hold a JSON array of `{"vmrange":"...","hits":N}` objects.
+	IsHistogram bool
+}
+
+// GetStatsLabelsAndResultColumns returns stats label fields plus the description of all the result columns from q
+// for /select/logsql/stats_query and /select/logsql/stats_query_range endpoints.
+//
+// if step > 0, then _time:step is added to the last `stats by (...)` pipe at q.
+func (q *Query) GetStatsLabelsAndResultColumns(step, offset int64) ([]string, []StatsResultColumn, error) {
 	idx := getLastPipeStatsIdx(q.pipes)
 	if idx < 0 {
-		return nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
+		return nil, nil, fmt.Errorf("missing `| stats ...` pipe in the query [%s]", q)
 	}
 	ps := q.pipes[idx].(*pipeStats)
 
@@ -1183,7 +1204,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 				continue
 			}
 			if !p.canReturnLastNResults() {
-				return nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
+				return nil, nil, fmt.Errorf("the pipe `| %q` cannot be put in front of `| %q`, since it may modify or delete `_time` field", p, ps)
 			}
 		}
 	}
@@ -1198,6 +1219,14 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 
 	labelFields := make([]string, 0, len(ps.byFields))
 	metricFields := make(map[string]struct{}, len(ps.funcs))
+	// histFields contains result names of histogram() stats funcs from the last `stats` pipe.
+	// The set is updated together with metricFields while walking the pipes after the `stats` pipe.
+	histFields := make(map[string]struct{}, len(ps.funcs))
+	for i := range ps.funcs {
+		if _, ok := ps.funcs[i].f.(*statsHistogram); ok {
+			histFields[ps.funcs[i].resultName] = struct{}{}
+		}
+	}
 
 	addToLabelFields := func(f string) {
 		if !slices.Contains(labelFields, f) {
@@ -1239,7 +1268,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			// These pipes do not change the set of fields.
 		case *pipeLimit, *pipeOffset:
 			if step > 0 {
-				return nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individually for each step; step=%d", p, step)
+				return nil, nil, fmt.Errorf("the %s pipe isn't allowed in range queries, since it cannot be applied individually for each step; step=%d", p, step)
 			}
 			// limit and offset pipes do not change the set of fields, so they are allowed in instant queries.
 		case *pipeRunningStats:
@@ -1249,7 +1278,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			if !hasNeededFieldsExceptTime(t.byFields, labelFields) {
 				allowTotalStatsBySubset := t.isTotal && hasOnlyKnownFields(t.byFields, labelFields)
 				if !allowTotalStatsBySubset {
-					return nil, fmt.Errorf("the %q must contain the same list of fields as `stats` pipe in the query [%s]", t, q)
+					return nil, nil, fmt.Errorf("the %q must contain the same list of fields as `stats` pipe in the query [%s]", t, q)
 				}
 			}
 			for _, f := range t.funcs {
@@ -1271,6 +1300,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			for f := range maps.Clone(metricFields) {
 				if !prefixfilter.MatchFilters(t.fieldFilters, f) {
 					delete(metricFields, f)
+					delete(histFields, f)
 				}
 			}
 		case *pipeDelete:
@@ -1284,6 +1314,7 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 			for f := range maps.Clone(metricFields) {
 				if prefixfilter.MatchFilters(t.fieldFilters, f) {
 					delete(metricFields, f)
+					delete(histFields, f)
 				}
 			}
 		case *pipeCopy:
@@ -1302,10 +1333,17 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 				for f := range maps.Clone(metricFields) {
 					if prefixfilter.MatchFilter(fDst, f) {
 						delete(metricFields, f)
+						delete(histFields, f)
 					}
 					if prefixfilter.MatchFilter(fSrc, f) {
+						delete(metricFields, f)
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
 						addToMetricFields(dstFieldName)
+						if _, ok := histFields[f]; ok {
+							// The copy pipe duplicates the source column, so both the source and the
+							// destination remain histogram result columns.
+							histFields[dstFieldName] = struct{}{}
+						}
 					}
 				}
 			}
@@ -1329,11 +1367,16 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 				for f := range maps.Clone(metricFields) {
 					if prefixfilter.MatchFilter(fDst, f) {
 						delete(metricFields, f)
+						delete(histFields, f)
 					}
 					if prefixfilter.MatchFilter(fSrc, f) {
 						delete(metricFields, f)
 						dstFieldName := string(prefixfilter.AppendReplace(nil, fSrc, fDst, f))
 						addToMetricFields(dstFieldName)
+						if _, ok := histFields[f]; ok {
+							delete(histFields, f)
+							histFields[dstFieldName] = struct{}{}
+						}
 					}
 				}
 			}
@@ -1343,24 +1386,49 @@ func (q *Query) GetStatsLabelsAddGroupingByTime(step, offset int64) ([]string, e
 		case *pipeUnpackJSON:
 			// Assume that `| unpack_json ... fields (...)` pipe generates an additional by(...) labels from fields(...)
 			if len(t.fieldFilters) == 0 {
-				return nil, fmt.Errorf("missing fields(...) after %q in the query [%s]", t, q)
+				return nil, nil, fmt.Errorf("missing fields(...) after %q in the query [%s]", t, q)
 			}
 			for _, f := range t.fieldFilters {
 				if prefixfilter.IsWildcardFilter(f) {
-					return nil, fmt.Errorf("fields(...) at %q cannot contain wildcard filter; got %s; query [%s]", t, f, q)
+					return nil, nil, fmt.Errorf("fields(...) at %q cannot contain wildcard filter; got %s; query [%s]", t, f, q)
 				}
 				addToLabelFields(f)
 			}
 		default:
-			return nil, fmt.Errorf("the %q pipe cannot be put after %q pipe in the query [%s]", p, ps, q)
+			return nil, nil, fmt.Errorf("the %q pipe cannot be put after %q pipe in the query [%s]", p, ps, q)
 		}
 	}
 
 	if len(metricFields) == 0 {
-		return nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
+		return nil, nil, fmt.Errorf("missing metric fields in the results of query [%s]", q)
 	}
 
-	return labelFields, nil
+	resultColumns := make([]StatsResultColumn, 0, len(labelFields)+len(metricFields)+len(histFields))
+	added := make(map[string]struct{}, len(labelFields)+len(metricFields)+len(histFields))
+	addResultColumn := func(f string, isHistogram bool) {
+		if _, ok := added[f]; ok {
+			return
+		}
+		added[f] = struct{}{}
+		resultColumns = append(resultColumns, StatsResultColumn{
+			Name:        f,
+			IsHistogram: isHistogram,
+		})
+	}
+	for _, f := range labelFields {
+		addResultColumn(f, false)
+	}
+	for f := range metricFields {
+		_, isHistogram := histFields[f]
+		addResultColumn(f, isHistogram)
+	}
+	// Add the remaining histogram fields, which are missing from metricFields.
+	// For example, the `| copy ...` pipe leaves the copied source column in the output,
+	// while it is removed from metricFields during the accounting above.
+	for f := range histFields {
+		addResultColumn(f, true)
+	}
+	return labelFields, resultColumns, nil
 }
 
 func hasNeededFieldsExceptTime(fields, neededFields []string) bool {
