@@ -1,5 +1,6 @@
 import { ContextData, ContextType, LogicalPart, LogicalPartPosition, LogicalPartType } from "../types";
 import { pipeOptions } from "./pipes";
+import { STREAM_FIELDS } from "../../../../../constants/logFields";
 
 const BUILDER_OPERATORS = ["AND", "OR", "NOT"];
 const PIPE_NAMES = pipeOptions.map(p => p.value);
@@ -65,15 +66,28 @@ export const splitLogicalParts = (expr: string) => {
       continue;
     }
 
-    // Check if the current character is a space
-    if (!isPipePart && !insideQuotes && !insideBrackets && char === " ") {
-      const nextStr = input.slice(i).replace(/^\s*/, "");
-      const prevStr = input.slice(0, i).replace(/\s*$/, "");
+    // Keep each whitespace separator intact, including newlines and indentation.
+    if (!isPipePart && !insideQuotes && !insideBrackets && /\s/.test(char)) {
+      const whitespace = input.slice(i).match(/^\s+/)![0];
+      const endIndex = i + whitespace.length;
+      const nextStr = input.slice(endIndex);
+      const prevStr = input.slice(0, i).trimEnd();
       if (!nextStr.startsWith(":") && !prevStr.endsWith(":")) {
-        pushPart(currentPart + char, false, [startIndex, i], parts, separator);
+        pushPart(currentPart + whitespace, false, [startIndex, endIndex - 1], parts, separator);
+
+        if (endIndex === input.length) {
+          parts.push({
+            id: parts.length,
+            value: "",
+            position: [endIndex, endIndex],
+            type: LogicalPartType.Filter,
+            separator: "",
+          });
+        }
 
         currentPart = "";
-        startIndex = i + 1;
+        startIndex = endIndex;
+        i = endIndex - 1;
         continue;
       }
     }
@@ -143,9 +157,12 @@ export const getContextData = (part: LogicalPart, cursorPos: number): ContextDat
   return metaData;
 };
 
-/** Helper function to determine if a string starts with any of the pipe names */
+/** A pipe name is complete once whitespace or an argument list follows it. */
 const startsWithPipe = (value: string): boolean => {
-  return PIPE_NAMES.some(p => value.startsWith(p));
+  const normalizedValue = value.trimStart().toLowerCase();
+  return PIPE_NAMES.some(name => (
+    normalizedValue.startsWith(name) && /[\s(]/.test(normalizedValue.charAt(name.length))
+  ));
 };
 
 /** Helper function to check for colon presence */
@@ -156,17 +173,15 @@ const hasNoColon = (before: string, after: string): boolean => {
 /** Helper function to extract filter name and update metadata for filter values */
 const handleFilterValue = (valueBeforeCursor: string, metaData: ContextData): void => {
   const [filterName, ...filterValue] = valueBeforeCursor.split(":");
+  const rawValue = filterValue.join(":");
+  const explicitOperators = ["!=", "=", "-", "!"] as const;
+  const explicitOperator = explicitOperators.find(op => rawValue.startsWith(op));
+  const defaultOperator = STREAM_FIELDS.includes(filterName.trim()) ? ":" : ":=";
+
   metaData.contextType = ContextType.FilterValue;
   metaData.filterName = filterName;
-  const enhanceOperators = ["=", "-", "!"] as const;
-  const enhanceOperator = enhanceOperators.find(op => op === filterValue[0]);
-  if (enhanceOperator) {
-    metaData.valueContext = filterValue.slice(1).join(":");
-    metaData.operator = `:${enhanceOperator}`;
-  } else {
-    metaData.valueContext = filterValue.join(":");
-    metaData.operator = ":";
-  }
+  metaData.valueContext = explicitOperator ? rawValue.slice(explicitOperator.length) : rawValue;
+  metaData.operator = explicitOperator ? `:${explicitOperator}` : defaultOperator;
 };
 
 /** Function to determine a context type based on part type and value */

@@ -25,7 +25,7 @@ export interface ContextData {
   query?: string;
   queryBeforeIncompleteFilter?: string;
   separator?: string;
-  operator?: ":" | ":!" | ":-" | ":=" | ":~" | ":<" | ":>" | ":<=" | ":>=";
+  operator?: ":" | ":!" | ":-" | ":=" | ":!=" | ":~" | ":<" | ":>" | ":<=" | ":>=";
 }
 
 export enum ContextType {
