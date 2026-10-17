@@ -11,7 +11,7 @@ tags:
   - logs
 ---
 
-`vlogsqcli` is an **interactive** command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
+`vlogscli` is an **interactive** command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
 It has the following features:
 
 - It provides the ability to execute [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) queries at the configured VictoriaLogs instance

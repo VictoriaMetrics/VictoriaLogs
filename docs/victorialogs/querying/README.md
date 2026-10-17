@@ -1201,7 +1201,7 @@ Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victor
 
 ## Command-line
 
-VictoriaLogs provides `vlogsqcli` interactive command-line tool for querying logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
+VictoriaLogs provides `vlogscli`, an interactive command-line tool for querying logs. See [how to use vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
 
 VictoriaLogs [querying API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) integrates well with `curl`
 and other Unix command-line tools because of the following features:
