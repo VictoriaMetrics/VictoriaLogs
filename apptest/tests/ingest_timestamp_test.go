@@ -39,8 +39,8 @@ func TestVlsingleElasticsearchBulkTimestampParsing(t *testing.T) {
 		})
 	}
 
-	f("2025-12-15T02:12:34.977Z", "case_tz_Z", "2025-12-15T02:12:34.977Z")
-	f("2025-12-15T02:12:34.977+01:00", "case_tz_offset_hh_mm", "2025-12-15T01:12:34.977Z")
+	f("2025-12-15T02:12:34.977Z", "case_tz_Z", "2025-12-15T02:12:34.977000000Z")
+	f("2025-12-15T02:12:34.977+01:00", "case_tz_offset_hh_mm", "2025-12-15T01:12:34.977000000Z")
 	// +0100 isn't RFC3339, but it is commonly used by Elasticsearch/Logstash clients.
-	f("2025-12-15T02:12:34.977+0100", "case_tz_offset_hhmm", "2025-12-15T01:12:34.977Z")
+	f("2025-12-15T02:12:34.977+0100", "case_tz_offset_hhmm", "2025-12-15T01:12:34.977000000Z")
 }

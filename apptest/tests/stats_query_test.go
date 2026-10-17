@@ -80,7 +80,7 @@ func TestVlclusterStatsQueryRateWithTimeBucket(t *testing.T) {
 	sut.ForceFlush(t)
 
 	query := `_time:[2025-01-01T00:00:00Z,2025-01-01T00:00:03Z) status:400 | stats by (_time:1s, status) rate() as logs_rate, rate_sum(bytes) as bytes_rate | sort by (_time, status)`
-	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:00Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:01Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:02Z","status":"400"},"value":[1735689903,"400"]}]}}`
+	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:00.000000000Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:00.000000000Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:01.000000000Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:01.000000000Z","status":"400"},"value":[1735689903,"400"]},{"metric":{"__name__":"logs_rate","_time":"2025-01-01T00:00:02.000000000Z","status":"400"},"value":[1735689903,"1"]},{"metric":{"__name__":"bytes_rate","_time":"2025-01-01T00:00:02.000000000Z","status":"400"},"value":[1735689903,"400"]}]}}`
 
 	opts := apptest.StatsQueryOpts{
 		Time: "2025-01-01T00:05:03Z",
@@ -194,7 +194,7 @@ func TestStatsQueryRelativeTime(t *testing.T) {
 	// The _time:5m must take into account logs on the [Time-5m ... Time) time range.
 	// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1226
 	query := `{app="foo"} AND _time:5m | min(_time) tmin, max(_time) tmax, count() hits`
-	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"tmin"},"value":[1774612800,"2026-03-27T11:55:00Z"]},{"metric":{"__name__":"tmax"},"value":[1774612800,"2026-03-27T11:59:59.999999999Z"]},{"metric":{"__name__":"hits"},"value":[1774612800,"3"]}]}}`
+	responseExpected := `{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"tmin"},"value":[1774612800,"2026-03-27T11:55:00.000000000Z"]},{"metric":{"__name__":"tmax"},"value":[1774612800,"2026-03-27T11:59:59.999999999Z"]},{"metric":{"__name__":"hits"},"value":[1774612800,"3"]}]}}`
 
 	queryOpts := apptest.StatsQueryOpts{
 		Time: "2026-03-27T12:00:00Z",

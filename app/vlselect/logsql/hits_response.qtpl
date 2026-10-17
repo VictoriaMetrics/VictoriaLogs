@@ -49,9 +49,9 @@
 	"fields":{%s= k %},
 	"timestamps":[
 		{% if len(timestamps) > 0 %}
-			{%q= timestampToString(timestamps[0]) %}
+			{%q= logstorage.FormatTimestampRFC3339Nano(timestamps[0]) %}
 			{% for _, ts := range timestamps[1:] %}
-				,{%q= timestampToString(ts) %}
+				,{%q= logstorage.FormatTimestampRFC3339Nano(ts) %}
 			{% endfor %}
 		{% endif %}
 	],
