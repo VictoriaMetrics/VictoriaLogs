@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
-
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
@@ -82,7 +80,7 @@ func getCommonParams(r *http.Request) (*commonParams, error) {
 	}
 
 	parseMessage := !*disableMessageParsing
-	if rv := httputil.GetRequestValue(r, "disable_message_parsing", "VL-Loki-Disable-Message-Parsing"); rv != "" {
+	if rv := insertutil.GetQueryArgOrHeader(r, "disable_message_parsing", "VL-Loki-Disable-Message-Parsing"); rv != "" {
 		bv, err := strconv.ParseBool(rv)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse disable_message_parsing=%q: %w", rv, err)
@@ -91,7 +89,7 @@ func getCommonParams(r *http.Request) (*commonParams, error) {
 	}
 
 	msgFieldsPrefix := *messageFieldsPrefix
-	if rv := httputil.GetRequestValue(r, "message_fields_prefix", "VL-Loki-Message-Fields-Prefix"); rv != "" {
+	if rv := insertutil.GetQueryArgOrHeader(r, "message_fields_prefix", "VL-Loki-Message-Fields-Prefix"); rv != "" {
 		msgFieldsPrefix = rv
 	}
 
