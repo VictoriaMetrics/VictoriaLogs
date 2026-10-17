@@ -72,7 +72,7 @@ func (mp *inmemoryPart) mustInitFromRows(lr *logRows) {
 	mp.reset()
 
 	sort.Sort(lr)
-	lr.sortFieldsInRows()
+	lr.ensureSorted()
 
 	bsw := getBlockStreamWriter()
 	bsw.MustInitForInmemoryPart(mp)
