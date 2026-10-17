@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 )
@@ -78,10 +77,11 @@ func TestProcessStreamInternal_Success(t *testing.T) {
 	f := func(data string, currentYear int, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
+		syslogTimezone = new("UTC")
+
 		MustInit()
 		defer MustStop()
 
-		globalTimezone = time.UTC
 		globalCurrentYear.Store(int64(currentYear))
 
 		tlp := &insertutil.TestLogMessageProcessor{}
