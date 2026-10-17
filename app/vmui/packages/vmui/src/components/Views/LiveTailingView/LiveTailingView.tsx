@@ -16,14 +16,15 @@ import ScrollToTopButton from "../../ScrollToTopButton/ScrollToTopButton";
 import { LIVE_TAILING_OFFSET_PARAM } from "./constants";
 
 const SCROLL_THRESHOLD = 100;
-const scrollToBottom = () => window.scrollTo({
-  top: document.documentElement.scrollHeight,
-  behavior: "smooth"
-});
-const throttledScrollToBottom = throttle(scrollToBottom, 200);
+
+const getHeaderBottom = (container: HTMLElement | null): number => {
+  const header = container?.closest(".vm-query-page-body")?.querySelector(".vm-query-page-body-header");
+  return header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+};
 
 const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const logsRef = useRef<HTMLDivElement>(null);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [searchParams] = useSearchParams();
@@ -47,10 +48,40 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
   const displayFields = useMemo(() => displayFieldsString.split(","), [displayFieldsString]);
 
+  const scrollToBottom = useCallback(() => {
+    const logsEl = logsRef.current;
+    if (!logsEl) return;
+
+    const rect = logsEl.getBoundingClientRect();
+    const headerBottom = getHeaderBottom(containerRef.current);
+    if (rect.bottom > headerBottom && rect.bottom <= window.innerHeight) return;
+
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    const targetScrollTop = Math.max(0, scrollY + rect.bottom - window.innerHeight);
+
+    window.scrollTo({
+      top: targetScrollTop,
+      // An upward animation can look like manual scrolling when a new batch arrives.
+      behavior: targetScrollTop < scrollY ? "instant" : "smooth"
+    });
+  }, []);
+
+  const throttledScrollToBottom = useMemo(
+    () => throttle(scrollToBottom, 200),
+    [scrollToBottom]
+  );
+
+  useEffect(() => {
+    return () => {
+      throttledScrollToBottom.cancel();
+    };
+  }, [throttledScrollToBottom]);
+
   const handleResumeLiveTailing = useCallback(() => {
+    setIsAtBottom(true);
     throttledScrollToBottom();
     resumeLiveTailing();
-  }, [resumeLiveTailing]);
+  }, [resumeLiveTailing, throttledScrollToBottom]);
 
   const handleSetRowsPerPage = useCallback((limit: number) => {
     setSearchParamsFromKeys({ rows_per_page: limit });
@@ -71,32 +102,36 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
 
     let prevScrollTop: number[] = [];
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      const isBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < SCROLL_THRESHOLD;
+      const logsEl = logsRef.current;
+      const { scrollTop } = document.documentElement;
+      const rect = logsEl?.getBoundingClientRect();
+      const headerBottom = getHeaderBottom(containerRef.current);
+
+      const isBottom = !rect || (rect.bottom > headerBottom && rect.bottom <= window.innerHeight + SCROLL_THRESHOLD);
 
       setIsAtBottom(isBottom);
       prevScrollTop.push(scrollTop);
       prevScrollTop = prevScrollTop.slice(-3);
       const isMoveToTop = isDecreasing(prevScrollTop);
 
-      if (!isBottom && !isPaused && isMoveToTop) {
+      if (rect && rect.bottom > window.innerHeight + SCROLL_THRESHOLD && !isPaused && isMoveToTop) {
         pauseLiveTailing();
       }
     };
 
     document.addEventListener("scroll", handleScroll);
     return () => document.removeEventListener("scroll", handleScroll);
-  }, [isPaused, pauseLiveTailing, resumeLiveTailing]);
+  }, [isPaused, pauseLiveTailing]);
 
   useEffect(() => {
-    if (isAtBottom && !isPaused) {
+    if (isAtBottom && !isPaused && logs.length > 0) {
       throttledScrollToBottom();
     }
-  }, [logs, isAtBottom]);
+  }, [logs, isAtBottom, isPaused, throttledScrollToBottom]);
 
   useEffect(() => {
     handleResumeLiveTailing();
-  }, [rowsPerPage, offset]);
+  }, [rowsPerPage, offset, handleResumeLiveTailing]);
 
   if (error) {
     return <div className="vm-live-tailing-view__error">{error}</div>;
@@ -125,7 +160,10 @@ const LiveTailingView: FC<ViewProps> = ({ settingsRef }) => {
       >
         {logs.length === 0
           ? (<div className="vm-live-tailing-view__empty">Waiting for logs...</div>)
-          : (<div className="vm-live-tailing-view__logs">
+          : (<div
+              ref={logsRef}
+              className="vm-live-tailing-view__logs"
+          >
             {logs.map(({ _log_id, ...log }, idx) =>
               isRawJsonView ? (
                 <pre
