@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   fetchQueryTime: vi.fn(),
   abortTime: vi.fn(),
   dispatch: vi.fn(),
+  beforeFetch: vi.fn(),
 }));
 
 const initialBase = {
@@ -28,7 +29,7 @@ const initialHits = {
   topHits: 5,
   graphQueryMode: "hits",
 };
-const logsTriggers = { isLogsHidden: false, beforeFetch: undefined };
+const logsTriggers = { isLogsHidden: false, beforeFetch: mocks.beforeFetch };
 let baseTriggers = initialBase;
 let hitsTriggers = initialHits;
 let finishHits: ((result: FetchHitsResult) => void) | undefined;
@@ -109,11 +110,16 @@ describe("useQueryPageController: logs timeout fallback", () => {
     expect(mocks.resetLogs.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
     expect(mocks.resetHits.mock.invocationCallOrder[0]).toBeLessThan(mocks.runHits.mock.invocationCallOrder[0]);
     expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenCalledWith(expect.objectContaining({ beforeFetch: mocks.beforeFetch }));
 
     await completeHits();
 
     expect(mocks.runLogs).toHaveBeenCalledTimes(2);
-    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({ query: "*", shouldUseLogsTimeout: false }));
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      query: "*",
+      beforeFetch: undefined,
+      shouldUseLogsTimeout: false,
+    }));
   });
 
   it("loads pending logs after hits fail", async () => {

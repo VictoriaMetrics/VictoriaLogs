@@ -238,7 +238,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
     if (didLogsTimeout && pendingLogsRef.current && !isLogsHiddenRef.current) {
       setIsWaitingForHits(false);
-      await runLogs({ ...logsParams, shouldUseLogsTimeout: false });
+      await runLogs({ ...logsParams, beforeFetch: undefined, shouldUseLogsTimeout: false });
       if (syncId !== syncIdRef.current) return;
       pendingLogsRef.current = false;
     }
