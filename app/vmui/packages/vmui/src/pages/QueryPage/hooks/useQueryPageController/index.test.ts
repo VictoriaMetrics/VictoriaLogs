@@ -187,18 +187,92 @@ describe("useQueryPageController: logs timeout fallback", () => {
     baseTriggers = { ...initialBase, query: "error" };
     rerender();
     await flushDebounce();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      query: "error", shouldUseLogsTimeout: true,
+    }));
 
     hitsTriggers = { ...initialHits, step: "1h" };
     rerender();
     await flushDebounce();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(1);
     expect(mocks.runHits).toHaveBeenLastCalledWith(expect.objectContaining({
       query: "error", step: "1h", isIterative: true,
     }));
 
     await completeHits();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
     expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
       query: "error", shouldUseLogsTimeout: false,
     }));
+  });
+
+  it("keeps waiting for hits when their step changes after a logs timeout", async () => {
+    mocks.runLogs.mockResolvedValueOnce({ status: "timeout" }).mockResolvedValue({ status: "success" });
+    const { result, rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+
+    for (const step of ["1h", "2h"]) {
+      hitsTriggers = { ...initialHits, step };
+      rerender();
+      await flushDebounce();
+      expect(mocks.runLogs).toHaveBeenCalledTimes(1);
+      expect(mocks.runHits).toHaveBeenLastCalledWith(expect.objectContaining({ step, isIterative: true }));
+      expect(result.current.logsRequestState.isPending).toBe(true);
+    }
+
+    await completeHits();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      shouldUseLogsTimeout: false, beforeFetch: undefined,
+    }));
+    expect(result.current.logsRequestState.isPending).toBe(false);
+
+    hitsTriggers = { ...initialHits, step: "3h" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.runHits).toHaveBeenLastCalledWith(expect.objectContaining({ isIterative: false }));
+    await completeHits();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries logs without a timeout when the chart is hidden during fallback", async () => {
+    mocks.runLogs.mockResolvedValueOnce({ status: "timeout" }).mockResolvedValue({ status: "success" });
+    const { result, rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+
+    // useFetchHits aborts immediately when the chart is hidden, before the debounced sync.
+    await completeHits("aborted");
+    hitsTriggers = { ...initialHits, isChartHidden: true };
+    rerender();
+    await flushDebounce();
+
+    expect(mocks.runHits).toHaveBeenCalledTimes(1);
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      shouldUseLogsTimeout: false, beforeFetch: undefined,
+    }));
+    expect(result.current.logsRequestState.isPending).toBe(false);
+  });
+
+  it("starts with logs again when the query changes during fallback", async () => {
+    mocks.runLogs.mockResolvedValueOnce({ status: "timeout" }).mockResolvedValue({ status: "success" });
+    const { result, rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    expect(result.current.logsRequestState.isPending).toBe(true);
+
+    baseTriggers = { ...initialBase, query: "error" };
+    rerender();
+    await flushDebounce();
+
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+    expect(mocks.runLogs).toHaveBeenLastCalledWith(expect.objectContaining({
+      query: "error", shouldUseLogsTimeout: true, beforeFetch: mocks.beforeFetch,
+    }));
+    expect(mocks.runHits).toHaveBeenLastCalledWith(expect.objectContaining({ query: "error", isIterative: false }));
+    await completeHits();
+    expect(mocks.runLogs).toHaveBeenCalledTimes(2);
+    expect(result.current.logsRequestState.isPending).toBe(false);
   });
 
   it("loads successful logs before ordinary hits without retrying logs", async () => {

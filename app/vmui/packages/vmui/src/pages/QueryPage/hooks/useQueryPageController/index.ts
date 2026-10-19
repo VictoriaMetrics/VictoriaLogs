@@ -93,7 +93,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
   const isLogsHiddenRef = useRef(logsTriggers.isLogsHidden);
   isLogsHiddenRef.current = logsTriggers.isLogsHidden;
 
-  const pendingLogsRef = useRef(false);
+  const logsPhaseRef = useRef<"idle" | "loading" | "retry">("idle");
   const pendingHitsRef = useRef(false);
   const pendingTimeFilterRef = useRef(false);
   const syncIdRef = useRef<symbol | null>(null);
@@ -111,7 +111,7 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     hitsRequestState.abort?.();
     logsRequestState.abort?.();
     timeRequestState.abort?.();
-    pendingLogsRef.current = false;
+    logsPhaseRef.current = "idle";
     setIsWaitingForHits(false);
   };
 
@@ -140,11 +140,15 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
 
     const changed = getChanged(prev, next);
 
+    if (isFirstRun || changed.base || changed.logs) {
+      logsPhaseRef.current = "idle";
+    }
+
     const { baseTriggers, logsTriggers, hitsTriggers } = next;
     const { isLogsHidden } = logsTriggers;
     const { isChartHidden } = hitsTriggers;
 
-    const shouldRunLogs = (isFirstRun || changed.base || changed.logs || pendingLogsRef.current) && !isLogsHidden;
+    const shouldRunLogs = (isFirstRun || changed.base || changed.logs || logsPhaseRef.current !== "idle") && !isLogsHidden;
     const shouldRunHits = (isFirstRun || changed.base || changed.hits || pendingHitsRef.current) && !isChartHidden;
 
     const forceHitsOnce = prev.hitsTriggers.executeHitsOnceTrigger !== next.hitsTriggers.executeHitsOnceTrigger;
@@ -166,7 +170,11 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     timeRequestState.abort();
 
     pendingHitsRef.current = shouldRunHits;
-    pendingLogsRef.current = shouldRunLogs;
+    if (!shouldRunLogs) {
+      logsPhaseRef.current = "idle";
+    } else if (logsPhaseRef.current !== "retry") {
+      logsPhaseRef.current = "loading";
+    }
 
     setIsWaitingForHits(false);
 
@@ -208,9 +216,9 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
     if (shouldRunHits) resetHits();
     if (shouldRunLogs) resetLogs();
 
-    let didLogsTimeout = false;
+    let didLogsTimeout = logsPhaseRef.current === "retry";
 
-    if (shouldRunLogs) {
+    if (shouldRunLogs && !didLogsTimeout) {
       const { status } = await runLogs({
         ...logsParams,
         shouldUseLogsTimeout,
@@ -220,10 +228,10 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
       if (syncId !== syncIdRef.current) return;
 
       didLogsTimeout = status === "timeout";
-      pendingLogsRef.current = didLogsTimeout;
-
-      setIsWaitingForHits(didLogsTimeout);
+      logsPhaseRef.current = didLogsTimeout ? "retry" : "idle";
     }
+
+    setIsWaitingForHits(didLogsTimeout && shouldRunHits);
 
     if (shouldRunHits) {
       const hitsResult = await runHits({ ...hitsParams, isIterative: didLogsTimeout && allowIterative });
@@ -236,11 +244,11 @@ export const useQueryPageController = (props: UseQueryPageControllerProps) => {
       }
     }
 
-    if (didLogsTimeout && pendingLogsRef.current && !isLogsHiddenRef.current) {
+    if (didLogsTimeout && logsPhaseRef.current === "retry" && !isLogsHiddenRef.current) {
       setIsWaitingForHits(false);
       await runLogs({ ...logsParams, beforeFetch: undefined, shouldUseLogsTimeout: false });
       if (syncId !== syncIdRef.current) return;
-      pendingLogsRef.current = false;
+      logsPhaseRef.current = "idle";
     }
   };
 
