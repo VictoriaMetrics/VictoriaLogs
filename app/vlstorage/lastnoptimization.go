@@ -90,7 +90,7 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
 			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
 				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsLastN(s, qctx, start, end, n)
+				rows, err := getLogRowsLastN(s, qctx, start, end-1, n)
 				if err != nil {
 					return nil, err
 				}
@@ -122,6 +122,7 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 	}
 }
 
+// getLogRowsLastN returns up to n rows with the biggest timestamps on the [start ... end] time range.
 func getLogRowsLastN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, n uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)

@@ -14,28 +14,7 @@ import (
 func TestPushProtobufRequest(t *testing.T) {
 	f := func(src string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-
-		var rls []resourceLogs
-		dec := json.NewDecoder(strings.NewReader(src))
-		// Throw an error if there are unknown fields in the JSON.
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&rls); err != nil {
-			t.Fatalf("unexpected error when parsing JSON: %s", err)
-		}
-
-		lr := logsData{
-			ResourceLogs: rls,
-		}
-
-		pData := lr.marshalProtobuf(nil)
-		tlp := &insertutil.TestLogMessageProcessor{}
-		if err := pushProtobufRequest(pData, tlp, nil, false); err != nil {
-			t.Fatalf("unexpected error when parsing protobuf data: %s", err)
-		}
-
-		if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
-			t.Fatal(err)
-		}
+		testPushProtobufRequest(t, src, nil, timestampsExpected, resultExpected)
 	}
 
 	// single line without resource attributes
@@ -374,6 +353,81 @@ func TestPushProtobufRequest(t *testing.T) {
 	timestampsExpected = []int64{1234}
 	resultsExpected = `{"_msg":"[null,null]","severity_number":"0","severity_text":"Unspecified"}`
 	f(data, timestampsExpected, resultsExpected)
+}
+
+func TestPushProtobufRequest_MsgFields(t *testing.T) {
+	f := func(src string, msgFields []string, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+		testPushProtobufRequest(t, src, msgFields, timestampsExpected, resultExpected)
+	}
+
+	// log records with a string body and the msg attribute, with a string body only, and with a kvlist body
+	data := `[{
+		"scopeLogs": [{
+			"logRecords": [
+				{
+					"timeUnixNano": 1234,
+					"body": {"stringValue":"foo"},
+					"attributes": [
+						{"key":"msg","value":{"stringValue":"bar"}}
+					]
+				},
+				{
+					"timeUnixNano": 1235,
+					"body": {"stringValue":"baz"}
+				},
+				{
+					"timeUnixNano": 1236,
+					"body": {
+						"keyValueList": {
+							"values": [
+								{"key":"msg","value":{"stringValue":"qux"}}
+							]
+						}
+					}
+				}
+			]
+		}]
+	}]`
+	timestampsExpected := []int64{1234, 1235, 1236}
+
+	// the body is used as the log message by default
+	resultsExpected := `{"_msg":"foo","msg":"bar","severity_number":"0","severity_text":"Unspecified"}
+{"_msg":"baz","severity_number":"0","severity_text":"Unspecified"}
+{"msg":"qux","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, nil, timestampsExpected, resultsExpected)
+
+	// msgFields replace the body as the log message, so the body isn't used as the log message even if the field from msgFields is missing
+	resultsExpected = `{"body":"foo","_msg":"bar","severity_number":"0","severity_text":"Unspecified"}
+{"body":"baz","severity_number":"0","severity_text":"Unspecified"}
+{"_msg":"qux","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, []string{"msg"}, timestampsExpected, resultsExpected)
+}
+
+func testPushProtobufRequest(t *testing.T, src string, msgFields []string, timestampsExpected []int64, resultExpected string) {
+	t.Helper()
+
+	var rls []resourceLogs
+	dec := json.NewDecoder(strings.NewReader(src))
+	// Throw an error if there are unknown fields in the JSON.
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&rls); err != nil {
+		t.Fatalf("unexpected error when parsing JSON: %s", err)
+	}
+
+	lr := logsData{
+		ResourceLogs: rls,
+	}
+
+	pData := lr.marshalProtobuf(nil)
+	tlp := &insertutil.TestLogMessageProcessor{}
+	if err := pushProtobufRequest(pData, tlp, msgFields, false); err != nil {
+		t.Fatalf("unexpected error when parsing protobuf data: %s", err)
+	}
+
+	if err := tlp.Verify(timestampsExpected, resultExpected); err != nil {
+		t.Fatal(err)
+	}
 }
 
 var mp easyproto.MarshalerPool
