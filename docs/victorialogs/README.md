@@ -151,6 +151,88 @@ For example, the following command starts VictoriaLogs, which accepts logs with 
 /path/to/victoria-logs -futureRetention=1y
 ```
 
+## Object Storage
+
+VictoriaLogs can keep recent data on local disk and move older daily partitions to S3.
+Partitions stored in S3 remain searchable, but they are read-only:
+ingested logs with timestamps falling into these partitions are dropped and counted
+in the `vl_rows_dropped_total{reason="too_small_timestamp"}` [metric](#monitoring).
+Use `-offload.destination` to enable this feature and `-offloadPeriod` to control how long partitions stay on local disk.
+The default offload period is `7d`, and values smaller than `1d` are treated as `1d`.
+
+In a single-node deployment, set these flags on the VictoriaLogs process.
+In a cluster deployment, set them on every `vlstorage` node and give each node a different path in the S3 bucket.
+Sharing the same path between multiple `vlstorage` nodes is not supported because each node stores its own partition data.
+For example, use `s3://my-vl-bucket/prod/vlstorage-0/` for one node and
+`s3://my-vl-bucket/prod/vlstorage-1/` for another.
+
+```sh
+/path/to/victoria-logs \
+  -storageDataPath=/var/lib/victoria-logs \
+  -offload.cache.path=/var/lib/victoria-logs/cache \
+  -retentionPeriod=30d \
+  -offloadPeriod=7d \
+  -offload.destination='s3://my-vl-bucket/prod/' \
+  -offload.s3.region='us-east-1'
+```
+
+VictoriaLogs also supports S3-compatible services such as MinIO:
+
+```sh
+/path/to/victoria-logs \
+  -storageDataPath=/var/lib/victoria-logs \
+  -offload.cache.path=/var/lib/victoria-logs/cache \
+  -retentionPeriod=30d \
+  -offloadPeriod=7d \
+  -offload.destination='s3://my-vl-bucket/prod/' \
+  -offload.s3.endpoint='http://minio:9000' \
+  -offload.s3.region='us-east-1'
+```
+
+With this configuration, VictoriaLogs stores data at `/var/lib/victoria-logs`, keeps about 7 days on local disk,
+moves older partitions to `s3://my-vl-bucket/prod/`, and deletes data older than 30 days, including the data in S3.
+Data is moved and deleted as whole UTC-day partitions, so the exact cutoff follows day boundaries.
+
+For offloading to work, `-retentionPeriod` must be more than one day longer than `-offloadPeriod`.
+If `-retentionPeriod` is shorter, VictoriaLogs uses `-offloadPeriod` as the retention period.
+If the difference is one day or less, partitions remain on local disk until the retention period deletes them.
+
+Limitations:
+
+- Partitions stored in S3 cannot be modified: they cannot be attached, detached, [snapshotted](#partitions-lifecycle) or [force-merged](#forced-merge),
+  and logs cannot be [deleted](#how-to-delete-logs) from them. So every delete filter must include a `_time` range
+  starting at or after `now - offloadPeriod`, otherwise it is rejected.
+- `-offload.destination` cannot be used with `-retention.maxDiskSpaceUsageBytes` or `-retention.maxDiskUsagePercent`.
+- Increasing `-offloadPeriod` does not move partitions from S3 back to local disk.
+
+VictoriaLogs loads S3 credentials from AWS environment variables, shared AWS files, or an instance role.
+Use `-offload.s3.configFile`, `-offload.s3.credsFile`, and `-offload.s3.profileName`
+to select specific files or a profile. VictoriaLogs needs permissions to list, read, write and delete objects
+under `-offload.destination`, since it deletes partitions from S3 according to `-retentionPeriod`.
+
+When a query reads data from S3, VictoriaLogs caches the downloaded data at `-offload.cache.path`.
+This path does not follow `-storageDataPath` automatically. By default, the cache has no size limit; set `-offload.cache.maxDiskSpaceUsageBytes` to limit it.
+Place it on a disk with enough free space and monitor its usage.
+
+See [object storage metrics documentation](https://docs.victoriametrics.com/victorialogs/metrics/#object-storage-metrics).
+
+Offload-related flags:
+
+- `-offloadPeriod`: how long partitions stay on local disk before VictoriaLogs moves them to S3.
+- `-offload.destination`: S3 bucket and path for moved partitions in the `s3://bucket/path/` format.
+- `-offload.cache.path`: local directory for data downloaded from S3.
+- `-offload.cache.maxDiskSpaceUsageBytes`: limit for cache directory size, least used data is removed.
+- `-offload.s3.endpoint`: S3 server address for services such as MinIO.
+- `-offload.s3.region`: AWS region for S3 requests.
+- `-offload.s3.forcePathStyle`: put the bucket name in the URL path, for example `http://minio:9000/my-bucket/prefix/object`.
+  It is enabled by default and is used only together with `-offload.s3.endpoint`. Set `-offload.s3.forcePathStyle=false`
+  if the S3-compatible service expects the bucket name in the host name.
+- `-offload.s3.compatMode`: enable it if the S3-compatible service rejects requests from VictoriaLogs.
+- `-offload.s3.insecureSkipVerify`: do not verify the TLS certificate of the S3 server.
+- `-offload.s3.configFile`: path to AWS shared config file.
+- `-offload.s3.credsFile`: path to AWS shared credentials file.
+- `-offload.s3.profileName`: AWS profile to load from the config and credentials files.
+
 ## Retention by disk space usage
 
 VictoriaLogs can be configured to automatically drop older per-day partitions based on disk space usage using one of two approaches:

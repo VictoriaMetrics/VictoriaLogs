@@ -59,7 +59,7 @@ func (hs *hexString) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (ph *partHeader) Reset() {
+func (ph *partHeader) reset() {
 	ph.itemsCount = 0
 	ph.blocksCount = 0
 	ph.firstItem = ph.firstItem[:0]
@@ -78,37 +78,44 @@ func (ph *partHeader) CopyFrom(src *partHeader) {
 	ph.lastItem = append(ph.lastItem[:0], src.lastItem...)
 }
 
-func (ph *partHeader) MustReadMetadata(partPath string) {
-	ph.Reset()
-
+func (ph *partHeader) mustReadLocalMetadata(partPath string) {
 	// Read ph fields from metadata.
 	metadataPath := filepath.Join(partPath, metadataFilename)
 	metadata, err := os.ReadFile(metadataPath)
 	if err != nil {
 		logger.Panicf("FATAL: cannot read %q: %s", metadataPath, err)
 	}
+	err = ph.readMetadata(metadata)
+	if err != nil {
+		logger.Panicf("FATAL: part=%q, %s", partPath, err)
+	}
+}
+
+func (ph *partHeader) readMetadata(metadata []byte) error {
+	ph.reset()
 
 	var phj partHeaderJSON
 	if err := json.Unmarshal(metadata, &phj); err != nil {
-		logger.Panicf("FATAL: cannot parse %q: %s", metadataPath, err)
+		return fmt.Errorf("cannot parse metadata: %w", err)
 	}
 
 	if phj.ItemsCount <= 0 {
-		logger.Panicf("FATAL: part %q cannot contain zero items", partPath)
+		return fmt.Errorf("cannot contain zero items")
 	}
 	ph.itemsCount = phj.ItemsCount
 
 	if phj.BlocksCount <= 0 {
-		logger.Panicf("FATAL: part %q cannot contain zero blocks", partPath)
+		return fmt.Errorf("cannot contain zero blocks")
 	}
 	if phj.BlocksCount > phj.ItemsCount {
-		logger.Panicf("FATAL: the number of blocks cannot exceed the number of items in the part %q; got blocksCount=%d, itemsCount=%d",
-			partPath, phj.BlocksCount, phj.ItemsCount)
+		return fmt.Errorf("the number of blocks cannot exceed the number of items in the part; got blocksCount=%d, itemsCount=%d",
+			phj.BlocksCount, phj.ItemsCount)
 	}
 	ph.blocksCount = phj.BlocksCount
 
 	ph.firstItem = append(ph.firstItem[:0], phj.FirstItem...)
 	ph.lastItem = append(ph.lastItem[:0], phj.LastItem...)
+	return nil
 }
 
 func (ph *partHeader) MustWriteMetadata(partPath string) {

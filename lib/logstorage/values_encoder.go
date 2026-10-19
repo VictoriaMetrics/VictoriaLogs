@@ -189,6 +189,7 @@ func (vd *valuesDecoder) decodeInplace(values []string, vt valueType, dictValues
 		// nothing to do - values are already decoded.
 	case valueTypeDict:
 		sb := getStringBucket()
+		defer putStringBucket(sb)
 		for _, v := range dictValues {
 			dstLen := len(dstBuf)
 			dstBuf = append(dstBuf, v...)
@@ -201,7 +202,6 @@ func (vd *valuesDecoder) decodeInplace(values []string, vt valueType, dictValues
 			}
 			values[i] = sb.a[id]
 		}
-		putStringBucket(sb)
 	case valueTypeUint8:
 		for i, v := range values {
 			if len(v) != 1 {

@@ -30,6 +30,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 - [Concurrency and Resource Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#concurrency-and-resource-metrics)
 - [Stream and Index Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#stream-and-index-metrics)
 - [System Resource Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#system-resource-metrics)
+- [Object Storage Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#object-storage-metrics)
 - [Cluster Remote Operation Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#cluster-remote-operation-metrics)
 - [Specialized Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#specialized-metrics)
 - [Error and Network Metrics](https://docs.victoriametrics.com/victorialogs/metrics/#error-and-network-metrics)
@@ -86,7 +87,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Labels:**
 - `reason`: `debug`, `too_many_fields`, `too_big_timestamp`, `too_small_timestamp`
 
-**Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod`. `too_big_timestamp` counts entries newer than `-futureRetention`.
+**Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod` or `-maxBackfillAge`, and entries for partitions stored in [object storage](https://docs.victoriametrics.com/victorialogs/#object-storage). `too_big_timestamp` counts entries newer than `-futureRetention`.
 
 ### vl_insert_flush_duration_seconds
 **Type:** Summary
@@ -389,6 +390,35 @@ These metrics follow the Prometheus exposition format and can be used for monito
 - `path`: storage directory
 
 **Description:** Storage write protection status where 1 means read-only mode and 0 means normal operation. Automatically set to 1 when free disk space falls below `-storage.minFreeDiskSpaceBytes` to prevent disk exhaustion.
+
+## Object Storage Metrics
+
+These metrics are related to [object storage](https://docs.victoriametrics.com/victorialogs/#object-storage).
+
+### vm_objectstorage_cache_hits_total
+**Type:** Counter
+
+**Description:** Reads of data stored in object storage, which were served from the local cache at `-offload.cache.path`.
+
+### vm_objectstorage_cache_misses_total
+**Type:** Counter
+
+**Description:** Reads of data stored in object storage, which needed downloading the data from object storage. A high rate of misses compared to hits means that queries often read data, which isn't in the cache, so they are slower.
+
+### vm_objectstorage_cache_evictions_total
+**Type:** Counter
+
+**Description:** Data dropped from the local cache because of the `-offload.cache.maxDiskSpaceUsageBytes` limit. A high rate together with a high rate of `vm_objectstorage_cache_misses_total` means that the cache is too small for the queried data.
+
+### vm_objectstorage_s3_read_bytes_total
+**Type:** Counter
+
+**Description:** Bytes read from S3. Can be used for estimating the S3 traffic costs.
+
+### vm_objectstorage_s3_written_bytes_total
+**Type:** Counter
+
+**Description:** Bytes written to S3 when moving partitions to object storage.
 
 ## Cluster Remote Operation Metrics
 
