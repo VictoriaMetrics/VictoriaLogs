@@ -2,6 +2,7 @@ package apptest
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httputil"
 )
@@ -88,6 +90,41 @@ func (c *Client) Do(t *testing.T, method, url, contentType string, data []byte) 
 func (c *Client) doWithTenant(t *testing.T, method, accountID, projectID, url, contentType string, data []byte) (string, int) {
 	t.Helper()
 
+	req := newRequestWithTenant(t, method, accountID, projectID, url, contentType, data)
+	res, err := c.httpCli.Do(req)
+	if err != nil {
+		t.Fatalf("could not send HTTP request: %v", err)
+	}
+
+	body := readAllAndClose(t, res.Body)
+
+	return body, res.StatusCode
+}
+
+// postFormWithTenantStream sends a HTTP POST request containing the POST-form data with the given (accountID, projectID) tenant headers
+// and returns the response with unread body, so streaming responses can be read while the server writes them.
+//
+// The request is canceled after 10 seconds, so endless responses don't block the test forever.
+// The caller must close the response body and call the returned cancel function.
+func (c *Client) postFormWithTenantStream(t *testing.T, accountID, projectID, url string, data url.Values) (*http.Response, context.CancelFunc) {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	req := newRequestWithTenant(t, http.MethodPost, accountID, projectID, url, "application/x-www-form-urlencoded", []byte(data.Encode()))
+	res, err := c.httpCli.Do(req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		t.Fatalf("could not send HTTP request: %v", err)
+	}
+
+	return res, cancel
+}
+
+// newRequestWithTenant prepares a HTTP request with the given (accountID, projectID) tenant headers.
+func newRequestWithTenant(t *testing.T, method, accountID, projectID, url, contentType string, data []byte) *http.Request {
+	t.Helper()
+
 	req, err := http.NewRequest(method, url, bytes.NewReader(data))
 	if err != nil {
 		t.Fatalf("could not create a HTTP request: %v", err)
@@ -105,14 +142,7 @@ func (c *Client) doWithTenant(t *testing.T, method, accountID, projectID, url, c
 		req.Header.Add("Content-Type", contentType)
 	}
 
-	res, err := c.httpCli.Do(req)
-	if err != nil {
-		t.Fatalf("could not send HTTP request: %v", err)
-	}
-
-	body := readAllAndClose(t, res.Body)
-
-	return body, res.StatusCode
+	return req
 }
 
 func (c *Client) Write(t *testing.T, address string, data []string) {

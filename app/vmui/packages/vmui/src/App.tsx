@@ -6,7 +6,6 @@ import QueryPage from "./pages/QueryPage/QueryPage";
 import LogsLayout from "./layouts/LogsLayout/LogsLayout";
 import OverviewPage from "./pages/OverviewPage/OverviewPage";
 import router from "./router";
-import "./constants/markedPlugins";
 import PreviewIcons from "./components/Main/Icons/PreviewIcons";
 import AllButtonsPreview from "./components/Main/Button/AllButtonsPreview";
 
