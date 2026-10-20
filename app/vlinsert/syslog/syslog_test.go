@@ -74,10 +74,14 @@ func TestSyslogLineReader_Failure(t *testing.T) {
 }
 
 func TestProcessStreamInternal_Success(t *testing.T) {
+	syslogTimezoneOrig := *syslogTimezone
+	defer func() {
+		*syslogTimezone = syslogTimezoneOrig
+	}()
+	*syslogTimezone = "UTC"
+
 	f := func(data string, currentYear int, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-
-		syslogTimezone = new("UTC")
 
 		MustInit()
 		defer MustStop()
