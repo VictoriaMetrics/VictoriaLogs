@@ -6,6 +6,10 @@ updates:
       interval: "daily"
     cooldown:
       default-days: 21
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
