@@ -1134,6 +1134,9 @@ VictoriaLogs accepts the following formats for the `hidden_fields_filters` query
 - JSON array with field names or field name prefixes ending with `*`. For example, `hidden_fields_filters=["pass*","pin"]` is equivalent to the previous example.
   JSON array formatting allows specifying field names with commas contrary to the comma-separated formatting.
 
+Multiple `hidden_fields_filters` args may be passed in a single request. The fields from all these args are hidden.
+For example, `hidden_fields_filters=pass*&hidden_fields_filters=pin` is equivalent to the previous examples.
+
 Make sure that the `hidden_fields_filters` value is properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
 The `_stream` field uniquely identifies a [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields), so the `hidden_fields_filters`
