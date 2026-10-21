@@ -119,6 +119,15 @@ func TestProcessor(t *testing.T) {
 	}
 	expectedContents = []string{`{"_msg":"foo\tbar","_stream":"{}","_time":"2025-10-16T15:37:36.330062387Z","output_stream":"stderr"}`}
 	f(in, expectedContents)
+
+	// vlagent must use the CR timestamp for klog
+	in = []string{
+		`2025-10-16T15:37:36Z stderr F I1215 07:34:12.017826       94 serving.go:374] foobar`,
+	}
+	expectedContents = []string{
+		`{"_msg":"foobar","_stream":"{}","_time":"2025-10-16T15:37:36Z","level":"INFO","output_stream":"stderr","source_line":"serving.go:374","thread_id":"94"}`,
+	}
+	f(in, expectedContents)
 }
 
 func TestParseKlog(t *testing.T) {
