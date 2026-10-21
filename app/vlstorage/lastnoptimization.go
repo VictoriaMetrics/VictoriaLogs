@@ -61,11 +61,11 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 	if end < math.MaxInt64 {
 		end++
 	}
+	minStart := start
 	start += end/2 - start/2
 	n := limit
 
 	var rowsFound []logRow
-	var lastNonEmptyRows []logRow
 
 	for {
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
@@ -74,15 +74,6 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 		rows, err := getQueryResults(s, qctxLocal)
 		if err != nil {
 			return nil, err
-		}
-
-		if end/2-start/2 <= 0 {
-			// The [start ... end) time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
-			// Return up to limit rows from the found rows and the last non-empty rows.
-			rowsFound = append(rowsFound, lastNonEmptyRows...)
-			rowsFound = append(rowsFound, rows...)
-			rowsFound = getLastNRows(rowsFound, limit)
-			return rowsFound, nil
 		}
 
 		if uint64(len(rows)) >= 2*n {
@@ -98,8 +89,8 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 				rowsFound = getLastNRows(rowsFound, limit)
 				return rowsFound, nil
 			}
+			minStart = start
 			start += end/2 - start/2
-			lastNonEmptyRows = rows
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
@@ -115,6 +106,18 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 		// and adjust the time range to search logs at [start-(end/2-start/2) ... start).
 		rowsFound = append(rowsFound, rows...)
 		n -= uint64(len(rows))
+
+		if !logstorage.CanApplyLastNResultsOptimization(minStart, start) {
+			// The remaining rows are located at the [minStart ... start) time range. It is faster obtaining them as is
+			// on such a small time range instead of using binary search.
+			rows, err := getLogRowsLastN(s, qctx, minStart, start-1, n)
+			if err != nil {
+				return nil, err
+			}
+			rowsFound = append(rowsFound, rows...)
+			rowsFound = getLastNRows(rowsFound, limit)
+			return rowsFound, nil
+		}
 
 		d := end/2 - start/2
 		end = start
