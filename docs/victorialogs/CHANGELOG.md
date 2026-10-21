@@ -23,7 +23,7 @@ according to the following docs:
 
 ## tip
 
-* SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.2. See [the list of issues addressed in Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved).
+* SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.3. See [the list of issues addressed in Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved) and [the list of issues addressed in Go1.27.3](https://github.com/golang/go/issues?q=milestone%3AGo1.27.3%20label%3ACherryPickApproved).
 * SECURITY: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): sanitize rendered HTML and Markdown in log messages and autocomplete descriptions to prevent cross-site scripting (XSS) attacks. See [#1746](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1746).
 * SECURITY: [querying](https://docs.victoriametrics.com/victorialogs/querying/): hide the fields from all the [`hidden_fields_filters`](https://docs.victoriametrics.com/victorialogs/querying/#hidden-fields) args in the request. Previously, a client could override the `hidden_fields_filters` set by auth proxy such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) by passing `hidden_fields_filters` in the request body. See [#1848](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1848).
 
