@@ -1,12 +1,14 @@
 import markedEmoji from "../utils/marked/markedEmoji";
-import { marked } from "marked";
+import { Marked } from "marked";
 import emojis from "./emojis";
 import { escapeHTML, isAllowedMarkdownLink, isExplicitInlineMarkdownLink } from "../utils/marked/markedLinks";
 
-// TODO: Dynamically import the emoji map only if the emoji parser is active
-marked.use(markedEmoji({ emojis, renderer: (token) => token.emoji }));
+export const vmuiMarked = new Marked();
 
-marked.use({
+// TODO: Dynamically import the emoji map only if the emoji parser is active
+vmuiMarked.use(markedEmoji({ emojis, renderer: (token) => token.emoji }));
+
+vmuiMarked.use({
   renderer: {
     link({ href, title, tokens, raw }) {
       if (!isExplicitInlineMarkdownLink(raw) || !isAllowedMarkdownLink(href)) {
