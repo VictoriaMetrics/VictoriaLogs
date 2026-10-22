@@ -39,7 +39,27 @@ const normalizeLogLevel = (value: unknown): LogLevel | null => {
   return LEVEL_NORMALIZE[value.trim().toLowerCase()] ?? null;
 };
 
+const OTLP_SEVERITY_LEVELS: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal"];
+
+const getOtlpLogLevel = (value: unknown): LogLevel | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 24) {
+    return null;
+  }
+
+  return OTLP_SEVERITY_LEVELS[Math.floor((n - 1) / 4)];
+};
+
 export const getLogLevel = (log: Logs): LogLevel => {
+  const otlpLevel = getOtlpLogLevel(log.severity_number);
+  if (otlpLevel) {
+    return otlpLevel;
+  }
+
   for (const field of LOG_LEVEL_FIELDS) {
     const level = normalizeLogLevel(log[field]);
 

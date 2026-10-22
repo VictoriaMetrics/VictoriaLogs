@@ -67,6 +67,25 @@ describe("logLevel utils", () => {
       expect(getLogLevel(log({ level: "Warn" }))).toBe("warn");
     });
 
+    it.each([
+      ["1", "trace"], ["4", "trace"], ["5", "debug"], ["9", "info"],
+      ["13", "warn"], ["17", "error"], ["21", "fatal"], ["24", "fatal"],
+    ])("derives level from OTLP severity_number %s", (severity_number, expected) => {
+      expect(getLogLevel(log({ severity_number, severity_text: "Verbose" }))).toBe(expected);
+    });
+
+    it("prefers 'severity_number' over 'level'", () => {
+      expect(getLogLevel(log({ severity_number: "1", level: "debug" }))).toBe("trace");
+    });
+
+    it("falls back to text when severity_number is unspecified or invalid", () => {
+      expect(getLogLevel(log({ severity_number: "0", severity_text: "Error" }))).toBe("error");
+      expect(getLogLevel(log({ severity_number: "25", severity_text: "Error" }))).toBe("error");
+      expect(getLogLevel(log({ severity_number: "", severity_text: "Error" }))).toBe("error");
+      expect(getLogLevel(log({ severity_number: "17.5", severity_text: "Info" }))).toBe("info");
+      expect(getLogLevel(log({ severity_number: "5abc", severity_text: "Info" }))).toBe("info");
+    });
+
     it("trims whitespace from value", () => {
       expect(getLogLevel(log({ level: "  info  " }))).toBe("info");
     });
