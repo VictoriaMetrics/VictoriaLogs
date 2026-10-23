@@ -14,6 +14,7 @@ import { useAppState } from "../../state/common/StateContext";
 import {
   useBrowserTabSync
 } from "../../components/Configurators/GlobalSettings/BrowserTabController/hooks/useBrowserTabSync";
+import useFetchAppConfig from "../../hooks/useFetchAppConfig";
 
 const LogsLayout: FC = () => {
   const appModeEnable = getAppModeEnable();
@@ -21,6 +22,8 @@ const LogsLayout: FC = () => {
   const { pathname } = useLocation();
   const { isDarkTheme } = useAppState();
   useBrowserTabSync();
+  // loads config.json into the app state - it carries the license type and the tenant aliases
+  useFetchAppConfig();
 
   const setDocumentTitle = () => {
     const matchedEntry = Object.entries(routerOptions).find(([path]) => {
