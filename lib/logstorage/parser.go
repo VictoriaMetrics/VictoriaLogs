@@ -128,6 +128,10 @@ func (lex *lexer) nextCompoundTokenExt(stopTokens []string) (string, error) {
 	}
 
 	if !lex.isAllowedCompoundToken(stopTokens) {
+		if lex.token == `"` || lex.token == "`" || lex.token == "'" {
+			// nextToken leaves the opening quote alone when the quoted string cannot be unquoted
+			return "", fmt.Errorf("invalid quoted string: bad escape sequence or missing closing quote; see https://docs.victoriametrics.com/victorialogs/logsql/#string-literals")
+		}
 		return "", fmt.Errorf("compound token cannot start with %q; put it into quotes if needed", lex.token)
 	}
 
