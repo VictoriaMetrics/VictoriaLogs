@@ -207,6 +207,19 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
   docker.io/victoriametrics/victoria-logs:v1.53.0 -storageDataPath=victoria-logs-data
 ```
 
+The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "#" %}} for Docker `HEALTHCHECK` instead.
+It checks that the running VictoriaLogs accepts connections at `-httpListenAddr` and exits with non-zero code if the check fails.
+Pass the same `-httpListenAddr` as the checked process has. For example, in Docker Compose:
+
+```yaml
+healthcheck:
+  test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
+```
+
+If VictoriaLogs is configured via [environment variables](https://docs.victoriametrics.com/victorialogs/#environment-variables),
+then add `-envflag.enable` to the healthcheck command, so it reads the same environment variables.
+The same flag is supported by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) at `/vlagent-prod`.
+
 See also:
 
 - [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/#how-to-configure-victorialogs)
