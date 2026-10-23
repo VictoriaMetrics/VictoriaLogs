@@ -129,6 +129,13 @@ func (pfp *pipeFieldNamesProcessor) writeBlock(workerID uint, br *blockResult) {
 		for _, c := range cs {
 			shard.updateColumnHits(c.name, filter, hits)
 		}
+	} else if !br.isFull() {
+		// Some rows in the block were filtered out, so the columns header may contain fields
+		// which are missing in the remaining rows. Count only non-empty values for such fields.
+		shard.updateHitsFiltered(br, filter, hits)
+		shard.updateColumnHits("_time", filter, hits)
+		shard.updateColumnHits("_stream", filter, hits)
+		shard.updateColumnHits("_stream_id", filter, hits)
 	} else {
 		cshIndex := br.bs.getColumnsHeaderIndex()
 		shard.updateHits(cshIndex.columnHeadersRefs, br, filter, hits)
@@ -136,6 +143,38 @@ func (pfp *pipeFieldNamesProcessor) writeBlock(workerID uint, br *blockResult) {
 		shard.updateColumnHits("_time", filter, hits)
 		shard.updateColumnHits("_stream", filter, hits)
 		shard.updateColumnHits("_stream_id", filter, hits)
+	}
+}
+
+func (shard *pipeFieldNamesProcessorShard) updateHitsFiltered(br *blockResult, filter string, hits uint64) {
+	csh := br.bs.getColumnsHeader()
+	for _, cc := range csh.constColumns {
+		if cc.Value == "" || br.bs.isHiddenField(cc.Name) {
+			continue
+		}
+		shard.updateColumnHits(cc.Name, filter, hits)
+	}
+	chs := csh.columnHeaders
+	for i := range chs {
+		ch := &chs[i]
+		if br.bs.isHiddenField(ch.name) {
+			continue
+		}
+		c := blockResultColumn{
+			name:       getCanonicalColumnName(ch.name),
+			valueType:  ch.valueType,
+			minValue:   ch.minValue,
+			maxValue:   ch.maxValue,
+			dictValues: ch.valuesDict.values,
+			chSrc:      ch,
+		}
+		n := uint64(0)
+		for _, v := range c.getValues(br) {
+			if v != "" {
+				n++
+			}
+		}
+		shard.updateColumnHits(ch.name, filter, n)
 	}
 }
 
@@ -153,7 +192,7 @@ func (shard *pipeFieldNamesProcessorShard) updateColumnHits(columnName, filter s
 	if columnName == "" {
 		columnName = "_msg"
 	}
-	if filter != "" && !strings.Contains(columnName, filter) {
+	if hits == 0 || filter != "" && !strings.Contains(columnName, filter) {
 		return
 	}
 
