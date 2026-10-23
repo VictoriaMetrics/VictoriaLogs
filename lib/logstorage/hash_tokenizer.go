@@ -32,6 +32,10 @@ const hashTokenizerBucketsCount = 1024
 type hashTokenizer struct {
 	buckets [hashTokenizerBucketsCount]hashTokenizerBucket
 	bm      bitmap
+
+	// hashTokenizerSIMDState holds scratch buffers for tokenizeStringSIMD.
+	// It is empty if SIMD isn't available in this build.
+	hashTokenizerSIMDState
 }
 
 type hashTokenizerBucket struct {
@@ -67,6 +71,10 @@ func (t *hashTokenizer) reset() {
 }
 
 func (t *hashTokenizer) tokenizeString(dst []uint64, s string) []uint64 {
+	if dst, ok := t.tokenizeStringSIMD(dst, s); ok {
+		return dst
+	}
+
 	if !isASCII(s) {
 		// Slow path - s contains unicode chars
 		return t.tokenizeStringUnicode(dst, s)
