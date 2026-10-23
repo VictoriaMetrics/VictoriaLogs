@@ -16,11 +16,11 @@ func TestVlsingleLastnOptimization(t *testing.T) {
 	sut := tc.MustStartDefaultVlsingle()
 
 	ingestRecords := []string{
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
 	}
 	sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
 	sut.ForceFlush(t)

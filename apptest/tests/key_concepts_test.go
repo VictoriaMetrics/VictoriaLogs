@@ -40,8 +40,8 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","host.name":"foobar","host.os.version":"1.2.3"}`,
-				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","is_error":"false","offset":"12345","tags":"[\"foo\",\"bar\"]"}`,
+				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","host.name":"foobar","host.os.version":"1.2.3"}`,
+				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","is_error":"false","offset":"12345","tags":"[\"foo\",\"bar\"]"}`,
 			},
 		},
 		query: "case 1",
@@ -59,8 +59,8 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 		query: "case 2",
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
+				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
 			},
 		},
 	})
@@ -78,9 +78,9 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 3","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 3","_stream":"{bar=\"foo\"}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-				`{"_msg":"case 3","_stream":"{bar=\"foo\",baz=\"bar\",foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo","foo":"bar","baz":"bar"}`,
+				`{"_msg":"case 3","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 3","_stream":"{bar=\"foo\"}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+				`{"_msg":"case 3","_stream":"{bar=\"foo\",baz=\"bar\",foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo","foo":"bar","baz":"bar"}`,
 			},
 		},
 		query: "case 3",
@@ -97,8 +97,8 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
+				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
 			},
 		},
 		query: "case 4",
@@ -112,7 +112,7 @@ func TestVlsingleKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","x":"y"}`,
+				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","x":"y"}`,
 			},
 		},
 		query: "options(global_filter=('case 5')) foo:=bar | join by (_msg) (foo:=abc)",
@@ -205,8 +205,8 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","host.name":"foobar","host.os.version":"1.2.3"}`,
-				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","is_error":"false","offset":"12345","tags":"[\"foo\",\"bar\"]"}`,
+				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","host.name":"foobar","host.os.version":"1.2.3"}`,
+				`{"_msg":"case 1","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","is_error":"false","offset":"12345","tags":"[\"foo\",\"bar\"]"}`,
 			},
 		},
 		query: "case 1",
@@ -224,8 +224,8 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		query: "case 2",
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
+				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 2","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
 			},
 		},
 	})
@@ -243,9 +243,9 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 3","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 3","_stream":"{bar=\"foo\"}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-				`{"_msg":"case 3","_stream":"{bar=\"foo\",baz=\"bar\",foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo","foo":"bar","baz":"bar"}`,
+				`{"_msg":"case 3","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 3","_stream":"{bar=\"foo\"}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+				`{"_msg":"case 3","_stream":"{bar=\"foo\",baz=\"bar\",foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo","foo":"bar","baz":"bar"}`,
 			},
 		},
 		query: "case 3",
@@ -262,8 +262,8 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
+				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+				`{"_msg":"case 4","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
 			},
 		},
 		query: "case 4",
@@ -277,7 +277,7 @@ func TestVlclusterKeyConcepts(t *testing.T) {
 		},
 		wantResponse: &apptest.LogsQLQueryResponse{
 			LogLines: []string{
-				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar","x":"y"}`,
+				`{"_msg":"case 5","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar","x":"y"}`,
 			},
 		},
 		query: "options(global_filter=('case 5')) foo:=bar | join by (_msg) (foo:=abc)",

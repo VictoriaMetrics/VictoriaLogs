@@ -913,8 +913,8 @@ func addTimeFilter(f filter, start, end, offset int64) filter {
 	// for negative timestamps (they are parsed as relative to the current time)
 	// and for timestamps with less than 15 decimal digits (they are parsed as microsends,
 	// milliseconds or seconds depending on the number of decimal digit).
-	startStr := marshalTimestampRFC3339NanoPreciseString(nil, start)
-	endStr := marshalTimestampRFC3339NanoPreciseString(nil, end)
+	startStr := marshalTimestampRFC3339NanoString(nil, start)
+	endStr := marshalTimestampRFC3339NanoString(nil, end)
 
 	minTimestamp := SubInt64NoOverflow(start, offset)
 	maxTimestamp := SubInt64NoOverflow(end, offset)
