@@ -27,7 +27,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	version := r.FormValue("version")
+	version := r.URL.Query().Get("version")
 	if version != netinsert.ProtocolVersion {
 		httpserver.Errorf(w, r, "unsupported protocol version=%q; want %q", version, netinsert.ProtocolVersion)
 		return
