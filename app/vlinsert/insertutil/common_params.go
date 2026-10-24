@@ -1,8 +1,10 @@
 package insertutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -122,6 +124,29 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 		}
 	}
 	return extraFields, nil
+}
+
+// ParseExtraFields parses s, a JSON object with field names and values, into fields sorted by name.
+func ParseExtraFields(s string) ([]logstorage.Field, error) {
+	if s == "" {
+		return nil, nil
+	}
+
+	var m map[string]string
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		return nil, err
+	}
+	fields := make([]logstorage.Field, 0, len(m))
+	for k, v := range m {
+		fields = append(fields, logstorage.Field{
+			Name:  k,
+			Value: v,
+		})
+	}
+	sort.Slice(fields, func(i, j int) bool {
+		return fields[i].Name < fields[j].Name
+	})
+	return fields, nil
 }
 
 func getArray(r *http.Request, argKey, headerKey string) []string {
