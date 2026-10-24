@@ -9,7 +9,6 @@ import (
 	"unsafe"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
@@ -104,21 +103,16 @@ func (pf *pipeFacets) visitSubqueries(_ func(q *Query)) {
 }
 
 func (pf *pipeFacets) newPipeProcessor(concurrency int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.2)
-
 	pfp := &pipeFacetsProcessor{
 		pf:          pf,
 		concurrency: concurrency,
 		stopCh:      stopCh,
 		cancel:      cancel,
 		ppNext:      ppNext,
-
-		maxStateSize: maxStateSize,
 	}
 	pfp.shards.Init = func(shard *pipeFacetsProcessorShard) {
 		shard.pfp = pfp
 	}
-	pfp.stateSizeBudget.Store(maxStateSize)
 
 	return pfp
 }
@@ -132,8 +126,8 @@ type pipeFacetsProcessor struct {
 
 	shards atomicutil.Slice[pipeFacetsProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 }
 
 type pipeFacetsProcessorShard struct {
@@ -334,16 +328,16 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := pfp.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		remaining := pfp.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
+		// Reserve more budget for the state size from the global query memory limiter.
+		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
+			if pfp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				pfp.cancel()
 			}
 			return
 		}
+		pfp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -351,8 +345,12 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 }
 
 func (pfp *pipeFacetsProcessor) flush() error {
-	if n := pfp.stateSizeBudget.Load(); n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", pfp.pf.String(), pfp.maxStateSize/(1<<20))
+	defer func() {
+		getQueryMemoryLimiter().Put(uint64(pfp.memReserved.Load()))
+	}()
+
+	if pfp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pfp.pf.String())
 	}
 
 	// merge state across shards
