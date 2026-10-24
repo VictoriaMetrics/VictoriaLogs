@@ -69,6 +69,18 @@ This list can contain log field prefixes ending with `*` such as `some-prefix*`.
 
 See [the list of supported Journald fields](https://www.freedesktop.org/software/systemd/man/latest/systemd.journal-fields.html).
 
+## Extra fields
+
+VictoriaLogs can add the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) to every log ingested
+via journald protocol, via `-journald.extraFields` command-line flag{{% available_from "#" %}}, which accepts a JSON object with field names and values.
+For example, the following command adds `env=production` and `dc=eu-west` fields to the ingested logs:
+
+```sh
+./victoria-logs -journald.extraFields='{"env":"production","dc":"eu-west"}'
+```
+
+If the request contains extra fields via `extra_fields` query arg or `VL-Extra-Fields` HTTP header, then all fields from `-journald.extraFields` are ignored for that request.
+
 ## Multitenancy
 
 By default VictoriaLogs stores logs ingested via journald protocol into `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
