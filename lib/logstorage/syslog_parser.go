@@ -391,7 +391,7 @@ func (p *SyslogParser) parseRFC5424SDLine(s string) (string, bool) {
 
 	// Parse structured data
 	i := 0
-	for i < len(s) && (s[i] != ']' || (i > 0 && s[i-1] == '\\')) {
+	for i < len(s) && (s[i] != ']' || prevBackslashesCount(s, i)%2 != 0) {
 		// skip whitespace
 		if s[i] == ' ' {
 			i++
@@ -413,7 +413,7 @@ func (p *SyslogParser) parseRFC5424SDLine(s string) (string, bool) {
 			valid := false
 			i++
 			for i < len(s) {
-				if s[i] == '"' && s[i-1] != '\\' {
+				if s[i] == '"' && prevBackslashesCount(s, i)%2 == 0 {
 					valid = true
 					break
 				}
