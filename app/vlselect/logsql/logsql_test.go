@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestParseExtraFilters_Success(t *testing.T) {
@@ -135,3 +138,59 @@ func TestGetStringSliceFromRequest(t *testing.T) {
 	f("hidden_fields_filters=secret", "hidden%5Ffields%5Ffilters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden_fields_filters=foo", []string{"foo", "secret"})
 }
+
+func TestIssueQueryStatsHeaders(t *testing.T) {
+	ca := &commonArgs{
+		tenantIDs: []logstorage.TenantID{{AccountID: 1, ProjectID: 2}},
+	}
+	ca.qs.RowsProcessed = 100
+	ca.qs.RowsFound = 42
+	ca.qs.BlocksProcessed = 5
+	ca.qs.BytesReadValues = 1000
+	ca.qs.BytesReadTimestamps = 500
+
+	h := make(http.Header)
+	ca.writeResponseHeaders(h, time.Now())
+
+	if got, want := h.Get("VL-Rows-Processed"), "100"; got != want {
+		t.Fatalf("unexpected VL-Rows-Processed: got %q, want %q", got, want)
+	}
+	if got, want := h.Get("VL-Rows-Found"), "42"; got != want {
+		t.Fatalf("unexpected VL-Rows-Found: got %q, want %q", got, want)
+	}
+	if got, want := h.Get("VL-Blocks-Processed"), "5"; got != want {
+		t.Fatalf("unexpected VL-Blocks-Processed: got %q, want %q", got, want)
+	}
+	if got, want := h.Get("VL-Bytes-Read"), "1500"; got != want {
+		t.Fatalf("unexpected VL-Bytes-Read: got %q, want %q", got, want)
+	}
+
+	exposeHeaders := h.Get("Access-Control-Expose-Headers")
+	for _, expectedHeader := range []string{"Vl-Rows-Processed", "Vl-Rows-Found", "Vl-Blocks-Processed", "Vl-Bytes-Read"} {
+		if !strings.Contains(exposeHeaders, expectedHeader) {
+			t.Fatalf("Access-Control-Expose-Headers %q missing %q", exposeHeaders, expectedHeader)
+		}
+	}
+}
+
+func TestIssue1907(t *testing.T) {
+	// Issue #1907: For streaming requests with trailers, initial response headers must not include stats
+	ca := &commonArgs{
+		tenantIDs: []logstorage.TenantID{{AccountID: 1, ProjectID: 2}},
+	}
+	ca.qs.RowsProcessed = 100
+
+	hStreaming := make(http.Header)
+	hStreaming.Set("Trailer", "VL-Rows-Processed, VL-Rows-Found, VL-Blocks-Processed, VL-Bytes-Read")
+	ca.writeResponseHeaders(hStreaming, time.Now())
+
+	if got := hStreaming.Get("VL-Rows-Processed"); got != "" {
+		t.Fatalf("streaming request must not set stats in initial headers; got %q", got)
+	}
+
+	ca.writeResponseStats(hStreaming)
+	if got, want := hStreaming.Get("VL-Rows-Processed"), "100"; got != want {
+		t.Fatalf("unexpected trailer value: got %q, want %q", got, want)
+	}
+}
+

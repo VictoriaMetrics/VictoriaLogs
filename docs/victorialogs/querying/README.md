@@ -146,6 +146,13 @@ The `/select/logsql/query` returns the following additional HTTP response header
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
+The `/select/logsql/query` returns the following HTTP trailers at the end of the response stream once all data blocks have been processed{{% available_from "#" %}}:
+
+- `VL-Rows-Processed` - the number of log rows processed from storage blocks during query execution.
+- `VL-Rows-Found` - the number of log rows matching the query filter.
+- `VL-Blocks-Processed` - the number of data blocks processed during query execution.
+- `VL-Bytes-Read` - the total number of bytes read from disk during query execution.
+
 See also:
 
 - [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/)
