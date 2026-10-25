@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/timeutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -5338,3 +5339,148 @@ func TestFilterMatchRow(t *testing.T) {
 	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-05T10:20:30`, false)
 	f(`_time:week_range[Mon, Fri]`, `_time=2026-04-06T10:20:30`, true)
 }
+
+func TestIssue1896(t *testing.T) {
+	// Issue #1896: Add ability to limit query speed / concurrency from outside.
+	maxCPUs := cgroup.AvailableCPUs()
+	expectedConcurrency := func(want int) int {
+		if want > maxCPUs {
+			return maxCPUs
+		}
+		return want
+	}
+
+	// 1. Clamping higher concurrency and parallel readers options
+	q, err := ParseQuery("options(concurrency=10, parallel_readers=10) foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	q.ApplyConcurrencyLimits(1, 2)
+	q.ApplyParallelReadersLimits(1, 2)
+
+	if n := q.GetConcurrency(); n != expectedConcurrency(2) {
+		t.Fatalf("unexpected concurrency; got %d; want %d", n, expectedConcurrency(2))
+	}
+	if n := q.GetParallelReaders(0); n != 2 {
+		t.Fatalf("unexpected parallel_readers; got %d; want 2", n)
+	}
+
+	// 2. Applying default concurrency when none was set
+	q2, err := ParseQuery("foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	q2.ApplyConcurrencyLimits(3, 0)
+	if n := q2.GetConcurrency(); n != expectedConcurrency(3) {
+		t.Fatalf("unexpected concurrency; got %d; want %d", n, expectedConcurrency(3))
+	}
+
+	// 3. Applying max concurrency clamp when none was set in query
+	q3, err := ParseQuery("foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	q3.ApplyConcurrencyLimits(0, 1)
+	if n := q3.GetConcurrency(); n != 1 {
+		t.Fatalf("unexpected concurrency; got %d; want 1", n)
+	}
+	if n := q3.GetParallelReaders(0); n != 1 {
+		t.Fatalf("unexpected parallel_readers; got %d; want 1", n)
+	}
+
+	// 4. Subqueries receive limits and visitor proves non-root traversal
+	q4, err := ParseQuery("* | join by (x) (options(concurrency=8) bar)")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	q4.ApplyConcurrencyLimits(0, 2)
+	visitedSubquery := false
+	q4.visitSubqueries(func(sq *Query) {
+		if sq != q4 {
+			visitedSubquery = true
+			if n := sq.GetConcurrency(); n > expectedConcurrency(2) {
+				t.Fatalf("unexpected subquery concurrency; got %d; want <= %d", n, expectedConcurrency(2))
+			}
+		}
+	})
+	if !visitedSubquery {
+		t.Fatalf("expected subquery to be visited")
+	}
+
+	// 5. Cloned query retains limits
+	q5 := q.Clone(q.GetTimestamp())
+	if n := q5.GetConcurrency(); n != expectedConcurrency(2) {
+		t.Fatalf("unexpected cloned concurrency; got %d; want %d", n, expectedConcurrency(2))
+	}
+	if n := q5.GetParallelReaders(0); n != 2 {
+		t.Fatalf("unexpected cloned parallel_readers; got %d; want 2", n)
+	}
+}
+
+func TestIssue1906(t *testing.T) {
+	// Reproduction test for PR1906 review violations:
+	// 1. Max-only limits must serialize into Query.String() so vlstorage cluster nodes enforce them.
+	q, err := ParseQuery("foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	q.ApplyConcurrencyLimits(0, 2)
+	q.ApplyParallelReadersLimits(0, 3)
+
+	qStr := q.String()
+	if !strings.Contains(qStr, "max_concurrency=2") {
+		t.Fatalf("Query.String() must serialize max_concurrency so remote nodes enforce it; got %q", qStr)
+	}
+	if !strings.Contains(qStr, "max_parallel_readers=3") {
+		t.Fatalf("Query.String() must serialize max_parallel_readers so remote nodes enforce it; got %q", qStr)
+	}
+
+	qRemote, err := ParseQuery(qStr)
+	if err != nil {
+		t.Fatalf("remote node cannot parse serialized query %q: %s", qStr, err)
+	}
+	maxCPUs := cgroup.AvailableCPUs()
+	expectedConcurrency := min(maxCPUs, 2)
+	expectedReaders := min(2*maxCPUs, 2)
+	if n := qRemote.GetConcurrency(); n != expectedConcurrency {
+		t.Fatalf("unexpected remote concurrency; got %d; want %d", n, expectedConcurrency)
+	}
+	if n := qRemote.GetParallelReaders(0); n != expectedReaders {
+		t.Fatalf("unexpected remote parallel_readers; got %d; want %d", n, expectedReaders)
+	}
+
+	// 2. Parallel readers fallback must apply both ceilings independently
+	qFallback, err := ParseQuery("foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	qFallback.ApplyConcurrencyLimits(0, 2)
+	qFallback.ApplyParallelReadersLimits(0, 10)
+	if n := qFallback.GetParallelReaders(0); n != expectedReaders {
+		t.Fatalf("fallback parallel readers must use min of caps; got %d; want %d", n, expectedReaders)
+	}
+
+	// 3. Overflow resistance for huge uint options
+	qOverflow, err := ParseQuery("options(max_concurrency=18446744073709551615, max_parallel_readers=18446744073709551615) foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if n := qOverflow.GetConcurrency(); n <= 0 {
+		t.Fatalf("concurrency must not be negative or zero on overflow; got %d", n)
+	}
+	if n := qOverflow.GetParallelReaders(0); n <= 0 {
+		t.Fatalf("parallel readers must not be negative or zero on overflow; got %d", n)
+	}
+
+	// 4. Overflowed parallel_readers must not bypass maxConcurrency fallback cap
+	qOverflowFallback, err := ParseQuery("options(parallel_readers=18446744073709551615) foo | count()")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	qOverflowFallback.ApplyConcurrencyLimits(0, 2)
+	expectedFallbackReaders := min(2*maxCPUs, 2)
+	if n := qOverflowFallback.GetParallelReaders(0); n != expectedFallbackReaders {
+		t.Fatalf("overflowed parallel_readers must not bypass max_concurrency cap; got %d; want %d", n, expectedFallbackReaders)
+	}
+}
+

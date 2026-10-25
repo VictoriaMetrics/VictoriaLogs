@@ -1595,6 +1595,26 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		return nil, err
 	}
 
+	concurrency, err := getPositiveIntFromArgAndHeader(r, "concurrency", "VL-Concurrency", false)
+	if err != nil {
+		return nil, err
+	}
+	maxConcurrency, err := getPositiveIntFromArgAndHeader(r, "max_concurrency", "VL-Max-Concurrency", true)
+	if err != nil {
+		return nil, err
+	}
+	q.ApplyConcurrencyLimits(concurrency, maxConcurrency)
+
+	parallelReaders, err := getPositiveIntFromArgAndHeader(r, "parallel_readers", "VL-Parallel-Readers", false)
+	if err != nil {
+		return nil, err
+	}
+	maxParallelReaders, err := getPositiveIntFromArgAndHeader(r, "max_parallel_readers", "VL-Max-Parallel-Readers", true)
+	if err != nil {
+		return nil, err
+	}
+	q.ApplyParallelReadersLimits(parallelReaders, maxParallelReaders)
+
 	ca := &commonArgs{
 		q:         q,
 		tenantIDs: tenantIDs,
@@ -1853,4 +1873,48 @@ func parseDuration(r *http.Request, argName, defaultValue string) (int64, error)
 		return 0, fmt.Errorf("cannot parse duration from the arg '%s=%s'", argName, s)
 	}
 	return nsecs, nil
+}
+
+func getPositiveIntFromArgAndHeader(r *http.Request, argName, headerName string, isMax bool) (int, error) {
+	nArg, err := parsePositiveInt(r.FormValue(argName), argName)
+	if err != nil {
+		return 0, err
+	}
+	nHeader, err := parsePositiveInt(r.Header.Get(headerName), headerName)
+	if err != nil {
+		return 0, err
+	}
+	if nHeader == 0 {
+		nHeader, err = parsePositiveInt(r.Header.Get(argName), argName)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if nArg == 0 {
+		return nHeader, nil
+	}
+	if nHeader == 0 {
+		return nArg, nil
+	}
+	if isMax {
+		if nArg < nHeader {
+			return nArg, nil
+		}
+		return nHeader, nil
+	}
+	return nArg, nil
+}
+
+func parsePositiveInt(s, name string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse integer from %s=%q: %w", name, s, err)
+	}
+	if n < 1 {
+		return 0, fmt.Errorf("%s cannot be smaller than 1; got %d", name, n)
+	}
+	return n, nil
 }

@@ -404,10 +404,16 @@ type queryOptions struct {
 	// By default the number of concurrent workers equals to the number of available CPU cores.
 	concurrency uint
 
+	// maxConcurrency is the maximum allowed number of concurrent CPU-bound workers to use for a single query execution.
+	maxConcurrency uint
+
 	// parallelReaders is the number of concurrent IO-bound data readers to use for a single query execution.
 	//
 	// By default the number of parallel readers equals to concurrency.
 	parallelReaders uint
+
+	// maxParallelReaders is the maximum allowed number of concurrent IO-bound data readers to use for a single query execution.
+	maxParallelReaders uint
 
 	// if ignoreGlobalTimeFilter is set, then Query.AddTimeFilter doesn't add the time filter to the query and to all its subqueries.
 	ignoreGlobalTimeFilter *bool
@@ -436,8 +442,14 @@ func (opts *queryOptions) String() string {
 	if opts.concurrency > 0 {
 		a = append(a, fmt.Sprintf("concurrency=%d", opts.concurrency))
 	}
+	if opts.maxConcurrency > 0 {
+		a = append(a, fmt.Sprintf("max_concurrency=%d", opts.maxConcurrency))
+	}
 	if opts.parallelReaders > 0 {
 		a = append(a, fmt.Sprintf("parallel_readers=%d", opts.parallelReaders))
+	}
+	if opts.maxParallelReaders > 0 {
+		a = append(a, fmt.Sprintf("max_parallel_readers=%d", opts.maxParallelReaders))
 	}
 	if opts.ignoreGlobalTimeFilter != nil {
 		a = append(a, fmt.Sprintf("ignore_global_time_filter=%v", *opts.ignoreGlobalTimeFilter))
@@ -476,8 +488,11 @@ func (q *Query) String() string {
 
 // GetParallelReaders returns the number of parallel readers to use for executing the given query.
 func (q *Query) GetParallelReaders(defaultParallelReaders int) int {
-	n := int(q.opts.parallelReaders)
-	if n <= 0 {
+	n := 0
+	if q.opts.parallelReaders > 0 && q.opts.parallelReaders <= math.MaxInt {
+		n = int(q.opts.parallelReaders)
+	}
+	if n <= 0 && q.opts.concurrency > 0 && q.opts.concurrency <= math.MaxInt {
 		n = int(q.opts.concurrency)
 	}
 	if n <= 0 {
@@ -485,6 +500,12 @@ func (q *Query) GetParallelReaders(defaultParallelReaders int) int {
 	}
 	if n <= 0 {
 		n = 2 * cgroup.AvailableCPUs()
+	}
+	if (q.opts.parallelReaders == 0 || q.opts.parallelReaders > math.MaxInt) && q.opts.maxConcurrency > 0 && q.opts.maxConcurrency < uint(n) {
+		n = int(q.opts.maxConcurrency)
+	}
+	if q.opts.maxParallelReaders > 0 && q.opts.maxParallelReaders < uint(n) {
+		n = int(q.opts.maxParallelReaders)
 	}
 	if n > maxParallelReaders {
 		n = maxParallelReaders
@@ -497,14 +518,71 @@ func (q *Query) GetParallelReaders(defaultParallelReaders int) int {
 // See https://docs.victoriametrics.com/victorialogs/logsql/#query-options
 func (q *Query) GetConcurrency() int {
 	concurrency := cgroup.AvailableCPUs()
-	if q.opts.concurrency > 0 && int(q.opts.concurrency) < concurrency {
+	if q.opts.concurrency > 0 && q.opts.concurrency < uint(concurrency) {
 		// Limit the number of workers by the number of available CPU cores,
 		// since bigger number of workers won't improve CPU-bound query performance -
 		// they just increase RAM usage and slow down query execution because
 		// of more context switches between workers.
 		concurrency = int(q.opts.concurrency)
 	}
+	if q.opts.maxConcurrency > 0 && q.opts.maxConcurrency < uint(concurrency) {
+		concurrency = int(q.opts.maxConcurrency)
+	}
 	return concurrency
+}
+
+// ApplyConcurrencyLimits applies defaultConcurrency and maxConcurrency limits to q and all its subqueries.
+func (q *Query) ApplyConcurrencyLimits(defaultConcurrency, maxConcurrency int) {
+	if defaultConcurrency <= 0 && maxConcurrency <= 0 {
+		return
+	}
+	q.visitSubqueries(func(sq *Query) {
+		sq.applyConcurrencyLimitsNoSubqueries(defaultConcurrency, maxConcurrency)
+	})
+}
+
+func (q *Query) applyConcurrencyLimitsNoSubqueries(defaultConcurrency, maxConcurrency int) {
+	if defaultConcurrency > 0 && q.opts.concurrency == 0 {
+		q.opts.concurrency = uint(defaultConcurrency)
+		q.opts.needPrint = true
+	}
+	if maxConcurrency > 0 {
+		if q.opts.concurrency > uint(maxConcurrency) {
+			q.opts.concurrency = uint(maxConcurrency)
+			q.opts.needPrint = true
+		}
+		if q.opts.maxConcurrency == 0 || q.opts.maxConcurrency > uint(maxConcurrency) {
+			q.opts.maxConcurrency = uint(maxConcurrency)
+			q.opts.needPrint = true
+		}
+	}
+}
+
+// ApplyParallelReadersLimits applies defaultParallelReaders and maxParallelReaders limits to q and all its subqueries.
+func (q *Query) ApplyParallelReadersLimits(defaultParallelReaders, maxParallelReaders int) {
+	if defaultParallelReaders <= 0 && maxParallelReaders <= 0 {
+		return
+	}
+	q.visitSubqueries(func(sq *Query) {
+		sq.applyParallelReadersLimitsNoSubqueries(defaultParallelReaders, maxParallelReaders)
+	})
+}
+
+func (q *Query) applyParallelReadersLimitsNoSubqueries(defaultParallelReaders, maxParallelReaders int) {
+	if defaultParallelReaders > 0 && q.opts.parallelReaders == 0 {
+		q.opts.parallelReaders = uint(defaultParallelReaders)
+		q.opts.needPrint = true
+	}
+	if maxParallelReaders > 0 {
+		if q.opts.parallelReaders > uint(maxParallelReaders) {
+			q.opts.parallelReaders = uint(maxParallelReaders)
+			q.opts.needPrint = true
+		}
+		if q.opts.maxParallelReaders == 0 || q.opts.maxParallelReaders > uint(maxParallelReaders) {
+			q.opts.maxParallelReaders = uint(maxParallelReaders)
+			q.opts.needPrint = true
+		}
+	}
 }
 
 // CanLiveTail returns true if q can be used in live tailing
@@ -2043,6 +2121,17 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 			}
 			dstOpts.concurrency = uint(n)
 			dstOpts.needPrint = true
+		case "max_concurrency":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'max_concurrency' value inside 'options': %w", err)
+			}
+			n, ok := tryParseUint64(v)
+			if !ok {
+				return fmt.Errorf("cannot parse 'max_concurrency=%q' option as unsigned integer", v)
+			}
+			dstOpts.maxConcurrency = uint(n)
+			dstOpts.needPrint = true
 		case "parallel_readers":
 			v, err := lex.nextCompoundToken()
 			if err != nil {
@@ -2053,6 +2142,17 @@ func parseQueryOptions(dstOpts *queryOptions, lex *lexer) error {
 				return fmt.Errorf("cannot parse 'parallel_readers=%q' option as unsigned integer", v)
 			}
 			dstOpts.parallelReaders = uint(n)
+			dstOpts.needPrint = true
+		case "max_parallel_readers":
+			v, err := lex.nextCompoundToken()
+			if err != nil {
+				return fmt.Errorf("cannot read 'max_parallel_readers' value inside 'options': %w", err)
+			}
+			n, ok := tryParseUint64(v)
+			if !ok {
+				return fmt.Errorf("cannot parse 'max_parallel_readers=%q' option as unsigned integer", v)
+			}
+			dstOpts.maxParallelReaders = uint(n)
 			dstOpts.needPrint = true
 		case "ignore_global_time_filter":
 			v, err := lex.nextCompoundToken()

@@ -1176,6 +1176,14 @@ VictoriaLogs provides the following options to limit resource usage by the execu
   since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`
   before returning errors to queries, which cannot be executed because `-search.maxConcurrentRequests` limit is reached.
 
+- `concurrency` query arg or `VL-Concurrency` HTTP header{{% available_from "#" %}} sets the default number of concurrent workers to use for query execution if the query doesn't specify [`concurrency` option](https://docs.victoriametrics.com/victorialogs/logsql/#concurrency-query-option).
+
+- `max_concurrency` query arg or `VL-Max-Concurrency` HTTP header{{% available_from "#" %}} enforces the maximum concurrency for query execution, clamping whatever concurrency was requested in the query or via `concurrency` query arg / `VL-Concurrency` header. This is useful for platform administrators using [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) to limit resource usage for background or analytical queries.
+
+- `parallel_readers` query arg or `VL-Parallel-Readers` HTTP header{{% available_from "#" %}} sets the default number of parallel readers to use for reading queried data from storage if the query doesn't specify [`parallel_readers` option](https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option).
+
+- `max_parallel_readers` query arg or `VL-Max-Parallel-Readers` HTTP header{{% available_from "#" %}} enforces the maximum number of parallel readers for query execution, clamping whatever parallel readers were requested in the query or via `parallel_readers` query arg / `VL-Parallel-Readers` header.
+
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
