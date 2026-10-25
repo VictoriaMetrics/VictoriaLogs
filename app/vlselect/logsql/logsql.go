@@ -1253,6 +1253,7 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		} else {
 			h.Set("Content-Type", "application/stream+json")
 		}
+		h.Set("Trailer", "VL-Rows-Processed, VL-Rows-Found, VL-Blocks-Processed, VL-Bytes-Read")
 		ca.writeResponseHeaders(h, startTime)
 
 		if format == "csv" {
@@ -1302,6 +1303,9 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 	// This call is needed for the case when the response didn't return any results.
 	writeResponseHeadersOnce()
+
+	// Update trailers with final stats when streaming has finished.
+	ca.writeResponseStats(w.Header())
 }
 
 func appendCSVRow(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte {
@@ -1826,8 +1830,17 @@ func parseStringSlice(argName, s string) ([]string, error) {
 
 func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
 	// Write request duration
-	accessControlExposeHeaders := []string{"VL-Request-Duration-Seconds"}
+	accessControlExposeHeaders := []string{
+		"VL-Request-Duration-Seconds",
+		"VL-Rows-Processed",
+		"VL-Rows-Found",
+		"VL-Blocks-Processed",
+		"VL-Bytes-Read",
+	}
 	h.Set("VL-Request-Duration-Seconds", fmt.Sprintf("%.3f", time.Since(startTime).Seconds()))
+	if h.Get("Trailer") == "" {
+		ca.writeResponseStats(h)
+	}
 
 	if len(ca.tenantIDs) == 1 {
 		// Write the used AccountID and ProjectID, so the client could show them properly.
@@ -1841,6 +1854,13 @@ func (ca *commonArgs) writeResponseHeaders(h http.Header, startTime time.Time) {
 		accessControlExposeHeaders[i] = http.CanonicalHeaderKey(v)
 	}
 	h.Set("Access-Control-Expose-Headers", strings.Join(accessControlExposeHeaders, ", "))
+}
+
+func (ca *commonArgs) writeResponseStats(h http.Header) {
+	h.Set("VL-Rows-Processed", fmt.Sprintf("%d", ca.qs.RowsProcessed))
+	h.Set("VL-Rows-Found", fmt.Sprintf("%d", ca.qs.RowsFound))
+	h.Set("VL-Blocks-Processed", fmt.Sprintf("%d", ca.qs.BlocksProcessed))
+	h.Set("VL-Bytes-Read", fmt.Sprintf("%d", ca.qs.GetBytesReadTotal()))
 }
 
 func parseDuration(r *http.Request, argName, defaultValue string) (int64, error) {
