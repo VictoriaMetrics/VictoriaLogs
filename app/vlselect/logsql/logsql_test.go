@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 )
 
 func TestParseExtraFilters_Success(t *testing.T) {
@@ -135,3 +137,74 @@ func TestGetStringSliceFromRequest(t *testing.T) {
 	f("hidden_fields_filters=secret", "hidden%5Ffields%5Ffilters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden_fields_filters=foo", []string{"foo", "secret"})
 }
+
+func TestIssue1896(t *testing.T) {
+	// Issue #1896: support concurrency and parallel_readers limits via query args and headers
+	f := func(queryURL string, headers map[string]string, expectedConcurrency, expectedParallelReaders int) {
+		t.Helper()
+
+		r := httptest.NewRequest(http.MethodGet, "/select/logsql/query?"+queryURL, nil)
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("cannot parse form: %s", err)
+		}
+		ca, err := parseCommonArgs(r)
+		if err != nil {
+			t.Fatalf("unexpected error from parseCommonArgs: %s", err)
+		}
+		if n := ca.q.GetConcurrency(); n != expectedConcurrency {
+			t.Fatalf("unexpected concurrency; got %d; want %d", n, expectedConcurrency)
+		}
+		if n := ca.q.GetParallelReaders(0); n != expectedParallelReaders {
+			t.Fatalf("unexpected parallel_readers; got %d; want %d", n, expectedParallelReaders)
+		}
+	}
+
+	maxCPUs := cgroup.AvailableCPUs()
+	expectedConcurrency := func(want int) int {
+		if want > maxCPUs {
+			return maxCPUs
+		}
+		return want
+	}
+
+	// 1. URL parameter concurrency and parallel_readers
+	f("query=*&concurrency=2&parallel_readers=3", nil, expectedConcurrency(2), 3)
+
+	// 2. HTTP headers VL-Concurrency and VL-Parallel-Readers
+	f("query=*", map[string]string{
+		"VL-Concurrency":      "2",
+		"VL-Parallel-Readers": "3",
+	}, expectedConcurrency(2), 3)
+
+	// 3. HTTP headers VL-Max-Concurrency clamps query options
+	f("query=options(concurrency=10,parallel_readers=10)+*", map[string]string{
+		"VL-Max-Concurrency":      "1",
+		"VL-Max-Parallel-Readers": "1",
+	}, 1, 1)
+
+	// 4. URL parameter max_concurrency clamps query options
+	f("query=options(concurrency=10,parallel_readers=10)+*&max_concurrency=2&max_parallel_readers=2", nil, expectedConcurrency(2), 2)
+
+	// 5. Test error on invalid or non-positive value
+	fErr := func(queryURL string) {
+		t.Helper()
+		r := httptest.NewRequest(http.MethodGet, "/select/logsql/query?"+queryURL, nil)
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("cannot parse form: %s", err)
+		}
+		if _, err := parseCommonArgs(r); err == nil {
+			t.Fatalf("expecting error for query %q", queryURL)
+		}
+	}
+	fErr("query=*&concurrency=0")
+	fErr("query=*&concurrency=-1")
+	fErr("query=*&concurrency=abc")
+	fErr("query=*&max_concurrency=0")
+	fErr("query=*&parallel_readers=0")
+	fErr("query=*&max_parallel_readers=0")
+}
+
+
