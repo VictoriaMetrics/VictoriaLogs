@@ -37,6 +37,7 @@ See also:
 
 - [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
 - [Resource usage limits](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits)
+- [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers)
 
 ### Querying logs
 
@@ -157,6 +158,7 @@ See also:
 
 - [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/)
 - [Extra filters](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters)
+- [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers)
 - [Live tailing](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing)
 - [Querying hits stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats)
 - [Querying log stats](https://docs.victoriametrics.com/victorialogs/querying/#querying-log-stats)
@@ -368,6 +370,7 @@ The `/select/logsql/hits` returns the following additional HTTP response headers
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -469,6 +472,7 @@ The `/select/logsql/facets` returns the following additional HTTP response heade
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -557,6 +561,7 @@ The `/select/logsql/stats_query` returns the following additional HTTP response 
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -674,6 +679,7 @@ The `/select/logsql/stats_query_range` returns the following additional HTTP res
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -740,6 +746,7 @@ The `/select/logsql/stream_ids` returns the following additional HTTP response h
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -805,6 +812,7 @@ The `/select/logsql/streams` returns the following additional HTTP response head
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -869,6 +877,7 @@ The `/select/logsql/stream_field_names` returns the following additional HTTP re
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -932,6 +941,7 @@ The `/select/logsql/stream_field_values` returns the following additional HTTP r
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -1015,6 +1025,7 @@ The `/select/logsql/field_names` returns the following additional HTTP response 
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -1083,6 +1094,7 @@ The `/select/logsql/field_values` returns the following additional HTTP response
 
 - `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
 - `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+- `VL-Rows-Processed`, `VL-Rows-Found`, `VL-Blocks-Processed`, `VL-Bytes-Read` - query execution statistics{{% available_from "#" %}}. See [HTTP response headers](https://docs.victoriametrics.com/victorialogs/querying/#http-response-headers).
 
 See also:
 
@@ -1091,6 +1103,22 @@ See also:
 - [Querying field names](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names)
 - [Querying streams](https://docs.victoriametrics.com/victorialogs/querying/#querying-streams)
 - [HTTP API](https://docs.victoriametrics.com/victorialogs/querying/#http-api)
+
+## HTTP response headers
+
+The HTTP querying endpoints (except [`/select/logsql/tail`](https://docs.victoriametrics.com/victorialogs/querying/#live-tailing), [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants), and `/select/logsql/query_time_range`) return the following HTTP response headers:
+
+- `VL-Request-Duration-Seconds` - the duration of the query until the first response byte.
+- `AccountID` and `ProjectID` - the requested [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+
+Additionally, non-streaming query endpoints (such as [`/select/logsql/hits`](https://docs.victoriametrics.com/victorialogs/querying/#querying-hits-stats) and [`/select/logsql/facets`](https://docs.victoriametrics.com/victorialogs/querying/#querying-facets)) return query execution statistics in HTTP response headers{{% available_from "#" %}}:
+
+- `VL-Rows-Processed` - the number of log rows processed from storage blocks during query execution.
+- `VL-Rows-Found` - the number of log rows matching the query filter.
+- `VL-Blocks-Processed` - the number of data blocks processed during query execution.
+- `VL-Bytes-Read` - the total number of bytes read from disk during query execution.
+
+For streaming responses at [`/select/logsql/query`](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs), these statistics are sent in HTTP trailers at the end of the response stream once all data blocks have been processed.
 
 ## Extra filters
 
