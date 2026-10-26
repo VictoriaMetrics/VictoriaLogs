@@ -1,84 +1,63 @@
+import { useEffect, useState, useCallback } from "preact/compat";
 import { getFromStorage, saveToStorage } from "../../../../utils/storage";
-import { useEffect, useMemo, useState } from "preact/compat";
-import useEventListener from "../../../../hooks/useEventListener";
 import { toPrefixedKey } from "../../../../utils/storage/utils";
-import { useCallback } from "react";
 import { GroupLogsType } from "../../../../types";
+import useEventListener from "../../../../hooks/useEventListener";
 
-type ExpandedByGroup = Map<string, boolean>
+type CollapsedGroups = Set<string>;
 
 const STORAGE_KEY = "GROUP_EXPANSION";
-const DEFAULT_EXPANDED_BY_GROUP = new Map<string, boolean>();
+const DEFAULT_COLLAPSED_GROUPS = new Set<string>();
 
-export const useGroupExpansion = () => {
-  const [expandedByGroup, setExpandedByGroup] = useState<ExpandedByGroup>(DEFAULT_EXPANDED_BY_GROUP);
-  const allGroupsExpanded = useMemo(() => [...expandedByGroup.values()].every(Boolean), [expandedByGroup]);
+export const useGroupExpansion = (groups: GroupLogsType[]) => {
+  const [collapsedGroups, setCollapsedGroups] = useState<CollapsedGroups>(DEFAULT_COLLAPSED_GROUPS);
+  const allGroupsExpanded = groups.every(group => !collapsedGroups.has(group.keysString));
 
-  const getExpandedByGroupFromStorage = (): ExpandedByGroup => {
+  const getCollapsedGroupsFromStorage = (): CollapsedGroups => {
     const raw = getFromStorage(STORAGE_KEY, { storage: "session" });
 
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return DEFAULT_EXPANDED_BY_GROUP;
+    if (!Array.isArray(raw) || !raw.every(key => typeof key === "string")) {
+      return new Set<string>();
     }
 
-    const entries = Object.entries(raw);
-    if (!entries.every(([, value]) => typeof value === "boolean")) {
-      return DEFAULT_EXPANDED_BY_GROUP;
-    }
-
-    return new Map(entries as [string, boolean][]);
+    return new Set(raw);
   };
 
-  const saveExpandedByGroupToStorage = useCallback((next: ExpandedByGroup) => {
-    saveToStorage(STORAGE_KEY, Object.fromEntries(next), { storage: "session" });
+  const saveCollapsedGroupsToStorage = useCallback((next: CollapsedGroups) => {
+    saveToStorage(STORAGE_KEY, Array.from(next), { storage: "session" });
   }, []);
 
-  const handleToggleExpandAll = useCallback((groups: GroupLogsType[]) => {
-    const next = new Map(groups.map(g => [g.keysString, !allGroupsExpanded]));
-    saveExpandedByGroupToStorage(next);
-  }, [allGroupsExpanded, saveExpandedByGroupToStorage]);
+  const handleToggleExpandAll = useCallback(() => {
+    const next = new Set(collapsedGroups);
 
-  const handleChangeExpand = useCallback((key: string) => (value: boolean) => {
-    const next = new Map(expandedByGroup);
-    next.set(key, value);
-    saveExpandedByGroupToStorage(next);
-  }, [expandedByGroup, saveExpandedByGroupToStorage]);
+    for (const group of groups) {
+      allGroupsExpanded ? next.add(group.keysString) : next.delete(group.keysString);
+    }
 
-  const syncExpandedByGroup = useCallback((groups: GroupLogsType[], defaultExpanded: boolean) => {
-    setExpandedByGroup(prev => {
-      const allCollapsed = prev.size > 0 && [...prev.values()].every(value => !value);
+    saveCollapsedGroupsToStorage(next);
+  }, [groups, collapsedGroups, allGroupsExpanded, saveCollapsedGroupsToStorage]);
 
-      return new Map(groups.map(g => [
-        g.keysString,
-        prev.get(g.keysString) ?? (allCollapsed ? false : defaultExpanded),
-      ]));
-    });
-  }, []);
+  const handleChangeExpand = useCallback((key: string) => (expanded: boolean) => {
+    const next = new Set(collapsedGroups);
+    expanded ? next.delete(key) : next.add(key);
+    saveCollapsedGroupsToStorage(next);
+  }, [collapsedGroups, saveCollapsedGroupsToStorage]);
 
   const handleStorageChange = (event: StorageEvent) => {
     if (event?.storageArea !== window.sessionStorage || event?.key !== toPrefixedKey(STORAGE_KEY)) return;
-    const stored = getExpandedByGroupFromStorage();
-
-    // Apply stored expansion states only to current groups.
-    setExpandedByGroup(prev => new Map(
-      [...prev].map(([key, expanded]) => [
-        key,
-        stored.get(key) ?? expanded,
-      ])
-    ));
+    setCollapsedGroups(getCollapsedGroupsFromStorage());
   };
 
   useEventListener("storage", handleStorageChange);
 
   useEffect(() => {
-    setExpandedByGroup(getExpandedByGroupFromStorage());
+    setCollapsedGroups(getCollapsedGroupsFromStorage());
   }, []);
 
   return {
-    expandedByGroup,
+    collapsedGroups,
     allGroupsExpanded,
     handleToggleExpandAll,
     handleChangeExpand,
-    syncExpandedByGroup,
   };
 };
