@@ -31,14 +31,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
   const [page, setPage] = useState(1);
 
-  const {
-    expandedByGroup,
-    allGroupsExpanded,
-    handleChangeExpand,
-    handleToggleExpandAll,
-    syncExpandedByGroup,
-  } = useGroupExpansion();
-
   const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
   const displayFields = useMemo(() => displayFieldsString.split(","), [displayFieldsString]);
@@ -63,6 +55,13 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     }).sort((a, b) => b.total - a.total); // groups sorting
   }, [logs, groupBy]);
 
+  const {
+    collapsedGroups,
+    allGroupsExpanded,
+    handleChangeExpand,
+    handleToggleExpandAll,
+  } = useGroupExpansion(groupData);
+
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
   const handleSetRowsPerPage = (limit?: number) => {
@@ -81,10 +80,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   };
 
   useEffect(() => {
-    syncExpandedByGroup(groupData, !isMobile);
-  }, [groupData, isMobile]);
-
-  useEffect(() => {
     setPage(1);
   }, [rowsPerPage, groupData]);
 
@@ -98,7 +93,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
           >
             <GroupLogsItemWrapper
               groupBy={groupBy}
-              expand={!!expandedByGroup.get(group.keysString)}
+              expand={!collapsedGroups.has(group.keysString)}
               onExpandChange={handleChangeExpand(group.keysString)}
               header={(
                 <GroupLogsHeader
@@ -148,7 +143,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
             <Button
               variant="text"
               startIcon={allGroupsExpanded ? <CollapseIcon/> : <ExpandIcon/>}
-              onClick={() => handleToggleExpandAll(groupData)}
+              onClick={handleToggleExpandAll}
               aria-label={allGroupsExpanded ? "Collapse All" : "Expand All"}
             />
           </Tooltip>
