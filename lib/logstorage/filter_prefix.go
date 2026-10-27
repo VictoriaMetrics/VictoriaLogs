@@ -325,7 +325,20 @@ func matchInt64ByPrefix(bs *blockSearch, ch *columnHeader, bm *bitmap, prefix st
 	// Instead, we need searching for the whole prefix in string representation of numbers :(
 	if prefix != "-" {
 		n, ok := tryParseInt64(prefix)
-		if !ok || n < int64(ch.minValue) || n > int64(ch.maxValue) {
+		if !ok {
+			bm.resetBits()
+			return
+		}
+		minValue, maxValue := int64(ch.minValue), int64(ch.maxValue)
+		if n >= 0 {
+			// Non-negative prefix n can match only numbers >= n or <= -n, since `-` isn't a token char.
+			// For example, `12*` matches `12`, `123` and `-123`.
+			if n > maxValue && -n < minValue {
+				bm.resetBits()
+				return
+			}
+		} else if n < minValue {
+			// Negative prefix n can match only numbers <= n, e.g. `-1*` matches `-1`, `-15` and `-150`.
 			bm.resetBits()
 			return
 		}

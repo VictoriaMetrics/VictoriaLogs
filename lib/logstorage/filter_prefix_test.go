@@ -434,6 +434,104 @@ func TestFilterPrefix(t *testing.T) {
 		testFilterMatchForColumns(t, columns, fp, "foo", nil)
 	})
 
+	t.Run("int64", func(t *testing.T) {
+		columns := []column{
+			{
+				name: "foo",
+				values: []string{
+					"-1234",
+					"-150",
+					"-120",
+					"-199",
+					"-101",
+					"-12345678901",
+					"-200",
+					"-300",
+					"-400",
+				},
+			},
+			{
+				name: "bar",
+				values: []string{
+					"-5",
+					"100",
+					"1234",
+					"12",
+					"-150",
+					"200",
+					"1",
+					"300",
+					"-1",
+				},
+			},
+		}
+
+		// match
+		fp := newFilterPrefix("bar", "1")
+		testFilterMatchForColumns(t, columns, fp, "bar", []int{1, 2, 3, 4, 6, 8})
+
+		fp = newFilterPrefix("bar", "5")
+		testFilterMatchForColumns(t, columns, fp, "bar", []int{0})
+
+		fp = newFilterPrefix("bar", "12")
+		testFilterMatchForColumns(t, columns, fp, "bar", []int{2, 3})
+
+		fp = newFilterPrefix("bar", "-1")
+		testFilterMatchForColumns(t, columns, fp, "bar", []int{4, 8})
+
+		fp = newFilterPrefix("bar", "2")
+		testFilterMatchForColumns(t, columns, fp, "bar", []int{5})
+
+		fp = newFilterPrefix("foo", "-1")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5})
+
+		fp = newFilterPrefix("foo", "1")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5})
+
+		fp = newFilterPrefix("foo", "-15")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{1})
+
+		fp = newFilterPrefix("foo", "-1234")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 5})
+
+		fp = newFilterPrefix("foo", "-2")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{6})
+
+		fp = newFilterPrefix("foo", "-")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
+
+		fp = newFilterPrefix("foo", "")
+		testFilterMatchForColumns(t, columns, fp, "foo", []int{0, 1, 2, 3, 4, 5, 6, 7, 8})
+
+		// mismatch
+		fp = newFilterPrefix("foo", "bar")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
+		fp = newFilterPrefix("foo", "-5")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
+		fp = newFilterPrefix("foo", "5")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
+		fp = newFilterPrefix("foo", "123456789012")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
+		fp = newFilterPrefix("foo", "-123456789012")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+
+		fp = newFilterPrefix("bar", "7")
+		testFilterMatchForColumns(t, columns, fp, "bar", nil)
+
+		fp = newFilterPrefix("bar", "2000")
+		testFilterMatchForColumns(t, columns, fp, "bar", nil)
+
+		fp = newFilterPrefix("bar", "-2000")
+		testFilterMatchForColumns(t, columns, fp, "bar", nil)
+
+		fp = newFilterPrefix("non-existing-column", "")
+		testFilterMatchForColumns(t, columns, fp, "foo", nil)
+	})
+
 	t.Run("float64", func(t *testing.T) {
 		columns := []column{
 			{
