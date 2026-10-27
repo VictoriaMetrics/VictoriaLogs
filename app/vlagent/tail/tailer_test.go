@@ -427,3 +427,34 @@ func updateInode(t *testing.T, filename string, oldInode uint64) uint64 {
 	}
 	return inode
 }
+
+func TestTryResolveSymlink(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("cannot resolve temp dir: %s", err)
+	}
+	physicalDir := filepath.Join(root, "physical")
+	linksDir := filepath.Join(root, "links")
+	for _, dir := range []string{physicalDir, linksDir} {
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			t.Fatalf("cannot create dir: %s", err)
+		}
+	}
+	target := filepath.Join(physicalDir, "app.log")
+	createFile(t, target, 0o644)
+
+	// relative symlink must be resolved against the directory of the symlink
+	relLink := filepath.Join(linksDir, "app.log")
+	if err := os.Symlink("../physical/app.log", relLink); err != nil {
+		t.Fatalf("cannot create symlink: %s", err)
+	}
+	if got := tryResolveSymlink(relLink); got != target {
+		t.Fatalf("unexpected path for relative symlink; got %q; want %q", got, target)
+	}
+
+	// non-existing path must be returned as is
+	missing := filepath.Join(root, "missing.log")
+	if got := tryResolveSymlink(missing); got != missing {
+		t.Fatalf("unexpected path for missing file; got %q; want %q", got, missing)
+	}
+}

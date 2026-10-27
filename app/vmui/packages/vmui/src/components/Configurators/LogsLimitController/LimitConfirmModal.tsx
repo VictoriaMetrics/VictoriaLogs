@@ -69,11 +69,10 @@ const LimitConfirmModal: FC<Props> = ({
           <div>
             <Checkbox
               color="primary"
-              label="Don't show again in this tab"
+              label="Don't show this warning again"
               checked={suppressWarning}
               onChange={onChangeSuppressWarning}
             />
-
           </div>
 
           <div className="vm-logs-limit-modal-footer__actions">
