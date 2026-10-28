@@ -3,12 +3,15 @@ import { useFetchHits } from "../../QueryPage/hooks/useFetchHits";
 import HitsPanel from "../../QueryPage/HitsPanel/HitsPanel";
 import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "../../QueryPage/HitsPanel/hooks/useHitsChartConfig";
-import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 import { useHideChart } from "../../QueryPage/HitsPanel/hooks/useHideChart";
+import { TimeParams } from "../../../types";
 
-const OverviewHits: FC = () => {
+interface Props {
+  period: TimeParams;
+}
+
+const OverviewHits: FC<Props> = ({ period }) => {
   const [hideChart] = useHideChart();
-  const { period } = useTimePeriod();
   const query = "*";
 
   const {
