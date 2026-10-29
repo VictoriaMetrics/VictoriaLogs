@@ -3,9 +3,11 @@ package journald
 import (
 	"bytes"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestIsValidFieldName(t *testing.T) {
@@ -57,6 +59,37 @@ func TestGetCommonParams_TimeField(t *testing.T) {
 
 	// Test custom time field - when a custom time field is specified via HTTP header, it's respected
 	f("custom_time", "custom_time")
+}
+
+func TestGetCommonParams_ExtraFields(t *testing.T) {
+	f := func(extraFieldsHeader string, resultExpected []logstorage.Field) {
+		t.Helper()
+
+		req, err := http.NewRequest("POST", "/insert/journald/upload", nil)
+		if err != nil {
+			t.Fatalf("unexpected error creating request: %s", err)
+		}
+		if extraFieldsHeader != "" {
+			req.Header.Set("VL-Extra-Fields", extraFieldsHeader)
+		}
+
+		cp, err := getCommonParams(req)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if !reflect.DeepEqual(cp.ExtraFields, resultExpected) {
+			t.Fatalf("unexpected ExtraFields; got %v; want %v", cp.ExtraFields, resultExpected)
+		}
+	}
+
+	defer func(fields []logstorage.Field) { extraFields = fields }(extraFields)
+	extraFields = []logstorage.Field{{Name: "env", Value: "prod"}}
+
+	// fields from -journald.extraFields are added to ingested logs
+	f("", []logstorage.Field{{Name: "env", Value: "prod"}})
+
+	// extra fields passed with the request take precedence
+	f("source=foo", []logstorage.Field{{Name: "source", Value: "foo"}})
 }
 
 func TestPushJournald_Success(t *testing.T) {

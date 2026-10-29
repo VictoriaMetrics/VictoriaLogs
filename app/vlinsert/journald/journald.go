@@ -41,6 +41,8 @@ var (
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy")
 	journaldIncludeEntryMetadata = flag.Bool("journald.includeEntryMetadata", false, "Include Journald fields with double underscore prefixes")
 	journaldUseRemoteIP          = flag.Bool("journald.useRemoteIP", false, "Whether to add the remote IP address as the remote_ip log field for ingested journald messages.")
+	journaldExtraFields          = flag.String("journald.extraFields", "", "Extra fields in JSON format to add to logs ingested via journald protocol. "+
+		`For example: -journald.extraFields='{"env":"production"}'. See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#extra-fields`)
 )
 
 var tenantID logstorage.TenantID
@@ -64,7 +66,15 @@ func MustInit() {
 	if err := logstorage.CheckStreamFieldNames(streamFields); err != nil {
 		logger.Fatalf("invalid stream field names in -journald.streamFields=%s: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#stream-fields", streamFields, err)
 	}
+
+	fields, err := insertutil.ParseExtraFields(*journaldExtraFields)
+	if err != nil {
+		logger.Fatalf("cannot parse -journald.extraFields=%q: %s; see https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#extra-fields", *journaldExtraFields, err)
+	}
+	extraFields = fields
 }
+
+var extraFields []logstorage.Field
 
 var defaultStreamFields = []string{
 	"_MACHINE_ID",
@@ -90,6 +100,9 @@ func getCommonParams(r *http.Request) (*insertutil.CommonParams, error) {
 	}
 	if len(cp.IgnoreFields) == 0 {
 		cp.IgnoreFields = *journaldIgnoreFields
+	}
+	if len(cp.ExtraFields) == 0 {
+		cp.ExtraFields = extraFields
 	}
 	cp.MsgFields = []string{"MESSAGE"}
 	return cp, nil
