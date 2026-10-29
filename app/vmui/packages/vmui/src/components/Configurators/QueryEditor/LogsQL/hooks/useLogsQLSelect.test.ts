@@ -83,4 +83,21 @@ describe("useLogsQLSelect caret position", () => {
 
     expect(onSelect).toHaveBeenCalledWith(expected.replace("▏", ""), expected.indexOf("▏"), keepOpen);
   });
+
+  it.each([
+    ["os.type:!=lin", "linux", "os.type:!=\"linux\"▏"],
+    ["os.type:~\"lin", "linux", "os.type:~\"linux\"▏"],
+    ["os.type:!~lin", "linux", "os.type:!~\"linux\"▏"],
+    ["path:~\"/api", "/api/v1.0 (x)", "path:~\"/api/v1\\\\.0 \\\\(x\\\\)\"▏"],
+  ] as const)("keeps the operator typed by the user in %j", (query, insert, expected) => {
+    const logicalParts = splitLogicalParts(query);
+    const part = logicalParts[0];
+    const contextData = { ...part, ...getContextData(part, part.value.length) };
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useLogsQLSelect({ contextData, logicalParts, onSelect }));
+
+    act(() => result.current(insert, { value: insert, type: ContextType.FilterValue }));
+
+    expect(onSelect).toHaveBeenCalledWith(expected.replace("▏", ""), expected.indexOf("▏"), false);
+  });
 });

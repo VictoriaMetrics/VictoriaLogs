@@ -2,6 +2,7 @@ import { useCallback } from "preact/compat";
 import { AutocompleteOptions } from "../../../../Main/Autocomplete/Autocomplete";
 import { ContextData, ContextType, LogicalPart } from "../types";
 import { STREAM_FIELD } from "../../../../../constants/logFields";
+import { escapeRegexp } from "../../../../../utils/regexp";
 
 type LogsQLSelectContext = ContextData & LogicalPart;
 
@@ -37,9 +38,12 @@ const getModifyInsert = (
   if (insertType === ContextType.FilterName) {
     modifiedInsert += ":";
   } else if (contextType === ContextType.FilterValue) {
+    // The selected value is a literal, so escape it for regexp filters.
+    const isRegexp = operator === ":~" || operator === ":!~";
+    const literal = isRegexp ? escapeRegexp(modifiedInsert) : modifiedInsert;
     const insertWithQuotes = value.startsWith(`${STREAM_FIELD}:`)
       ? modifiedInsert
-      : `${JSON.stringify(modifiedInsert)}`;
+      : JSON.stringify(literal);
 
     modifiedInsert = `${filterName || ""}${operator || ":"}${insertWithQuotes}`;
   }

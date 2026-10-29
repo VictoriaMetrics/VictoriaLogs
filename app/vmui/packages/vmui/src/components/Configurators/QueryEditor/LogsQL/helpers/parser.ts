@@ -174,7 +174,8 @@ const hasNoColon = (before: string, after: string): boolean => {
 const handleFilterValue = (valueBeforeCursor: string, metaData: ContextData): void => {
   const [filterName, ...filterValue] = valueBeforeCursor.split(":");
   const rawValue = filterValue.join(":");
-  const explicitOperators = ["!=", "=", "-", "!"] as const;
+  // Two-char operators go first, so "!=" and "!~" aren't matched as "!".
+  const explicitOperators = ["!=", "!~", "=", "~", "-", "!"] as const;
   const explicitOperator = explicitOperators.find(op => rawValue.startsWith(op));
   const defaultOperator = STREAM_FIELDS.includes(filterName.trim()) ? ":" : ":=";
 
