@@ -453,7 +453,7 @@ Here are the working examples of HA configuration for VictoriaLogs using Docker 
 - [Vector](https://github.com/VictoriaMetrics/VictoriaLogs/tree/master/deployment/docker/victorialogs/vector/)
 
 If the disk of one of the instances breaks, then see [how to recover the lost logs from another instance](https://docs.victoriametrics.com/victorialogs/cluster/#how-to-recover-a-broken-vlstorage-node-in-ha-setup).
-The same steps apply to single-node instances - just use the address of the instance instead of `vlselect` and `vlinsert` addresses.
+The same steps apply to single-node instances - just use the address of the instance instead of `vlselect` and `vlinsert` addresses, and enable only the `-delete.enable` command-line flag.
 
 ## Backup and restore
 

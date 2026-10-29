@@ -151,8 +151,9 @@ Instead, delete all the logs for the missing time range in cluster `A`, and then
 1. Replace the broken disk and restore the `vlstorage` node from the latest backup. If there is no backup, then start the node with an empty disk.
 1. Find the time range of the lost logs. It starts at the time of the last backup and ends when the node stopped accepting logs.
    After that, `vlinsert` sends new logs to the remaining `vlstorage` nodes, so these logs aren't lost.
-   It is safe to make the range a bit wider, for example, to whole hours, since the logs for the whole range are deleted and copied again.
-   If there is no backup, then the range starts at the oldest stored logs, so it is faster to delete all the data in cluster `A` and copy everything from cluster `B`.
+   Make the range a bit wider, for example, to whole hours, so it also covers logs that arrived with some delay.
+   This is safe, since the logs for the whole range are deleted and copied again.
+   If there is no backup, then the range covers all the stored logs. In this case, copy them day by day.
 1. Delete the logs for this time range in cluster `A` via [the delete API](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs).
    The delete API must be enabled with `-delete.enable` command-line flag at `vlselect` and `-internaldelete.enable` command-line flag at `vlstorage` nodes in cluster `A`.
    For example, the following command deletes logs from `2026-10-27T10:00:00Z` to `2026-10-27T14:00:00Z`:
@@ -177,6 +178,8 @@ Instead, delete all the logs for the missing time range in cluster `A`, and then
 
    The query returns every log with its `_stream` field, and `/insert/jsonline` uses this field for restoring the original [log streams](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields),
    so don't pass the `_stream_fields` query arg there.
+   The query may take longer than `-search.maxQueryDuration` (30s by default), so increase this flag at `vlselect` in cluster `B`,
+   or copy the logs in smaller time ranges, for example, hour by hour.
    Send the logs directly to `vlinsert` in cluster `A`, not via `vlagent`, since `vlagent` would also send them to cluster `B`.
    If the copy is interrupted, then start again from the deletion step for the same time range.
 1. Make sure both clusters have the same number of logs for this time range.
@@ -187,10 +190,13 @@ Instead, delete all the logs for the missing time range in cluster `A`, and then
    curl http://vlselect-b:9471/select/logsql/query --data-urlencode 'query=_time:[2026-10-27T10:00:00Z, 2026-10-27T14:00:00Z) | stats count()'
    ```
 
+   If the numbers differ, then repeat the steps starting from the deletion for this time range.
+
 1. Send queries to cluster `A` again.
 
 If [multitenancy](https://docs.victoriametrics.com/victorialogs/#multitenancy) is used, then repeat the deletion, copying and checking steps for every tenant,
 by passing `AccountID` and `ProjectID` HTTP headers to every request above.
+The list of tenants with logs on the given time range can be retrieved via [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants) at `vlselect` in cluster `B`.
 
 ## Replication
 
