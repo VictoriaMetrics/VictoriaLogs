@@ -138,13 +138,13 @@ func (lr *LineReader) skipUntilNextLine() (bool, int) {
 		skipSizeBytes += n
 		lr.buf = lr.buf[:n]
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				lr.eofReached = true
-				lr.buf = lr.buf[:0]
-				return true, skipSizeBytes
+			if !errors.Is(err, io.EOF) {
+				lr.err = fmt.Errorf("cannot skip the current line: %w", err)
+				return false, skipSizeBytes
 			}
-			lr.err = fmt.Errorf("cannot skip the current line: %w", err)
-			return false, skipSizeBytes
+			// The reader may return the last chunk of data together with io.EOF,
+			// so look for the end of the too long line in this chunk before returning.
+			lr.eofReached = true
 		}
 		if n := bytes.IndexByte(lr.buf, '\n'); n >= 0 {
 			// Include skipped bytes before \n, including the newline itself.
@@ -153,6 +153,10 @@ func (lr *LineReader) skipUntilNextLine() (bool, int) {
 			// This is needed for maintaining synchronization consistency between lines
 			// in protocols such as Elasticsearch bulk import.
 			lr.buf = append(lr.buf[:0], lr.buf[n:]...)
+			return true, skipSizeBytes
+		}
+		if lr.eofReached {
+			lr.buf = lr.buf[:0]
 			return true, skipSizeBytes
 		}
 	}

@@ -45,6 +45,9 @@ vlagent-openbsd-amd64-prod:
 vlagent-windows-amd64-prod:
 	APP_NAME=vlagent $(MAKE) app-via-docker-windows-amd64
 
+package-vlagent:
+	APP_NAME=vlagent $(MAKE) package-via-docker
+
 publish-vlagent:
 	APP_NAME=vlagent $(MAKE) publish-via-docker
 

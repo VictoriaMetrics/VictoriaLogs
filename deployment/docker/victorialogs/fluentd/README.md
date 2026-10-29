@@ -31,7 +31,7 @@ The docker compose file contains the following components:
 
 ## Querying
 
-* [vmui](https://docs.victoriametrics.com/victorialogs/querying/#vmui) - a web UI is accessible by `http://localhost:9428/select/vmui/`
+* [vmui](https://docs.victoriametrics.com/victorialogs/querying/#web-ui) - a web UI is accessible by `http://localhost:8427/logs/select/vmui/`
 * for querying the data via command-line please check [vlogscli](https://docs.victoriametrics.com/victorialogs/querying/#command-line)
 
 Fluentd configuration example can be found below:
