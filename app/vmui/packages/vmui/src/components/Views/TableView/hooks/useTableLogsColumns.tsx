@@ -3,6 +3,7 @@ import { useMemo } from "preact/compat";
 import TableCopyButton from "../../../Table/TableCopyButton/TableCopyButton";
 import { vmDate } from "../../../../utils/time";
 import { LOGS_DATE_FORMAT } from "../../../../constants/logs";
+import { TIME_FIELD } from "../../../../constants/logFields";
 import { type Column } from "../../../Table/types";
 
 type Options = {
@@ -11,7 +12,7 @@ type Options = {
 
 const getRenderColumnByKey = (key: string): Column<Logs>["render"] => {
   switch (key) {
-    case "_time":
+    case TIME_FIELD:
       return (log: Logs) => log._time ? vmDate(log._time).nano().format(LOGS_DATE_FORMAT) : "";
     default:
       return undefined;
