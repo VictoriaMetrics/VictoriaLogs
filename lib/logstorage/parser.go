@@ -945,10 +945,15 @@ func (q *Query) AddExtraFilters(extraFilters *Filter) {
 		return
 	}
 
-	filters := []filter{extraFilters.f}
+	// Collect the subqueries before adding extraFilters, so extraFilters aren't added to their own subqueries recursively.
+	var qs []*Query
 	q.visitSubqueries(func(q *Query) {
-		q.addExtraFiltersNoSubqueries(filters)
+		qs = append(qs, q)
 	})
+	filters := []filter{extraFilters.f}
+	for _, sq := range qs {
+		sq.addExtraFiltersNoSubqueries(filters)
+	}
 }
 
 func (q *Query) addExtraFiltersNoSubqueries(filters []filter) {

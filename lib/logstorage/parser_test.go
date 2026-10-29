@@ -4774,6 +4774,10 @@ func TestQuery_AddExtraFilters(t *testing.T) {
 	f(`foo x:contains_all(bar | keep x)`, `tenant:=123`, `tenant:=123 foo x:contains_all(tenant:=123 bar | fields x)`)
 	f(`foo x:contains_all(bar | union (baz) | keep x) | count() if (a:contains_all(b | keep a)) z`, `tenant:=123`, `tenant:=123 foo x:contains_all(tenant:=123 bar | union (tenant:=123 baz) | fields x) | stats count(*) if (a:contains_all(tenant:=123 b | fields a)) as z`)
 	f(`foo x:contains_all(bar | union (baz) | keep x) | count() if (a:contains_all(b | keep a)) z`, `{tenant=123}`, `{tenant="123"} foo x:contains_all({tenant="123"} bar | union ({tenant="123"} baz) | fields x) | stats count(*) if (a:contains_all({tenant="123"} b | fields a)) as z`)
+
+	// extra filters with subqueries must not be propagated into their own subqueries
+	f(`*`, `x:in(* | keep x)`, `x:in(* | fields x)`)
+	f(`foo:in(bar | keep foo)`, `x:in(* | keep x)`, `x:in(* | fields x) foo:in(x:in(* | fields x) bar | fields foo)`)
 }
 
 func TestToFieldsFilters(t *testing.T) {
