@@ -33,6 +33,7 @@ interface TextFieldProps {
   helperText?: string
   inputmode?: "search" | "text" | "email" | "tel" | "url" | "none" | "numeric" | "decimal"
   caretPosition?: [number, number]
+  caretUpdateId?: number
   onChange?: (value: string) => void
   onEnter?: () => void
   onKeyDown?: (e: TextFieldKeyboardEvent) => void
@@ -56,6 +57,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     autofocus = false,
     inputmode = "text",
     caretPosition,
+    caretUpdateId,
     onChange,
     onEnter,
     onKeyDown,
@@ -156,7 +158,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     } catch {
       // ignore
     }
-  }, [caretPosition?.[0], caretPosition?.[1], fieldRef]);
+  }, [caretPosition?.[0], caretPosition?.[1], caretUpdateId, fieldRef]);
 
   return (
     <label

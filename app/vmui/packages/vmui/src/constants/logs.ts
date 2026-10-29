@@ -1,7 +1,8 @@
 import { DATE_TIME_FORMAT } from "./date";
 import { getIsMobile } from "../hooks/useDeviceDetect";
+import { MSG_FIELD, STREAM_FIELD, STREAM_ID_FIELD, TIME_FIELD } from "./logFields";
 
-export const LOGS_STREAM_CONTEXT_KEYS = ["_stream_id", "_time"];
+export const LOGS_STREAM_CONTEXT_KEYS = [STREAM_ID_FIELD, TIME_FIELD];
 export const LOGS_DOCS_URL = "https://docs.victoriametrics.com/victorialogs";
 
 export const LOGS_DEFAULT_LIMIT = 50;
@@ -17,7 +18,7 @@ export const WITHOUT_GROUPING = "none";
 
 // Default values for the logs configurators.
 export const LOGS_GROUP_BY = WITHOUT_GROUPING;
-export const LOGS_DISPLAY_FIELDS = "_msg";
+export const LOGS_DISPLAY_FIELDS = MSG_FIELD;
 export const LOGS_DATE_FORMAT = DATE_TIME_FORMAT;
 
 // URL parameters for the logs page.
@@ -37,8 +38,8 @@ export const MAX_QUERY_FIELDS = 1;
 export const MAX_QUERIES_HISTORY = 25;
 
 // Default fields for the table.
-export const DEFAULT_COMMON_FIELDS = ["_time", "_msg" ];
-export const DEFAULT_STREAM_FIELDS = ["_stream"];
+export const DEFAULT_COMMON_FIELDS = [TIME_FIELD, MSG_FIELD];
+export const DEFAULT_STREAM_FIELDS = [STREAM_FIELD];
 
 // Hits chart labels.
 export const OTHER_HITS_LABEL = "other fields";
