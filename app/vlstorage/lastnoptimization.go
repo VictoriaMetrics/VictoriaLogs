@@ -61,13 +61,25 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 	if end < math.MaxInt64 {
 		end++
 	}
+	minStart := start
 	start += end/2 - start/2
 	n := limit
 
 	var rowsFound []logRow
-	var lastNonEmptyRows []logRow
 
 	for {
+		if !logstorage.CanApplyLastNResultsOptimization(start, end) {
+			// The remaining rows are located at the [minStart ... end) time range. It is faster obtaining them as is
+			// on such a small time range instead of using binary search.
+			rows, err := getLogRowsLastN(s, qctx, minStart, end-1, n)
+			if err != nil {
+				return nil, err
+			}
+			rowsFound = append(rowsFound, rows...)
+			rowsFound = getLastNRows(rowsFound, limit)
+			return rowsFound, nil
+		}
+
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
@@ -76,30 +88,11 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 			return nil, err
 		}
 
-		if end/2-start/2 <= 0 {
-			// The [start ... end) time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
-			// Return up to limit rows from the found rows and the last non-empty rows.
-			rowsFound = append(rowsFound, lastNonEmptyRows...)
-			rowsFound = append(rowsFound, rows...)
-			rowsFound = getLastNRows(rowsFound, limit)
-			return rowsFound, nil
-		}
-
 		if uint64(len(rows)) >= 2*n {
 			// The number of found rows on the [start ... end) time range exceeds 2*n,
 			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
-			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
-				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsLastN(s, qctx, start, end-1, n)
-				if err != nil {
-					return nil, err
-				}
-				rowsFound = append(rowsFound, rows...)
-				rowsFound = getLastNRows(rowsFound, limit)
-				return rowsFound, nil
-			}
+			minStart = start
 			start += end/2 - start/2
-			lastNonEmptyRows = rows
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
