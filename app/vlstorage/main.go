@@ -289,9 +289,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return processLogNewStreams(w, r)
 	case "/internal/force_merge":
 		return processForceMerge(w, r)
-	case "/internal/force_flush":
-		return processForceFlush(w, r)
-	case "/internal/rpc/force_flush":
+	case "/internal/force_flush", "/internal/rpc/force_flush":
 		return processForceFlush(w, r)
 	case "/internal/partition/attach":
 		return processPartitionAttach(w, r)
