@@ -761,7 +761,7 @@ var liveTailRequests = metrics.NewCounter(`vl_live_tailing_requests`)
 
 const tailOffsetNsecs = 5e9
 
-// Too big value may result in excess memory usage, since the selected log entries are held in memory.
+// maxRowsPerTailQuery limits the log entries a single live tailing query may select, since they are held in memory before being sent.
 const maxRowsPerTailQuery = 10_000
 
 type logRow struct {
