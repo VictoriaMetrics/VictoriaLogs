@@ -45,6 +45,9 @@ victoria-logs-openbsd-amd64-prod:
 victoria-logs-windows-amd64-prod:
 	APP_NAME=victoria-logs $(MAKE) app-via-docker-windows-amd64
 
+package-victoria-logs:
+	APP_NAME=victoria-logs $(MAKE) package-via-docker
+
 publish-victoria-logs:
 	APP_NAME=victoria-logs $(MAKE) publish-via-docker
 

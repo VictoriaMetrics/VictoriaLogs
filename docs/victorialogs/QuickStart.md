@@ -115,7 +115,7 @@ Enter a query in the input field and press `Enter`. For example:
 * `log.level:error` - only the logs with `error` level;
 * `hello` - the logs containing the word `hello` in their message.
 
-The `*` query should return the three log lines ingested at the previous step, grouped by log stream:
+The `*` query should return the three log lines ingested at the previous step:
 
 ![vmui with query results](quick-start-vmui.webp)
 
@@ -207,6 +207,19 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
   docker.io/victoriametrics/victoria-logs:v1.53.0 -storageDataPath=victoria-logs-data
 ```
 
+The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "#" %}} for Docker `HEALTHCHECK` instead.
+It checks that the running VictoriaLogs accepts connections at `-httpListenAddr` and exits with non-zero code if the check fails.
+Pass the same `-httpListenAddr` as the checked process has. For example, in Docker Compose:
+
+```yaml
+healthcheck:
+  test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
+```
+
+If VictoriaLogs is configured via [environment variables](https://docs.victoriametrics.com/victorialogs/#environment-variables),
+then add `-envflag.enable` to the healthcheck command, so it reads the same environment variables.
+The same flag is supported by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) at `/vlagent-prod`.
+
 See also:
 
 - [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/#how-to-configure-victorialogs)
@@ -276,6 +289,20 @@ make victoria-logs-prod
 ```
 
 This will build the `victoria-logs-prod` executable inside the `bin` folder.
+
+It is also possible to build a VictoriaLogs Docker image for the host architecture and run it locally with command:
+
+```sh
+make package-victoria-logs
+```
+
+This will build the `victoriametrics/victoria-logs:<tag>` image. Run `docker images victoriametrics/victoria-logs` to see the tag, then start it:
+
+```sh
+docker run --rm -it -p 9428:9428 victoriametrics/victoria-logs:<tag>
+```
+
+Additionally, you can run `make package` to build images for VictoriaLogs, `vlagent` and `vlogscli` at once.
 
 See also:
 
