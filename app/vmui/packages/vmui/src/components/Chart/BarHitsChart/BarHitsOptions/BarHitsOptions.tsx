@@ -62,7 +62,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
-  const hasGroupField = groupFieldHits.value !== WITHOUT_GROUPING;
+  const hasGroupField = groupFieldHits.value.length > 0;
   const hasMultipleSeries = (isHitsMode && hasGroupField) || isStatsMode;
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
@@ -109,6 +109,15 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
     const period = { start, end };
     void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
   }, [start, end, extraParams.toString(), fetchFieldNames, query]);
+
+  const handleChangeGroupField = useCallback((field: string) => {
+    const prev = groupFieldHits.value;
+    if (field === WITHOUT_GROUPING) {
+      groupFieldHits.set([]);
+      return;
+    }
+    groupFieldHits.set(prev.includes(field) ? prev.filter(v => v !== field) : [...prev, field]);
+  }, [groupFieldHits]);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
     const next = new URLSearchParams(searchParams);
@@ -181,11 +190,13 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, prevPeriod, 
                 label="Group by"
                 limit={groupFieldHits.value}
                 options={fieldNamesOptions}
+                emptyValueLabel={WITHOUT_GROUPING}
+                emptyValue={WITHOUT_GROUPING}
                 textNoOptions={"No fields found"}
                 isLoading={loading}
                 error={error ? String(error) : ""}
                 onOpenSelect={handleOpenFields}
-                onChange={groupFieldHits.set}
+                onChange={handleChangeGroupField}
               />
             </div>
           </>

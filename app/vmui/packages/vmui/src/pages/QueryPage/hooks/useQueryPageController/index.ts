@@ -54,7 +54,7 @@ const buildHitsParams = (
   period: baseTriggers.period,
   extraParams: baseTriggers.extraParams,
   step: hitsTriggers.step,
-  field: hitsTriggers.groupFieldHits,
+  fields: hitsTriggers.groupFieldHits,
   fieldsLimit: hitsTriggers.topHits,
   queryMode: hitsTriggers.graphQueryMode,
 });

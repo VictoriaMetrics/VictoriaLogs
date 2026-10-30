@@ -15,7 +15,6 @@ import { roundToStepPrecision } from "../../../utils/number";
 import Alert from "../../../components/Main/Alert/Alert";
 import { useIncrementalTimeout } from "./hooks/useIncrementalTimeout";
 import { useHitsChartConfig } from "./hooks/useHitsChartConfig";
-import { WITHOUT_GROUPING } from "../../../constants/logs";
 import BarHitsIterativeWarning
   from "../../../components/Chart/BarHitsChart/BarHitsIterativeWarning/BarHitsIterativeWarning";
 import { getHitsTimeParams } from "../../../utils/logs";
@@ -41,7 +40,7 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
   const { step: fallbackStep } = getHitsTimeParams(period);
 
   const { groupFieldHits } = useHitsChartConfig();
-  const isGroupEnable = groupFieldHits.value !== WITHOUT_GROUPING;
+  const isGroupEnable = groupFieldHits.value.length > 0;
 
   const getYAxes = (logHits: LogHits[], timestamps: number[]) => {
     return logHits.map(hits => {

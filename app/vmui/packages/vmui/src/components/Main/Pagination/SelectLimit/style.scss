@@ -15,6 +15,12 @@
   &:hover {
     background-color: $color-hover-black;
   }
+
+  &__text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 .vm-select-limits {

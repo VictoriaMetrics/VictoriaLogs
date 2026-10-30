@@ -1,9 +1,11 @@
-import { TimeParams } from "../types";
-import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY } from "../constants/logs";
+import { FieldPair, TimeParams } from "../types";
+import { LOGS_BAR_COUNT_DEFAULT, LOGS_GROUP_BY, WITHOUT_GROUPING } from "../constants/logs";
 import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../constants/logs";
 import { nanosecondsToMilliseconds, nanosToIsoString } from "./time";
 import { getDefaultIntervalOption } from "./intervals";
+import { parseLineToJSON } from "./json";
+import { STREAM_FIELD } from "../constants/logFields";
 
 export const getStreamPairs = (stream: string): string[] => {
   const s = stream.trim();
@@ -55,6 +57,45 @@ export const getStreamPairs = (stream: string): string[] => {
   if (last) out.push(last);
 
   return out;
+};
+
+export const parseGroupByFields = (value: string | null): string[] => {
+  if (!value) return [];
+
+  return value.split(",").filter(field => field && field !== WITHOUT_GROUPING);
+};
+
+export const serializeGroupByFields = (fields: string[]): string => {
+  return fields.join(",") || WITHOUT_GROUPING;
+};
+
+const unquoteValue = (value: string): string => {
+  if (!value.startsWith("\"")) return value;
+  return parseLineToJSON(value) ?? value;
+};
+
+const parseStreamPair = (pair: string): FieldPair => {
+  const separatorIndex = pair.indexOf("=");
+  if (separatorIndex === -1) return { field: STREAM_FIELD, value: pair, isStream: true };
+
+  return {
+    field: pair.slice(0, separatorIndex).trim(),
+    value: unquoteValue(pair.slice(separatorIndex + 1).trim()),
+    isStream: true,
+  };
+};
+
+export const getFieldPairs = (fields: { [key: string]: string }): FieldPair[] => {
+  return Object.entries(fields).flatMap(([field, value]) => {
+    if (!value) return [];
+    if (field !== STREAM_FIELD) return { field, value };
+
+    return getStreamPairs(value).map(parseStreamPair);
+  });
+};
+
+export const formatFieldPair = ({ field, value }: FieldPair): string => {
+  return `${field}=${JSON.stringify(value)}`;
 };
 
 export const getStreamKeys = (stream: string): string[] => {

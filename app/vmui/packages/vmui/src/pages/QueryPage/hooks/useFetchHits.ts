@@ -16,7 +16,7 @@ export interface FetchHitsParams {
   query: string;
   period: TimeParams;
   extraParams?: URLSearchParams;
-  field?: string;
+  fields?: string[];
   fieldsLimit?: number;
   step: string | null;
   queryMode?: GRAPH_QUERY_MODE

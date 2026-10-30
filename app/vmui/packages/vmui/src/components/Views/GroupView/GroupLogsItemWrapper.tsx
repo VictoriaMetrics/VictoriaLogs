@@ -1,17 +1,16 @@
 import { FC, ReactNode } from "preact/compat";
-import { WITHOUT_GROUPING } from "../../../constants/logs";
 import Accordion from "../../Main/Accordion/Accordion";
 
 type Props = {
-  groupBy: string;
+  groupByFields: string[];
   expand: boolean;
   onExpandChange: (expand: boolean) => void;
   header: ReactNode;
   children: ReactNode;
 }
 
-const GroupLogsItemWrapper: FC<Props> = ({ groupBy, expand, onExpandChange, header, children }) => {
-  if (groupBy === WITHOUT_GROUPING) {
+const GroupLogsItemWrapper: FC<Props> = ({ groupByFields, expand, onExpandChange, header, children }) => {
+  if (!groupByFields.length) {
     return (
       <div className="vm-group-logs-section__ungrouped">
         {children}
