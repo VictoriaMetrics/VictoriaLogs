@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseExtraFilters_Success(t *testing.T) {
@@ -134,4 +135,67 @@ func TestGetStringSliceFromRequest(t *testing.T) {
 	f("hidden_fields_filters=secret", "hidden_fields_filters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden%5Ffields%5Ffilters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden_fields_filters=foo", []string{"foo", "secret"})
+}
+
+func TestParseCommonArgsMaxQueryTimeRange(t *testing.T) {
+	origValue := maxQueryTimeRange.String()
+	if err := maxQueryTimeRange.Set("7d"); err != nil {
+		t.Fatalf("cannot set -search.maxQueryTimeRange: %s", err)
+	}
+	defer func() {
+		if err := maxQueryTimeRange.Set(origValue); err != nil {
+			t.Fatalf("cannot restore -search.maxQueryTimeRange: %s", err)
+		}
+	}()
+
+	f := func(args string, resultExpected bool) {
+		t.Helper()
+
+		r := httptest.NewRequest(http.MethodGet, "/select/logsql/hits?"+args, nil)
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("cannot parse form: %s", err)
+		}
+
+		ca, err := parseCommonArgs(r)
+		if result := err == nil; result != resultExpected {
+			t.Fatalf("unexpected result for %q; got %v; want %v; error: %v", args, result, resultExpected, err)
+		}
+		if err != nil {
+			return
+		}
+
+		// The query mustn't select the time range exceeding -search.maxQueryTimeRange
+		start, end := ca.q.GetFilterTimeRange()
+		if d := end - start; d > 7*24*time.Hour.Nanoseconds() {
+			t.Fatalf("too big time range selected by the query for %q: %s", args, time.Duration(d))
+		}
+	}
+
+	// time range within the limit
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z", true)
+
+	// time range exceeding the limit
+	f("query=*&start=2026-10-23T09:40:28Z&end=2026-10-30T10:40:28Z", false)
+	f("query=_time:[2026-10-22T10:40:28Z,2026-10-30T10:40:28Z]", false)
+
+	// The time range aligned to step may exceed the limit, while the requested time range doesn't exceed it.
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h", true)
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h&offset=1h", true)
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=1d&offset=-2h", true)
+
+	// The requested time range exceeds the limit when step is set
+	f("query=*&start=2026-10-23T09:40:28Z&end=2026-10-30T10:40:28Z&step=3h", false)
+
+	// The time filter in the query narrows down the requested time range
+	f("query=_time:[2026-10-24T00:00:00Z,2026-10-30T00:00:00Z]&start=2026-10-20T00:00:00Z&end=2026-10-30T10:40:28Z&step=3h", true)
+
+	// The step bigger than the requested time range
+	f("query=*&start=2026-10-30T09:40:28Z&end=2026-10-30T10:40:28Z&step=365d", true)
+
+	// The time filter in the query exceeds the limit, while the global time filter is ignored
+	f("query=options(ignore_global_time_filter=true)%20_time:[2026-10-01T00:00:00Z,2026-10-30T00:00:00Z]&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h", false)
+
+	// The time filters in the query are shifted by time_offset, and they are limited by the global time filter
+	f("query=options(time_offset=1d)%20*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h", true)
+	f("query=options(time_offset=1d)%20_time:[2026-10-22T10:40:28Z,2026-10-30T10:40:28Z]&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h", true)
 }

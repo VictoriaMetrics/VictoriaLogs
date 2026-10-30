@@ -1538,7 +1538,11 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 						offset = nsecs
 					}
 				}
+				startRequested, endRequested := start, end
 				start, end = alignStartEndToStep(start, end, step, offset)
+				if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && startOK && endOK && !skipMaxQueryTimeRangeCheck {
+					start, end = limitAlignedTimeRange(start, end, startRequested, endRequested, maxRange.Nanoseconds())
+				}
 			}
 		}
 
@@ -1635,6 +1639,25 @@ func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 		end--
 	}
 
+	return start, end
+}
+
+// limitAlignedTimeRange limits the [start, end] time range aligned to step by maxRange,
+// so it still covers the requested [startRequested, endRequested] time range.
+//
+// The aligned time range may exceed maxRange by up to two steps for the requested time range within maxRange.
+// Such a requested time range mustn't be rejected by -search.maxQueryTimeRange check, while the query mustn't select
+// the time range exceeding -search.maxQueryTimeRange. So the first and the last steps may be covered only partially.
+//
+// The requested time range exceeding maxRange is returned as is, so it is rejected by -search.maxQueryTimeRange check.
+func limitAlignedTimeRange(start, end, startRequested, endRequested, maxRange int64) (int64, int64) {
+	if end-start <= maxRange || endRequested-startRequested > maxRange {
+		return start, end
+	}
+
+	slack := maxRange - (endRequested - startRequested)
+	start = max(start, startRequested-slack)
+	end = min(end, start+maxRange)
 	return start, end
 }
 
