@@ -12,6 +12,8 @@ import { secondsToMilliseconds } from "../../../../utils/time";
 import { getCssVariable } from "../../../../utils/theme";
 import { getColorFromString } from "../../../../utils/color";
 import { LOADING_HITS_LABEL, OTHER_HITS_LABEL } from "../../../../constants/logs";
+import { STREAM_FIELD } from "../../../../constants/logFields";
+import { formatFieldPair } from "../../../../utils/logs";
 
 const seriesColors = [
   "color-log-hits-bar-1",
@@ -44,8 +46,11 @@ interface UseGetBarHitsOptionsArgs {
 export const getLabelFromLogHit = (logHit: LogHits) => {
   if (logHit?._isOther) return OTHER_HITS_LABEL;
   if (logHit?._isLoading) return LOADING_HITS_LABEL;
-  const fields = Object.values(logHit?.fields || {});
-  return fields.map((value) => value || "\"\"").join(", ");
+  const fields = Object.entries(logHit?.fields || {});
+  if (fields.length > 1) {
+    return fields.map(([field, value]) => field === STREAM_FIELD ? value : formatFieldPair({ field, value })).join(", ");
+  }
+  return fields.map(([, value]) => value || "\"\"").join(", ");
 };
 
 const getYRange = (u: uPlot, initMin = 0, initMax = 1) => {
