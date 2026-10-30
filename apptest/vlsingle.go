@@ -266,6 +266,22 @@ func (app *Vlsingle) StatsQueryRangeRaw(t *testing.T, query string, opts StatsQu
 	return app.node.cli.PostForm(t, url, values)
 }
 
+// LiveTail sends HTTP POST request to /select/logsql/tail endpoint and returns the response.
+//
+// The caller must call Close on the returned response.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
+func (app *Vlsingle) LiveTail(t *testing.T, query string, opts LiveTailOpts) *LiveTailResponse {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/tail", app.node.httpListenAddr)
+	res, cancel := app.node.cli.postFormWithTenantStream(t, opts.AccountID, opts.ProjectID, url, values)
+	return newLiveTailResponse(res, cancel)
+}
+
 // HTTPAddr returns the address at which the vlsingle process is listening
 // for http connections.
 func (app *Vlsingle) HTTPAddr() string {

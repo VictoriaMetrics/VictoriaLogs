@@ -65,7 +65,7 @@ See [quick start docs](https://docs.victoriametrics.com/victorialogs/quickstart/
 
 If you want playing with VictoriaLogs web UI and [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) query language,
 then go to [VictoriaLogs demo playground](https://play-vmlogs.victoriametrics.com/) and
-to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/be5zidev72m80f/k8s-logs-via-victorialogs).
+to [Grafana plugin playground for VictoriaLogs](https://play-grafana.victoriametrics.com/d/lajgcmm/victorialogs-explorer-for-kubernetes-logs).
 
 ## Tuning
 
@@ -378,7 +378,7 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
 
 - `POST /delete/run_task?filter=<logsql_filter>` - starts an asynchronous task for deletion of the logs matching the given `<logsql_filter>`.
   The `<logsql_filter>` may contain arbitrary [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters).
-  For example, request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
+  For example, a `POST` request to `http://victoria-logs:9428/delete/run_task?filter={app=nginx}` starts a task for deleting all the logs with
   `{app="nginx"}` [log stream field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields).
   When calling this endpoint via `curl`, make sure to URL-encode the `{...}` filter (aka [percent-encoding](https://en.wikipedia.org/wiki/Percent-encoding)),
   otherwise `curl` may strip the curly braces and the filter will fail to parse. For example, `{app=nginx}` becomes `%7Bapp%3Dnginx%7D`, so the full request is:
@@ -402,10 +402,15 @@ The following HTTP endpoints are exposed at `http://victoria-logs:9428/` in this
   - `filter` - the [LogsQL filter](https://docs.victoriametrics.com/victorialogs/logsql/#filters) passed to `/delete/run_task?filter=...`.
   - `start_time` - the start time of the deletion task.
 
-The logs scheduled for the deletion via `/delete/run_task` endpoint main remain visible until the deletion task is complete.
-The deletion task is complete when the `/delete/active_task` endpoint stops returning it.
+The logs scheduled for the deletion via `/delete/run_task` endpoint may remain visible until the deletion task is complete.
+The deletion task is complete when the `/delete/active_tasks` endpoint stops returning it.
 
-The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey`{{% available_from "#" %}} command-line flag.
+After deleting some logs from a [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields),
+the stream may contain empty logs with only `_time`, `_stream` and `_stream_id` fields.
+These empty logs are shown in queries that use only a [stream filter](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter), such as `{app="nginx"}`.
+Add `-_msg:""` to hide them, for example `{app="nginx"} -_msg:""`.
+
+The `/delete/*` endpoints can be additionally protected with an `authKey` by passing the `-deleteAuthKey`{{% available_from "v1.53.0" %}} command-line flag.
 When it is set, every request to `/delete/*` must pass the matching `authKey` query arg, which overrides `-httpAuth.*`. For example:
 
 ```bash
@@ -416,6 +421,10 @@ If the deletion API must be enabled in [cluster version of VictoriaLogs](https:/
 then `-delete.enable` command-line flag must be passed to `vlselect` nodes (this enables the deletion API at `vlselect` nodes),
 while `-internaldelete.enable` command-line flag must be passed to `vlstorage` nodes (this enables internal cluster API
 for receiving deletion requests from `vlselect` nodes). The `-deleteAuthKey` command-line flag, if used, must be passed to `vlselect` nodes as well.
+
+In [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) the lower-level `vlselect` nodes
+receive deletion requests from the top-level `vlselect` nodes, so `-internaldelete.enable` command-line flag must be passed to them as well,
+while `-delete.enable` and `-deleteAuthKey` command-line flags must be passed to the top-level `vlselect` nodes only.
 
 ## High Availability
 

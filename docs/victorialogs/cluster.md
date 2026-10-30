@@ -308,8 +308,8 @@ If you want running VictoriaLogs cluster in Kubernetes, then please read [these 
 Download and unpack the latest VictoriaLogs release:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/victoria-logs-linux-amd64-v1.52.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.52.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.53.0/victoria-logs-linux-amd64-v1.53.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.53.0.tar.gz
 ```
 
 Start the first [`vlstorage` node](https://docs.victoriametrics.com/victorialogs/cluster/#architecture), which accepts incoming requests at the port `9491`
@@ -337,7 +337,7 @@ them evenly across the two `vlstorage` nodes started above. The `-select.disable
 ```
 
 Start the `vlselect` node, which serves [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/) at the port `9471` and requests the needed data
-from `vlstorage` nodes started above. The `-insert.disable` command-line flag disables acceping insert requests at the started `vlselect` node:
+from `vlstorage` nodes started above. The `-insert.disable` command-line flag disables accepting insert requests at the started `vlselect` node:
 
 ```sh
 ./victoria-logs-prod -httpListenAddr=:9471 -storageNode=localhost:9491,localhost:9492 -insert.disable &

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
 )
@@ -75,13 +74,18 @@ func TestSyslogLineReader_Failure(t *testing.T) {
 }
 
 func TestProcessStreamInternal_Success(t *testing.T) {
+	syslogTimezoneOrig := *syslogTimezone
+	defer func() {
+		*syslogTimezone = syslogTimezoneOrig
+	}()
+	*syslogTimezone = "UTC"
+
 	f := func(data string, currentYear int, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
 		MustInit()
 		defer MustStop()
 
-		globalTimezone = time.UTC
 		globalCurrentYear.Store(int64(currentYear))
 
 		tlp := &insertutil.TestLogMessageProcessor{}

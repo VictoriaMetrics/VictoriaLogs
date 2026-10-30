@@ -4,6 +4,72 @@ import (
 	"testing"
 )
 
+func TestTopkLess(t *testing.T) {
+	parseTimestamp := func(s string) int64 {
+		t.Helper()
+
+		timestamp, ok := TryParseTimestampRFC3339Nano(s)
+		if !ok {
+			t.Fatalf("cannot parse timestamp %q", s)
+		}
+		return timestamp
+	}
+
+	ps := &pipeSort{
+		byFields: []*bySortField{
+			{name: "_time"},
+		},
+	}
+	psDesc := &pipeSort{
+		byFields: []*bySortField{
+			{name: "_time"},
+		},
+		isDesc: true,
+	}
+
+	stringRow := func(s string) *pipeTopkRow {
+		return &pipeTopkRow{
+			byColumns:       []string{s},
+			byColumnsIsTime: []bool{false},
+		}
+	}
+	timeRow := func(s string) *pipeTopkRow {
+		return &pipeTopkRow{
+			byColumns:       []string{""},
+			byColumnsIsTime: []bool{true},
+			timestamp:       parseTimestamp(s),
+		}
+	}
+	f := func(ps *pipeSort, a, b *pipeTopkRow, resultExpected bool) {
+		t.Helper()
+
+		result := topkLess(ps, a, b)
+		if result != resultExpected {
+			t.Fatalf("unexpected result for topkLess(%#v, %#v); got %v; want %v", a, b, result, resultExpected)
+		}
+	}
+
+	// string time vs string time
+	f(ps, stringRow("2026-04-25T10:00:54Z"), stringRow("2026-04-25T10:01:54Z"), true)
+	f(ps, stringRow("2026-04-25T10:01:54Z"), stringRow("2026-04-25T10:00:54Z"), false)
+
+	// real time vs real time
+	f(ps, timeRow("2026-04-25T10:00:54Z"), timeRow("2026-04-25T10:01:54Z"), true)
+	f(ps, timeRow("2026-04-25T10:01:54Z"), timeRow("2026-04-25T10:00:54Z"), false)
+
+	// string time is smaller than real time
+	f(ps, stringRow("2026-04-25T10:00:54Z"), timeRow("2026-04-25T10:01:54Z"), true)
+	f(ps, timeRow("2026-04-25T10:01:54Z"), stringRow("2026-04-25T10:00:54Z"), false)
+
+	// real time is smaller than string time
+	f(ps, timeRow("2026-04-25T10:00:54Z"), stringRow("2026-04-25T10:01:54Z"), true)
+	f(ps, stringRow("2026-04-25T10:01:54Z"), timeRow("2026-04-25T10:00:54Z"), false)
+
+	// string time vs real time with descending sort
+	f(psDesc, stringRow("2026-04-25T10:00:54Z"), timeRow("2026-04-25T10:01:54Z"), false)
+	f(psDesc, timeRow("2026-04-25T10:01:54Z"), stringRow("2026-04-25T10:00:54Z"), true)
+}
+
 func TestLessString(t *testing.T) {
 	f := func(a, b string, resultExpected bool) {
 		t.Helper()

@@ -3986,6 +3986,24 @@ func TestQueryClone(t *testing.T) {
 	f(`* | math ("round" / 2) as y`)
 }
 
+func TestQueryCloneWithTimeFilter(t *testing.T) {
+	f := func(qStr, resultExpected string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		result := q.CloneWithTimeFilter(q.GetTimestamp(), 0, 1).String()
+		if result != resultExpected {
+			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	}
+
+	f(`foo bar:in(_time:1h baz | fields bar)`,
+		`_time:[1970-01-01T00:00:00.000000000Z,1970-01-01T00:00:00.000000001Z] foo bar:in(_time:1h baz | fields bar)`)
+}
+
 func TestQueryGetFilterTimeRange(t *testing.T) {
 	f := func(qStr string, startExpected, endExpected int64) {
 		t.Helper()
@@ -4472,7 +4490,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
-	// offset and limit pipes are disallowed, since they cannot be applied individually per each step
+	// offset and limit pipes are disallowed, since they cannot be applied individually for each step
 	f(`* | by (x) count() | offset 10`)
 	f(`* | by (x) count() | limit 20`)
 
