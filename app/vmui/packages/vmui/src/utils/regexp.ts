@@ -1,6 +1,6 @@
 export const escapeRegexp = (s: string) => {
-  // taken from https://stackoverflow.com/a/3561711/274937
-  return s.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
+  // Escapes the same chars as Go's regexp.QuoteMeta, since VictoriaLogs uses RE2 syntax.
+  return s.replace(/[\\.+*?()|[\]{}^$]/g, "\\$&");
 };
 
 export const escapeForLogsQLString = (s: string) => {

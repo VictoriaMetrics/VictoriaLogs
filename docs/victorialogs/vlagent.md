@@ -464,9 +464,11 @@ Use an empty string `''` as a placeholder when a specific position requires no e
 
 ### Log rotation
 
-`vlagent` fully supports the `create` log rotation strategy (the default in `logrotate`).
-When the active log file is renamed, `vlagent` finishes reading it before switching to the new file.
-Rotated files in the same directory are tracked automatically, even after `vlagent` restart.
+`vlagent` supports the `create` (default in `logrotate`) and `nocreate` log rotation strategies.
+When the log file is rotated, `vlagent` finishes reading the rotated file before switching to the new one.
+
+`vlagent` automatically tracks rotated files in the same directory and resumes reading them
+from the last saved position after a restart.
 
 Example `logrotate` config:
 
@@ -479,9 +481,12 @@ Example `logrotate` config:
 }
 ```
 
-Note that the application must handle the signal specified in `postrotate` and reopen its log file in response.
+The application must handle the signal sent in `postrotate` by reopening its log file.
+Until it does, it keeps writing to the renamed file, which `vlagent` continues to read.
 
-`vlagent` does not fully support the `copytruncate` rotation strategy and does not read compressed (`.gz`) files.
+The `copytruncate` strategy is also supported, but some log lines may be lost: lines written between copying
+and truncating the file, or not yet read by `vlagent` before truncation, are not collected.
+Use `create` or `nocreate` when possible. Compressed rotated files (for example, `.gz`) are not read.
 
 > Note: if you are collecting logs from a well-known application such as nginx, Apache, or PostgreSQL,
 > a `logrotate` config is most likely already preconfigured by the package and located in `/etc/logrotate.d/`.
