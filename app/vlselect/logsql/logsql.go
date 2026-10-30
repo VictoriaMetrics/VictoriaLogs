@@ -739,10 +739,9 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		if len(resultRows) > 0 {
 			WriteJSONRows(w, resultRows)
-		}
-		// Always flush the first successful query to send the success response headers.
-		// And flush later queries only if they have new rows.
-		if len(resultRows) > 0 || isFirstQuery {
+			flusher.Flush()
+		} else if isFirstQuery {
+			// Send the success response headers after the first successful query, even if it has no results.
 			flusher.Flush()
 		}
 		isFirstQuery = false
@@ -783,8 +782,9 @@ type tailProcessor struct {
 	needSortFields bool
 
 	perStreamRows  map[string][]logRow
-    lastTimestamps map[string]int64
-	// rowsCount counts rows selected by the current tail query, capped by maxRowsPerTailQuery.
+	lastTimestamps map[string]int64
+
+	// rowsCount is the number of rows selected by the current query
 	rowsCount int
 
 	err error
