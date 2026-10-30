@@ -1520,6 +1520,11 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.DropAllPipes()
 	}
 
+	// The requested time range before aligning it to step.
+	// It is used for -search.maxQueryTimeRange check.
+	startRequested := int64(math.MinInt64)
+	endRequested := int64(math.MaxInt64)
+
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
 		if !startOK {
@@ -1528,6 +1533,8 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		if !endOK {
 			end = math.MaxInt64
 		}
+		startRequested = start
+		endRequested = end
 
 		if stepStr := r.FormValue("step"); stepStr != "" {
 			if step, ok := logstorage.TryParseDuration(stepStr); ok {
@@ -1575,6 +1582,12 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 
 	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
+
+		// Do not count the extension of the requested time range to step boundaries,
+		// since it may exceed the limit by up to two steps for the requested time range within the limit.
+		start = max(start, startRequested)
+		end = min(end, endRequested)
+
 		if end > start {
 			queryTimeRange := end - start
 			if queryTimeRange < 0 || queryTimeRange > maxRange.Nanoseconds() {

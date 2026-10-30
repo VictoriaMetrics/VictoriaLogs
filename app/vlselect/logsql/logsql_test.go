@@ -135,3 +135,46 @@ func TestGetStringSliceFromRequest(t *testing.T) {
 	f("hidden_fields_filters=secret", "hidden%5Ffields%5Ffilters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden_fields_filters=foo", []string{"foo", "secret"})
 }
+
+func TestParseCommonArgsMaxQueryTimeRange(t *testing.T) {
+	if err := maxQueryTimeRange.Set("7d"); err != nil {
+		t.Fatalf("cannot set -search.maxQueryTimeRange: %s", err)
+	}
+	defer func() {
+		if err := maxQueryTimeRange.Set("0"); err != nil {
+			t.Fatalf("cannot reset -search.maxQueryTimeRange: %s", err)
+		}
+	}()
+
+	f := func(args string, resultExpected bool) {
+		t.Helper()
+
+		r := httptest.NewRequest(http.MethodGet, "/select/logsql/hits?"+args, nil)
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("cannot parse form: %s", err)
+		}
+
+		_, err := parseCommonArgs(r)
+		if result := err == nil; result != resultExpected {
+			t.Fatalf("unexpected result for %q; got %v; want %v; error: %v", args, result, resultExpected, err)
+		}
+	}
+
+	// time range within the limit
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z", true)
+
+	// time range exceeding the limit
+	f("query=*&start=2026-10-23T09:40:28Z&end=2026-10-30T10:40:28Z", false)
+	f("query=_time:[2026-10-22T10:40:28Z,2026-10-30T10:40:28Z]", false)
+
+	// The time range aligned to step may exceed the limit, while the requested time range doesn't exceed it.
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h", true)
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=3h&offset=1h", true)
+	f("query=*&start=2026-10-23T10:40:28Z&end=2026-10-30T10:40:28Z&step=1d&offset=-2h", true)
+
+	// The requested time range exceeds the limit when step is set
+	f("query=*&start=2026-10-23T09:40:28Z&end=2026-10-30T10:40:28Z&step=3h", false)
+
+	// The time filter in the query narrows down the requested time range
+	f("query=_time:[2026-10-24T00:00:00Z,2026-10-30T00:00:00Z]&start=2026-10-20T00:00:00Z&end=2026-10-30T10:40:28Z&step=3h", true)
+}
