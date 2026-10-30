@@ -783,9 +783,8 @@ type tailProcessor struct {
 	needSortFields bool
 
 	perStreamRows  map[string][]logRow
-	lastTimestamps map[string]int64
-
-	// rowsCount is the number of rows in perStreamRows
+    lastTimestamps map[string]int64
+	// rowsCount counts rows selected by the current tail query, capped by maxRowsPerTailQuery.
 	rowsCount int
 
 	err error
