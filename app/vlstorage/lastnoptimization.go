@@ -68,6 +68,18 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 	var rowsFound []logRow
 
 	for {
+		if !logstorage.CanApplyLastNResultsOptimization(start, end) {
+			// The remaining rows are located at the [minStart ... end) time range. It is faster obtaining them as is
+			// on such a small time range instead of using binary search.
+			rows, err := getLogRowsLastN(s, qctx, minStart, end-1, n)
+			if err != nil {
+				return nil, err
+			}
+			rowsFound = append(rowsFound, rows...)
+			rowsFound = getLastNRows(rowsFound, limit)
+			return rowsFound, nil
+		}
+
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
@@ -79,16 +91,6 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 		if uint64(len(rows)) >= 2*n {
 			// The number of found rows on the [start ... end) time range exceeds 2*n,
 			// so search for the rows on the adjusted time range [start+(end/2-start/2) ... end).
-			if !logstorage.CanApplyLastNResultsOptimization(start, end) {
-				// It is faster obtaining the last N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsLastN(s, qctx, start, end-1, n)
-				if err != nil {
-					return nil, err
-				}
-				rowsFound = append(rowsFound, rows...)
-				rowsFound = getLastNRows(rowsFound, limit)
-				return rowsFound, nil
-			}
 			minStart = start
 			start += end/2 - start/2
 			continue
@@ -106,18 +108,6 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 		// and adjust the time range to search logs at [start-(end/2-start/2) ... start).
 		rowsFound = append(rowsFound, rows...)
 		n -= uint64(len(rows))
-
-		if !logstorage.CanApplyLastNResultsOptimization(minStart, start) {
-			// The remaining rows are located at the [minStart ... start) time range. It is faster obtaining them as is
-			// on such a small time range instead of using binary search.
-			rows, err := getLogRowsLastN(s, qctx, minStart, start-1, n)
-			if err != nil {
-				return nil, err
-			}
-			rowsFound = append(rowsFound, rows...)
-			rowsFound = getLastNRows(rowsFound, limit)
-			return rowsFound, nil
-		}
 
 		d := end/2 - start/2
 		end = start
