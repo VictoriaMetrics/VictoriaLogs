@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestParseExtraFilters_Success(t *testing.T) {
@@ -134,4 +136,81 @@ func TestGetStringSliceFromRequest(t *testing.T) {
 	f("hidden_fields_filters=secret", "hidden_fields_filters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden%5Ffields%5Ffilters=", []string{"secret"})
 	f("hidden_fields_filters=secret", "hidden_fields_filters=foo", []string{"foo", "secret"})
+}
+
+func TestTailProcessorWriteBlock_Success(t *testing.T) {
+	// Test that tailProcessor.writeBlock() accumulates rows up to the limit
+	f := func(rowsPerBlock []int) {
+		t.Helper()
+
+		tp := newTailProcessor(func() {}, false)
+		rowsExpected := 0
+		for _, n := range rowsPerBlock {
+			tp.writeBlock(0, newTestDataBlock(n))
+			rowsExpected += n
+		}
+
+		rows, err := tp.getTailRows()
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if len(rows) != rowsExpected {
+			t.Fatalf("unexpected number of rows; got %d; want %d", len(rows), rowsExpected)
+		}
+	}
+
+	f([]int{1})
+	f([]int{maxRowsPerTailQuery})
+	f([]int{maxRowsPerTailQuery / 2, maxRowsPerTailQuery / 2})
+
+	// Test that the limit is applied per query
+	tp := newTailProcessor(func() {}, false)
+	for range 2 {
+		tp.writeBlock(0, newTestDataBlock(maxRowsPerTailQuery))
+		if _, err := tp.getTailRows(); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	}
+}
+
+func TestTailProcessorWriteBlock_Failure(t *testing.T) {
+	// Test that tailProcessor.writeBlock() cancels the query when rows exceed the limit
+	f := func(rowsPerBlock []int) {
+		t.Helper()
+
+		canceled := false
+		tp := newTailProcessor(func() { canceled = true }, false)
+		for _, n := range rowsPerBlock {
+			tp.writeBlock(0, newTestDataBlock(n))
+		}
+
+		if _, err := tp.getTailRows(); err == nil {
+			t.Fatalf("expecting non-nil error")
+		}
+		if !canceled {
+			t.Fatalf("expecting canceled query")
+		}
+	}
+
+	// A single block exceeds the limit
+	f([]int{maxRowsPerTailQuery + 1})
+
+	// Multiple blocks exceed the limit
+	f([]int{maxRowsPerTailQuery, 1})
+}
+
+func newTestDataBlock(rowsCount int) *logstorage.DataBlock {
+	timestamps := make([]string, rowsCount)
+	for i := range timestamps {
+		timestamps[i] = "2025-01-01T00:00:00Z"
+	}
+
+	var db logstorage.DataBlock
+	db.SetColumns([]logstorage.BlockColumn{
+		{
+			Name:   "_time",
+			Values: timestamps,
+		},
+	})
+	return &db
 }

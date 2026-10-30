@@ -232,6 +232,8 @@ It isn't recommended setting too low value for `refresh_interval` query arg, sin
 **Performance tip**: live tailing works the best if it matches newly ingested logs at relatively slow rate (e.g. up to 1K matching logs per second),
 e.g. it is optimized for the case when real humans inspect the output of live tailing in the real time. If live tailing returns logs at too high rate,
 then it is recommended adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the `<query>`, so it matches less logs.
+Live tailing returns an error if the `<query>` matches more than 10000 logs at a single check for new logs (including a few seconds of already returned logs),
+since such a query may result in excess memory usage.
 
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query performs live tailing

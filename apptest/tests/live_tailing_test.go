@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,4 +96,60 @@ func TestVlclusterLiveTailing_Success(t *testing.T) {
 	// then it returns the newly ingested logs without repeating the already returned logs
 	lineNew := ingest("bar")
 	f(lineNew)
+}
+
+func TestVlsingleLiveTailing_TooManyLogs(t *testing.T) {
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlsingle()
+
+	// live tailing can select up to 10000 logs per query
+	ts := time.Now().UTC().Format(time.RFC3339Nano)
+	records := make([]string, 10_001)
+	for i := range records {
+		records[i] = fmt.Sprintf(`{"_msg":"foo","_time":%q}`, ts)
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	// the error is returned with the proper status code before streaming the results
+	ltr := sut.LiveTail(t, "*", apptest.LiveTailOpts{
+		Offset: "0s",
+	})
+	defer ltr.Close()
+	if ltr.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unexpected status %d; want %d", ltr.StatusCode, http.StatusBadRequest)
+	}
+	if line := ltr.NextLine(t); !strings.Contains(line, "the query matches too many logs") {
+		t.Fatalf("unexpected response:\n%s", line)
+	}
+}
+
+func TestVlclusterLiveTailing_TooManyLogs(t *testing.T) {
+	tc := apptest.NewTestCase(t)
+	defer tc.Stop()
+
+	sut := tc.MustStartDefaultVlcluster()
+
+	// live tailing can select up to 10000 logs per query
+	ts := time.Now().UTC().Format(time.RFC3339Nano)
+	records := make([]string, 10_001)
+	for i := range records {
+		records[i] = fmt.Sprintf(`{"_msg":"foo","_time":%q}`, ts)
+	}
+	sut.JSONLineWrite(t, records, apptest.IngestOpts{})
+	sut.ForceFlush(t)
+
+	// the error is returned with the proper status code before streaming the results
+	ltr := sut.LiveTail(t, "*", apptest.LiveTailOpts{
+		Offset: "0s",
+	})
+	defer ltr.Close()
+	if ltr.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unexpected status %d; want %d", ltr.StatusCode, http.StatusBadRequest)
+	}
+	if line := ltr.NextLine(t); !strings.Contains(line, "the query matches too many logs") {
+		t.Fatalf("unexpected response:\n%s", line)
+	}
 }
