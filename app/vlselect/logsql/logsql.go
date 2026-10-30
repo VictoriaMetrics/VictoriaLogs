@@ -1520,11 +1520,6 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.DropAllPipes()
 	}
 
-	// The requested time range before aligning it to step.
-	// It is used for -search.maxQueryTimeRange check.
-	startRequested := int64(math.MinInt64)
-	endRequested := int64(math.MaxInt64)
-
 	if startOK || endOK {
 		// Add _time:[start, end] filter if start or end args were set.
 		if !startOK {
@@ -1533,8 +1528,6 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		if !endOK {
 			end = math.MaxInt64
 		}
-		startRequested = start
-		endRequested = end
 
 		if stepStr := r.FormValue("step"); stepStr != "" {
 			if step, ok := logstorage.TryParseDuration(stepStr); ok {
@@ -1545,7 +1538,11 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 						offset = nsecs
 					}
 				}
+				startRequested, endRequested := start, end
 				start, end = alignStartEndToStep(start, end, step, offset)
+				if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && startOK && endOK && !skipMaxQueryTimeRangeCheck {
+					start, end = limitAlignedTimeRange(start, end, startRequested, endRequested, maxRange.Nanoseconds())
+				}
 			}
 		}
 
@@ -1582,12 +1579,6 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 
 	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
-
-		// Do not count the extension of the requested time range to step boundaries,
-		// since it may exceed the limit by up to two steps for the requested time range within the limit.
-		start = max(start, startRequested)
-		end = min(end, endRequested)
-
 		if end > start {
 			queryTimeRange := end - start
 			if queryTimeRange < 0 || queryTimeRange > maxRange.Nanoseconds() {
@@ -1648,6 +1639,25 @@ func alignStartEndToStep(start, end, step, offset int64) (int64, int64) {
 		end--
 	}
 
+	return start, end
+}
+
+// limitAlignedTimeRange limits the [start, end] time range aligned to step by maxRange,
+// so it still covers the requested [startRequested, endRequested] time range.
+//
+// The aligned time range may exceed maxRange by up to two steps for the requested time range within maxRange.
+// Such a requested time range mustn't be rejected by -search.maxQueryTimeRange check, while the query mustn't select
+// the time range exceeding -search.maxQueryTimeRange. So the first and the last steps may be covered only partially.
+//
+// The requested time range exceeding maxRange is returned as is, so it is rejected by -search.maxQueryTimeRange check.
+func limitAlignedTimeRange(start, end, startRequested, endRequested, maxRange int64) (int64, int64) {
+	if end-start <= maxRange || endRequested-startRequested > maxRange {
+		return start, end
+	}
+
+	slack := maxRange - (endRequested - startRequested)
+	start = max(start, startRequested-slack)
+	end = min(end, start+maxRange)
 	return start, end
 }
 
