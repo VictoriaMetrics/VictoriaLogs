@@ -11,11 +11,12 @@ import { useState } from "react";
 import { ComponentChildren } from "preact";
 
 interface SelectLimitProps<T extends string | number> {
-  limit: T;
+  limit: T | T[];
   label?: string;
   options?: T[];
   allowUnlimited?: boolean;
   emptyValueLabel?: string;
+  emptyValue?: T;
   isLoading?: boolean;
   error?: string;
   searchable?: boolean;
@@ -34,6 +35,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
     options,
     allowUnlimited,
     emptyValueLabel,
+    emptyValue,
     isLoading,
     error,
     searchable,
@@ -47,6 +49,9 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
 
   const { isMobile } = useDeviceDetect();
   const buttonRef = useRef<HTMLDivElement>(null);
+
+  const isMultiple = Array.isArray(limit);
+  const selectedLimits = useMemo(() => (Array.isArray(limit) ? limit : [limit]), [limit]);
 
   const limits = useMemo(() => {
     const arr = options || defaultLimits;
@@ -72,14 +77,14 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
 
   const handleChangeLimit = (n: T) => () => {
     onChange(n);
-    handleClose();
+    if (!isMultiple) handleClose();
   };
 
   const defaultLabel = isMobile ? "Rows" : "Rows per page";
   const displayLabel = label ?? defaultLabel;
 
-  const defaultValue = limit || emptyValueLabel || "All";
-  const displayValue = renderOptionLabel ? renderOptionLabel(limit, true) : defaultValue;
+  const defaultValue = (Array.isArray(limit) ? limit.join(", ") : limit) || emptyValueLabel || "All";
+  const displayValue = renderOptionLabel && !Array.isArray(limit) ? renderOptionLabel(limit, true) : defaultValue;
 
   return (
     <>
@@ -88,7 +93,10 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
         onClick={handleClickSelect}
         ref={buttonRef}
       >
-        <div>
+        <div
+          className="vm-select-limits-button__text"
+          title={isMultiple ? selectedLimits.join(", ") : undefined}
+        >
           {displayLabel && `${displayLabel}: `}<b>{displayValue}</b>
         </div>
         <ArrowDropDownIcon/>
@@ -142,7 +150,9 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
                   "vm-list-item": true,
                   "vm-select-limits__item": true,
                   "vm-list-item_mobile": isMobile,
-                  "vm-list-item_active": n === limit,
+                  "vm-list-item_active": isMultiple && !selectedLimits.length
+                    ? n === emptyValue
+                    : selectedLimits.includes(n as T),
                 })}
                 key={n}
                 onClick={handleChangeLimit(n as T)}

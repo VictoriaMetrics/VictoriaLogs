@@ -8,9 +8,13 @@ import {
   calculateTotalHits,
   isEqualLogByKeys,
   removeLogsByKeys,
+  parseGroupByFields,
+  serializeGroupByFields,
+  getFieldPairs,
+  formatFieldPair,
 } from "./logs";
 
-import { LOGS_GROUP_BY } from "../constants/logs";
+import { LOGS_GROUP_BY, WITHOUT_GROUPING } from "../constants/logs";
 import { TIME_FIELD } from "../constants/logFields";
 import { LogHits, Logs } from "../api/types";
 
@@ -86,6 +90,83 @@ describe("utils/logs", () => {
       ];
 
       expect(getAllStreamKeys(data).sort()).toEqual(["a"]);
+    });
+  });
+
+  describe("parseGroupByFields", () => {
+    it("no grouping -> []", () => {
+      expect(parseGroupByFields(null)).toEqual([]);
+      expect(parseGroupByFields("")).toEqual([]);
+      expect(parseGroupByFields(WITHOUT_GROUPING)).toEqual([]);
+    });
+
+    it("single field", () => {
+      expect(parseGroupByFields("level")).toEqual(["level"]);
+    });
+
+    it("multiple fields with empty items", () => {
+      expect(parseGroupByFields("level,host,,_stream")).toEqual(["level", "host", "_stream"]);
+    });
+
+    it("drops the without grouping value", () => {
+      expect(parseGroupByFields(`level,${WITHOUT_GROUPING}`)).toEqual(["level"]);
+    });
+  });
+
+  describe("serializeGroupByFields", () => {
+    it("empty fields -> without grouping", () => {
+      expect(serializeGroupByFields([])).toBe(WITHOUT_GROUPING);
+    });
+
+    it("joins fields with comma", () => {
+      expect(serializeGroupByFields(["level", "host"])).toBe("level,host");
+    });
+  });
+
+  describe("getFieldPairs", () => {
+    it("empty fields -> []", () => {
+      expect(getFieldPairs({})).toEqual([]);
+    });
+
+    it("keeps regular fields as is", () => {
+      expect(getFieldPairs({ level: "error", host: "vm-1" })).toEqual([
+        { field: "level", value: "error" },
+        { field: "host", value: "vm-1" },
+      ]);
+    });
+
+    it("skips fields with empty values", () => {
+      expect(getFieldPairs({ level: "", host: "vm-1" })).toEqual([{ field: "host", value: "vm-1" }]);
+    });
+
+    it("splits _stream into stream labels", () => {
+      expect(getFieldPairs({ _stream: "{app=\"vmui\",host=\"vm-1\"}" })).toEqual([
+        { field: "app", value: "vmui", isStream: true },
+        { field: "host", value: "vm-1", isStream: true },
+      ]);
+    });
+
+    it("unescapes quotes in stream label values", () => {
+      expect(getFieldPairs({ _stream: "{app=\"va\\\"l\"}" })).toEqual([
+        { field: "app", value: "va\"l", isStream: true },
+      ]);
+    });
+
+    it("mixes stream labels with regular fields", () => {
+      expect(getFieldPairs({ _stream: "{app=\"vmui\"}", level: "error" })).toEqual([
+        { field: "app", value: "vmui", isStream: true },
+        { field: "level", value: "error" },
+      ]);
+    });
+  });
+
+  describe("formatFieldPair", () => {
+    it("formats a pair as field=\"value\"", () => {
+      expect(formatFieldPair({ field: "level", value: "error" })).toBe("level=\"error\"");
+    });
+
+    it("escapes quotes in values", () => {
+      expect(formatFieldPair({ field: "msg", value: "he said \"yo\"" })).toBe("msg=\"he said \\\"yo\\\"\"");
     });
   });
 

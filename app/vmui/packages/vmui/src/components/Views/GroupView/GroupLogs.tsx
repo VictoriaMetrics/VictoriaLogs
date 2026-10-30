@@ -7,7 +7,7 @@ import GroupLogsItem from "./GroupLogsItem";
 import Button from "../../Main/Button/Button";
 import { CollapseIcon, ExpandIcon } from "../../Main/Icons";
 import { useSearchParams } from "react-router-dom";
-import { getStreamPairs } from "../../../utils/logs";
+import { getFieldPairs, parseGroupByFields } from "../../../utils/logs";
 import GroupLogsConfigurators
   from "./GroupLogsConfigurators/GroupLogsConfigurators";
 import GroupLogsHeader from "./GroupLogsHeader";
@@ -31,7 +31,8 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const [page, setPage] = useState(1);
   const [expandGroups, setExpandGroups] = useState<boolean[]>([]);
 
-  const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
+  const groupByString = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
+  const groupByFields = useMemo(() => parseGroupByFields(groupByString), [groupByString]);
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
   const displayFields = useMemo(() => displayFieldsString.split(","), [displayFieldsString]);
 
@@ -42,20 +43,19 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const expandAll = useMemo(() => expandGroups.every(Boolean), [expandGroups]);
 
   const groupData: GroupLogsType[] = useMemo(() => {
-    return groupByMultipleKeys(logs, [groupBy]).map((item) => {
-      const streamValue = item.values[0]?.[groupBy] || "";
-      const pairs = getStreamPairs(streamValue);
+    return groupByMultipleKeys(logs, groupByFields).map((item) => {
       const values = item.values;
+      const groupFields = Object.fromEntries(groupByFields.map(field => [field, values[0]?.[field] || ""]));
 
       return {
         keys: item.keys,
         keysString: item.keys.join(""),
         values,
-        pairs,
+        pairs: getFieldPairs(groupFields),
         total: values.length,
       };
     }).sort((a, b) => b.total - a.total); // groups sorting
-  }, [logs, groupBy]);
+  }, [logs, groupByFields]);
 
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
 
@@ -106,13 +106,14 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
             key={group.keysString}
           >
             <GroupLogsItemWrapper
-              groupBy={groupBy}
+              groupByFields={groupByFields}
               expand={expandGroups[groupN]}
               onExpandChange={handleChangeExpand(groupN)}
               header={(
                 <GroupLogsHeader
                   group={group}
                   index={groupN}
+                  groupByFields={groupByFields}
                 />
               )}
             >

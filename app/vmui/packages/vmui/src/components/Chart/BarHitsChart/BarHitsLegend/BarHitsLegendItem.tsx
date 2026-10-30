@@ -2,7 +2,7 @@ import { FC, useMemo, useRef } from "preact/compat";
 import classNames from "classnames";
 import { Series } from "uplot";
 import { LegendLogHits } from "../../../../api/types";
-import { getStreamPairs } from "../../../../utils/logs";
+import { getFieldPairs, getStreamPairs } from "../../../../utils/logs";
 import { formatNumberShort } from "../../../../utils/number";
 import Popper from "../../../Main/Popper/Popper";
 import useBoolean from "../../../../hooks/useBoolean";
@@ -30,9 +30,9 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph }) => {
   const targetSeries = useMemo(() => series.find(s => s.label === legend.label), [series]);
   const isOnlyTargetVisible = series.every(s => s === targetSeries || !s.show);
 
-  const fields = useMemo(() => getStreamPairs(legend.label), [legend.label]);
+  const pairs = useMemo(() => getFieldPairs(legend.fields), [legend.fields]);
 
-  const label = fields.join(", ");
+  const label = getStreamPairs(legend.label).join(", ");
   const totalShortFormatted = formatNumberShort(legend.total);
 
   const handleVisibilityToggle = useCallback(() => {
@@ -111,7 +111,7 @@ const BarHitsLegendItem: FC<Props> = ({ legend, series, onRedrawGraph }) => {
       >
         <LegendHitsMenu
           legend={legend}
-          fields={fields}
+          pairs={pairs}
           optionsVisibilitySection={optionsVisibilitySection}
           onClose={handleCloseContextMenu}
         />

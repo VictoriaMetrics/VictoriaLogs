@@ -8,7 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { LOGS_URL_PARAMS } from "../../constants/logs";
 import { TIME_FIELD } from "../../constants/logFields";
 import "./style.scss";
-import { getStreamPairs } from "../../utils/logs";
+import { formatFieldPair, getFieldPairs } from "../../utils/logs";
 import GroupLogsHeaderItem from "../../components/Views/GroupView/GroupLogsHeaderItem";
 import { groupByMultipleKeys } from "../../utils/array";
 import classNames from "classnames";
@@ -61,7 +61,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
 
   const streamFields = useMemo(() => {
     const stream = logsBefore[0]?._stream || logsAfter[0]?._stream || log._stream || "";
-    return getStreamPairs(stream);
+    return getFieldPairs({ _stream: stream });
   }, [logsBefore, logsAfter, log._stream]);
 
   const handleLoadMore = useCallback((dir: Direction) => {
@@ -141,7 +141,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
       <b>Stream labels:</b>
       {streamFields.map(streamPair => (
         <GroupLogsHeaderItem
-          key={streamPair}
+          key={formatFieldPair(streamPair)}
           pair={streamPair}
         />
       ))}
