@@ -6488,7 +6488,7 @@
                 "uid": "$DS_PROMETHEUS"
               },
               "editorMode": "code",
-              "expr": "sum(rate(vl_http_requests_total{job=~\"$job_cluster\", instance=~\"$instance_storage\",path=~\"^/(internal/)?select.*\"}[$__rate_interval])) by (path)",
+              "expr": "sum(rate(vl_http_requests_total{job=~\"$job_cluster\", instance=~\"$instance_storage\",path=~\"^/(internal/(rpc/)?)?select.*\"}[$__rate_interval])) by (path)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
