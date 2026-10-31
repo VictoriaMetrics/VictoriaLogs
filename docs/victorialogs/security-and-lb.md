@@ -439,7 +439,7 @@ See [these docs](https://docs.victoriametrics.com/victoriametrics/vmauth/#query-
 The VictoriaLogs cluster components communicate with each other via internal RPC endpoints,
 which [start with the `/internal/rpc/` path prefix](https://docs.victoriametrics.com/victorialogs/cluster/#architecture).
 These endpoints aren't protected with `-*AuthKey` command-line flags, since they are intended for machine-to-machine communication
-inside a protected internal network. They are covered by the `-httpAuth.*` command-line flags like all the other HTTP endpoints.
+inside a protected internal network. They are covered by the `-httpAuth.*` command-line flags.
 See [Basic Auth](https://docs.victoriametrics.com/victorialogs/security-and-lb/#basic-auth).
 
 In [multi-level cluster setup](https://docs.victoriametrics.com/victorialogs/cluster/#multi-level-cluster-setup) the top-level
