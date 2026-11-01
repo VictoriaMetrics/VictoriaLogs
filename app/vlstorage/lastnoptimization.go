@@ -69,7 +69,7 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 
 	for {
 		if end/2-start/2 <= 0 {
-			// The [start ... end) time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
+			// The [start ... end) time range doesn't exceed a nanosecond, so it cannot be adjusted more.
 			// The remaining rows are located at the [minStart ... end) time range, so obtain them as is.
 			rows, err := getLogRowsLastN(s, qctx, minStart, end-1, n)
 			if err != nil {
@@ -106,7 +106,7 @@ func getLastNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, 
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
-			// The found rows contains the needed limit rows with the biggest timestamps.
+			// The found rows contain the needed limit rows with the biggest timestamps.
 			rowsFound = append(rowsFound, rows...)
 			rowsFound = getLastNRows(rowsFound, limit)
 			return rowsFound, nil
