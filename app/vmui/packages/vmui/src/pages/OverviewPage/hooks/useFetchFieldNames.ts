@@ -4,6 +4,7 @@ import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
 import { TimeParams } from "../../../types";
+import { NOISE_FIELDS, STREAM_FIELDS } from "../../../constants/logFields";
 
 interface FetchOptions {
   period: TimeParams;
@@ -12,9 +13,6 @@ interface FetchOptions {
   skipNoiseFields?: boolean;
   skipStreamFields?: boolean;
 }
-
-const NOISE_FIELDS = ["_msg", "_time"];
-const STREAM_FIELDS = ["_stream", "_stream_id"];
 
 export const useFetchFieldNames = () => {
   const { serverUrl } = useAppState();

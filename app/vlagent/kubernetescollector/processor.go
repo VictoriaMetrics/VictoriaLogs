@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fasttime"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/metrics"
@@ -304,14 +303,12 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 		return timestamp, true
 	case 'I', 'W', 'E', 'F':
-		ts := fasttime.UnixTimestamp()
-		current := time.Unix(int64(ts), 0).UTC()
-		timestamp, fields, ok := tryParseKlog(p.Fields, bytesutil.ToUnsafeString(data), current)
+		fields, ok := tryParseKlog(p.Fields, bytesutil.ToUnsafeString(data))
 		if !ok {
 			return 0, false
 		}
 		p.Fields = fields
-		return timestamp, true
+		return 0, true
 	}
 
 	return 0, false
@@ -319,9 +316,9 @@ func parseLogRowContent(p *logstorage.JSONParser, data []byte) (int64, bool) {
 
 // tryParseKlog parses the given string in Kubernetes Log format and returns the parsed fields.
 // See https://github.com/kubernetes/klog/
-func tryParseKlog(dst []logstorage.Field, src string, current time.Time) (int64, []logstorage.Field, bool) {
+func tryParseKlog(dst []logstorage.Field, src string) ([]logstorage.Field, bool) {
 	if len(src) < len("I0101 00:00:00.000000 1 p:1] m") {
-		return 0, nil, false
+		return nil, false
 	}
 
 	// Parse level.
@@ -329,30 +326,25 @@ func tryParseKlog(dst []logstorage.Field, src string, current time.Time) (int64,
 	src = src[1:]
 	dst = append(dst, logstorage.Field{Name: "level", Value: level})
 
-	// Parse timestamp.
+	// Do not use klog's time since it doesn't provide year and timezone.
+	// vlagent should use Container Runtime time instead.
 	timestampStr := src[:len("0102 15:04:05.000000")]
-	t, err := time.ParseInLocation("0102 15:04:05.000000", timestampStr, time.UTC)
+	_, err := time.Parse("0102 15:04:05.000000", timestampStr)
 	if err != nil {
-		return 0, nil, false
+		return nil, false
 	}
 	src = src[len("0102 15:04:05.000000"):]
-	t = t.AddDate(current.Year(), 0, 0)
-	if t.Add(-time.Hour * 24).After(current) {
-		// Adjust time to the previous year.
-		t = t.AddDate(-1, 0, 0)
-	}
-	timestamp := t.UnixNano()
 
 	// Remove trailing spaces.
 	if len(src) == 0 || src[0] != ' ' {
-		return 0, nil, false
+		return nil, false
 	}
 	src = strings.TrimLeft(src, " ")
 
 	// Parse thread ID.
 	n := strings.IndexByte(src, ' ')
 	if n <= 0 {
-		return 0, nil, false
+		return nil, false
 	}
 	threadID := src[:n]
 	src = src[n+1:]
@@ -361,12 +353,12 @@ func tryParseKlog(dst []logstorage.Field, src string, current time.Time) (int64,
 	// Parse file:line.
 	n = strings.IndexByte(src, ']')
 	if n <= 0 {
-		return 0, nil, false
+		return nil, false
 	}
 	sourceLine := src[:n]
 	src = src[n+1:]
 	if len(src) == 0 || src[0] != ' ' {
-		return 0, nil, false
+		return nil, false
 	}
 	src = src[1:]
 	dst = append(dst, logstorage.Field{Name: "source_line", Value: sourceLine})
@@ -375,10 +367,10 @@ func tryParseKlog(dst []logstorage.Field, src string, current time.Time) (int64,
 	var ok bool
 	dst, ok = tryParseKlogContent(dst, src)
 	if !ok {
-		return 0, nil, false
+		return nil, false
 	}
 
-	return timestamp, dst, true
+	return dst, true
 }
 
 func tryParseKlogContent(dst []logstorage.Field, src string) ([]logstorage.Field, bool) {

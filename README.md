@@ -36,3 +36,11 @@ Feel free asking any questions regarding VictoriaLogs:
 If you like VictoriaLogs and want to contribute, then please [read these docs](https://docs.victoriametrics.com/victoriametrics/contributing/).
 
 Thank you for your cooperation!
+
+## Join the team
+
+We're hiring engineers who share the same [development goals](https://docs.victoriametrics.com/victoriametrics/goals/) as we do: practical improvements, simple solutions, and happy users.
+
+Already contributing to VictoriaMetrics? We'd be especially happy to hear from you.
+
+[Explore open roles.](https://careers.victoriametrics.com/)

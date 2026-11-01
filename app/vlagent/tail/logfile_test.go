@@ -87,6 +87,82 @@ func TestReadLines(t *testing.T) {
 	f(in, expected, offset)
 }
 
+func TestLogFileStatus(t *testing.T) {
+	f := func(lf *logFile, statusWant logFileStatus) {
+		t.Helper()
+
+		statusGot := lf.status()
+		if statusGot != statusWant {
+			t.Fatalf("unexpected status; got %q; want %q", statusToString(statusGot), statusToString(statusWant))
+		}
+
+		lf.close()
+	}
+
+	dir := t.TempDir()
+
+	// Both file and symlink do not exist.
+	lf := newLogFile(dir + "/does-not-exist.log")
+	f(lf, logFileStatusDeleted)
+
+	// Symlink exists, file does not.
+	filePath := dir + "/symlink-to-non-existent-file.log"
+	lf = newLogFile(filePath)
+	createSymlink(t, dir+"/does_not_exist.log", filePath)
+	f(lf, logFileStatusNotRotated)
+
+	// File by the path is missing, but still has hard links (renamed).
+	filePath = dir + "/has-hardlinks.log"
+	createFile(t, filePath, 0666)
+	lf = newLogFile(filePath)
+	_ = lf.tryReopen()
+	if err := os.Rename(filePath, filePath+".rotated"); err != nil {
+		t.Fatalf("failed to rename log file: %s", err)
+	}
+	f(lf, logFileStatusNotRotated)
+
+	// File doesn't have hard links (removed).
+	filePath = dir + "/has-no-hardlinks.log"
+	createFile(t, filePath, 0666)
+	lf = newLogFile(filePath)
+	_ = lf.tryReopen()
+	if err := os.Remove(filePath); err != nil {
+		t.Fatalf("failed to remove log file: %s", err)
+	}
+	f(lf, logFileStatusDeleted)
+
+	// New file with zero size.
+	filePath, _ = createTestLogFile(t)
+	lf = newLogFile(filePath)
+	f(lf, logFileStatusNotRotated)
+
+	// New non-empty file.
+	filePath, _ = createTestLogFile(t)
+	writeLinesToFile(t, filePath, "foo", "bar")
+	lf = newLogFile(filePath)
+	f(lf, logFileStatusRotated)
+
+	// File wasn't changed.
+	filePath, _ = createTestLogFile(t)
+	writeLinesToFile(t, filePath, "foo", "bar")
+	lf = newLogFile(filePath)
+	_ = lf.tryReopen()
+	f(lf, logFileStatusNotRotated)
+}
+
+func statusToString(s logFileStatus) string {
+	switch s {
+	case logFileStatusNotRotated:
+		return "not rotated"
+	case logFileStatusRotated:
+		return "rotated"
+	case logFileStatusDeleted:
+		return "deleted"
+	default:
+		panic(fmt.Sprintf("unknown logFileStatus %d", s))
+	}
+}
+
 var nextFileID atomic.Int64
 
 func createTestLogFile(t *testing.T) (string, uint64) {
@@ -96,23 +172,23 @@ func createTestLogFile(t *testing.T) (string, uint64) {
 	logFilePath := filepath.Join(t.TempDir(), name)
 	symlinkPath := filepath.Join(t.TempDir(), name)
 
-	f, err := os.Create(logFilePath)
-	if err != nil {
-		t.Fatalf("failed to create log file: %s", err)
-	}
-	_ = f.Close()
+	createFile(t, logFilePath, 0666)
+	createSymlink(t, logFilePath, symlinkPath)
 
-	if err := os.Symlink(logFilePath, symlinkPath); err != nil {
-		t.Fatalf("failed to create symlink: %s", err)
-	}
-
-	stat, ok := mustStat(logFilePath)
-	if !ok {
-		t.Fatalf("failed to stat log file %q", logFilePath)
+	stat, exists := mustStat(logFilePath)
+	if !exists {
+		t.Fatalf("file %q does not exist", logFilePath)
 	}
 	inode := getInode(stat)
 
 	return symlinkPath, inode
+}
+
+func createSymlink(t *testing.T, oldname, newname string) {
+	t.Helper()
+	if err := os.Symlink(oldname, newname); err != nil {
+		t.Fatalf("failed to create symlink: %s", err)
+	}
 }
 
 func writeLinesToFile(t testing.TB, filePath string, lines ...string) {

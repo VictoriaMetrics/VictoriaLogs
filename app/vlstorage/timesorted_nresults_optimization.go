@@ -61,13 +61,31 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 	if end < math.MaxInt64 {
 		end++
 	}
+	minStart, maxEnd := start, end
 	start, end = narrowTimeRange(start, end, isDesc)
 	n := limit
 
 	var rowsFound []logRow
-	var lastNonEmptyRows []logRow
 
 	for {
+		if end/2-start/2 <= 0 {
+			// The [start ... end) time range doesn't exceed a nanosecond, so it cannot be adjusted more.
+			// The remaining rows are located at the [minStart ... end) time range if isDesc is true,
+			// otherwise at the [start ... maxEnd) time range, so obtain them as is.
+			if isDesc {
+				start = minStart
+			} else {
+				end = maxEnd
+			}
+			rows, err := getLogRowsTopN(s, qctx, start, end-1, isDesc, n)
+			if err != nil {
+				return nil, err
+			}
+			rowsFound = append(rowsFound, rows...)
+			rowsFound = getTopNRows(rowsFound, limit, isDesc)
+			return rowsFound, nil
+		}
+
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
@@ -76,21 +94,12 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 			return nil, err
 		}
 
-		if end/2-start/2 <= 0 {
-			// The [start ... end) time range doesn't exceed a nanosecond, e.g. it cannot be adjusted more.
-			// Return up to limit rows from the found rows and the last non-empty rows.
-			rowsFound = append(rowsFound, lastNonEmptyRows...)
-			rowsFound = append(rowsFound, rows...)
-			rowsFound = getTopNRows(rowsFound, limit, isDesc)
-			return rowsFound, nil
-		}
-
 		if uint64(len(rows)) >= 2*n {
 			// The number of found rows on the current time range exceeds 2*n,
 			// so narrow the time range by a half towards the logs, which must be returned first.
 			if !logstorage.CanApplyTimeSortedNResultsOptimization(start, end) {
 				// It is faster obtaining the top N logs via a direct sort+limit on such a small time range instead of using binary search.
-				rows, err := getLogRowsTopN(s, qctx, start, end, isDesc, n)
+				rows, err := getLogRowsTopN(s, qctx, start, end-1, isDesc, n)
 				if err != nil {
 					return nil, err
 				}
@@ -98,8 +107,8 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 				rowsFound = getTopNRows(rowsFound, limit, isDesc)
 				return rowsFound, nil
 			}
+			minStart, maxEnd = start, end
 			start, end = narrowTimeRange(start, end, isDesc)
-			lastNonEmptyRows = rows
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
@@ -140,6 +149,8 @@ func shiftTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	return end, end + d
 }
 
+// getLogRowsTopN returns up to n rows with the biggest timestamps on the [start ... end] time range if isDesc is true,
+// otherwise up to n rows with the smallest timestamps.
 func getLogRowsTopN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)

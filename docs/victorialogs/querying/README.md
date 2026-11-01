@@ -239,6 +239,8 @@ It isn't recommended setting too low value for `refresh_interval` query arg, sin
 **Performance tip**: live tailing works the best if it matches newly ingested logs at relatively slow rate (e.g. up to 1K matching logs per second),
 e.g. it is optimized for the case when real humans inspect the output of live tailing in the real time. If live tailing returns logs at too high rate,
 then it is recommended adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the `<query>`, so it matches less logs.
+Live tailing returns an error if the `<query>` matches more than 10000 logs at a single check for new logs (including a few seconds of already returned logs),
+since such a query may result in excess memory usage.
 
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query performs live tailing
@@ -1141,6 +1143,9 @@ VictoriaLogs accepts the following formats for the `hidden_fields_filters` query
 - JSON array with field names or field name prefixes ending with `*`. For example, `hidden_fields_filters=["pass*","pin"]` is equivalent to the previous example.
   JSON array formatting allows specifying field names with commas contrary to the comma-separated formatting.
 
+Multiple `hidden_fields_filters` args may be passed in a single request. The fields from all these args are hidden.
+For example, `hidden_fields_filters=pass*&hidden_fields_filters=pin` is equivalent to the previous examples.
+
 Make sure that the `hidden_fields_filters` value is properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
 The `_stream` field uniquely identifies a [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields), so the `hidden_fields_filters`
@@ -1208,7 +1213,7 @@ Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victor
 
 ## Command-line
 
-VictoriaLogs provides `vlogsqcli` interactive command-line tool for querying logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
+VictoriaLogs provides `vlogscli`, an interactive command-line tool for querying logs. See [how to use vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
 
 VictoriaLogs [querying API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) integrates well with `curl`
 and other Unix command-line tools because of the following features:

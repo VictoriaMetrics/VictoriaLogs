@@ -6,9 +6,9 @@ import { ArrowDownIcon, CopyIcon } from "../../Main/Icons";
 import classNames from "classnames";
 import { useLogsState } from "../../../state/logsPanel/LogsStateContext";
 import { useTimeState } from "../../../state/time/TimeStateContext";
-import { marked } from "marked";
 import { useSearchParams } from "react-router-dom";
 import { LOGS_DATE_FORMAT, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { MSG_FIELD } from "../../../constants/logFields";
 import { parseAnsiToHtml } from "../../../utils/ansiParser";
 import GroupLogsFields from "./GroupLogsFields";
 import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
@@ -21,6 +21,7 @@ import { vmDate } from "../../../utils/time";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import { getLogLevel } from "../../../utils/logLevel";
 import { LOG_LEVEL_ABBREVIATIONS, LOG_LEVEL_COLORS, LOG_LEVEL_UNKNOWN } from "../../../constants/logLevel";
+import SafeHtml from "../../Main/SafeHtml/SafeHtml";
 
 interface Props {
   log: Logs;
@@ -74,8 +75,8 @@ const GroupLogsItem: FC<Props> = ({
   }, [log._time, timezone]);
 
   const formattedMarkdown = useMemo(() => {
-    if (!markdownParsing || !log._msg || !displayFields.includes("_msg")) return "";
-    return marked(log._msg.replace(/```/g, "\n```\n")) as string;
+    if (!markdownParsing || !log._msg || !displayFields.includes(MSG_FIELD)) return "";
+    return log._msg.replace(/```/g, "\n```\n");
   }, [log._msg, markdownParsing, displayFields]);
 
   const hasFields = Object.keys(log).length > 0;
@@ -89,7 +90,7 @@ const GroupLogsItem: FC<Props> = ({
       displayFields.filter(field => log[field]).forEach((field) => {
         let value: string | ReactNode[] = log[field];
 
-        const isMessageField = field === "_msg";
+        const isMessageField = field === MSG_FIELD;
 
         if (isMessageField && ansiParsing) {
           value = parseAnsiToHtml(log[field]);
@@ -200,7 +201,13 @@ const GroupLogsItem: FC<Props> = ({
             "vm-group-logs-row-content__msg_single-line": noWrapLines,
           })}
         >
-          {formattedMarkdown && <span dangerouslySetInnerHTML={{ __html: formattedMarkdown }}/>}
+          {formattedMarkdown && (
+            <SafeHtml
+              tagName="span"
+              value={formattedMarkdown}
+              format="markdown"
+            />
+          )}
           {displayMessage.map((msg, i) => (
             <span
               className="vm-group-logs-row-content__sub-msg"

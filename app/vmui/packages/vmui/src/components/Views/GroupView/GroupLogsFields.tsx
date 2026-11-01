@@ -8,6 +8,7 @@ import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import TextField from "../../Main/TextField/TextField";
 import { SearchIcon } from "../../Main/Icons";
 import { getStreamKeys } from "../../../utils/logs";
+import { STREAM_FIELD } from "../../../constants/logFields";
 
 interface Props {
   log: Logs;
@@ -66,7 +67,7 @@ const GroupLogsFields: FC<Props> = ({ log, hideGroupButton, hideMessageButton })
               key={key}
               field={key}
               value={value}
-              isStreamField={streamFields.includes(key) || key === "_stream"}
+              isStreamField={streamFields.includes(key) || key === STREAM_FIELD}
               hideGroupButton={hideGroupButton}
               hideMessageButton={hideMessageButton}
             />
