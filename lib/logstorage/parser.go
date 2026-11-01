@@ -740,7 +740,7 @@ func CanApplyTimeSortedNResultsOptimization(start, end int64) bool {
 	return end/2-start/2 > nsecsPerSecond
 }
 
-func getOffsetLimitFromPipe(p pipe) (uint64, uint64, bool, bool) {
+func getOffsetLimitFromPipe(p pipe) (offset, limit uint64, isDesc, ok bool) {
 	switch t := p.(type) {
 	case *pipeSort:
 		return getOffsetLimitFromPipeSort(t)
@@ -753,7 +753,7 @@ func getOffsetLimitFromPipe(p pipe) (uint64, uint64, bool, bool) {
 	}
 }
 
-func getOffsetLimitFromPipeSort(ps *pipeSort) (uint64, uint64, bool, bool) {
+func getOffsetLimitFromPipeSort(ps *pipeSort) (offset, limit uint64, isDesc, ok bool) {
 	if ps.limit <= 0 || ps.limit > 50_000 {
 		return 0, 0, false, false
 	}
@@ -772,14 +772,14 @@ func getOffsetLimitFromPipeSort(ps *pipeSort) (uint64, uint64, bool, bool) {
 	if ps.byFields[0].name != "_time" {
 		return 0, 0, false, false
 	}
-	isDesc := ps.byFields[0].isDesc
+	isDesc = ps.byFields[0].isDesc
 	if ps.isDesc {
 		isDesc = !isDesc
 	}
 	return ps.offset, ps.limit, isDesc, true
 }
 
-// CanReturnTimeSortedNResults returns true if time range filter at q can be adjusted for returning N results sorted by _time (asc or desc)
+// CanReturnTimeSortedNResults returns true if time range filter at q can be adjusted for returning N results sorted by _time (asc or desc).
 func (q *Query) CanReturnTimeSortedNResults() bool {
 	for _, p := range q.pipes {
 		if !p.canReturnTimeSortedNResults() {

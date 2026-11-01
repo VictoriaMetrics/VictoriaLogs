@@ -30,7 +30,7 @@ type pipe interface {
 
 	// canReturnTimeSortedNResults must return true if the given pipe can return N results sorted by _time in either direction.
 	//
-	// The pipe can return time-sorted N results if it doesn't modify or remove the _time field.
+	// The pipe can return time-sorted N results if it keeps the _time field and doesn't change the order of its values.
 	canReturnTimeSortedNResults() bool
 
 	// isFixedOutputFieldsOrder must return true if the pipe returns the output log fields in a fixed order.

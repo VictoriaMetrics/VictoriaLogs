@@ -87,7 +87,7 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 
 		if uint64(len(rows)) >= 2*n {
 			// The number of found rows on the current time range exceeds 2*n,
-			// so search for the rows on the adjusted narrowed time range by a half.
+			// so narrow the time range by a half towards the logs, which must be returned first.
 			if !logstorage.CanApplyTimeSortedNResultsOptimization(start, end) {
 				// It is faster obtaining the top N logs via a direct sort+limit on such a small time range instead of using binary search.
 				rows, err := getLogRowsTopN(s, qctx, start, end, isDesc, n)
@@ -120,15 +120,18 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 	}
 }
 
+// narrowTimeRange returns the half of the [start, end) time range with the newest timestamps if isDesc is true,
+// otherwise the half with the oldest timestamps.
 func narrowTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	d := end/2 - start/2
 	if isDesc {
-		// Search in the half closer to the newest timestamps.
 		return start + d, end
 	}
 	return start, end - d
 }
 
+// shiftTimeRange returns the time range, which is adjacent to the [start, end) time range on the side of older timestamps if isDesc is true,
+// otherwise on the side of newer timestamps. The returned time range is a half of the [start, end) time range.
 func shiftTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	d := end/2 - start/2
 	if isDesc {

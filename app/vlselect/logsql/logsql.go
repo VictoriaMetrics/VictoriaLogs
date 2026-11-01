@@ -1199,16 +1199,16 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	direction := r.FormValue("sort_direction")
-	if direction != "" && direction != "asc" && direction != "desc" {
-		httpserver.Errorf(w, r, "unexpected sort_direction=%q; expecting 'asc', 'desc' or ''", direction)
+	sortDirection := r.FormValue("sort_direction")
+	if sortDirection != "" && sortDirection != "asc" && sortDirection != "desc" {
+		httpserver.Errorf(w, r, "unexpected sort_direction=%q; expecting 'asc', 'desc' or ''", sortDirection)
 		return
 	}
+	isDesc := sortDirection != "asc"
 
 	if limit > 0 {
 		// Add '| sort by (_time) <sort_direction> | offset <offset> | limit <limit>' to the end of the query.
 		// This pattern is automatically optimized during query execution - see https://github.com/VictoriaMetrics/VictoriaLogs/issues/96 .
-		isDesc := direction != "asc"
 		if ca.q.CanReturnTimeSortedNResults() {
 			ca.q.AddPipeSortByTime(isDesc)
 		}

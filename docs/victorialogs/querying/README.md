@@ -103,8 +103,8 @@ By default the `/select/logsql/query` returns all the log entries matching the g
 - By adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the query, which select lower number of logs.
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting
-up to `<N>` matching logs on the selected time range while skipping `<M>` logs from the same end.
-The end used for both `limit` and `offset` is controlled by `sort_direction`: `desc` (default) paginates from the most recent logs, `asc` paginates from the oldest logs.
+up to `<N>` matching logs with the biggest [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values on the selected time range,
+while skipping `<M>` logs with the biggest `_time` values. If `sort_direction=asc` query arg is passed, then the logs with the smallest `_time` values are selected and skipped instead.
 
 The `/select/logsql/query` endpoint returns [a stream of JSON lines](https://jsonlines.org/),
 where each line contains JSON-encoded log entry in the form `{field1="value1",...,fieldN="valueN"}`.

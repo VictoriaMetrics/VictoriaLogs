@@ -128,7 +128,7 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 
 			// sort_direction=asc: the oldest `limit` rows, oldest-first.
 			wantAscLines := make([]string, 0, limit)
-			for i := 0; i < limit; i++ {
+			for i := range limit {
 				wantAscLines = append(wantAscLines, ingestRecords[i])
 			}
 			wantAscResponse := &apptest.LogsQLQueryResponse{LogLines: wantAscLines}
