@@ -717,10 +717,11 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	flusher.Flush()
 
 	qctx := ca.newQueryContext(ctxWithCancel)
 	defer ca.updatePerQueryStatsMetrics()
+
+	isFirstQuery := true
 
 	q := ca.q
 	qOrig := q
@@ -739,7 +740,11 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 		if len(resultRows) > 0 {
 			WriteJSONRows(w, resultRows)
 			flusher.Flush()
+		} else if isFirstQuery {
+			// Send the success response headers after the first successful query, even if it has no results.
+			flusher.Flush()
 		}
+		isFirstQuery = false
 
 		select {
 		case <-doneCh:
@@ -754,6 +759,9 @@ func ProcessLiveTailRequest(ctx context.Context, w http.ResponseWriter, r *http.
 var liveTailRequests = metrics.NewCounter(`vl_live_tailing_requests`)
 
 const tailOffsetNsecs = 5e9
+
+// maxRowsPerTailQuery limits the log entries a single live tailing query may select, since they are held in memory before being sent.
+const maxRowsPerTailQuery = 10_000
 
 type logRow struct {
 	timestamp int64
@@ -775,6 +783,9 @@ type tailProcessor struct {
 
 	perStreamRows  map[string][]logRow
 	lastTimestamps map[string]int64
+
+	// rowsCount is the number of rows selected by the current query
+	rowsCount int
 
 	err error
 }
@@ -806,6 +817,14 @@ func (tp *tailProcessor) writeBlock(_ uint, db *logstorage.DataBlock) {
 	timestamps, ok := db.GetTimestamps(nil)
 	if !ok {
 		tp.err = fmt.Errorf("missing _time field")
+		tp.cancel()
+		return
+	}
+
+	tp.rowsCount += len(timestamps)
+	if tp.rowsCount > maxRowsPerTailQuery {
+		tp.err = fmt.Errorf("the query matches too many logs (%d+); add more specific filters to the query; "+
+			"see https://docs.victoriametrics.com/victorialogs/querying/#live-tailing", maxRowsPerTailQuery)
 		tp.cancel()
 		return
 	}
@@ -858,6 +877,7 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 		}
 	}
 	clear(tp.perStreamRows)
+	tp.rowsCount = 0
 
 	sortLogRows(resultRows)
 
