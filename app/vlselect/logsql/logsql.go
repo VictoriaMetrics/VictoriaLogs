@@ -1680,6 +1680,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
 	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
+	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
 	}
@@ -1709,6 +1712,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 func parseExtraStreamFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
+	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_stream_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
 	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
