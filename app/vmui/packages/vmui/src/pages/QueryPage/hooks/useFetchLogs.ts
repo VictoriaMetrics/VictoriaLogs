@@ -16,8 +16,7 @@ export interface FetchLogsParams {
   extraParams?: URLSearchParams;
   beforeFetch?: BeforeFetch;
   isDownload?: boolean;
-  shouldUseLogsTimeout?: boolean;
-  incrementalTimeoutMs?: number;
+  onStart?: () => void;
 }
 
 export type BeforeFetchResult =
@@ -27,11 +26,12 @@ export type BeforeFetchResult =
 
 export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFetchResult>;
 
-type FetchLogsResultStatus = "success" | "error" | "aborted" | "timeout";
+type FetchLogsResultStatus = "success" | "error" | "aborted";
 
 export type FetchLogsResult = {
   response?: Response;
   data?: Logs[];
+  limit?: number;
   status: FetchLogsResultStatus;
 };
 
@@ -103,52 +103,46 @@ export const useFetchLogs = () => {
     extraParams,
     beforeFetch,
     isDownload = false,
-    shouldUseLogsTimeout,
-    incrementalTimeoutMs
+    onStart,
   }: FetchLogsParams): Promise<FetchLogsResult> => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const { signal } = controller;
 
-    const options = buildOptions({ signal });
-
-    let baseBody = buildBody({ query, limit, period, extraParams });
-
-    const preQueryParams = { ...Object.fromEntries(baseBody), ...options.headers };
-    setQueryParams(preQueryParams);
-
-    if (beforeFetch) {
-      // new instance to avoid mutation of original body
-      const decision = await beforeFetch(new URLSearchParams(baseBody));
-      // Return early if instructed to abort
-      if (decision.action === "abort") return { status: "aborted" };
-      // Modify the body if instructed to modify
-      if (decision.action === "modify") baseBody = mergeSearchParams(baseBody, decision.body, "overwrite");
-    }
-
-    const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
-    const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
-
     const id = Date.now();
-    setIsLoading(prev => ({ ...prev, [id]: true }));
-    setError(undefined);
-
-    let timeoutId: number | undefined = undefined;
-    let didTimeout = false;
-
-    if (shouldUseLogsTimeout) {
-      timeoutId = window.setTimeout(() => {
-        if (signal.aborted) return;
-        didTimeout = true;
-        controller.abort();
-      }, incrementalTimeoutMs);
-    }
+    const options = buildOptions({ signal });
+    let effectiveLimit: number | undefined = undefined;
 
     try {
-      const response = await fetch(url,  { body, ...options });
+      let baseBody = buildBody({ query, limit, period, extraParams });
+
+      const preQueryParams = {
+        ...Object.fromEntries(baseBody),
+        ...options.headers
+      };
+      setQueryParams(preQueryParams);
+
+      if (beforeFetch) {
+        // new instance to avoid mutation of original body
+        const decision = await beforeFetch(new URLSearchParams(baseBody));
+        // Return early if instructed to abort
+        if (decision.action === "abort" || signal.aborted) return { status: "aborted" };
+        // Modify the body if instructed to modify
+        if (decision.action === "modify") baseBody = mergeSearchParams(baseBody, decision.body, "overwrite");
+      }
+
+      const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
+      effectiveLimit = body.has("limit") ? Number(body.get("limit")) : undefined;
+      const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
+
+      setIsLoading(prev => ({ ...prev, [id]: true }));
+      setError(undefined);
+
+      onStart?.();
+      const response = await fetch(url, { body, ...options });
 
       if (isDownload) {
-        return { response, status: response.ok ? "success" : "error" };
+        return { response, status: response.ok ? "success" : "error", limit: effectiveLimit };
       }
 
       const uiAccountId = (options.headers as Record<string, string>)?.AccountID;
@@ -168,16 +162,16 @@ export const useFetchLogs = () => {
       if (!response.ok || !response.body) {
         setError(text);
         setLogs([]);
-        return { status: "error" };
+        return { status: "error", limit: effectiveLimit };
       }
 
       const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
       setQueryParams(tmpQueryParams);
-      return { data, status: "success" };
+      return { data, status: "success", limit: effectiveLimit };
     } catch (e) {
       const isError = e instanceof Error;
-      const isAbortError = isError && e.name === "AbortError";
+      const isAbortError = signal.aborted || isError && e.name === "AbortError";
       if (!isAbortError) {
         setError(String(e));
         console.error(e);
@@ -185,10 +179,10 @@ export const useFetchLogs = () => {
       }
 
       if (isAbortError) {
-        return { status: didTimeout ? "timeout" : "aborted" };
+        return { status: "aborted", limit: effectiveLimit };
       }
 
-      return { status: "error" };
+      return { status: "error", limit: effectiveLimit };
     } finally {
       setIsLoading(prev => {
         // Remove the `id` key from `isLoading` when its value becomes `false`
@@ -196,7 +190,6 @@ export const useFetchLogs = () => {
         return rest;
       });
 
-      clearTimeout(timeoutId);
     }
   }, [url, tenant]);
 

@@ -127,7 +127,9 @@ export const useFetchHits = () => {
         setLogHits(hits);
       }
 
-      return loadController.signal.aborted ? "aborted" : "success";
+      if (loadController.signal.aborted) return "aborted";
+
+      return "success";
     } catch (error) {
       if (loadController.signal.aborted) return "aborted";
 
