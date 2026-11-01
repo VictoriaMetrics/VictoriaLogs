@@ -2,10 +2,15 @@ package syslog
 
 import (
 	"bytes"
+	"net"
 	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/app/vlinsert/insertutil"
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestSyslogLineReader_Success(t *testing.T) {
@@ -132,4 +137,91 @@ func TestProcessStreamInternal_Failure(t *testing.T) {
 	// too big message size
 	f("123 foo")
 	f("123456789 bar")
+}
+
+type testLogRowsStorage struct {
+	rowsCount atomic.Int64
+}
+
+func (s *testLogRowsStorage) MustAddRows(lr *logstorage.LogRows) {
+	s.rowsCount.Add(int64(lr.RowsCount()))
+}
+
+func (s *testLogRowsStorage) CanWriteData() error {
+	return nil
+}
+
+func TestMustInit_TimezoneBeforeListeners(t *testing.T) {
+	// Obtain a free UDP port for the syslog listener
+	ln, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("cannot obtain free UDP port: %s", err)
+	}
+	addr := ln.LocalAddr().String()
+	if err := ln.Close(); err != nil {
+		t.Fatalf("cannot close UDP listener: %s", err)
+	}
+
+	listenAddrUDPOrig := *listenAddrUDP
+	syslogTimezoneOrig := *syslogTimezone
+	defer func() {
+		*listenAddrUDP = listenAddrUDPOrig
+		*syslogTimezone = syslogTimezoneOrig
+	}()
+	*listenAddrUDP = []string{addr}
+
+	// Use a timezone, which is loaded from tzdata, unlike UTC
+	*syslogTimezone = "America/New_York"
+
+	var s testLogRowsStorage
+	insertutil.SetLogRowsStorage(&s)
+	defer insertutil.SetLogRowsStorage(nil)
+
+	// Send RFC3164 messages continuously, so a message is pending
+	// at the listener as soon as it starts.
+	conn, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("cannot create UDP client: %s", err)
+	}
+	defer conn.Close()
+	dstAddr, err := net.ResolveUDPAddr("udp4", addr)
+	if err != nil {
+		t.Fatalf("cannot resolve %q: %s", addr, err)
+	}
+	stopCh := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		msg := []byte("<165>Jun  4 12:08:33 abcd systemd[345]: abc defg")
+		for {
+			select {
+			case <-stopCh:
+				return
+			default:
+				_, _ = conn.WriteTo(msg, dstAddr)
+			}
+		}
+	})
+	defer func() {
+		close(stopCh)
+		wg.Wait()
+	}()
+
+	// The listener used to start before the timezone initialization,
+	// so the first messages could be parsed with nil timezone, which resulted in panic.
+	// The race window is small, so repeat the start multiple times.
+	for i := range 100 {
+		globalTimezone = nil
+
+		rowsCount := s.rowsCount.Load()
+		MustInit()
+		deadline := time.Now().Add(5 * time.Second)
+		for s.rowsCount.Load() == rowsCount {
+			if time.Now().After(deadline) {
+				MustStop()
+				t.Fatalf("iteration %d: no messages ingested", i)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		MustStop()
+	}
 }

@@ -126,6 +126,22 @@ func MustInit() {
 	}
 	workersStopCh = make(chan struct{})
 
+	// The timezone and the current year must be initialized before starting the listeners,
+	// since the listeners may receive messages immediately after the start.
+	// Otherwise RFC3164 messages may be parsed with nil timezone, which results in panic.
+	if *syslogTimezone != "" {
+		tz, err := time.LoadLocation(*syslogTimezone)
+		if err != nil {
+			logger.Fatalf("cannot parse -syslog.timezone=%q: %s", *syslogTimezone, err)
+		}
+		globalTimezone = tz
+	} else {
+		globalTimezone = time.Local
+	}
+
+	currentYear := nowInGlobalTZ().Year()
+	globalCurrentYear.Store(int64(currentYear))
+
 	for argIdx, addr := range *listenAddrTCP {
 		workersWG.Go(func() {
 			runTCPListener(addr, argIdx)
@@ -144,18 +160,6 @@ func MustInit() {
 		})
 	}
 
-	if *syslogTimezone != "" {
-		tz, err := time.LoadLocation(*syslogTimezone)
-		if err != nil {
-			logger.Fatalf("cannot parse -syslog.timezone=%q: %s", *syslogTimezone, err)
-		}
-		globalTimezone = tz
-	} else {
-		globalTimezone = time.Local
-	}
-
-	currentYear := nowInGlobalTZ().Year()
-	globalCurrentYear.Store(int64(currentYear))
 	workersWG.Go(func() {
 		for {
 			now := nowInGlobalTZ()
