@@ -4046,7 +4046,7 @@ func TestQueryGetTimeSortedNResultsQuery_Success(t *testing.T) {
 		if limit != limitExpected {
 			t.Fatalf("unexpected limit; got %d; want %d", limit, limitExpected)
 		}
-		if isDescExpected != isDesc {
+		if isDesc != isDescExpected {
 			t.Fatalf("unexpected isDesc; got %v; want %v", isDesc, isDescExpected)
 		}
 	}

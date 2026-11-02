@@ -3,6 +3,7 @@ package tests
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -109,7 +110,7 @@ func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T)
 		sut.ForceFlush(t)
 	}
 
-	f := func(start, end time.Time, limit int, wantTimestamps []time.Time) {
+	f := func(start, end time.Time, limit int, sortDirection string, wantTimestamps []time.Time) {
 		t.Helper()
 
 		var logLines []string
@@ -121,9 +122,10 @@ func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T)
 		}
 
 		selectQueryArgs := apptest.QueryOpts{
-			Start: start.Format(time.RFC3339Nano),
-			End:   end.Format(time.RFC3339Nano),
-			Limit: fmt.Sprintf("%d", limit),
+			Start:         start.Format(time.RFC3339Nano),
+			End:           end.Format(time.RFC3339Nano),
+			Limit:         fmt.Sprintf("%d", limit),
+			SortDirection: sortDirection,
 		}
 		got := sut.LogsQLQuery(t, "* | keep _time", selectQueryArgs)
 		assertLogsQLResponseEqual(t, got, wantResponse)
@@ -138,7 +140,7 @@ func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T)
 	newer := rangeEnd.Add(-time.Second)
 	ingestLogs(rangeStart, 10)
 	ingestLogs(newer, 1)
-	f(rangeStart, rangeEnd, 3, []time.Time{newer, rangeStart, rangeStart})
+	f(rangeStart, rangeEnd, 3, "", []time.Time{newer, rangeStart, rangeStart})
 
 	// verify the case when some of the needed logs are located at the point where binary search splits the selected time range
 	splitPoint := time.Date(2025, 1, 2, 1, 0, 0, 0, time.UTC)
@@ -147,7 +149,27 @@ func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T)
 	newer = splitPoint.Add(time.Second)
 	ingestLogs(splitPoint, 10)
 	ingestLogs(newer, 2)
-	f(rangeStart, rangeEnd, 6, []time.Time{newer, newer, splitPoint, splitPoint, splitPoint, splitPoint})
+	f(rangeStart, rangeEnd, 6, "", []time.Time{newer, newer, splitPoint, splitPoint, splitPoint, splitPoint})
+
+	// verify the case when some of the needed logs are located at the end of the selected time range in asc order.
+	// The time range ends at an even nanosecond, since binary search may skip the last nanosecond of such a time range.
+	rangeEnd = time.Date(2025, 1, 3, 1, 1, 0, 0, time.UTC)
+	rangeStart = rangeEnd.Add(-time.Minute)
+	lastNsec := rangeEnd.Add(-time.Nanosecond)
+	older := rangeStart.Add(time.Second)
+	ingestLogs(lastNsec, 10)
+	ingestLogs(older, 1)
+	f(rangeStart, rangeEnd, 3, "asc", []time.Time{older, lastNsec, lastNsec})
+
+	// verify the case when some of the needed logs are located right before the point where binary search splits the selected time range in asc order
+	splitPoint = time.Date(2025, 1, 4, 1, 0, 0, 0, time.UTC)
+	rangeStart = splitPoint.Add(-30 * time.Second)
+	rangeEnd = splitPoint.Add(30 * time.Second)
+	beforeSplit := splitPoint.Add(-time.Nanosecond)
+	older = splitPoint.Add(-time.Second)
+	ingestLogs(beforeSplit, 10)
+	ingestLogs(older, 2)
+	f(rangeStart, rangeEnd, 6, "asc", []time.Time{older, older, beforeSplit, beforeSplit, beforeSplit, beforeSplit})
 }
 
 // TestVlsingleTimeSortedNResultsOptimizationSortDirection verifies that both sort_direction=desc
@@ -169,72 +191,32 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 	sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
 	sut.ForceFlush(t)
 
+	recordsDesc := slices.Clone(ingestRecords)
+	slices.Reverse(recordsDesc)
+
 	f := func(start, end string) {
 		t.Helper()
 
-		for limit := 1; limit <= len(ingestRecords); limit++ {
-			// Default (desc): the newest `limit` rows, newest-first.
-			wantDescLines := make([]string, 0, limit)
-			for i := len(ingestRecords) - 1; i >= len(ingestRecords)-limit; i-- {
-				wantDescLines = append(wantDescLines, ingestRecords[i])
-			}
-			wantDescResponse := &apptest.LogsQLQueryResponse{LogLines: wantDescLines}
+		check := func(sortDirection string, offset, limit int, want []string) {
+			t.Helper()
 
 			selectQueryArgs := apptest.QueryOpts{
-				Start: start,
-				End:   end,
-				Limit: fmt.Sprintf("%d", limit),
-			}
-			got := sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
-			assertLogsQLResponseOrdered(t, got, wantDescResponse)
-
-			// sort_direction=asc: the oldest `limit` rows, oldest-first.
-			wantAscLines := make([]string, 0, limit)
-			for i := range limit {
-				wantAscLines = append(wantAscLines, ingestRecords[i])
-			}
-			wantAscResponse := &apptest.LogsQLQueryResponse{LogLines: wantAscLines}
-
-			selectQueryArgs = apptest.QueryOpts{
 				Start:         start,
 				End:           end,
 				Limit:         fmt.Sprintf("%d", limit),
-				SortDirection: "asc",
+				Offset:        fmt.Sprintf("%d", offset),
+				SortDirection: sortDirection,
 			}
-			got = sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
-			assertLogsQLResponseOrdered(t, got, wantAscResponse)
+			got := sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
+			assertLogsQLResponseOrdered(t, got, &apptest.LogsQLQueryResponse{LogLines: want})
 		}
 
-		selectQueryArgs := apptest.QueryOpts{
-			Start:  start,
-			End:    end,
-			Limit:  "2",
-			Offset: "1",
+		for limit := 1; limit <= len(ingestRecords); limit++ {
+			check("", 0, limit, recordsDesc[:limit])
+			check("asc", 0, limit, ingestRecords[:limit])
 		}
-		got := sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
-		wantDescResponse := &apptest.LogsQLQueryResponse{
-			LogLines: []string{
-				ingestRecords[3],
-				ingestRecords[2],
-			},
-		}
-		assertLogsQLResponseOrdered(t, got, wantDescResponse)
-
-		selectQueryArgs = apptest.QueryOpts{
-			Start:         start,
-			End:           end,
-			Limit:         "2",
-			Offset:        "1",
-			SortDirection: "asc",
-		}
-		got = sut.LogsQLQuery(t, "* | keep _msg, _time", selectQueryArgs)
-		wantAscResponse := &apptest.LogsQLQueryResponse{
-			LogLines: []string{
-				ingestRecords[1],
-				ingestRecords[2],
-			},
-		}
-		assertLogsQLResponseOrdered(t, got, wantAscResponse)
+		check("", 1, 2, recordsDesc[1:3])
+		check("asc", 1, 2, ingestRecords[1:3])
 	}
 
 	// Records at the start of the selected time range.
@@ -250,31 +232,33 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 	f("2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z")
 }
 
+// TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation verifies that invalid sort_direction is rejected.
 func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 
-	f := func(name string, opts apptest.QueryOpts) {
+	f := func(opts apptest.QueryOpts) {
 		t.Helper()
 
-		t.Run(name, func(t *testing.T) {
-			response, statusCode := sut.LogsQLQueryRaw(t, "*", opts)
-			if statusCode != http.StatusBadRequest {
-				t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, http.StatusBadRequest, response)
-			}
-			errMsg := `unexpected sort_direction="bad"; expecting 'asc', 'desc' or ''`
-			if !strings.Contains(response, errMsg) {
-				t.Fatalf("unexpected response body\ngot\n%s\nwant to contain\n%s", response, errMsg)
-			}
-		})
+		response, statusCode := sut.LogsQLQueryRaw(t, "*", opts)
+		if statusCode != http.StatusBadRequest {
+			t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, http.StatusBadRequest, response)
+		}
+		errMsg := `unexpected sort_direction="bad"; expecting 'asc', 'desc' or ''`
+		if !strings.Contains(response, errMsg) {
+			t.Fatalf("unexpected response body\ngot\n%s\nwant to contain\n%s", response, errMsg)
+		}
 	}
 
-	f("with_limit", apptest.QueryOpts{
+	// with limit
+	f(apptest.QueryOpts{
 		Limit:         "1",
 		SortDirection: "bad",
 	})
-	f("without_limit", apptest.QueryOpts{
+
+	// without limit
+	f(apptest.QueryOpts{
 		SortDirection: "bad",
 	})
 }
