@@ -11,7 +11,7 @@ import { getStreamPairs } from "../../../utils/logs";
 import GroupLogsConfigurators
   from "./GroupLogsConfigurators/GroupLogsConfigurators";
 import GroupLogsHeader from "./GroupLogsHeader";
-import { LOGS_DISPLAY_FIELDS, LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { LOGS_DISPLAY_FIELDS, LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
 import Pagination from "../../Main/Pagination/Pagination";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { usePaginateGroups } from "./hooks/usePaginateGroups";
@@ -56,6 +56,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   }, [logs, groupBy]);
 
   const {
+    allCollapsed,
     collapsedGroups,
     allGroupsExpanded,
     handleChangeExpand,
@@ -93,7 +94,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
           >
             <GroupLogsItemWrapper
               groupBy={groupBy}
-              expand={!collapsedGroups.has(group.keysString)}
+              expand={!allCollapsed && !collapsedGroups.has(group.keysString)}
               onExpandChange={handleChangeExpand(group.keysString)}
               header={(
                 <GroupLogsHeader
@@ -139,14 +140,16 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               onChange={handleSetRowsPerPage}
             />
           </div>
-          <Tooltip title={allGroupsExpanded ? "Collapse All" : "Expand All"}>
-            <Button
-              variant="text"
-              startIcon={allGroupsExpanded ? <CollapseIcon/> : <ExpandIcon/>}
-              onClick={handleToggleExpandAll}
-              aria-label={allGroupsExpanded ? "Collapse All" : "Expand All"}
-            />
-          </Tooltip>
+          {groupBy !== WITHOUT_GROUPING && (
+            <Tooltip title={allGroupsExpanded ? "Collapse All" : "Expand All"}>
+              <Button
+                variant="text"
+                startIcon={allGroupsExpanded ? <CollapseIcon/> : <ExpandIcon/>}
+                onClick={handleToggleExpandAll}
+                aria-label={allGroupsExpanded ? "Collapse All" : "Expand All"}
+              />
+            </Tooltip>
+          )}
           <GroupLogsConfigurators logs={logs}/>
         </div>
       ), settingsRef.current)}
