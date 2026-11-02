@@ -17,7 +17,12 @@ export const useQueryTimeSync = () => {
     isCurrent: () => boolean;
   }): Promise<boolean> => {
     const timeFilterKeyChanged = getSyncTimeFilterKey(baseTriggers) !== lastSyncedTimeFilterKeyRef.current;
-    const shouldSync = (baseChanged || pendingTimeFilterRef.current) && timeFilterKeyChanged;
+    if (!timeFilterKeyChanged) {
+      pendingTimeFilterRef.current = false;
+      return true;
+    }
+
+    const shouldSync = baseChanged || pendingTimeFilterRef.current;
 
     if (!shouldSync) return true;
 

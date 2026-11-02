@@ -687,6 +687,54 @@ describe("useQueryPageController: logs timeout fallback", () => {
     await completeHits();
   });
 
+  it("does not refetch time on chart changes after returning to an already-synced time key", async () => {
+    type TimeResult = typeof initialBase.period & { hasTimeFilter: boolean };
+    let finishStaleTime!: (value: TimeResult | undefined) => void;
+    const resolvedPeriod = {
+      start: initialBase.period.start - 86_400_000_000_000n,
+      end: initialBase.period.end,
+    };
+    mocks.fetchQueryTime
+      .mockResolvedValueOnce({ ...resolvedPeriod, hasTimeFilter: true })
+      .mockImplementationOnce(() => new Promise<TimeResult | undefined>(resolve => {
+        finishStaleTime = resolve;
+      }));
+    mocks.fetchLogs.mockResolvedValue({ status: "success" });
+    baseTriggers = { ...initialBase, query: "_time:7d" };
+    const { rerender } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
+    await flushDebounce();
+    expect(baseTriggers.setPeriod).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchLogs).not.toHaveBeenCalled();
+
+    baseTriggers = { ...initialBase, query: "_time:1d" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(2);
+
+    baseTriggers = { ...initialBase, query: "_time:7d", period: resolvedPeriod };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(2);
+    expect(mocks.fetchLogs).toHaveBeenCalledWith(expect.objectContaining({
+      query: "_time:7d", period: resolvedPeriod,
+    }));
+    await completeHits();
+
+    mocks.dispatch.mockClear();
+    await act(async () => { finishStaleTime(undefined); });
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+
+    hitsTriggers = { ...initialHits, step: "1h" };
+    rerender();
+    await flushDebounce();
+    expect(mocks.fetchQueryTime).toHaveBeenCalledTimes(2);
+    expect(mocks.fetchLogs).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchHits).toHaveBeenLastCalledWith(expect.objectContaining({
+      step: "1h", period: resolvedPeriod,
+    }));
+    await completeHits();
+  });
+
   it("loads hits without retrying logs when loading logs is declined", async () => {
     mocks.fetchLogs.mockResolvedValue({ status: "aborted" });
     const { result } = renderHook(() => useQueryPageController({ query: baseTriggers.query }));
