@@ -52,7 +52,7 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 
 	if uint64(len(rows)) < 2*limit {
 		// Fast path - the requested time range contains up to 2*limit rows.
-		rows = getTopNRows(rows, limit, isDesc)
+		rows = getTimeSortedNRows(rows, limit, isDesc)
 		return rows, nil
 	}
 
@@ -77,12 +77,12 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 			} else {
 				end = maxEnd
 			}
-			rows, err := getLogRowsTopN(s, qctx, start, end-1, isDesc, n)
+			rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n)
 			if err != nil {
 				return nil, err
 			}
 			rowsFound = append(rowsFound, rows...)
-			rowsFound = getTopNRows(rowsFound, limit, isDesc)
+			rowsFound = getTimeSortedNRows(rowsFound, limit, isDesc)
 			return rowsFound, nil
 		}
 
@@ -95,16 +95,15 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 		}
 
 		if uint64(len(rows)) >= 2*n {
-			// The number of found rows on the current time range exceeds 2*n,
-			// so narrow the time range by a half towards the logs, which must be returned first.
+			// The current time range contains at least 2*n rows, so narrow it down.
 			if !logstorage.CanApplyTimeSortedNResultsOptimization(start, end) {
-				// It is faster obtaining the top N logs via a direct sort+limit on such a small time range instead of using binary search.
-				rows, err := getLogRowsTopN(s, qctx, start, end-1, isDesc, n)
+				// It is faster obtaining the N logs as is on such a small time range instead of using binary search.
+				rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n)
 				if err != nil {
 					return nil, err
 				}
 				rowsFound = append(rowsFound, rows...)
-				rowsFound = getTopNRows(rowsFound, limit, isDesc)
+				rowsFound = getTimeSortedNRows(rowsFound, limit, isDesc)
 				return rowsFound, nil
 			}
 			minStart, maxEnd = start, end
@@ -112,16 +111,13 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 			continue
 		}
 		if uint64(len(rowsFound)+len(rows)) >= limit {
-			// The found rows contain the needed limit rows in the target time direction.
+			// The found rows contain the needed limit rows.
 			rowsFound = append(rowsFound, rows...)
-			rowsFound = getTopNRows(rowsFound, limit, isDesc)
+			rowsFound = getTimeSortedNRows(rowsFound, limit, isDesc)
 			return rowsFound, nil
 		}
 
-		// The number of found rows is below the limit. This means the current time range
-		// doesn't cover the needed logs, so it must be extended.
-		// Append the found rows to rowsFound, adjust n, so it doesn't take into account already found rows
-		// and shift the time range to the adjacent non-overlapping range.
+		// The current time range contains less than n rows, so search for the remaining rows at the adjacent time range.
 		rowsFound = append(rowsFound, rows...)
 		n -= uint64(len(rows))
 
@@ -149,9 +145,9 @@ func shiftTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	return end, end + d
 }
 
-// getLogRowsTopN returns up to n rows with the biggest timestamps on the [start ... end] time range if isDesc is true,
+// getLogRowsTimeSortedN returns up to n rows with the biggest timestamps on the [start ... end] time range if isDesc is true,
 // otherwise up to n rows with the smallest timestamps.
-func getLogRowsTopN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64) ([]logRow, error) {
+func getLogRowsTimeSortedN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)
 	q.AddPipeSortByTime(isDesc)
@@ -241,9 +237,8 @@ type logRow struct {
 	fields    []logstorage.Field
 }
 
-func getTopNRows(rows []logRow, limit uint64, isDesc bool) []logRow {
+func getTimeSortedNRows(rows []logRow, limit uint64, isDesc bool) []logRow {
 	sortLogRows(rows, isDesc)
-
 	if uint64(len(rows)) > limit {
 		rows = rows[:limit]
 	}

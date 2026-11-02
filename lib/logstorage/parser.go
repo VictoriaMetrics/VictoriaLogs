@@ -680,7 +680,7 @@ func (q *Query) CloneWithTimeFilter(timestamp, start, end int64) *Query {
 	return qCopy
 }
 
-// GetTimeSortedNResultsQuery() returns a query for optimized querying of the <limit> results with the biggest/smallest _time values depending on sort direction of _time, with an optional <offset>.
+// GetTimeSortedNResultsQuery() returns a query for optimized querying of the first <limit> results sorted by _time with an optional <offset>.
 //
 // The returned query is nil if q cannot be used for optimized querying of N time-sorted results.
 func (q *Query) GetTimeSortedNResultsQuery() (qOpt *Query, offset uint64, limit uint64, isDesc bool) {
@@ -720,7 +720,7 @@ func (q *Query) GetTimeSortedNResultsQuery() (qOpt *Query, offset uint64, limit 
 	}
 
 	// Remove the `| sort ...` pipe from the query, add tailPipes and verify
-	// whether it can reliably return N results sorted by _time (asc or desc).
+	// whether it can reliably return N results sorted by _time.
 	qCopy := q.Clone(q.GetTimestamp())
 	if len(qCopy.pipes) != len(q.pipes) {
 		return nil, 0, 0, false
@@ -779,7 +779,7 @@ func getOffsetLimitFromPipeSort(ps *pipeSort) (offset, limit uint64, isDesc, ok 
 	return ps.offset, ps.limit, isDesc, true
 }
 
-// CanReturnTimeSortedNResults returns true if time range filter at q can be adjusted for returning N results sorted by _time (asc or desc).
+// CanReturnTimeSortedNResults returns true if time range filter at q can be adjusted for returning N results sorted by _time.
 func (q *Query) CanReturnTimeSortedNResults() bool {
 	for _, p := range q.pipes {
 		if !p.canReturnTimeSortedNResults() {

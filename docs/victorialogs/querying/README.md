@@ -84,7 +84,7 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10'
   ```
 
-  By default `limit=N` returns the `N` most recent log entries (those with the biggest `_time` values). Pass `sort_direction=asc` to return the `N` oldest log entries instead:
+  Pass `sort_direction=asc` in order to return up to 10 log entries with the smallest `_time` values instead:
 
   ```sh
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10' -d 'sort_direction=asc'
@@ -125,7 +125,7 @@ The returned lines aren't sorted by default, since sorting disables the ability 
 Query results can be sorted in the following ways:
 
 - By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned by default.
-  Pass `sort_direction=asc` to return the `N` oldest matching log entries instead.
+  Pass `sort_direction=asc` to return up to `N` oldest matching log entries instead.
 - By adding [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) to the query.
 - By using Unix `sort` command at client side according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
