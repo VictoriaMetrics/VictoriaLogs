@@ -8,10 +8,19 @@ type CollapsedGroups = Set<string>;
 
 const STORAGE_KEY = "GROUP_EXPANSION";
 const DEFAULT_COLLAPSED_GROUPS = new Set<string>();
+const MAX_ABSENT_COLLAPSED_GROUPS = 100;
 
 export const useGroupExpansion = (groups: GroupLogsType[]) => {
   const [collapsedGroups, setCollapsedGroups] = useState<CollapsedGroups>(DEFAULT_COLLAPSED_GROUPS);
   const allGroupsExpanded = groups.every(group => !collapsedGroups.has(group.keysString));
+
+  const limitCollapsedGroups = (collapsed: Set<string>, groups: GroupLogsType[]): Set<string> => {
+    const currentKeys = new Set(groups.map(group => group.keysString));
+    const absentKeys = [...collapsed].filter(key => !currentKeys.has(key));
+    const retainedAbsentKeys = new Set(absentKeys.slice(-MAX_ABSENT_COLLAPSED_GROUPS));
+    return new Set([...collapsed].filter(key => currentKeys.has(key) || retainedAbsentKeys.has(key)),
+    );
+  };
 
   const getCollapsedGroupsFromStorage = (): CollapsedGroups => {
     const raw = getFromStorage(STORAGE_KEY, { storage: "session" });
@@ -24,8 +33,10 @@ export const useGroupExpansion = (groups: GroupLogsType[]) => {
   };
 
   const saveCollapsedGroupsToStorage = useCallback((next: CollapsedGroups) => {
-    saveToStorage(STORAGE_KEY, Array.from(next), { storage: "session" });
-  }, []);
+    const limited = limitCollapsedGroups(next, groups);
+    setCollapsedGroups(limited);
+    saveToStorage(STORAGE_KEY, [...limited], { storage: "session" });
+  }, [groups]);
 
   const handleToggleExpandAll = useCallback(() => {
     const next = new Set(collapsedGroups);
