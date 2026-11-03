@@ -673,10 +673,10 @@ func (q *Query) cloneShallow() *Query {
 	return &qCopy
 }
 
-// CloneWithTimeFilter clones q at the given timestamp and adds _time:[start, end] filter to the cloned q.
+// CloneWithTimeFilter clones q at the given timestamp and adds _time:[start, end] filter to the cloned q, but not to its subqueries.
 func (q *Query) CloneWithTimeFilter(timestamp, start, end int64) *Query {
 	qCopy := q.Clone(timestamp)
-	qCopy.AddTimeFilter(start, end)
+	qCopy.addTimeFilterNoSubqueries(start, end)
 	return qCopy
 }
 

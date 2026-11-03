@@ -22,6 +22,7 @@
   "dependencies": {
     "classnames": "^2.5.1",
     "dayjs": "^1.11.21",
+    "dompurify": "^3.4.17",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
     "marked": "^18.0.6",

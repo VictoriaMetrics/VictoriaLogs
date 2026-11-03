@@ -79,7 +79,13 @@ var (
 	requestProtobufDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/opentelemetry/v1/logs",format="protobuf"}`)
 )
 
+var defaultMsgFields = []string{"body"}
+
 func pushProtobufRequest(data []byte, lmp insertutil.LogMessageProcessor, msgFields []string, useDefaultStreamFields, useConsistentPrefix bool) error {
+	if len(msgFields) == 0 {
+		msgFields = defaultMsgFields
+	}
+
 	pushLogs := func(timestamp int64, fields []logstorage.Field, streamFieldsLen int) {
 		logstorage.RenameField(fields[streamFieldsLen:], msgFields, "_msg")
 

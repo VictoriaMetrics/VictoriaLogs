@@ -315,8 +315,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer, useConsis
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Body")
 			}
-			// The empty field name means the _msg field.
-			if err := decodeAnyValue(body, fs, fb, "", bodyPrefix); err != nil {
+			if err := decodeAnyValue(body, fs, fb, "body", bodyPrefix); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:

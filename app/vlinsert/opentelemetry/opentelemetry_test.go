@@ -14,7 +14,7 @@ import (
 func TestPushProtobufRequest(t *testing.T) {
 	f := func(src string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-		testPushProtobufRequest(t, src, false, timestampsExpected, resultExpected)
+		testPushProtobufRequest(t, src, nil, false, timestampsExpected, resultExpected)
 	}
 
 	// single line without resource attributes
@@ -355,10 +355,59 @@ func TestPushProtobufRequest(t *testing.T) {
 	f(data, timestampsExpected, resultsExpected)
 }
 
+func TestPushProtobufRequest_MsgFields(t *testing.T) {
+	f := func(src string, msgFields []string, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+		testPushProtobufRequest(t, src, msgFields, false, timestampsExpected, resultExpected)
+	}
+
+	// log records with a string body and the msg attribute, with a string body only, and with a kvlist body
+	data := `[{
+		"scopeLogs": [{
+			"logRecords": [
+				{
+					"timeUnixNano": 1234,
+					"body": {"stringValue":"foo"},
+					"attributes": [
+						{"key":"msg","value":{"stringValue":"bar"}}
+					]
+				},
+				{
+					"timeUnixNano": 1235,
+					"body": {"stringValue":"baz"}
+				},
+				{
+					"timeUnixNano": 1236,
+					"body": {
+						"keyValueList": {
+							"values": [
+								{"key":"msg","value":{"stringValue":"qux"}}
+							]
+						}
+					}
+				}
+			]
+		}]
+	}]`
+	timestampsExpected := []int64{1234, 1235, 1236}
+
+	// the body is used as the log message by default
+	resultsExpected := `{"_msg":"foo","msg":"bar","severity_number":"0","severity_text":"Unspecified"}
+{"_msg":"baz","severity_number":"0","severity_text":"Unspecified"}
+{"msg":"qux","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, nil, timestampsExpected, resultsExpected)
+
+	// msgFields replace the body as the log message, so the body isn't used as the log message even if the field from msgFields is missing
+	resultsExpected = `{"body":"foo","_msg":"bar","severity_number":"0","severity_text":"Unspecified"}
+{"body":"baz","severity_number":"0","severity_text":"Unspecified"}
+{"_msg":"qux","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, []string{"msg"}, timestampsExpected, resultsExpected)
+}
+
 func TestPushProtobufRequest_ConsistentPrefix(t *testing.T) {
 	f := func(src string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-		testPushProtobufRequest(t, src, true, timestampsExpected, resultExpected)
+		testPushProtobufRequest(t, src, nil, true, timestampsExpected, resultExpected)
 	}
 
 	// attributes with the same key in different sources
@@ -409,7 +458,7 @@ func TestPushProtobufRequest_ConsistentPrefix(t *testing.T) {
 	f(data, timestampsExpected, resultsExpected)
 }
 
-func testPushProtobufRequest(t *testing.T, src string, useConsistentPrefix bool, timestampsExpected []int64, resultExpected string) {
+func testPushProtobufRequest(t *testing.T, src string, msgFields []string, useConsistentPrefix bool, timestampsExpected []int64, resultExpected string) {
 	t.Helper()
 
 	var rls []resourceLogs
@@ -426,7 +475,7 @@ func testPushProtobufRequest(t *testing.T, src string, useConsistentPrefix bool,
 
 	pData := lr.marshalProtobuf(nil)
 	tlp := &insertutil.TestLogMessageProcessor{}
-	if err := pushProtobufRequest(pData, tlp, nil, false, useConsistentPrefix); err != nil {
+	if err := pushProtobufRequest(pData, tlp, msgFields, false, useConsistentPrefix); err != nil {
 		t.Fatalf("unexpected error when parsing protobuf data: %s", err)
 	}
 

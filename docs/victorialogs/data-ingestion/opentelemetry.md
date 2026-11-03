@@ -40,6 +40,19 @@ logExporter, err := otlploghttp.New(ctx,
 )
 ```
 
+VictoriaLogs uses the log body as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+The log message can be taken from other fields via `VL-Msg-Field` HTTP header if needed. In this case the log body is stored in the `body` field{{% available_from "#" %}}.
+For example, the following config uses the `msg` log record attribute as the log message, and falls back to the log body if the `msg` attribute is missing:
+
+```go
+logExporter, err := otlploghttp.New(ctx,
+  otlploghttp.WithEndpointURL("http://victorialogs:9428/insert/opentelemetry/v1/logs"),
+  otlploghttp.WithHeaders(map[string]string{
+    "VL-Msg-Field": "msg,body",
+  }),
+)
+```
+
 VictoriaLogs supports other HTTP headers - see the list [here](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers).
 
 The ingested log entries can be queried according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/).
@@ -129,7 +142,7 @@ VictoriaMetrics and VictoriaTraces use the same field names when they run with t
 
 The flag doesn't change the names of the fields that VictoriaLogs creates from the built-in OpenTelemetry fields,
 such as `scope.name`, `scope.version`, `trace_id`, `span_id`, `severity_number`, `severity_text` and `event_name`.
-Other log body values, such as strings, are still stored in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+Other log body values, such as strings, are still used as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 
 For example, the following log record:
 
