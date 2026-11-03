@@ -121,12 +121,11 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 		rowsFound = append(rowsFound, rows...)
 		n -= uint64(len(rows))
 
-		start, end = shiftTimeRange(start, end, isDesc)
+		start, end = nextTimeRange(start, end, isDesc)
 	}
 }
 
-// narrowTimeRange returns the half of the [start, end) time range with the newest timestamps if isDesc is true,
-// otherwise the half with the oldest timestamps.
+// narrowTimeRange returns the newer half of [start, end) if isDesc is true, otherwise the older half.
 func narrowTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	d := end/2 - start/2
 	if isDesc {
@@ -135,9 +134,8 @@ func narrowTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	return start, end - d
 }
 
-// shiftTimeRange returns the time range, which is adjacent to the [start, end) time range on the side of older timestamps if isDesc is true,
-// otherwise on the side of newer timestamps. The returned time range is a half of the [start, end) time range.
-func shiftTimeRange(start, end int64, isDesc bool) (int64, int64) {
+// nextTimeRange returns the half-sized range next to [start, end): before start if isDesc is true, otherwise after end.
+func nextTimeRange(start, end int64, isDesc bool) (int64, int64) {
 	d := end/2 - start/2
 	if isDesc {
 		return start - d, start
