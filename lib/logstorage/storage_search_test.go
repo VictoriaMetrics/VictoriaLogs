@@ -171,6 +171,66 @@ func TestStorageRunQuery(t *testing.T) {
 			t.Fatalf("unexpected number of matching rows; got %d; want %d", n, expectedRowsCount)
 		}
 	})
+	t.Run("matching-multitenant-query-tenant-filter", func(t *testing.T) {
+		f := func(t *testing.T, query string, rowsExpected int) {
+			t.Helper()
+
+			q := mustParseQuery(query)
+			qs := &QueryStats{}
+			qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+
+			var rowsCountTotal atomic.Uint32
+			writeBlock := func(_ uint, db *DataBlock) {
+				rowsCountTotal.Add(uint32(db.RowsCount()))
+
+				// Verify that vl_account_id and vl_project_id columns contain the tenant of every row.
+				accountIDs := db.GetColumnByName("vl_account_id")
+				projectIDs := db.GetColumnByName("vl_project_id")
+				tenantIDs := db.GetColumnByName("tenant.id")
+				if accountIDs == nil || projectIDs == nil || tenantIDs == nil {
+					panic(fmt.Errorf("missing vl_account_id, vl_project_id or tenant.id column for the query [%s]", q))
+				}
+				for i, tenantIDExpected := range tenantIDs.Values {
+					tenantID := fmt.Sprintf("{accountID=%s,projectID=%s}", accountIDs.Values[i], projectIDs.Values[i])
+					if tenantID != tenantIDExpected {
+						panic(fmt.Errorf("unexpected tenant for the query [%s]; got %s; want %s", q, tenantID, tenantIDExpected))
+					}
+				}
+			}
+			if err := s.RunQuery(qctx, writeBlock); err != nil {
+				t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)
+			}
+
+			if n := rowsCountTotal.Load(); n != uint32(rowsExpected) {
+				t.Fatalf("unexpected number of matching rows for query %q; got %d; want %d", query, n, rowsExpected)
+			}
+		}
+
+		rowsPerTenant := streamsPerTenant * blocksPerStream * rowsPerBlock
+		rowsPerTenantStream := blocksPerStream * rowsPerBlock
+		rowsTotal := tenantsCount * rowsPerTenant
+		f(t, `vl_account_id:2`, rowsPerTenant)
+		f(t, `vl_account_id:2 AND _stream:{job="foobar",instance="host-1:234"}`, rowsPerTenantStream)
+		f(t, `vl_account_id:2 OR vl_project_id:31`, 2*rowsPerTenant)
+		f(t, `!vl_account_id:2`, rowsTotal-rowsPerTenant)
+	})
+	t.Run("missing-multitenant-query-tenant-filter", func(t *testing.T) {
+		f := func(t *testing.T, query string) {
+			t.Helper()
+
+			q := mustParseQuery(query)
+			qs := &QueryStats{}
+			qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+
+			writeBlock := func(_ uint, _ *DataBlock) {}
+			if err := s.RunQuery(qctx, writeBlock); err == nil {
+				t.Fatalf("expecting non-nil error for the query [%s]", q)
+			}
+		}
+
+		f(t, `*`)
+		f(t, `vl_account_id:2 _msg:in(* | fields _msg)`)
+	})
 	t.Run("matching-in-filter", func(t *testing.T) {
 		q := mustParseQuery(`source-file:in(foobar,/foo/bar/baz)`)
 		var rowsCountTotal atomic.Uint32
@@ -1704,5 +1764,159 @@ func storeRowsForSearchHiddenFieldsFilters(s *Storage, tenantIDs []TenantID, now
 
 func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
-	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
+	return NewQueryContext(context.Background(), qs, tenantIDs, false, q, false, nil)
+}
+
+func TestStorageGetFieldNamesMultitenant(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+	s := MustOpenStorage(path, &StorageConfig{
+		Retention: 24 * time.Hour,
+	})
+	defer s.MustClose()
+
+	now := time.Now().UnixNano()
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	for i := range 3 {
+		tenantID := TenantID{
+			AccountID: uint32(i + 1),
+			ProjectID: uint32(i + 11),
+		}
+		fields := []Field{
+			{Name: "_msg", Value: fmt.Sprintf("message-%d", i)},
+		}
+		if i < 2 {
+			fields = append(fields,
+				Field{Name: "vl_account_id", Value: "stored-account-id"},
+				Field{Name: "vl_project_id", Value: "stored-project-id"},
+			)
+		}
+		lr.mustAdd(tenantID, now+int64(i), fields)
+	}
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	q := mustParseQuery("vl_account_id:*")
+	qs := &QueryStats{}
+	qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
+	results, err := s.GetFieldNames(qctx, "vl_")
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	resultsExpected := []ValueWithHits{
+		{"vl_account_id", 3},
+		{"vl_project_id", 3},
+	}
+	if !reflect.DeepEqual(results, resultsExpected) {
+		t.Fatalf("unexpected result; got\n%v\nwant\n%v", results, resultsExpected)
+	}
+}
+
+func TestHasTenantFilter(t *testing.T) {
+	t.Parallel()
+
+	f := func(query string, resultExpected bool) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		result := hasTenantFilter(q.getFinalFilter())
+		if result != resultExpected {
+			t.Fatalf("unexpected result for query %q; got %v; want %v", query, result, resultExpected)
+		}
+	}
+
+	f(`vl_account_id:1`, true)
+	f(`vl_account_id:*`, true)
+	f(`vl_account_id:1 error`, true)
+	f(`vl_account_id:1 OR vl_account_id:2`, true)
+	f(`(vl_account_id:1 vl_project_id:2) OR (vl_account_id:3 foo)`, true)
+	f(`!vl_account_id:1`, true)
+	f(`vl_project_id:2`, true)
+	f(`vl_account_id:1 OR vl_project_id:2`, true)
+
+	f(`*`, false)
+	f(`error`, false)
+	f(`vl_account_id:1 OR error`, false)
+	f(`!(vl_account_id:1 error)`, false)
+	f(`vl_*:1`, false)
+}
+
+func TestQueryCheckTenantFilters(t *testing.T) {
+	t.Parallel()
+
+	f := func(query string, isOK bool) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		err := q.CheckTenantFilters()
+		if isOK && err != nil {
+			t.Fatalf("unexpected error for query %q: %s", query, err)
+		}
+		if !isOK && err == nil {
+			t.Fatalf("expecting non-nil error for query %q", query)
+		}
+	}
+
+	f(`vl_account_id:1 error`, true)
+	f(`error`, false)
+
+	// subqueries must contain tenant filters too
+	f(`vl_account_id:1 x:in(vl_account_id:2 foo | fields x)`, true)
+	f(`vl_account_id:1 x:in(foo | fields x)`, false)
+	f(`vl_account_id:1 | join by (x) (foo | fields x, y)`, false)
+	f(`options(global_filter=(vl_account_id:1)) error x:in(foo | fields x)`, true)
+}
+
+func TestGetTenantFilter(t *testing.T) {
+	t.Parallel()
+
+	tenantRows := [][]Field{
+		{
+			{Name: "vl_account_id", Value: "1"},
+			{Name: "vl_project_id", Value: "11"},
+		},
+		{
+			{Name: "vl_account_id", Value: "2"},
+			{Name: "vl_project_id", Value: "21"},
+		},
+		{
+			{Name: "vl_account_id", Value: "1"},
+			{Name: "vl_project_id", Value: "21"},
+		},
+	}
+
+	f := func(query string, matchingTenantIndexesExpected []int) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		tf := getTenantFilter(q)
+
+		var matchingTenantIndexes []int
+		for i, rows := range tenantRows {
+			if tf.matchRow(rows) {
+				matchingTenantIndexes = append(matchingTenantIndexes, i)
+			}
+		}
+		if !reflect.DeepEqual(matchingTenantIndexes, matchingTenantIndexesExpected) {
+			t.Fatalf("unexpected tenant filter matches for query %q; got %v; want %v", query, matchingTenantIndexes, matchingTenantIndexesExpected)
+		}
+	}
+
+	f(`vl_account_id:1`, []int{0, 2})
+	f(`vl_account_id:=1`, []int{0, 2})
+	f(`vl_account_id:~"1|2"`, []int{0, 1, 2})
+	f(`vl_account_id:in(1,2)`, []int{0, 1, 2})
+	f(`vl_project_id:21`, []int{1, 2})
+	f(`vl_account_id:1 AND vl_project_id:21`, []int{2})
+	f(`vl_account_id:1 AND foo:bar`, []int{0, 2})
+	f(`vl_account_id:2 OR vl_project_id:11`, []int{0, 1})
+	f(`vl_account_id:2 OR foo:bar`, []int{0, 1, 2})
+	f(`foo:bar`, []int{0, 1, 2})
+	f(`!vl_account_id:1`, []int{1})
+	f(`vl_account_id:!~"1"`, []int{1})
+	f(`!foo:bar`, []int{0, 1, 2})
+	f(`!(vl_account_id:1 OR vl_project_id:21)`, []int{0, 1, 2})
 }

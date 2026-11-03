@@ -14,12 +14,12 @@ type Vlcluster struct {
 	selectNode   *vlnode
 }
 
-// MustStartVlcluster starts VictoriaLogs cluster with the given storageFlags for storage nodes.
+// MustStartVlcluster starts VictoriaLogs cluster with the given storageFlags for storage nodes and selectFlags for the select node.
 // It also sets the default flags and populates the app instance state with runtime
 // values extracted from the application log (such as httpListenAddr).
 //
 // Stop must be called on the returned Vlcluster when it is no longer needed.
-func MustStartVlcluster(t *testing.T, instance string, storageFlags []string, cli *Client) *Vlcluster {
+func MustStartVlcluster(t *testing.T, instance string, storageFlags, selectFlags []string, cli *Client) *Vlcluster {
 	t.Helper()
 
 	// Start storage nodes
@@ -42,10 +42,10 @@ func MustStartVlcluster(t *testing.T, instance string, storageFlags []string, cl
 
 	// Start select node
 	selectName := instance + "-select"
-	selectFlags := []string{
+	selectFlags = append([]string{
 		storageNodeFlag,
 		"-insert.disable=true",
-	}
+	}, selectFlags...)
 	selectNode, _ := mustStartVlnode(t, selectName, selectFlags, cli, nil)
 
 	return &Vlcluster{
@@ -106,13 +106,9 @@ func (app *Vlcluster) JSONLineWrite(t *testing.T, records []string, opts IngestO
 func (app *Vlcluster) LogsQLQuery(t *testing.T, query string, opts QueryOpts) *LogsQLQueryResponse {
 	t.Helper()
 
-	values := opts.asURLValues()
-	values.Add("query", query)
-
-	url := fmt.Sprintf("http://%s/select/logsql/query", app.selectNode.httpListenAddr)
-	res, statusCode := app.selectNode.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
+	res, statusCode := app.LogsQLQueryRaw(t, query, opts)
 	if statusCode != http.StatusOK {
-		t.Fatalf("unexpected status code from %s: %d; want %d", url, statusCode, http.StatusOK)
+		t.Fatalf("unexpected response status code for query %q: got %d; want %d; response\n%s", query, statusCode, http.StatusOK, res)
 	}
 	return NewLogsQLQueryResponse(t, res)
 }
@@ -249,7 +245,7 @@ func (app *Vlcluster) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts)
 	values := opts.asURLValues()
 	values.Add("query", query)
 
-	url := fmt.Sprintf("http://%s/select/logsql/query", app.selectNode.httpListenAddr)
+	url := fmt.Sprintf("http://%s%s", app.selectNode.httpListenAddr, opts.queryPath())
 	return app.selectNode.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
 }
 

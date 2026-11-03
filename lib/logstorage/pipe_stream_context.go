@@ -327,7 +327,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 	}
 
 	qctxOrig := pcp.pc.qctx
-	qctx := NewQueryContext(ctxWithCancel, qctxOrig.QueryStats, []TenantID{tenantID}, q, qctxOrig.AllowPartialResponse, qctxOrig.HiddenFieldsFilters)
+	qctx := NewQueryContext(ctxWithCancel, qctxOrig.QueryStats, []TenantID{tenantID}, qctxOrig.IsMultiTenant, q, qctxOrig.AllowPartialResponse, qctxOrig.HiddenFieldsFilters)
 	if err := pcp.pc.runQuery(qctx, writeBlock); err != nil {
 		return nil, 0, err
 	}
