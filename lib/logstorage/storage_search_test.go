@@ -220,6 +220,7 @@ func TestStorageRunQuery(t *testing.T) {
 		f(t, `{vl_account_id=~"1"}`, rowsPerTenant)
 		f(t, `{vl_account_id="2" or vl_project_id="31"}`, 2*rowsPerTenant)
 		f(t, `{vl_account_id!="2"}`, rowsTotal-rowsPerTenant)
+		f(t, `!{vl_account_id="2"}`, rowsTotal-rowsPerTenant)
 
 		// vl_account_id and vl_project_id in both stream filters and field filters
 		f(t, `{vl_account_id="2"} vl_project_id:=21`, rowsPerTenant)
@@ -1850,6 +1851,7 @@ func TestQueryMoveTenantStreamFilters(t *testing.T) {
 	f(`{app="nginx"} error`, `{app="nginx"} error`)
 	f(`{vl_account_id="12",app="nginx"} error`, `{app="nginx"} vl_account_id:=12 error`)
 	f(`{vl_account_id!="12"}`, `!vl_account_id:=12`)
+	f(`!{vl_account_id="12"}`, `!vl_account_id:=12`)
 	f(`{vl_account_id in ("12","13")}`, `vl_account_id:~"^(?:12|13)$"`)
 	f(`{vl_account_id="12" or app="nginx"}`, `vl_account_id:=12 or {app="nginx"}`)
 	f(`{vl_account_id="12"} x:in({vl_account_id="13"} | fields x)`, `vl_account_id:=12 x:in(vl_account_id:=13 | fields x)`)
