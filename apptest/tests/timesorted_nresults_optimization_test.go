@@ -231,29 +231,35 @@ func TestVlsingleTimeSortedNResultsOptimization_SortDirection(t *testing.T) {
 	f("2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z")
 }
 
-// TestVlsingleTimeSortedNResultsOptimization_SortDirectionValidation verifies that sort_direction is rejected if it is invalid or is passed without limit.
+// TestVlsingleTimeSortedNResultsOptimization_SortDirectionValidation verifies validation of sort_direction query arg.
 func TestVlsingleTimeSortedNResultsOptimization_SortDirectionValidation(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
 
-	f := func(opts apptest.QueryOpts) {
+	f := func(opts apptest.QueryOpts, statusCodeExpected int) {
 		t.Helper()
 
 		response, statusCode := sut.LogsQLQueryRaw(t, "*", opts)
-		if statusCode != http.StatusBadRequest {
-			t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, http.StatusBadRequest, response)
+		if statusCode != statusCodeExpected {
+			t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, statusCodeExpected, response)
 		}
 	}
+
+	// valid value with limit
+	f(apptest.QueryOpts{
+		Limit:         "1",
+		SortDirection: "asc",
+	}, http.StatusOK)
 
 	// invalid value
 	f(apptest.QueryOpts{
 		Limit:         "1",
 		SortDirection: "bad",
-	})
+	}, http.StatusBadRequest)
 
 	// without limit
 	f(apptest.QueryOpts{
 		SortDirection: "asc",
-	})
+	}, http.StatusBadRequest)
 }
