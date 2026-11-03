@@ -429,7 +429,13 @@ func moveTenantStreamFilters(f filter) filter {
 				}
 				filters = append(filters, newFilterStream(sf))
 			}
-			orFilters = append(orFilters, newFilterAnd(filters))
+			// do not wrap a single filter into AND,
+			// so !{vl_account_id="12"} is recognized as a tenant filter
+			if len(filters) == 1 {
+				orFilters = append(orFilters, filters[0])
+			} else {
+				orFilters = append(orFilters, newFilterAnd(filters))
+			}
 		}
 
 		if len(orFilters) == 1 {
