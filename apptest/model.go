@@ -19,6 +19,9 @@ type QueryOpts struct {
 	AccountID string
 	ProjectID string
 
+	// MultiTenant sends the query to /select/multitenant/logsql/query instead of /select/logsql/query.
+	MultiTenant bool
+
 	Timeout      string
 	Start        string
 	End          string
@@ -343,6 +346,13 @@ func (ltr *LiveTailResponse) NextLine(t *testing.T) string {
 func (ltr *LiveTailResponse) Close() {
 	_ = ltr.body.Close()
 	ltr.cancel()
+}
+
+func (qos *QueryOpts) queryPath() string {
+	if qos.MultiTenant {
+		return "/select/multitenant/logsql/query"
+	}
+	return "/select/logsql/query"
 }
 
 func addNonEmpty(uv url.Values, name string, values ...string) {
