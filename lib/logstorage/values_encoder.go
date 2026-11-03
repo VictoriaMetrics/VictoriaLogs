@@ -1429,12 +1429,14 @@ func marshalTimestampISO8601String(dst []byte, nsecs int64) []byte {
 
 const iso8601Timestamp = "2006-01-02T15:04:05.000Z"
 
-// marshalTimestampRFC3339NanoString appends RFC3339Nano-formatted nsecs to dst and returns the result.
+// marshalTimestampRFC3339NanoString appends RFC3339-formatted nsecs with nanosecond precision to dst and returns the result.
+//
+// The result always contains 9 digits after the decimal point, so the results for different timestamps can be compared as strings.
 func marshalTimestampRFC3339NanoString(dst []byte, nsecs int64) []byte {
-	return time.Unix(0, nsecs).UTC().AppendFormat(dst, time.RFC3339Nano)
+	return time.Unix(0, nsecs).UTC().AppendFormat(dst, "2006-01-02T15:04:05.000000000Z07:00")
 }
 
-// marshalTimestampRFC3339NanoPreciseString appends RFC3339-formatted nsecs with nanosecond precision to dst and returns the result.
-func marshalTimestampRFC3339NanoPreciseString(dst []byte, nsecs int64) []byte {
-	return time.Unix(0, nsecs).UTC().AppendFormat(dst, "2006-01-02T15:04:05.000000000Z07:00")
+// FormatTimestampRFC3339Nano returns RFC3339-formatted nsecs with 9 digits after the decimal point.
+func FormatTimestampRFC3339Nano(nsecs int64) string {
+	return string(marshalTimestampRFC3339NanoString(nil, nsecs))
 }

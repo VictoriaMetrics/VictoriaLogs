@@ -31,8 +31,8 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 	f(&opts{
 		query: `"ingest jsonline"`,
 		wantLogLines: []string{
-			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","bar":"foo"}`,
-			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
+			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","bar":"foo"}`,
+			`{"_msg":"ingest jsonline","_stream":"{}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
 		},
 	})
 
@@ -44,8 +44,8 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 	f(&opts{
 		query: `"ingest _stream jsonline"`,
 		wantLogLines: []string{
-			`{"_msg":"ingest _stream jsonline","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007Z","foo":"bar"}`,
-			`{"_msg":"ingest _stream jsonline","_stream":"{host=\"x\"}","_time":"2025-06-05T14:30:20.088007Z","bar":"foo","host":"x"}`,
+			`{"_msg":"ingest _stream jsonline","_stream":"{foo=\"bar\"}","_time":"2025-06-05T14:30:19.088007000Z","foo":"bar"}`,
+			`{"_msg":"ingest _stream jsonline","_stream":"{host=\"x\"}","_time":"2025-06-05T14:30:20.088007000Z","bar":"foo","host":"x"}`,
 		},
 	})
 
@@ -73,7 +73,7 @@ func TestVlsingleIngestionProtocols(t *testing.T) {
 	f(&opts{
 		query: `"ingest native"`,
 		wantLogLines: []string{
-			`{"_msg":"ingest native","_time":"2025-06-05T16:41:37.409Z", "_stream":"{foo=\"bar\"}", "foo": "bar", "qwe": "rty"}`,
+			`{"_msg":"ingest native","_time":"2025-06-05T16:41:37.409000000Z", "_stream":"{foo=\"bar\"}", "foo": "bar", "qwe": "rty"}`,
 		},
 	})
 }
