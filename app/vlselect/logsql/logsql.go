@@ -1605,6 +1605,7 @@ func parseCommonArgsExt(r *http.Request, isMultiTenant, skipMaxQueryTimeRangeChe
 	}
 
 	if isMultiTenant {
+		q.MoveTenantStreamFilters()
 		if err := q.CheckTenantFilters(); err != nil {
 			return nil, err
 		}

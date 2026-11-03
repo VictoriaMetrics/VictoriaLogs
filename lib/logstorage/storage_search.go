@@ -18,6 +18,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/regexutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -367,6 +368,100 @@ func getTenantFilter(q *Query) filter {
 		logger.Panicf("BUG: unexpected error: %s", err)
 	}
 
+	return f
+}
+
+// MoveTenantStreamFilters replaces vl_account_id and vl_project_id filters inside stream filters at q and its subqueries with field filters.
+//
+// Multitenant queries must call it, since stored log streams do not contain these labels.
+// For example, `{app="nginx",vl_account_id="12"}` is replaced with `vl_account_id:=12 {app="nginx"}`.
+func (q *Query) MoveTenantStreamFilters() {
+	q.visitSubqueries(func(sq *Query) {
+		sq.f = moveTenantStreamFilters(sq.f)
+		if sq.opts.globalFilter != nil {
+			sq.opts.globalFilter = moveTenantStreamFilters(sq.opts.globalFilter)
+		}
+	})
+}
+
+func moveTenantStreamFilters(f filter) filter {
+	// find stream filters with vl_account_id or vl_project_id labels
+	visitFunc := func(f filter) bool {
+		fs, ok := f.(*filterStream)
+		if !ok {
+			return false
+		}
+		for _, af := range fs.f.orFilters {
+			for _, tf := range af.tagFilters {
+				if isTenantColumn(tf.tagName) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// move tenant labels out of every OR branch into field filters
+	// e.g., `{vl_account_id="12",app="nginx" or job="api"}` -> `vl_account_id:=12 {app="nginx"} or {job="api"}`.
+	copyFunc := func(f filter) (filter, error) {
+		fs := f.(*filterStream)
+		orFilters := make([]filter, 0, len(fs.f.orFilters))
+		for _, af := range fs.f.orFilters {
+			// split tenant labels from other labels
+			var filters []filter
+			var tagFilters []*streamTagFilter
+			for _, tf := range af.tagFilters {
+				if isTenantColumn(tf.tagName) {
+					filters = append(filters, newFieldFilterFromStreamTagFilter(tf))
+				} else {
+					tagFilters = append(tagFilters, tf)
+				}
+			}
+
+			// keep other labels as a stream filter
+			if len(tagFilters) > 0 {
+				sf := &StreamFilter{
+					orFilters: []*andStreamFilter{
+						{
+							tagFilters: tagFilters,
+						},
+					},
+				}
+				filters = append(filters, newFilterStream(sf))
+			}
+			orFilters = append(orFilters, newFilterAnd(filters))
+		}
+
+		if len(orFilters) == 1 {
+			// do not wrap a single filter into OR,
+			// so the remaining stream filter can be used for searching streamIDs in the index.
+			return orFilters[0], nil
+		}
+		return newFilterOr(orFilters), nil
+	}
+
+	fNew, err := copyFilter(f, visitFunc, copyFunc)
+	if err != nil {
+		logger.Panicf("BUG: unexpected error: %s", err)
+	}
+	return optimizeFilters(fNew)
+}
+
+func newFieldFilterFromStreamTagFilter(tf *streamTagFilter) filter {
+	var f filter
+	if tf.op == "=" || tf.op == "!=" {
+		f = newFilterExact(tf.tagName, tf.value)
+	} else {
+		// stream filter regexps must match the whole value, while field filter regexps match any substring.
+		re, err := regexutil.NewRegex("^(?:" + tf.value + ")$")
+		if err != nil {
+			logger.Panicf("BUG: cannot parse regexp %q, which has been already parsed in the stream filter: %s", tf.value, err)
+		}
+		f = newFilterRegexp(tf.tagName, re)
+	}
+	if tf.op == "!=" || tf.op == "!~" {
+		f = newFilterNot(f)
+	}
 	return f
 }
 
