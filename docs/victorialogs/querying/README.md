@@ -90,6 +90,10 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10' -d 'sort_direction=asc'
   ```
 
+  The `sort_direction` query arg can be used only together with the `limit` query arg. It is ignored if the `query` doesn't return the `_time` field
+  or changes the order of the returned logs, for example, via [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
+  or [`sort`](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) pipes.
+
 - By adding [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe) to the query. For example, the following command returns up to 10 **random** log entries
   with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 

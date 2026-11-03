@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -232,7 +231,7 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 	f("2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z")
 }
 
-// TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation verifies that invalid sort_direction is rejected.
+// TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation verifies that sort_direction is rejected if it is invalid or is passed without limit.
 func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
@@ -245,13 +244,9 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testin
 		if statusCode != http.StatusBadRequest {
 			t.Fatalf("unexpected status code; got %d; want %d; response body\n%s", statusCode, http.StatusBadRequest, response)
 		}
-		errMsg := `unexpected sort_direction="bad"; expecting 'asc', 'desc' or ''`
-		if !strings.Contains(response, errMsg) {
-			t.Fatalf("unexpected response body\ngot\n%s\nwant to contain\n%s", response, errMsg)
-		}
 	}
 
-	// with limit
+	// invalid value
 	f(apptest.QueryOpts{
 		Limit:         "1",
 		SortDirection: "bad",
@@ -259,6 +254,6 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testin
 
 	// without limit
 	f(apptest.QueryOpts{
-		SortDirection: "bad",
+		SortDirection: "asc",
 	})
 }

@@ -1220,9 +1220,15 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	sortDirection := r.FormValue("sort_direction")
-	if sortDirection != "" && sortDirection != "asc" && sortDirection != "desc" {
-		httpserver.Errorf(w, r, "unexpected sort_direction=%q; expecting 'asc', 'desc' or ''", sortDirection)
-		return
+	if sortDirection != "" {
+		if limit == 0 {
+			httpserver.Errorf(w, r, "sort_direction query arg can be used only together with limit query arg")
+			return
+		}
+		if sortDirection != "asc" && sortDirection != "desc" {
+			httpserver.Errorf(w, r, "unexpected sort_direction=%q; expecting 'asc', 'desc' or ''", sortDirection)
+			return
+		}
 	}
 	isDesc := sortDirection != "asc"
 
