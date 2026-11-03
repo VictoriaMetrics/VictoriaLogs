@@ -89,11 +89,11 @@ func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {
 	assertLogsQLResponseEqual(t, got, wantResponse)
 }
 
-// TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps verifies that time-sorted N results optimization returns all the needed logs
+// TestVlsingleTimeSortedNResultsOptimization_IdenticalTimestamps verifies that time-sorted N results optimization returns all the needed logs
 // when many of them share the timestamp at the start of the selected time range or at the point where binary search splits it.
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/pull/1882
-func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T) {
+func TestVlsingleTimeSortedNResultsOptimization_IdenticalTimestamps(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -171,11 +171,11 @@ func TestVlsingleTimeSortedNResultsOptimizationIdenticalTimestamps(t *testing.T)
 	f(rangeStart, rangeEnd, 6, "asc", []time.Time{older, older, beforeSplit, beforeSplit, beforeSplit, beforeSplit})
 }
 
-// TestVlsingleTimeSortedNResultsOptimizationSortDirection verifies that both sort_direction=desc
+// TestVlsingleTimeSortedNResultsOptimization_SortDirection verifies that both sort_direction=desc
 // (default) and sort_direction=asc return rows in the expected _time order.
 //
 // See https://github.com/VictoriaMetrics/VictoriaLogs/issues/924
-func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
+func TestVlsingleTimeSortedNResultsOptimization_SortDirection(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
@@ -231,8 +231,8 @@ func TestVlsingleTimeSortedNResultsOptimizationSortDirection(t *testing.T) {
 	f("2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z")
 }
 
-// TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation verifies that sort_direction is rejected if it is invalid or is passed without limit.
-func TestVlsingleTimeSortedNResultsOptimizationSortDirectionValidation(t *testing.T) {
+// TestVlsingleTimeSortedNResultsOptimization_SortDirectionValidation verifies that sort_direction is rejected if it is invalid or is passed without limit.
+func TestVlsingleTimeSortedNResultsOptimization_SortDirectionValidation(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
 	sut := tc.MustStartDefaultVlsingle()
