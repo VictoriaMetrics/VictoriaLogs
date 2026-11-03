@@ -528,6 +528,9 @@ curl http://localhost:9428/select/multitenant/logsql/query \
   -d 'query=vl_account_id:in(12,13) vl_project_id:=34 error'
 ```
 
+`vl_account_id` and `vl_project_id` can also be used in [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
+For example, `{vl_account_id="12",app="nginx"}` is equivalent to `vl_account_id:=12 {app="nginx"}`.
+
 The `vl_account_id` and `vl_project_id` fields are generated from tenant IDs during multitenant querying.
 They are returned in query results unless they are removed by LogsQL pipes such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe).
 They can also be used in LogsQL filters for selecting the needed tenants.
