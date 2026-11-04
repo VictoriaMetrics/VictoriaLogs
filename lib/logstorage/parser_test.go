@@ -2717,6 +2717,26 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`a:in(x | keep a;) | stats count() if (x;) y;`, `a:in(x | fields a) | stats count(*) if (x) as y`)
 }
 
+func TestParseQuery_InvalidQuotedString(t *testing.T) {
+	f := func(s string) {
+		t.Helper()
+
+		_, err := ParseQuery(s)
+		if err == nil {
+			t.Fatalf("expecting non-nil error for ParseQuery(%q)", s)
+		}
+		if !strings.Contains(err.Error(), "invalid quoted string") {
+			t.Fatalf("unexpected error for ParseQuery(%q): %s", s, err)
+		}
+	}
+
+	f(`field:~"(?i)\$"`)
+	f(`field:"foo\$"`)
+	f(`"foo\$"`)
+	f(`'foo\$'`)
+	f(`field:"foo`)
+}
+
 func TestParseQuery_Failure(t *testing.T) {
 	f := func(s string) {
 		t.Helper()
