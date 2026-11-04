@@ -38,7 +38,7 @@ func (pc *pipeBlocksCount) canLiveTail() bool {
 	return false
 }
 
-func (pc *pipeBlocksCount) canReturnLastNResults() bool {
+func (pc *pipeBlocksCount) canReturnTimeSortedNResults() bool {
 	return false
 }
 

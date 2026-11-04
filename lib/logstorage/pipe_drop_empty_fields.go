@@ -28,7 +28,7 @@ func (pd *pipeDropEmptyFields) canLiveTail() bool {
 	return true
 }
 
-func (pd *pipeDropEmptyFields) canReturnLastNResults() bool {
+func (pd *pipeDropEmptyFields) canReturnTimeSortedNResults() bool {
 	return true
 }
 
