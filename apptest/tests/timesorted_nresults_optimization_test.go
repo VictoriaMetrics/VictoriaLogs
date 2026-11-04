@@ -173,8 +173,6 @@ func TestVlsingleTimeSortedNResultsOptimization_IdenticalTimestamps(t *testing.T
 
 // TestVlsingleTimeSortedNResultsOptimization_SortDirection verifies that both sort_direction=desc
 // (default) and sort_direction=asc return rows in the expected _time order.
-//
-// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/924
 func TestVlsingleTimeSortedNResultsOptimization_SortDirection(t *testing.T) {
 	tc := apptest.NewTestCase(t)
 	defer tc.Stop()
