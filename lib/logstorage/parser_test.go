@@ -4776,6 +4776,38 @@ func TestQuery_AddExtraFilters(t *testing.T) {
 	f(`foo x:contains_all(bar | union (baz) | keep x) | count() if (a:contains_all(b | keep a)) z`, `{tenant=123}`, `{tenant="123"} foo x:contains_all({tenant="123"} bar | union ({tenant="123"} baz) | fields x) | stats count(*) if (a:contains_all({tenant="123"} b | fields a)) as z`)
 }
 
+func TestQuery_SetMaxConcurrency(t *testing.T) {
+	f := func(qStr string, maxConcurrency uint, resultExpected string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error in ParseQuery: %s", err)
+		}
+		q.SetMaxConcurrency(maxConcurrency)
+
+		result := q.String()
+		if result != resultExpected {
+			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	}
+
+	// missing concurrency
+	f(`*`, 4, `options(concurrency=4) *`)
+
+	// max concurrency must be passed as is, since vlselect and vlstorage nodes may have different number of CPU cores
+	f(`*`, 100000, `options(concurrency=100000) *`)
+
+	// lower concurrency must be kept
+	f(`options(concurrency=2) *`, 4, `options(concurrency=2) *`)
+
+	// higher concurrency must be lowered
+	f(`options(concurrency=8) *`, 4, `options(concurrency=4) *`)
+
+	// subqueries must be limited too
+	f(`x:in(options(concurrency=16) foo | keep x)`, 4, `options(concurrency=4) x:in(options(concurrency=4) foo | fields x)`)
+}
+
 func TestToFieldsFilters(t *testing.T) {
 	f := func(neededFields, unneededFields []string, resultExpected string) {
 		t.Helper()

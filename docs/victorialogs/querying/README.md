@@ -1189,6 +1189,10 @@ VictoriaLogs provides the following options to limit resource usage by the execu
   since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`
   before returning errors to queries, which cannot be executed because `-search.maxConcurrentRequests` limit is reached.
 
+- `max_concurrency` query arg limits the number of concurrent CPU-bound workers a single query can use. It doesn't limit the number of parallel readers explicitly set via [`options(parallel_readers=N)`](https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option). It can be passed to all the [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
+  For example, `max_concurrency=4` limits the query to 4 CPU cores per `vlstorage` node in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/), even if the query sets a bigger value via [`options(concurrency=N)`](https://docs.victoriametrics.com/victorialogs/logsql/#query-options).
+  The limit also applies to all the subqueries inside the query. This arg can be set at [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) in order to limit resource usage for queries from some users.
+
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
