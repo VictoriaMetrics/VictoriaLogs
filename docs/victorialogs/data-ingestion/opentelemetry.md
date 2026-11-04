@@ -140,11 +140,13 @@ It adds a prefix to every attribute name, so the field name shows where the attr
 
 VictoriaMetrics and VictoriaTraces use the same field names when they run with the same flag.
 
+> **Note**: support for this flag in VictoriaMetrics and VictoriaTraces is coming soon.
+
 The flag doesn't change the names of the fields that VictoriaLogs creates from the built-in OpenTelemetry fields,
 such as `scope.name`, `scope.version`, `trace_id`, `span_id`, `severity_number`, `severity_text` and `event_name`.
 Other log body values, such as strings, are still used as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
 
-For example, the following log record:
+For example, the following log record (shown in the OTLP JSON format for readability):
 
 ```json
 {
@@ -188,7 +190,7 @@ It is recommended to set the flag before ingesting OpenTelemetry logs, since it 
 [log stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields). Logs ingested before that keep the old field names,
 so queries over both old and new logs must use both names. If you use `VL-Stream-Fields`, `VL-Msg-Field`, `VL-Ignore-Fields`
 or `VL-Decolorize-Fields` [HTTP headers](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers),
-then update them to the new field names, for example `VL-Stream-Fields: resource.attribute.service.name` or `VL-Msg-Field: body.msg`.
+then update them to the new field names, for example `VL-Stream-Fields: resource.attribute.service.name` or `VL-Msg-Field: body.msg,body`.
 
 The prefixes make field names longer. Note that VictoriaLogs drops log entries with field names longer than 128 bytes,
 see [these docs](https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length).

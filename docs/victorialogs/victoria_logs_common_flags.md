@@ -209,6 +209,8 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -nativeinsert.maxRequestSize size
      The maximum size in bytes of a single request, which can be accepted at /insert/native and /insert/multitenant/native HTTP endpoints
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
+  -opentelemetry.consistentPrefix
+     Whether to prefix OpenTelemetry attribute names with their source for the logs ingested via OpenTelemetry protocol, e.g. resource.attribute.service.name instead of service.name. VictoriaMetrics and VictoriaTraces use the same field names when they run with the same flag; see https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#field-names
   -opentelemetry.maxRequestSize size
      The maximum size in bytes of a single OpenTelemetry request
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 67108864)
