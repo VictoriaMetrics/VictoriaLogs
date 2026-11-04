@@ -41,7 +41,7 @@ func (pr *pipeRename) canLiveTail() bool {
 	return true
 }
 
-func (pr *pipeRename) canReturnLastNResults() bool {
+func (pr *pipeRename) canReturnTimeSortedNResults() bool {
 	if prefixfilter.MatchFilters(pr.srcFieldFilters, "_time") {
 		return false
 	}

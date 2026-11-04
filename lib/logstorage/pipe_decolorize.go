@@ -31,7 +31,7 @@ func (pd *pipeDecolorize) canLiveTail() bool {
 	return true
 }
 
-func (pd *pipeDecolorize) canReturnLastNResults() bool {
+func (pd *pipeDecolorize) canReturnTimeSortedNResults() bool {
 	return true
 }
 

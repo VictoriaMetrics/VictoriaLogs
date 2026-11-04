@@ -28,7 +28,7 @@ func (pf *pipeFilter) canLiveTail() bool {
 	return true
 }
 
-func (pf *pipeFilter) canReturnLastNResults() bool {
+func (pf *pipeFilter) canReturnTimeSortedNResults() bool {
 	return true
 }
 

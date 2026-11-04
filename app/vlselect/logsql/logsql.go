@@ -1219,11 +1219,24 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	sortDirection := r.FormValue("sort_direction")
+	if sortDirection != "" {
+		if limit == 0 {
+			httpserver.Errorf(w, r, "sort_direction query arg can be used only together with limit query arg")
+			return
+		}
+		if sortDirection != "asc" && sortDirection != "desc" {
+			httpserver.Errorf(w, r, "unexpected sort_direction=%q; expecting 'asc', 'desc' or ''", sortDirection)
+			return
+		}
+	}
+	isDesc := sortDirection != "asc"
+
 	if limit > 0 {
-		// Add '| sort by (_time) desc | offset <offset> | limit <limit>' to the end of the query.
+		// Add '| sort by (_time) <sort_direction> | offset <offset> | limit <limit>' to the end of the query.
 		// This pattern is automatically optimized during query execution - see https://github.com/VictoriaMetrics/VictoriaLogs/issues/96 .
-		if ca.q.CanReturnLastNResults() {
-			ca.q.AddPipeSortByTimeDesc()
+		if ca.q.CanReturnTimeSortedNResults() {
+			ca.q.AddPipeSortByTime(isDesc)
 		}
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}

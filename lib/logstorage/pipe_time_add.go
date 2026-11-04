@@ -35,7 +35,7 @@ func (pa *pipeTimeAdd) canLiveTail() bool {
 	return true
 }
 
-func (pa *pipeTimeAdd) canReturnLastNResults() bool {
+func (pa *pipeTimeAdd) canReturnTimeSortedNResults() bool {
 	return true
 }
 
