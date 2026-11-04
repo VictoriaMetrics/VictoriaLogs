@@ -1841,6 +1841,9 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 func getMinPositiveInt(r *http.Request, argName string) (int, error) {
 	result := 0
 	for _, s := range r.Form[argName] {
+		if s == "" {
+			continue
+		}
 		n, err := strconv.Atoi(s)
 		if err != nil {
 			return 0, fmt.Errorf("cannot parse integer %q=%q: %w", argName, s, err)
