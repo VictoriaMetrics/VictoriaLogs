@@ -75,7 +75,7 @@ const Select: FC<SelectProps> = ({
   };
 
   const handleBlur = () => {
-    list.includes(search) && onChange(search);
+    !isMultiple && list.includes(search) && onChange(search);
   };
 
   const handleToggleList = (e: MouseEvent<HTMLDivElement>) => {

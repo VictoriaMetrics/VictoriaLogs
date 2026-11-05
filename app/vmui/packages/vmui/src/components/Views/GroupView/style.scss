@@ -72,6 +72,8 @@ $actions-width: calc(($actions-buttons * 30px) + 10px);
       &__title {
         font-weight: bold;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         background-color: $color-background-body;
         z-index: 1;
 

@@ -18,10 +18,12 @@ const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
     groupFieldHits: { value: groupFieldHits },
   } = useHitsChartConfig();
 
+  const singleGroupField = groupFieldHits.length === 1 ? groupFieldHits[0] : "";
+
   const handleAddStreamToFilter = (operator: ExtraFilterOperator) => () => {
     onApplyFilter({
-      field: groupFieldHits,
-      value: legend.label,
+      field: singleGroupField,
+      value: legend.fields[singleGroupField] ?? legend.label,
       operator,
     });
     onClose();
@@ -34,20 +36,22 @@ const LegendHitsMenuBase: FC<Props> = ({ legend, onApplyFilter, onClose }) => {
 
   const options: LegendLogHitsMenu[] = [
     {
-      title: `Copy ${groupFieldHits} name`,
+      title: singleGroupField ? `Copy ${singleGroupField} name` : "Copy series name",
       iconStart: <CopyIcon/>,
       handler: handlerCopyLabel,
     },
-    {
-      title: `Add ${groupFieldHits} to filter`,
-      iconStart: <FilterIcon/>,
-      handler:  handleAddStreamToFilter(ExtraFilterOperator.Equals),
-    },
-    {
-      title: `Exclude ${groupFieldHits} to filter`,
-      iconStart: <FilterOffIcon/>,
-      handler: handleAddStreamToFilter(ExtraFilterOperator.NotEquals),
-    }
+    ...(singleGroupField ? [
+      {
+        title: `Add ${singleGroupField} to filter`,
+        iconStart: <FilterIcon/>,
+        handler:  handleAddStreamToFilter(ExtraFilterOperator.Equals),
+      },
+      {
+        title: `Exclude ${singleGroupField} to filter`,
+        iconStart: <FilterOffIcon/>,
+        handler: handleAddStreamToFilter(ExtraFilterOperator.NotEquals),
+      }
+    ] : []),
   ];
 
   return (

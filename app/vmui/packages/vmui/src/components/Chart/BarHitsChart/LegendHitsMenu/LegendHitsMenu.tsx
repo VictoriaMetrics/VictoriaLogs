@@ -9,17 +9,18 @@ import { LOGS_LIMIT_HITS } from "../../../../constants/logs";
 import LegendHitsMenuVisibility from "./LegendHitsMenuVisibility";
 import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
 import { ExtraFilter } from "../../../ExtraFilters/types";
+import { FieldPair } from "../../../../types";
 
 const otherDescription = `Aggregated results for fields not in the top ${LOGS_LIMIT_HITS}`;
 
 interface Props {
   legend: LegendLogHits;
-  fields: string[];
+  pairs: FieldPair[];
   optionsVisibilitySection: LegendLogHitsMenu[];
   onClose: () => void;
 }
 
-const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, onClose }) => {
+const LegendHitsMenu: FC<Props> = ({ legend, pairs, optionsVisibilitySection, onClose }) => {
   const { addNewFilter } = useExtraFilters();
 
   const handleApplyFilter = useCallback((filter: ExtraFilter) => {
@@ -40,7 +41,7 @@ const LegendHitsMenu: FC<Props> = ({ legend, fields, optionsVisibilitySection, o
 
       {!legend.isOther && (
         <LegendHitsMenuFields
-          fields={fields}
+          pairs={pairs}
           onApplyFilter={handleApplyFilter}
           onClose={onClose}
         />

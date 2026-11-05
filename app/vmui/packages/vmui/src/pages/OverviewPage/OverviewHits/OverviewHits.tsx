@@ -28,7 +28,7 @@ const OverviewHits: FC = () => {
       extraParams,
       query,
       step,
-      field: groupFieldHits,
+      fields: groupFieldHits,
       fieldsLimit: topHits,
       allowIterative: false,
     });

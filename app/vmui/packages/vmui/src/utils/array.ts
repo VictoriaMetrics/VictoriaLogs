@@ -4,17 +4,16 @@ export const arrayEquals = (a: (string | number)[], b: (string | number)[]) => {
 
 export function groupByMultipleKeys<T>(items: T[], keys: (keyof T)[]): { keys: string[], values: T[] }[] {
   const groups = items.reduce((result, item) => {
-    const compositeKey = keys.map(key => `${String(key)}: ${item[key] || "-"}`).join("|");
+    const groupKeys = keys.map(key => `${String(key)}: ${item[key] || "-"}`);
+    const compositeKey = JSON.stringify(groupKeys);
 
-    (result[compositeKey] = result[compositeKey] || []).push(item);
+    if (!result.has(compositeKey)) result.set(compositeKey, { keys: groupKeys, values: [] });
+    result.get(compositeKey)?.values.push(item);
 
     return result;
-  }, {} as { [key: string]: T[] });
+  }, new Map<string, { keys: string[], values: T[] }>());
 
-  return Object.entries(groups).map(([keyString, values]) => ({
-    keys: keyString.split("|"),
-    values
-  }));
+  return [...groups.values()];
 }
 
 export const isDecreasing = (arr: number[]): boolean => {

@@ -6,16 +6,18 @@ import useEventListener from "../../../hooks/useEventListener";
 import Popper from "../../Main/Popper/Popper";
 import useBoolean from "../../../hooks/useBoolean";
 import GroupLogsHeaderItem from "./GroupLogsHeaderItem";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { LOGS_URL_PARAMS } from "../../../constants/logs";
 import { GroupLogsType } from "../../../types";
+import { formatFieldPair } from "../../../utils/logs";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 
 interface Props {
   group: GroupLogsType;
   index: number;
+  groupByFields: string[];
 }
 
-const GroupLogsHeader: FC<Props> = ({ group, index }) => {
+const GroupLogsHeader: FC<Props> = ({ group, index, groupByFields }) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const [searchParams] = useSearchParams();
@@ -31,8 +33,9 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
 
   const [hideParisCount, setHideParisCount] = useState<number>(0);
 
-  const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
   const compactGroupHeader = isMobile || searchParams.get(LOGS_URL_PARAMS.COMPACT_GROUP_HEADER) === "true";
+
+  const withFieldName = groupByFields.length > 1;
 
   const pairs = group.pairs;
   const hideAboveIndex = pairs.length - hideParisCount - 1;
@@ -77,13 +80,17 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
       })}
       ref={containerRef}
     >
-      <span className="vm-group-logs-section-keys__title">
-        {index + 1}. Group by <code>{groupBy}</code>
+      <span
+        className="vm-group-logs-section-keys__title"
+        title={`Group by ${groupByFields.join(", ")}`}
+      >
+        {index + 1}. Group by <code>{groupByFields.join(", ")}</code>
       </span>
       {pairs.map((pair, i) => (
         <GroupLogsHeaderItem
-          key={`${group.keysString}_${pair}`}
+          key={`${i}_${formatFieldPair(pair)}`}
           pair={pair}
+          withFieldName={withFieldName}
           isHide={hideParisCount ? i > hideAboveIndex : false}
         />
       ))}
@@ -107,10 +114,11 @@ const GroupLogsHeader: FC<Props> = ({ group, index }) => {
             onClose={handleCloseMore}
           >
             <div className="vm-group-logs-section-keys vm-group-logs-section-keys_popper">
-              {pairs.slice(hideAboveIndex + 1).map((pair) => (
+              {pairs.slice(hideAboveIndex + 1).map((pair, i) => (
                 <GroupLogsHeaderItem
-                  key={`${group.keysString}_${pair}`}
+                  key={`${i}_${formatFieldPair(pair)}`}
                   pair={pair}
+                  withFieldName={withFieldName}
                 />
               ))}
             </div>

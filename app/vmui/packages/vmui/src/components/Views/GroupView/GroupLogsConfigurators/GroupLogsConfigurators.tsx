@@ -13,10 +13,10 @@ import {
   LOGS_DISPLAY_FIELDS,
   LOGS_GROUP_BY,
   LOGS_URL_PARAMS,
-  WITHOUT_GROUPING
 } from "../../../../constants/logs";
 import LogParsingSwitches from "../../../Configurators/LogsSettings/LogParsingSwitches";
 import { useLocalStorageBoolean } from "../../../../hooks/useLocalStorageBoolean";
+import { parseGroupByFields, serializeGroupByFields } from "../../../../utils/logs";
 
 const {
   GROUP_BY,
@@ -34,7 +34,8 @@ interface Props {
 const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const groupBy = searchParams.get(GROUP_BY) || LOGS_GROUP_BY;
+  const groupByString = searchParams.get(GROUP_BY) || LOGS_GROUP_BY;
+  const groupByFields = useMemo(() => parseGroupByFields(groupByString), [groupByString]);
   const noWrapLines = searchParams.get(NO_WRAP_LINES) === "true";
   const compactGroupHeader = searchParams.get(COMPACT_GROUP_HEADER) === "true";
   const displayFieldsString = searchParams.get(DISPLAY_FIELDS) || "";
@@ -43,7 +44,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   const [disabledHovers, setDisabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");
   const [disabledLevelDetection, setDisabledLevelDetection] = useLocalStorageBoolean("LOGS_DISABLED_LEVEL_DETECTION");
 
-  const isGroupChanged = groupBy !== LOGS_GROUP_BY;
+  const isGroupChanged = groupByFields.length > 0;
   const isDisplayFieldsChanged = displayFields.length !== 1 || displayFields[0] !== LOGS_DISPLAY_FIELDS;
   const hasChanges = [
     isGroupChanged,
@@ -64,7 +65,14 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
   } = useBoolean(false);
 
   const handleSelectGroupBy = (key: string) => {
-    searchParams.set(GROUP_BY, key);
+    const prev = groupByFields;
+    const newGroupByFields = prev.includes(key) ? prev.filter(v => v !== key) : [...prev, key];
+    searchParams.set(GROUP_BY, serializeGroupByFields(newGroupByFields));
+    setSearchParams(searchParams);
+  };
+
+  const handleResetGroupBy = () => {
+    searchParams.set(GROUP_BY, LOGS_GROUP_BY);
     setSearchParams(searchParams);
   };
 
@@ -97,7 +105,7 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
         <p>{title}</p>
         <hr/>
         <ul>
-          {isGroupChanged && <li>Group by <code>{`"${groupBy}"`}</code></li>}
+          {isGroupChanged && <li>Group by <code>{groupByFields.join(", ")}</code></li>}
           {isDisplayFieldsChanged && <li>Display fields: {displayFields.length || 1}</li>}
           {noWrapLines && <li>Single-line text is enabled</li>}
           {compactGroupHeader && <li>Compact group header is enabled</li>}
@@ -127,8 +135,8 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
           <div className="vm-group-logs-configurator">
             <div className="vm-group-logs-configurator-item">
               <Select
-                value={groupBy}
-                list={[WITHOUT_GROUPING, ...logsKeys]}
+                value={groupByFields}
+                list={logsKeys}
                 label="Group by"
                 placeholder="Group by"
                 onChange={handleSelectGroupBy}
@@ -139,11 +147,11 @@ const GroupLogsConfigurators: FC<Props> = ({ logs }) => {
                   variant="text"
                   color="primary"
                   startIcon={<RestartIcon/>}
-                  onClick={() => handleSelectGroupBy(LOGS_GROUP_BY)}
+                  onClick={handleResetGroupBy}
                 />
               </Tooltip>
               <span className="vm-group-logs-configurator-item__info">
-                Select a field used to group both the hits chart and logs (default: <code>{LOGS_GROUP_BY}</code>).
+                Select fields used to group both the hits chart and logs (default: <code>{LOGS_GROUP_BY}</code>).
               </span>
             </div>
 

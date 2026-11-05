@@ -1,7 +1,8 @@
 import { useSearchParams } from "react-router-dom";
 import { useCallback, useMemo } from "preact/compat";
-import { LOGS_LIMIT_HITS, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../../constants/logs";
+import { LOGS_LIMIT_HITS, LOGS_URL_PARAMS } from "../../../../constants/logs";
 import { NavigateOptions } from "../../../../types";
+import { parseGroupByFields, serializeGroupByFields } from "../../../../utils/logs";
 
 const HITS_PARAMS = {
   TOP: "top_hits",
@@ -21,7 +22,8 @@ export const useHitsChartConfig = () => {
     return searchParams.get(HITS_PARAMS.STEP);
   }, [searchParams]);
 
-  const groupFieldHits = searchParams.get(HITS_PARAMS.GROUP) || WITHOUT_GROUPING;
+  const groupFieldsRaw = searchParams.get(HITS_PARAMS.GROUP);
+  const groupFieldHits = useMemo(() => parseGroupByFields(groupFieldsRaw), [groupFieldsRaw]);
 
   const setValue = useCallback((
     param: string,
@@ -45,8 +47,8 @@ export const useHitsChartConfig = () => {
     setValue(HITS_PARAMS.TOP, value);
   }, [setValue]);
 
-  const setGroupFieldHits = useCallback((value?: string) => {
-    setValue(HITS_PARAMS.GROUP, value);
+  const setGroupFieldHits = useCallback((fields: string[]) => {
+    setValue(HITS_PARAMS.GROUP, fields.length ? serializeGroupByFields(fields) : undefined);
   }, [setValue]);
 
   const setStep = useCallback((value?: string, navigateOpts?: NavigateOptions) => {

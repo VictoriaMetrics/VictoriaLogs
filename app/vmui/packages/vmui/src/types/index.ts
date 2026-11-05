@@ -55,11 +55,17 @@ export interface AppConfig {
   }
 }
 
+export interface FieldPair {
+  field: string
+  value: string
+  isStream?: boolean
+}
+
 export interface GroupLogsType {
   keys: string[]
   keysString: string
   values: Logs[]
-  pairs: string[]
+  pairs: FieldPair[]
   total: number
 }
 

@@ -1,7 +1,8 @@
 import { FC } from "preact/compat";
 import { StorageIcon } from "../../../Main/Icons";
 import { useSearchParams } from "react-router-dom";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../../constants/logs";
+import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../../constants/logs";
+import { parseGroupByFields, serializeGroupByFields } from "../../../../utils/logs";
 
 type Props = {
   field: string;
@@ -10,14 +11,16 @@ type Props = {
 
 const FieldGroupingToggle: FC<Props> = ({ field, onClose }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
+  const groupByFields = parseGroupByFields(searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY);
 
-  const isGroupByField = groupBy === field;
+  const isGroupByField = groupByFields.includes(field);
+  const isOnlyGroupByField = isGroupByField && groupByFields.length === 1;
 
   const handleSelectGroupBy = () => {
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
-      newParams.set(LOGS_URL_PARAMS.GROUP_BY, isGroupByField ? WITHOUT_GROUPING : field);
+      const next = isGroupByField ? groupByFields.filter(f => f !== field) : [...groupByFields, field];
+      newParams.set(LOGS_URL_PARAMS.GROUP_BY, serializeGroupByFields(next));
       return newParams;
     });
     onClose();
@@ -30,7 +33,7 @@ const FieldGroupingToggle: FC<Props> = ({ field, onClose }) => {
     >
       <div className="vm-legend-hits-menu-row__icon">{<StorageIcon/>}</div>
       <div className="vm-legend-hits-menu-row__title">
-        {isGroupByField ? "Clear grouping" : "Group by this field"}
+        {isOnlyGroupByField ? "Clear grouping" : isGroupByField ? "Remove from grouping" : "Group by this field"}
       </div>
     </div>
   );
