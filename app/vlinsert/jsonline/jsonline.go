@@ -30,16 +30,19 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	cp, err := insertutil.GetCommonParams(r)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
 
 	wcr, err := writeconcurrencylimiter.GetReader(r.Body)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot start reading jsonline request: %s", err)
 		return
 	}
@@ -48,6 +51,7 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	encoding := r.Header.Get("Content-Encoding")
 	reader, err := protoparserutil.GetUncompressedReader(wcr, encoding)
 	if err != nil {
+		errorsTotal.Inc()
 		httpserver.Errorf(w, r, "cannot decode jsonline request: %s", err)
 		return
 	}
