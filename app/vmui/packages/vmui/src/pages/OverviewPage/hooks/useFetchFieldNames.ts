@@ -4,7 +4,7 @@ import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
 import { useTenant } from "../../../hooks/useTenant";
 import { TimeParams } from "../../../types";
-import { NOISE_FIELDS } from "../../../constants/logs";
+import { NOISE_FIELDS, STREAM_FIELDS } from "../../../constants/logFields";
 
 interface FetchOptions {
   period: TimeParams;
@@ -15,8 +15,6 @@ interface FetchOptions {
   // Whether the result is shown by the field names table and the cardinality card.
   updateLatest?: boolean;
 }
-
-const STREAM_FIELDS = ["_stream", "_stream_id"];
 
 type FieldNamesParamsOptions = Pick<FetchOptions, "period" | "query" | "extraParams">;
 

@@ -1,5 +1,6 @@
 import { Logs } from "../api/types";
-import { GROUP_BY_RECENT_LIMIT, NOISE_FIELDS, WITHOUT_GROUPING } from "../constants/logs";
+import { GROUP_BY_RECENT_LIMIT, WITHOUT_GROUPING } from "../constants/logs";
+import { NOISE_FIELDS } from "../constants/logFields";
 import { getFromStorage, saveToStorage } from "./storage";
 import type { TenantUrlType } from "../hooks/useTenant";
 

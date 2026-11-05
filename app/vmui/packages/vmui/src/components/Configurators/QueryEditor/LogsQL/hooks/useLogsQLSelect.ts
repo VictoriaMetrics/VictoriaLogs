@@ -1,13 +1,15 @@
 import { useCallback } from "preact/compat";
 import { AutocompleteOptions } from "../../../../Main/Autocomplete/Autocomplete";
 import { ContextData, ContextType, LogicalPart } from "../types";
+import { STREAM_FIELD } from "../../../../../constants/logFields";
+import { escapeRegexp } from "../../../../../utils/regexp";
 
 type LogsQLSelectContext = ContextData & LogicalPart;
 
 type UseLogsQLSelectArgs = {
   contextData?: LogsQLSelectContext;
   logicalParts: LogicalPart[];
-  onSelect: (val: string, caretPosition: number) => void;
+  onSelect: (val: string, caretPosition: number, keepOpen?: boolean) => void;
 };
 
 const shouldReplaceWholeInput = (type?: string) => {
@@ -36,15 +38,18 @@ const getModifyInsert = (
   if (insertType === ContextType.FilterName) {
     modifiedInsert += ":";
   } else if (contextType === ContextType.FilterValue) {
-    const insertWithQuotes = value.startsWith("_stream:")
+    // The selected value is a literal, so escape it for regexp filters.
+    const isRegexp = operator === ":~" || operator === ":!~";
+    const literal = isRegexp ? escapeRegexp(modifiedInsert) : modifiedInsert;
+    const insertWithQuotes = value.startsWith(`${STREAM_FIELD}:`)
       ? modifiedInsert
-      : `${JSON.stringify(modifiedInsert)}`;
+      : JSON.stringify(literal);
 
     modifiedInsert = `${filterName || ""}${operator || ":"}${insertWithQuotes}`;
   }
 
-  const indentStart = value.match(/^[ \t]+/)?.[0] ?? "";
-  const indentEnd = value.match(/[ \t]+$/)?.[0] ?? "";
+  const indentStart = value.match(/^\s+/)?.[0] ?? "";
+  const indentEnd = value.match(/\s+$/)?.[0] ?? "";
 
   return `${indentStart}${modifiedInsert}${indentEnd}`;
 };
@@ -65,9 +70,18 @@ export const useLogsQLSelect = ({
     const insertValue = getModifyInsert(insert, contextData, item.type);
     const newValue = getUpdatedValue(insertValue, logicalParts, contextData.id);
 
-    const updatedPosition =
-      (contextData.position[0] || 1) + insertValue.trim().length;
+    const partIndex = logicalParts.findIndex(part => part.id === contextData.id);
+    const prefix = logicalParts
+      .slice(0, partIndex)
+      .map(part => `${part.separator ?? ""}${part.value}`)
+      .join("");
 
-    onSelect(newValue, updatedPosition);
+    const updatedPosition = (
+      prefix
+      + (contextData.separator ?? "")
+      + insertValue.trimEnd()
+    ).trimStart().length;
+
+    onSelect(newValue, updatedPosition, item.type === ContextType.FilterName);
   }, [contextData, logicalParts, onSelect]);
 };
