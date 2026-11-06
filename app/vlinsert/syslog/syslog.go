@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -648,28 +647,6 @@ func getRemoteIP(remoteAddr net.Addr, useRemoteIP bool) string {
 	return addrStr[:n]
 }
 
-func parseExtraFields(s string) ([]logstorage.Field, error) {
-	if s == "" {
-		return nil, nil
-	}
-
-	var m map[string]string
-	if err := json.Unmarshal([]byte(s), &m); err != nil {
-		return nil, err
-	}
-	fields := make([]logstorage.Field, 0, len(m))
-	for k, v := range m {
-		fields = append(fields, logstorage.Field{
-			Name:  k,
-			Value: v,
-		})
-	}
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i].Name < fields[j].Name
-	})
-	return fields, nil
-}
-
 type configs struct {
 	typ string
 
@@ -708,7 +685,7 @@ func getConfigs(typ string, argIdx int, streamFieldsArg, ignoreFieldsArg, decolo
 	}
 
 	extraFieldsStr := extraFieldsArg.GetOptionalArg(argIdx)
-	extraFields, err := parseExtraFields(extraFieldsStr)
+	extraFields, err := insertutil.ParseExtraFields(extraFieldsStr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse -syslog.extraFields.%s=%q: %w", typ, extraFieldsStr, err)
 	}
