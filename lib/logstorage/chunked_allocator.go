@@ -18,6 +18,7 @@ type chunkedAllocator struct {
 	countEmptyProcessors       []statsCountEmptyProcessor
 	countUniqProcessors        []statsCountUniqProcessor
 	countUniqHashProcessors    []statsCountUniqHashProcessor
+	countUniqHLLProcessors     []statsCountUniqHLLProcessor
 	fieldMaxProcessors         []statsFieldMaxProcessor
 	fieldMinProcessors         []statsFieldMinProcessor
 	histogramProcessors        []statsHistogramProcessor
@@ -78,6 +79,10 @@ func (a *chunkedAllocator) newStatsCountUniqProcessor() (p *statsCountUniqProces
 
 func (a *chunkedAllocator) newStatsCountUniqHashProcessor() (p *statsCountUniqHashProcessor) {
 	return addNewItem(&a.countUniqHashProcessors, a)
+}
+
+func (a *chunkedAllocator) newStatsCountUniqHLLProcessor() (p *statsCountUniqHLLProcessor) {
+	return addNewItem(&a.countUniqHLLProcessors, a)
 }
 
 func (a *chunkedAllocator) newStatsFieldMaxProcessor() (p *statsFieldMaxProcessor) {
