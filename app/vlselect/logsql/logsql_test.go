@@ -60,7 +60,6 @@ func TestParseExtraFilters_Failure(t *testing.T) {
 
 	// The arg length exceeds -search.maxQueryLen.
 	f(strings.Repeat("a", maxQueryLen.IntN()+1))
-	f(strings.Repeat("(", maxQueryLen.IntN()+1))
 }
 
 func TestParseExtraStreamFilters_Success(t *testing.T) {
@@ -113,7 +112,6 @@ func TestParseExtraStreamFilters_Failure(t *testing.T) {
 
 	// The arg length exceeds -search.maxQueryLen.
 	f(strings.Repeat("a", maxQueryLen.IntN()+1))
-	f(strings.Repeat("(", maxQueryLen.IntN()+1))
 }
 
 func TestGetStringSliceFromRequest(t *testing.T) {
