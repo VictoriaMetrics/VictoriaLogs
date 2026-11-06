@@ -22,12 +22,18 @@ type NetQueryRunner struct {
 
 	// writeBlock is the function for writing the resulting data block.
 	writeBlock writeBlockResultFunc
+
+	// memReserved is the amount of memory reserved by subqueries.
+	memReserved uint64
 }
 
 // NewNetQueryRunner creates a new NetQueryRunner for the given qctx.
 //
 // runNetQuery is used for running distributed query.
 // qctx results are sent to writeNetBlock.
+//
+// The caller must call MustReleaseMemory on the returned runner when it is no longer needed,
+// typically via defer, in order to release the memory reserved for subqueries.
 func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNetBlock WriteDataBlockFunc) (*NetQueryRunner, error) {
 	runQuery := func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
 		writeNetBlock := writeBlock.newDataBlockWriter()
@@ -36,12 +42,16 @@ func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNet
 
 	qRemote, pipesLocal := splitQueryToRemoteAndLocal(qctx.Query)
 
+	var memReserved uint64
+
 	// Eagerly execute all the subqueries for the remote query
 	// and replace them with the query results directly in qRemote.
 	// This is needed for proper propagation subquery results to remote storage nodes.
 	qctxRemote := qctx.WithQuery(qRemote)
-	qRemote, err := initSubqueries(qctxRemote, runQuery, true)
+	qRemote, mem, err := initSubqueries(qctxRemote, runQuery, true)
+	memReserved += mem // subqueries initialization might fail, but some mem is already reserved
 	if err != nil {
+		getQueryMemoryLimiter().Put(memReserved)
 		return nil, err
 	}
 
@@ -54,20 +64,32 @@ func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNet
 	}
 	qLocal.pipes = pipesLocal
 	qctxLocal := qctx.WithQuery(qLocal)
-	qLocal, err = initSubqueries(qctxLocal, runQuery, false)
+	qLocal, mem, err = initSubqueries(qctxLocal, runQuery, false)
+	memReserved += mem
 	if err != nil {
+		getQueryMemoryLimiter().Put(memReserved)
 		return nil, err
 	}
 
 	writeBlock := writeNetBlock.newBlockResultWriter()
 
 	nqr := &NetQueryRunner{
-		qctx:       qctx,
-		qRemote:    qRemote,
-		pipesLocal: qLocal.pipes,
-		writeBlock: writeBlock,
+		qctx:        qctx,
+		qRemote:     qRemote,
+		pipesLocal:  qLocal.pipes,
+		writeBlock:  writeBlock,
+		memReserved: memReserved,
 	}
 	return nqr, nil
+}
+
+// MustReleaseMemory returns the memory reserved for subqueries back to the global query memory limiter.
+//
+// It must be called after NewNetQueryRunner returns successfully, typically via defer,
+// even if Run isn't called; otherwise the reserved memory leaks.
+func (nqr *NetQueryRunner) MustReleaseMemory() {
+	getQueryMemoryLimiter().Put(nqr.memReserved)
+	nqr.memReserved = 0
 }
 
 // Run runs the nqr query.

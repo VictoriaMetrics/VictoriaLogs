@@ -12,7 +12,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -131,18 +130,12 @@ func (ps *pipeRunningStats) visitSubqueries(visitFunc func(q *Query)) {
 }
 
 func (ps *pipeRunningStats) newPipeProcessor(_ int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.4)
-
 	psp := &pipeRunningStatsProcessor{
 		ps:     ps,
 		stopCh: stopCh,
 		cancel: cancel,
 		ppNext: ppNext,
-
-		maxStateSize: maxStateSize,
 	}
-
-	psp.stateSizeBudget.Store(maxStateSize)
 
 	return psp
 }
@@ -155,8 +148,8 @@ type pipeRunningStatsProcessor struct {
 
 	shards atomicutil.Slice[pipeRunningStatsProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	memReserved      atomic.Int64
+	memReserveFailed atomic.Bool
 }
 
 type pipeRunningStatsProcessorShard struct {
@@ -203,16 +196,16 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 	shard := psp.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		remaining := psp.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
+		// Reserve more budget for the state size from the global query memory limiter.
+		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
+			if psp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
 				psp.cancel()
 			}
 			return
 		}
+		psp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -220,8 +213,12 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 }
 
 func (psp *pipeRunningStatsProcessor) flush() error {
-	if n := psp.stateSizeBudget.Load(); n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", psp.ps.String(), psp.maxStateSize/(1<<20))
+	defer func() {
+		getQueryMemoryLimiter().Put(uint64(psp.memReserved.Load()))
+	}()
+
+	if psp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", psp.ps.String())
 	}
 
 	getKeyForRow := func(row []Field) string {
