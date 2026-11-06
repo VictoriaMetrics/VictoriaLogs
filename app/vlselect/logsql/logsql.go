@@ -40,7 +40,7 @@ var (
 		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
 
-	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum query length in bytes, which can be passed to /select/* endpoints")
+	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum length in bytes of 'query', 'extra_filters' and 'extra_stream_filters' query args, which can be passed to /select/* endpoints")
 )
 
 // ProcessQueryTimeRangeRequest handles /select/logsql/query_time_range request.
@@ -1693,6 +1693,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
 	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
+	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
 	}
@@ -1722,6 +1725,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 func parseExtraStreamFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
+	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_stream_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
 	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
