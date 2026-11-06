@@ -32,7 +32,7 @@ func (pd *pipeDelete) canLiveTail() bool {
 	return true
 }
 
-func (pd *pipeDelete) canReturnLastNResults() bool {
+func (pd *pipeDelete) canReturnTimeSortedNResults() bool {
 	return !prefixfilter.MatchFilters(pd.fieldFilters, "_time")
 }
 

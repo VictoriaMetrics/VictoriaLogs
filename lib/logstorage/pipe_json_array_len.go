@@ -34,7 +34,7 @@ func (pl *pipeJSONArrayLen) canLiveTail() bool {
 	return true
 }
 
-func (pl *pipeJSONArrayLen) canReturnLastNResults() bool {
+func (pl *pipeJSONArrayLen) canReturnTimeSortedNResults() bool {
 	return pl.resultField != "_time"
 }
 

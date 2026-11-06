@@ -33,7 +33,7 @@ func (ps *pipeSample) canLiveTail() bool {
 	return true
 }
 
-func (ps *pipeSample) canReturnLastNResults() bool {
+func (ps *pipeSample) canReturnTimeSortedNResults() bool {
 	return false
 }
 
