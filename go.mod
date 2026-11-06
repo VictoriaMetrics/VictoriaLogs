@@ -11,7 +11,7 @@ require (
 	github.com/ergochat/readline v0.1.3
 	github.com/golang/snappy v1.0.0
 	github.com/google/go-cmp v0.7.0
-	github.com/klauspost/compress v1.20.1
+	github.com/klauspost/compress v1.20.2
 	github.com/mattn/go-isatty v0.0.24
 	github.com/valyala/fastjson v1.6.10
 	github.com/valyala/fastrand v1.1.0
