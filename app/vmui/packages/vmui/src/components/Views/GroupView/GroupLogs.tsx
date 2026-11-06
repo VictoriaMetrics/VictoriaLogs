@@ -18,13 +18,15 @@ import { usePaginateGroups } from "./hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import GroupLogsItemWrapper from "./GroupLogsItemWrapper";
+import { TimeParams } from "../../../types";
 
 interface Props {
   logs: Logs[];
   settingsRef: RefObject<HTMLElement>;
+  period?: TimeParams;
 }
 
-const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
+const GroupLogs: FC<Props> = ({ logs, settingsRef, period }) => {
   const { isMobile } = useDeviceDetect();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -161,7 +163,10 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               aria-label={expandAll ? "Collapse All" : "Expand All"}
             />
           </Tooltip>
-          <GroupLogsConfigurators logs={logs}/>
+          <GroupLogsConfigurators
+            logs={logs}
+            period={period}
+          />
         </div>
       ), settingsRef.current)}
     </>

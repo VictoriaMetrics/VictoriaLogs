@@ -16,6 +16,8 @@ export const LOGS_INTERVALS_COUNT = 7;
 
 export const WITHOUT_GROUPING = "none";
 
+export const GROUP_BY_RECENT_LIMIT = 10;
+
 // Default values for the logs configurators.
 export const LOGS_GROUP_BY = WITHOUT_GROUPING;
 export const LOGS_DISPLAY_FIELDS = MSG_FIELD;
