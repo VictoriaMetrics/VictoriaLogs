@@ -1606,6 +1606,15 @@ func parseCommonArgsExt(r *http.Request, skipMaxQueryTimeRangeCheck bool) (*comm
 		q.AddExtraFilters(extraStreamFilters)
 	}
 
+	// Parse optional max_concurrency
+	maxConcurrency, err := getMinPositiveInt(r, "max_concurrency")
+	if err != nil {
+		return nil, err
+	}
+	if maxConcurrency > 0 {
+		q.SetMaxConcurrency(uint(maxConcurrency))
+	}
+
 	if maxRange := maxQueryTimeRange.Duration(); maxRange > 0 && !skipMaxQueryTimeRangeCheck {
 		start, end := q.GetFilterTimeRange()
 		if end > start {
@@ -1823,6 +1832,30 @@ func getBoolFromRequest(dst *bool, r *http.Request, argName string) error {
 	}
 	*dst = b
 	return nil
+}
+
+// getMinPositiveInt returns the minimum positive value across all the argName args in r.
+//
+// All the args are taken into account, so the client cannot override the limit set by auth proxy
+// by passing a bigger value in the request body.
+func getMinPositiveInt(r *http.Request, argName string) (int, error) {
+	result := 0
+	for _, s := range r.Form[argName] {
+		if s == "" {
+			continue
+		}
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, fmt.Errorf("cannot parse integer %q=%q: %w", argName, s, err)
+		}
+		if n < 0 {
+			return 0, fmt.Errorf("%q cannot be smaller than 0; got %d", argName, n)
+		}
+		if n > 0 && (result == 0 || n < result) {
+			result = n
+		}
+	}
+	return result, nil
 }
 
 // getStringSliceFromRequest returns the combined values for all the argName args from r.
