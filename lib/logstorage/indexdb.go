@@ -93,14 +93,16 @@ func mustCreateIndexdb(path string) {
 	fs.MustSyncPathAndParentDir(path)
 }
 
-func mustOpenIndexdb(path, partitionName string, s *Storage) *indexdb {
+// mustOpenIndexdb opens indexdb at the given path for the partition with the given partitionName.
+//
+// The isReadOnly flag is shared with the partition. Background merges aren't performed while it is set.
+func mustOpenIndexdb(path, partitionName string, s *Storage, isReadOnly *atomic.Bool) *indexdb {
 	idb := &indexdb{
 		path:          path,
 		partitionName: partitionName,
 		s:             s,
 	}
-	var isReadOnly atomic.Bool
-	idb.tb = mergeset.MustOpenTable(path, s.flushInterval, idb.invalidateStreamFilterCache, time.Second, mergeTagToStreamIDsRows, &isReadOnly)
+	idb.tb = mergeset.MustOpenTable(path, s.flushInterval, idb.invalidateStreamFilterCache, time.Second, mergeTagToStreamIDsRows, isReadOnly)
 	return idb
 }
 

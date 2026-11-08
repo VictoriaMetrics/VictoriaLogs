@@ -288,6 +288,13 @@ func (app *Vlsingle) HTTPAddr() string {
 	return app.node.httpListenAddr
 }
 
+// GetIntMetric retrieves the value of a metric served by the vlsingle at /metrics URL.
+func (app *Vlsingle) GetIntMetric(t *testing.T, metricName string) int {
+	t.Helper()
+
+	return app.node.GetIntMetric(t, metricName)
+}
+
 // String returns the string representation of the vlsingle app state.
 func (app *Vlsingle) String() string {
 	return fmt.Sprintf("{app: %s storageDataPath: %q httpListenAddr: %q}", app.node.app, app.storageDataPath, app.node.httpListenAddr)

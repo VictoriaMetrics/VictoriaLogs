@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -32,8 +33,17 @@ type StorageStats struct {
 	// RowsDroppedTooSmallTimestamp is the number of rows dropped during data ingestion because their timestamp is smaller than the minimum allowed.
 	RowsDroppedTooSmallTimestamp uint64
 
+	// RowsDroppedReadOnlyPartition is the number of rows dropped during data ingestion because they belong to read-only partitions.
+	RowsDroppedReadOnlyPartition uint64
+
+	// DeleteSkippedReadOnlyPartitions is the number of read-only partitions skipped by delete tasks.
+	DeleteSkippedReadOnlyPartitions uint64
+
 	// PartitionsCount is the number of partitions in the storage.
 	PartitionsCount uint64
+
+	// ReadOnlyPartitionsCount is the number of read-only partitions in the storage.
+	ReadOnlyPartitionsCount uint64
 
 	// MaxDiskSpaceUsageBytes is the maximum disk space logs can use.
 	MaxDiskSpaceUsageBytes int64
@@ -120,6 +130,9 @@ type Storage struct {
 
 	rowsDroppedTooBigTimestamp   atomic.Uint64
 	rowsDroppedTooSmallTimestamp atomic.Uint64
+	rowsDroppedReadOnlyPartition atomic.Uint64
+
+	deleteSkippedReadOnlyPartitions atomic.Uint64
 
 	// path is the path to the Storage directory
 	path string
@@ -219,9 +232,13 @@ type Storage struct {
 	deleteTasks []*DeleteTask
 }
 
-// PartitionAttach attaches the partition with the given name to s.
+// PartitionAttach attaches the partition with the given name to s in read-only mode.
 //
 // The name must have the YYYYMMDD format.
+//
+// Read-only partitions can be queried, but they don't accept new logs, don't run background merges
+// and aren't modified on disk in any other way. They remain read-only after the Storage restart.
+// See https://docs.victoriametrics.com/victorialogs/#read-only-partitions
 //
 // The attached partition can be detached via PartitionDetach() call.
 func (s *Storage) PartitionAttach(name string) error {
@@ -250,15 +267,19 @@ func (s *Storage) PartitionAttach(name string) error {
 	if !fs.IsPathExist(partitionPath) {
 		return fmt.Errorf("cannot attach the partition %q, because there is no the corresponding directory %q", name, partitionPath)
 	}
+	if err := checkReadOnlyPartitionDir(partitionPath); err != nil {
+		return fmt.Errorf("cannot attach the partition %q in read-only mode: %w", name, err)
+	}
 
-	pt := mustOpenPartition(s, partitionPath)
+	pt := mustOpenPartition(s, partitionPath, true)
 	ptw := newPartitionWrapper(pt, day)
 
 	s.partitions = append(s.partitions, ptw)
 	sortPartitions(s.partitions)
+	s.mustSaveReadOnlyPartitionsLocked()
 	s.partitionCacheGeneration.Add(1)
 
-	logger.Infof("successfully attached partition %q from %q", name, partitionPath)
+	logger.Infof("successfully attached read-only partition %q from %q", name, partitionPath)
 
 	return nil
 }
@@ -282,6 +303,9 @@ func (s *Storage) PartitionDetach(name string) error {
 			s.partitions = append(s.partitions[:i], s.partitions[i+1:]...)
 			if ptw == s.ptwHot {
 				s.ptwHot = nil
+			}
+			if ptw.pt.isReadOnly.Load() {
+				s.mustSaveReadOnlyPartitionsLocked()
 			}
 			return ptw
 		}
@@ -307,18 +331,72 @@ func (s *Storage) PartitionDetach(name string) error {
 	return nil
 }
 
-// PartitionList returns the list of the names for the currently attached partitions.
-//
-// Every partition name has YYYYMMDD format.
-func (s *Storage) PartitionList() []string {
+// PartitionInfo contains information about the attached partition.
+type PartitionInfo struct {
+	// Name is the partition name in the YYYYMMDD format.
+	Name string `json:"name"`
+
+	// ReadOnly is set if the partition is read-only.
+	//
+	// See https://docs.victoriametrics.com/victorialogs/#read-only-partitions
+	ReadOnly bool `json:"read_only"`
+}
+
+// PartitionList returns the list of the currently attached partitions sorted by name.
+func (s *Storage) PartitionList() []PartitionInfo {
 	s.partitionsLock.Lock()
-	ptNames := make([]string, len(s.partitions))
+	pis := make([]PartitionInfo, len(s.partitions))
 	for i, ptw := range s.partitions {
-		ptNames[i] = ptw.pt.name
+		pis[i] = PartitionInfo{
+			Name:     ptw.pt.name,
+			ReadOnly: ptw.pt.isReadOnly.Load(),
+		}
 	}
 	s.partitionsLock.Unlock()
 
-	return ptNames
+	return pis
+}
+
+// mustSaveReadOnlyPartitionsLocked persists the names of read-only partitions from s.partitions to file,
+// so they are opened in read-only mode after the Storage restart.
+//
+// The s.partitionsLock must be locked while calling this function.
+func (s *Storage) mustSaveReadOnlyPartitionsLocked() {
+	var names []string
+	for _, ptw := range s.partitions {
+		if ptw.pt.isReadOnly.Load() {
+			names = append(names, ptw.pt.name)
+		}
+	}
+	path := filepath.Join(s.path, readOnlyPartitionsFilename)
+	mustWriteReadOnlyPartitionNames(path, names)
+}
+
+func mustWriteReadOnlyPartitionNames(path string, names []string) {
+	if names == nil {
+		// Write `[]` instead of `null`
+		names = []string{}
+	}
+	data, err := json.Marshal(names)
+	if err != nil {
+		logger.Panicf("BUG: cannot marshal read-only partition names to JSON: %s", err)
+	}
+	fs.MustWriteAtomic(path, data, true)
+}
+
+func mustReadReadOnlyPartitionNames(path string) []string {
+	if !fs.IsPathExist(path) {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		logger.Panicf("FATAL: cannot read %s: %s", path, err)
+	}
+	var names []string
+	if err := json.Unmarshal(data, &names); err != nil {
+		logger.Panicf("FATAL: cannot parse %s: %s", path, err)
+	}
+	return names
 }
 
 // PartitionSnapshotMustCreate creates snapshots for partitions with the given partitionPrefix
@@ -329,6 +407,9 @@ func (s *Storage) PartitionList() []string {
 // - YYYY - matches partitions for the given year
 // - an empty string - matches all the partitions
 //
+// Read-only partitions are skipped, since snapshots are created inside partition directories,
+// while read-only partitions must be left intact. Their contents don't change, so they can be copied directly.
+//
 // The function returns paths to created snapshots
 func (s *Storage) PartitionSnapshotMustCreate(partitionPrefix string) []string {
 	ptws := s.getPartitions()
@@ -337,10 +418,15 @@ func (s *Storage) PartitionSnapshotMustCreate(partitionPrefix string) []string {
 	var snapshotPaths []string
 
 	for _, ptw := range ptws {
-		if strings.HasPrefix(ptw.pt.name, partitionPrefix) {
-			snapshotPath := ptw.pt.mustCreateSnapshot()
-			snapshotPaths = append(snapshotPaths, snapshotPath)
+		if !strings.HasPrefix(ptw.pt.name, partitionPrefix) {
+			continue
 		}
+		if ptw.pt.isReadOnly.Load() {
+			logger.Infof("skipping snapshot creation for read-only partition %q, since its contents don't change and can be copied directly", ptw.pt.name)
+			continue
+		}
+		snapshotPath := ptw.pt.mustCreateSnapshot()
+		snapshotPaths = append(snapshotPaths, snapshotPath)
 	}
 
 	return snapshotPaths
@@ -361,6 +447,11 @@ func getSnapshotPaths(ptws []*partitionWrapper) []string {
 	var snapshotPaths []string
 
 	for _, ptw := range ptws {
+		if ptw.pt.isReadOnly.Load() {
+			// Read-only partitions must be left intact, so their snapshots (if any) aren't managed.
+			continue
+		}
+
 		snapshotsPath := filepath.Join(ptw.pt.path, snapshotsDirname)
 		if !fs.IsPathExist(snapshotsPath) {
 			continue
@@ -409,6 +500,9 @@ func (s *Storage) PartitionSnapshotDelete(snapshotPath string) error {
 
 	if ptw == nil {
 		return fmt.Errorf("partition path %q cannot be found across active partitions", partitionPath)
+	}
+	if ptw.pt.isReadOnly.Load() {
+		return fmt.Errorf("cannot delete the snapshot %q, since the partition %q is read-only", snapshotPath, ptw.pt.name)
 	}
 
 	return ptw.pt.deleteSnapshot(snapshotName)
@@ -661,6 +755,10 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	deleteTasksPath := filepath.Join(path, deleteTasksFilename)
 	deleteTasks := mustReadDeleteTasksFromFile(deleteTasksPath)
 
+	// Load names of read-only partitions, so they are opened in read-only mode again
+	readOnlyPartitionsPath := filepath.Join(path, readOnlyPartitionsFilename)
+	readOnlyPartitionNames := mustReadReadOnlyPartitionNames(readOnlyPartitionsPath)
+
 	s := &Storage{
 		path:                   path,
 		retention:              retention,
@@ -720,8 +818,12 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 			}
 
 			partitionPath := filepath.Join(partitionsPath, fname)
-			pt := mustOpenPartition(s, partitionPath)
+			isReadOnly := slices.Contains(readOnlyPartitionNames, fname)
+			pt := mustOpenPartition(s, partitionPath, isReadOnly)
 			ptws[idx] = newPartitionWrapper(pt, day)
+			if isReadOnly {
+				logger.Infof("opened read-only partition %s", partitionPath)
+			}
 
 			<-concurrencyLimiterCh
 		})
@@ -739,9 +841,7 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 		if ptw.day <= maxAllowedDay {
 			break
 		}
-		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -futureRetention=%dd", ptw.pt.path, durationToDays(s.futureRetention))
-		ptw.mustDrop.Store(true)
-		ptw.decRef()
+		s.dropPartition(ptw, fmt.Sprintf("it is outside the -futureRetention=%dd", durationToDays(s.futureRetention)))
 		j--
 	}
 	j++
@@ -751,6 +851,12 @@ func MustOpenStorage(path string, cfg *StorageConfig) *Storage {
 	ptws = ptws[:j]
 
 	s.partitions = ptws
+	if len(readOnlyPartitionNames) > 0 {
+		// Drop names of missing partitions from the persisted list of read-only partitions.
+		s.partitionsLock.Lock()
+		s.mustSaveReadOnlyPartitionsLocked()
+		s.partitionsLock.Unlock()
+	}
 	s.runRetentionWatcher()
 	s.runMaxDiskSpaceUsageWatcher()
 	s.runDeleteTasksWatcher()
@@ -818,14 +924,40 @@ func (s *Storage) dropStalePartitions() {
 		s.ptwHot = nil
 	}
 
+	if hasReadOnlyPartitions(ptwsToDelete) {
+		s.mustSaveReadOnlyPartitionsLocked()
+	}
+
 	s.partitionsLock.Unlock()
 
+	reason := fmt.Sprintf("it is outside the -retentionPeriod=%dd", durationToDays(s.retention))
 	for i, ptw := range ptwsToDelete {
-		logger.Infof("the partition %s is scheduled to be deleted because it is outside the -retentionPeriod=%dd", ptw.pt.path, durationToDays(s.retention))
-		ptw.mustDrop.Store(true)
-		ptw.decRef()
+		s.dropPartition(ptw, reason)
 		ptwsToDelete[i] = nil
 	}
+}
+
+// dropPartition drops ptw, which has been already removed from s.partitions, because of the given reason.
+//
+// The partition directory is deleted after all the concurrent users stop accessing it.
+// Read-only partitions are an exception - they are only detached, since their directories must be left intact.
+func (s *Storage) dropPartition(ptw *partitionWrapper, reason string) {
+	if ptw.pt.isReadOnly.Load() {
+		logger.Infof("the read-only partition %s is detached because %s; its directory is left intact", ptw.pt.path, reason)
+	} else {
+		logger.Infof("the partition %s is scheduled to be deleted because %s", ptw.pt.path, reason)
+		ptw.mustDrop.Store(true)
+	}
+	ptw.decRef()
+}
+
+func hasReadOnlyPartitions(ptws []*partitionWrapper) bool {
+	for _, ptw := range ptws {
+		if ptw.pt.isReadOnly.Load() {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Storage) watchMaxDiskSpaceUsage() {
@@ -853,57 +985,72 @@ func (s *Storage) watchMaxDiskSpaceUsage() {
 			}
 		}
 
-		s.partitionsLock.Lock()
-		var n uint64
-		ptws := s.partitions
-		var ptwsToDelete []*partitionWrapper
-		for i := len(ptws) - 1; i >= 0; i-- {
-			ptw := ptws[i]
-			var ps PartitionStats
-			ptw.pt.updateStats(&ps)
-			n += ps.IndexdbSizeBytes + ps.CompressedSmallPartSize + ps.CompressedBigPartSize
-			if n <= limitBytes {
-				continue
-			}
-			if i >= len(ptws)-2 {
-				// Keep the last two per-day partitions, so logs could be queried for one day time range.
-				continue
-			}
-
-			// ptws are sorted by time, so just drop all the partitions until i, including i.
-			i++
-			ptwsToDelete = ptws[:i]
-			s.partitions = ptws[i:]
-			s.updateDeletedPartitionsLocked(ptwsToDelete)
-
-			// Remove reference to deleted partitions from s.ptwHot
-			if slices.Contains(ptwsToDelete, s.ptwHot) {
-				s.ptwHot = nil
-			}
-
-			break
-		}
-
-		s.partitionsLock.Unlock()
-
-		for i, ptw := range ptwsToDelete {
-			var reason string
-			if s.maxDiskSpaceUsageBytes > 0 {
-				reason = fmt.Sprintf("-retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
-			} else {
-				reason = fmt.Sprintf("-retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
-			}
-			logger.Infof("the partition %s is scheduled to be deleted because the total size of partitions exceeds %s", ptw.pt.path, reason)
-			ptw.mustDrop.Store(true)
-			ptw.decRef()
-			ptwsToDelete[i] = nil
-		}
+		s.dropPartitionsExceedingMaxDiskSpaceUsage(limitBytes)
 
 		select {
 		case <-s.stopCh:
 			return
 		case <-ticker.C:
 		}
+	}
+}
+
+// dropPartitionsExceedingMaxDiskSpaceUsage drops the oldest partitions until the total size of the remaining partitions
+// doesn't exceed limitBytes. The last two per-day partitions are never dropped, so logs could be queried for one day time range.
+//
+// Read-only partitions are neither dropped nor taken into account, since they cannot be deleted.
+func (s *Storage) dropPartitionsExceedingMaxDiskSpaceUsage(limitBytes uint64) {
+	s.partitionsLock.Lock()
+	var n uint64
+	ptws := s.partitions
+	var ptwsToDelete []*partitionWrapper
+	for i := len(ptws) - 1; i >= 0; i-- {
+		ptw := ptws[i]
+		if ptw.pt.isReadOnly.Load() {
+			continue
+		}
+		var ps PartitionStats
+		ptw.pt.updateStats(&ps)
+		n += ps.IndexdbSizeBytes + ps.CompressedSmallPartSize + ps.CompressedBigPartSize
+		if n <= limitBytes {
+			continue
+		}
+		if i >= len(ptws)-2 {
+			// Keep the last two per-day partitions, so logs could be queried for one day time range.
+			continue
+		}
+
+		// ptws are sorted by time, so just drop all the partitions until i, including i,
+		// except of read-only partitions, which must be left intact.
+		var ptwsRemaining []*partitionWrapper
+		for _, ptwOld := range ptws[:i+1] {
+			if ptwOld.pt.isReadOnly.Load() {
+				ptwsRemaining = append(ptwsRemaining, ptwOld)
+			} else {
+				ptwsToDelete = append(ptwsToDelete, ptwOld)
+			}
+		}
+		s.partitions = append(ptwsRemaining, ptws[i+1:]...)
+		s.updateDeletedPartitionsLocked(ptwsToDelete)
+
+		// Remove reference to deleted partitions from s.ptwHot
+		if slices.Contains(ptwsToDelete, s.ptwHot) {
+			s.ptwHot = nil
+		}
+
+		break
+	}
+	s.partitionsLock.Unlock()
+
+	var reason string
+	if s.maxDiskSpaceUsageBytes > 0 {
+		reason = fmt.Sprintf("the total size of partitions exceeds -retention.maxDiskSpaceUsageBytes=%d", s.maxDiskSpaceUsageBytes)
+	} else {
+		reason = fmt.Sprintf("the total size of partitions exceeds -retention.maxDiskUsagePercent=%d%%", s.maxDiskUsagePercent)
+	}
+	for i, ptw := range ptwsToDelete {
+		s.dropPartition(ptw, reason)
+		ptwsToDelete[i] = nil
 	}
 }
 
@@ -1051,6 +1198,14 @@ func (s *Storage) deleteRows(sso *storageSearchOptions, stopCh <-chan struct{}) 
 	// Delete rows sequentially in every partition in order to limit resource usage needed for the logs' deletion.
 	ok := true
 	for _, ptw := range ptws {
+		if ptw.pt.isReadOnly.Load() {
+			// Read-only partitions must be left intact, so logs cannot be deleted from them.
+			// Do not return false, since this would re-schedule the delete task for the later execution,
+			// while the partition remains read-only.
+			logger.Warnf("skipping the deletion of logs from the read-only partition %s; see https://docs.victoriametrics.com/victorialogs/#read-only-partitions", ptw.pt.name)
+			s.deleteSkippedReadOnlyPartitions.Add(1)
+			continue
+		}
 		if !ptw.pt.deleteRows(sso, stopCh) {
 			// Return false if at least a single deletion was unsuccessful.
 			// Continue deletion of rows at other partitions, since they may be successful.
@@ -1118,6 +1273,7 @@ func (s *Storage) MustClose() {
 // MustForceMerge force-merges parts in s partitions with names starting from the given partitionPrefix.
 //
 // Partitions are merged sequentially in order to reduce load on the system.
+// Read-only partitions are skipped, since they must be left intact.
 func (s *Storage) MustForceMerge(partitionPrefix string) {
 	ptws := s.getPartitions()
 	defer s.putPartitions(ptws)
@@ -1127,6 +1283,10 @@ func (s *Storage) MustForceMerge(partitionPrefix string) {
 
 	for _, ptw := range ptws {
 		if !strings.HasPrefix(ptw.pt.name, partitionPrefix) {
+			continue
+		}
+		if ptw.pt.isReadOnly.Load() {
+			logger.Infof("skipping force merge for read-only partition %s", ptw.pt.name)
 			continue
 		}
 
@@ -1211,14 +1371,20 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 	}
 	for day, lrPart := range m {
 		ptw := s.getPartitionForWriting(day)
-		if ptw != nil {
-			ptw.pt.mustAddRows(lrPart)
-			ptw.decRef()
-		} else {
+		if ptw == nil {
 			// the lrPart must contain at least a single row, so log it.
 			line := MarshalFieldsToJSON(nil, lrPart.rows[0])
 			inactivePartitionLogger.Warnf("skipping log entry because it cannot be saved into inactive per-day partition; "+
 				"see https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle; log entry %s", line)
+		} else if ptw.pt.isReadOnly.Load() {
+			line := MarshalFieldsToJSON(nil, lrPart.rows[0])
+			readOnlyPartitionLogger.Warnf("skipping %d log entries because they cannot be saved into read-only per-day partition %s; "+
+				"see https://docs.victoriametrics.com/victorialogs/#read-only-partitions; log entry %s", len(lrPart.timestamps), ptw.pt.name, line)
+			s.rowsDroppedReadOnlyPartition.Add(uint64(len(lrPart.timestamps)))
+			ptw.decRef()
+		} else {
+			ptw.pt.mustAddRows(lrPart)
+			ptw.decRef()
 		}
 		PutLogRows(lrPart)
 	}
@@ -1227,6 +1393,7 @@ func (s *Storage) MustAddRows(lr *LogRows) {
 var tooSmallTimestampLogger = logger.WithThrottler("too_small_timestamp", 5*time.Second)
 var tooBigTimestampLogger = logger.WithThrottler("too_big_timestamp", 5*time.Second)
 var inactivePartitionLogger = logger.WithThrottler("inactive_partition", 5*time.Second)
+var readOnlyPartitionLogger = logger.WithThrottler("read_only_partition", 5*time.Second)
 
 // TimeFormatter implements fmt.Stringer for timestamp in nanoseconds
 type TimeFormatter int64
@@ -1249,6 +1416,9 @@ func (tf *TimeFormatter) String() string {
 //   - When the partition directory has been manually added, but wasn't attached yet via Storage.PartitionAttach().
 //
 // The caller must log this case and drop pending logs for this partition.
+//
+// The returned partition may be read-only. The caller must check this via pt.isReadOnly and drop pending logs in this case,
+// since read-only partitions cannot accept new logs.
 func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 	s.partitionsLock.Lock()
 	defer s.partitionsLock.Unlock()
@@ -1283,7 +1453,7 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 
 		// Create missing partition.
 		mustCreatePartition(partitionPath)
-		pt := mustOpenPartition(s, partitionPath)
+		pt := mustOpenPartition(s, partitionPath, false)
 		ptw = newPartitionWrapper(pt, day)
 		if n == len(ptws) {
 			ptws = append(ptws, ptw)
@@ -1294,7 +1464,10 @@ func (s *Storage) getPartitionForWriting(day int64) *partitionWrapper {
 		s.partitions = ptws
 	}
 
-	s.ptwHot = ptw
+	if !ptw.pt.isReadOnly.Load() {
+		// Read-only partition cannot become hot, since it cannot accept new logs.
+		s.ptwHot = ptw
+	}
 	ptw.incRef()
 
 	return ptw
@@ -1305,6 +1478,8 @@ func (s *Storage) UpdateStats(ss *StorageStats) {
 	ss.StreamsCreatedTotal += s.streamsCreatedTotal.Load()
 	ss.RowsDroppedTooBigTimestamp += s.rowsDroppedTooBigTimestamp.Load()
 	ss.RowsDroppedTooSmallTimestamp += s.rowsDroppedTooSmallTimestamp.Load()
+	ss.RowsDroppedReadOnlyPartition += s.rowsDroppedReadOnlyPartition.Load()
+	ss.DeleteSkippedReadOnlyPartitions += s.deleteSkippedReadOnlyPartitions.Load()
 	if s.maxDiskSpaceUsageBytes > 0 {
 		ss.MaxDiskSpaceUsageBytes = s.maxDiskSpaceUsageBytes
 	} else {
@@ -1316,6 +1491,9 @@ func (s *Storage) UpdateStats(ss *StorageStats) {
 	s.partitionsLock.Lock()
 	ss.PartitionsCount += uint64(len(s.partitions))
 	for _, ptw := range s.partitions {
+		if ptw.pt.isReadOnly.Load() {
+			ss.ReadOnlyPartitionsCount++
+		}
 		ptw.pt.updateStats(&ss.PartitionStats)
 	}
 
