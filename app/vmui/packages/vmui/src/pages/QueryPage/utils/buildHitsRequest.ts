@@ -2,7 +2,7 @@ import { TenantUrlType } from "../../../hooks/useTenant";
 import { FetchHitsParams } from "../hooks/useFetchHits";
 import { getHitsTimeParams } from "../../../utils/logs";
 import { getDefaultTimezoneOffsetMinutes } from "../../../utils/time";
-import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../constants/logs";
+import { LOGS_LIMIT_HITS } from "../../../constants/logs";
 
 type HitsRequestHeadersOptions = {
   tenant: TenantUrlType
@@ -15,7 +15,7 @@ export const buildHitsRequestHeaders = ({ tenant }: HitsRequestHeadersOptions) =
 };
 
 export const buildHitsRequestParams = (options: FetchHitsParams) => {
-  const { period, query, step, fieldsLimit, field, extraParams } = options;
+  const { period, query, step, fieldsLimit, fields, extraParams } = options;
 
   const { start, end, step: fallbackStep } = getHitsTimeParams(period);
   const offsetMinutes = getDefaultTimezoneOffsetMinutes();
@@ -29,8 +29,8 @@ export const buildHitsRequestParams = (options: FetchHitsParams) => {
     fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
   });
 
-  if (field && field !== WITHOUT_GROUPING) {
-    params.set("field", field);
+  for (const field of fields || []) {
+    params.append("field", field);
   }
 
   return new URLSearchParams([

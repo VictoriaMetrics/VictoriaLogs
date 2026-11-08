@@ -3,42 +3,40 @@ import { useAppState } from "../../../state/common/StateContext";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import classNames from "classnames";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
-import { useSearchParams } from "react-router-dom";
-import { LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
-import { convertToFieldFilter } from "../../../utils/logs";
+import { FieldPair } from "../../../types";
+import { convertToFieldFilter, formatFieldPair } from "../../../utils/logs";
 
 interface Props {
-  pair: string;
+  pair: FieldPair;
+  withFieldName?: boolean;
   isHide?: boolean;
 }
 
-const GroupLogsHeaderItem: FC<Props> = ({ pair, isHide }) => {
+const GroupLogsHeaderItem: FC<Props> = ({ pair, withFieldName, isHide }) => {
   const { isDarkTheme } = useAppState();
   const copyToClipboard = useCopyToClipboard();
-  const [searchParams] = useSearchParams();
 
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
+  const title = withFieldName || pair.isStream ? formatFieldPair(pair) : pair.value;
 
-  const handleClickByPair = (value: string) => async (e: MouseEvent<HTMLDivElement>) => {
+  const handleClickByPair = async (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    const copyValue = convertToFieldFilter(value, groupBy);
-    const isCopied = await copyToClipboard(copyValue);
+    const isCopied = await copyToClipboard(convertToFieldFilter(formatFieldPair(pair)));
     if (isCopied) {
-      setCopied(value);
+      setCopied(true);
     }
   };
 
   useEffect(() => {
-    if (copied === null) return;
-    const timeout = setTimeout(() => setCopied(null), 2000);
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 2000);
     return () => clearTimeout(timeout);
   }, [copied]);
 
   return (
     <Tooltip
-      title={copied === pair ? "Copied" : "Copy to clipboard"}
+      title={copied ? "Copied" : "Copy to clipboard"}
       placement={"top-center"}
     >
       <div
@@ -47,9 +45,9 @@ const GroupLogsHeaderItem: FC<Props> = ({ pair, isHide }) => {
           "vm-group-logs-section-keys__pair_hide": isHide,
           "vm-group-logs-section-keys__pair_dark": isDarkTheme
         })}
-        onClick={handleClickByPair(pair)}
+        onClick={handleClickByPair}
       >
-        {pair}
+        {title}
       </div>
     </Tooltip>
   );

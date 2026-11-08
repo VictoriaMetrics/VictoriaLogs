@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrayMove, isDecreasing } from "./array";
+import { arrayMove, groupByMultipleKeys, isDecreasing } from "./array";
 
 describe("isDecreasing", () => {
   it("should return true for an array with strictly decreasing numbers", () => {
@@ -78,5 +78,25 @@ describe("arrayMove", () => {
   it("should handle negative indexes like native splice", () => {
     // from = -1 removes last element (3), to = 0 inserts at start
     expect(arrayMove([1, 2, 3], -1, 0)).toEqual([3, 1, 2]);
+  });
+});
+
+describe("groupByMultipleKeys", () => {
+  it("should group items by the combination of key values", () => {
+    const items = [{ a: "1", b: "x" }, { a: "1", b: "y" }, { a: "1", b: "x" }];
+
+    expect(groupByMultipleKeys(items, ["a", "b"])).toEqual([
+      { keys: ["a: 1", "b: x"], values: [items[0], items[2]] },
+      { keys: ["a: 1", "b: y"], values: [items[1]] },
+    ]);
+  });
+
+  it("should not merge combinations when values contain the \"|\" separator", () => {
+    const items = [{ a: "1|b: 2", b: "3" }, { a: "1", b: "2|b: 3" }];
+
+    expect(groupByMultipleKeys(items, ["a", "b"])).toEqual([
+      { keys: ["a: 1|b: 2", "b: 3"], values: [items[0]] },
+      { keys: ["a: 1", "b: 2|b: 3"], values: [items[1]] },
+    ]);
   });
 });
