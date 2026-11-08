@@ -4,6 +4,7 @@ import { LogHits, Logs } from "../api/types";
 import { OTHER_HITS_LABEL } from "../constants/logs";
 import { nanosecondsToMilliseconds, nanosToIsoString } from "./time";
 import { getDefaultIntervalOption } from "./intervals";
+import { escapeForLogsQLString } from "./regexp";
 
 export const getStreamPairs = (stream: string): string[] => {
   const s = stream.trim();
@@ -96,6 +97,10 @@ export const getHitsTimeParams = (period: TimeParams): HitsTimeParams => {
 
   return { start, end, step };
 };
+
+// Field names may contain spaces and characters that clash with LogsQL syntax,
+// so a name built into a query has to be a double-quoted string.
+export const quoteLogsQLFieldName = (field: string) => `"${escapeForLogsQLString(field)}"`;
 
 export const convertToFieldFilter = (value: string, field = LOGS_GROUP_BY) => {
   const isKeyValue = /(.+)?=(".+")/.test(value);

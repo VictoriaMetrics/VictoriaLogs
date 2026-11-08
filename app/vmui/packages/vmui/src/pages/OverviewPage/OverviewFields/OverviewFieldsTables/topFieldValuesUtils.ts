@@ -1,20 +1,22 @@
 import { ValuesMode } from "./TopFieldValues";
+import { quoteLogsQLFieldName } from "../../../../utils/logs";
 
 export const buildFieldValuesQuery = (
   field: string,
   mode: ValuesMode,
   limit: number,
 ) => {
-  const where = `${field}:*`;
+  const name = quoteLogsQLFieldName(field);
+  const where = `${name}:*`;
 
   if (mode === "top") {
-    return `${where} | top ${limit} by (${field})`;
+    return `${where} | top ${limit} by (${name})`;
   }
 
   return [
     where,
-    `| stats by (${field}) count() as hits`,
-    `| sort by (hits asc, ${field})`,
+    `| stats by (${name}) count() as hits`,
+    `| sort by (hits asc, ${name})`,
     `| limit ${limit}`
   ].filter(Boolean).join(" ");
 };

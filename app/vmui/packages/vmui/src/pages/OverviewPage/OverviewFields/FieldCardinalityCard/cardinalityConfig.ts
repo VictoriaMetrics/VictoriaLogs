@@ -1,4 +1,5 @@
 import { formatNumber, formatPercent } from "../../../../utils/number";
+import { quoteLogsQLFieldName } from "../../../../utils/logs";
 
 export type StatKey = "distinct" | "coverage" | "ratio" | "coverageOfTotal";
 
@@ -18,7 +19,7 @@ export const cardinalityConfig: StatConfig[] = [
     description: ({ field }) =>
       `Number of unique values of \`${field}\`.\n` +
       "Shows value variety (cardinality).\n" +
-      `\`${field}:* | stats count_uniq(${field})\`.`,
+      `\`${quoteLogsQLFieldName(field)}:* | stats count_uniq(${quoteLogsQLFieldName(field)})\`.`,
     format: (v) => formatNumber(v || 0),
   },
   {
@@ -36,7 +37,7 @@ export const cardinalityConfig: StatConfig[] = [
     description: ({ field }) =>
       `Total logs containing \`${field}\`.\n` +
       "Shows how often the field appears.\n" +
-      `\`${field}:* | stats count()\`.`,
+      `\`${quoteLogsQLFieldName(field)}:* | stats count()\`.`,
     format: (v) => formatNumber(v || 0),
   },
   {

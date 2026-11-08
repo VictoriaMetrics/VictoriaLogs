@@ -5,6 +5,7 @@ import {
   getStreamKeys,
   getAllStreamKeys,
   convertToFieldFilter,
+  quoteLogsQLFieldName,
   calculateTotalHits,
   isEqualLogByKeys,
   removeLogsByKeys,
@@ -15,6 +16,22 @@ import { TIME_FIELD } from "../constants/logFields";
 import { LogHits, Logs } from "../api/types";
 
 describe("utils/logs", () => {
+  describe("quoteLogsQLFieldName", () => {
+    it("leaves a plain name quoted, so it never depends on the token rules", () => {
+      expect(quoteLogsQLFieldName("level")).toBe("\"level\"");
+    });
+
+    it("quotes a name with a space", () => {
+      expect(quoteLogsQLFieldName("Log entry ID")).toBe("\"Log entry ID\"");
+    });
+
+    it("quotes a name with a quote or a colon", () => {
+      expect(quoteLogsQLFieldName("Type d'audit")).toBe("\"Type d'audit\"");
+      expect(quoteLogsQLFieldName("a:b")).toBe("\"a:b\"");
+      expect(quoteLogsQLFieldName("a\"b")).toBe("\"a\\\"b\"");
+    });
+  });
+
   describe("getStreamPairs", () => {
     it("empty stream {}", () => {
       expect(getStreamPairs("{}")).toEqual([]);
