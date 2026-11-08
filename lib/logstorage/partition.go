@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -36,6 +37,13 @@ type partition struct {
 
 	// ddb is the datadb used for the given partition
 	ddb *datadb
+
+	// isReadOnly is set if the partition is opened in read-only mode.
+	//
+	// Read-only partitions can be queried, but they don't accept new logs,
+	// don't run background merges and aren't modified on disk in any other way.
+	// See https://docs.victoriametrics.com/victorialogs/#read-only-partitions
+	isReadOnly atomic.Bool
 
 	// The snapshotLock prevents from concurrent creation of snapshots,
 	// since this may result in snapshots without recently added data,
@@ -70,47 +78,78 @@ func mustDeletePartition(path string) {
 
 // mustOpenPartition opens partition at the given path for the given Storage.
 //
+// If isReadOnly is set, then the partition is opened in read-only mode - it doesn't accept new logs,
+// doesn't run background merges and isn't modified on disk in any other way.
+// The partition directory must pass checkReadOnlyPartitionDir() in this case.
+//
 // The returned partition must be closed when no longer needed with mustClosePartition() call.
-func mustOpenPartition(s *Storage, path string) *partition {
+func mustOpenPartition(s *Storage, path string, isReadOnly bool) *partition {
 	name := filepath.Base(path)
 
 	indexdbPath := filepath.Join(path, indexdbDirname)
-	isIndexDBExist := fs.IsPathExist(indexdbPath)
-
 	datadbPath := filepath.Join(path, datadbDirname)
-	isDatadbExist := fs.IsPathExist(datadbPath)
 
-	if !isIndexDBExist {
-		if isDatadbExist {
-			logger.Panicf("FATAL: indexdb directory %s is missing, but datadb directory %s exists. "+
-				"This indicates corruption. Manually remove the %s partition to resolve it (partition data will be lost)",
-				indexdbPath, datadbPath, path)
+	if isReadOnly {
+		// Do not try fixing the partition directory, since it must be left intact. Verify it instead.
+		if err := checkReadOnlyPartitionDir(path); err != nil {
+			logger.Panicf("FATAL: cannot open the partition %s in read-only mode: %s; remove the partition name from %s in order to open it in read-write mode",
+				path, err, filepath.Join(s.path, readOnlyPartitionsFilename))
+		}
+	} else {
+		isIndexDBExist := fs.IsPathExist(indexdbPath)
+		isDatadbExist := fs.IsPathExist(datadbPath)
+
+		if !isIndexDBExist {
+			if isDatadbExist {
+				logger.Panicf("FATAL: indexdb directory %s is missing, but datadb directory %s exists. "+
+					"This indicates corruption. Manually remove the %s partition to resolve it (partition data will be lost)",
+					indexdbPath, datadbPath, path)
+			}
+
+			logger.Warnf("creating missing indexdb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
+				"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", indexdbPath)
+			mustCreateIndexdb(indexdbPath)
 		}
 
-		logger.Warnf("creating missing indexdb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
-			"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", indexdbPath)
-		mustCreateIndexdb(indexdbPath)
+		if !isDatadbExist {
+			logger.Warnf("creating missing datadb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
+				"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", datadbPath)
+			mustCreateDatadb(datadbPath)
+		}
 	}
-
-	idb := mustOpenIndexdb(indexdbPath, name, s)
 
 	// Start initializing the partition
 	pt := &partition{
 		s:    s,
 		path: path,
 		name: name,
-		idb:  idb,
 	}
+	pt.isReadOnly.Store(isReadOnly)
 
-	if !isDatadbExist {
-		logger.Warnf("creating missing datadb directory %s, this could happen if VictoriaLogs shuts down uncleanly "+
-			"(via OOM crash, a panic, SIGKILL or hardware shutdown) while creating new per-day partition", datadbPath)
-		mustCreateDatadb(datadbPath)
-	}
-
+	pt.idb = mustOpenIndexdb(indexdbPath, name, s, &pt.isReadOnly)
 	pt.ddb = mustOpenDatadb(pt, datadbPath, s.flushInterval)
 
 	return pt
+}
+
+// checkReadOnlyPartitionDir verifies that the partition directory at the given path can be opened in read-only mode.
+//
+// Partitions opened in read-write mode automatically fix the missing files and directories listed below,
+// while read-only partitions must be left intact, so the fix cannot be applied to them.
+func checkReadOnlyPartitionDir(path string) error {
+	indexdbPath := filepath.Join(path, indexdbDirname)
+	datadbPath := filepath.Join(path, datadbDirname)
+	for _, p := range []string{
+		indexdbPath,
+		filepath.Join(indexdbPath, partsFilename),
+		datadbPath,
+		filepath.Join(datadbPath, partsFilename),
+	} {
+		if !fs.IsPathExist(p) {
+			return fmt.Errorf("missing %s", p)
+		}
+	}
+	return nil
 }
 
 // mustClosePartition closes pt.
@@ -133,6 +172,10 @@ func mustClosePartition(pt *partition) {
 }
 
 func (pt *partition) mustAddRows(lr *LogRows) {
+	if pt.isReadOnly.Load() {
+		logger.Panicf("BUG: cannot add rows to read-only partition %s", pt.path)
+	}
+
 	// Register rows in indexdb
 	var pendingRows []int
 	streamIDs := lr.streamIDs

@@ -20,6 +20,8 @@ const (
 
 	deleteTasksFilename = "delete_tasks.json"
 
+	readOnlyPartitionsFilename = "readonly_partitions.json"
+
 	indexdbDirname    = "indexdb"
 	datadbDirname     = "datadb"
 	partitionsDirname = "partitions"

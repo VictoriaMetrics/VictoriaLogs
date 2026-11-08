@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"sync/atomic"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestStorageSearchStreamIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
 
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, &atomic.Bool{})
 	defer mustCloseIndexdb(idb)
 
 	tenantID := TenantID{
@@ -263,7 +264,7 @@ func TestGetTenantsIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "indexdb")
 	mustCreateIndexdb(path)
 
-	idb := mustOpenIndexdb(path, partitionName, s)
+	idb := mustOpenIndexdb(path, partitionName, s, &atomic.Bool{})
 	defer mustCloseIndexdb(idb)
 
 	tenantIDs := []TenantID{

@@ -395,12 +395,21 @@ func processPartitionList(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	ptNames := localStorage.PartitionList()
-	if ptNames == nil {
-		// This is needed in order to return `[]` instead of `null` to the client.
-		ptNames = []string{}
+	pis := localStorage.PartitionList()
+	if httputil.GetBool(r, "details") {
+		if pis == nil {
+			// This is needed in order to return `[]` instead of `null` to the client.
+			pis = []logstorage.PartitionInfo{}
+		}
+		writeJSONResponse(w, pis)
+		return true
 	}
 
+	// Return only partition names by default for backwards compatibility.
+	ptNames := make([]string, len(pis))
+	for i, pi := range pis {
+		ptNames[i] = pi.Name
+	}
 	writeJSONResponse(w, ptNames)
 	return true
 }
@@ -730,6 +739,7 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 	metrics.WriteGaugeUint64(w, `vl_pending_rows{type="indexdb"}`, ss.IndexdbPendingItems)
 
 	metrics.WriteGaugeUint64(w, `vl_partitions`, ss.PartitionsCount)
+	metrics.WriteGaugeUint64(w, `vl_read_only_partitions`, ss.ReadOnlyPartitionsCount)
 	metrics.WriteCounterUint64(w, `vl_streams_created_total`, ss.StreamsCreatedTotal)
 
 	metrics.WriteGaugeUint64(w, `vl_indexdb_rows`, ss.IndexdbItemsCount)
@@ -756,6 +766,9 @@ func writeStorageMetrics(w io.Writer, strg *logstorage.Storage) {
 
 	metrics.WriteCounterUint64(w, `vl_rows_dropped_total{reason="too_big_timestamp"}`, ss.RowsDroppedTooBigTimestamp)
 	metrics.WriteCounterUint64(w, `vl_rows_dropped_total{reason="too_small_timestamp"}`, ss.RowsDroppedTooSmallTimestamp)
+	metrics.WriteCounterUint64(w, `vl_rows_dropped_total{reason="read_only_partition"}`, ss.RowsDroppedReadOnlyPartition)
+
+	metrics.WriteCounterUint64(w, `vl_delete_skipped_read_only_partitions_total`, ss.DeleteSkippedReadOnlyPartitions)
 }
 
 var activeForceMerges = metrics.NewCounter("vl_active_force_merges")

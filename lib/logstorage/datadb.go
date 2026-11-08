@@ -167,9 +167,15 @@ func mustCreateDatadb(path string) {
 }
 
 // mustOpenDatadb opens datadb at the given path with the given flushInterval for in-memory data.
+//
+// Background merges and in-memory parts flusher aren't started if pt is read-only.
 func mustOpenDatadb(pt *partition, path string, flushInterval time.Duration) *datadb {
+	isReadOnly := pt.isReadOnly.Load()
+
 	partNames := mustReadPartNames(path)
-	mustRemoveUnusedDirs(path, partNames)
+	if !isReadOnly {
+		mustRemoveUnusedDirs(path, partNames)
+	}
 
 	var smallParts []*partWrapper
 	var bigParts []*partWrapper
@@ -213,7 +219,9 @@ func mustOpenDatadb(pt *partition, path string, flushInterval time.Duration) *da
 	ddb.rb.init(&ddb.wg, ddb.mustFlushLogRows)
 	ddb.mergeIdx.Store(uint64(time.Now().UnixNano()))
 
-	ddb.startBackgroundWorkers()
+	if !isReadOnly {
+		ddb.startBackgroundWorkers()
+	}
 
 	return ddb
 }
