@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef, useState } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import QueryPageBody from "./QueryPageBody/QueryPageBody";
 import QueryPageHeader from "./QueryPageHeader/QueryPageHeader";
 import "./style.scss";
@@ -19,6 +19,7 @@ import QueryPageAlerts from "./QueryPageAlerts";
 import { useTimePeriod } from "./hooks/useTimePeriod";
 import { DEFAULT_QUERY, useQueryController } from "./hooks/useQueryController";
 import { useQueryPageController } from "./hooks/useQueryPageController";
+import { getUniqueFieldNames } from "../../utils/groupByFields";
 
 const QueryPage: FC = () => {
   const { isMobile } = useDeviceDetect();
@@ -36,6 +37,8 @@ const QueryPage: FC = () => {
   const  { cancelAll, logsRequestState, hitsRequestState } = useQueryPageController({ query: appliedQuery, beforeFetch });
 
   const isLoading = logsRequestState.isLoading || hitsRequestState.isLoading;
+
+  const loadedFieldNames = useMemo(() => getUniqueFieldNames(logsRequestState.logs), [logsRequestState.logs]);
 
   const [queryError, setQueryError] = useState<ErrorTypes | string>("");
 
@@ -136,6 +139,7 @@ const QueryPage: FC = () => {
           <HitsPanel
             {...hitsRequestState}
             query={appliedQuery}
+            loadedFieldNames={loadedFieldNames}
             period={period}
             step={step}
           />
@@ -143,6 +147,7 @@ const QueryPage: FC = () => {
         <QueryPageBody
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}
+          period={period}
           isLoading={logsRequestState.isLoading}
           isPending={logsRequestState.isPending}
         />
