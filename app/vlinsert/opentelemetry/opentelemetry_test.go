@@ -14,7 +14,7 @@ import (
 func TestPushProtobufRequest(t *testing.T) {
 	f := func(src string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-		testPushProtobufRequest(t, src, nil, timestampsExpected, resultExpected)
+		testPushProtobufRequest(t, src, nil, false, timestampsExpected, resultExpected)
 	}
 
 	// single line without resource attributes
@@ -358,7 +358,7 @@ func TestPushProtobufRequest(t *testing.T) {
 func TestPushProtobufRequest_MsgFields(t *testing.T) {
 	f := func(src string, msgFields []string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
-		testPushProtobufRequest(t, src, msgFields, timestampsExpected, resultExpected)
+		testPushProtobufRequest(t, src, msgFields, false, timestampsExpected, resultExpected)
 	}
 
 	// log records with a string body and the msg attribute, with a string body only, and with a kvlist body
@@ -404,7 +404,61 @@ func TestPushProtobufRequest_MsgFields(t *testing.T) {
 	f(data, []string{"msg"}, timestampsExpected, resultsExpected)
 }
 
-func testPushProtobufRequest(t *testing.T, src string, msgFields []string, timestampsExpected []int64, resultExpected string) {
+func TestPushProtobufRequest_ConsistentPrefix(t *testing.T) {
+	f := func(src string, timestampsExpected []int64, resultExpected string) {
+		t.Helper()
+		testPushProtobufRequest(t, src, nil, true, timestampsExpected, resultExpected)
+	}
+
+	// attributes with the same key in different sources
+	data := `[{
+		"resource": {
+			"attributes": [
+				{"key":"x","value":{"stringValue":"a"}}
+			]
+		},
+		"scopeLogs": [{
+			"scope": {
+				"attributes": [
+					{"key":"x","value":{"stringValue":"b"}}
+				]
+			},
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"body": {"stringValue":"foo"},
+				"attributes": [
+					{"key":"x","value":{"stringValue":"c"}}
+				]
+			}]
+		}]
+	}]`
+	timestampsExpected := []int64{1234}
+	resultsExpected := `{"resource.attribute.x":"a","scope.name":"unknown","scope.version":"unknown","scope.attribute.x":"b",` +
+		`"_msg":"foo","log.attribute.x":"c","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, timestampsExpected, resultsExpected)
+
+	// decode KeyValueList body
+	data = `[{
+		"scopeLogs": [{
+			"logRecords": [{
+				"timeUnixNano": 1234,
+				"body": {
+					"keyValueList": {
+						"values": [
+							{"key":"foo","value":{"stringValue":"bar"}},
+							{"key":"n","value":{"keyValueList":{"values":[{"key":"m","value":{"stringValue":"baz"}}]}}}
+						]
+					}
+				}
+			}]
+		}]
+	}]`
+	timestampsExpected = []int64{1234}
+	resultsExpected = `{"body.foo":"bar","body.n.m":"baz","severity_number":"0","severity_text":"Unspecified"}`
+	f(data, timestampsExpected, resultsExpected)
+}
+
+func testPushProtobufRequest(t *testing.T, src string, msgFields []string, useConsistentPrefix bool, timestampsExpected []int64, resultExpected string) {
 	t.Helper()
 
 	var rls []resourceLogs
@@ -421,7 +475,7 @@ func testPushProtobufRequest(t *testing.T, src string, msgFields []string, times
 
 	pData := lr.marshalProtobuf(nil)
 	tlp := &insertutil.TestLogMessageProcessor{}
-	if err := pushProtobufRequest(pData, tlp, msgFields, false); err != nil {
+	if err := pushProtobufRequest(pData, tlp, msgFields, false, useConsistentPrefix); err != nil {
 		t.Fatalf("unexpected error when parsing protobuf data: %s", err)
 	}
 
