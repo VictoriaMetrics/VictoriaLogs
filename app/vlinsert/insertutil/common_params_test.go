@@ -2,7 +2,10 @@ package insertutil
 
 import (
 	"net/http/httptest"
+	"reflect"
 	"testing"
+
+	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
 func TestGetCommonParams_RemoveEmptyTokens(t *testing.T) {
@@ -60,4 +63,25 @@ func slicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestParseExtraFields(t *testing.T) {
+	f := func(s string, resultExpected []logstorage.Field) {
+		t.Helper()
+
+		result, err := ParseExtraFields(s)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if !reflect.DeepEqual(result, resultExpected) {
+			t.Fatalf("unexpected result for ParseExtraFields(%q); got %v; want %v", s, result, resultExpected)
+		}
+	}
+
+	f("", nil)
+	f(`{"source":"foo","abc":"def"}`, []logstorage.Field{{Name: "abc", Value: "def"}, {Name: "source", Value: "foo"}})
+
+	if _, err := ParseExtraFields(`{"source":`); err == nil {
+		t.Fatalf("expecting non-nil error for invalid JSON")
+	}
 }
