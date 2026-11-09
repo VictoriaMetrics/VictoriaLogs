@@ -5,5 +5,5 @@ import { RefObject } from "preact/compat";
 export interface ViewProps {
   data: Logs[];
   settingsRef: RefObject<HTMLDivElement>;
-  period?: TimeParams;
+  period: TimeParams;
 }

@@ -32,7 +32,7 @@ const title = "Group view settings";
 
 interface Props {
   logs: Logs[];
-  period?: TimeParams;
+  period: TimeParams;
 }
 
 const GroupLogsConfigurators: FC<Props> = ({ logs, period }) => {

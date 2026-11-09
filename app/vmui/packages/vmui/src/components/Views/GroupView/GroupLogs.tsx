@@ -23,7 +23,7 @@ import { TimeParams } from "../../../types";
 interface Props {
   logs: Logs[];
   settingsRef: RefObject<HTMLElement>;
-  period?: TimeParams;
+  period: TimeParams;
 }
 
 const GroupLogs: FC<Props> = ({ logs, settingsRef, period }) => {

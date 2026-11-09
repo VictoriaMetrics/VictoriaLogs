@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/compat";
 import { useTenant } from "./useTenant";
 import { useExtraFilters } from "../components/ExtraFilters/hooks/useExtraFilters";
-import { useTimePeriod } from "../pages/QueryPage/hooks/useTimePeriod";
 import { useHitsChartConfig } from "../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { getFieldNamesCacheKey, useFetchFieldNames } from "../pages/OverviewPage/hooks/useFetchFieldNames";
 import { useOverviewState } from "../state/overview/OverviewStateContext";
@@ -11,8 +10,8 @@ import { TimeParams } from "../types";
 
 interface Options {
   query?: string;
-  // Selectors with the same period share cached field names, while useTimePeriod() resolves a new end time per call.
-  period?: TimeParams;
+  // Selectors with the same period share cached field names, so pass the page period instead of calling useTimePeriod().
+  period: TimeParams;
   loadedFieldNames?: string[];
 }
 
@@ -21,8 +20,7 @@ const EMPTY_FIELDS: string[] = [];
 export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELDS }: Options) => {
   const tenant = useTenant();
   const { extraParams } = useExtraFilters();
-  const { period: currentPeriod } = useTimePeriod();
-  const { start, end } = period ?? currentPeriod;
+  const { start, end } = period;
   const { groupFieldHits: { value: groupBy, set: setGroupBy } } = useHitsChartConfig();
   const { fetchFieldNames, loading, error } = useFetchFieldNames();
   const { fieldNamesCache } = useOverviewState();

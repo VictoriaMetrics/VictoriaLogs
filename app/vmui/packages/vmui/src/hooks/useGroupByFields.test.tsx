@@ -29,19 +29,9 @@ vi.mock("../components/ExtraFilters/hooks/useExtraFilters", () => {
   return { useExtraFilters: () => ({ extraParams }) };
 });
 
-vi.mock("../pages/QueryPage/hooks/useTimePeriod", async () => {
-  const { useState } = await import("preact/hooks");
-  let calls = 0;
-  // Like the real hook, every component resolves its own end time.
-  return {
-    useTimePeriod: () => {
-      const [period] = useState(() => ({ start: BigInt(0), end: BigInt(3600 + calls++) }));
-      return { period };
-    },
-  };
-});
-
 const tenant = { AccountID: "0", ProjectID: "0" };
+
+const defaultPeriod = { start: BigInt(0), end: BigInt(3600) };
 
 const wrapper: FC = ({ children }) => <OverviewStateProvider>{children}</OverviewStateProvider>;
 
@@ -71,7 +61,7 @@ describe("useGroupByFields", () => {
     vi.stubGlobal("fetch", fetchMock);
     addRecentGroupByField(tenant, "level");
 
-    const { result } = renderHook(() => useGroupByFields({ query: "error", loadedFieldNames: ["host"] }), { wrapper });
+    const { result } = renderHook(() => useGroupByFields({ query: "error", period: defaultPeriod, loadedFieldNames: ["host"] }), { wrapper });
 
     act(() => {
       result.current.loadFields();
@@ -213,8 +203,8 @@ describe("useGroupByFields", () => {
 
   it("syncs recent fields selected in another selector", () => {
     const { result } = renderHook(() => ({
-      hits: useGroupByFields({}),
-      groupView: useGroupByFields({}),
+      hits: useGroupByFields({ period: defaultPeriod }),
+      groupView: useGroupByFields({ period: defaultPeriod }),
     }), { wrapper });
 
     act(() => {
@@ -228,7 +218,7 @@ describe("useGroupByFields", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(["host"])));
 
     const { result } = renderHook(() => ({
-      groupBy: useGroupByFields({}),
+      groupBy: useGroupByFields({ period: defaultPeriod }),
       state: useOverviewState(),
     }), { wrapper });
 

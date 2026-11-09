@@ -34,7 +34,7 @@ import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHid
 
 interface Props {
   query?: string;
-  period?: TimeParams;
+  period: TimeParams;
   loadedFieldNames?: string[];
   isHitsMode?: boolean;
   isOverview?: boolean;

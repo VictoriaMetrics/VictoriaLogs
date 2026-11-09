@@ -29,7 +29,7 @@ import { TimeParams } from "../../../types";
 interface Props {
   data: Logs[];
   queryParams?: Record<string, string>;
-  period?: TimeParams;
+  period: TimeParams;
   isLoading: boolean;
   isPending?: boolean;
   isPreview?: boolean;
