@@ -363,6 +363,24 @@ func TestStatsSum(t *testing.T) {
 			{"x", "NaN"},
 		},
 	})
+
+	f("stats sum(a) as x", [][]Field{
+		{{"a", `1.5s`}, {"b", `x`}},
+		{{"a", `2KB`}, {"b", `y`}},
+		{{"a", `3`}, {"b", `x`}},
+		{{"a", `1ms`}, {"b", `y`}},
+	}, [][]Field{
+		{{"x", "1501002003"}},
+	})
+	f("stats by (b) sum(a) as x", [][]Field{
+		{{"a", `1.5s`}, {"b", `x`}},
+		{{"a", `2KB`}, {"b", `y`}},
+		{{"a", `3`}, {"b", `x`}},
+		{{"a", `1ms`}, {"b", `y`}},
+	}, [][]Field{
+		{{"b", "x"}, {"x", "1500000003"}},
+		{{"b", "y"}, {"x", "1002000"}},
+	})
 }
 
 func TestStatsSum_ExportImportState(t *testing.T) {
