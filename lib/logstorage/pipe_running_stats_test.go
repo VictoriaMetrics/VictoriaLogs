@@ -266,6 +266,16 @@ func TestPipeRunningStats(t *testing.T) {
 			{"min_c", ""},
 		},
 	})
+
+	f("running_stats sum(a) x", [][]Field{
+		{{"_time", `1`}, {"a", `1s`}},
+		{{"_time", `2`}, {"a", `2KB`}},
+		{{"_time", `3`}, {"a", `3`}},
+	}, [][]Field{
+		{{"_time", `1`}, {"a", `1s`}, {"x", "1000000000"}},
+		{{"_time", `2`}, {"a", `2KB`}, {"x", "1000002000"}},
+		{{"_time", `3`}, {"a", `3`}, {"x", "1000002003"}},
+	})
 }
 
 func TestPipeRunningStatsUpdateNeededFields(t *testing.T) {

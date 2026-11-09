@@ -33,7 +33,7 @@ func (ssp *runningStatsSumProcessor) updateRunningStats(sf runningStatsFunc, row
 	sm := sf.(*runningStatsSum)
 
 	forEachMatchingField(row, sm.fieldFilters, func(v string) {
-		f, ok := tryParseFloat64(v)
+		f, ok := tryParseNumber(v)
 		if !ok {
 			return
 		}

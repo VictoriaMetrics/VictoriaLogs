@@ -383,6 +383,24 @@ func TestStatsAvg(t *testing.T) {
 			{"x", "NaN"},
 		},
 	})
+
+	f("stats avg(a) as x", [][]Field{
+		{{"a", `1.5s`}, {"b", `x`}},
+		{{"a", `2KB`}, {"b", `y`}},
+		{{"a", `3`}, {"b", `x`}},
+		{{"a", `1ms`}, {"b", `y`}},
+	}, [][]Field{
+		{{"x", "375250500.75"}},
+	})
+	f("stats by (b) avg(a) as x", [][]Field{
+		{{"a", `1.5s`}, {"b", `x`}},
+		{{"a", `2KB`}, {"b", `y`}},
+		{{"a", `3`}, {"b", `x`}},
+		{{"a", `1ms`}, {"b", `y`}},
+	}, [][]Field{
+		{{"b", "x"}, {"x", "750000001.5"}},
+		{{"b", "y"}, {"x", "501000"}},
+	})
 }
 
 func expectParseStatsFuncFailure(t *testing.T, s string) {

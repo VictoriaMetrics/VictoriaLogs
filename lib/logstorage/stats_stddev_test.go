@@ -73,6 +73,16 @@ func TestStatsStddev(t *testing.T) {
 			{"x", "NaN"},
 		},
 	})
+
+	f("stats by (b) stddev(a) as x", [][]Field{
+		{{"a", `1s`}, {"b", `x`}},
+		{{"a", `2KB`}, {"b", `y`}},
+		{{"a", `3s`}, {"b", `x`}},
+		{{"a", `4KB`}, {"b", `y`}},
+	}, [][]Field{
+		{{"b", "x"}, {"x", "1000000000"}},
+		{{"b", "y"}, {"x", "1000"}},
+	})
 }
 
 func TestStatsStddev_ExportImportState(t *testing.T) {

@@ -2547,7 +2547,7 @@ func (c *blockResultColumn) forEachDictValueWithHits(br *blockResult, f func(v s
 func (c *blockResultColumn) getFloatValueAtRow(br *blockResult, rowIdx int) (float64, bool) {
 	if c.isConst {
 		v := c.valuesEncoded[0]
-		return tryParseFloat64(v)
+		return tryParseNumber(v)
 	}
 	if c.isTime {
 		return 0, false
@@ -2558,11 +2558,11 @@ func (c *blockResultColumn) getFloatValueAtRow(br *blockResult, rowIdx int) (flo
 	switch c.valueType {
 	case valueTypeString:
 		v := valuesEncoded[rowIdx]
-		return tryParseFloat64(v)
+		return tryParseNumber(v)
 	case valueTypeDict:
 		dictIdx := valuesEncoded[rowIdx][0]
 		v := c.dictValues[dictIdx]
-		return tryParseFloat64(v)
+		return tryParseNumber(v)
 	case valueTypeUint8:
 		v := valuesEncoded[rowIdx]
 		return float64(unmarshalUint8(v)), true
@@ -2646,7 +2646,7 @@ func (c *blockResultColumn) sumLenStringValues(br *blockResult) uint64 {
 func (c *blockResultColumn) sumValues(br *blockResult) (float64, int) {
 	if c.isConst {
 		v := c.valuesEncoded[0]
-		f, ok := tryParseFloat64(v)
+		f, ok := tryParseNumber(v)
 		if !ok {
 			return 0, 0
 		}
