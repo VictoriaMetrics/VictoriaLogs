@@ -867,6 +867,10 @@ func tryParseBytes(s string) (int64, bool) {
 	if isMinus {
 		s = s[1:]
 	}
+	if len(s) == 0 {
+		// A lone "-" isn't a byte size.
+		return 0, false
+	}
 
 	n := int64(0)
 	for len(s) > 0 {
@@ -1000,6 +1004,10 @@ func tryParseDuration(s string) (int64, bool) {
 	isMinus := s[0] == '-'
 	if isMinus {
 		s = s[1:]
+	}
+	if len(s) == 0 {
+		// A lone "-" isn't a duration.
+		return 0, false
 	}
 
 	nsecs := int64(0)

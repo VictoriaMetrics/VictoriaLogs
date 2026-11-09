@@ -381,6 +381,9 @@ func TestTryParseDuration_Failure(t *testing.T) {
 	// empty string
 	f("")
 
+	// sign without number
+	f("-")
+
 	// missing suffix
 	f("2")
 	f("2.5")
@@ -479,6 +482,9 @@ func TestTryParseBytes_Failure(t *testing.T) {
 
 	// empty string
 	f("")
+
+	// sign without number
+	f("-")
 
 	// invalid number
 	f("foobar")

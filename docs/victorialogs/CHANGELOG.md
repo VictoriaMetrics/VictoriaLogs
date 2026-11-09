@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): do not treat a lone `-` as a zero duration or byte size. Previously, filters such as `>"-"` were serialized into unparsable `>-`, and the `-` field value could be treated as `0` in some pipes, and queries with such filters could panic while the parsed query was cloned for time-sorted results. See [#1948](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1948).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13
