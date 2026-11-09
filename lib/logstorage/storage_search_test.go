@@ -1706,3 +1706,58 @@ func newTestQueryContext(tenantIDs []TenantID, q *Query) *QueryContext {
 	qs := &QueryStats{}
 	return NewQueryContext(context.Background(), qs, tenantIDs, q, false, nil)
 }
+
+func TestStorageRunQueryFieldNamesRespectsFilter(t *testing.T) {
+	t.Parallel()
+
+	s := MustOpenStorage(t.TempDir(), &StorageConfig{Retention: 24 * time.Hour})
+	defer s.MustClose()
+
+	tenantID := TenantID{AccountID: 1, ProjectID: 2}
+	baseTimestamp := time.Now().UnixNano() - 3600*1e9
+
+	// Put rows with and without trace_id into a single block.
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	for i := range 10 {
+		fields := []Field{{Name: "_msg", Value: "request"}}
+		if i%2 == 0 {
+			fields = append(fields, Field{Name: "trace_id", Value: fmt.Sprintf("trace-%d", i)})
+		} else {
+			fields = append(fields, Field{Name: "duration", Value: "5s"})
+		}
+		lr.mustAdd(tenantID, baseTimestamp+int64(i), fields)
+	}
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	f := func(qStr string, resultExpected map[string]string) {
+		t.Helper()
+
+		q := mustParseQuery(qStr)
+		qctx := newTestQueryContext([]TenantID{tenantID}, q)
+		var mu sync.Mutex
+		result := make(map[string]string)
+		writeBlock := func(_ uint, db *DataBlock) {
+			mu.Lock()
+			defer mu.Unlock()
+			cs := db.GetColumns(false)
+			if len(cs) != 2 {
+				panic(fmt.Errorf("unexpected number of columns: %d", len(cs)))
+			}
+			for i, name := range cs[0].Values {
+				result[name] = cs[1].Values[i]
+			}
+		}
+		if err := s.RunQuery(qctx, writeBlock); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if !reflect.DeepEqual(result, resultExpected) {
+			t.Fatalf("unexpected result for %q\ngot\n%v\nwant\n%v", qStr, result, resultExpected)
+		}
+	}
+
+	f(`duration:* | field_names`, map[string]string{
+		"_msg": "5", "_stream": "5", "_stream_id": "5", "_time": "5", "duration": "5",
+	})
+}
