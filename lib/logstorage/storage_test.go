@@ -2,7 +2,10 @@ package logstorage
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -224,6 +227,329 @@ func TestStoragePartitionDetachRecreateSameDayStreamFilterQuery(t *testing.T) {
 	check(`{stream="new_stream"} | stats count(*) as rows`, 1)
 
 	s.MustClose()
+}
+
+func TestStoragePartitionAttachReadOnly(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+
+	cfg := &StorageConfig{
+		Retention:       365 * 24 * time.Hour,
+		FutureRetention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	tenantIDs := []TenantID{{}}
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+	partitionPath := filepath.Join(path, partitionsDirname, partitionName)
+
+	addRow := func(marker string) {
+		t.Helper()
+
+		lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "stream",
+				Value: "same_stream",
+			},
+			{
+				Name:  "marker",
+				Value: marker,
+			},
+			{
+				Name:  "_msg",
+				Value: "msg",
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+		s.DebugFlush()
+	}
+
+	check := func(qStr string, rowsExpected int) {
+		t.Helper()
+		checkQueryResults(t, s, ts, tenantIDs, qStr, nil, []string{fmt.Sprintf(`{"rows":"%d"}`, rowsExpected)})
+	}
+
+	checkReadOnly := func(readOnlyExpected bool) {
+		t.Helper()
+
+		pis := s.PartitionList()
+		pisExpected := []PartitionInfo{
+			{
+				Name:     partitionName,
+				ReadOnly: readOnlyExpected,
+			},
+		}
+		if !reflect.DeepEqual(pis, pisExpected) {
+			t.Fatalf("unexpected partition list\ngot\n%v\nwant\n%v", pis, pisExpected)
+		}
+
+		var ss StorageStats
+		s.UpdateStats(&ss)
+		readOnlyPartitionsExpected := uint64(0)
+		if readOnlyExpected {
+			readOnlyPartitionsExpected = 1
+		}
+		if ss.ReadOnlyPartitionsCount != readOnlyPartitionsExpected {
+			t.Fatalf("unexpected ReadOnlyPartitionsCount; got %d; want %d", ss.ReadOnlyPartitionsCount, readOnlyPartitionsExpected)
+		}
+	}
+
+	addRow("before_attach")
+	check(`* | stats count(*) as rows`, 1)
+	checkReadOnly(false)
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	filesBefore := mustReadDirTree(t, partitionPath)
+
+	// The attached partition must be read-only.
+	if err := s.PartitionAttach(partitionName); err != nil {
+		t.Fatalf("cannot attach partition %q: %s", partitionName, err)
+	}
+	checkReadOnly(true)
+	check(`* | stats count(*) as rows`, 1)
+
+	// Logs cannot be ingested into read-only partition.
+	addRow("after_attach")
+	check(`* | stats count(*) as rows`, 1)
+	var ss StorageStats
+	s.UpdateStats(&ss)
+	if ss.RowsDroppedReadOnlyPartition != 1 {
+		t.Fatalf("unexpected RowsDroppedReadOnlyPartition; got %d; want 1", ss.RowsDroppedReadOnlyPartition)
+	}
+
+	// Force merge must skip read-only partition.
+	s.MustForceMerge(partitionName)
+
+	// Delete task must skip read-only partition.
+	dt := newDeleteTask("task_id", ts+int64(time.Second), tenantIDs, `marker:=before_attach`)
+	for !s.processDeleteTask(t.Context(), dt) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	check(`marker:=before_attach | stats count(*) as rows`, 1)
+	ss.Reset()
+	s.UpdateStats(&ss)
+	if ss.DeleteSkippedReadOnlyPartitions != 1 {
+		t.Fatalf("unexpected DeleteSkippedReadOnlyPartitions; got %d; want 1", ss.DeleteSkippedReadOnlyPartitions)
+	}
+
+	// Snapshots must not be created for read-only partition.
+	if snapshotPaths := s.PartitionSnapshotMustCreate(partitionName); len(snapshotPaths) != 0 {
+		t.Fatalf("unexpected snapshots created for read-only partition: %v", snapshotPaths)
+	}
+
+	// The partition must remain read-only after the storage restart.
+	s.MustClose()
+	s = MustOpenStorage(path, cfg)
+	checkReadOnly(true)
+	check(`* | stats count(*) as rows`, 1)
+	addRow("after_restart")
+	check(`* | stats count(*) as rows`, 1)
+	s.MustClose()
+
+	// The read-only partition must be left intact on disk.
+	filesAfter := mustReadDirTree(t, partitionPath)
+	if !reflect.DeepEqual(filesBefore, filesAfter) {
+		t.Fatalf("unexpected modification of read-only partition files\ngot\n%v\nwant\n%v", mapKeys(filesAfter), mapKeys(filesBefore))
+	}
+
+	// The detached partition must be opened in read-write mode after the storage restart.
+	s = MustOpenStorage(path, cfg)
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	s.MustClose()
+	s = MustOpenStorage(path, cfg)
+	checkReadOnly(false)
+	addRow("after_detach")
+	check(`* | stats count(*) as rows`, 2)
+	s.MustClose()
+}
+
+func TestStoragePartitionAttachReadOnlyInvalidDir(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+	s := MustOpenStorage(path, &StorageConfig{})
+
+	partitionName := getPartitionNameFromDay(time.Now().UnixNano() / nsecsPerDay)
+	partitionPath := filepath.Join(path, partitionsDirname, partitionName)
+	fs.MustMkdirFailIfExist(partitionPath)
+	fs.MustMkdirFailIfExist(filepath.Join(partitionPath, indexdbDirname))
+	fs.MustMkdirFailIfExist(filepath.Join(partitionPath, datadbDirname))
+
+	// The partition without parts.json files cannot be attached in read-only mode, since it cannot be fixed without modification.
+	if err := s.PartitionAttach(partitionName); err == nil {
+		t.Fatalf("expecting non-nil error when attaching partition without %s files", partsFilename)
+	}
+	if pis := s.PartitionList(); len(pis) != 0 {
+		t.Fatalf("unexpected partitions attached: %v", pis)
+	}
+
+	s.MustClose()
+}
+
+func TestStorageReadOnlyPartitionRetention(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+
+	// Create the partition for 10 days ago and re-attach it in read-only mode.
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	ts := time.Now().UTC().Add(-10 * 24 * time.Hour).UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+	partitionPath := filepath.Join(path, partitionsDirname, partitionName)
+
+	lr := GetLogRows(nil, nil, nil, nil, "")
+	lr.mustAdd(TenantID{}, ts, []Field{
+		{
+			Name:  "_msg",
+			Value: "old log entry",
+		},
+	})
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	filesBefore := mustReadDirTree(t, partitionPath)
+	if err := s.PartitionAttach(partitionName); err != nil {
+		t.Fatalf("cannot attach partition %q: %s", partitionName, err)
+	}
+	s.MustClose()
+
+	// Open the storage with the retention smaller than the partition age.
+	// The read-only partition must be detached instead of being deleted.
+	cfg = &StorageConfig{
+		Retention: 2 * 24 * time.Hour,
+	}
+	s = MustOpenStorage(path, cfg)
+	s.dropStalePartitions()
+	if pis := s.PartitionList(); len(pis) != 0 {
+		t.Fatalf("unexpected partitions left after retention: %v", pis)
+	}
+	s.MustClose()
+
+	if !fs.IsPathExist(partitionPath) {
+		t.Fatalf("the read-only partition directory %s must be left intact", partitionPath)
+	}
+	filesAfter := mustReadDirTree(t, partitionPath)
+	if !reflect.DeepEqual(filesBefore, filesAfter) {
+		t.Fatalf("unexpected modification of read-only partition files\ngot\n%v\nwant\n%v", mapKeys(filesAfter), mapKeys(filesBefore))
+	}
+	if names := mustReadReadOnlyPartitionNames(filepath.Join(path, readOnlyPartitionsFilename)); len(names) != 0 {
+		t.Fatalf("unexpected read-only partitions left in %s: %v", readOnlyPartitionsFilename, names)
+	}
+}
+
+func TestStorageReadOnlyPartitionMaxDiskSpaceUsage(t *testing.T) {
+	t.Parallel()
+
+	path := t.TempDir()
+
+	cfg := &StorageConfig{
+		Retention:              365 * 24 * time.Hour,
+		MaxDiskSpaceUsageBytes: 1,
+	}
+	s := MustOpenStorage(path, cfg)
+
+	// Create partitions for the last 4 days and make the oldest one read-only.
+	now := time.Now().UTC()
+	var partitionNames []string
+	for daysAgo := 4; daysAgo >= 1; daysAgo-- {
+		ts := now.Add(-time.Duration(daysAgo) * 24 * time.Hour).UnixNano()
+		partitionNames = append(partitionNames, getPartitionNameFromDay(ts/nsecsPerDay))
+
+		lr := GetLogRows(nil, nil, nil, nil, "")
+		lr.mustAdd(TenantID{}, ts, []Field{
+			{
+				Name:  "_msg",
+				Value: "log entry",
+			},
+		})
+		s.MustAddRows(lr)
+		PutLogRows(lr)
+	}
+	s.DebugFlush()
+
+	readOnlyPartitionName := partitionNames[0]
+	if err := s.PartitionDetach(readOnlyPartitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", readOnlyPartitionName, err)
+	}
+	if err := s.PartitionAttach(readOnlyPartitionName); err != nil {
+		t.Fatalf("cannot attach partition %q: %s", readOnlyPartitionName, err)
+	}
+
+	// The oldest read-write partition must be dropped, while the read-only partition and the last two partitions must be kept.
+	s.dropPartitionsExceedingMaxDiskSpaceUsage(1)
+
+	pis := s.PartitionList()
+	pisExpected := []PartitionInfo{
+		{
+			Name:     partitionNames[0],
+			ReadOnly: true,
+		},
+		{
+			Name: partitionNames[2],
+		},
+		{
+			Name: partitionNames[3],
+		},
+	}
+	if !reflect.DeepEqual(pis, pisExpected) {
+		t.Fatalf("unexpected partition list\ngot\n%v\nwant\n%v", pis, pisExpected)
+	}
+
+	s.MustClose()
+}
+
+// mustReadDirTree returns contents of all the files under dir keyed by their paths relative to dir.
+func mustReadDirTree(t *testing.T, dir string) map[string]string {
+	t.Helper()
+
+	m := make(map[string]string)
+	err := filepath.WalkDir(dir, func(path string, de os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if de.IsDir() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		m[relPath] = string(data)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("cannot read files at %s: %s", dir, err)
+	}
+	return m
+}
+
+func mapKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func TestStorageDeleteTaskOps(t *testing.T) {

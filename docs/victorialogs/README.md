@@ -255,15 +255,16 @@ For example, old per-day data is automatically and quickly deleted according to 
 
 VictoriaLogs supports the following HTTP API endpoints at `victoria-logs:9428` address for managing partitions. All of them must be called with the `POST` method:
 
-- `/internal/partition/attach?name=YYYYMMDD` - attaches the partition directory with the given name `YYYYMMDD` to VictoriaLogs,
-  so it becomes visible for querying and can be used for data ingestion.
+- `/internal/partition/attach?name=YYYYMMDD` - attaches the partition directory with the given name `YYYYMMDD` to VictoriaLogs
+  in [read-only mode](https://docs.victoriametrics.com/victorialogs/#read-only-partitions), so it becomes visible for querying.
   The directory must be placed inside `<-storageDataPath>/partitions` and it must contain valid data for the given `YYYYMMDD` day.
 - `/internal/partition/detach?name=YYYYMMDD` - detaches the partition directory with the given name `YYYYMMDD` from VictoriaLogs,
   so it is no longer visible for querying and cannot be used for data ingestion.
   The `/internal/partition/detach` endpoint waits until all the concurrently executed queries stop reading the data from the detached partition
   before returning. This allows safe on-disk manipulations of the detached partitions by external tools after returning from the `/internal/partition/detach` endpoint.
-  Detached partitions are automatically attached after VictoriaLogs restart if the corresponding subdirectories at `<-storageDataPath>/partitions/` aren't removed.
+  Detached partitions are automatically attached in read-write mode after VictoriaLogs restart if the corresponding subdirectories at `<-storageDataPath>/partitions/` aren't removed.
 - `/internal/partition/list` - returns JSON-encoded list of currently active partitions, which can be passed to `/internal/partition/detach` endpoint via `name` query arg.
+  If the `details=1`{{% available_from "#" %}} query arg is passed, then the endpoint returns JSON-encoded list of objects with the `name` and the `read_only` fields per every partition.
 - `/internal/partition/snapshot/create?partition_prefix=<prefix>` - creates [snapshots](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
   for partitions matching the given `<prefix>`. The `<prefix>` must match the following formats:
   - `YYYYMMDD` - then the snapshot for the given per-day partition is created.
@@ -296,6 +297,35 @@ This scheme can be implemented with the following simple cron job, which must ru
 
 All the VictoriaLogs instances with NVMe and HDD disks can be queried simultaneously via `vlselect` component of [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/),
 since [single-node VictoriaLogs instances can be a part of cluster](https://docs.victoriametrics.com/victorialogs/cluster/#single-node-and-cluster-mode-duality).
+
+## Read-only partitions
+
+Partitions attached via `/internal/partition/attach` endpoint (see [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle))
+are read-only{{% available_from "#" %}}. VictoriaLogs never modifies read-only partitions on disk:
+
+- Read-only partitions can be [queried](https://docs.victoriametrics.com/victorialogs/querying/) in the same way as regular partitions.
+- Read-only partitions don't accept new logs. Logs with timestamps belonging to read-only partitions are dropped during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/).
+  The number of dropped logs is tracked by the `vl_rows_dropped_total{reason="read_only_partition"}` metric.
+- Background merges aren't performed for read-only partitions.
+- [Forced merge](https://docs.victoriametrics.com/victorialogs/#forced-merge) skips read-only partitions.
+- [Log deletion](https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs) skips read-only partitions. The number of skipped partitions is tracked
+  by the `vl_delete_skipped_read_only_partitions_total` metric.
+- Snapshots aren't created for read-only partitions, since snapshots are created inside the partition directory. The contents of read-only partitions don't change,
+  so the partition directory can be copied directly.
+- Read-only partitions are detached instead of being deleted when they go outside the configured [retention](https://docs.victoriametrics.com/victorialogs/#retention).
+  Their directories are left intact, so they must be removed by the external tool, which attached them. Read-only partitions aren't taken into account
+  by the [retention by disk space usage](https://docs.victoriametrics.com/victorialogs/#retention-by-disk-space-usage).
+
+This allows attaching partitions located on read-only filesystems, verifying [restored backups](https://docs.victoriametrics.com/victorialogs/#backup-and-restore)
+and sharing a single copy of historical partitions between multiple VictoriaLogs instances.
+
+Read-only partitions remain read-only after VictoriaLogs restart. Their names are stored in the `<-storageDataPath>/readonly_partitions.json` file.
+The partition is opened in read-write mode after VictoriaLogs restart if it is detached via `/internal/partition/detach` before the restart
+and its directory is left at `<-storageDataPath>/partitions/`.
+
+The number of read-only partitions is exposed via the `vl_read_only_partitions` metric. The per-partition mode is returned by the `/internal/partition/list?details=1` endpoint.
+
+See also [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1744).
 
 ## How to remove snapshots
 
@@ -491,6 +521,8 @@ The following steps must be performed for restoring the partition data from back
 
 1. To start VictoriaLogs instance or to attach the restored partition to the running VictoriaLogs instance via `/internal/partition/attach?name=YYYYMMDD` HTTP endpoint
    according to [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle).
+   Note that the attached partition is [read-only](https://docs.victoriametrics.com/victorialogs/#read-only-partitions). Restart VictoriaLogs instance
+   if the restored partition must accept new logs.
 
 It is also possible to use **the disk snapshot** feature provided by the operating system or cloud provider in order to perform a backup.
 
