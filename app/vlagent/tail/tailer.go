@@ -189,7 +189,7 @@ func (fc *Tailer) process(lf *logFile, proc Processor) {
 	defer lf.close()
 	defer proc.MustClose()
 
-	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
+	bt := timeutil.NewBackoffTimer(200*time.Millisecond, 2*time.Second)
 
 	for {
 		if needStop(fc.stopCh) {
@@ -226,6 +226,13 @@ func (fc *Tailer) process(lf *logFile, proc Processor) {
 				}
 			}
 
+			if lf.tail != nil {
+				rowsDroppedIncompleteLine.Inc()
+				logger.Warnf("dropping incomplete log line %q from file %q during handling rotation "+
+					"because it does not end with a newline", lf.tail.B, lf.path)
+				lf.dropTail()
+			}
+
 			if lf.tryReopen() {
 				fc.checkpointsDB.set(lf.checkpoint())
 			} else {
@@ -237,7 +244,10 @@ func (fc *Tailer) process(lf *logFile, proc Processor) {
 			fc.forgetFile(lf.path)
 
 			if lf.tail != nil {
-				logger.Panicf("BUG: tail must be empty when the log file no longer exists; got: %q", lf.tail.B)
+				rowsDroppedIncompleteLine.Inc()
+				logger.Warnf("dropping incomplete log line %q from file %q "+
+					"because it does not end with a newline", lf.tail.B, lf.path)
+				lf.dropTail()
 			}
 			return
 		default:
@@ -385,9 +395,11 @@ func openFileWithInode(p string, ignorePermissionErr bool) (*os.File, uint64, bo
 }
 
 // tryResolveSymlink resolves symlink to its target path.
+//
+// Relative symlink targets are resolved against the directory containing the symlink.
 // If symlink cannot be resolved (e.g., symlink is not valid), returns the original path.
 func tryResolveSymlink(symlink string) string {
-	resolvedPath, err := os.Readlink(symlink)
+	resolvedPath, err := filepath.EvalSymlinks(symlink)
 	if err != nil {
 		return symlink
 	}
@@ -395,3 +407,4 @@ func tryResolveSymlink(symlink string) string {
 }
 
 var tooLongLinesSkipped = metrics.GetOrCreateCounter("vl_too_long_lines_skipped_total")
+var rowsDroppedIncompleteLine = metrics.GetOrCreateCounter(`vl_rows_dropped_total{reason="incomplete_line"}`)

@@ -988,7 +988,7 @@
             {
               "targetBlank": true,
               "title": "Drilldown",
-              "url": "/d/G7Z9GzMGz?viewPanel=125&var-url=${__field.labels.url}&var-ds=$ds&var-instance=$instance&var-job=$job&${__url_time_range}"
+              "url": "/d/${__dashboard.uid}?viewPanel=125&var-url=${__field.labels.url}&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
             }
           ],
           "mappings": [],
@@ -1616,7 +1616,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/G7Z9GzMGz?viewPanel=117&var-job=${__field.labels.job}&var-ds=$ds&var-instance=$instance&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=117&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
@@ -1726,7 +1726,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/G7Z9GzMGz?viewPanel=119&var-job=${__field.labels.job}&var-ds=$ds&var-instance=$instance&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=119&var-instance=${__field.labels.instance}&${DS_PROMETHEUS:queryparam}&${job:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
@@ -2180,7 +2180,7 @@
                 {
                   "targetBlank": true,
                   "title": "Drilldown",
-                  "url": "/d/G7Z9GzMGz?viewPanel=121&var-job=${__field.labels.job}&var-ds=$ds&var-instance=$instance&${__url_time_range}"
+                  "url": "/d/${__dashboard.uid}?viewPanel=121&var-job=${__field.labels.job}&${DS_PROMETHEUS:queryparam}&${instance:queryparam}&${__url_time_range}"
                 }
               ],
               "mappings": [],
@@ -5311,7 +5311,7 @@
   "timezone": "",
   "title": "VictoriaLogs - vlagent (VM)",
   "uid": "Y5Z9GzMGz_vm",
-  "version": 2,
+  "version": 4,
   "weekStart": "",
   "id": null
 }

@@ -11,7 +11,7 @@ tags:
   - logs
 ---
 
-`vlogsqcli` is an **interactive** command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
+`vlogscli` is an **interactive** command-line tool for querying [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/).
 It has the following features:
 
 - It provides the ability to execute [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/) queries at the configured VictoriaLogs instance
@@ -30,8 +30,8 @@ or from docker images at [Docker Hub](https://hub.docker.com/r/victoriametrics/v
 ### Running `vlogscli` from release binary
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.52.0/vlutils-linux-amd64-v1.52.0.tar.gz
-tar xzf vlutils-linux-amd64-v1.52.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.53.0/vlutils-linux-amd64-v1.53.0.tar.gz
+tar xzf vlutils-linux-amd64-v1.53.0.tar.gz
 ./vlogscli-prod
 ```
 
@@ -42,7 +42,7 @@ The url to query can be changed via `-datasource.url` command-line flag. For exa
 `vlogscli` sending queries to `https://victoria-logs.some-domain.com/select/logsql/query`:
 
 ```sh
-./vlogscli -datasource.url='https://victoria-logs.some-domain.com/select/logsql/query'
+./vlogscli-prod -datasource.url='https://victoria-logs.some-domain.com/select/logsql/query'
 ```
 
 If some HTTP request headers must be passed to the querying API, then set `-header` command-line flag.
@@ -50,7 +50,7 @@ For example, the following command starts `vlogscli`,
 which queries `(AccountID=123, ProjectID=456)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy):
 
 ```sh
-./vlogscli -header='AccountID: 123' -header='ProjectID: 456'
+./vlogscli-prod -header='AccountID: 123' -header='ProjectID: 456'
 ```
 
 ## Multitenancy
@@ -59,7 +59,7 @@ which queries `(AccountID=123, ProjectID=456)` [tenant](https://docs.victoriamet
 can be set via `-accountID` and `-projectID` command-line flags:
 
 ```sh
-./vlogscli -accountID=123 -projectID=456
+./vlogscli-prod -accountID=123 -projectID=456
 ```
 
 ## Querying
@@ -202,7 +202,7 @@ See also [TLS options](https://docs.victoriametrics.com/victorialogs/querying/vl
 
 ## Command-line flags
 
-The list of command-line flags with their descriptions is available by running `./vlogscli -help`:
+The list of command-line flags with their descriptions is available by running `./vlogscli-prod -help`:
 
 {{% content "vlogscli_common_flags.md" %}}
 

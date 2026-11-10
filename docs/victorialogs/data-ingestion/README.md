@@ -318,7 +318,7 @@ additionally to [HTTP query args](https://docs.victoriametrics.com/victorialogs/
 
 - `VL-Decolorize-Fields` - an optional comma-separated list of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model)
   where ANSI color codes must be removed during data ingestion. The list may contain field name prefixes ending with `*` such as `some-prefix*`.
-  In this case ANS color codes are removed from all the log fields starting with `some-prefix`.
+  In this case ANSI color codes are removed from all the log fields starting with `some-prefix`.
 
 - `VL-Extra-Fields` - an optional comma-separated list of [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model),
   which must be added to all the ingested logs. The format of every `extra_fields` entry is `field_name=field_value`.

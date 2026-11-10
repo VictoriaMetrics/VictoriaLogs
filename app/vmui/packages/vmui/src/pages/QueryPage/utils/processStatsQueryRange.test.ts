@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import useProcessStatsQueryRange, { type Props, ResponseMatrix } from "./useProcessStatsQueryRange";
+import { describe, it, expect } from "vitest";
+import { processStatsQueryRange, type ResponseMatrix } from "./processStatsQueryRange";
 import { MetricResult } from "../../../api/types";
 
 // Helper: build N series, each with the same values
@@ -13,26 +13,12 @@ const makeSeries = (count: number, value: number): MetricResult[] =>
     ],
   }));
 
-describe("useProcessStatsQueryRange", () => {
-  let setLogHits: Props["setLogHits"];
-  let setError: Props["setError"];
-  let processStats: ReturnType<typeof useProcessStatsQueryRange>;
-
-  beforeEach(() => {
-    setLogHits = vi.fn<Props["setLogHits"]>();
-    setError = vi.fn<Props["setError"]>();
-    processStats = useProcessStatsQueryRange({ setLogHits, setError });
-  });
-
-  it("returns error and empty result when result is missing", () => {
+describe("processStatsQueryRange", () => {
+  it("throws when result is missing", () => {
     // Intentionally pass malformed data (without `data.result`)
     const data = { status: "error" };
 
-    const res = processStats(data, 5);
-
-    expect(setError).toHaveBeenCalledWith("Error: No 'result' field in response");
-    expect(setLogHits).toHaveBeenCalledWith([]);
-    expect(res).toEqual([]);
+    expect(() => processStatsQueryRange(data, 5)).toThrow("Error: No 'result' field in response");
   });
 
   it("returns empty result when series is empty", () => {
@@ -44,10 +30,8 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 5);
+    const res = processStatsQueryRange(data, 5);
 
-    expect(setError).not.toHaveBeenCalled();
-    expect(setLogHits).toHaveBeenCalledWith([]);
     expect(res).toEqual([]);
   });
 
@@ -61,11 +45,10 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 5);
+    const res = processStatsQueryRange(data, 5);
 
     expect(res.length).toBe(3);
     expect(res.some((s) => s._isOther)).toBe(false);
-    expect(setLogHits).toHaveBeenCalledWith(res);
   });
 
   it("returns all series without Other when series count equals limit", () => {
@@ -78,7 +61,7 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 5);
+    const res = processStatsQueryRange(data, 5);
 
     expect(res.length).toBe(5);
     expect(res.some((s) => s._isOther)).toBe(false);
@@ -97,7 +80,7 @@ describe("useProcessStatsQueryRange", () => {
     };
 
     const limit = 3;
-    const res = processStats(data, limit);
+    const res = processStatsQueryRange(data, limit);
 
     // 1 Other + limit top series = limit + 1
     expect(res.length).toBe(limit + 1);
@@ -127,7 +110,7 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 5);
+    const res = processStatsQueryRange(data, 5);
 
     expect(res.length).toBe(1);
     expect(res[0]._isOther).toBe(false);
@@ -143,7 +126,7 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 0);
+    const res = processStatsQueryRange(data, 0);
 
     expect(res.length).toBe(1);
     expect(res[0]._isOther).toBe(true);
@@ -162,7 +145,7 @@ describe("useProcessStatsQueryRange", () => {
       },
     };
 
-    const res = processStats(data, 2); // 1 Other + 2 top series
+    const res = processStatsQueryRange(data, 2); // 1 Other + 2 top series
 
     const normalSeries = res.filter((s) => !s._isOther);
     for (const s of normalSeries) {

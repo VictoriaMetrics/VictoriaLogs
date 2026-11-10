@@ -43,7 +43,8 @@ describe("ANSI Parser", () => {
   test("parseAnsiToHtml should correctly parse bold text", () => {
     const { container } = render(parseAnsiToHtml("\u001B[1mBold Text\u001B[0m"));
     const span = container.querySelector("span");
-    expect(span).toHaveStyle("font-weight: bold");
+    expect(span).not.toBeNull();
+    expect(["bold", "700"]).toContain(getComputedStyle(span!).fontWeight);
   });
 
   // Test that parseAnsiToHtml correctly parses underlined text.
@@ -71,7 +72,7 @@ describe("ANSI Parser", () => {
     const { container } = render(parseAnsiToHtml("\u001B[31;1mBold Red Text\u001B[0m"));
     const span = container.querySelector("span");
     expect(span).toHaveStyle("color: #AA0000");
-    expect(span).toHaveStyle("font-weight: bold");
+    expect(["bold", "700"]).toContain(getComputedStyle(span!).fontWeight);
   });
 
   // Edge case: Test extended foreground color using the ANSI sequence "38;5;n".
@@ -94,9 +95,9 @@ describe("ANSI Parser", () => {
     // Check that after the cancellation codes, the style properties are set to 'normal'
     spans.forEach(span => {
       if (span.textContent?.includes("Normal")) {
-        expect(span).toHaveStyle("font-weight: normal");
+        expect(["normal", "400"]).toContain(getComputedStyle(span!).fontWeight);
         expect(span).toHaveStyle("font-style: normal");
-        expect(span).toHaveStyle("text-decoration: normal");
+        expect(span).toHaveStyle("text-decoration: none");
       }
     });
   });

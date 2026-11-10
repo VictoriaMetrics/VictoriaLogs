@@ -23,7 +23,7 @@ func (ps *pipeQueryStatsLocal) canLiveTail() bool {
 	return false
 }
 
-func (ps *pipeQueryStatsLocal) canReturnLastNResults() bool {
+func (ps *pipeQueryStatsLocal) canReturnTimeSortedNResults() bool {
 	return false
 }
 

@@ -5,7 +5,7 @@ DOCKER_NAMESPACE ?= victoriametrics
 
 ROOT_IMAGE ?= gcr.io/distroless/static:latest@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6
 
-GO_BUILDER_IMAGE := golang:1.27.1
+GO_BUILDER_IMAGE := golang:1.27.3
 
 BUILDER_IMAGE := local/builder:2.0.0-$(shell echo $(GO_BUILDER_IMAGE) | tr :/ __)-1
 DOCKER ?= docker
@@ -61,7 +61,6 @@ publish-via-docker:
 	$(DOCKER) buildx build \
 		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le \
 		--build-arg root_image=$(ROOT_IMAGE) \
-		--build-arg APP_NAME=$(APP_NAME) \
 		--build-arg BINARY_SUFFIX="" \
 		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaLogs" \
 		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/victorialogs/" \
@@ -89,6 +88,31 @@ publish-via-docker-latest:
 	$(foreach registry,$(DOCKER_REGISTRIES),\
 		docker buildx imagetools create --tag $(registry)/$(DOCKER_NAMESPACE)/$(APP_NAME):latest $(registry)/$(DOCKER_NAMESPACE)/$(APP_NAME):$(PKG_TAG); \
 	)
+
+# DOCKER_ARCH is the CPU architecture of the local Docker daemon, such as amd64 or arm64.
+# It is used by the `package-*` commands below, so the resulting images can run on the local machine.
+DOCKER_ARCH ?= $(shell $(DOCKER) version --format '{{.Server.Arch}}')
+
+# Builds a Docker image for a single CPU architecture and loads it into the local Docker image store,
+# so it can be tested locally with `docker run`. Use `publish-via-docker` for building multi-arch images
+# and pushing them to Docker registries.
+package-via-docker:
+	$(MAKE) app-via-docker-linux-$(DOCKER_ARCH)
+	$(DOCKER) buildx build \
+		--platform=linux/$(DOCKER_ARCH) \
+		--build-arg root_image=$(ROOT_IMAGE) \
+		--build-arg BINARY_SUFFIX="" \
+		--label "org.opencontainers.image.source=https://github.com/VictoriaMetrics/VictoriaLogs" \
+		--label "org.opencontainers.image.documentation=https://docs.victoriametrics.com/victorialogs/" \
+		--label "org.opencontainers.image.title=$(APP_NAME)" \
+		--label "org.opencontainers.image.vendor=VictoriaMetrics" \
+		--label "org.opencontainers.image.version=$(PKG_TAG)" \
+		--label "org.opencontainers.image.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+		--tag $(DOCKER_NAMESPACE)/$(APP_NAME):$(PKG_TAG)$(RACE)$(EXTRA_DOCKER_TAG_SUFFIX) \
+		--provenance=false \
+		-f app/$(APP_NAME)/multiarch/Dockerfile \
+		--load \
+		bin
 
 app-via-docker-goos-goarch:
 	APP_SUFFIX='-$(GOOS)-$(GOARCH)' \

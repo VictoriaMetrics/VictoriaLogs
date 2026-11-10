@@ -145,6 +145,15 @@ func assertLogsQLResponseEqual(t *testing.T, got, want *apptest.LogsQLQueryRespo
 	}
 }
 
+// assertLogsQLResponseOrdered compares a parsed query response with expected JSON lines, including their order.
+func assertLogsQLResponseOrdered(t *testing.T, got, want *apptest.LogsQLQueryResponse) {
+	t.Helper()
+	want = parseLogsQLResponse(t, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("unexpected response (-want, +got):\n%s", diff)
+	}
+}
+
 // assertLogsQLResponseEventually retries get until the response matches want.
 // get must return a parsed query response, as returned by LogsQLQuery.
 // The caller is responsible for flushing storage if needed before each query.
@@ -166,13 +175,19 @@ func assertLogsQLResponseEventually(tc *apptest.TestCase, get func() *apptest.Lo
 
 func normalizeLogsQLResponse(t *testing.T, response *apptest.LogsQLQueryResponse) *apptest.LogsQLQueryResponse {
 	t.Helper()
+	normalized := parseLogsQLResponse(t, response)
+	sort.Strings(normalized.LogLines)
+	return normalized
+}
+
+// parseLogsQLResponse parses response lines in the same way as LogsQLQuery parses the returned lines.
+func parseLogsQLResponse(t *testing.T, response *apptest.LogsQLQueryResponse) *apptest.LogsQLQueryResponse {
+	t.Helper()
 	data := strings.Join(response.LogLines, "\n")
 	if len(response.LogLines) > 0 {
 		data += "\n"
 	}
-	normalized := apptest.NewLogsQLQueryResponse(t, data)
-	sort.Strings(normalized.LogLines)
-	return normalized
+	return apptest.NewLogsQLQueryResponse(t, data)
 }
 
 // TestVlclusterKeyConcepts verifies cases from https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model for vl-cluster.

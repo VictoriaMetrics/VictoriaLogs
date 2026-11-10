@@ -112,12 +112,13 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 
 	if strings.HasPrefix(path, "/delete/") {
+		// The paths reported by IsAuthKeyProtectedPath() must verify the -*AuthKey before any other check.
+		if !httpserver.CheckAuthFlag(w, r, deleteAuthKey) {
+			return true
+		}
 		if !*enableDelete {
 			httpserver.Errorf(w, r, "requests to /delete/* are disabled; pass -delete.enable command-line flag for enabling them; "+
 				"see https://docs.victoriametrics.com/victorialogs/#how-to-delete-logs")
-			return true
-		}
-		if !httpserver.CheckAuthFlag(w, r, deleteAuthKey) {
 			return true
 		}
 		deleteHandler(w, r, path)
