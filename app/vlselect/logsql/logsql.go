@@ -896,6 +896,11 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 					continue
 				}
 				// Ignore rows with the same boundary timestamp, same content
+				//
+				// TODO: queries returning different fields for the same log on every run, such as `math` pipe with `now()` or `rand()`
+				// and `join` pipe with changing subquery results, make these rows look new, so they are returned again.
+				// This is ignored for now, since such queries are uncommon in live tailing.
+				// Consider rejecting such queries if this becomes a problem in practice.
 				if row.timestamp == lastTimestamp {
 					var h uint64
 					h, keyBuf = hashLogRow(keyBuf, row)
