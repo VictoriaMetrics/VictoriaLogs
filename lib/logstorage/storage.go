@@ -993,7 +993,11 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 
 	f, err := ParseFilterAtTimestamp(dt.Filter, now)
 	if err != nil {
-		logger.Panicf("BUG: cannot parse filter from delete task: [%s]", dt.Filter)
+		// Do not panic, since the filter could be stored by the previous version of VictoriaLogs, which had a bug
+		// in the conversion of filters to string. Panicking here would result in a crash loop on every restart.
+		// Drop the task instead, since it cannot be processed.
+		logger.Errorf("dropping the delete task with task_id=%q, since its filter cannot be parsed: [%s]: %s", dt.TaskID, dt.Filter, err)
+		return true
 	}
 
 	q := &Query{
