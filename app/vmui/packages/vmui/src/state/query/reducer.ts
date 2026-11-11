@@ -25,7 +25,7 @@ export type QueryAction =
   | { type: "SET_QUERY_HAS_TIME_FILTER", payload: boolean }
   | { type: "RUN_QUERY" }
   | { type: "EXECUTE_HITS_ONCE" }
-  | { type: "SET_APPLIED_PERIOD", payload: TimeParams }
+  | { type: "SET_APPLIED_PERIOD", payload: TimeParams | null }
 
 export const initialQueryState: QueryState = {
   autocomplete: getFromStorage("AUTOCOMPLETE") as boolean || false,

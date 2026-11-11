@@ -176,11 +176,11 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
       return;
     }
 
+    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: baseTriggers.period });
+
     if (!shouldRunLogs && !shouldRunHits) {
       return;
     }
-
-    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: baseTriggers.period });
 
     resetTimeSync();
 
@@ -299,6 +299,10 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
       hitsTriggers,
     });
   }, [baseTriggers, logsTriggers, hitsTriggers, debouncedSyncQueries]);
+
+  useEffect(() => {
+    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: null });
+  }, [baseTriggers]);
 
   return {
     cancelAll,

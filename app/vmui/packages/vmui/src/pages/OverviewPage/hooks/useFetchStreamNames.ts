@@ -82,6 +82,7 @@ export const useFetchStreamFieldNames = () => {
 
       if (!response.ok) {
         const errorResponse = await response.text();
+        if (signal.aborted) return;
         const e = `${response.status} ${response.statusText}: ${errorResponse}`;
         setStreamFieldNames([]);
         console.error(e);
@@ -90,6 +91,7 @@ export const useFetchStreamFieldNames = () => {
       }
 
       const data: { values: LogsFieldValues[] } = await response.json();
+      if (signal.aborted) return;
       setStreamFieldNames(data.values);
       dispatch({
         type: "SET_STREAM_FIELD_NAMES",
@@ -97,12 +99,13 @@ export const useFetchStreamFieldNames = () => {
       });
       return data.values;
     } catch (err) {
+      if (signal.aborted) return;
       if (err instanceof Error && err.name === "AbortError") return;
       console.error(err);
       setError(err as Error);
       setStreamFieldNames([]);
     } finally {
-      setLoading(false);
+      if (abortRef.current?.signal === signal) setLoading(false);
     }
   }, [serverUrl, tenant, dispatch]);
 
