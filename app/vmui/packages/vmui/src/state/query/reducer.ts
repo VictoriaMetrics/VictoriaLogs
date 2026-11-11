@@ -5,6 +5,7 @@ import {
 } from "../../components/Configurators/QueryEditor/QueryAutocompleteCache";
 import { AutocompleteOptions } from "../../components/Main/Autocomplete/Autocomplete";
 import { getOverrideValue } from "../../components/Configurators/GlobalSettings/QueryTimeOverride/QueryTimeOverride";
+import { TimeParams } from "../../types";
 
 export interface QueryState {
   autocomplete: boolean;
@@ -14,6 +15,7 @@ export interface QueryState {
   queryHasTimeFilter: boolean;
   executeQueryTrigger: number;
   executeHitsOnceTrigger: number;
+  appliedPeriod: TimeParams | null; // Time range applied to logs and hits, reused by sidebar requests.
 }
 
 export type QueryAction =
@@ -23,6 +25,7 @@ export type QueryAction =
   | { type: "SET_QUERY_HAS_TIME_FILTER", payload: boolean }
   | { type: "RUN_QUERY" }
   | { type: "EXECUTE_HITS_ONCE" }
+  | { type: "SET_APPLIED_PERIOD", payload: TimeParams }
 
 export const initialQueryState: QueryState = {
   autocomplete: getFromStorage("AUTOCOMPLETE") as boolean || false,
@@ -32,6 +35,7 @@ export const initialQueryState: QueryState = {
   queryHasTimeFilter: false,
   executeQueryTrigger: 0,
   executeHitsOnceTrigger: 0,
+  appliedPeriod: null,
 };
 
 export function reducer(state: QueryState, action: QueryAction): QueryState {
@@ -67,6 +71,11 @@ export function reducer(state: QueryState, action: QueryAction): QueryState {
       return {
         ...state,
         executeHitsOnceTrigger: state.executeHitsOnceTrigger + 1
+      };
+    case "SET_APPLIED_PERIOD":
+      return {
+        ...state,
+        appliedPeriod: action.payload
       };
     default:
       throw new Error();

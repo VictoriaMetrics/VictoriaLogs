@@ -11,6 +11,7 @@ import { useFetchHits } from "../useFetchHits";
 import type { FetchHitsParams, FetchHitsResult } from "../useFetchHits";
 import { useDebounceCallback } from "../../../../hooks/useDebounceCallback";
 import { useQueryTimeSync } from "./useQueryTimeSync";
+import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
 import { addQueryToHistoryStorage } from "../../../../components/QueryHistory/utils";
 import { useIncrementalTimeout } from "../../HitsPanel/hooks/useIncrementalTimeout";
 import { LogsPhase, QueryControllerOptions, TriggersState } from "./types";
@@ -25,6 +26,7 @@ import {
 } from "./utils";
 
 export const useQueryPageController = (props: QueryControllerOptions) => {
+  const queryDispatch = useQueryDispatch();
   const { incrementalTimeoutMs } = useIncrementalTimeout();
 
   const { limit } = useLimitController();
@@ -177,6 +179,8 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
     if (!shouldRunLogs && !shouldRunHits) {
       return;
     }
+
+    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: baseTriggers.period });
 
     resetTimeSync();
 

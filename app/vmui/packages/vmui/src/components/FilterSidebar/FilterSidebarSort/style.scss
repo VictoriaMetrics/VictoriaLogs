@@ -1,0 +1,9 @@
+@use "src/styles/variables" as *;
+
+.vm-filter-sidebar-sort {
+  display: flex;
+
+  button {
+    padding-left: calc($padding-global / 2);
+  }
+}

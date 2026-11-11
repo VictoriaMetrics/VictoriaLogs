@@ -1,7 +1,7 @@
-import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
+import { FC, Fragment, useCallback, useEffect, useMemo, useState } from "preact/compat";
 import { LogsFieldValues } from "../../../api/types";
-import { formatNumberShort } from "../../../utils/number";
-import { ArrowDownIcon } from "../../Main/Icons";
+import { formatNumber, formatNumberShort } from "../../../utils/number";
+import { ArrowDownIcon, SearchIcon } from "../../Main/Icons";
 import "./style.scss";
 import classNames from "classnames";
 import { useFetchStreamValues } from "../../../pages/OverviewPage/hooks/useFetchStreamValues";
@@ -11,14 +11,15 @@ import FilterSidebarAlert from "../FilterSidebarAlert/FilterSidebarAlert";
 import FilterSidebarValue from "../FilterSidebarValue/FilterSidebarValue";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { buildExtraFilterParams } from "../../ExtraFilters/utils/buildExtraFilterParams";
-import { useTimePeriod } from "../../../pages/QueryPage/hooks/useTimePeriod";
-import { SortOptions } from "../types";
 import { sortSidebarItems } from "../utils/sortSidebarItems";
-import {
-  filterFilterSidebarValues,
-  matchesFilterSidebarSearch,
-} from "../utils/filterSidebarItems";
+import { filterSidebarItemsBySearch } from "../utils/filterSidebarItems";
 import { isStreamFilter } from "../../ExtraFilters/utils/isStreamFilter";
+import { SIDEBAR_ITEMS_LIMIT, SIDEBAR_SEARCH_THRESHOLD } from "../constants";
+import TextField, { TextFieldKeyboardEvent } from "../../Main/TextField/TextField";
+import { useDebounceCallback } from "../../../hooks/useDebounceCallback";
+import FilterSidebarSort from "../FilterSidebarSort/FilterSidebarSort";
+import { useFilterSidebarSort } from "../hooks/useFilterSidebarSort";
+import { useQueryState } from "../../../state/query/QueryStateContext";
 
 const ANY_VALUE_OPTION: LogsFieldValues = {
   value: "",
@@ -31,8 +32,6 @@ type Props = {
   field: LogsFieldValues;
   query?: string;
   extraFilters: ExtraFilter[];
-  sort: SortOptions;
-  search: string;
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
   onReplaceFiltersByField: (filter: ExtraFilter) => void;
@@ -42,15 +41,19 @@ const FilterSidebarField: FC<Props> = ({
   field,
   query,
   extraFilters,
-  sort,
-  search,
   onAddFilter,
   onRemoveByValue,
   onReplaceFiltersByField,
 }) => {
-  const { period } = useTimePeriod();
-  const [isValuesOpen, setValuesOpen] = useState(false);
+  const { appliedPeriod } = useQueryState();
   const { fetchStreamValues, streamValues, loading, error, abort } = useFetchStreamValues();
+  const [isServerSearch, setIsServerSearch] = useState(false);
+  const isReady = !loading && !error;
+
+  const [isValuesOpen, setValuesOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const { sort } = useFilterSidebarSort();
 
   const extraParams = useMemo(() => {
     const filtersWithoutCurrentField = extraFilters.filter(f => f.field !== field.value);
@@ -75,28 +78,33 @@ const FilterSidebarField: FC<Props> = ({
     return [...streamValues, ...missingSelectedValues];
   }, [streamValues, missingSelectedValues]);
 
-  const sortedValues = useMemo(() => {
-    const selectedValues = new Set(filtersByName
-      .filter(filter => filter.value !== "")
-      .map(filter => filter.value));
+  const isLimitExceeded = streamValues.length > SIDEBAR_ITEMS_LIMIT;
+  const showInputSearch = isServerSearch || allValues.length > SIDEBAR_SEARCH_THRESHOLD.value || search.length > 0;
 
-    return sortSidebarItems(allValues, sort, selectedValues);
-  }, [allValues, filtersByName, sort]);
+  const selectedFilters = useMemo(() => {
+    const filtered = filtersByName.filter(filter => filter.value !== "");
+    return new Set(filtered.map(filter => filter.value));
+  }, [filtersByName]);
 
   const values = useMemo(() => {
-    return filterFilterSidebarValues(sortedValues, field.value, search);
-  }, [sortedValues, field.value, search]);
+    if (isLimitExceeded) {
+      return search.trim()
+        ? []
+        : sortSidebarItems(
+          allValues.filter(v => selectedFilters.has(v.value)),
+          sort,
+          selectedFilters,
+        );
+    }
 
-  const isVisible = useMemo(() => {
-    return matchesFilterSidebarSearch(field.value, allValues, search);
-  }, [field.value, allValues, search]);
+    return isServerSearch
+      ? sortSidebarItems(streamValues, sort, selectedFilters)
+      : filterSidebarItemsBySearch(sortSidebarItems(allValues, sort, selectedFilters), search);
+  }, [allValues, search, isServerSearch, streamValues, selectedFilters, sort, isLimitExceeded]);
 
-  const requestRef = useRef({
-    query,
-    start: period.start,
-    end: period.end,
-    extraParams,
-  });
+  const firstAvailableIndex = values.findIndex(v => !selectedFilters.has(v.value));
+  const selectedCount = firstAvailableIndex === -1 ? values.length : firstAvailableIndex;
+  const availableCount = values.length - selectedCount;
 
   const hasFilter = !!filtersByName.length;
   const hitsShort = formatNumberShort(field.hits);
@@ -143,49 +151,61 @@ const FilterSidebarField: FC<Props> = ({
     onAddFilter(filter);
   };
 
+  const handleSearchKeyDown = (event: TextFieldKeyboardEvent) => {
+    if (event.key === "Escape") setSearch("");
+  };
+
   const badgeTooltip = useMemo(() => {
     if (hasAnyValueFilter) return "Any non-empty value";
     if (isCheckedAll) return "All listed values";
     return `${filtersByName.length} selected value${filtersByName.length > 1 ? "s" : ""}`;
   }, [hasAnyValueFilter, isCheckedAll, filtersByName.length]);
 
-  useEffect(() => {
-    requestRef.current = {
+  const fetchValues = useCallback(async (filter?: string) => {
+    if (!appliedPeriod) return;
+
+    const data = await fetchStreamValues({
       query,
-      start: period.start,
-      end: period.end,
+      field: field.value,
+      period: appliedPeriod,
       extraParams,
-    };
-  }, [query, period.start, period.end, extraParams]);
+      filter,
+    });
+    if (data === undefined) return;
+    if (!filter?.trim()) setIsServerSearch(data.length > SIDEBAR_ITEMS_LIMIT);
+  }, [fetchStreamValues, query, field.value, appliedPeriod, extraParams.toString()]);
+
+  const debouncedFetchValues = useDebounceCallback(fetchValues, 300);
+  const debouncedSearchValues = useDebounceCallback(fetchValues, 300);
 
   useEffect(() => {
-    // Update only when field changes.
-    abort();
+    setIsServerSearch(false);
     if (!isValuesOpen) return;
 
-    const r = requestRef.current;
+    debouncedFetchValues();
 
-    void fetchStreamValues({
-      query: r.query,
-      field: field.value,
-      period: {
-        start: r.start,
-        end: r.end,
-      },
-      extraParams: r.extraParams,
-    });
+    return () => {
+      debouncedFetchValues.cancel();
+      abort();
+    };
+  }, [isValuesOpen, fetchValues, abort]);
 
-    return abort;
-  }, [isValuesOpen, field]);
+  useEffect(() => {
+    if (!isValuesOpen || !isServerSearch) return;
 
+    debouncedSearchValues(search.trim());
+
+    return () => {
+      debouncedSearchValues.cancel();
+      abort();
+    };
+  }, [isValuesOpen, search, isServerSearch, abort]);
 
   useEffect(() => {
     // Only for the first render.
     if (!hasFilter) return;
     setValuesOpen(true);
   }, []);
-
-  if (!isVisible) return null;
 
   return (
     <div
@@ -204,7 +224,12 @@ const FilterSidebarField: FC<Props> = ({
       >
         <div className="vm-filter-sidebar-field-label">
           <span className="vm-filter-sidebar-field-label__title">{field.value}</span>
-          <span className="vm-filter-sidebar-field-label__hits">{" "}({hitsShort})</span>
+          <Tooltip
+            placement="top-left"
+            title="Number of matching logs containing this field"
+          >
+            <span className="vm-filter-sidebar-field-label__hits">{" "}({hitsShort})</span>
+          </Tooltip>
         </div>
 
         {hasFilter && (
@@ -232,7 +257,7 @@ const FilterSidebarField: FC<Props> = ({
       </div>
 
       {isValuesOpen && (
-        <div className="vm-filter-sidebar-field-values">
+        <>
           <FilterSidebarAlert
             isVisible={!!error}
             variant="error"
@@ -240,31 +265,72 @@ const FilterSidebarField: FC<Props> = ({
             message={error}
           />
 
-          <FilterSidebarValue
-            isAnyValueFilter
-            checked={hasAnyValueFilter}
-            fieldName={field.value}
-            key="any-value-option"
-            label={ANY_VALUE_LABEL}
-            field={ANY_VALUE_OPTION}
-            extraFilters={filtersByName}
-            onAddFilter={handleSelectAnyValue}
-            onRemoveByValue={handleSelectAnyValue}
+          <FilterSidebarAlert
+            isVisible={isReady && !isLimitExceeded && !!search.trim() && !values.length}
+            variant="info"
+            title="No values found"
           />
 
-          <div className="vm-filter-sidebar-field-values__divider"/>
-
-          {values.map(streamFieldValue => (
+          <div className="vm-filter-sidebar-field-values__header">
             <FilterSidebarValue
+              isAnyValueFilter
+              checked={hasAnyValueFilter}
               fieldName={field.value}
-              key={streamFieldValue.value}
-              field={streamFieldValue}
+              key="any-value-option"
+              label={ANY_VALUE_LABEL}
+              field={ANY_VALUE_OPTION}
               extraFilters={filtersByName}
-              onAddFilter={handleSelectValue}
-              onRemoveByValue={onRemoveByValue}
+              onAddFilter={handleSelectAnyValue}
+              onRemoveByValue={handleSelectAnyValue}
             />
-          ))}
-        </div>
+
+            <FilterSidebarSort/>
+          </div>
+
+          {showInputSearch && (
+            <div className="vm-filter-sidebar-search vm-filter-sidebar-search_value">
+              <TextField
+                type="search"
+                placeholder="Search field values"
+                startIcon={<SearchIcon/>}
+                value={search}
+                onChange={setSearch}
+                onKeyDown={handleSearchKeyDown}
+              />
+            </div>
+          )}
+
+
+          <div className="vm-filter-sidebar-field-values">
+            {values.map((fieldValue, index) => (
+              <Fragment key={fieldValue.value}>
+                {index === 0 && selectedCount > 0 && (
+                  <p className="vm-filter-sidebar-list__title">Selected ({selectedCount})</p>
+                )}
+
+                {index === firstAvailableIndex && (
+                  <p className="vm-filter-sidebar-list__title">Available ({availableCount})</p>
+                )}
+
+                <FilterSidebarValue
+                  fieldName={field.value}
+                  key={fieldValue.value}
+                  field={fieldValue}
+                  extraFilters={filtersByName}
+                  onAddFilter={handleSelectValue}
+                  onRemoveByValue={onRemoveByValue}
+                />
+              </Fragment>
+            ))}
+          </div>
+
+          <FilterSidebarAlert
+            isVisible={isReady && isLimitExceeded}
+            variant="warning"
+            title={`More than ${formatNumber(SIDEBAR_ITEMS_LIMIT)} field values found`}
+            message="Start typing to narrow the search."
+          />
+        </>
       )}
     </div>
   )
