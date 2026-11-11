@@ -272,13 +272,16 @@ func quoteFieldNameIfNeeded(s string) string {
 	return quoteTokenIfNeeded(s) + ":"
 }
 
-// isSpecialFilterFieldNameAnyCase returns true if s matches _time, _stream or _stream_id case-insensitively, but not exactly.
+// isSpecialFilterFieldNameAnyCase returns true if s matches _time, _stream or _stream_id after strings.ToLower, but not exactly.
+//
+// It must use the same case normalization as lexer.isKeywordAny, since names such as "_tİme" are lowercased to "_time".
 func isSpecialFilterFieldNameAnyCase(s string) bool {
 	switch s {
 	case "_time", "_stream", "_stream_id":
 		return false
 	}
-	return strings.EqualFold(s, "_time") || strings.EqualFold(s, "_stream") || strings.EqualFold(s, "_stream_id")
+	sLower := strings.ToLower(s)
+	return sLower == "_time" || sLower == "_stream" || sLower == "_stream_id"
 }
 
 func isMsgFieldName(fieldName string) bool {

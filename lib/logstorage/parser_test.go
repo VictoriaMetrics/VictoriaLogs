@@ -1771,6 +1771,8 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`"_Stream_ID":~"x"`, `"_Stream_ID":~x`)
 	f(`* | stats count() if ("_TIME":=up) x`, `* | stats count(*) if ("_TIME":=up) as x`)
 	f(`"_MSG":foo`, `_MSG:foo`)
+	f(`"_tİme":=up`, `"_tİme":=up`)
+	f(`"_stream_İd":foo`, `"_stream_İd":foo`)
 
 	// multiple _time filters
 	f(`_time:1h _time:2025Z`, `_time:1h _time:2025Z`)
