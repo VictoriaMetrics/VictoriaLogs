@@ -984,7 +984,8 @@ func (s *Storage) watchDeleteTasks() {
 
 // processDeleteTask processes dt.
 //
-// true is returned on successfully processed dt or on explicitly canceled dt.
+// true is returned on successfully processed dt, on explicitly canceled dt or on dt with a filter, which cannot be parsed,
+// since such dt can never be processed and is dropped.
 // false is returned if dt couldn't be processed at the moment, so it must be processed later.
 func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	logger.Infof("started processing delete task %s", dt)
