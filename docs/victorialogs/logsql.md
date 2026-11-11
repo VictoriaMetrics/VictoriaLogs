@@ -4755,6 +4755,7 @@ LogsQL supports the following functions for [`stats` pipe](https://docs.victoria
 - [`count_empty`](https://docs.victoriametrics.com/victorialogs/logsql/#count_empty-stats) returns the number logs with empty [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats) returns the number of unique non-empty values for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
 - [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats) returns the number of unique hashes for non-empty values at the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
+- [`count_uniq_hll`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hll-stats) estimates the number of unique non-empty values for the given [log fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) with a fixed-memory HyperLogLog sketch.
 - [`field_max`](https://docs.victoriametrics.com/victorialogs/logsql/#field_max-stats) returns the [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value from log entry with the maximum value at the given field.
 - [`field_min`](https://docs.victoriametrics.com/victorialogs/logsql/#field_min-stats) returns the [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) value from log entry with the minimum value at the given field.
 - [`histogram`](https://docs.victoriametrics.com/victorialogs/logsql/#histogram-stats) returns [VictoriaMetrics histogram](https://valyala.medium.com/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350) for the given [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model).
@@ -4908,11 +4909,13 @@ up to `1_000_000` unique values for the `ip` field:
 _time:5m | stats count_uniq(ip) limit 1_000_000 as ips_1_000_000
 ```
 
-If it is OK to count an estimated number of unique values, then [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats) can be used as faster alternative to `count_uniq`.
+If it is OK to count an estimated number of unique values, then [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats)
+or [`count_uniq_hll`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hll-stats) can be used as faster / lower-memory alternatives to `count_uniq`.
 
 See also:
 
 - [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats)
+- [`count_uniq_hll`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hll-stats)
 - [`uniq_values`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
 
@@ -4939,6 +4942,40 @@ _time:5m | stats count_uniq_hash(host, path) unique_host_path_pairs
 See also:
 
 - [`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats)
+- [`count_uniq_hll`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hll-stats)
+- [`uniq_values`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
+- [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
+
+### count_uniq_hll stats
+
+`count_uniq_hll(field1, ..., fieldN)` [stats pipe function](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe-functions) estimates the number of unique non-empty `(field1, ..., fieldN)` tuples
+with a fixed-memory [HyperLogLog](https://en.wikipedia.org/wiki/HyperLogLog) sketch (`p=14`).
+
+This function is intended for high-cardinality UV estimation (millions to tens of millions of distinct values) where
+[`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats) and [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats)
+would use too much memory. The estimate is approximate: the theoretical standard error is about `0.81%` (not a hard per-query bound).
+
+Empty values are not counted. Numeric-looking field values such as `1` and `01` are treated as the same value.
+
+In [cluster mode](https://docs.victoriametrics.com/victorialogs/cluster/), each `vlstorage` returns an HLL sketch and `vlselect` merges sketches.
+Do not sum per-node estimates. Cluster queries that use `count_uniq_hll` require `vlselect` and `vlstorage` nodes running a VictoriaLogs version that includes this function.
+
+For example, the following query estimates the number of unique non-empty values for `user_id` over the last day:
+
+```logsql
+_time:1d | stats count_uniq_hll(user_id) as uv
+```
+
+The following query estimates the number of unique `(host, path)` pairs over the last 5 minutes:
+
+```logsql
+_time:5m | stats count_uniq_hll(host, path) unique_host_path_pairs
+```
+
+See also:
+
+- [`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats)
+- [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats)
 - [`uniq_values`](https://docs.victoriametrics.com/victorialogs/logsql/#uniq_values-stats)
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
 
@@ -5413,6 +5450,7 @@ See also:
 - [`values`](https://docs.victoriametrics.com/victorialogs/logsql/#values-stats)
 - [`count_uniq`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq-stats)
 - [`count_uniq_hash`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hash-stats)
+- [`count_uniq_hll`](https://docs.victoriametrics.com/victorialogs/logsql/#count_uniq_hll-stats)
 - [`count`](https://docs.victoriametrics.com/victorialogs/logsql/#count-stats)
 
 ### values stats
