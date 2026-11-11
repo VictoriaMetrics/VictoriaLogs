@@ -406,6 +406,11 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Data ingestion requests rejected because the storage node reached the concurrency limit set by `-insert.concurrency`. Rejected requests are re-routed to other storage nodes. Growing values on a single node indicate the node is slower than the rest of the cluster.
 
+### vl_insert_remote_send_queue_full_total
+**Type:** Counter
+
+**Description:** The number of times `vlinsert` waits because the queue of data to be sent to storage nodes is full. The queue holds up to `-insert.concurrency` data blocks per storage node. Growing values indicate storage nodes cannot keep up with the incoming logs.
+
 ### vl_select_remote_send_errors_total
 **Type:** Counter
 

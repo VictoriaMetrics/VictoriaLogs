@@ -210,10 +210,19 @@ func (sn *storageNode) addRow(r *logstorage.InsertRow) {
 
 var bbPool bytesutil.ByteBufferPool
 
+var sendQueueFull = metrics.NewCounter(`vl_insert_remote_send_queue_full_total`)
+
 func (sn *storageNode) grabPendingDataForFlushLocked() *bytesutil.ByteBuffer {
 	sn.pendingDataLastFlush = time.Now()
 	pendingData := sn.pendingData
-	sn.pendingData = <-sn.s.pendingDataBuffers
+
+	select {
+	case sn.pendingData = <-sn.s.pendingDataBuffers:
+	default:
+		// Slow path - all the buffers are being sent to storage nodes. Wait until one of them is returned.
+		sendQueueFull.Inc()
+		sn.pendingData = <-sn.s.pendingDataBuffers
+	}
 
 	return pendingData
 }
