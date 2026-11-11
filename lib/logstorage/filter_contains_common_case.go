@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// filterContainsCommonCase matches words and phrases where every captial letter
+// filterContainsCommonCase matches words and phrases where every capital letter
 // can be replaced with a small letter, plus all capital words.
 //
 // Example LogsQL: `contains_common_case("Error")` is equivalent to contains_any("Error", "error", "ERROR")

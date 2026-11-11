@@ -18,17 +18,27 @@ import { useTimeState } from "../../../../state/time/TimeStateContext";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import { cumulativeMatrix } from "../../../../utils/uplot/cumulative";
 import { Size, useResizeObserver } from "../../../../hooks/useResizeObserver";
+import BarHitsLoadingOverlay from "../BarHitsLoadingOverlay/BarHitsLoadingOverlay";
 
 interface Props {
   logHits: LogHits[];
   totalHits: number;
   data: AlignedData;
+  isIterative: boolean;
   period: TimeParams;
   setPeriod: (nextPeriod: TimePeriod) => void;
   graphOptions: GraphOptions;
 }
 
-const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data, period, setPeriod }: Props) => {
+const BarHitsPlot: FC<Props> = ({
+  graphOptions,
+  logHits,
+  totalHits,
+  data: _data,
+  isIterative,
+  period,
+  setPeriod
+}: Props) => {
   const { isMobile } = useDeviceDetect();
   const { isDarkTheme } = useAppState();
   const { timezone } = useTimeState();
@@ -43,16 +53,26 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
   useZoomChart({ uPlotInst, element: uPlotRef, xRange, setPlotScale });
 
   const transformedData = useMemo(() => {
-    if (graphOptions.cumulative) return cumulativeMatrix(_data);
-    return _data;
-  }, [graphOptions.cumulative, _data]);
+    if (!graphOptions.cumulative) return _data;
+
+    const cumulativeData = cumulativeMatrix(_data);
+
+    return cumulativeData.map((row, i) =>
+      // filter out loading series from cumulative calculation, but keep them in the data for rendering
+      i > 0 && logHits[i - 1]?._isLoading ? _data[i] : row
+    ) as AlignedData;
+  }, [graphOptions.cumulative, _data, logHits]);
 
   const { data, bands } = useMemo(() => {
-    if (graphOptions.stacked) return stack(transformedData, () => false);
-    return { data: transformedData, bands: [] };
-  }, [graphOptions.stacked, transformedData]);
+    if (graphOptions.stacked) {
+      // filter out loading series from stack calculation, but keep them in the data for rendering
+      return stack(transformedData, i => !!logHits[i - 1]?._isLoading);
+    }
 
-  const { options, series, focusDataIdx } = useBarHitsOptions({
+    return { data: transformedData, bands: [] };
+  }, [graphOptions.stacked, transformedData, logHits]);
+
+  const { options, series, focusDataIdx, getLoadingBarRect } = useBarHitsOptions({
     data,
     logHits,
     bands,
@@ -66,24 +86,26 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
   });
 
   const legendDetails: LegendLogHits[] = useMemo(() => {
-    return logHits.map((hit) => {
-      const label = getLabelFromLogHit(hit);
+    return logHits
+      .filter(hit => !hit._isLoading)
+      .map((hit) => {
+        const label = getLabelFromLogHit(hit);
 
-      const legendItem: LegendLogHits = {
-        label,
-        isOther: hit._isOther,
-        fields: hit.fields,
-        total: hit.total || 0,
-        totalHits,
-        stroke: series.find((s) => s.label === label)?.stroke,
-      };
+        const legendItem: LegendLogHits = {
+          label,
+          isOther: hit._isOther,
+          fields: hit.fields,
+          total: hit.total || 0,
+          totalHits,
+          stroke: series.find((s) => s.label === label)?.stroke,
+        };
 
-      return legendItem;
-    }).sort(sortLogHits("total"));
+        return legendItem;
+      }).sort(sortLogHits("total"));
   }, [logHits, totalHits, series]);
 
   const isSingleOtherSeries = useMemo(() => {
-    return legendDetails.length === 1 && legendDetails.every(l => l.isOther);
+    return legendDetails.length < 2 && legendDetails.every(l => l.isOther);
   }, [legendDetails]);
 
   useEffect(() => {
@@ -154,6 +176,14 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
           className="vm-bar-hits-chart__u-plot"
           ref={uPlotRef}
         />
+
+        {uPlotInst && (
+          <BarHitsLoadingOverlay
+            uPlotInst={uPlotInst}
+            getLoadingBarRect={getLoadingBarRect}
+          />
+        )}
+
         {!isMobile && (
           <BarHitsTooltip
             uPlotInst={uPlotInst}
@@ -162,7 +192,7 @@ const BarHitsPlot: FC<Props> = ({ graphOptions, logHits, totalHits, data: _data,
           />
         )}
       </div>
-      {uPlotInst && !isSingleOtherSeries && (
+      {uPlotInst && !isSingleOtherSeries && !isIterative && (
         <BarHitsLegend
           uPlotInst={uPlotInst}
           legendDetails={legendDetails}

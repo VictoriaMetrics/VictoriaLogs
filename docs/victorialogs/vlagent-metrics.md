@@ -78,9 +78,9 @@ These metrics follow the Prometheus exposition format and can be used for monito
 **Type:** Counter
 
 **Labels:**
-- `reason`: `debug`, `too_many_fields`, `too_big_timestamp`, `too_small_timestamp`, `invalid_cri_line`
+- `reason`: `debug`, `too_many_fields`, `too_big_timestamp`, `too_small_timestamp`, `invalid_cri_line`, `incomplete_line`
 
-**Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod`. `too_big_timestamp` counts entries newer than `-futureRetention`. `invalid_cri_line` counts entries that fail to parse as CRI-compatible log lines in the [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs) mode.
+**Description:** Log entries rejected for specific reasons. `debug` counts entries processed with `debug=1` (parsed but not stored). `too_many_fields` counts entries exceeding `-insert.maxFieldsPerLine`. `too_small_timestamp` counts entries older than `-retentionPeriod`. `too_big_timestamp` counts entries newer than `-futureRetention`. `invalid_cri_line` counts entries that fail to parse as CRI-compatible log lines in the [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs) mode. `incomplete_line` counts incomplete last lines (without a trailing newline) dropped when a log file is rotated or deleted in the [Kubernetes Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-kubernetes-pod-logs) and [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files) modes.
 
 ### vl_insert_flush_duration_seconds
 **Type:** Summary

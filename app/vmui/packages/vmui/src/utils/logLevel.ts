@@ -1,4 +1,4 @@
-import { LOG_LEVEL_COLORS, LOG_LEVEL_FIELDS, LOG_LEVEL_UNKNOWN } from "../constants/logLevel";
+import { LOG_LEVEL_COLORS, LOG_LEVEL_FIELDS, LOG_LEVEL_UNKNOWN, OTLP_SEVERITY_LEVELS } from "../constants/logLevel";
 import type { Logs } from "../api/types";
 
 type LogLevel = keyof typeof LOG_LEVEL_COLORS;
@@ -39,7 +39,25 @@ const normalizeLogLevel = (value: unknown): LogLevel | null => {
   return LEVEL_NORMALIZE[value.trim().toLowerCase()] ?? null;
 };
 
+const getOtlpLogLevel = (value: unknown): LogLevel | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 24) {
+    return null;
+  }
+
+  return OTLP_SEVERITY_LEVELS[Math.floor((n - 1) / 4)];
+};
+
 export const getLogLevel = (log: Logs): LogLevel => {
+  const otlpLevel = getOtlpLogLevel(log.severity_number);
+  if (otlpLevel) {
+    return otlpLevel;
+  }
+
   for (const field of LOG_LEVEL_FIELDS) {
     const level = normalizeLogLevel(log[field]);
 

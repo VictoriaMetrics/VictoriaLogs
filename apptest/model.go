@@ -1,10 +1,13 @@
 package apptest
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"net/url"
 	"testing"
 )
@@ -16,12 +19,14 @@ type QueryOpts struct {
 	AccountID string
 	ProjectID string
 
-	Timeout      string
-	Start        string
-	End          string
-	Limit        string
-	ExtraFilters []string
-	Format       string
+	Timeout       string
+	Start         string
+	End           string
+	Limit         string
+	Offset        string
+	SortDirection string
+	ExtraFilters  []string
+	Format        string
 }
 
 func (qos *QueryOpts) asURLValues() url.Values {
@@ -30,6 +35,8 @@ func (qos *QueryOpts) asURLValues() url.Values {
 	addNonEmpty(uv, "start", qos.Start)
 	addNonEmpty(uv, "end", qos.End)
 	addNonEmpty(uv, "limit", qos.Limit)
+	addNonEmpty(uv, "offset", qos.Offset)
+	addNonEmpty(uv, "sort_direction", qos.SortDirection)
 	addNonEmpty(uv, "extra_filters", qos.ExtraFilters...)
 	addNonEmpty(uv, "format", qos.Format)
 	return uv
@@ -222,6 +229,26 @@ func (qos *StatsQueryRangeOpts) asURLValues() url.Values {
 	return uv
 }
 
+// LiveTailOpts contains params used for live tailing via /select/logsql/tail
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
+type LiveTailOpts struct {
+	AccountID string
+	ProjectID string
+
+	StartOffset     string
+	Offset          string
+	RefreshInterval string
+}
+
+func (lto *LiveTailOpts) asURLValues() url.Values {
+	uv := make(url.Values)
+	addNonEmpty(uv, "start_offset", lto.StartOffset)
+	addNonEmpty(uv, "offset", lto.Offset)
+	addNonEmpty(uv, "refresh_interval", lto.RefreshInterval)
+	return uv
+}
+
 // IngestOpts contains various params used for VictoriaLogs ingesting data
 type IngestOpts struct {
 	AccountID string
@@ -280,6 +307,46 @@ func NewLogsQLQueryResponse(t *testing.T, s string) *LogsQLQueryResponse {
 	}
 
 	return res
+}
+
+// LiveTailResponse is a /select/logsql/tail response, which is read line by line.
+type LiveTailResponse struct {
+	StatusCode int
+
+	body   io.Closer
+	sc     *bufio.Scanner
+	cancel context.CancelFunc
+}
+
+func newLiveTailResponse(res *http.Response, cancel context.CancelFunc) *LiveTailResponse {
+	return &LiveTailResponse{
+		StatusCode: res.StatusCode,
+
+		body:   res.Body,
+		sc:     bufio.NewScanner(res.Body),
+		cancel: cancel,
+	}
+}
+
+// NextLine returns the next line of the response.
+//
+// It fails the test if the next line cannot be read.
+func (ltr *LiveTailResponse) NextLine(t *testing.T) string {
+	t.Helper()
+
+	if !ltr.sc.Scan() {
+		if err := ltr.sc.Err(); err != nil {
+			t.Fatalf("could not read live tailing response: %s", err)
+		}
+		t.Fatalf("unexpected end of live tailing response")
+	}
+	return ltr.sc.Text()
+}
+
+// Close stops live tailing.
+func (ltr *LiveTailResponse) Close() {
+	_ = ltr.body.Close()
+	ltr.cancel()
 }
 
 func addNonEmpty(uv url.Values, name string, values ...string) {

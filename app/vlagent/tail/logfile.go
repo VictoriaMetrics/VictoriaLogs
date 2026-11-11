@@ -217,11 +217,7 @@ func (lf *logFile) setTail(tail []byte) {
 	}
 
 	if len(tail) == 0 {
-		if lf.tail != nil {
-			tailByteBufferPool.Put(lf.tail)
-			lf.tail = nil
-		}
-		lf.tailSize = 0
+		lf.dropTail()
 		return
 	}
 
@@ -231,6 +227,14 @@ func (lf *logFile) setTail(tail []byte) {
 
 	lf.tailSize = len(tail)
 	lf.tail.B = append(lf.tail.B[:0], tail...)
+}
+
+func (lf *logFile) dropTail() {
+	if lf.tail != nil {
+		tailByteBufferPool.Put(lf.tail)
+		lf.tail = nil
+	}
+	lf.tailSize = 0
 }
 
 var tailByteBufferPool bytesutil.ByteBufferPool
@@ -277,16 +281,32 @@ const (
 
 // status reports the current status of the log file.
 func (lf *logFile) status() logFileStatus {
-	if !symlinkExists(lf.path) {
-		// The symlink itself does not exist.
-		return logFileStatusDeleted
-	}
-
 	stat, exists := mustStat(lf.path)
 	if !exists {
-		// The symlink exists, but the target file does not.
-		// Treat the file as not rotated because it can be appended to during rotation.
-		return logFileStatusNotRotated
+		if symlinkExists(lf.path) {
+			// The symlink exists, but the target file does not.
+			// It is likely rotating right now or symlink is broken.
+			// Treat as not rotated to wait until the file appears.
+			return logFileStatusNotRotated
+		}
+
+		if lf.file == nil {
+			// The file does not exist and was never opened.
+			return logFileStatusDeleted
+		}
+
+		fi, err := lf.file.Stat()
+		if err != nil {
+			logger.Panicf("FATAL: cannot get file info of already opened log file %q: %s", lf.path, err)
+		}
+		if getNlink(fi) > 0 {
+			// The file has active hard links.
+			// It is likely it was moved, but the new file doesn't exist yet.
+			// Treat as not rotated since it can still be appended to during rotation.
+			return logFileStatusNotRotated
+		}
+		// The file was removed and there are no hard-links to it.
+		return logFileStatusDeleted
 	}
 
 	size := stat.Size()
@@ -359,6 +379,8 @@ func (lf *logFile) checkpoint() checkpoint {
 	}
 }
 
+// mustStat returns os.FileInfo and true if the file exists at the given path.
+// It returns false as the second value if the file does not exist.
 func mustStat(path string) (os.FileInfo, bool) {
 	fi, err := os.Stat(path)
 	if err != nil {

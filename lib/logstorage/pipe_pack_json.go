@@ -36,7 +36,7 @@ func (pp *pipePackJSON) canLiveTail() bool {
 	return true
 }
 
-func (pp *pipePackJSON) canReturnLastNResults() bool {
+func (pp *pipePackJSON) canReturnTimeSortedNResults() bool {
 	return pp.resultField != "_time"
 }
 

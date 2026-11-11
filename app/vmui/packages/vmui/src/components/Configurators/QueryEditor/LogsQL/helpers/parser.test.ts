@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { hasBalancedQuotes, splitLogicalParts } from "./parser";
-import { LogicalPart, LogicalPartType } from "../types";
+import { getContextData, hasBalancedQuotes, splitLogicalParts } from "./parser";
+import { ContextType, LogicalPart, LogicalPartType } from "../types";
 
 function getValue(p: LogicalPart): string {
   return p.value;
@@ -13,7 +13,70 @@ function getIsPipePart(p: LogicalPart): boolean {
 const values = (parts: readonly LogicalPart[]) => parts.map(getValue);
 const pipeFlags = (parts: readonly LogicalPart[]) => parts.map(getIsPipePart);
 
+describe.each(["* |", "* | sort _time |"])("pipe context after %s", prefix => {
+  it.each([
+    ["extract", ContextType.PipeName],
+    ["extract_reg", ContextType.PipeName],
+    [" extract_reg", ContextType.PipeName],
+    ["extract_regexp", ContextType.PipeName],
+    ["extract ", ContextType.PipeValue],
+    [" extract ", ContextType.PipeValue],
+    [" EXTRACT ", ContextType.PipeValue],
+    [" Extract ", ContextType.PipeValue],
+    [" EXTRACT_REG", ContextType.PipeName],
+    [" EXTRACT_REGEXP ", ContextType.PipeValue],
+    ["extract_regexp ", ContextType.PipeValue],
+    [" extract_regexp ", ContextType.PipeValue],
+    ["\t extract_regexp\t", ContextType.PipeValue],
+    ["\n extract_regexp ", ContextType.PipeValue],
+    [" coalesce(", ContextType.PipeValue],
+    [" COALESCE(", ContextType.PipeValue],
+    [" sort _time", ContextType.PipeValue],
+    ["extract_regexp_invalid ", ContextType.PipeName],
+  ])("classifies %j as %s", (value, expectedType) => {
+    const parts = splitLogicalParts(`${prefix}${value}`);
+    const part = parts[parts.length - 1];
+    const expectedContext = prefix === "* | sort _time |" && expectedType === ContextType.PipeName
+      ? ContextType.FilterOrPipeName
+      : expectedType;
+
+    expect(getContextData(part, part.value.length).contextType).toBe(expectedContext);
+  });
+});
+
 describe("splitLogicalParts", () => {
+  it.each(["\n", "\r\n", "\t", "\n  ", "\r\n\t", "\n\n\t", " \t\n  "])(
+    "separates filters on %j while preserving whitespace and positions",
+    whitespace => {
+      const query = `os.type:"lin"${whitespace}_time:5m`;
+      const parts = splitLogicalParts(query);
+      const filters = parts.filter(part => part.type === LogicalPartType.Filter);
+
+      expect(filters.map(part => part.value.trimEnd())).toEqual(["os.type:\"lin\"", "_time:5m"]);
+      expect(filters[1].position[0]).toBe(query.indexOf("_time"));
+      expect(parts.map(part => `${part.separator ?? ""}${part.value}`).join("")).toBe(query);
+    }
+  );
+
+  it.each(["\"first\nsecond\"", "'first\nsecond'", "`first\nsecond`", "(first\nsecond)", "{app=\"first\",\n host=\"second\"}"])(
+    "preserves whitespace inside quotes and brackets in %j",
+    value => {
+      expect(values(splitLogicalParts(`${value}\n_time:5m`))).toEqual([value, "\n", "_time:5m"]);
+    }
+  );
+
+  it("keeps multiline pipe arguments in a single pipe part", () => {
+    expect(values(splitLogicalParts("* | stats\n by (os.type)\n count()"))).toEqual([
+      "* ",
+      " stats\n by (os.type)\n count()",
+    ]);
+  });
+
+  it.each(["\t", "\n", "\r\n  "])("preserves %j around a colon", whitespace => {
+    const query = `os.type${whitespace}:${whitespace}"linux"`;
+    expect(values(splitLogicalParts(query))).toEqual([query]);
+  });
+
   it("splits by spaces into parts", () => {
     const parts = splitLogicalParts("a b c");
     expect(values(parts)).toEqual(["a ", "b ", "c"]);

@@ -6,6 +6,7 @@ import { LegendLogHitsMenu } from "../../../../api/types";
 import useCopyToClipboard from "../../../../hooks/useCopyToClipboard";
 import { ExtraFilter, ExtraFilterOperator } from "../../../ExtraFilters/types";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
+import { STREAM_FIELD } from "../../../../constants/logFields";
 
 interface Props {
   fields: string[];
@@ -41,7 +42,7 @@ const LegendHitsMenuFields: FC<Props> = ({ fields, onApplyFilter, onClose }) => 
   };
 
   const handleAddToFilter = (field: string, operator: ExtraFilterOperator) => () => {
-    onApplyFilter({ ...stringToFilter(field), operator, isStream: groupFieldHits === "_stream" });
+    onApplyFilter({ ...stringToFilter(field), operator, isStream: groupFieldHits === STREAM_FIELD });
     onClose();
   };
 

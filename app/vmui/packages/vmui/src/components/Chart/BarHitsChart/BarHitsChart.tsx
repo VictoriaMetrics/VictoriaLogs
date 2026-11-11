@@ -17,9 +17,11 @@ interface Props {
   logHits: LogHits[];
   data: AlignedData;
   query?: string;
+  loadedFieldNames?: string[];
   period: TimeParams;
   durationMs?: number
   isOverview?: boolean;
+  isIterative?: boolean;
   alertData: HitsChartAlert;
   setPeriod: (nextPeriod: TimePeriod) => void;
 }
@@ -28,10 +30,12 @@ const BarHitsChart: FC<Props> = ({
   logHits,
   data: _data,
   query,
+  loadedFieldNames,
   period,
   setPeriod,
   durationMs,
   isOverview,
+  isIterative,
   alertData,
 }) => {
   const [graphOptions, setGraphOptions] = useState<GraphOptions>({
@@ -111,6 +115,8 @@ const BarHitsChart: FC<Props> = ({
 
         <BarHitsOptions
           query={query}
+          period={period}
+          loadedFieldNames={loadedFieldNames}
           isHitsMode={isHitsMode}
           isOverview={isOverview}
           prevPeriod={prevPeriod}
@@ -133,6 +139,7 @@ const BarHitsChart: FC<Props> = ({
           period={period}
           setPeriod={handleChangePeriod}
           graphOptions={graphOptions}
+          isIterative={!!isIterative}
         />
       )}
     </div>

@@ -58,12 +58,14 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      authKey, which must be passed in query string to /internal/force_merge . It overrides -httpAuth.* . See https://docs.victoriametrics.com/victorialogs/#forced-merge
      Flag value can be read from the given file when using -forceMergeAuthKey=file:///abs/path/to/file or -forceMergeAuthKey=file://./relative/path/to/file.
      Flag value can be read from the given http/https url when using -forceMergeAuthKey=http://host/path or -forceMergeAuthKey=https://host/path
+  -fs.disableAdviseRandomRead
+     Whether to disable FADV_RANDOM and MADV_RANDOM hints for data part files. Typical queries with selectors access data part files at random offsets, so FADV_RANDOM is enforced to reduce excessive disk readahead.Use this flag if your query read pattern benefits from sequential read (e.g. query by metric name without selectors) to prefer FADV_NORMAL. (default true)
   -fs.disableMincore
      Whether to disable the mincore() syscall for checking mmap()ed files. By default, mincore() is used to detect whether mmap()ed file pages are resident in memory. Disabling mincore() may be needed on older ZFS filesystems (below 2.1.5), since it may trigger ZFS bug. See https://github.com/VictoriaMetrics/VictoriaMetrics/issues/10327 for details.
   -fs.disableMmap
      Whether to use pread() instead of mmap() for reading data files. By default, mmap() is used for 64-bit arches and pread() is used for 32-bit arches, since they cannot read data files bigger than 2^32 bytes in memory. mmap() is usually faster for reading small data chunks than pread()
   -fs.maxConcurrency int
-     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 16x CPU cores, default capped at 256)
+     The maximum number of concurrent goroutines to work with files; smaller values may help reducing Go scheduling latency on systems with small number of CPU cores; higher values may help reducing data ingestion latency on systems with high-latency storage such as NFS or Ceph (default 16x CPU cores, capped at 256)
   -futureRetention value
      Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention
      The following optional suffixes are supported: s (second), h (hour), d (day), w (week), M (month), y (year). If suffix isn't set, then the duration is counted in months (default 2d)
@@ -118,7 +120,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -insert.maxFieldsPerLine int
      The maximum number of log fields per line, which can be read by /insert/* handlers; see https://docs.victoriametrics.com/victorialogs/faq/#how-many-fields-a-single-log-entry-may-contain (default 1000)
   -insert.maxLineSizeBytes size
-     The maximum size of a single line that can be read by /insert/* handlers. Regardless of this flag, entries above the 2 MB limit are ignored, see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
+     The maximum size of a single line, including the trailing newline, that can be read by /insert/* handlers. Regardless of this flag, entries above the 2 MB limit are ignored, see https://docs.victoriametrics.com/victorialogs/faq/#what-length-a-log-record-is-expected-to-have
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 262144)
   -insert.maxQueueDuration duration
      The maximum duration to wait in the queue when -maxConcurrentInserts concurrent insert requests are executed (default 1m0s)
@@ -251,7 +253,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -search.maxQueryDuration duration
      The maximum duration for query execution. It can be overridden to a smaller value on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size
-     The maximum query length in bytes, which can be passed to /select/* endpoints
+     The maximum length in bytes of 'query', 'extra_filters' and 'extra_stream_filters' query args, which can be passed to /select/* endpoints
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 16384)
   -search.maxQueryTimeRange value
      The maximum time range, which can be set in the query sent to querying APIs. Queries with bigger time ranges are rejected. See https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits

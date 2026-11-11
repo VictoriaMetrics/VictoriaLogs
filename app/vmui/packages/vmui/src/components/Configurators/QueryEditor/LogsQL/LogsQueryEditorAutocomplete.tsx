@@ -14,6 +14,7 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
   anchorEl,
   caretPosition,
   onSelect,
+  onPointerDownDetails,
 }) => {
   const { extraParams } = useExtraFilters();
 
@@ -48,6 +49,7 @@ const LogsQueryEditorAutocomplete: FC<QueryEditorAutocompleteProps> = ({
       minLength={0}
       offset={{ top: 0, left: 0 }}
       onSelect={handleSelect}
+      onPointerDownDetails={onPointerDownDetails}
       maxDisplayResults={{
         limit: AUTOCOMPLETE_LIMITS.displayResults,
         message: "Please, specify the query more precisely.",

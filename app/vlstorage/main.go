@@ -247,26 +247,37 @@ func Stop() {
 // on their own at RequestHandler().
 func IsAuthKeyProtectedPath(r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+	return authKeyForPath(path) != nil
+}
 
+func authKeyForPath(path string) *flagutil.Password {
 	switch path {
-	case "/internal/log_new_streams",
-		"/internal/force_merge",
-		"/internal/force_flush",
-		"/internal/partition/attach",
+	case "/internal/log_new_streams":
+		return logNewStreamsAuthKey
+	case "/internal/force_merge":
+		return forceMergeAuthKey
+	case "/internal/force_flush":
+		return forceFlushAuthKey
+	case "/internal/partition/attach",
 		"/internal/partition/detach",
 		"/internal/partition/list",
 		"/internal/partition/snapshot/create",
 		"/internal/partition/snapshot/list",
 		"/internal/partition/snapshot/delete",
 		"/internal/partition/snapshot/delete_stale":
-		return true
+		return partitionManageAuthKey
 	}
-	return false
+	return nil
 }
 
 // RequestHandler is a storage request handler.
 func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
+
+	// The paths reported by IsAuthKeyProtectedPath() must verify the -*AuthKey before any other check.
+	if authKey := authKeyForPath(path); authKey != nil && !httpserver.CheckAuthFlag(w, r, authKey) {
+		return true
+	}
 
 	if strings.HasPrefix(path, "/internal/") && r.Method != "POST" {
 		http.Error(w, fmt.Sprintf("Only POST method is allowed; got %s.", r.Method), http.StatusMethodNotAllowed)
@@ -304,10 +315,6 @@ func processLogNewStreams(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, logNewStreamsAuthKey) {
-		return true
-	}
-
 	seconds, err := httputil.GetInt(r, "seconds")
 	if err != nil {
 		httpserver.Errorf(w, r, "cannot parse 'seconds' query arg: %s", err)
@@ -327,10 +334,6 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, forceMergeAuthKey) {
-		return true
-	}
-
 	// Run force merge in background
 	partitionPrefix := r.FormValue("partition_prefix")
 	go func() {
@@ -345,10 +348,6 @@ func processForceMerge(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func processForceFlush(w http.ResponseWriter, r *http.Request) bool {
-	if !httpserver.CheckAuthFlag(w, r, forceFlushAuthKey) {
-		return true
-	}
-
 	logger.Infof("flushing storage to make pending data available for reading")
 
 	if localStorage == nil {
@@ -366,10 +365,6 @@ func processPartitionAttach(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	name := r.FormValue("name")
 	if err := localStorage.PartitionAttach(name); err != nil {
 		httpserver.Errorf(w, r, "%s", err)
@@ -383,10 +378,6 @@ func processPartitionDetach(w http.ResponseWriter, r *http.Request) bool {
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	name := r.FormValue("name")
@@ -404,10 +395,6 @@ func processPartitionList(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	ptNames := localStorage.PartitionList()
 	if ptNames == nil {
 		// This is needed in order to return `[]` instead of `null` to the client.
@@ -422,10 +409,6 @@ func processPartitionSnapshotCreate(w http.ResponseWriter, r *http.Request) bool
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	partitionPrefix := r.FormValue("partition_prefix")
@@ -463,10 +446,6 @@ func processPartitionSnapshotList(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
-	}
-
 	snapshotPaths := localStorage.PartitionSnapshotList()
 	if snapshotPaths == nil {
 		// This is needed in order to return `[]` instead of `null` to the client.
@@ -481,10 +460,6 @@ func processPartitionSnapshotDelete(w http.ResponseWriter, r *http.Request) bool
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	snapshotPath := r.FormValue("path")
@@ -506,10 +481,6 @@ func processPartitionSnapshotDeleteStale(w http.ResponseWriter, r *http.Request)
 	if localStorage == nil {
 		// There are no partitions in non-local storage
 		return false
-	}
-
-	if !httpserver.CheckAuthFlag(w, r, partitionManageAuthKey) {
-		return true
 	}
 
 	maxAge := snapshotsMaxAge.Duration()
@@ -584,15 +555,15 @@ func (*Storage) MustAddRows(lr *logstorage.LogRows) {
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
 	if localStorage != nil {
-		// Optimize the query, which returns last N rows with the biggest timestamps,
+		// Optimize the query, which returns N rows with the biggest or the smallest timestamps,
 		// only at the leaf vlstorage nodes. There is no need in optimizing the query
 		// at vlselect because the optimization usually leads in 20-30 sequentially run
 		// queries - this is slow because of network latencies between vlselect and vlstorage.
 		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
-		qOpt, offset, limit := qctx.Query.GetLastNResultsQuery()
+		qOpt, offset, limit, isDesc := qctx.Query.GetTimeSortedNResultsQuery()
 		if qOpt != nil {
 			qctxOpt := qctx.WithQuery(qOpt)
-			return runOptimizedLastNResultsQuery(localStorage, qctxOpt, offset, limit, writeBlock)
+			return runOptimizedTimeSortedNResultsQuery(localStorage, qctxOpt, offset, limit, isDesc, writeBlock)
 		}
 
 		return localStorage.RunQuery(qctx, writeBlock)

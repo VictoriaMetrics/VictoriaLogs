@@ -298,7 +298,7 @@ func decodeLogRecord(src []byte, fs *logstorage.Fields, fb *fmtBuffer) (string, 
 			if !ok {
 				return "", 0, fmt.Errorf("cannot read Body")
 			}
-			if err := decodeAnyValue(body, fs, fb, ""); err != nil {
+			if err := decodeAnyValue(body, fs, fb, "body", ""); err != nil {
 				return "", 0, fmt.Errorf("cannot decode Body: %w", err)
 			}
 		case 6:
@@ -380,14 +380,15 @@ func decodeKeyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldNameP
 		return nil
 	}
 
-	if err := decodeAnyValue(valueData, fs, fb, fieldName); err != nil {
+	if err := decodeAnyValue(valueData, fs, fb, fieldName, fieldName); err != nil {
 		return fmt.Errorf("cannot decode AnyValue: %w", err)
 	}
 
 	return nil
 }
 
-func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName string) (err error) {
+// decodeAnyValue stores scalar and array values in the fieldName field, while kvlist values are flattened into fields with the kvlistPrefix.
+func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName, kvlistPrefix string) (err error) {
 	// message AnyValue {
 	//   oneof value {
 	//     string string_value = 1;
@@ -456,7 +457,7 @@ func decodeAnyValue(src []byte, fs *logstorage.Fields, fb *fmtBuffer, fieldName 
 			if !ok {
 				return fmt.Errorf("cannot read KeyValueList")
 			}
-			if err := decodeKeyValueList(data, fs, fb, fieldName); err != nil {
+			if err := decodeKeyValueList(data, fs, fb, kvlistPrefix); err != nil {
 				return fmt.Errorf("cannot decode KeyValueList: %w", err)
 			}
 		case 7:

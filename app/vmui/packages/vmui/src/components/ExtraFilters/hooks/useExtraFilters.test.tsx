@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ExtraFilter, ExtraFilterOperator } from "../types";
 import { filterToExpr } from "../utils/buildExprFromExtraFilters";
+import { STREAM_FIELD } from "../../../constants/logFields";
 
 describe("filterToExpr", () => {
   afterEach(() => {
@@ -163,7 +164,7 @@ describe("filterToExpr", () => {
 
   it("returns _stream selector as-is for Equals", () => {
     const expr = filterToExpr({
-      field: "_stream",
+      field: STREAM_FIELD,
       operator: ExtraFilterOperator.Equals,
       value: "{type=\"PushEvent\"}",
     } satisfies ExtraFilter);
@@ -173,7 +174,7 @@ describe("filterToExpr", () => {
 
   it("wraps _stream selector with NOT (...) for NotEquals", () => {
     const expr = filterToExpr({
-      field: "_stream",
+      field: STREAM_FIELD,
       operator: ExtraFilterOperator.NotEquals,
       value: "{type=\"PushEvent\"}",
     } satisfies ExtraFilter);
@@ -185,7 +186,7 @@ describe("filterToExpr", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const expr = filterToExpr({
-      field: "_stream",
+      field: STREAM_FIELD,
       operator: ExtraFilterOperator.Regex,
       value: "{type=~\"Push.*\"}",
     } satisfies ExtraFilter);
@@ -198,7 +199,7 @@ describe("filterToExpr", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const expr = filterToExpr({
-      field: "_stream",
+      field: STREAM_FIELD,
       operator: ExtraFilterOperator.NotRegex,
       value: "{type=~\"Push.*\"}",
     } satisfies ExtraFilter);

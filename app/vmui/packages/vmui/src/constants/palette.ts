@@ -16,7 +16,8 @@ export const darkPalette = {
   "border-color": "rgba(99, 110, 123, 0.5)",
   "color-hover-black": "rgba(0, 0, 0, 0.2)",
   // log hits chart colors
-  "color-log-hits-bar-0": "rgba(255, 255, 255, 0.18)",
+  "color-log-hits-bar-loading": "rgba(255, 255, 255, 0.08)",
+  "color-log-hits-bar-other": "rgba(255, 255, 255, 0.18)",
   "color-log-hits-bar-1": "#FFB74D",
   "color-log-hits-bar-2": "#81C784",
   "color-log-hits-bar-3": "#64B5F6",
@@ -42,7 +43,8 @@ export const lightPalette = {
   "border-color": "rgba(0, 0, 0, 0.15)",
   "color-hover-black": "rgba(0, 0, 0, 0.06)",
   // log hits chart colors
-  "color-log-hits-bar-0": "rgba(0, 0, 0, 0.18)",
+  "color-log-hits-bar-loading": "rgba(0, 0, 0, 0.08)",
+  "color-log-hits-bar-other": "rgba(0, 0, 0, 0.18)",
   "color-log-hits-bar-1": "#FFB74D",
   "color-log-hits-bar-2": "#81C784",
   "color-log-hits-bar-3": "#64B5F6",

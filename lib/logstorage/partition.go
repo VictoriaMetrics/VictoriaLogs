@@ -119,13 +119,13 @@ func mustOpenPartition(s *Storage, path string) *partition {
 //
 // The partition can be deleted if needed after it is closed via mustDeletePartition() call.
 func mustClosePartition(pt *partition) {
+	// Close datadb before indexdb, since datadb background merges may use indexdb until mustCloseDatadb() returns.
+	mustCloseDatadb(pt.ddb)
+	pt.ddb = nil
+
 	// Close indexdb
 	mustCloseIndexdb(pt.idb)
 	pt.idb = nil
-
-	// Close datadb
-	mustCloseDatadb(pt.ddb)
-	pt.ddb = nil
 
 	pt.name = ""
 	pt.path = ""

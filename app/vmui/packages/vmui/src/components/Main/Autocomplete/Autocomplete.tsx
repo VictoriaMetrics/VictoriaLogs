@@ -39,6 +39,7 @@ interface AutocompleteProps {
   onOpenAutocomplete?: (val: boolean) => void
   onFoundOptions?: (val: AutocompleteOptions[]) => void
   onChangeWrapperRef?: (elementRef: RefObject<HTMLElement>) => void
+  onPointerDownDetails?: () => void;
 }
 
 export type AutocompleteFocusOption = {
@@ -68,7 +69,8 @@ const Autocomplete: FC<AutocompleteProps> = ({
   onSelect,
   onOpenAutocomplete,
   onFoundOptions,
-  onChangeWrapperRef
+  onChangeWrapperRef,
+  onPointerDownDetails
 }) => {
   const { isMobile } = useDeviceDetect();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -136,7 +138,10 @@ const Autocomplete: FC<AutocompleteProps> = ({
               <div className="vm-autocomplete__warning"><WarningIcon/>{warningMessage}</div>
             )}
           </div>
-          <AutocompleteDetailsPanel option={foundOptions[focusOption.index]}/>
+          <AutocompleteDetailsPanel
+            option={foundOptions[focusOption.index]}
+            onPointerDownDetails={onPointerDownDetails}
+          />
         </div>
         {showKeyboardHints && !!foundOptions.length && <AutocompleteKeyboardHints/>}
       </div>

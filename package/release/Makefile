@@ -1,6 +1,12 @@
 GITHUB_RELEASE_SPEC_FILE="/tmp/vm-github-release"
 GITHUB_DEBUG_FILE="/tmp/vm-github-debug"
 
+# The public repository has no tags for LTS releases, since they are released from the enterprise repository.
+# So GitHub creates the tag at the master HEAD when the release is published.
+# Then GitHub shows the LTS tag on commits with new features, which aren't included in LTS releases, and this confuses users.
+# Set BASE_TAG=v1.XX.0 for LTS releases, so the tag is created at v1.XX.0 instead.
+BASE_TAG ?= $(TAG)
+
 github-token-check:
 ifndef GITHUB_TOKEN
 	$(error missing GITHUB_TOKEN env var. It must contain github token for VictoriaMetrics project obtained from https://github.com/settings/tokens)
@@ -17,7 +23,7 @@ github-create-release: github-token-check github-tag-check
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: token $(GITHUB_TOKEN)" \
 		https://api.github.com/repos/VictoriaMetrics/VictoriaLogs/releases \
-		-d '{"tag_name":"$(TAG)","name":"$(TAG)","body":"TODO: put here the changelog for $(TAG) release from docs/CHANGELOG.md","draft":true,"prerelease":false,"generate_release_notes":false}'); \
+		-d '{"tag_name":"$(TAG)","target_commitish":"$(shell git rev-parse -q --verify 'refs/tags/$(BASE_TAG)^{commit}')","name":"$(TAG)","body":"TODO: put here the changelog for $(TAG) release from docs/CHANGELOG.md","draft":true,"prerelease":false,"generate_release_notes":false}'); \
 		if [ $${result} = 201 ]; then \
 			release_id=$$(cat $(GITHUB_RELEASE_SPEC_FILE) | grep '"id"' -m 1 | sed -E 's/.* ([[:digit:]]+)\,/\1/'); \
 			printf "Created release $(TAG) with id=$${release_id}\n"; \
@@ -31,7 +37,7 @@ github-upload-assets:
 	@release_id=$$(cat $(GITHUB_RELEASE_SPEC_FILE) | grep '"id"' -m 1 | sed -E 's/.* ([[:digit:]]+)\,/\1/'); \
 	$(foreach file, $(wildcard bin/*.zip), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="application/zip" $(MAKE) github-upload-asset || exit 1;) \
 	$(foreach file, $(wildcard bin/*.tar.gz), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="application/x-gzip" $(MAKE) github-upload-asset || exit 1;) \
-	$(foreach file, $(wildcard bin/*_checksums.txt), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="text/plain" $(MAKE) github-upload-asset || exit 1;) 
+	$(foreach file, $(wildcard bin/*_checksums.txt), FILE=$(file) RELEASE_ID=$${release_id} CONTENT_TYPE="text/plain" $(MAKE) github-upload-asset || exit 1;)
 
 github-upload-asset: github-token-check
 ifndef FILE

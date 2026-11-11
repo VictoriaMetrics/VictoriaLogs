@@ -17,7 +17,7 @@ import { getTenantSearchParams } from "../../../hooks/useTenant";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
-import { TimePeriod } from "../../../types";
+import { TimeParams, TimePeriod } from "../../../types";
 import { timeParamsToDateRange } from "../../../utils/time";
 
 const operator = ExtraFilterOperator.Equals;
@@ -27,10 +27,14 @@ const getQueryFromArray = (field: string, values: string[]) => {
   return `${field}:in(\n${escapeValues.join(",\n")}\n)`;
 };
 
-const OverviewLogs:FC = () => {
+interface Props {
+  period: TimeParams;
+}
+
+const OverviewLogs: FC<Props> = ({ period }) => {
   const [searchParams] = useSearchParams();
 
-  const { period, relativeTime, getUrlParams } = useTimePeriod();
+  const { relativeTime, getUrlParams } = useTimePeriod();
   const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
   const { extraParams } = useExtraFilters();
   const { fieldFilter, fieldValueFilters } = useFieldFilter();
@@ -153,6 +157,7 @@ const OverviewLogs:FC = () => {
           <QueryPageBody
             isPreview
             data={logs}
+            period={period}
             isLoading={isLoading}
           />
         )}

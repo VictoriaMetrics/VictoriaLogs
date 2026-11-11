@@ -9,3 +9,41 @@
   background-color: $color-background-block;
   font-variant-numeric: lining-nums tabular-nums;
 }
+
+.vm-table-cell_expand {
+  width: 24px;
+  padding: calc($padding-small / 2);
+}
+
+.vm-table__expand-btn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease-out;
+
+  &_open {
+    transform: rotate(0deg);
+  }
+
+  svg {
+    width: $font-size;
+    height: $font-size;
+  }
+}
+
+.vm-table-expanded-row > .vm-table-cell_expanded-content {
+  padding: 0;
+}
+
+// pin the panel to the scrollport so it stays visible while the table scrolls
+// horizontally; 100cqw comes from the container declared on the table's scroll
+// wrapper and keeps long values from stretching the panel to the table width
+.vm-table__expanded-panel {
+  position: sticky;
+  left: 0;
+  max-width: 100cqw;
+}

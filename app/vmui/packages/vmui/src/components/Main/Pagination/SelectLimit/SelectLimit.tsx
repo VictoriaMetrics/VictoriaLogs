@@ -76,7 +76,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
   };
 
   const defaultLabel = isMobile ? "Rows" : "Rows per page";
-  const displayLabel = label || defaultLabel;
+  const displayLabel = label ?? defaultLabel;
 
   const defaultValue = limit || emptyValueLabel || "All";
   const displayValue = renderOptionLabel ? renderOptionLabel(limit, true) : defaultValue;
@@ -89,7 +89,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
         ref={buttonRef}
       >
         <div>
-          {displayLabel}: <b>{displayValue}</b>
+          {displayLabel && `${displayLabel}: `}<b>{displayValue}</b>
         </div>
         <ArrowDropDownIcon/>
       </div>
@@ -107,7 +107,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
               variant="text"
               startIcon={<SpinnerIcon/>}
             >
-              loading...
+              {limits.length ? "loading more..." : "loading..."}
             </Button>
           )}
 
@@ -118,13 +118,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
             </div>
           )}
 
-          {!isLoading && !error && limits.length === 0 && (
-            <div className="vm-select-limits__empty">
-              {textNoOptions || "No options available"}
-            </div>
-          )}
-
-          {searchable && !isLoading && !error && !!limits.length && (
+          {searchable && !!limits.length && (
             <div className="vm-select-limits__search">
               <TextField
                 autofocus
@@ -136,7 +130,7 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
           )}
 
           <div className="vm-list vm-select-limits-list">
-            {!isLoading && !error && filteredLimits.map(n => (
+            {filteredLimits.map(n => (
               <div
                 className={classNames({
                   "vm-list-item": true,
@@ -151,6 +145,12 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
               </div>
             ))}
           </div>
+
+          {!isLoading && !filteredLimits.length && (!error || !!limits.length) && (
+            <div className="vm-select-limits__empty">
+              {textNoOptions || "No options available"}
+            </div>
+          )}
         </div>
       </Popper>
     </>

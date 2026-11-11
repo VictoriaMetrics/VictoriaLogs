@@ -3,6 +3,7 @@ import { GRAPH_QUERY_MODE } from "../../../../components/Chart/BarHitsChart/type
 import { useSearchParams } from "react-router-dom";
 import { useHitsChartConfig } from "../../HitsPanel/hooks/useHitsChartConfig";
 import { useHideChart } from "../../HitsPanel/hooks/useHideChart";
+import { useQueryState } from "../../../../state/query/QueryStateContext";
 
 const graphQueryModes = new Set<string>(Object.values(GRAPH_QUERY_MODE));
 
@@ -13,6 +14,7 @@ const isValidMode = (value: string | null): value is GRAPH_QUERY_MODE => {
 export const useHitsTriggers = () => {
   const [searchParams] = useSearchParams();
 
+  const { executeHitsOnceTrigger } = useQueryState();
   const rawMode = searchParams.get("graph_mode");
   const graphQueryMode = isValidMode(rawMode) ? rawMode : GRAPH_QUERY_MODE.hits;
 
@@ -29,6 +31,7 @@ export const useHitsTriggers = () => {
     isChartHidden,
     topHits,
     groupFieldHits,
-    step
-  }), [graphQueryMode, isChartHidden, topHits, groupFieldHits, step]);
+    step,
+    executeHitsOnceTrigger,
+  }), [graphQueryMode, isChartHidden, topHits, groupFieldHits, step, executeHitsOnceTrigger]);
 };
