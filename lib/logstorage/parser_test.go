@@ -1757,6 +1757,21 @@ func TestParseQuery_Success(t *testing.T) {
 	// quoted _time
 	f(`"_time":1h`, `_time:1h`)
 
+	// quoted ordinary fields, which differ from _time, _stream and _stream_id only by case, must remain quoted
+	f(`"_TIME":=up`, `"_TIME":=up`)
+	f(`"_TIME":5m`, `"_TIME":5m`)
+	f(`'_Time':up*`, `"_Time":up*`)
+	f(`"_tImE":(a or b)`, `"_tImE":a or "_tImE":b`)
+	f(`-"_TIME":in(a,b)`, `!"_TIME":in(a,b)`)
+	f(`"_TIME":eq_field(x)`, `"_TIME":eq_field(x)`)
+	f(`"_TIME":le_field(x)`, `"_TIME":le_field(x)`)
+	f(`"_STREAM":foo`, `"_STREAM":foo`)
+	f(`"_Stream":*`, `"_Stream":*`)
+	f(`"_STREAM_ID":0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`, `"_STREAM_ID":0000007b000001c8302bc96e02e54e5524b3a68ec271e55e`)
+	f(`"_Stream_ID":~"x"`, `"_Stream_ID":~x`)
+	f(`* | stats count() if ("_TIME":=up) x`, `* | stats count(*) if ("_TIME":=up) as x`)
+	f(`"_MSG":foo`, `_MSG:foo`)
+
 	// multiple _time filters
 	f(`_time:1h _time:2025Z`, `_time:1h _time:2025Z`)
 	f(`_time:<10h _time:2025Z`, `_time:<10h _time:2025Z`)
