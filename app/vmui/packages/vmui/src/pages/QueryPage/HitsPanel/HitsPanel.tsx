@@ -22,6 +22,7 @@ import { getHitsTimeParams } from "../../../utils/logs";
 
 interface Props {
   query: string;
+  loadedFieldNames?: string[];
   logHits: LogHits[];
   durationMs?: number;
   period: TimeParams;
@@ -32,7 +33,18 @@ interface Props {
   isIterative?: boolean;
 }
 
-const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, isIterative }) => {
+const HitsPanel: FC<Props> = ({
+  query,
+  loadedFieldNames,
+  logHits,
+  durationMs,
+  period,
+  step,
+  error,
+  isLoading,
+  isOverview,
+  isIterative
+}) => {
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
   const [hideChart] = useHideChart();
@@ -126,6 +138,7 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
             logHits={logHits}
             durationMs={durationMs}
             query={query}
+            loadedFieldNames={loadedFieldNames}
             data={data}
             period={period}
             setPeriod={handleSetPeriod}

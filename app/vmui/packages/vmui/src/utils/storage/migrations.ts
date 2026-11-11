@@ -21,8 +21,8 @@ export const migrateStorageToPrefixedKeys = (): StorageMigrationResult => {
 
   for (const key of ALL_STORAGE_KEYS) {
     const legacyKey = key as StorageKeys; // unprefixed
-    const legacyValue = getFromStorage(legacyKey, false);
-    const prefixedValue = getFromStorage(legacyKey, true);
+    const legacyValue = getFromStorage(legacyKey, { withPrefix: false });
+    const prefixedValue = getFromStorage(legacyKey);
 
     if (legacyValue === undefined) {
       res.skipped.push(legacyKey);
@@ -31,14 +31,14 @@ export const migrateStorageToPrefixedKeys = (): StorageMigrationResult => {
 
     // prefixed exists -> keep it, just remove legacy
     if (prefixedValue !== undefined) {
-      removeFromStorage([legacyKey], false);
+      removeFromStorage([legacyKey], { withPrefix: false });
       res.removed.push(legacyKey);
       continue;
     }
 
     // prefixed missing -> copy legacy -> prefixed, then remove legacy
-    saveToStorage(legacyKey, legacyValue, true);
-    removeFromStorage([legacyKey], false);
+    saveToStorage(legacyKey, legacyValue);
+    removeFromStorage([legacyKey], { withPrefix: false });
     res.migrated.push(legacyKey);
   }
 
