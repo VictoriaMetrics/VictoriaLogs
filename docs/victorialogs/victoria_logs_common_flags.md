@@ -108,7 +108,7 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
   -inmemoryDataFlushInterval duration
      The interval for guaranteed saving of in-memory data to disk. The saved data survives unclean shutdowns such as OOM crash, hardware reset, SIGKILL, etc. Bigger intervals may help increase the lifetime of flash storage with limited write cycles (e.g. Raspberry PI). Smaller intervals increase disk IO load. Minimum supported value is 1s (default 5s)
   -insert.concurrency int
-     The average number of concurrent data ingestion requests, which can be sent to every -storageNode (default 2)
+     The maximum number of concurrent data ingestion requests, which can be sent to every -storageNode; requests above this limit are re-routed to other -storageNode nodes (default 2)
   -insert.disable
      Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security
   -insert.disableCompression
