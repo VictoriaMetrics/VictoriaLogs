@@ -1,40 +1,40 @@
-import {FC, useEffect, useMemo, useRef, useState} from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
 import QueryPageBody from "./QueryPageBody/QueryPageBody";
 import QueryPageHeader from "./QueryPageHeader/QueryPageHeader";
 import "./style.scss";
-import {ErrorTypes} from "../../types";
+import { ErrorTypes } from "../../types";
 import HitsPanel from "./HitsPanel/HitsPanel";
-import {useQueryDispatch, useQueryState} from "../../state/query/QueryStateContext";
-import {useExtraFilters} from "../../components/ExtraFilters/hooks/useExtraFilters";
-import {useHitsChartConfig} from "./HitsPanel/hooks/useHitsChartConfig";
-import {useLimitController} from "../../components/Configurators/LogsLimitController/hooks/useLimitController";
-import {useLimitGuard} from "../../components/Configurators/LogsLimitController/hooks/useLimitGuard";
+import { useQueryDispatch, useQueryState } from "../../state/query/QueryStateContext";
+import { useExtraFilters } from "../../components/ExtraFilters/hooks/useExtraFilters";
+import { useHitsChartConfig } from "./HitsPanel/hooks/useHitsChartConfig";
+import { useLimitController } from "../../components/Configurators/LogsLimitController/hooks/useLimitController";
+import { useLimitGuard } from "../../components/Configurators/LogsLimitController/hooks/useLimitGuard";
 import LimitConfirmModal from "../../components/Configurators/LogsLimitController/LimitConfirmModal";
 import FilterSidebar from "../../components/FilterSidebar/FilterSidebar";
-import {useFilterSidebarVisible} from "../../components/FilterSidebar/hooks/useFilterSidebarVisible";
+import { useFilterSidebarVisible } from "../../components/FilterSidebar/hooks/useFilterSidebarVisible";
 import classNames from "classnames";
 import ExtraFiltersPanel from "../../components/ExtraFilters/ExtraFiltersPanel/ExtraFiltersPanel";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import QueryPageAlerts from "./QueryPageAlerts";
-import {useTimePeriod} from "./hooks/useTimePeriod";
-import {DEFAULT_QUERY, useQueryController} from "./hooks/useQueryController";
-import {useQueryPageController} from "./hooks/useQueryPageController";
-import {getUniqueFieldNames} from "../../utils/groupByFields";
+import { useTimePeriod } from "./hooks/useTimePeriod";
+import { DEFAULT_QUERY, useQueryController } from "./hooks/useQueryController";
+import { useQueryPageController } from "./hooks/useQueryPageController";
+import { getUniqueFieldNames } from "../../utils/groupByFields";
 
 const QueryPage: FC = () => {
-  const {isMobile} = useDeviceDetect();
+  const { isMobile } = useDeviceDetect();
 
-  const {queryHasTimeFilter, executeQueryTrigger} = useQueryState();
+  const { queryHasTimeFilter, executeQueryTrigger } = useQueryState();
   const queryDispatch = useQueryDispatch();
+ 
+  const { period, refreshPeriod } = useTimePeriod();
 
-  const {period, refreshPeriod} = useTimePeriod();
+  const { step: { value: step } } = useHitsChartConfig();
 
-  const {step: {value: step}} = useHitsChartConfig();
-
-  const {limit, setLimit} = useLimitController();
-  const {inputQuery, setInputQuery, inputQueryRef, appliedQuery, applyQuery} = useQueryController();
-  const {beforeFetch, modalProps} = useLimitGuard({setLimit});
-  const {cancelAll, logsRequestState, hitsRequestState} = useQueryPageController({query: appliedQuery, beforeFetch});
+  const { limit, setLimit } = useLimitController();
+  const { inputQuery, setInputQuery, inputQueryRef, appliedQuery, applyQuery } = useQueryController();
+  const { beforeFetch, modalProps } = useLimitGuard({ setLimit });
+  const { cancelAll, logsRequestState, hitsRequestState } = useQueryPageController({ query: appliedQuery, beforeFetch });
 
   const isLoading = logsRequestState.isLoading || hitsRequestState.isLoading;
 
@@ -51,7 +51,7 @@ const QueryPage: FC = () => {
     removeStreamFilterByValue,
   } = useExtraFilters();
 
-  const {isVisible: isVisibleFilterSidebar, setHidden: onCloseFilterSidebar} = useFilterSidebarVisible();
+  const { isVisible: isVisibleFilterSidebar, setHidden: onCloseFilterSidebar } = useFilterSidebarVisible();
 
   const handleUpdateQuery = (nextQuery?: string) => {
     const queryToApply = (nextQuery ?? inputQueryRef.current).trim() || DEFAULT_QUERY;
@@ -59,7 +59,7 @@ const QueryPage: FC = () => {
     setQueryError("");
 
     applyQuery(queryToApply);
-    queryDispatch({type: "RUN_QUERY"});
+    queryDispatch({ type: "RUN_QUERY" });
   };
 
   const handleExecuteQuery = (nextQuery?: string) => {
