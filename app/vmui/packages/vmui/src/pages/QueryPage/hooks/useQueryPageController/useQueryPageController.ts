@@ -79,7 +79,7 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
     const { result, didTimeout } = await runWithTimeout({
       run: onStart => fetchLogs({ ...params, onStart }),
       abort: logsRequestState.abort,
-      isCurrent: () => syncId === syncIdRef.current,
+      isCurrent: () => syncId === syncIdRef.current && !latestTriggersRef.current.hitsTriggers.isChartHidden,
       timeoutMs,
     });
 
