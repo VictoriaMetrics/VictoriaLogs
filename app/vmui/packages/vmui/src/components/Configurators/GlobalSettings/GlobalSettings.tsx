@@ -12,6 +12,7 @@ import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
 import QueryTimeOverride from "./QueryTimeOverride/QueryTimeOverride";
 import BrowserTabController from "./BrowserTabController/BrowserTabController";
+import LargeLoadWarning from "./LargeLoadWarning/LargeLoadWarning";
 import IncrementalHitsSettings
   from "./IncrementalHitsSettings/IncrementalHitsSettings";
 import { useAppState } from "../../../state/common/StateContext";
@@ -45,6 +46,10 @@ const GlobalSettings: FC = () => {
     {
       show: true,
       component: <QueryTimeOverride/>
+    },
+    {
+      show: true,
+      component: <LargeLoadWarning/>
     },
     {
       show: true,

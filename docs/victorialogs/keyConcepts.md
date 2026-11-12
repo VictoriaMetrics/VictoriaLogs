@@ -17,6 +17,8 @@ aliases:
 ---
 ## Data model
 
+{{< youtube ZM6rUTJzqow >}}
+
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) works with both structured and unstructured logs.
 Every log entry must contain at least the [log message field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field). An arbitrary number of additional `key=value` fields can be added to the log entry.
 See [an overview of the message, time and stream concepts](https://victoriametrics.com/blog/victorialogs-concepts-message-time-stream/#victorialogs-concepts) for a high-level walkthrough of these fields.

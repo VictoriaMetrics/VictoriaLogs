@@ -253,6 +253,22 @@ func (app *Vlcluster) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts)
 	return app.selectNode.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
 }
 
+// LiveTail sends HTTP POST request to /select/logsql/tail endpoint and returns the response.
+//
+// The caller must call Close on the returned response.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
+func (app *Vlcluster) LiveTail(t *testing.T, query string, opts LiveTailOpts) *LiveTailResponse {
+	t.Helper()
+
+	values := opts.asURLValues()
+	values.Add("query", query)
+
+	url := fmt.Sprintf("http://%s/select/logsql/tail", app.selectNode.httpListenAddr)
+	res, cancel := app.selectNode.cli.postFormWithTenantStream(t, opts.AccountID, opts.ProjectID, url, values)
+	return newLiveTailResponse(res, cancel)
+}
+
 // StorageNode returns the i-th storage node, allowing direct log ingestion that bypasses the insert node.
 func (app *Vlcluster) StorageNode(i int) *Vlsingle {
 	return app.storageNodes[i]

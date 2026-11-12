@@ -189,7 +189,7 @@ func (fc *Tailer) process(lf *logFile, proc Processor) {
 	defer lf.close()
 	defer proc.MustClose()
 
-	bt := timeutil.NewBackoffTimer(time.Millisecond*100, time.Second*10)
+	bt := timeutil.NewBackoffTimer(200*time.Millisecond, 2*time.Second)
 
 	for {
 		if needStop(fc.stopCh) {
@@ -395,9 +395,11 @@ func openFileWithInode(p string, ignorePermissionErr bool) (*os.File, uint64, bo
 }
 
 // tryResolveSymlink resolves symlink to its target path.
+//
+// Relative symlink targets are resolved against the directory containing the symlink.
 // If symlink cannot be resolved (e.g., symlink is not valid), returns the original path.
 func tryResolveSymlink(symlink string) string {
-	resolvedPath, err := os.Readlink(symlink)
+	resolvedPath, err := filepath.EvalSymlinks(symlink)
 	if err != nil {
 		return symlink
 	}

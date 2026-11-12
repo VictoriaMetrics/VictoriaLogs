@@ -84,6 +84,16 @@ By default the `/select/logsql/query` returns all the log entries matching the g
   curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10'
   ```
 
+  Pass `sort_direction=asc` in order to return up to 10 log entries with the smallest `_time` values instead:
+
+  ```sh
+  curl http://localhost:9428/select/logsql/query -d 'query=error' -d 'limit=10' -d 'sort_direction=asc'
+  ```
+
+  The `sort_direction` query arg can be used only together with the `limit` query arg. It is ignored if the `query` doesn't return the `_time` field
+  or changes the order of the returned logs, for example, via [`stats`](https://docs.victoriametrics.com/victorialogs/logsql/#stats-pipe)
+  or [`sort`](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) pipes.
+
 - By adding [`limit` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#limit-pipe) to the query. For example, the following command returns up to 10 **random** log entries
   with the `error` [word](https://docs.victoriametrics.com/victorialogs/logsql/#word) in the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field):
 
@@ -98,7 +108,7 @@ By default the `/select/logsql/query` returns all the log entries matching the g
 
 If the `limit=N` query arg is passed to `/select/logsql/query`, then it may also accept the `offset=M` query arg. This allows building a simple pagination by selecting
 up to `<N>` matching logs with the biggest [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) values on the selected time range,
-while skipping `<M>` logs with the biggest `_time` value.
+while skipping `<M>` logs with the biggest `_time` values. If `sort_direction=asc` query arg is passed, then the logs with the smallest `_time` values are selected and skipped instead.
 
 The `/select/logsql/query` endpoint returns [a stream of JSON lines](https://jsonlines.org/),
 where each line contains JSON-encoded log entry in the form `{field1="value1",...,fieldN="valueN"}`.
@@ -118,7 +128,8 @@ without worrying about resource usage at VictoriaLogs side. See [these docs](htt
 The returned lines aren't sorted by default, since sorting disables the ability to send matching log entries to response stream as soon as they are found.
 Query results can be sorted in the following ways:
 
-- By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned in the response.
+- By passing `limit=N` query arg to `/select/logsql/query`. The up to `N` most recent matching log entries are returned by default.
+  Pass `sort_direction=asc` to return up to `N` oldest matching log entries instead.
 - By adding [`sort` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#sort-pipe) to the query.
 - By using Unix `sort` command at client side according to [these docs](https://docs.victoriametrics.com/victorialogs/querying/#command-line).
 
@@ -232,6 +243,8 @@ It isn't recommended setting too low value for `refresh_interval` query arg, sin
 **Performance tip**: live tailing works the best if it matches newly ingested logs at relatively slow rate (e.g. up to 1K matching logs per second),
 e.g. it is optimized for the case when real humans inspect the output of live tailing in the real time. If live tailing returns logs at too high rate,
 then it is recommended adding more specific [filters](https://docs.victoriametrics.com/victorialogs/logsql/#filters) to the `<query>`, so it matches less logs.
+Live tailing returns an error if the `<query>` matches more than 10000 logs at a single check for new logs (including a few seconds of already returned logs),
+since such a query may result in excess memory usage.
 
 By default the `(AccountID=0, ProjectID=0)` [tenant](https://docs.victoriametrics.com/victorialogs/#multitenancy) is queried.
 If you need querying other tenant, then specify it via `AccountID` and `ProjectID` http request headers. For example, the following query performs live tailing
@@ -1134,6 +1147,9 @@ VictoriaLogs accepts the following formats for the `hidden_fields_filters` query
 - JSON array with field names or field name prefixes ending with `*`. For example, `hidden_fields_filters=["pass*","pin"]` is equivalent to the previous example.
   JSON array formatting allows specifying field names with commas contrary to the comma-separated formatting.
 
+Multiple `hidden_fields_filters` args may be passed in a single request. The fields from all these args are hidden.
+For example, `hidden_fields_filters=pass*&hidden_fields_filters=pin` is equivalent to the previous examples.
+
 Make sure that the `hidden_fields_filters` value is properly encoded with [percent encoding](https://en.wikipedia.org/wiki/Percent-encoding).
 
 The `_stream` field uniquely identifies a [log stream](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields), so the `hidden_fields_filters`
@@ -1201,7 +1217,7 @@ Try [playground for VictoriaLogs Grafana datasource](https://play-grafana.victor
 
 ## Command-line
 
-VictoriaLogs provides `vlogsqcli` interactive command-line tool for querying logs. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
+VictoriaLogs provides `vlogscli`, an interactive command-line tool for querying logs. See [how to use vlogscli](https://docs.victoriametrics.com/victorialogs/querying/vlogscli/).
 
 VictoriaLogs [querying API](https://docs.victoriametrics.com/victorialogs/querying/#querying-logs) integrates well with `curl`
 and other Unix command-line tools because of the following features:

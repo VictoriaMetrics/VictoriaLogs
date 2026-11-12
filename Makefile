@@ -38,6 +38,11 @@ publish: \
 	publish-vlagent \
 	publish-vlogscli
 
+package: \
+	package-victoria-logs \
+	package-vlagent \
+	package-vlogscli
+
 vlutils: \
 	vlagent \
 	vlogscli
