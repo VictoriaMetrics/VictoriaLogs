@@ -5612,6 +5612,9 @@ options(concurrency=2) _time:1d | count_uniq(user_id)
 
 The `concurrency` option is applied individually to every `vlstorage` node in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/).
 
+The `concurrency` option cannot exceed the `max_concurrency` query arg passed to [HTTP querying APIs](https://docs.victoriametrics.com/victorialogs/querying/#http-api).
+See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits).
+
 See also [`parallel_readers` query option](https://docs.victoriametrics.com/victorialogs/logsql/#parallel_readers-query-option).
 
 ### `parallel_readers` query option

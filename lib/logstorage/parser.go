@@ -891,6 +891,18 @@ func (q *Query) AddTimeFilter(start, end int64) {
 	})
 }
 
+// SetMaxConcurrency limits the concurrency for q and all its subqueries to maxConcurrency.
+//
+// It only lowers the concurrency set via options(concurrency=N), and never raises it.
+func (q *Query) SetMaxConcurrency(maxConcurrency uint) {
+	q.visitSubqueries(func(q *Query) {
+		if q.opts.concurrency == 0 || q.opts.concurrency > maxConcurrency {
+			q.opts.concurrency = maxConcurrency
+			q.opts.needPrint = true
+		}
+	})
+}
+
 func (q *Query) addTimeFilterNoSubqueries(start, end int64) {
 	if q.opts.ignoreGlobalTimeFilter != nil && *q.opts.ignoreGlobalTimeFilter {
 		return
