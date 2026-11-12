@@ -118,11 +118,11 @@ const FilterSidebarField: FC<Props> = ({
   }, [filtersByName]);
 
   const isCheckedAll = useMemo(() => {
-    if (!streamValues.length) return false;
-    const allValues = streamValues.map(v => v.value);
+    if (isServerSearch || isLimitExceeded || !streamValues.length) return false;
+
     const checkedValues = filtersByName.map(f => f.value);
-    return allValues.every(v => checkedValues.includes(v));
-  }, [streamValues, filtersByName]);
+    return streamValues.every(v => checkedValues.includes(v.value));
+  }, [streamValues, filtersByName, isServerSearch, isLimitExceeded]);
 
   const handleToggleValues = () => {
     setValuesOpen(value => !value);
