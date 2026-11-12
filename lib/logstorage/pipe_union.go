@@ -30,17 +30,18 @@ type pipeUnion struct {
 	runQuery runUnionQueryFunc
 }
 
-func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool) (pipe, error) {
+func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool) (pipe, uint64, error) {
+	var memReserved uint64
 	rows := pu.rows
 	if eagerExecute && rows == nil {
 		qctxLocal := qctx.WithQuery(pu.q)
 
 		var err error
-		rows, err = getRows(qctxLocal, func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
+		rows, memReserved, err = getRows(qctxLocal, func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
 			return runQuery(qctx.Context, qctx.Query, writeBlock)
 		})
 		if err != nil {
-			return nil, fmt.Errorf("cannot execute query at pipe [%s]: %w", pu, err)
+			return nil, 0, fmt.Errorf("cannot execute query at pipe [%s]: %w", pu, err)
 		}
 	}
 
@@ -51,7 +52,7 @@ func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFu
 	puNew.rows = rows
 	puNew.runQuery = runQuery
 
-	return &puNew, nil
+	return &puNew, memReserved, nil
 }
 
 func (pu *pipeUnion) String() string {
