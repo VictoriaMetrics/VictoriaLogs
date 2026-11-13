@@ -3,6 +3,8 @@ version: "3"
 services:
   vlogs:
     image: docker.io/victoriametrics/victoria-logs:v1.54.0
+    healthcheck:
+      test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     volumes:
       - vlogs:/vlogs
     ports:

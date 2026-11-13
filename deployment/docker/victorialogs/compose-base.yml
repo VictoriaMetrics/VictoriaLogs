@@ -2,6 +2,8 @@ services:
   # meta service will be ignored by compose
   .victorialogs:
     image: docker.io/victoriametrics/victoria-logs:v1.54.0
+    healthcheck:
+      test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
       - -storageDataPath=/vlogs
       - -loggerFormat=json
@@ -42,6 +44,8 @@ services:
 
   vlagent:
     image: victoriametrics/vlagent:v1.54.0
+    healthcheck:
+      test: ["CMD", "/vlagent-prod", "-healthcheck"]
     volumes:
       - vlagent:/vlagent
     command:

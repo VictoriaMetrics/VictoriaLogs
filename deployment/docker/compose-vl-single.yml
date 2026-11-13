@@ -41,6 +41,8 @@ services:
     image: victoriametrics/victoria-logs:v1.54.0
     ports:
       - "9428:9428"
+    healthcheck:
+      test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
       - "--storageDataPath=/vlogs"
     volumes:
