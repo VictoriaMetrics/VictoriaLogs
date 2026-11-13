@@ -12,6 +12,7 @@ interface FetchOptions {
   period: TimeParams;
   query?: string;
   extraParams?: URLSearchParams;
+  filter?: string;
 }
 
 export const useFetchStreamFieldNames = () => {
@@ -39,7 +40,7 @@ export const useFetchStreamFieldNames = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string>("");
 
-  const fetchStreamFieldNames = useCallback(async (options: FetchOptions): Promise<void> => {
+  const fetchStreamFieldNames = useCallback(async (options: FetchOptions): Promise<LogsFieldValues[] | undefined> => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     const { signal } = abortRef.current;
@@ -56,14 +57,19 @@ export const useFetchStreamFieldNames = () => {
         ignore_pipes: "1",
         query,
       });
+
       options.extraParams?.forEach((v, k) => params.append(k, v));
+
+      if (options.filter) {
+        params.set("filter", options.filter.trim());
+      }
 
       const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
       const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
 
       if (cacheRef.current.key === cacheKey) {
         setStreamFieldNames(cacheRef.current.state);
-        return;
+        return cacheRef.current.state;
       }
 
       const url = `${serverUrl}/select/logsql/stream_field_names`;
@@ -76,6 +82,7 @@ export const useFetchStreamFieldNames = () => {
 
       if (!response.ok) {
         const errorResponse = await response.text();
+        if (signal.aborted) return;
         const e = `${response.status} ${response.statusText}: ${errorResponse}`;
         setStreamFieldNames([]);
         console.error(e);
@@ -84,18 +91,21 @@ export const useFetchStreamFieldNames = () => {
       }
 
       const data: { values: LogsFieldValues[] } = await response.json();
+      if (signal.aborted) return;
       setStreamFieldNames(data.values);
       dispatch({
         type: "SET_STREAM_FIELD_NAMES",
         payload: { rows: data.values, key: cacheKey }
       });
+      return data.values;
     } catch (err) {
+      if (signal.aborted) return;
       if (err instanceof Error && err.name === "AbortError") return;
       console.error(err);
       setError(err as Error);
       setStreamFieldNames([]);
     } finally {
-      setLoading(false);
+      if (abortRef.current?.signal === signal) setLoading(false);
     }
   }, [serverUrl, tenant, dispatch]);
 

@@ -3,13 +3,9 @@ import useEventListener from "../../../hooks/useEventListener";
 import { getFromStorage, saveToStorage } from "../../../utils/storage";
 import { toPrefixedKey } from "../../../utils/storage/utils";
 import { SortOptions } from "../types";
+import { DEFAULT_FILTER_SIDEBAR_SORT } from "../constants";
 
 const SORT_STORAGE_KEY = "LOGS_FILTER_SIDEBAR_SORT";
-
-export const DEFAULT_FILTER_SIDEBAR_SORT: SortOptions = {
-  by: "hits",
-  direction: "desc",
-};
 
 const isSortOptions = (value: unknown): value is SortOptions => {
   if (!value || typeof value !== "object") return false;

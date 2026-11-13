@@ -11,6 +11,7 @@ import { useFetchHits } from "../useFetchHits";
 import type { FetchHitsParams, FetchHitsResult } from "../useFetchHits";
 import { useDebounceCallback } from "../../../../hooks/useDebounceCallback";
 import { useQueryTimeSync } from "./useQueryTimeSync";
+import { useQueryDispatch } from "../../../../state/query/QueryStateContext";
 import { addQueryToHistoryStorage } from "../../../../components/QueryHistory/utils";
 import { useIncrementalTimeout } from "../../HitsPanel/hooks/useIncrementalTimeout";
 import { LogsPhase, QueryControllerOptions, TriggersState } from "./types";
@@ -25,6 +26,7 @@ import {
 } from "./utils";
 
 export const useQueryPageController = (props: QueryControllerOptions) => {
+  const queryDispatch = useQueryDispatch();
   const { incrementalTimeoutMs } = useIncrementalTimeout();
 
   const { limit } = useLimitController();
@@ -174,6 +176,8 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
       return;
     }
 
+    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: baseTriggers.period });
+
     if (!shouldRunLogs && !shouldRunHits) {
       return;
     }
@@ -295,6 +299,10 @@ export const useQueryPageController = (props: QueryControllerOptions) => {
       hitsTriggers,
     });
   }, [baseTriggers, logsTriggers, hitsTriggers, debouncedSyncQueries]);
+
+  useEffect(() => {
+    queryDispatch({ type: "SET_APPLIED_PERIOD", payload: null });
+  }, [baseTriggers]);
 
   return {
     cancelAll,

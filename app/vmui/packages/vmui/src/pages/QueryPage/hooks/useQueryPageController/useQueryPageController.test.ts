@@ -650,6 +650,7 @@ describe("useQueryPageController: logs timeout fallback", () => {
     expect(mocks.fetchLogs).not.toHaveBeenCalled();
     expect(mocks.fetchHits).not.toHaveBeenCalled();
 
+    mocks.dispatch.mockClear();
     await act(async () => { finishTime[0](undefined); });
     expect(mocks.dispatch).not.toHaveBeenCalled();
 
