@@ -27,4 +27,4 @@ to [the latest available releases](https://docs.victoriametrics.com/victorialogs
 
 ## Currently supported LTS release lines
 
-- v1.52.x - the latest one is [v1.52.1 LTS release](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.1)
+- v1.52.x - the latest one is [v1.52.2 LTS release](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.2)
