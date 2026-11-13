@@ -323,6 +323,24 @@ See also:
 
 - [Replacing substrings in text fields](https://docs.victoriametrics.com/victorialogs/logsql/#replace-pipe)
 
+## How to skip logs with empty fields?
+
+Use [`fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) for selecting the fields to check,
+and then [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe) with `NOT *:""` filter.
+For example, the following query skips logs where [`extract` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#extract-pipe)
+couldn't fill `username` or `user_id` field:
+
+```logsql
+_time:5m | extract "username=<username>, user_id=<user_id>," | fields _msg, username, user_id | filter NOT *:""
+```
+
+Note that [`drop_empty_fields` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#drop_empty_fields-pipe) drops empty fields, not logs.
+
+See also:
+
+- [Searching over multiple fields](https://docs.victoriametrics.com/victorialogs/logsql/#searching-over-multiple-fields)
+- [Empty value filter](https://docs.victoriametrics.com/victorialogs/logsql/#empty-value-filter)
+
 ## How to filter out data after stats calculation?
 
 Use [`filter` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#filter-pipe). For example, the following query
