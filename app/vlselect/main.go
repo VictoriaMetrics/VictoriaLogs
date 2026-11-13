@@ -3,10 +3,13 @@ package vlselect
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
@@ -42,6 +45,11 @@ var (
 	logSlowQueryDuration = flag.Duration("search.logSlowQueryDuration", 5*time.Second,
 		"Log queries with execution time exceeding this value. Zero disables slow query logging")
 	vmalertProxyURL = flag.String("vmalert.proxyURL", "", "Optional URL for proxying requests to vmalert; see https://docs.victoriametrics.com/victorialogs/#vmalert")
+
+	tenantAliases = flagutil.NewArrayString("tenantAliases", "Optional list of accountID:projectID=alias entries with human-readable names for the given tenants. "+
+		"The aliases are returned by the /select/tenant_aliases endpoint and are intended for displaying tenant names at VictoriaLogs web UI. "+
+		"For example, -tenantAliases='0:0=k8s,0:1=nginx-access'. The aliases do not affect the way tenants are queried; "+
+		"see https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases")
 )
 
 // InitSecretFlags registers secret flags defined under `vlselect` pkg.
@@ -67,6 +75,9 @@ func getDefaultMaxConcurrentRequests() int {
 
 // Init initializes vlselect
 func Init() {
+	// Verify -tenantAliases at startup instead of failing at the first request to /select/tenant_aliases.
+	_ = getTenantAliases()
+
 	concurrencyLimitCh = make(chan struct{}, *maxConcurrentRequests)
 
 	vmalertproxy.Init(*vmalertProxyURL)
@@ -105,6 +116,118 @@ var vmuiFileServer = http.FileServer(http.FS(vmuiFiles))
 func IsAuthKeyProtectedPath(r *http.Request) bool {
 	path := strings.ReplaceAll(r.URL.Path, "//", "/")
 	return strings.HasPrefix(path, "/delete/")
+}
+
+// tenantAlias associates a human-readable name with the given tenant id.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases
+type tenantAlias struct {
+	AccountID uint32 `json:"account_id"`
+	ProjectID uint32 `json:"project_id"`
+	Alias     string `json:"alias"`
+}
+
+// getTenantAliases returns tenant aliases set via the -tenantAliases command-line flag.
+var getTenantAliases = sync.OnceValue(func() []tenantAlias {
+	aliases, err := parseTenantAliases(*tenantAliases)
+	if err != nil {
+		logger.Fatalf("invalid -tenantAliases: %s", err)
+	}
+	return aliases
+})
+
+// parseTenantAliases parses `accountID:projectID=alias` entries from the -tenantAliases command-line flag.
+//
+// The result is sorted by tenant id, so the /select/tenant_aliases response doesn't depend on the order of the flag values.
+func parseTenantAliases(a []string) ([]tenantAlias, error) {
+	m := make(map[logstorage.TenantID]string, len(a))
+	for _, s := range a {
+		tenantIDStr, alias, ok := strings.Cut(s, "=")
+		if !ok {
+			return nil, fmt.Errorf("missing `=` delimiter in %q; expecting accountID:projectID=alias", s)
+		}
+		// ParseTenantID treats an empty accountID or projectID as 0 without an error,
+		// so ":1=foo" would silently alias tenant 0:1 and "=foo" tenant 0:0. Reject
+		// those forms instead of labelling a tenant the operator did not name.
+		tenantIDStr = strings.TrimSpace(tenantIDStr)
+		if tenantIDStr == "" || strings.HasPrefix(tenantIDStr, ":") || strings.HasSuffix(tenantIDStr, ":") {
+			return nil, fmt.Errorf("missing accountID or projectID in %q; expecting accountID:projectID=alias", s)
+		}
+		tenantID, err := logstorage.ParseTenantID(tenantIDStr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse tenant id from %q: %w", s, err)
+		}
+		alias = strings.TrimSpace(alias)
+		if alias == "" {
+			return nil, fmt.Errorf("missing alias in %q; expecting accountID:projectID=alias", s)
+		}
+		m[tenantID] = alias
+	}
+
+	aliases := make([]tenantAlias, 0, len(m))
+	for tenantID, alias := range m {
+		aliases = append(aliases, tenantAlias{
+			AccountID: tenantID.AccountID,
+			ProjectID: tenantID.ProjectID,
+			Alias:     alias,
+		})
+	}
+	sort.Slice(aliases, func(i, j int) bool {
+		if aliases[i].AccountID != aliases[j].AccountID {
+			return aliases[i].AccountID < aliases[j].AccountID
+		}
+		return aliases[i].ProjectID < aliases[j].ProjectID
+	})
+	return aliases, nil
+}
+
+// processTenantAliasesRequest processes /select/tenant_aliases request.
+//
+// See https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases
+func processTenantAliasesRequest(w http.ResponseWriter, r *http.Request) {
+	writeTenantAliases(w, r, getTenantAliases())
+}
+
+// writeTenantAliases writes the given aliases to w in JSON format, keeping only the aliases
+// visible to the tenant the request r is restricted to.
+func writeTenantAliases(w http.ResponseWriter, r *http.Request, aliases []tenantAlias) {
+	if r.Header.Get("AccountID") != "" || r.Header.Get("ProjectID") != "" {
+		// The request is restricted to a single tenant - usually at vmauth side according to
+		// https://docs.victoriametrics.com/victoriametrics/vmauth/#modifying-http-headers .
+		// Return the alias for this tenant only, so such clients cannot discover the names of other tenants.
+		// Unlike /select/tenant_ids, these requests aren't rejected - the client already knows its own tenant id,
+		// while the web UI needs the alias in order to display the tenant it is restricted to.
+		tenantID, err := logstorage.GetTenantIDFromRequest(r)
+		if err != nil {
+			httpserver.Errorf(w, r, "cannot obtain tenantID: %s", err)
+			return
+		}
+		aliases = getTenantAliasesForTenantID(aliases, tenantID)
+	}
+
+	data, err := json.Marshal(aliases)
+	if err != nil {
+		httpserver.Errorf(w, r, "cannot marshal tenant aliases to JSON: %s", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, err := w.Write(data); err != nil {
+		httpserver.Errorf(w, r, "cannot send response to the client: %s", err)
+		return
+	}
+}
+
+// getTenantAliasesForTenantID returns aliases for the given tenantID.
+func getTenantAliasesForTenantID(aliases []tenantAlias, tenantID logstorage.TenantID) []tenantAlias {
+	result := make([]tenantAlias, 0, 1)
+	for _, a := range aliases {
+		if a.AccountID == tenantID.AccountID && a.ProjectID == tenantID.ProjectID {
+			result = append(result, a)
+		}
+	}
+	return result
 }
 
 // RequestHandler handles select requests for VictoriaLogs
@@ -396,6 +519,10 @@ func processSelectRequest(ctx context.Context, w http.ResponseWriter, r *http.Re
 		logsql.ProcessTenantIDsRequest(ctx, w, r)
 		tenantIDsDuration.UpdateDuration(startTime)
 		return true
+	case "/select/tenant_aliases":
+		tenantAliasesRequests.Inc()
+		processTenantAliasesRequest(w, r)
+		return true
 	default:
 		return false
 	}
@@ -534,6 +661,9 @@ var (
 
 	tenantIDsRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_ids"}`)
 	tenantIDsDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/select/tenant_ids"}`)
+
+	// no need to track the duration for tenant_aliases requests, since they are instant
+	tenantAliasesRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/tenant_aliases"}`)
 
 	// no need to track duration for tail requests, as they usually take long time
 	logsqlTailRequests = metrics.NewCounter(`vl_http_requests_total{path="/select/logsql/tail"}`)

@@ -32,6 +32,7 @@ VictoriaLogs provides the following HTTP endpoints:
 - [`/select/logsql/field_names`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-names) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) names.
 - [`/select/logsql/field_values`](https://docs.victoriametrics.com/victorialogs/querying/#querying-field-values) for querying [log field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model) values.
 - [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants) for querying [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy) across the stored data.
+- [`/select/tenant_aliases`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases) for querying human-readable names of [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy).
 
 See also:
 
@@ -966,6 +967,39 @@ Example response returned by the `/select/tenant_ids` endpoint:
   }
 ]
 ```
+
+### Querying tenant aliases
+
+VictoriaLogs provides `/select/tenant_aliases` endpoint, which returns human-readable names for [tenants](https://docs.victoriametrics.com/victorialogs/#multitenancy).
+The names are set via the `-tenantAliases` command-line flag:
+
+```sh
+/path/to/victoria-logs -tenantAliases='0:0=k8s,0:1=nginx-access'
+```
+
+Example response returned by the `/select/tenant_aliases` endpoint:
+
+```json
+[
+  {
+    "account_id": 0,
+    "project_id": 0,
+    "alias": "k8s"
+  },
+  {
+    "account_id": 0,
+    "project_id": 1,
+    "alias": "nginx-access"
+  }
+]
+```
+
+Unlike the [`/select/tenant_ids`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenants) endpoint, this endpoint can be called
+with the `AccountID` and `ProjectID` request headers set. In this case it returns the alias for the requested tenant only, so clients restricted
+to a single tenant at [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) side can see the name of their tenant without seeing
+the names of other tenants. Tenants without an alias are returned as an empty list.
+
+The aliases do not affect the way logs are ingested and queried - tenants are still identified by the `AccountID` and `ProjectID` request headers.
 
 ### Querying field names
 

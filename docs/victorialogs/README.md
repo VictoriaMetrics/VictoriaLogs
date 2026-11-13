@@ -504,6 +504,10 @@ If `AccountID` and/or `ProjectID` request headers aren't set, then the default `
 
 VictoriaLogs has very low overhead for per-tenant management, so it is OK to have thousands of tenants in a single VictoriaLogs instance.
 
+Tenants can be given human-readable names via the `-tenantAliases` command-line flag, e.g. `-tenantAliases='0:0=k8s,0:1=nginx-access'`.
+These names are returned by the [`/select/tenant_aliases`](https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases) endpoint.
+They do not affect the way logs are ingested and queried.
+
 VictoriaLogs doesn't perform per-tenant authorization. Use [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/) or similar tools for per-tenant authorization.
 See [Security and Load balancing docs](https://docs.victoriametrics.com/victorialogs/security-and-lb/) for details.
 

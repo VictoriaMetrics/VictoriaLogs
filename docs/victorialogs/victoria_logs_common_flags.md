@@ -479,6 +479,10 @@ See the docs at https://docs.victoriametrics.com/victorialogs/
      Whether to add remote ip address as 'remote_ip' log field for syslog messages ingested via the corresponding -syslog.listenAddr.unix. See https://docs.victoriametrics.com/victorialogs/data-ingestion/syslog/#capturing-remote-ip-address
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to false.
+  -tenantAliases array
+     Optional list of accountID:projectID=alias entries with human-readable names for the given tenants. The aliases are returned by the /select/tenant_aliases endpoint and are intended for displaying tenant names at VictoriaLogs web UI. For example, -tenantAliases='0:0=k8s,0:1=nginx-access'. The aliases do not affect the way tenants are queried; see https://docs.victoriametrics.com/victorialogs/querying/#querying-tenant-aliases
+     Supports an array of values separated by comma or specified via multiple flags.
+     Each array item can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -tls array
      Whether to enable TLS for incoming HTTP requests at the given -httpListenAddr (aka https). -tlsCertFile and -tlsKeyFile must be set if -tls is set. See also -mtls
      Supports array of values separated by comma or specified via multiple flags.
