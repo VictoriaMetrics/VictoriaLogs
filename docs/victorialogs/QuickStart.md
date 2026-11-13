@@ -207,7 +207,7 @@ docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
   docker.io/victoriametrics/victoria-logs:v1.53.0 -storageDataPath=victoria-logs-data
 ```
 
-The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "#" %}} for Docker `HEALTHCHECK` instead.
+The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "v1.54.0" %}} for Docker `HEALTHCHECK` instead.
 It checks that the running VictoriaLogs accepts connections at `-httpListenAddr` and exits with non-zero code if the check fails.
 Pass the same `-httpListenAddr` as the checked process has. For example, in Docker Compose:
 

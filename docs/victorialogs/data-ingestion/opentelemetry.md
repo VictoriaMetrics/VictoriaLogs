@@ -41,7 +41,7 @@ logExporter, err := otlploghttp.New(ctx,
 ```
 
 VictoriaLogs uses the log body as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
-The log message can be taken from other fields via `VL-Msg-Field` HTTP header if needed. In this case the log body is stored in the `body` field{{% available_from "#" %}}.
+The log message can be taken from other fields via `VL-Msg-Field` HTTP header if needed. In this case the log body is stored in the `body` field{{% available_from "v1.54.0" %}}.
 For example, the following config uses the `msg` log record attribute as the log message, and falls back to the log body if the `msg` attribute is missing:
 
 ```go
