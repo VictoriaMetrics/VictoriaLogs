@@ -14,6 +14,9 @@ func TestParsePipeMathSuccess(t *testing.T) {
 	f(`math -123 as a`)
 	f(`math 12.345KB as a`)
 	f(`math (-2 + 2) as a`)
+	f(`math (1 & 2 + 3 * 4) as a`)
+	f(`math (1 or 2 xor 3 & 4 + 5 * 6 ^ 7) as a`)
+	f(`math (0 & 0 + 0 % 0) as a`)
 	f(`math x as a, z as y`)
 	f(`math (foo / bar + baz * abc % -45ms) as a`)
 	f(`math (foo / (bar + baz) * abc ^ 2) as a`)
@@ -73,6 +76,15 @@ func TestPipeMath(t *testing.T) {
 		t.Helper()
 		expectPipeResults(t, pipeStr, rows, rowsExpected)
 	}
+
+	// operator priority across several levels: 7 & (2 + (3 * 2)) = 7 & 8 = 0
+	f(`math 7 & 2 + 3 * 2 as a`, [][]Field{
+		{},
+	}, [][]Field{
+		{
+			{"a", "0"},
+		},
+	})
 
 	f(`math
 		'2024-05-30T01:02:03Z' + 10e9 as time,

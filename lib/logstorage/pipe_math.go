@@ -535,20 +535,25 @@ func parseMathExpr(lex *lexer) (*mathExpr, error) {
 			return nil, fmt.Errorf("cannot parse operand after [%s %s]: %w", left, op, err)
 		}
 
+		// Descend the right spine of left while its ops bind weaker than op,
+		// so `1 & 2 + 3 * 4` becomes `1 & (2 + (3 * 4))`.
+		var parent *mathExpr
+		node := left
+		for !node.wrappedInParens && isMathBinaryOp(node.op) && getMathBinaryOpPriority(node.op) > getMathBinaryOpPriority(op) {
+			parent = node
+			node = node.args[1]
+		}
+
 		me := &mathExpr{
-			args: []*mathExpr{left, right},
+			args: []*mathExpr{node, right},
 			op:   op,
 			f:    f,
 		}
-
-		// balance operands according to their priority
-		if !left.wrappedInParens && isMathBinaryOp(left.op) && getMathBinaryOpPriority(left.op) > getMathBinaryOpPriority(op) {
-			me.args[0] = left.args[1]
-			left.args[1] = me
-			me = left
+		if parent == nil {
+			left = me
+			continue
 		}
-
-		left = me
+		parent.args[1] = me
 	}
 }
 
