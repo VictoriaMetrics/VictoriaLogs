@@ -19,10 +19,12 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 
 	cp, err := getCommonParams(r)
 	if err != nil {
+		errorsProtobufTotal.Inc()
 		httpserver.Errorf(w, r, "cannot parse common params from request: %s", err)
 		return
 	}
 	if err := insertutil.CanWriteData(); err != nil {
+		errorsProtobufTotal.Inc()
 		httpserver.Errorf(w, r, "%s", err)
 		return
 	}
@@ -41,6 +43,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 		return err
 	})
 	if err != nil {
+		errorsProtobufTotal.Inc()
 		httpserver.Errorf(w, r, "cannot read Loki protobuf data: %s", err)
 		return
 	}
@@ -56,6 +59,7 @@ func handleProtobuf(r *http.Request, w http.ResponseWriter) {
 
 var (
 	requestsProtobufTotal   = metrics.NewCounter(`vl_http_requests_total{path="/insert/loki/api/v1/push",format="protobuf"}`)
+	errorsProtobufTotal     = metrics.NewCounter(`vl_http_errors_total{path="/insert/loki/api/v1/push",format="protobuf"}`)
 	requestProtobufDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/insert/loki/api/v1/push",format="protobuf"}`)
 )
 
