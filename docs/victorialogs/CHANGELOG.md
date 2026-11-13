@@ -23,6 +23,10 @@ according to the following docs:
 
 ## tip
 
+## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
+
+Released at 2026-11-13
+
 * SECURITY: upgrade Go builder from Go1.27.1 to Go1.27.4. See the list of issues addressed in [Go1.27.2](https://github.com/golang/go/issues?q=milestone%3AGo1.27.2%20label%3ACherryPickApproved), [Go1.27.3](https://github.com/golang/go/issues?q=milestone%3AGo1.27.3%20label%3ACherryPickApproved) and [Go1.27.4](https://github.com/golang/go/issues?q=milestone%3AGo1.27.4%20label%3ACherryPickApproved).
 * SECURITY: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): sanitize rendered HTML and Markdown in log messages and autocomplete descriptions to prevent cross-site scripting (XSS) attacks. See [#1746](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1746).
 * SECURITY: [querying](https://docs.victoriametrics.com/victorialogs/querying/): hide the fields matching any of the [`hidden_fields_filters`](https://docs.victoriametrics.com/victorialogs/querying/#hidden-fields) args passed in the request query string and in the request body. Previously, a client could see the hidden fields by passing `hidden_fields_filters` in the request body, since it overrode the `hidden_fields_filters` added to the query string by an auth proxy such as [vmauth](https://docs.victoriametrics.com/victoriametrics/vmauth/). See [#1848](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1848).
