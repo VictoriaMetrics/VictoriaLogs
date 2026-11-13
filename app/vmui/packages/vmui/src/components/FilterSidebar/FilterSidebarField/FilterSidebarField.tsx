@@ -300,7 +300,6 @@ const FilterSidebarField: FC<Props> = ({
             </div>
           )}
 
-
           <div className="vm-filter-sidebar-field-values">
             {values.map((fieldValue, index) => (
               <Fragment key={fieldValue.value}>
@@ -314,7 +313,6 @@ const FilterSidebarField: FC<Props> = ({
 
                 <FilterSidebarValue
                   fieldName={field.value}
-                  key={fieldValue.value}
                   field={fieldValue}
                   extraFilters={filtersByName}
                   onAddFilter={handleSelectValue}

@@ -221,7 +221,6 @@ const FilterSidebar: FC<Props> = ({
             )}
 
             <FilterSidebarField
-              key={field.value}
               query={query}
               field={field}
               extraFilters={extraFilters}
