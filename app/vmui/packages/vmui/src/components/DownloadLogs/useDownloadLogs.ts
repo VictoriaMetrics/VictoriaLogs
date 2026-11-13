@@ -43,11 +43,11 @@ const useDownloadLogs = () => {
         extraParams.delete("format");
       }
 
-      const res = await fetchLogs({ query, period, isDownload: true, extraParams });
-      if (!res || Array.isArray(res) || !res.body || !res.ok) {
-        if (res instanceof Response) {
-          const errorText = await res.text();
-          setSaveFileError(errorText.trim() || `Download failed: ${res.status} ${res.statusText}`);
+      const { response } = await fetchLogs({ query, period, isDownload: true, extraParams });
+      if (!response || !response.body || !response.ok) {
+        if (response instanceof Response) {
+          const errorText = await response.text();
+          setSaveFileError(errorText.trim() || `Download failed: ${response.status} ${response.statusText}`);
         } else {
           setSaveFileError("unable to fetch logs");
         }
@@ -57,7 +57,7 @@ const useDownloadLogs = () => {
       const handle = await showSaveFilePicker({ suggestedName: filename });
       const writable = await handle.createWritable();
 
-      await res.body.pipeTo(writable, { preventCancel: true });
+      await response.body.pipeTo(writable, { preventCancel: true });
 
       return true;
     } catch (e) {

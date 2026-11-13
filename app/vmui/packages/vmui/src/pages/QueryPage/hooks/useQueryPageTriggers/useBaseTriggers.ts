@@ -4,9 +4,9 @@ import { useTenant } from "../../../../hooks/useTenant";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useQueryState } from "../../../../state/query/QueryStateContext";
 import { useTimePeriod } from "../useTimePeriod";
-import { UseQueryPageControllerProps } from "../useQueryPageController";
+import { QueryControllerOptions } from "../useQueryPageController/types";
 
-export const useBaseTriggers = (props: UseQueryPageControllerProps) => {
+export const useBaseTriggers = (props: QueryControllerOptions) => {
   const { query } = props;
 
   const { serverUrl } = useAppState();

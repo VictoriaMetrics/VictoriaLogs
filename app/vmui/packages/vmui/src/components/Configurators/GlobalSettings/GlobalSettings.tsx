@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle } from "preact/compat";
+import { FC, useEffect } from "preact/compat";
 import { ArrowDownIcon, SettingsIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import Modal from "../../Main/Modal/Modal";
@@ -15,6 +15,8 @@ import BrowserTabController from "./BrowserTabController/BrowserTabController";
 import LargeLoadWarning from "./LargeLoadWarning/LargeLoadWarning";
 import IncrementalHitsSettings
   from "./IncrementalHitsSettings/IncrementalHitsSettings";
+import { useAppState } from "../../../state/common/StateContext";
+import usePrevious from "../../../hooks/usePrevious";
 
 const title = "Settings";
 
@@ -22,14 +24,13 @@ export interface ChildComponentHandle {
   handleApply: () => void;
 }
 
-export interface GlobalSettingsHandle {
-  open: () => void;
-}
-
-const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
+const GlobalSettings: FC = () => {
   const { isMobile } = useDeviceDetect();
 
   const appModeEnable = getAppModeEnable();
+
+  const { openSettingsTrigger } = useAppState();
+  const openSettingsTriggerPrev = usePrevious(openSettingsTrigger);
 
   const {
     value: open,
@@ -64,9 +65,10 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     },
   ].filter(control => control.show);
 
-  useImperativeHandle(ref, () => ({
-    open: handleOpen,
-  }));
+  useEffect(() => {
+    if (openSettingsTriggerPrev === undefined || openSettingsTriggerPrev === openSettingsTrigger) return;
+    handleOpen();
+  }, [openSettingsTrigger, openSettingsTriggerPrev]);
 
   return <>
     {isMobile ? (
@@ -117,6 +119,6 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
       </Modal>
     )}
   </>;
-});
+};
 
 export default GlobalSettings;

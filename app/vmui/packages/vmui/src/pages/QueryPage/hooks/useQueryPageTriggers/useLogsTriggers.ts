@@ -1,8 +1,8 @@
 import { useMemo } from "preact/compat";
 import { useSearchParams } from "react-router-dom";
-import { UseQueryPageControllerProps } from "../useQueryPageController";
+import { QueryControllerOptions } from "../useQueryPageController/types";
 
-export const useLogsTriggers = ({ beforeFetch }: UseQueryPageControllerProps) => {
+export const useLogsTriggers = ({ beforeFetch }: QueryControllerOptions) => {
   const [searchParams] = useSearchParams();
 
   const isLogsHidden = searchParams.get("hide_logs") === "true";

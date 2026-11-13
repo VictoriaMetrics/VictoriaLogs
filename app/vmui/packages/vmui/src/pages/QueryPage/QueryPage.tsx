@@ -26,7 +26,7 @@ const QueryPage: FC = () => {
 
   const { queryHasTimeFilter, executeQueryTrigger } = useQueryState();
   const queryDispatch = useQueryDispatch();
-
+ 
   const { period, refreshPeriod } = useTimePeriod();
 
   const { step: { value: step } } = useHitsChartConfig();
@@ -34,7 +34,7 @@ const QueryPage: FC = () => {
   const { limit, setLimit } = useLimitController();
   const { inputQuery, setInputQuery, inputQueryRef, appliedQuery, applyQuery } = useQueryController();
   const { beforeFetch, modalProps } = useLimitGuard({ setLimit });
-  const  { cancelAll, logsRequestState, hitsRequestState } = useQueryPageController({ query: appliedQuery, beforeFetch });
+  const { cancelAll, logsRequestState, hitsRequestState } = useQueryPageController({ query: appliedQuery, beforeFetch });
 
   const isLoading = logsRequestState.isLoading || hitsRequestState.isLoading;
 
@@ -80,9 +80,9 @@ const QueryPage: FC = () => {
   return (
     <div
       className={classNames({
-      "vm-query-page": true,
-      "vm-query-page_with-sidebar": isVisibleFilterSidebar,
-    })}
+        "vm-query-page": true,
+        "vm-query-page_with-sidebar": isVisibleFilterSidebar,
+      })}
     >
       <LimitConfirmModal
         {...modalProps}
@@ -135,15 +135,13 @@ const QueryPage: FC = () => {
           timeOverridden={queryHasTimeFilter}
         />
 
-        {!logsRequestState.error && (
-          <HitsPanel
-            {...hitsRequestState}
-            query={appliedQuery}
-            loadedFieldNames={loadedFieldNames}
-            period={period}
-            step={step}
-          />
-        )}
+        <HitsPanel
+          {...hitsRequestState}
+          query={appliedQuery}
+          loadedFieldNames={loadedFieldNames}
+          period={period}
+          step={step}
+        />
         <QueryPageBody
           data={logsRequestState.logs}
           queryParams={logsRequestState.queryParams}

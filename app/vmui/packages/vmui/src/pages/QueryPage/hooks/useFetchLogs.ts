@@ -16,6 +16,7 @@ export interface FetchLogsParams {
   extraParams?: URLSearchParams;
   beforeFetch?: BeforeFetch;
   isDownload?: boolean;
+  onStart?: () => void;
 }
 
 export type BeforeFetchResult =
@@ -24,6 +25,15 @@ export type BeforeFetchResult =
   | { action: "modify"; body: URLSearchParams }
 
 export type BeforeFetch = (body: Readonly<URLSearchParams>) => Promise<BeforeFetchResult>;
+
+type FetchLogsResultStatus = "success" | "error" | "aborted";
+
+export type FetchLogsResult = {
+  response?: Response;
+  data?: Logs[];
+  limit?: number;
+  status: FetchLogsResultStatus;
+};
 
 export const useFetchLogs = () => {
   const { serverUrl } = useAppState();
@@ -93,37 +103,46 @@ export const useFetchLogs = () => {
     extraParams,
     beforeFetch,
     isDownload = false,
-  }: FetchLogsParams) => {
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
-    const options = buildOptions({ signal });
-
-    let baseBody = buildBody({ query, limit, period, extraParams });
-
-    const preQueryParams = { ...Object.fromEntries(baseBody), ...options.headers };
-    setQueryParams(preQueryParams);
-
-    if (beforeFetch) {
-      // new instance to avoid mutation of original body
-      const decision = await beforeFetch(new URLSearchParams(baseBody));
-      // Return early if instructed to abort
-      if (decision.action === "abort") return false;
-      // Modify the body if instructed to modify
-      if (decision.action === "modify") baseBody = mergeSearchParams(baseBody, decision.body, "overwrite");
-    }
-
-    const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
-    const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
+    onStart,
+  }: FetchLogsParams): Promise<FetchLogsResult> => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
 
     const id = Date.now();
-    setIsLoading(prev => ({ ...prev, [id]: true }));
-    setError(undefined);
+    const options = buildOptions({ signal });
+    let effectiveLimit: number | undefined = undefined;
 
     try {
-      const response = await fetch(url,  { body, ...options });
+      let baseBody = buildBody({ query, limit, period, extraParams });
+
+      const preQueryParams = {
+        ...Object.fromEntries(baseBody),
+        ...options.headers
+      };
+      setQueryParams(preQueryParams);
+
+      if (beforeFetch) {
+        // new instance to avoid mutation of original body
+        const decision = await beforeFetch(new URLSearchParams(baseBody));
+        // Return early if instructed to abort
+        if (decision.action === "abort" || signal.aborted) return { status: "aborted" };
+        // Modify the body if instructed to modify
+        if (decision.action === "modify") baseBody = mergeSearchParams(baseBody, decision.body, "overwrite");
+      }
+
+      const body = extraParams ? mergeSearchParams(baseBody, extraParams, "append") : baseBody;
+      effectiveLimit = body.has("limit") ? Number(body.get("limit")) : undefined;
+      const tmpQueryParams = { ...Object.fromEntries(body), ...options.headers };
+
+      setIsLoading(prev => ({ ...prev, [id]: true }));
+      setError(undefined);
+
+      onStart?.();
+      const response = await fetch(url, { body, ...options });
 
       if (isDownload) {
-        return response;
+        return { response, status: response.ok ? "success" : "error", limit: effectiveLimit };
       }
 
       const uiAccountId = (options.headers as Record<string, string>)?.AccountID;
@@ -143,26 +162,34 @@ export const useFetchLogs = () => {
       if (!response.ok || !response.body) {
         setError(text);
         setLogs([]);
-        return false;
+        return { status: "error", limit: effectiveLimit };
       }
 
       const data = text.split("\n").map(parseLineToJSON).filter(line => line) as Logs[];
       setLogs(data);
       setQueryParams(tmpQueryParams);
-      return data;
+      return { data, status: "success", limit: effectiveLimit };
     } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
+      const isError = e instanceof Error;
+      const isAbortError = signal.aborted || isError && e.name === "AbortError";
+      if (!isAbortError) {
         setError(String(e));
         console.error(e);
         setLogs([]);
       }
-      return false;
+
+      if (isAbortError) {
+        return { status: "aborted", limit: effectiveLimit };
+      }
+
+      return { status: "error", limit: effectiveLimit };
     } finally {
       setIsLoading(prev => {
         // Remove the `id` key from `isLoading` when its value becomes `false`
         const { [id]: _, ...rest } = prev;
         return rest;
       });
+
     }
   }, [url, tenant]);
 
