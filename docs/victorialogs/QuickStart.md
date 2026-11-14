@@ -220,6 +220,16 @@ If VictoriaLogs is configured via [environment variables](https://docs.victoriam
 then add `-envflag.enable` to the healthcheck command, so it reads the same environment variables.
 The same flag is supported by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) at `/vlagent-prod`.
 
+The `-healthcheck` flag doesn't request the `/health` page. It only checks that the process accepts connections.
+This is why it works with any `-tls` and `-mtls` settings.
+
+The check passes in the following cases, while the `/health` page doesn't return `OK`:
+
+- The process accepts connections, but doesn't respond.
+- The process is shutting down, but still serves requests during `-http.shutdownDelay`.
+
+Request the `/health` page over HTTP if you need to catch these cases.
+
 See also:
 
 - [How to configure VictoriaLogs](https://docs.victoriametrics.com/victorialogs/quickstart/#how-to-configure-victorialogs)
