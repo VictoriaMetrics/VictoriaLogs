@@ -1501,27 +1501,26 @@ func (ddb *datadb) mustForceMergeAllParts() {
 }
 
 func (ddb *datadb) deleteRows(pso *partitionSearchOptions, stopCh <-chan struct{}) bool {
-	// Get all the parts and make sure they are kept open.
-	pws, pwsDecRef := ddb.getPartsForTimeRange(pso.minTimestamp, pso.maxTimestamp)
-	defer pwsDecRef()
+	// Mark the parts on the given time range as being in merge under a single lock,
+	// so they cannot be replaced by concurrently running merges while searching them below.
+	ddb.partsLock.Lock()
+	pws := ddb.getPartsForTimeRangeLocked(pso.minTimestamp, pso.maxTimestamp)
+	// The rows are deleted via merge, so take the parts in the same way as background merges do.
+	pwsToSearch := appendAllPartsForMergeLocked(nil, pws)
+	ddb.partsLock.Unlock()
 
-	// Search for parts, which contain logs matching pso for the deletion and which aren't in merge at the moment.
+	// The parts, which are in merge now, must be processed again for the rows' deletion in the future.
+	needRepeat := len(pwsToSearch) < len(pws)
+
+	// Search for parts, which contain logs matching pso for the deletion.
+	// Release the remaining parts as soon as possible, so they could be flushed and merged by background workers.
 	var pwsToMerge []*partWrapper
-	needRepeat := false
-	for _, pw := range pws {
-		if !pw.p.hasMatchingRows(pso, stopCh) {
-			continue
-		}
-
-		ddb.partsLock.Lock()
-		if !pw.isInMerge {
-			pw.isInMerge = true
+	for _, pw := range pwsToSearch {
+		if pw.p.hasMatchingRows(pso, stopCh) {
 			pwsToMerge = append(pwsToMerge, pw)
 		} else {
-			// The pw is in merge now, so it must be processed again for the rows' deletion in the future.
-			needRepeat = true
+			ddb.releasePartsToMerge([]*partWrapper{pw})
 		}
-		ddb.partsLock.Unlock()
 	}
 
 	// merge pwsToMerge while dropping logs matching pso.

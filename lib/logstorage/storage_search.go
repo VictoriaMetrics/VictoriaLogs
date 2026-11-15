@@ -1531,10 +1531,7 @@ func (ddb *datadb) search(pso *partitionSearchOptions, qs *QueryStats, workCh ch
 // The caller must call pwsDecRef on the returned parts when they are no longer needed.
 func (ddb *datadb) getPartsForTimeRange(minTimestamp, maxTimestamp int64) (pws []*partWrapper, pwsDecRef func()) {
 	ddb.partsLock.Lock()
-	pws = appendPartsInTimeRange(nil, ddb.bigParts, minTimestamp, maxTimestamp)
-	pws = appendPartsInTimeRange(pws, ddb.smallParts, minTimestamp, maxTimestamp)
-	pws = appendPartsInTimeRange(pws, ddb.inmemoryParts, minTimestamp, maxTimestamp)
-
+	pws = ddb.getPartsForTimeRangeLocked(minTimestamp, maxTimestamp)
 	for _, pw := range pws {
 		pw.incRef()
 	}
@@ -1547,6 +1544,15 @@ func (ddb *datadb) getPartsForTimeRange(minTimestamp, maxTimestamp int64) (pws [
 	}
 
 	return pws, pwsDecRef
+}
+
+// getPartsForTimeRangeLocked returns parts, which may contain logs on the given [minTimestamp, maxTimestamp] time range.
+//
+// ddb.partsLock must be locked when calling this function.
+func (ddb *datadb) getPartsForTimeRangeLocked(minTimestamp, maxTimestamp int64) []*partWrapper {
+	pws := appendPartsInTimeRange(nil, ddb.bigParts, minTimestamp, maxTimestamp)
+	pws = appendPartsInTimeRange(pws, ddb.smallParts, minTimestamp, maxTimestamp)
+	return appendPartsInTimeRange(pws, ddb.inmemoryParts, minTimestamp, maxTimestamp)
 }
 
 func (p *part) search(pso *partitionSearchOptions, qs *QueryStats, workCh chan<- *blockSearchWorkBatch, stopCh <-chan struct{}) {
