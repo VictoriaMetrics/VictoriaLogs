@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [DataDog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/): properly ingest `lambda` labels from object `message` field. Previously, they were dropped because of a typo in the field name. See [#1949](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1949).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13
