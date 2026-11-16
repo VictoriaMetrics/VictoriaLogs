@@ -1,6 +1,7 @@
 ---
 weight: 4
 title: Promtail Setup
+description: "Configure Promtail, Grafana Agent, and Grafana Alloy to send collected logs to VictoriaLogs."
 disableToc: true
 menu:
   docs:

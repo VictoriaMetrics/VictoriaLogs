@@ -151,25 +151,24 @@ func decodeLabelPair(src []byte, fs *logstorage.Fields) error {
 	//   string value = 2;
 	// }
 
-	name, ok, err := easyproto.GetString(src, 1)
+	name, _, err := easyproto.GetString(src, 1)
 	if err != nil {
 		return fmt.Errorf("cannot read name: %w", err)
 	}
-	if !ok {
+	if name == "" {
+		// Name is required for the label to be valid.
+		// Loki also rejects the whole push request if a name is empty.
 		return fmt.Errorf("missing name")
 	}
 
-	value, ok, err := easyproto.GetString(src, 2)
+	value, _, err := easyproto.GetString(src, 2)
 	if err != nil {
 		return fmt.Errorf("cannot read value: %w", err)
 	}
-	if !ok {
-		return fmt.Errorf("missing value")
-	}
 
-	if name != "" && value != "" {
-		fs.Add(name, value)
-	}
+	// Proto3 omits scalar fields containing default values from the wire,
+	// so missing value is not an error and is treated the same as default value (empty string).
+	fs.Add(name, value)
 
 	return nil
 }

@@ -1,3 +1,5 @@
+import { Series } from "uplot";
+
 export enum GRAPH_STYLES {
   BAR = "Bars",
   LINE = "Lines",
@@ -17,4 +19,8 @@ export interface GraphOptions {
   cumulative: boolean;
   fill: boolean;
   hideChart: boolean;
+}
+
+export interface HitsSeries extends Series {
+  _isLoading?: boolean;
 }

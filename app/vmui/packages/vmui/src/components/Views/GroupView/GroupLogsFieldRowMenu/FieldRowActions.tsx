@@ -1,5 +1,4 @@
 import { FC, useRef } from "preact/compat";
-import FieldCopyButton from "./FieldCopyButton";
 import FieldMessageToggle from "./FieldMessageToggle";
 import FieldGroupingToggle from "./FieldGroupingToggle";
 import FieldFilterExclude from "./FieldFilterExclude";
@@ -12,10 +11,14 @@ import Popper from "../../../Main/Popper/Popper";
 type Props = {
   field: string;
   value: string;
+  isStreamField: boolean;
   hideGroupButton: boolean;
+  // "Show as message" only affects the Group view, so views that embed this
+  // list elsewhere (e.g. the Table view expanded row) hide it
+  hideMessageButton?: boolean;
 }
 
-const FieldRowActions: FC<Props> = ({ field, value, hideGroupButton }) => {
+const FieldRowActions: FC<Props> = ({ field, value, isStreamField, hideGroupButton, hideMessageButton }) => {
   const {
     value: openContextMenu,
     setFalse: handleCloseContextMenu,
@@ -32,51 +35,55 @@ const FieldRowActions: FC<Props> = ({ field, value, hideGroupButton }) => {
 
   return (
     <div className="vm-group-logs-row-fields-item-controls__wrapper">
-      <FieldCopyButton
-        field={field}
-        value={value}
-      />
-
       <FieldFilterInclude
         field={field}
         value={value}
+        isStreamField={isStreamField}
       />
 
-      <div ref={buttonRef}>
-        <Button
-          startIcon={<MoreIcon/>}
-          variant="text"
-          size="small"
-          onClick={handleClick}
-        />
-      </div>
+      <FieldFilterExclude
+        field={field}
+        value={value}
+        isStreamField={isStreamField}
+      />
 
-      <Popper
-        placement="bottom-right"
-        open={openContextMenu}
-        buttonRef={buttonRef}
-        onClose={handleCloseContextMenu}
-      >
-        <div className="vm-legend-hits-menu">
-          <div className="vm-legend-hits-menu-section">
-            <FieldFilterExclude
-              field={field}
-              value={value}
-              onClose={handleCloseContextMenu}
+      {!(hideMessageButton && hideGroupButton) && (
+        <>
+          <div ref={buttonRef}>
+            <Button
+              startIcon={<MoreIcon/>}
+              color="gray"
+              variant="text"
+              size="small"
+              onClick={handleClick}
             />
-            <FieldMessageToggle
-              field={field}
-              onClose={handleCloseContextMenu}
-            />
-            {!hideGroupButton && (
-              <FieldGroupingToggle
-                field={field}
-                onClose={handleCloseContextMenu}
-              />
-            )}
           </div>
-        </div>
-      </Popper>
+
+          <Popper
+            placement="bottom-right"
+            open={openContextMenu}
+            buttonRef={buttonRef}
+            onClose={handleCloseContextMenu}
+          >
+            <div className="vm-legend-hits-menu">
+              <div className="vm-legend-hits-menu-section">
+                {!hideMessageButton && (
+                  <FieldMessageToggle
+                    field={field}
+                    onClose={handleCloseContextMenu}
+                  />
+                )}
+                {!hideGroupButton && (
+                  <FieldGroupingToggle
+                    field={field}
+                    onClose={handleCloseContextMenu}
+                  />
+                )}
+              </div>
+            </div>
+          </Popper>
+        </>
+      )}
     </div>
   );
 };

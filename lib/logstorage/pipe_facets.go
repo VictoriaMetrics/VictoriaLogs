@@ -78,7 +78,7 @@ func (pf *pipeFacets) canLiveTail() bool {
 	return false
 }
 
-func (pf *pipeFacets) canReturnLastNResults() bool {
+func (pf *pipeFacets) canReturnTimeSortedNResults() bool {
 	return false
 }
 

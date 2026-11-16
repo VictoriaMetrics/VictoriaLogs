@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// filterEqualsCommonCase matches words and phrases where every captial letter
+// filterEqualsCommonCase matches words and phrases where every capital letter
 // can be replaced with a small letter, plus all capital words.
 //
 // Example LogsQL: `equals_common_case("Error")` is equivalent to in("Error", "error", "ERROR")

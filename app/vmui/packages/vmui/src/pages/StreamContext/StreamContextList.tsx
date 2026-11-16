@@ -6,6 +6,7 @@ import Alert from "../../components/Main/Alert/Alert";
 import Switch from "../../components/Main/Switch/Switch";
 import { useSearchParams } from "react-router-dom";
 import { LOGS_URL_PARAMS } from "../../constants/logs";
+import { TIME_FIELD } from "../../constants/logFields";
 import "./style.scss";
 import { getStreamPairs } from "../../utils/logs";
 import GroupLogsHeaderItem from "../../components/Views/GroupView/GroupLogsHeaderItem";
@@ -49,7 +50,7 @@ const StreamContextList: FC<Props> = ({ log, displayFields }) => {
 
   const logsWithTimeDuplicates = useMemo(() => {
     const logs = logsBefore.concat(log).concat(logsAfter);
-    const groupedByTime = groupByMultipleKeys(logs, ["_time"]);
+    const groupedByTime = groupByMultipleKeys(logs, [TIME_FIELD]);
     const groupWithDuplicates = groupedByTime.filter(group => group.values.length > 1);
 
     // Keep duplicated logs so we can highlight them in the list.

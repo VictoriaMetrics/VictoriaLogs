@@ -1,10 +1,6 @@
 import { FC, ReactNode, RefObject, useRef } from "preact/compat";
 import Button from "../../Main/Button/Button";
-import {
-  CloseIcon, MoreIcon,
-  SortIcon,
-  WidthIcon
-} from "../../Main/Icons";
+import { CloseIcon, MoreIcon, WidthIcon } from "../../Main/Icons";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import useBoolean from "../../../hooks/useBoolean";
 import "./style.scss";
@@ -13,7 +9,8 @@ import FilterSidebarActionsMore from "./FilterSidebarActionsMore";
 
 export type MenuAction = {
   id: string;
-  icon: ReactNode;
+  icon?: ReactNode;
+  isActive?: boolean;
   title?: string;
   ref?: RefObject<HTMLDivElement>;
   visible?: boolean;
@@ -21,24 +18,21 @@ export type MenuAction = {
 }
 
 type Props = {
-  onToggleSort: () => void;
   onResetWidth: () => void;
   onClose: () => void;
 }
 
 const FilterSidebarActions: FC<Props> = ({
-  onToggleSort,
   onResetWidth,
   onClose,
 }) => {
   const {
-    value: isOpenMenu,
-    toggle: onToggleMenu,
-    setFalse: onCloseMenu,
+    value: isOpenMoreMenu,
+    toggle: onToggleMoreMenu,
+    setFalse: onCloseMoreMenu,
   } = useBoolean(false);
 
-  const menuRef = useRef<HTMLDivElement>(null);
-
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const isVisible = (action: MenuAction) => action.visible !== false;
 
   // Reserved for future actions. Currently empty since we only have 3 actions.
@@ -46,27 +40,21 @@ const FilterSidebarActions: FC<Props> = ({
 
   const baseActions: MenuAction[] = [
     {
-      id: "sort",
-      icon: <SortIcon />,
-      title: "Sort direction",
-      onClick: onToggleSort,
-    },
-    {
       id: "reset-width",
-      icon: <WidthIcon />,
+      icon: <WidthIcon/>,
       title: "Reset width",
       onClick: onResetWidth,
     },
     {
       id: "more",
-      icon: <MoreIcon />,
-      ref: menuRef,
-      onClick: onToggleMenu,
+      icon: <MoreIcon/>,
+      ref: moreMenuRef,
+      onClick: onToggleMoreMenu,
       visible: !!moreMenuActions.length,
     },
     {
       id: "close",
-      icon: <CloseIcon />,
+      icon: <CloseIcon/>,
       onClick: onClose,
     },
   ].filter(isVisible);
@@ -89,13 +77,13 @@ const FilterSidebarActions: FC<Props> = ({
             />
           </div>
         </Tooltip>
-        ))}
+      ))}
 
       <FilterSidebarActionsMore
         actions={moreMenuActions}
-        isOpen={isOpenMenu}
-        buttonRef={menuRef}
-        onClose={onCloseMenu}
+        isOpen={isOpenMoreMenu}
+        buttonRef={moreMenuRef}
+        onClose={onCloseMoreMenu}
       />
     </div>
   );

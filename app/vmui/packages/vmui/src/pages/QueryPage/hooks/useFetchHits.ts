@@ -1,20 +1,15 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from "preact/compat";
-import { getLogHitsUrl, getStatsQueryRangeUrl } from "../../../api/logs";
+import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
-import { getHitsTimeParams } from "../../../utils/logs";
-import { LOGS_LIMIT_HITS, WITHOUT_GROUPING } from "../../../constants/logs";
-import { isEmptyObject } from "../../../utils/object";
 import { useTenant } from "../../../hooks/useTenant";
-import { useSearchParams } from "react-router-dom";
+import { useHideChart } from "../HitsPanel/hooks/useHideChart";
 import { useAppState } from "../../../state/common/StateContext";
 import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
-import useProcessStatsQueryRange from "./useProcessStatsQueryRange";
-import { getDefaultTimezoneOffsetMinutes, secondsToMilliseconds } from "../../../utils/time";
-
-type ResponseHits = {
-  hits: LogHits[];
-}
+import { buildHitsRequestHeaders, buildHitsRequestParams } from "../utils/buildHitsRequest";
+import { fetchHitsStats } from "../utils/fetchHitsStats";
+import { fetchHitsOnce } from "../utils/fetchHitsOnce";
+import { fetchHitsIterative } from "../utils/fetchHitsIterative";
+import { mergeLogHits } from "../utils/mergeLogHits";
 
 export interface FetchHitsParams {
   query: string;
@@ -24,16 +19,19 @@ export interface FetchHitsParams {
   fieldsLimit?: number;
   step: string | null;
   queryMode?: GRAPH_QUERY_MODE
+  isIterative?: boolean;
 }
 
 interface OptionsParams extends FetchHitsParams {
   signal: AbortSignal;
 }
 
+export type FetchHitsResult = "success" | "error" | "aborted";
+
 export const useFetchHits = () => {
   const { serverUrl } = useAppState();
   const tenant = useTenant();
-  const [searchParams] = useSearchParams();
+  const [hideChart] = useHideChart();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
   const [isLoading, setIsLoading] = useState<{ [key: number]: boolean; }>([]);
@@ -41,72 +39,51 @@ export const useFetchHits = () => {
   const [durationMs, setDurationMs] = useState<number | undefined>();
   const abortControllerRef = useRef(new AbortController());
 
-  const processStatsQueryRange = useProcessStatsQueryRange({ setLogHits, setError });
+  const isIterativeRef = useRef(false);
 
-  const hideChart = useMemo(() => searchParams.get("hide_chart"), [searchParams]);
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
 
-  const getUrl = useCallback((queryMode: GRAPH_QUERY_MODE) => {
-    switch (queryMode) {
-      case GRAPH_QUERY_MODE.hits:
-        return getLogHitsUrl(serverUrl);
-      case GRAPH_QUERY_MODE.stats:
-        return getStatsQueryRangeUrl(serverUrl);
-    }
-  }, [serverUrl]);
+  const updatePaused = (value: boolean) => {
+    isPausedRef.current = value;
+    setIsPaused(value);
+  };
 
-  const getOptions = ({ query, period, extraParams, signal, fieldsLimit, field, step }: OptionsParams) => {
-    const { start, end, step: fallbackStepMs } = getHitsTimeParams(period);
-    const offsetMinutes = getDefaultTimezoneOffsetMinutes();
+  const togglePause = () => {
+    updatePaused(!isPausedRef.current);
+  };
 
-    const params = new URLSearchParams({
-      query: query.trim(),
-      step: step || `${fallbackStepMs}ms`,
-      offset: `${offsetMinutes}m`,
-      start: start,
-      end: end,
-      fields_limit: `${fieldsLimit || LOGS_LIMIT_HITS}`,
-    });
-
-    if (field && field !== WITHOUT_GROUPING) {
-      params.set("field", field);
-    }
-
-    const body = new URLSearchParams([
-      ...params,
-      ...(extraParams ?? [])
-    ]);
-
+  const getOptions = ({ signal, ...params }: OptionsParams) => {
     return {
-      body,
       signal,
       method: "POST",
-      headers: {
-        ...tenant,
-      },
+      body: buildHitsRequestParams(params),
+      headers: buildHitsRequestHeaders({ tenant }),
     };
   };
 
-  const processHits = (data: ResponseHits) => {
-    const hitsRaw = data?.hits as LogHits[];
-
-    if (!hitsRaw) {
-      const error = "Error: No 'hits' field in response";
-      setError(error);
-      return [];
-    }
-
-    const hits = hitsRaw.map(markIsOther).sort(sortHits);
-    setLogHits(hits);
-
-    return hits;
+  const handleUpdateIterative = (nextHits: LogHits[], durationMs?: number) => {
+    setLogHits(prev => mergeLogHits(prev, nextHits));
+    setDurationMs(prev => (prev ?? 0) + (durationMs ?? 0));
   };
 
-  const fetchHits = useCallback(async (params: FetchHitsParams) => {
+  const handleUpdateLoadingHits = (loadingHit?: LogHits) => {
+    setLogHits(prev => {
+      const nextHits = prev.filter(h => !h._isLoading);
+      if (loadingHit) nextHits.unshift(loadingHit);
+      return nextHits;
+    });
+  };
+
+  const fetchHits = useCallback(async (params: FetchHitsParams): Promise<FetchHitsResult> => {
     const queryMode = params.queryMode || GRAPH_QUERY_MODE.hits;
+    const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
     abortControllerRef.current.abort();
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
+
+    const loadController = new AbortController();
+
+    abortControllerRef.current = loadController;
 
     if (!params.step) {
       console.warn("Missing step; using fallback interval", params.period);
@@ -114,50 +91,75 @@ export const useFetchHits = () => {
 
     const id = Date.now();
     setIsLoading(prev => ({ ...prev, [id]: true }));
+
+    setLogHits([]);
+    setDurationMs(undefined);
     setError(undefined);
+    updatePaused(false);
+
+    const isIterative = !isStatsMode && Boolean(params.isIterative);
+    isIterativeRef.current = isIterative;
 
     try {
-      const options = getOptions({ ...params, signal });
-      const url = getUrl(queryMode);
-      const response = await fetch(url, options);
+      const options = getOptions({ ...params, signal: loadController.signal });
+      const init = { ...options, url: serverUrl };
 
-      const duration = response.headers.get("vl-request-duration-seconds");
-      setDurationMs(duration ? secondsToMilliseconds(Number(duration)) : undefined);
+      if (isIterative) {
+        await fetchHitsIterative({
+          ...init,
+          isPausedRef,
+          onUpdateLoading: (hit) => {
+            if (loadController.signal.aborted) return;
+            handleUpdateLoadingHits(hit);
+          },
+          onUpdate: (hits, durationMs) => {
+            if (loadController.signal.aborted) return;
+            handleUpdateIterative(hits, durationMs);
+          },
+        });
+      } else {
+        const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
+        const { hits, durationMs } = await fetchFunc(init);
 
-      if (!response.ok || !response.body) {
-        const text = await response.text();
-        try {
-          const json = JSON.parse(text);
-          setError(typeof json?.error === "string" ? json.error : text);
-        } catch (_e) {
-          setError(text);
-        }
+        if (loadController.signal.aborted) return "aborted";
+
+        setDurationMs(durationMs);
+        setLogHits(hits);
+      }
+
+      if (loadController.signal.aborted) return "aborted";
+
+      return "success";
+    } catch (error) {
+      if (loadController.signal.aborted) return "aborted";
+
+      const isError = error instanceof Error;
+      if (isError && error.name === "AbortError") return "aborted";
+      setError(isError ? error.message : String(error));
+
+      if (!isIterative) {
         setLogHits([]);
-        setIsLoading(prev => ({ ...prev, [id]: false }));
-        return;
+        setDurationMs(undefined);
       }
 
-      const data = await response.json();
-
-      switch (queryMode) {
-        case GRAPH_QUERY_MODE.hits:
-          return processHits(data);
-        case GRAPH_QUERY_MODE.stats: {
-          const fieldsLimit = +(options.body.get("fields_limit") || LOGS_LIMIT_HITS);
-          return processStatsQueryRange(data, fieldsLimit);
-        }
-      }
-
-    } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
-        setError(String(e));
-        console.error(e);
-        setLogHits([]);
-      }
+      return "error";
     } finally {
       setIsLoading(prev => ({ ...prev, [id]: false }));
+
+      if (abortControllerRef.current === loadController) {
+        handleUpdateLoadingHits();
+        updatePaused(false);
+      }
     }
-  }, [getUrl, tenant]);
+  }, [serverUrl, tenant]);
+
+  const resetHits = () => {
+    setLogHits([]);
+    setDurationMs(undefined);
+    setError(undefined);
+    updatePaused(false);
+    isIterativeRef.current = false;
+  };
 
   useEffect(() => {
     return () => {
@@ -167,31 +169,21 @@ export const useFetchHits = () => {
 
   useEffect(() => {
     if (hideChart) {
-      setLogHits([]);
-      setError(undefined);
+      abortControllerRef.current.abort();
+      resetHits();
     }
   }, [hideChart]);
 
   return {
     logHits,
+    isIterative: isIterativeRef.current,
     isLoading: Object.values(isLoading).some(s => s),
     error,
     fetchHits,
     durationMs,
-    abort: useCallback(() => abortControllerRef.current?.abort(), [])
+    abort: useCallback(() => abortControllerRef.current?.abort(), []),
+    resetHits,
+    isPaused,
+    togglePause,
   };
-};
-
-// Helper function to check if a hit is "other"
-const markIsOther = (hit: LogHits) => ({
-  ...hit,
-  _isOther: isEmptyObject(hit.fields)
-});
-
-// Comparison function for sorting hits
-const sortHits = (a: LogHits, b: LogHits) => {
-  if (a._isOther !== b._isOther) {
-    return a._isOther ? -1 : 1; // "Other" hits first to avoid graph overlap
-  }
-  return b.total - a.total; // Sort remaining by total for better visibility
 };

@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterEqField(t *testing.T) {
@@ -853,7 +851,4 @@ func TestFilterEqField(t *testing.T) {
 		fe = newFilterEqField("non-existing-column", "foo")
 		testFilterMatchForColumns(t, columns, fe, "foo", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

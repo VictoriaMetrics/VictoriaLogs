@@ -25,7 +25,7 @@ export interface ContextData {
   query?: string;
   queryBeforeIncompleteFilter?: string;
   separator?: string;
-  operator?: ":" | ":!" | ":-" | ":=" | ":~" | ":<" | ":>" | ":<=" | ":>=";
+  operator?: ":" | ":!" | ":-" | ":=" | ":!=" | ":~" | ":!~" | ":<" | ":>" | ":<=" | ":>=";
 }
 
 export enum ContextType {
@@ -36,4 +36,6 @@ export enum ContextType {
   PipeValue = "PipeValue",
   Unknown = "Unknown",
   FilterOrPipeName = "FilterOrPipeName",
+  Example = "Example",
+  History = "History",
 }

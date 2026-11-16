@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestMatchPrefix(t *testing.T) {
@@ -614,7 +612,4 @@ func TestFilterPrefix(t *testing.T) {
 		fp = newFilterPrefix("non-existing-column", "")
 		testFilterMatchForColumns(t, columns, fp, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

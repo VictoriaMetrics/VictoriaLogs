@@ -1,5 +1,6 @@
 ---
 title: vlagent
+description: "Log collection agent for VictoriaLogs with Kubernetes pod log discovery, HTTP ingestion, replication, and on-disk buffering."
 weight: 4
 menu:
   docs:
@@ -128,6 +129,9 @@ Override with `-kubernetesCollector.timeField=field1,field2`.
 
 If none of the `_time` fields are present, `vlagent` uses the timestamp written by the container runtime.
 This is usually accurate to within a millisecond.
+
+`vlagent` also adds the `output_stream` field to every collected log entry.
+It contains the name of the stream the container wrote the log line to: `stdout` or `stderr`.
 
 ### Stream fields
 
@@ -310,7 +314,7 @@ spec:
       serviceAccountName: vlagent
       containers:
         - name: vlagent
-          image: victoriametrics/vlagent:v1.51.0
+          image: victoriametrics/vlagent:v1.54.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -351,7 +355,7 @@ See also: [How to exclude vlagent's own logs from collection](https://docs.victo
 `vlagent` can collect text-based logs directly from files on disk using the `-fileCollector.glob` flag.
 This is useful for collecting logs from applications that write to log files, such as nginx, Redis, ClickHouse.
 
-### Quick start
+### Quick start for file collector
 
 The following command starts `vlagent` to collect logs from the `/path/to/file` file
 and to send the collected logs to a VictoriaLogs instance at `victoria-logs:9428`:
@@ -460,9 +464,11 @@ Use an empty string `''` as a placeholder when a specific position requires no e
 
 ### Log rotation
 
-`vlagent` fully supports the `create` log rotation strategy (the default in `logrotate`).
-When the active log file is renamed, `vlagent` finishes reading it before switching to the new file.
-Rotated files in the same directory are tracked automatically, even after `vlagent` restart.
+`vlagent` supports the `create` (default in `logrotate`) and `nocreate` log rotation strategies.
+When the log file is rotated, `vlagent` finishes reading the rotated file before switching to the new one.
+
+`vlagent` automatically tracks rotated files in the same directory and resumes reading them
+from the last saved position after a restart.
 
 Example `logrotate` config:
 
@@ -475,9 +481,12 @@ Example `logrotate` config:
 }
 ```
 
-Note that the application must handle the signal specified in `postrotate` and reopen its log file in response.
+The application must handle the signal sent in `postrotate` by reopening its log file.
+Until it does, it keeps writing to the renamed file, which `vlagent` continues to read.
 
-`vlagent` does not fully support the `copytruncate` rotation strategy and does not read compressed (`.gz`) files.
+The `copytruncate` strategy is also supported, but some log lines may be lost: lines written between copying
+and truncating the file, or not yet read by `vlagent` before truncation, are not collected.
+Use `create` or `nocreate` when possible. Compressed rotated files (for example, `.gz`) are not read.
 
 > Note: if you are collecting logs from a well-known application such as nginx, Apache, or PostgreSQL,
 > a `logrotate` config is most likely already preconfigured by the package and located in `/etc/logrotate.d/`.

@@ -40,7 +40,7 @@ func (pc *pipeJSONArrayConcat) canLiveTail() bool {
 	return true
 }
 
-func (pc *pipeJSONArrayConcat) canReturnLastNResults() bool {
+func (pc *pipeJSONArrayConcat) canReturnTimeSortedNResults() bool {
 	return pc.resultField != "_time"
 }
 

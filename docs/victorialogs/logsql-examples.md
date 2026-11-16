@@ -1,6 +1,7 @@
 ---
 weight: 50
 title: LogsQL Examples
+description: "Practical LogsQL query cookbook for VictoriaLogs. Time filters, field searches, sorting, limiting, and common patterns."
 menu:
   docs:
     parent: "victorialogs"

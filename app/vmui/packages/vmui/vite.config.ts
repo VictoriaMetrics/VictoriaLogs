@@ -58,7 +58,14 @@ export default defineConfig(({ mode }) => {
             if (id.includes("node_modules")) {
               return "vendor";
             }
-          }
+          },
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.names.includes("favicon.svg")) {
+              return "assets/favicon.svg";
+            }
+
+            return "assets/[name]-[hash][extname]";
+          },
         }
       }
     },

@@ -24,11 +24,14 @@ import Tooltip from "../../../components/Main/Tooltip/Tooltip";
 import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
 import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
+import { TimeParams } from "../../../types";
 
 interface Props {
   data: Logs[];
   queryParams?: Record<string, string>;
+  period: TimeParams;
   isLoading: boolean;
+  isPending?: boolean;
   isPreview?: boolean;
 }
 
@@ -46,7 +49,7 @@ const tabs = [
   { label: "Live", value: DisplayType.liveTailing, icon: <PlayIcon/>, Component: LiveTailingView },
 ];
 
-const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) => {
+const QueryPageBody: FC<Props> = ({ data, queryParams, period, isLoading, isPending, isPreview }) => {
   const { isMobile } = useDeviceDetect();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
@@ -70,6 +73,10 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
   };
 
   const ActiveTabComponent = tabs.find(tab => tab.value === activeTab)?.Component;
+
+  const showContent = !hideLogs && ActiveTabComponent;
+  const isLiveTailing = activeTab === DisplayType.liveTailing;
+  const showWaiting = !isLiveTailing && isPending;
 
   return (
     <div
@@ -101,9 +108,9 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
         </div>
         <div
           className={classNames({
-          "vm-query-page-body-header__settings": true,
-          "vm-query-page-body-header__settings_mobile": isMobile,
-        })}
+            "vm-query-page-body-header__settings": true,
+            "vm-query-page-body-header__settings_mobile": isMobile,
+          })}
         >
           <div ref={settingsRef}/>
           <DownloadLogsModal queryParams={queryParams}>
@@ -143,12 +150,19 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, isLoading, isPreview }) =
           </div>
         )}
 
-        {!hideLogs && ActiveTabComponent &&
+        {showContent && showWaiting && (
+          <div className="vm-empty">
+            {isPending ? "Waiting for hits to load…" : "Loading logs…"}
+          </div>
+        )}
+
+        {showContent && !showWaiting && (
           <ActiveTabComponent
             data={data}
             settingsRef={settingsRef}
+            period={period}
           />
-        }
+        )}
       </div>
     </div>
   );

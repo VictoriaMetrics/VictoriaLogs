@@ -28,10 +28,10 @@ type pipe interface {
 	// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 	canLiveTail() bool
 
-	// canReturnLastNResults must return true if the given pipe can return last N results ordered by _time desc
+	// canReturnTimeSortedNResults must return true if the given pipe can return N results sorted by _time in either direction.
 	//
-	// The pipe can return last N results if it doesn't modify the _time field.
-	canReturnLastNResults() bool
+	// The pipe can return time-sorted N results if it keeps the _time field and doesn't change the order of its values.
+	canReturnTimeSortedNResults() bool
 
 	// isFixedOutputFieldsOrder must return true if the pipe returns the output log fields in a fixed order.
 	isFixedOutputFieldsOrder() bool
@@ -55,7 +55,7 @@ type pipe interface {
 	// initFilterInValues must return new pipe with the initialized values for 'in(subquery)' filters (recursively).
 	//
 	// It is OK to return the pipe itself if it doesn't contain 'in(subquery)' filters.
-	initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error)
+	initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error)
 
 	// visitSubqueries must call visitFunc for all the subqueries, which exist at the pipe (recursively).
 	visitSubqueries(visitFunc func(q *Query))

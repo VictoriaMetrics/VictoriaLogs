@@ -37,6 +37,11 @@ func TestParsePipeMathSuccess(t *testing.T) {
 	f(`math "abs" as x`)
 	f(`math ("abs" + 1) as x`)
 	f(`math "rand" as r`)
+
+	// quoted numeric constants must keep their quotes
+	f(`math "2025-01-01T00:00:00Z" as x`)
+	f(`math (x - "2025-01-01T00:00:00Z") as y`)
+	f(`math "12.34.56.78" as x`)
 }
 
 func TestParsePipeMathFailure(t *testing.T) {

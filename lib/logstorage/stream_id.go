@@ -50,7 +50,7 @@ func (sid *streamID) String() string {
 	return fmt.Sprintf("(tenant_id=%s, id=%s)", &sid.tenantID, &sid.id)
 }
 
-// less returns true if a is less than sid.
+// less returns true if sid is less than a.
 func (sid *streamID) less(a *streamID) bool {
 	if !sid.tenantID.Equal(&a.tenantID) {
 		return sid.tenantID.less(&a.tenantID)

@@ -171,30 +171,27 @@ func (kc *kubernetesCollector) watchForPodsUpdates(ctx context.Context, resource
 
 		err = r.readEvents(handleEvent)
 		_ = r.close()
-		if err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			if errors.Is(err, errGone) {
-				continue
-			}
-
-			isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
-			if isEOF && time.Since(lastEOF) > time.Minute {
-				// Kubernetes API server closed the connection.
-				// This is expected to happen from time to time.
-				// Ignore EOF errors happening not more often than once per minute.
-				lastEOF = time.Now()
-				continue
-			}
-
-			errorFired = true
-
-			logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.CurrentDelay())
-			if !bt.Wait(stopCh) {
-				return
-			}
+		if ctx.Err() != nil {
+			return
+		}
+		if errors.Is(err, errGone) {
 			continue
+		}
+
+		isEOF := errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+		if isEOF && time.Since(lastEOF) > time.Minute {
+			// Kubernetes API server closed the connection.
+			// This is expected to happen from time to time.
+			// Ignore EOF errors happening not more often than once per minute.
+			lastEOF = time.Now()
+			continue
+		}
+
+		errorFired = true
+
+		logger.Errorf("failed to read Pod events from the Kubernetes API: %s; will retry in %s", err, bt.CurrentDelay())
+		if !bt.Wait(stopCh) {
+			return
 		}
 	}
 }

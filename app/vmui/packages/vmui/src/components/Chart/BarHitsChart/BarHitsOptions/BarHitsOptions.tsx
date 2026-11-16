@@ -5,7 +5,13 @@ import "./style.scss";
 import useStateSearchParams from "../../../../hooks/useStateSearchParams";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../../Main/Button/Button";
-import { KeyboardIcon, MoreIcon, VisibilityIcon, VisibilityOffIcon } from "../../../Main/Icons";
+import {
+  ArrowBackIcon,
+  KeyboardIcon,
+  MoreIcon,
+  VisibilityIcon,
+  VisibilityOffIcon
+} from "../../../Main/Icons";
 import Tooltip from "../../../Main/Tooltip/Tooltip";
 import ShortcutKeys from "../../../Main/ShortcutKeys/ShortcutKeys";
 import { useCallback } from "react";
@@ -16,20 +22,37 @@ import useBoolean from "../../../../hooks/useBoolean";
 import SelectLimit from "../../../Main/Pagination/SelectLimit/SelectLimit";
 import { WITHOUT_GROUPING } from "../../../../constants/logs";
 import { useHitsChartConfig } from "../../../../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
-import { useExtraFilters } from "../../../ExtraFilters/hooks/useExtraFilters";
-import { useFetchFieldNames } from "../../../../pages/OverviewPage/hooks/useFetchFieldNames";
-import { getDurationFromMilliseconds } from "../../../../utils/time";
-import { generateIntervalsMs } from "../../../../utils/intervals";
+import { useGroupByFields } from "../../../../hooks/useGroupByFields";
+import { getDefaultIntervalOption, getIntervalOptions } from "../../../../utils/intervals";
+import { nanosToIsoString, vmDate } from "../../../../utils/time";
 import { useTimePeriod } from "../../../../pages/QueryPage/hooks/useTimePeriod";
+import usePrevious from "../../../../hooks/usePrevious";
+import { TimeParams } from "../../../../types";
+import { DATE_TIME_FORMAT } from "../../../../constants/date";
+import { useTimeState } from "../../../../state/time/TimeStateContext";
+import { useHideChart } from "../../../../pages/QueryPage/HitsPanel/hooks/useHideChart";
 
 interface Props {
   query?: string;
+  period: TimeParams;
+  loadedFieldNames?: string[];
   isHitsMode?: boolean;
   isOverview?: boolean;
+  prevPeriod?: TimeParams;
+  onRevertPeriod: () => void
   onChange: (options: GraphOptions) => void;
 }
 
-const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) => {
+const BarHitsOptions: FC<Props> = ({
+  query,
+  period,
+  loadedFieldNames,
+  isHitsMode,
+  isOverview,
+  prevPeriod,
+  onRevertPeriod,
+  onChange
+}) => {
   const { isMobile } = useDeviceDetect();
   const {
     value: openList,
@@ -40,20 +63,29 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { topHits, groupFieldHits, step } = useHitsChartConfig();
+  const { timezone } = useTimeState();
 
-  const { extraParams } = useExtraFilters();
   const { period: { start, end } } = useTimePeriod();
-  const { fetchFieldNames, fieldNames, loading, error } = useFetchFieldNames();
+  const groupByFields = useGroupByFields({ query, period, loadedFieldNames });
 
   const [queryMode, setQueryMode] = useStateSearchParams(GRAPH_QUERY_MODE.hits, "graph_mode");
   const isStatsMode = queryMode === GRAPH_QUERY_MODE.stats;
 
   const hasGroupField = groupFieldHits.value !== WITHOUT_GROUPING;
-  const isGroupsLimitVisible = (isHitsMode && hasGroupField) || isStatsMode;
+  const hasMultipleSeries = (isHitsMode && hasGroupField) || isStatsMode;
 
   const [stacked, setStacked] = useStateSearchParams(false, "stacked");
   const [cumulative, setCumulative] = useStateSearchParams(false, "cumulative");
-  const [hideChart, setHideChart] = useStateSearchParams(false, "hide_chart");
+  const [hideChart, setHideChart] = useHideChart();
+
+
+  const prevPeriodFormatted = useMemo(() => {
+    if (!prevPeriod) return;
+
+    const startIso = nanosToIsoString(prevPeriod.start);
+    const endIso = nanosToIsoString(prevPeriod.end);
+    return `${vmDate(startIso).tz().format(DATE_TIME_FORMAT)} - ${vmDate(endIso).tz().format(DATE_TIME_FORMAT)}`;
+  }, [prevPeriod, timezone]);
 
   const options: GraphOptions = useMemo(() => ({
     graphStyle: GRAPH_STYLES.BAR,
@@ -64,22 +96,18 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
     hideChart,
   }), [stacked, cumulative, hideChart, queryMode]);
 
-  const intervals = useMemo(() => {
-    const msIntervals = generateIntervalsMs({ start, end });
-    return msIntervals.map(ms => getDurationFromMilliseconds(ms));
+  const { intervals, defaultStep } = useMemo(() => {
+    const intervalOptions = getIntervalOptions({ start, end });
+    const options = intervalOptions.map(ops => ops.duration);
+    const fallbackStep = options[Math.floor(options.length / 2)];
+
+    return {
+      intervals: options,
+      defaultStep: getDefaultIntervalOption({ start, end })?.duration || fallbackStep,
+    };
   }, [start, end]);
 
-  const defaultStep = intervals[Math.floor(intervals.length / 2)];
-
-  const fieldNamesOptions = useMemo(() => {
-    const fields = fieldNames.map(v => v.value).sort((a, b) => a.localeCompare(b));
-    return [WITHOUT_GROUPING, ...fields];
-  }, [fieldNames]);
-
-  const handleOpenFields = useCallback(() => {
-    const period = { start, end };
-    void fetchFieldNames({ period, extraParams, skipNoiseFields: true, query });
-  }, [start, end, extraParams.toString(), fetchFieldNames, query]);
+  const prevDefaultStep = usePrevious(defaultStep);
 
   const handleChangeSearchParams = useCallback((key: string, shouldSet: boolean, paramValue?: string) => {
     const next = new URLSearchParams(searchParams);
@@ -104,29 +132,32 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
   }, [setCumulative, handleChangeSearchParams]);
 
   const toggleHideChart = useCallback(() => {
-    setHideChart(prev => {
-      const nextVal = !prev;
-      handleChangeSearchParams("hide_chart", nextVal);
-      return nextVal;
-    });
-  }, [setHideChart, handleChangeSearchParams]);
+    const nextVal = !hideChart;
+    setHideChart(nextVal);
+  }, [hideChart, setHideChart]);
 
   useEffect(() => {
     onChange(options);
   }, [options]);
 
   useEffect(() => {
-    const isAllowed = (v: string | null) => !!v && intervals.includes(v);
-    const shouldReset = (v: string | null) => !isAllowed(v) && v !== defaultStep;
-
-    if (!shouldReset(step.value)) return;
+    if (!prevDefaultStep || prevDefaultStep === defaultStep) return;
 
     const t = setTimeout(() => {
-      if (shouldReset(step.value)) step.set(defaultStep, { replace: true });
+      step.set(defaultStep, { replace: true });
     }, 200);
 
     return () => clearTimeout(t);
-  }, [intervals, defaultStep, step.value]);
+  }, [defaultStep]);
+
+  useEffect(() => {
+    if (!defaultStep || !step.value) return;
+
+    const isValidStep = intervals.includes(step.value);
+    if (isValidStep) return;
+
+    step.set(defaultStep, { replace: true });
+  }, [step.value, step.set, defaultStep, intervals]);
 
   const controls = (
     <>
@@ -147,18 +178,18 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
               <SelectLimit
                 searchable
                 label="Group by"
-                limit={groupFieldHits.value}
-                options={fieldNamesOptions}
+                limit={groupByFields.value}
+                options={groupByFields.options}
                 textNoOptions={"No fields found"}
-                isLoading={loading}
-                error={error ? String(error) : ""}
-                onOpenSelect={handleOpenFields}
-                onChange={groupFieldHits.set}
+                isLoading={groupByFields.isLoading}
+                error={groupByFields.error}
+                onOpenSelect={groupByFields.loadFields}
+                onChange={groupByFields.selectField}
               />
             </div>
           </>
         )}
-        {isGroupsLimitVisible && (
+        {hasMultipleSeries && (
           <div className="vm-bar-hits-options-item">
             <SelectLimit
               label="Groups limit"
@@ -168,7 +199,31 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
             />
           </div>
         )}
+
+        {prevPeriod && (
+          <Tooltip title={`Back to previous range: ${prevPeriodFormatted}`}>
+            <div
+              className="vm-bar-hits-options-item"
+              onClick={onRevertPeriod}
+            >
+              <button className="vm-select-limits-button vm-bar-hits-options-item_timerange">
+                <ArrowBackIcon/>
+                Back to prev range
+              </button>
+            </div>
+          </Tooltip>
+        )}
       </div>
+
+      {hasMultipleSeries && (
+        <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
+          <Switch
+            label={"Stacked"}
+            value={stacked}
+            onChange={handleChangeStacked}
+          />
+        </div>
+      )}
 
       <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
         <Switch
@@ -177,6 +232,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           onChange={handleChangeCumulative}
         />
       </div>
+
       {!isOverview && (
         <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
           <Switch
@@ -186,13 +242,6 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
           />
         </div>
       )}
-      <div className="vm-bar-hits-options-item vm-bar-hits-options-item_switch">
-        <Switch
-          label={"Stacked"}
-          value={stacked}
-          onChange={handleChangeStacked}
-        />
-      </div>
     </>
   );
 
@@ -201,7 +250,7 @@ const BarHitsOptions: FC<Props> = ({ query, isHitsMode, isOverview, onChange }) 
       className={classNames({
         "vm-bar-hits-options": true,
         "vm-bar-hits-options_mobile": isMobile,
-      "vm-bar-hits-options_hidden": hideChart,
+        "vm-bar-hits-options_hidden": hideChart,
       })}
     >
       {!isMobile && !hideChart && (

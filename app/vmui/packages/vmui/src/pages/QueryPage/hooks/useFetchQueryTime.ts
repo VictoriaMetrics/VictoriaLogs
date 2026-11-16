@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "preact/compat";
 import { ErrorTypes, TimeParams, TimePeriod } from "../../../types";
 import { useTenant } from "../../../hooks/useTenant";
 import { useAppState } from "../../../state/common/StateContext";
+import { TIME_FIELD } from "../../../constants/logFields";
 import {
   isValidDate,
   timePeriodToTimeParams, vmDate
@@ -21,7 +22,7 @@ interface ServerTimeParams extends TimeParams {
 }
 
 const hasTimeFilter = (expr?: string) => {
-  return !!expr && expr.includes("_time");
+  return !!expr && expr.includes(TIME_FIELD);
 };
 
 export const useFetchQueryTime = (defaultQuery?: string) => {

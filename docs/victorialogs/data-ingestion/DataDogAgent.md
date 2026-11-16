@@ -1,6 +1,7 @@
 ---
 weight: 5
 title: DataDog Agent Setup
+description: "Configure DataDog agent to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

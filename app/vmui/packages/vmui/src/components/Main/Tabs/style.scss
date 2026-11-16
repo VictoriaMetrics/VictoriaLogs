@@ -4,12 +4,16 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   height: 100%;
   gap: $padding-global;
   user-select: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
 
   &-item {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;

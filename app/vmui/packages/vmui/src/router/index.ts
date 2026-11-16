@@ -7,7 +7,6 @@ const router = {
 export interface RouterOptionsHeader {
   tenant?: boolean,
   timeSelector?: boolean,
-  executionControls?: boolean,
 }
 
 export interface RouterOptions {
@@ -21,7 +20,6 @@ export const routerOptions: { [key: string]: RouterOptions } = {
     header: {
       tenant: true,
       timeSelector: true,
-      executionControls: true,
     }
   },
   [router.overview]: {
@@ -29,7 +27,6 @@ export const routerOptions: { [key: string]: RouterOptions } = {
     header: {
       tenant: true,
       timeSelector: true,
-      executionControls: true,
     }
   },
   [router.icons]: {

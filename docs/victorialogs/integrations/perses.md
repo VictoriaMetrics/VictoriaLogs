@@ -1,6 +1,7 @@
 ---
 weight: 2
 title: Perses
+description: "Use VictoriaLogs with Perses for log dashboards and visualization."
 menu:
   docs:
     identifier: integrations-vl-perses

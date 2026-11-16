@@ -16,16 +16,44 @@ $bg-color-dark: $color-background-body;
   font-size: $font-size-small;
 
   &-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: calc($padding-small / 2);
     padding-block: 1px;
-    padding-inline: $padding-small 2px;
+    padding-inline: calc($padding-small / 2) 2px;
     max-width: clamp(180px, 50%, 360px);
     border-radius: $border-radius-button;
     color: $color-text-secondary;
-    background-color: $color-hover-black;
+    z-index: 1;
+
+    &:after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: $border-radius-button;
+      background-color: currentColor;
+      opacity: 0.1;
+      z-index: -1;
+    }
+
+    &_stream {
+      color: $color-dodger-blue;
+    }
+
+    &__icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      min-height: 22px;
+      max-height: 22px;
+      aspect-ratio: 1;
+    }
 
     &__tooltip {
       max-width: calc(clamp(180px, 24vw, 360px) - ($padding-small * 2));
@@ -34,17 +62,18 @@ $bg-color-dark: $color-background-body;
     }
 
     &__label {
+      color: $color-text;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     &__remove {
+      color: $color-text-secondary;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: calc($border-radius-medium - 2px);
-      color: $color-text-secondary;
       background-color: transparent;
       padding: calc($padding-small / 2);
       cursor: pointer;

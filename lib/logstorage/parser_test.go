@@ -3986,6 +3986,24 @@ func TestQueryClone(t *testing.T) {
 	f(`* | math ("round" / 2) as y`)
 }
 
+func TestQueryCloneWithTimeFilter(t *testing.T) {
+	f := func(qStr, resultExpected string) {
+		t.Helper()
+
+		q, err := ParseQuery(qStr)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		result := q.CloneWithTimeFilter(q.GetTimestamp(), 0, 1).String()
+		if result != resultExpected {
+			t.Fatalf("unexpected result;\ngot\n%s\nwant\n%s", result, resultExpected)
+		}
+	}
+
+	f(`foo bar:in(_time:1h baz | fields bar)`,
+		`_time:[1970-01-01T00:00:00.000000000Z,1970-01-01T00:00:00.000000001Z] foo bar:in(_time:1h baz | fields bar)`)
+}
+
 func TestQueryGetFilterTimeRange(t *testing.T) {
 	f := func(qStr string, startExpected, endExpected int64) {
 		t.Helper()
@@ -4006,15 +4024,15 @@ func TestQueryGetFilterTimeRange(t *testing.T) {
 	f("_time:2024-05-31Z _time:day_range[08:00, 16:00]", 1717113600000000000, 1717199999999999999)
 }
 
-func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
-	f := func(qStr, qOptExpected string, offsetExpected, limitExpected uint64) {
+func TestQueryGetTimeSortedNResultsQuery_Success(t *testing.T) {
+	f := func(qStr, qOptExpected string, offsetExpected, limitExpected uint64, isDescExpected bool) {
 		t.Helper()
 
 		q, err := ParseQuery(qStr)
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
+		qOpt, offset, limit, isDesc := q.GetTimeSortedNResultsQuery()
 		if qOpt == nil {
 			t.Fatalf("unexpected nil qOpt")
 		}
@@ -4028,33 +4046,43 @@ func TestQueryGetLastNResultsQuery_Success(t *testing.T) {
 		if limit != limitExpected {
 			t.Fatalf("unexpected limit; got %d; want %d", limit, limitExpected)
 		}
+		if isDesc != isDescExpected {
+			t.Fatalf("unexpected isDesc; got %v; want %v", isDesc, isDescExpected)
+		}
 	}
 
-	f("* | sort (_time) desc limit 10", "*", 0, 10)
-	f("* | sort (_time) desc offset 5 limit 10", "*", 5, 10)
-	f("* | sort (_time) desc limit 5 offset 10", "*", 10, 5)
-	f("* | sort by (_time desc) limit 20", "*", 0, 20)
-	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 0, 30)
-	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 0, 5)
-	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 0, 5)
+	f("* | sort (_time) desc limit 10", "*", 0, 10, true)
+	f("* | sort (_time) desc offset 5 limit 10", "*", 5, 10, true)
+	f("* | sort (_time) desc limit 5 offset 10", "*", 10, 5, true)
+	f("* | sort by (_time desc) limit 20", "*", 0, 20, true)
+	f("_time:5m error | format 'x' as y | sort by (_time desc) | limit 30", "_time:5m error | format x as y", 0, 30, true)
+	f("* | fields _time, x | sort (_time desc) limit 5", "* | fields _time, x", 0, 5, true)
+	f("* | delete x, y* | sort (_time desc) limit 5", "* | delete x, y*", 0, 5, true)
 
 	// fields pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 0, 5)
+	f("* | sort (_time desc) limit 5 | fields _time, x", "* | fields _time, x", 0, 5, true)
 
 	// delete pipe after the sort pipe
-	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 0, 5)
+	f("* | sort (_time desc) limit 5 | delete x, y*", "* | delete x, y*", 0, 5, true)
 
 	// multiple keep and rm pipes
-	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 0, 5)
+	f("* | sort (_time desc) limit 5 | keep _time, x | delete x", "* | fields _time, x | delete x", 0, 5, true)
 
 	// first pipe
-	f(`* | first 10 (_time desc)`, `*`, 0, 10)
+	f(`* | first 10 (_time desc)`, `*`, 0, 10, true)
 
 	// last pipe
-	f(`* | last 10 (_time)`, `*`, 0, 10)
+	f(`* | last 10 (_time)`, `*`, 0, 10, true)
+
+	// test asc direction
+	f("* | sort (_time) limit 10", "*", 0, 10, false)
+	f("* | sort (_time) asc limit 10", "*", 0, 10, false)
+	f("* | sort (_time desc) desc limit 10", "*", 0, 10, false)
+	f(`* | first 10 (_time)`, `*`, 0, 10, false)
+	f(`* | last 10 (_time desc)`, `*`, 0, 10, false)
 }
 
-func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
+func TestQueryGetTimeSortedNResultsQuery_Failure(t *testing.T) {
 	f := func(qStr string) {
 		t.Helper()
 
@@ -4062,7 +4090,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		qOpt, offset, limit := q.GetLastNResultsQuery()
+		qOpt, offset, limit, _ := q.GetTimeSortedNResultsQuery()
 		if qOpt != nil {
 			t.Fatalf("unexpected non-nil qOpt: [%s]", qOpt)
 		}
@@ -4086,10 +4114,6 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	// sort by multiple fields
 	f("* | sort (_time desc, x)")
 
-	// sort by _time in ascending order
-	f("* | sort (_time)")
-	f("* | sort (_time desc) desc")
-
 	// missing limit
 	f("* | sort (_time desc)")
 
@@ -4099,7 +4123,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	// unexpected partition
 	f("* | sort (_time desc) limit 5 partition by (x)")
 
-	// preceding pipes cannot be used for returning last N results with the biggest _time values
+	// preceding pipes cannot be used for returning N results sorted by _time
 	f("* | stats by (_time:hour) count() y | sort (_time desc) limit 5")
 
 	// missing _time field before the sort pipe
@@ -4110,12 +4134,6 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	f("* | sort (_time desc) limit 5 | keep x")
 	f("* | sort (_time desc) limit 5 | rm _time, x")
 
-	// first without descending sorting
-	f("* | first 10 (_time)")
-
-	// last without asscending sorting
-	f("* | last 10 (_time desc)")
-
 	// first with sort by foo additionally to _time
 	f("* | first 10 (_time desc, foo)")
 
@@ -4123,7 +4141,7 @@ func TestQueryGetLastNResultsQuery_Failure(t *testing.T) {
 	f("* | last 10 (_time, foo)")
 }
 
-func TestQueryCanReturnLastNResults(t *testing.T) {
+func TestQueryCanReturnTimeSortedNResults(t *testing.T) {
 	f := func(qStr string, resultExpected bool) {
 		t.Helper()
 
@@ -4131,9 +4149,9 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse [%s]: %s", qStr, err)
 		}
-		result := q.CanReturnLastNResults()
+		result := q.CanReturnTimeSortedNResults()
 		if result != resultExpected {
-			t.Fatalf("unexpected result for CanReturnLastNResults(%q); got %v; want %v", qStr, result, resultExpected)
+			t.Fatalf("unexpected result for CanReturnTimeSortedNResults(%q); got %v; want %v", qStr, result, resultExpected)
 		}
 	}
 
@@ -4146,6 +4164,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | block_stats", false)
 	f("* | coalesce (x)", true)
 	f("* | collapse_nums", true)
+	f("* | collapse_nums at _time", false)
 	f("* | copy foo bar", true)
 	f("* | copy * as foo*", true)
 	f("* | copy _time as x", true)
@@ -4154,7 +4173,11 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | delete foo, bar", true)
 	f("* | drop_empty_fields", true)
 	f("* | extract '<foo>bar<baz>'", true)
+	f("* | extract '<_time>bar<baz>'", false)
+	f("* | extract '<_time>bar<baz>' keep_original_fields", true)
 	f("* | extract_regexp 'foo(?P<bar>baz)'", true)
+	f("* | extract_regexp 'foo(?P<_time>baz)'", false)
+	f("* | extract_regexp 'foo(?P<_time>baz)' keep_original_fields", true)
 	f("* | facets", false)
 	f("* | field_names", false)
 	f("* | fields foo, bar", false)
@@ -4178,6 +4201,7 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | len(x) as _time", false)
 	f("* | limit 10", false)
 	f("* | math x+y as z", true)
+	f("* | math x+y as z, 10 as _time", false)
 	f("* | offset 10", false)
 	f("* | pack_json", true)
 	f("* | pack_json as _time", false)
@@ -4189,7 +4213,9 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | rename _time as x", false)
 	f("* | rename foo as _time", false)
 	f("* | replace ('foo', 'bar')", true)
+	f("* | replace ('foo', 'bar') at _time", false)
 	f("* | replace_regexp ('foo', 'bar')", true)
+	f("* | replace_regexp ('foo', 'bar') at _time", false)
 	f("* | running_stats count()", false)
 	f("* | sample 10", false)
 	f("* | sort by (x)", false)
@@ -4201,11 +4227,25 @@ func TestQueryCanReturnLastNResults(t *testing.T) {
 	f("* | total_stats count()", false)
 	f("* | union (x)", false)
 	f("* | uniq (x)", false)
+	// Wildcard field filters at unpack pipes may overwrite the _time field depending on the unpacked data.
+	// They intentionally keep the optimization in order to not penalize the common case
+	// when the unpacked data doesn't contain the _time field.
 	f("* | unpack_json x", true)
+	f("* | unpack_json fields (foo, _time)", false)
+	f("* | unpack_json fields (_time) keep_original_fields", true)
+	f("* | unpack_json fields (foo)", true)
+	f("* | unpack_json result_prefix x_", true)
+	f("* | unpack_json result_prefix _", true)
+	f("* | unpack_json fields (time) result_prefix _", false)
+	f("* | unpack_json fields (tim*) result_prefix _", true)
 	f("* | unpack_logfmt x", true)
+	f("* | unpack_logfmt fields (_time)", false)
+	f("* | unpack_logfmt fields (_time) keep_original_fields", true)
+	f("* | unpack_logfmt fields (time) result_prefix _", false)
 	f("* | unpack_syslog x", true)
 	f("* | unpack_words x", true)
 	f("* | unroll by (x)", true)
+	f("* | unroll by (x, _time)", false)
 
 	// There is no _time field
 	f("* | fields foo, bar", false)
@@ -4450,7 +4490,7 @@ func TestQueryGetStatsLabelsAddGroupingByTime_Failure(t *testing.T) {
 	f(`* | by (x) count() | collapse_nums at x`)
 	f(`* | count() x | split ' '`)
 
-	// offset and limit pipes are disallowed, since they cannot be applied individually per each step
+	// offset and limit pipes are disallowed, since they cannot be applied individually for each step
 	f(`* | by (x) count() | offset 10`)
 	f(`* | by (x) count() | limit 20`)
 

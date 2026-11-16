@@ -33,6 +33,7 @@ interface TextFieldProps {
   helperText?: string
   inputmode?: "search" | "text" | "email" | "tel" | "url" | "none" | "numeric" | "decimal"
   caretPosition?: [number, number]
+  caretUpdateId?: number
   onChange?: (value: string) => void
   onEnter?: () => void
   onKeyDown?: (e: TextFieldKeyboardEvent) => void
@@ -56,6 +57,7 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     autofocus = false,
     inputmode = "text",
     caretPosition,
+    caretUpdateId,
     onChange,
     onEnter,
     onKeyDown,
@@ -120,14 +122,6 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
     onBlur && onBlur();
   };
 
-  const setSelectionRange = (range: [number, number]) => {
-    try {
-      fieldRef.current && fieldRef.current.setSelectionRange(range[0], range[1]);
-    } catch (e) {
-      return e;
-    }
-  };
-
   const setExternalRef = useCallback((element: HTMLInputElement | HTMLTextAreaElement | null) => {
     if (extRef) {
       if (typeof extRef === "function") {
@@ -155,8 +149,16 @@ const TextField: FC<TextFieldProps> = forwardRef<HTMLInputElement | HTMLTextArea
   }, [fieldRef, autofocus]);
 
   useEffect(() => {
-    caretPosition && setSelectionRange(caretPosition);
-  }, [caretPosition]);
+    const el = fieldRef.current;
+    if (!caretPosition || !el) return;
+    if (document.activeElement !== el) return;
+
+    try {
+      el.setSelectionRange(caretPosition[0], caretPosition[1]);
+    } catch {
+      // ignore
+    }
+  }, [caretPosition?.[0], caretPosition?.[1], caretUpdateId, fieldRef]);
 
   return (
     <label

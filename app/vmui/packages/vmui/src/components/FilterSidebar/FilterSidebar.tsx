@@ -1,4 +1,4 @@
-import { FC, useEffect, useMemo, useRef, useCallback, useState } from "preact/compat";
+import { FC, useEffect, useMemo, useRef, useCallback, useState, Fragment } from "preact/compat";
 import { useFilterSidebarSticky } from "./hooks/useFilterSidebarSticky";
 import LineLoader from "../Main/LineLoader/LineLoader";
 import FilterSidebarField from "./FilterSidebarField/FilterSidebarField";
@@ -8,25 +8,34 @@ import DragResizeHandle from "../Main/DragResizeHandle/DragResizeHandle";
 import { useFilterSidebarWidth } from "./hooks/useFilterSidebarWidth";
 import { CSSProperties } from "preact";
 import FilterSidebarActions from "./FilterSidebarActions/FilterSidebarActions";
-import { useFilterSidebarVisible } from "./hooks/useFilterSidebarVisible";
 import classNames from "classnames";
-import useBoolean from "../../hooks/useBoolean";
 import { ExtraFilter } from "../ExtraFilters/types";
 import FilterSidebarAlert from "./FilterSidebarAlert/FilterSidebarAlert";
 import useDeviceDetect from "../../hooks/useDeviceDetect";
 import { isStreamFilter } from "../ExtraFilters/utils/isStreamFilter";
 import { useFetchStreamFieldNames } from "../../pages/OverviewPage/hooks/useFetchStreamNames";
-import { useTimePeriod } from "../../pages/QueryPage/hooks/useTimePeriod";
 import { useDebounceCallback } from "../../hooks/useDebounceCallback";
 import { LogsFieldValues } from "../../api/types";
+import { sortSidebarItems } from "./utils/sortSidebarItems";
+import TextField, { TextFieldKeyboardEvent } from "../Main/TextField/TextField";
+import { SearchIcon } from "../Main/Icons";
+import { filterSidebarItemsBySearch } from "./utils/filterSidebarItems";
+import { formatNumber } from "../../utils/number";
+import { useQueryState } from "../../state/query/QueryStateContext";
+import {
+  SIDEBAR_ITEMS_LIMIT,
+  SIDEBAR_SEARCH_THRESHOLD,
+  DEFAULT_FILTER_SIDEBAR_SORT,
+} from "./constants";
 
 type Props = {
   query: string;
   extraFilters: ExtraFilter[];
   extraParams: URLSearchParams;
   onAddFilter: (filter: ExtraFilter) => void;
+  onReplaceFiltersByField: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
-  onRemoveByField: (field: string) => void;
+  onClose: () => void;
 }
 
 const FilterSidebar: FC<Props> = ({
@@ -34,22 +43,23 @@ const FilterSidebar: FC<Props> = ({
   extraFilters,
   extraParams,
   onAddFilter,
+  onReplaceFiltersByField,
   onRemoveByValue,
-  onRemoveByField,
+  onClose,
 }) => {
   const { isMobile } = useDeviceDetect();
-  const { getCurrentPeriod } = useTimePeriod();
+  const { appliedPeriod } = useQueryState();
 
   const { fetchStreamFieldNames, streamFieldNames, loading, error, abort } = useFetchStreamFieldNames();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isServerSearch, setIsServerSearch] = useState(false);
+  const isReady = isLoaded && !loading && !error;
+
+  const [search, setSearch] = useState("");
 
   const sidebarRef = useRef<HTMLElement>(null);
   const { height, top } = useFilterSidebarSticky(sidebarRef);
   const { size: parentSize, width, setWidth, clearWidth } = useFilterSidebarWidth(sidebarRef);
-  const { isVisible, setHidden } = useFilterSidebarVisible();
-
-  const { value: isDescOrder, toggle: toggleSortOrder } = useBoolean(true);
-  const orderDir = isDescOrder ? "desc" : "asc";
 
   const missingSelectedFields: LogsFieldValues[] = useMemo(() => {
     const missingFields = extraFilters.filter(f =>
@@ -60,12 +70,44 @@ const FilterSidebar: FC<Props> = ({
     return uniqMissingFields.map(value => ({ value, hits: 0 }));
   }, [streamFieldNames, extraFilters]);
 
+  const allFields = useMemo(() => {
+    return [...streamFieldNames, ...missingSelectedFields];
+  }, [streamFieldNames, missingSelectedFields]);
+
+  const isStreamsLimitExceeded = streamFieldNames.length > SIDEBAR_ITEMS_LIMIT;
+  const isSearchRequired = isStreamsLimitExceeded || (isServerSearch && !search.trim());
+  const showInputSearch = isServerSearch || allFields.length > SIDEBAR_SEARCH_THRESHOLD.field || search.length > 0;
+
+  const selectedFilters = useMemo(() => {
+    return new Set(extraFilters.filter(isStreamFilter).map(filter => filter.field));
+  }, [extraFilters]);
+
   const fields = useMemo(() => {
-    const allFields = [...streamFieldNames, ...missingSelectedFields];
-    return isDescOrder
-      ? allFields // API already returns fields in desc order, so no need to sort
-      : allFields.toSorted((a, b) => a.hits - b.hits);
-  }, [streamFieldNames, missingSelectedFields, isDescOrder]);
+    if (isSearchRequired) {
+      return search.trim()
+        ? []
+        : sortSidebarItems(
+          allFields.filter(f => selectedFilters.has(f.value)),
+          DEFAULT_FILTER_SIDEBAR_SORT,
+          selectedFilters,
+        );
+    }
+
+    if (isServerSearch) {
+      return sortSidebarItems(streamFieldNames, DEFAULT_FILTER_SIDEBAR_SORT, selectedFilters);
+    }
+
+    const sorted = sortSidebarItems(allFields, DEFAULT_FILTER_SIDEBAR_SORT, selectedFilters);
+    return filterSidebarItemsBySearch(sorted, search);
+  }, [allFields, streamFieldNames, search, isServerSearch, isSearchRequired, selectedFilters]);
+
+  const firstAvailableIndex = fields.findIndex(f => !selectedFilters.has(f.value));
+  const selectedCount = firstAvailableIndex === -1 ? fields.length : firstAvailableIndex;
+  const availableCount = fields.length - selectedCount;
+
+  const handleSearchKeyDown = (event: TextFieldKeyboardEvent) => {
+    if (event.key === "Escape") setSearch("");
+  };
 
   const sidebarStyles: CSSProperties | undefined = useMemo(() => {
     if (isMobile) return;
@@ -76,30 +118,49 @@ const FilterSidebar: FC<Props> = ({
     return styles;
   }, [height, top, width, isMobile]);
 
+  const fetchStreams = useCallback(async (filter?: string) => {
+    if (!appliedPeriod) return;
+    const data = await fetchStreamFieldNames({
+      period: appliedPeriod,
+      query,
+      extraParams,
+      filter
+    });
 
-  const fetchStreams = useCallback(async () => {
-    try {
-      const period = getCurrentPeriod();
-      await fetchStreamFieldNames({ period, query, extraParams });
-      setIsLoaded(true);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      throw err;
-    }
-  }, [fetchStreamFieldNames, getCurrentPeriod, query, extraParams.toString()]);
+    if (data === undefined) return;
+    setIsLoaded(true);
+    if (!filter?.trim()) setIsServerSearch(data.length > SIDEBAR_ITEMS_LIMIT);
+  }, [fetchStreamFieldNames, appliedPeriod, query, extraParams.toString()]);
 
   const debouncedFetchStreams = useDebounceCallback(fetchStreams, 300);
+  const debouncedSearchStreams = useDebounceCallback(fetchStreams, 300);
 
   useEffect(() => {
+    setIsServerSearch(false);
     debouncedFetchStreams();
-    return abort;
+
+    return () => {
+      debouncedFetchStreams.cancel();
+      abort();
+    };
   }, [fetchStreams, abort]);
+
+  useEffect(() => {
+    const filter = search.trim();
+    if (!isServerSearch || !filter) return;
+
+    debouncedSearchStreams(filter);
+
+    return () => {
+      debouncedSearchStreams.cancel();
+      abort();
+    };
+  }, [search, isServerSearch]);
 
   return (
     <section
       className={classNames({
         "vm-filter-sidebar": true,
-        "vm-filter-sidebar_hidden": !isVisible,
         "vm-filter-sidebar_mobile": isMobile,
       })}
       style={sidebarStyles}
@@ -110,11 +171,23 @@ const FilterSidebar: FC<Props> = ({
       <div className="vm-filter-sidebar-header vm-table-settings-section-header">
         <div className="vm-table-settings-section-header__title">Stream fields</div>
         <FilterSidebarActions
-          onToggleSort={toggleSortOrder}
           onResetWidth={clearWidth}
-          onClose={setHidden}
+          onClose={onClose}
         />
       </div>
+
+      {showInputSearch && (
+        <div className="vm-filter-sidebar-search">
+          <TextField
+            type="search"
+            placeholder="Search field names"
+            startIcon={<SearchIcon/>}
+            value={search}
+            onChange={setSearch}
+            onKeyDown={handleSearchKeyDown}
+          />
+        </div>
+      )}
 
       <FilterSidebarAlert
         isVisible={!!error}
@@ -124,23 +197,38 @@ const FilterSidebar: FC<Props> = ({
       />
 
       <FilterSidebarAlert
-        isVisible={!error && !loading && fields.length === 0 && isLoaded}
+        isVisible={isReady && !isSearchRequired && !fields.length}
         variant="info"
-        title="No stream fields found"
+        title="No fields found"
+      />
+
+      <FilterSidebarAlert
+        isVisible={isReady && isSearchRequired}
+        variant="warning"
+        title={`More than ${formatNumber(SIDEBAR_ITEMS_LIMIT)} fields found`}
+        message="Start typing to narrow the search."
       />
 
       <div className="vm-filter-sidebar-list">
-        {fields.map((field) => (
-          <FilterSidebarField
-            key={field.value}
-            query={query}
-            field={field}
-            extraFilters={extraFilters}
-            orderDir={orderDir}
-            onAddFilter={onAddFilter}
-            onRemoveByValue={onRemoveByValue}
-            onRemoveByField={onRemoveByField}
-          />
+        {fields.map((field, index) => (
+          <Fragment key={field.value}>
+            {index === 0 && selectedCount > 0 && (
+              <p className="vm-filter-sidebar-list__title">Selected ({selectedCount})</p>
+            )}
+
+            {index === firstAvailableIndex && (
+              <p className="vm-filter-sidebar-list__title">Available ({availableCount})</p>
+            )}
+
+            <FilterSidebarField
+              query={query}
+              field={field}
+              extraFilters={extraFilters}
+              onAddFilter={onAddFilter}
+              onRemoveByValue={onRemoveByValue}
+              onReplaceFiltersByField={onReplaceFiltersByField}
+            />
+          </Fragment>
         ))}
       </div>
 

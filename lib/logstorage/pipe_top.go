@@ -24,7 +24,7 @@ const pipeTopDefaultLimit = 10
 //
 // See https://docs.victoriametrics.com/victorialogs/logsql/#top-pipe
 type pipeTop struct {
-	// fields contains field names for returning top values for.
+	// byFields contains field names for returning top values for.
 	byFields []string
 
 	// limit is the number of top (byFields) sets to return.
@@ -80,7 +80,7 @@ func (pt *pipeTop) canLiveTail() bool {
 	return false
 }
 
-func (pt *pipeTop) canReturnLastNResults() bool {
+func (pt *pipeTop) canReturnTimeSortedNResults() bool {
 	return false
 }
 

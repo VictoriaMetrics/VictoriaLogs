@@ -29,16 +29,11 @@ foobar`)
 }
 
 func TestReadLogsRequestSuccess(t *testing.T) {
-	f := func(data string, rowsExpected int, resultExpected string) {
+	f := func(data string, timestampsExpected []int64, resultExpected string) {
 		t.Helper()
 
-		ts := time.Now().UnixNano()
-		var timestampsExpected []int64
-		for range rowsExpected {
-			timestampsExpected = append(timestampsExpected, ts)
-		}
 		lmp := &insertutil.TestLogMessageProcessor{}
-		if err := readLogsRequest(ts, []byte(data), lmp); err != nil {
+		if err := readLogsRequest(123, []byte(data), lmp); err != nil {
 			t.Fatalf("unexpected error: %s", err)
 		}
 		if err := lmp.Verify(timestampsExpected, resultExpected); err != nil {
@@ -98,7 +93,7 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 			"service":"test"
 		}
 	]`
-	rowsExpected := 8
+	timestampsExpected := []int64{123, 123, 123, 123, 123, 123, 123, 123}
 	resultExpected := `{"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"bar","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"nested","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"foobar","service":"test"}
@@ -107,5 +102,9 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}
 {"ddsource":"nginx","tag1":"value1","tag2":"value2","hostname":"127.0.0.1","_msg":"xyz","service":"test"}
 {"ddsource":"nginx","env":"prod","foo":"no_label_value","hostname":"127.0.0.1","_msg":"qux","service":"test"}`
-	f(data, rowsExpected, resultExpected)
+	f(data, timestampsExpected, resultExpected)
+
+	// The timestamp of the previous log mustn't be used for the next log without timestamp
+	f(`[{"message":"foo","timestamp":1000},{"message":"bar"}]`, []int64{1000 * 1e6, 123}, `{"_msg":"foo"}
+{"_msg":"bar"}`)
 }

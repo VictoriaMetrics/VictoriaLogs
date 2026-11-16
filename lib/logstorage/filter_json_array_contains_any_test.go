@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestMatchJSONArrayContainsAny(t *testing.T) {
@@ -157,7 +155,4 @@ func TestFilterJSONArrayContainsAny(t *testing.T) {
 		fa = newFilterJSONArrayContainsAny("foo", []string{"pear"})
 		testFilterMatchForColumns(t, columns, fa, "foo", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

@@ -1,6 +1,8 @@
 @use "src/styles/variables" as *;
 
 .vm-json-view {
+  overflow: auto;
+
   &__settings-container {
     display: flex;
     flex-direction: row;

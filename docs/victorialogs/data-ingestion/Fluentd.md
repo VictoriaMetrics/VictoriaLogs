@@ -1,6 +1,7 @@
 ---
 weight: 2
 title: Fluentd Setup
+description: "Configure Fluentd to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

@@ -1,6 +1,7 @@
 ---
 weight: 10
 title: Syslog Setup
+description: "Accept logs into VictoriaLogs via Syslog TCP, UDP, or Unix socket"
 disableToc: true
 menu:
   docs:

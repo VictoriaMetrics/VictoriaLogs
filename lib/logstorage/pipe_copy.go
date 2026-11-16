@@ -41,7 +41,7 @@ func (pc *pipeCopy) canLiveTail() bool {
 	return true
 }
 
-func (pc *pipeCopy) canReturnLastNResults() bool {
+func (pc *pipeCopy) canReturnTimeSortedNResults() bool {
 	return !prefixfilter.MatchFilters(pc.dstFieldFilters, "_time")
 }
 

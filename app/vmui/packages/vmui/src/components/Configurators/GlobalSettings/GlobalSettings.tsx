@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "preact/compat";
+import { FC, useEffect } from "preact/compat";
 import { ArrowDownIcon, SettingsIcon } from "../../Main/Icons";
 import Button from "../../Main/Button/Button";
 import Modal from "../../Main/Modal/Modal";
@@ -11,6 +11,12 @@ import ThemeControl from "../ThemeControl/ThemeControl";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import useBoolean from "../../../hooks/useBoolean";
 import QueryTimeOverride from "./QueryTimeOverride/QueryTimeOverride";
+import BrowserTabController from "./BrowserTabController/BrowserTabController";
+import LargeLoadWarning from "./LargeLoadWarning/LargeLoadWarning";
+import IncrementalHitsSettings
+  from "./IncrementalHitsSettings/IncrementalHitsSettings";
+import { useAppState } from "../../../state/common/StateContext";
+import usePrevious from "../../../hooks/usePrevious";
 
 const title = "Settings";
 
@@ -18,18 +24,13 @@ export interface ChildComponentHandle {
   handleApply: () => void;
 }
 
-export interface GlobalSettingsHandle {
-  open: () => void;
-}
-
-const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
+const GlobalSettings: FC = () => {
   const { isMobile } = useDeviceDetect();
 
   const appModeEnable = getAppModeEnable();
 
-  const serverSettingRef = useRef<ChildComponentHandle>(null);
-  const limitsSettingRef = useRef<ChildComponentHandle>(null);
-  const timezoneSettingRef = useRef<ChildComponentHandle>(null);
+  const { openSettingsTrigger } = useAppState();
+  const openSettingsTriggerPrev = usePrevious(openSettingsTrigger);
 
   const {
     value: open,
@@ -37,31 +38,37 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
     setFalse: handleClose,
   } = useBoolean(false);
 
-  const handleApply = () => {
-    serverSettingRef.current && serverSettingRef.current.handleApply();
-    limitsSettingRef.current && limitsSettingRef.current.handleApply();
-    timezoneSettingRef.current && timezoneSettingRef.current.handleApply();
-    handleClose();
-  };
-
   const controls = [
     {
       show: true,
-      component: <TimezonesPicker ref={timezoneSettingRef}/>
+      component: <TimezonesPicker/>
     },
     {
       show: true,
       component: <QueryTimeOverride/>
     },
     {
+      show: true,
+      component: <LargeLoadWarning/>
+    },
+    {
+      show: true,
+      component: <IncrementalHitsSettings/>
+    },
+    {
       show: !appModeEnable,
       component: <ThemeControl/>
-    }
+    },
+    {
+      show: true,
+      component: <BrowserTabController/>
+    },
   ].filter(control => control.show);
 
-  useImperativeHandle(ref, () => ({
-    open: handleOpen,
-  }));
+  useEffect(() => {
+    if (openSettingsTriggerPrev === undefined || openSettingsTriggerPrev === openSettingsTrigger) return;
+    handleOpen();
+  }, [openSettingsTrigger, openSettingsTriggerPrev]);
 
   return <>
     {isMobile ? (
@@ -108,26 +115,10 @@ const GlobalSettings = forwardRef<GlobalSettingsHandle>((_, ref) => {
               {control.component}
             </div>
           ))}
-          <div className="vm-server-configurator-footer">
-            <Button
-              color="error"
-              variant="outlined"
-              onClick={handleClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="primary"
-              variant="contained"
-              onClick={handleApply}
-            >
-              Apply
-            </Button>
-          </div>
         </div>
       </Modal>
     )}
   </>;
-});
+};
 
 export default GlobalSettings;

@@ -1,44 +1,59 @@
-import { FC, useEffect, useMemo, useRef, useState } from "preact/compat";
+import { FC, Fragment, useCallback, useEffect, useMemo, useState } from "preact/compat";
 import { LogsFieldValues } from "../../../api/types";
-import { formatNumberShort } from "../../../utils/number";
-import { ArrowDownIcon, MinusIcon } from "../../Main/Icons";
+import { formatNumber, formatNumberShort } from "../../../utils/number";
+import { ArrowDownIcon, SearchIcon } from "../../Main/Icons";
 import "./style.scss";
 import classNames from "classnames";
 import { useFetchStreamValues } from "../../../pages/OverviewPage/hooks/useFetchStreamValues";
 import LineLoader from "../../Main/LineLoader/LineLoader";
-import { OrderDir } from "../../../types";
 import { ExtraFilter, ExtraFilterOperator } from "../../ExtraFilters/types";
 import FilterSidebarAlert from "../FilterSidebarAlert/FilterSidebarAlert";
 import FilterSidebarValue from "../FilterSidebarValue/FilterSidebarValue";
-import Checkbox from "../../Main/Checkbox/Checkbox";
-import { useAppState } from "../../../state/common/StateContext";
 import Tooltip from "../../Main/Tooltip/Tooltip";
 import { buildExtraFilterParams } from "../../ExtraFilters/utils/buildExtraFilterParams";
-import { useTimePeriod } from "../../../pages/QueryPage/hooks/useTimePeriod";
+import { sortSidebarItems } from "../utils/sortSidebarItems";
+import { filterSidebarItemsBySearch } from "../utils/filterSidebarItems";
+import { isStreamFilter } from "../../ExtraFilters/utils/isStreamFilter";
+import { SIDEBAR_ITEMS_LIMIT, SIDEBAR_SEARCH_THRESHOLD } from "../constants";
+import TextField, { TextFieldKeyboardEvent } from "../../Main/TextField/TextField";
+import { useDebounceCallback } from "../../../hooks/useDebounceCallback";
+import FilterSidebarSort from "../FilterSidebarSort/FilterSidebarSort";
+import { useFilterSidebarSort } from "../hooks/useFilterSidebarSort";
+import { useQueryState } from "../../../state/query/QueryStateContext";
+
+const ANY_VALUE_OPTION: LogsFieldValues = {
+  value: "",
+  hits: 0,
+};
+
+const ANY_VALUE_LABEL = "Any value";
 
 type Props = {
   field: LogsFieldValues;
   query?: string;
   extraFilters: ExtraFilter[];
-  orderDir?: OrderDir;
   onAddFilter: (filter: ExtraFilter) => void;
   onRemoveByValue: (field: string, value: string) => void;
-  onRemoveByField: (field: string) => void;
+  onReplaceFiltersByField: (filter: ExtraFilter) => void;
 }
 
 const FilterSidebarField: FC<Props> = ({
   field,
   query,
   extraFilters,
-  orderDir,
   onAddFilter,
   onRemoveByValue,
-  onRemoveByField,
+  onReplaceFiltersByField,
 }) => {
-  const { isDarkTheme } = useAppState();
-  const { period } = useTimePeriod();
-  const [isValuesOpen, setValuesOpen] = useState(false);
+  const { appliedPeriod } = useQueryState();
   const { fetchStreamValues, streamValues, loading, error, abort } = useFetchStreamValues();
+  const [isServerSearch, setIsServerSearch] = useState(false);
+  const isReady = !loading && !error;
+
+  const [isValuesOpen, setValuesOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const { sort } = useFilterSidebarSort();
 
   const extraParams = useMemo(() => {
     const filtersWithoutCurrentField = extraFilters.filter(f => f.field !== field.value);
@@ -46,7 +61,7 @@ const FilterSidebarField: FC<Props> = ({
   }, [field.value, extraFilters]);
 
   const filtersByName = useMemo(() => {
-    return extraFilters.filter(f => f.field === field.value); // for field name
+    return extraFilters.filter(f => isStreamFilter(f) && (f.field === field.value)); // for field name
   }, [field.value, extraFilters]);
 
   const missingSelectedValues: LogsFieldValues[] = useMemo(() => {
@@ -59,18 +74,37 @@ const FilterSidebarField: FC<Props> = ({
     return uniqMissingValues.map(value => ({ value, hits: 0 }));
   }, [streamValues, filtersByName]);
 
-  const values = useMemo(() => {
-    const allValues = [...streamValues, ...missingSelectedValues];
-    if (!orderDir || orderDir === "desc") return allValues;
-    return allValues.toSorted((a, b) => a.hits - b.hits);
-  }, [streamValues, orderDir, missingSelectedValues]);
+  const allValues = useMemo(() => {
+    return [...streamValues, ...missingSelectedValues];
+  }, [streamValues, missingSelectedValues]);
 
-  const requestRef = useRef({
-    query,
-    start: period.start,
-    end: period.end,
-    extraParams,
-  });
+  const isLimitExceeded = streamValues.length > SIDEBAR_ITEMS_LIMIT;
+  const showInputSearch = isServerSearch || allValues.length > SIDEBAR_SEARCH_THRESHOLD.value || search.length > 0;
+
+  const selectedFilters = useMemo(() => {
+    const filtered = filtersByName.filter(filter => filter.value !== "");
+    return new Set(filtered.map(filter => filter.value));
+  }, [filtersByName]);
+
+  const values = useMemo(() => {
+    if (isLimitExceeded) {
+      return search.trim()
+        ? []
+        : sortSidebarItems(
+          allValues.filter(v => selectedFilters.has(v.value)),
+          sort,
+          selectedFilters,
+        );
+    }
+
+    return isServerSearch
+      ? sortSidebarItems(streamValues, sort, selectedFilters)
+      : filterSidebarItemsBySearch(sortSidebarItems(allValues, sort, selectedFilters), search);
+  }, [allValues, search, isServerSearch, streamValues, selectedFilters, sort, isLimitExceeded]);
+
+  const firstAvailableIndex = values.findIndex(v => !selectedFilters.has(v.value));
+  const selectedCount = firstAvailableIndex === -1 ? values.length : firstAvailableIndex;
+  const availableCount = values.length - selectedCount;
 
   const hasFilter = !!filtersByName.length;
   const hitsShort = formatNumberShort(field.hits);
@@ -84,30 +118,41 @@ const FilterSidebarField: FC<Props> = ({
   }, [filtersByName]);
 
   const isCheckedAll = useMemo(() => {
-    if (!streamValues.length) return false;
-    const allValues = streamValues.map(v => v.value);
+    if (isServerSearch || isLimitExceeded || !streamValues.length) return false;
+
     const checkedValues = filtersByName.map(f => f.value);
-    return allValues.every(v => checkedValues.includes(v));
-  }, [streamValues, filtersByName]);
+    return streamValues.every(v => checkedValues.includes(v.value));
+  }, [streamValues, filtersByName, isServerSearch, isLimitExceeded]);
 
   const handleToggleValues = () => {
-    setValuesOpen(prev => !prev);
+    setValuesOpen(value => !value);
   };
 
-  const handleClickCheckbox = (e: MouseEvent) => {
-    e.stopPropagation();
-
-    if (hasFilter) {
-      onRemoveByField(field.value);
+  const handleSelectAnyValue = () => {
+    if (hasAnyValueFilter) {
+      onRemoveByValue(field.value, "");
       return;
     }
 
-    onAddFilter({
+    onReplaceFiltersByField({
       field: field.value,
       value: "",
       operator: ExtraFilterOperator.NotEquals,
       isStream: true,
     });
+  };
+
+  const handleSelectValue = (filter: ExtraFilter) => {
+    if (hasAnyValueFilter) {
+      onReplaceFiltersByField(filter);
+      return;
+    }
+
+    onAddFilter(filter);
+  };
+
+  const handleSearchKeyDown = (event: TextFieldKeyboardEvent) => {
+    if (event.key === "Escape") setSearch("");
   };
 
   const badgeTooltip = useMemo(() => {
@@ -116,35 +161,45 @@ const FilterSidebarField: FC<Props> = ({
     return `${filtersByName.length} selected value${filtersByName.length > 1 ? "s" : ""}`;
   }, [hasAnyValueFilter, isCheckedAll, filtersByName.length]);
 
-  useEffect(() => {
-    requestRef.current = {
+  const fetchValues = useCallback(async (filter?: string) => {
+    if (!appliedPeriod) return;
+
+    const data = await fetchStreamValues({
       query,
-      start: period.start,
-      end: period.end,
+      field: field.value,
+      period: appliedPeriod,
       extraParams,
-    };
-  }, [query, period.start, period.end, extraParams]);
+      filter,
+    });
+    if (data === undefined) return;
+    if (!filter?.trim()) setIsServerSearch(data.length > SIDEBAR_ITEMS_LIMIT);
+  }, [fetchStreamValues, query, field.value, appliedPeriod, extraParams.toString()]);
+
+  const debouncedFetchValues = useDebounceCallback(fetchValues, 300);
+  const debouncedSearchValues = useDebounceCallback(fetchValues, 300);
 
   useEffect(() => {
-    // Update only when field changes.
-    abort();
+    setIsServerSearch(false);
     if (!isValuesOpen) return;
 
-    const r = requestRef.current;
+    debouncedFetchValues();
 
-    void fetchStreamValues({
-      query: r.query,
-      field: field.value,
-      period: {
-        start: r.start,
-        end: r.end,
-      },
-      extraParams: r.extraParams,
-    });
+    return () => {
+      debouncedFetchValues.cancel();
+      abort();
+    };
+  }, [isValuesOpen, fetchValues, abort]);
 
-    return abort;
-  }, [isValuesOpen, field]);
+  useEffect(() => {
+    if (!isValuesOpen || !isServerSearch) return;
 
+    debouncedSearchValues(search.trim());
+
+    return () => {
+      debouncedSearchValues.cancel();
+      abort();
+    };
+  }, [isValuesOpen, search, isServerSearch, abort]);
 
   useEffect(() => {
     // Only for the first render.
@@ -167,21 +222,14 @@ const FilterSidebarField: FC<Props> = ({
         className="vm-filter-sidebar-field-header"
         onClick={handleToggleValues}
       >
-        <div
-          className="vm-filter-sidebar-field__checkbox"
-          onClick={handleClickCheckbox}
-        >
-          <Checkbox
-            icon={hasFilter && !isCheckedAll && !hasAnyValueFilter && <MinusIcon/>}
-            size="small"
-            color={hasFilter ? (isDarkTheme ? "secondary" : "primary") : "gray"}
-            checked={hasFilter}
-          />
-        </div>
-
         <div className="vm-filter-sidebar-field-label">
           <span className="vm-filter-sidebar-field-label__title">{field.value}</span>
-          <span className="vm-filter-sidebar-field-label__hits">{" "}({hitsShort})</span>
+          <Tooltip
+            placement="top-left"
+            title="Number of matching logs containing this field"
+          >
+            <span className="vm-filter-sidebar-field-label__hits">{" "}({hitsShort})</span>
+          </Tooltip>
         </div>
 
         {hasFilter && (
@@ -209,25 +257,78 @@ const FilterSidebarField: FC<Props> = ({
       </div>
 
       {isValuesOpen && (
-        <div className="vm-filter-sidebar-field-values">
+        <>
           <FilterSidebarAlert
             isVisible={!!error}
             variant="error"
             title="Failed to load stream values"
             message={error}
           />
-          {values.map(streamFieldValue => (
+
+          <FilterSidebarAlert
+            isVisible={isReady && !isLimitExceeded && !!search.trim() && !values.length}
+            variant="info"
+            title="No values found"
+          />
+
+          <div className="vm-filter-sidebar-field-values__header">
             <FilterSidebarValue
+              isAnyValueFilter
+              checked={hasAnyValueFilter}
               fieldName={field.value}
-              key={streamFieldValue.value}
-              field={streamFieldValue}
+              key="any-value-option"
+              label={ANY_VALUE_LABEL}
+              field={ANY_VALUE_OPTION}
               extraFilters={filtersByName}
-              isAnyValueFilter={hasAnyValueFilter}
-              onAddFilter={onAddFilter}
-              onRemoveByValue={onRemoveByValue}
+              onAddFilter={handleSelectAnyValue}
+              onRemoveByValue={handleSelectAnyValue}
             />
-          ))}
-        </div>
+
+            <FilterSidebarSort/>
+          </div>
+
+          {showInputSearch && (
+            <div className="vm-filter-sidebar-search vm-filter-sidebar-search_value">
+              <TextField
+                type="search"
+                placeholder="Search field values"
+                startIcon={<SearchIcon/>}
+                value={search}
+                onChange={setSearch}
+                onKeyDown={handleSearchKeyDown}
+              />
+            </div>
+          )}
+
+          <div className="vm-filter-sidebar-field-values">
+            {values.map((fieldValue, index) => (
+              <Fragment key={fieldValue.value}>
+                {index === 0 && selectedCount > 0 && (
+                  <p className="vm-filter-sidebar-list__title">Selected ({selectedCount})</p>
+                )}
+
+                {index === firstAvailableIndex && (
+                  <p className="vm-filter-sidebar-list__title">Available ({availableCount})</p>
+                )}
+
+                <FilterSidebarValue
+                  fieldName={field.value}
+                  field={fieldValue}
+                  extraFilters={filtersByName}
+                  onAddFilter={handleSelectValue}
+                  onRemoveByValue={onRemoveByValue}
+                />
+              </Fragment>
+            ))}
+          </div>
+
+          <FilterSidebarAlert
+            isVisible={isReady && isLimitExceeded}
+            variant="warning"
+            title={`More than ${formatNumber(SIDEBAR_ITEMS_LIMIT)} field values found`}
+            message="Start typing to narrow the search."
+          />
+        </>
       )}
     </div>
   )

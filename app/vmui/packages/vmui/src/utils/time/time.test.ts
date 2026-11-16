@@ -73,6 +73,12 @@ describe("Time utils", () => {
     it("should skip zero units in the output", () => {
       expect(getDurationFromMilliseconds(3600000)).toBe("1h");
     });
+
+    it("should correctly format durations spanning multiple calendar months", () => {
+      const duration = 82 * 86_400_000 + 19 * 3_600_000 + 58 * 60_000 + 53_203;
+
+      expect(getDurationFromMilliseconds(duration)).toBe("82d19h58m53s203ms");
+    });
   });
 
   describe("duration conversion with nanosecond precision", () => {

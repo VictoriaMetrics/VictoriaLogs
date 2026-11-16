@@ -6,6 +6,7 @@ import (
 	"io"
 	"reflect"
 	"testing"
+	"testing/iotest"
 )
 
 func TestLineReader_Success(t *testing.T) {
@@ -96,6 +97,44 @@ func TestLineReader_SkipUntilNextLine(t *testing.T) {
 		data = "foo\n" + longLine + "\n"
 		f(data, []string{"foo", ""})
 	}
+}
+
+func TestLineReader_SkipUntilNextLineDataWithEOF(t *testing.T) {
+	f := func(data string, linesExpected []string) {
+		t.Helper()
+
+		// iotest.DataErrReader returns the last chunk of data together with io.EOF, as HTTP request body readers may do.
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1827
+		r := iotest.DataErrReader(bytes.NewBufferString(data))
+		lr := NewLineReader("foo", r)
+		var lines []string
+		for lr.NextLine() {
+			lines = append(lines, string(lr.Line))
+		}
+		if err := lr.Err(); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if lr.NextLine() {
+			t.Fatalf("expecting error on the second call to NextLine()")
+		}
+		if !reflect.DeepEqual(lines, linesExpected) {
+			t.Fatalf("unexpected lines\ngot\n%q\nwant\n%q", lines, linesExpected)
+		}
+	}
+
+	longLine := string(make([]byte, MaxLineSizeBytes.IntN()+100))
+
+	// Short lines after the long line
+	f("foo\n"+longLine+"\nbar\nbaz", []string{"foo", "", "bar", "baz"})
+	f("foo\n"+longLine+"\nbar\nbaz\n", []string{"foo", "", "bar", "baz"})
+
+	// Multiple long lines
+	f("foo\n"+longLine+"\n"+longLine+"\nbar", []string{"foo", "", "", "bar"})
+	f(longLine+"\n"+longLine+"\n", []string{"", ""})
+
+	// Long line in the end
+	f("foo\n"+longLine, []string{"foo"})
+	f("foo\n"+longLine+"\n", []string{"foo", ""})
 }
 
 func TestLineReader_Failure(t *testing.T) {

@@ -1,6 +1,7 @@
 ---
 weight: 4
 title: OpenTelemetry Setup
+description: "Configure OpenTelemetry SDKs and Collectors to send logs to VictoriaLogs."
 disableToc: true
 menu:
   docs:
@@ -35,6 +36,19 @@ logExporter, err := otlploghttp.New(ctx,
   otlploghttp.WithEndpointURL("http://victorialogs:9428/insert/opentelemetry/v1/logs"),
   otlploghttp.WithHeaders(map[string]string{
     "VL-Stream-Fields": "host,app",
+  }),
+)
+```
+
+VictoriaLogs uses the log body as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
+The log message can be taken from other fields via `VL-Msg-Field` HTTP header if needed. In this case the log body is stored in the `body` field{{% available_from "v1.54.0" %}}.
+For example, the following config uses the `msg` log record attribute as the log message, and falls back to the log body if the `msg` attribute is missing:
+
+```go
+logExporter, err := otlploghttp.New(ctx,
+  otlploghttp.WithEndpointURL("http://victorialogs:9428/insert/opentelemetry/v1/logs"),
+  otlploghttp.WithHeaders(map[string]string{
+    "VL-Msg-Field": "msg,body",
   }),
 )
 ```

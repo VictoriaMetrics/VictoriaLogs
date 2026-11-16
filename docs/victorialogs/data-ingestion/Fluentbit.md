@@ -1,6 +1,7 @@
 ---
 weight: 2
 title: Fluentbit Setup
+description: "Configure Fluentbit to send logs to VictoriaLogs"
 disableToc: true
 menu:
   docs:

@@ -1,6 +1,7 @@
 import { ExtraFilter, ExtraFilterOperator } from "../types";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { isStreamFilter } from "./isStreamFilter";
+import { STREAM_FIELD, TIME_FIELD } from "../../../constants/logFields";
 
 type ExprBuilder = (options: BuildExprOptions) => string;
 
@@ -72,7 +73,7 @@ const buildStreamExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOpt
 
   let expr: string;
 
-  if (field === "_stream") {
+  if (field === STREAM_FIELD) {
     if (isRegexOp) {
       console.warn(`${operator} operator is not supported for _stream field.`);
     }
@@ -115,7 +116,7 @@ const buildTimeExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOptio
 };
 
 const getFieldType = (filter: ExtraFilter): FieldType => {
-  if (filter.field === "_time") return FieldType.Time;
+  if (filter.field === TIME_FIELD) return FieldType.Time;
   if (isStreamFilter(filter)) return FieldType.Stream;
   return FieldType.Field;
 };

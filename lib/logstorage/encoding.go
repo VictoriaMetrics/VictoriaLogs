@@ -275,7 +275,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		for i := range dstA {
 			idx := 2 * i
 			v := encoding.UnmarshalUint16(src[idx : idx+2])
-			dst[i] = uint64(v)
+			dstA[i] = uint64(v)
 		}
 	case uintBlockType32:
 		// A block with items smaller than 1<<32 bytes
@@ -285,7 +285,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		for i := range dstA {
 			idx := 4 * i
 			v := encoding.UnmarshalUint32(src[idx : idx+4])
-			dst[i] = uint64(v)
+			dstA[i] = uint64(v)
 		}
 	case uintBlockType64:
 		// A block with items smaller than 1<<64 bytes
@@ -295,7 +295,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		for i := range dstA {
 			idx := 8 * i
 			v := encoding.UnmarshalUint64(src[idx : idx+8])
-			dst[i] = v
+			dstA[i] = v
 		}
 	case uintBlockTypeConst8:
 		if len(src) != 1 {
@@ -303,7 +303,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		}
 		v := uint64(src[0])
 		for i := range dstA {
-			dst[i] = v
+			dstA[i] = v
 		}
 	case uintBlockTypeConst16:
 		if len(src) != 2 {
@@ -311,7 +311,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		}
 		v := uint64(encoding.UnmarshalUint16(src))
 		for i := range dstA {
-			dst[i] = v
+			dstA[i] = v
 		}
 	case uintBlockTypeConst32:
 		if len(src) != 4 {
@@ -319,7 +319,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		}
 		v := uint64(encoding.UnmarshalUint32(src))
 		for i := range dstA {
-			dst[i] = v
+			dstA[i] = v
 		}
 	case uintBlockTypeConst64:
 		if len(src) != 8 {
@@ -327,7 +327,7 @@ func unmarshalUint64Items(dst []uint64, src []byte, itemsCount uint64) ([]uint64
 		}
 		v := encoding.UnmarshalUint64(src)
 		for i := range dstA {
-			dst[i] = v
+			dstA[i] = v
 		}
 	default:
 		return dst, fmt.Errorf("unexpected uint64 block type: %d", blockType)
@@ -386,7 +386,7 @@ func unmarshalBytesBlock(dst, src []byte) ([]byte, []byte, error) {
 		blockLen := int(src[0])
 		src = src[1:]
 		if len(src) < blockLen {
-			return dst, src, fmt.Errorf("cannot read plain block with the size %d bytes from %b bytes", blockLen, len(src))
+			return dst, src, fmt.Errorf("cannot read plain block with the size %d bytes from %d bytes", blockLen, len(src))
 		}
 
 		// Copy the block to dst

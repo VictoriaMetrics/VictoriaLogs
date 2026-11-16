@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/regexutil"
 )
 
@@ -301,9 +300,6 @@ func TestFilterRegexp(t *testing.T) {
 		fr = newFilterRegexp("_msg", mustCompileRegex("^01|04$"))
 		testFilterMatchForColumns(t, columns, fr, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }
 
 func TestSkipFirstLastToken(t *testing.T) {

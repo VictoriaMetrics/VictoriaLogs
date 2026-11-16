@@ -51,9 +51,15 @@ func (pe *pipeExtract) canLiveTail() bool {
 	return true
 }
 
-func (pe *pipeExtract) canReturnLastNResults() bool {
-	// TODO: properly verify that the extracted fields do not overwrite the _time field with non-timestamp values.
-
+func (pe *pipeExtract) canReturnTimeSortedNResults() bool {
+	if pe.keepOriginalFields {
+		return true
+	}
+	for _, f := range pe.ptn.fields {
+		if f.name == "_time" {
+			return false
+		}
+	}
 	return true
 }
 
@@ -65,8 +71,8 @@ func (pe *pipeExtract) hasFilterInWithQuery() bool {
 	return pe.iff.hasFilterInWithQuery()
 }
 
-func (pe *pipeExtract) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pe.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pe *pipeExtract) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pe.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

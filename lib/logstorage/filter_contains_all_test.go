@@ -2,8 +2,6 @@ package logstorage
 
 import (
 	"testing"
-
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/fs"
 )
 
 func TestFilterContainsAll(t *testing.T) {
@@ -576,7 +574,4 @@ func TestFilterContainsAll(t *testing.T) {
 		fi = newFilterContainsAllValues("non-existing-column", []string{"2006"})
 		testFilterMatchForColumns(t, columns, fi, "_msg", nil)
 	})
-
-	// Remove the remaining data files for the test
-	fs.MustRemoveDir(t.Name())
 }

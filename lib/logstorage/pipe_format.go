@@ -58,7 +58,7 @@ func (pf *pipeFormat) canLiveTail() bool {
 	return true
 }
 
-func (pf *pipeFormat) canReturnLastNResults() bool {
+func (pf *pipeFormat) canReturnTimeSortedNResults() bool {
 	return pf.resultField != "_time"
 }
 
@@ -87,8 +87,8 @@ func (pf *pipeFormat) hasFilterInWithQuery() bool {
 	return pf.iff.hasFilterInWithQuery()
 }
 
-func (pf *pipeFormat) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
-	iffNew, err := pf.iff.initFilterInValues(cache, getFieldValuesFunc)
+func (pf *pipeFormat) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
+	iffNew, err := pf.iff.initFilterInValues(cache, getFieldValues)
 	if err != nil {
 		return nil, err
 	}

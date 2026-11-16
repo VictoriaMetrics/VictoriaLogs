@@ -3,6 +3,7 @@ import { ExtraFilter } from "../types";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import ExtraFiltersPanelItem from "./ExtraFiltersPanelItem";
 import "./style.scss";
+import { isStreamFilter } from "../utils/isStreamFilter";
 
 type Props = {
   extraFilters: ExtraFilter[];
@@ -13,7 +14,7 @@ const ExtraFiltersPanel: FC<Props> = ({ extraFilters, onRemove }) => {
   const getLabel = (filter: ExtraFilter) => {
     const escapedValue = escapeForLogsQLString(filter.value);
     const expr = `${filter.field}${filter.operator}"${escapedValue}"`;
-    return filter.isStream ? `{${expr}}` : expr;
+    return isStreamFilter(filter) ? `{${expr}}` : expr;
   };
 
   const formattedFilters = useMemo(() => {

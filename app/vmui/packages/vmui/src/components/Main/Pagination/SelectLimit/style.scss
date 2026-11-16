@@ -19,7 +19,6 @@
 
 .vm-select-limits {
   display: grid;
-  padding: $padding-small 0;
 
   &-list {
     max-height: 300px;
@@ -28,7 +27,7 @@
 
   &__item {
     max-width: 300px;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     word-break: normal;
     text-wrap: balance;
   }

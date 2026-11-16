@@ -65,7 +65,7 @@ func (pc *pipeStreamContext) canLiveTail() bool {
 	return false
 }
 
-func (pc *pipeStreamContext) canReturnLastNResults() bool {
+func (pc *pipeStreamContext) canReturnTimeSortedNResults() bool {
 	return false
 }
 

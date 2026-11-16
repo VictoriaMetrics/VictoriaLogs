@@ -69,7 +69,7 @@ func TestPatternMatcherMatch(t *testing.T) {
 	// an empty pattern doesn't match non-empty string in full mode
 	f("", "foo", patternMatcherOptionFull, false)
 
-	// pattern without paceholders, which doesn't match the given string
+	// pattern without placeholders, which doesn't match the given string
 	f("foo", "abcd", patternMatcherOptionAny, false)
 	f("foo", "abcd", patternMatcherOptionFull, false)
 	f("foo", "abcd", patternMatcherOptionPrefix, false)
@@ -97,7 +97,7 @@ func TestPatternMatcherMatch(t *testing.T) {
 	f("<N>sec at <DATE>", "3 123sec at 2025-12-20", patternMatcherOptionPrefix, false)
 	f("<N>sec at <DATE>", "3 123sec at 2025-12-20", patternMatcherOptionSuffix, true)
 
-	// superflouous suffix in the string
+	// superfluous suffix in the string
 	f("<N>sec at <DATE>", "123sec at 2025-12-20 sss", patternMatcherOptionFull, false)
 	f("<N>sec at <DATE>", "123sec at 2025-12-20 sss", patternMatcherOptionAny, true)
 	f("<N>sec at <DATE>", "123sec at 2025-12-20 sss", patternMatcherOptionPrefix, true)

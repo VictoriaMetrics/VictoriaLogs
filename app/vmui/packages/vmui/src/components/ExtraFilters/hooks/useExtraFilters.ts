@@ -71,6 +71,17 @@ export const useExtraFilters = () => {
     setNewFilters(next);
   }, [extraFilters, setNewFilters]);
 
+  const replaceFiltersByField = useCallback((newFilter: ExtraFilter) => {
+    const next = extraFilters.filter(filter => {
+      const isSameField = filter.field === newFilter.field;
+      const isSameFilterType = isStreamFilter(filter) === isStreamFilter(newFilter);
+
+      return !(isSameField && isSameFilterType);
+    });
+
+    setNewFilters([...next, newFilter]);
+  }, [extraFilters, setNewFilters]);
+
   const removeFilter = useCallback((index: number) => {
     const next = extraFilters.filter((_f, i) => i !== index);
     setNewFilters(next);
@@ -81,8 +92,12 @@ export const useExtraFilters = () => {
     setNewFilters(next);
   }, [extraFilters, setNewFilters]);
 
-  const removeFilterByField = useCallback((field: string) => {
-    const next = extraFilters.filter(f => f.field !== field);
+  const removeStreamFilterByValue = useCallback((field: string, value: string) => {
+    const next = extraFilters.filter(filter => {
+      const isSameStreamFilter = isStreamFilter(filter) && filter.field === field && filter.value === value;
+      return !isSameStreamFilter;
+    });
+
     setNewFilters(next);
   }, [extraFilters, setNewFilters]);
 
@@ -94,11 +109,10 @@ export const useExtraFilters = () => {
     addNewFilter,
     updateFilter,
     upsertFilters,
+    replaceFiltersByField,
     removeFilter,
     removeFilterByValue,
-    removeFilterByField,
+    removeStreamFilterByValue,
     clearFilters,
   };
 };
-
-

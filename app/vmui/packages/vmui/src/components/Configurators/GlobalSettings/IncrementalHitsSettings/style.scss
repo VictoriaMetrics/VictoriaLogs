@@ -1,0 +1,19 @@
+@use "src/styles/variables" as *;
+
+.vm-incremental-hits-settings {
+  display: grid;
+  grid-template-columns: 1fr auto;
+
+  &__title {
+    grid-column: 1;
+  }
+
+  &__select {
+    grid-column: 2;
+  }
+
+  &__description {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

@@ -296,7 +296,7 @@ func (ps *pipeStats) canLiveTail() bool {
 	return false
 }
 
-func (ps *pipeStats) canReturnLastNResults() bool {
+func (ps *pipeStats) canReturnTimeSortedNResults() bool {
 	return false
 }
 
@@ -348,11 +348,11 @@ func (ps *pipeStats) hasFilterInWithQuery() bool {
 	return false
 }
 
-func (ps *pipeStats) initFilterInValues(cache *inValuesCache, getFieldValuesFunc getFieldValuesFunc) (pipe, error) {
+func (ps *pipeStats) initFilterInValues(cache *inValuesCache, getFieldValues getFieldValuesFunc) (pipe, error) {
 	funcsNew := make([]pipeStatsFunc, len(ps.funcs))
 	for i := range ps.funcs {
 		f := &ps.funcs[i]
-		iffNew, err := f.iff.initFilterInValues(cache, getFieldValuesFunc)
+		iffNew, err := f.iff.initFilterInValues(cache, getFieldValues)
 		if err != nil {
 			return nil, err
 		}

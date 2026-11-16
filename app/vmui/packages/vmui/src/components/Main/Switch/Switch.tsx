@@ -4,7 +4,7 @@ import "./style.scss";
 
 interface SwitchProps {
   value: boolean
-  color?: "primary" | "secondary" | "error"
+  color?: "primary" | "secondary" | "error" | "neutral"
   disabled?: boolean
   label?: string | ReactNode
   fullWidth?: boolean
