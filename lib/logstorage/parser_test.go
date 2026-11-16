@@ -2076,6 +2076,8 @@ func TestParseQuery_Success(t *testing.T) {
 	f(`foo:>bar`, `foo:>bar`)
 	f(`foo:>"1234"`, `foo:>1234`)
 	f(`>="abc"`, `>=abc`)
+	f(`>"-"`, `>"-"`)
+	f(`x:<="-"`, `x:<="-"`)
 	f(`foo:<bar`, `foo:<bar`)
 	f(`foo:<"-12.34"`, `foo:<-12.34`)
 	f(`<="abc < de"`, `<="abc < de"`)
@@ -3116,6 +3118,7 @@ func TestParseQuery_Failure(t *testing.T) {
 	f(`range(1,)`)
 	f(`range(1,2,`)
 	f(`range[1,foo)`)
+	f(`range["-", 1]`)
 	f(`range[1,2,3)`)
 	f(`range(1)`)
 
