@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [LogsQL](https://docs.victoriametrics.com/victorialogs/logsql/): respect operator priority in [`math` pipe](https://docs.victoriametrics.com/victorialogs/logsql/#math-pipe) expressions with three or more priority levels. Previously, `math 7 & 2 + 3 * 2` was calculated as `7 & ((2 + 3) * 2)` instead of `7 & (2 + (3 * 2))`. See [#1950](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1950).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13
