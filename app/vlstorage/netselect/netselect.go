@@ -422,11 +422,7 @@ func (s *Storage) MustStop() {
 
 // RunQuery runs the given qctx and calls writeBlock for the returned data blocks
 func (s *Storage) RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBlockFunc) error {
-	nqr, err := logstorage.NewNetQueryRunner(qctx, s.RunQuery, writeBlock)
-	if err != nil {
-		return err
-	}
-	defer nqr.MustReleaseMemory()
+	nqr := logstorage.NewNetQueryRunner(qctx, s.RunQuery, writeBlock)
 
 	search := func(stopCh <-chan struct{}, q *logstorage.Query, writeBlock logstorage.WriteDataBlockFunc) error {
 		qctxLocal := qctx.WithQuery(q)

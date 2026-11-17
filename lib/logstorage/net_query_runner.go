@@ -14,6 +14,9 @@ type NetQueryRunner struct {
 	// qctx is the query context.
 	qctx *QueryContext
 
+	// runQuery is used for executing subqueries.
+	runQuery runQueryFunc
+
 	// qRemote is the query to execute at remote storage nodes.
 	qRemote *Query
 
@@ -22,19 +25,13 @@ type NetQueryRunner struct {
 
 	// writeBlock is the function for writing the resulting data block.
 	writeBlock writeBlockResultFunc
-
-	// mem holds the memory reserved for the rows of subqueries at qRemote and pipesLocal.
-	mem *memoryReservation
 }
 
 // NewNetQueryRunner creates a new NetQueryRunner for the given qctx.
 //
 // runNetQuery is used for running distributed query.
 // qctx results are sent to writeNetBlock.
-//
-// The caller must call MustReleaseMemory on the returned runner when it is no longer needed,
-// even if Run isn't called.
-func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNetBlock WriteDataBlockFunc) (*NetQueryRunner, error) {
+func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNetBlock WriteDataBlockFunc) *NetQueryRunner {
 	runQuery := func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
 		writeNetBlock := writeBlock.newDataBlockWriter()
 		return runNetQuery(qctx, writeNetBlock)
@@ -42,16 +39,36 @@ func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNet
 
 	qRemote, pipesLocal := splitQueryToRemoteAndLocal(qctx.Query)
 
-	mem := &memoryReservation{}
+	writeBlock := writeNetBlock.newBlockResultWriter()
+
+	nqr := &NetQueryRunner{
+		qctx:       qctx,
+		runQuery:   runQuery,
+		qRemote:    qRemote,
+		pipesLocal: pipesLocal,
+		writeBlock: writeBlock,
+	}
+	return nqr
+}
+
+// Run runs the nqr query.
+//
+// The concurrency limits the number of concurrent goroutines, which process the query results at the local host.
+//
+// netSearch must execute the given query q at remote storage nodes and pass results to writeBlock.
+func (nqr *NetQueryRunner) Run(ctx context.Context, concurrency int, netSearch func(stopCh <-chan struct{}, q *Query, writeBlock WriteDataBlockFunc) error) error {
+	qctx := nqr.qctx.WithContext(ctx)
+
+	var mem memoryReservation
+	defer mem.release()
 
 	// Eagerly execute all the subqueries for the remote query
 	// and replace them with the query results directly in qRemote.
 	// This is needed for proper propagation subquery results to remote storage nodes.
-	qctxRemote := qctx.WithQuery(qRemote)
-	qRemote, err := initSubqueries(qctxRemote, runQuery, true, mem)
+	qctxRemote := qctx.WithQuery(nqr.qRemote)
+	qRemote, err := initSubqueries(qctxRemote, nqr.runQuery, true, &mem)
 	if err != nil {
-		mem.release()
-		return nil, err
+		return err
 	}
 
 	// Initialize subqueries inside local parts.
@@ -61,44 +78,19 @@ func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNet
 	if err != nil {
 		logger.Panicf("BUG: cannot parse '*' query: %s", err)
 	}
-	qLocal.pipes = pipesLocal
+	qLocal.pipes = nqr.pipesLocal
 	qctxLocal := qctx.WithQuery(qLocal)
-	qLocal, err = initSubqueries(qctxLocal, runQuery, false, mem)
+	qLocal, err = initSubqueries(qctxLocal, nqr.runQuery, false, &mem)
 	if err != nil {
-		mem.release()
-		return nil, err
+		return err
 	}
 
-	writeBlock := writeNetBlock.newBlockResultWriter()
-
-	nqr := &NetQueryRunner{
-		qctx:       qctx,
-		qRemote:    qRemote,
-		pipesLocal: qLocal.pipes,
-		writeBlock: writeBlock,
-		mem:        mem,
-	}
-	return nqr, nil
-}
-
-// MustReleaseMemory releases the memory reserved for subqueries at nqr.
-func (nqr *NetQueryRunner) MustReleaseMemory() {
-	nqr.mem.release()
-}
-
-// Run runs the nqr query.
-//
-// The concurrency limits the number of concurrent goroutines, which process the query results at the local host.
-//
-// netSearch must execute the given query q at remote storage nodes and pass results to writeBlock.
-func (nqr *NetQueryRunner) Run(ctx context.Context, concurrency int, netSearch func(stopCh <-chan struct{}, q *Query, writeBlock WriteDataBlockFunc) error) error {
 	search := func(stopCh <-chan struct{}, writeBlockToPipes writeBlockResultFunc) error {
 		writeNetBlock := writeBlockToPipes.newDataBlockWriter()
-		return netSearch(stopCh, nqr.qRemote, writeNetBlock)
+		return netSearch(stopCh, qRemote, writeNetBlock)
 	}
 
-	qctxLocal := nqr.qctx.WithContext(ctx)
-	return runPipes(qctxLocal, nqr.pipesLocal, search, nqr.writeBlock, concurrency)
+	return runPipes(qctx, qLocal.pipes, search, nqr.writeBlock, concurrency)
 }
 
 // splitQueryToRemoteAndLocal splits q into remotely executed query and into locally executed pipes.
