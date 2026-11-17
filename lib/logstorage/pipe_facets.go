@@ -331,10 +331,9 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 		// steal some budget for the state size from the global budget.
 		if !pfp.mem.reserve(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			if pfp.memReserveFailed.CompareAndSwap(false, true) {
-				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-				pfp.cancel()
-			}
+			pfp.memReserveFailed.Store(true)
+			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+			pfp.cancel()
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
