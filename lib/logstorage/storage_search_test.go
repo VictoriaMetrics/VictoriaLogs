@@ -1752,7 +1752,7 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 
 	t.Run("released", func(t *testing.T) {
 		queries := []string{
-			`* | stats by (instance) count() x | join on (instance) (* | stats by (instance) count() y)`,
+			`* | stats by (instance) count() x | join on (instance) (*)`,
 			`{instance="host-1"} | union ({instance="host-2"}) | count() hits`,
 			`'log message' | stream_context before 2`,
 		}

@@ -1,6 +1,8 @@
 package logstorage
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -115,4 +117,64 @@ func TestSplitQueryToRemoteAndLocal(t *testing.T) {
 	f(`options(allow_partial_response=true) foo | join by (x) (bar:in(a | keep x))`, `options(allow_partial_response=true) foo`, `join by (x) (options(allow_partial_response=true) bar:in(options(allow_partial_response=true) a | fields x))`)
 	f(`options(time_offset=7d) foo | join by (x) (bar:in(a | keep x))`, `options(time_offset=7d) foo`, `join by (x) (options(time_offset=7d) bar:in(options(time_offset=7d) a | fields x))`)
 	f(`options(global_filter=(_time:5m)) foo | join by (x) (bar:in(a | keep x))`, `options(global_filter=(_time:5m)) foo`, `join by (x) (options(global_filter=(_time:5m)) bar:in(options(global_filter=(_time:5m)) a | fields x))`)
+}
+
+func TestNetQueryRunnerQueryMemory(t *testing.T) {
+	// This test changes the global query memory limiter, so it must not run in parallel.
+	ml := getQueryMemoryLimiter()
+	origMaxSize := ml.MaxSize
+	defer func() {
+		ml.MaxSize = origMaxSize
+	}()
+
+	// runNetQuery returns the rows for the join subquery.
+	runNetQuery := func(_ *QueryContext, writeBlock WriteDataBlockFunc) error {
+		for i := range 20 {
+			values := make([]string, 2000)
+			for j := range values {
+				values[j] = fmt.Sprintf("%0100d", i*len(values)+j)
+			}
+			var db DataBlock
+			db.SetColumns([]BlockColumn{{Name: "x", Values: values}})
+			writeBlock(0, &db)
+		}
+		return nil
+	}
+
+	f := func(maxSize uint64) (uint64, error) {
+		t.Helper()
+
+		ml.MaxSize = maxSize
+
+		var usageAtSearch uint64
+		netSearch := func(_ <-chan struct{}, _ *Query, _ WriteDataBlockFunc) error {
+			usageAtSearch = ml.getUsage()
+			return nil
+		}
+
+		q := mustParseQuery("* | join by (x) (*)")
+		qctx := newTestQueryContext(nil, q)
+		nqr := NewNetQueryRunner(qctx, runNetQuery, func(_ uint, _ *DataBlock) {})
+		err := nqr.Run(context.Background(), 1, netSearch)
+
+		if n := ml.getUsage(); n != 0 {
+			t.Fatalf("unexpected query memory usage after Run; got %d bytes; want 0", n)
+		}
+		return usageAtSearch, err
+	}
+
+	// The join rows must stay reserved while the query runs.
+	usageAtSearch, err := f(origMaxSize)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if usageAtSearch <= stateSizeBudgetChunk {
+		t.Fatalf("the join rows must reserve more than %d bytes; got %d bytes", stateSizeBudgetChunk, usageAtSearch)
+	}
+
+	// The join rows don't fit the limit.
+	_, err = f(stateSizeBudgetChunk)
+	if err == nil || !strings.Contains(err.Error(), "not enough memory:") {
+		t.Fatalf("unexpected error; got %v; want the query memory limit error", err)
+	}
 }
