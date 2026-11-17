@@ -79,6 +79,8 @@ func TestQueryMemoryReservation(t *testing.T) {
 	}()
 
 	var mem queryMemoryReservation
+	defer mem.release()
+
 	if !mem.reserve(30) {
 		t.Fatalf("cannot reserve 30 out of %d bytes", ml.MaxSize)
 	}
