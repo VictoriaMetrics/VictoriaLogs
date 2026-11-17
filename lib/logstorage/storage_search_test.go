@@ -1795,3 +1795,42 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 		}
 	})
 }
+
+func TestGetRowsMemoryLimitExceeded(t *testing.T) {
+	// This test mutates the process-global query memory limiter, so it cannot run in parallel.
+	ml := getQueryMemoryLimiter()
+	origMaxSize := ml.MaxSize
+	ml.MaxSize = 0
+	defer func() {
+		ml.MaxSize = origMaxSize
+	}()
+
+	var br blockResult
+	br.mustInitFromRows([][]Field{{{Name: "foo", Value: "bar"}}})
+
+	const blocksCount = 100
+	blocksWritten := 0
+	runQuery := func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
+		for range blocksCount {
+			if err := qctx.Context.Err(); err != nil {
+				return err
+			}
+			writeBlock(0, &br)
+			blocksWritten++
+		}
+		return nil
+	}
+
+	qctx := newTestQueryContext(nil, mustParseQuery("*"))
+	var mem memoryReservation
+	_, err := getRows(qctx, runQuery, &mem)
+	if err == nil {
+		t.Fatalf("expecting non-nil error")
+	}
+	if !strings.Contains(err.Error(), "not enough memory in the shared query memory pool") {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	if blocksWritten == blocksCount {
+		t.Fatalf("the query must be canceled after the denied reservation; got all the %d blocks written", blocksCount)
+	}
+}
