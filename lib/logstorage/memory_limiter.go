@@ -6,7 +6,6 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
-	"github.com/VictoriaMetrics/metrics"
 )
 
 type memoryLimiter struct {
@@ -14,6 +13,12 @@ type memoryLimiter struct {
 
 	mu    sync.Mutex
 	usage uint64
+
+	// limitReached is the number of denied Get calls.
+	//
+	// A single rejected query may increase it more than once,
+	// since its workers keep trying to reserve memory until cancellation stops them.
+	limitReached uint64
 }
 
 func (ml *memoryLimiter) Get(n uint64) bool {
@@ -21,14 +26,11 @@ func (ml *memoryLimiter) Get(n uint64) bool {
 	ok := n <= ml.MaxSize && ml.MaxSize-n >= ml.usage
 	if ok {
 		ml.usage += n
+	} else {
+		ml.limitReached++
 	}
 	ml.mu.Unlock()
 
-	if !ok {
-		// Count every denied reservation. A single rejected query may bump this more than once,
-		// since its workers keep trying to reserve until cancellation stops them.
-		queryMemoryLimitReached.Inc()
-	}
 	return ok
 }
 
@@ -54,22 +56,34 @@ var (
 	queryMemoryLimiterOnce sync.Once
 )
 
-var (
-	queryMemoryLimitReached = metrics.NewCounter(`vl_query_memory_limit_reached_total`)
-
-	_ = metrics.NewGauge(`vl_query_memory_limit_bytes`, func() float64 {
-		return float64(getQueryMemoryLimiter().MaxSize)
-	})
-	_ = metrics.NewGauge(`vl_query_memory_usage_bytes`, func() float64 {
-		return float64(getQueryMemoryLimiter().getUsage())
-	})
-)
-
 func getQueryMemoryLimiter() *memoryLimiter {
 	queryMemoryLimiterOnce.Do(func() {
 		queryMemoryLimiter.MaxSize = uint64(float64(memory.Allowed()) * 0.5)
 	})
 	return &queryMemoryLimiter
+}
+
+// QueryMemoryStats contains stats for the memory used by queries. It may be obtained by calling UpdateQueryMemoryStats().
+type QueryMemoryStats struct {
+	// MaxSize is the maximum memory size in bytes, which can be reserved by queries.
+	MaxSize uint64
+
+	// Usage is the memory size in bytes, which is currently reserved by the running queries.
+	Usage uint64
+
+	// LimitReached is the number of times queries couldn't reserve memory because of the MaxSize limit.
+	LimitReached uint64
+}
+
+// UpdateQueryMemoryStats updates s with the stats for the memory used by queries.
+func UpdateQueryMemoryStats(s *QueryMemoryStats) {
+	ml := getQueryMemoryLimiter()
+
+	ml.mu.Lock()
+	s.MaxSize = ml.MaxSize
+	s.Usage = ml.usage
+	s.LimitReached = ml.limitReached
+	ml.mu.Unlock()
 }
 
 // memoryReservation tracks the memory reserved from the global query memory limiter.
