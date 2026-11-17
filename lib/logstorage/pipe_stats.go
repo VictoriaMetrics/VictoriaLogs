@@ -1096,6 +1096,12 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := psp.shards.Get(workerID)
 
+	if psp.ps.mode.needImportState() {
+		shard.writeBlockLocal(br)
+	} else {
+		shard.writeBlockDefault(br)
+	}
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
 		if !psp.mem.reserve(stateSizeBudgetChunk) {
@@ -1106,12 +1112,6 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
-	}
-
-	if psp.ps.mode.needImportState() {
-		shard.writeBlockLocal(br)
-	} else {
-		shard.writeBlockDefault(br)
 	}
 }
 

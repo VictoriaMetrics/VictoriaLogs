@@ -644,6 +644,8 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 
 	shard := pcp.shards.Get(workerID)
 
+	shard.writeBlock(pcp, br)
+
 	for shard.stateSizeBudget < 0 {
 		if !pcp.reserveMemory(&pcp.mem, stateSizeBudgetChunk) {
 			pcp.cancel()
@@ -651,8 +653,6 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(pcp, br)
 }
 
 func (pcp *pipeStreamContextProcessor) flush() error {

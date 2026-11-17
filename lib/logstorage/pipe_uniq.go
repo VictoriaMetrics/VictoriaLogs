@@ -238,6 +238,10 @@ func (pup *pipeUniqProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := pup.shards.Get(workerID)
 
+	if !shard.writeBlock(br) {
+		pup.cancel()
+	}
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
 		if !pup.mem.reserve(stateSizeBudgetChunk) {
@@ -248,10 +252,6 @@ func (pup *pipeUniqProcessor) writeBlock(workerID uint, br *blockResult) {
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
-	}
-
-	if !shard.writeBlock(br) {
-		pup.cancel()
 	}
 }
 

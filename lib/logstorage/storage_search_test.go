@@ -1713,8 +1713,6 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 	s := MustOpenStorage(t.TempDir(), &StorageConfig{Retention: 24 * time.Hour})
 	defer s.MustClose()
 
-	// Fill the storage with several streams, each split across several blocks, so the queries actually
-	// reserve memory: a pipe borrows from the limiter only after it has processed more than one block.
 	const streamsCount = 10
 	const blocksPerStream = 4
 	const rowsPerBlock = 10

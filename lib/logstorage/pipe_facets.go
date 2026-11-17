@@ -327,6 +327,8 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := pfp.shards.Get(workerID)
 
+	shard.writeBlock(br)
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
 		if !pfp.mem.reserve(stateSizeBudgetChunk) {
@@ -338,8 +340,6 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(br)
 }
 
 func (pfp *pipeFacetsProcessor) flush() error {

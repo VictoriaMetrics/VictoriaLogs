@@ -195,6 +195,8 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 
 	shard := psp.shards.Get(workerID)
 
+	shard.writeBlock(br)
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
 		if !psp.mem.reserve(stateSizeBudgetChunk) {
@@ -206,8 +208,6 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(br)
 }
 
 func (psp *pipeRunningStatsProcessor) flush() error {

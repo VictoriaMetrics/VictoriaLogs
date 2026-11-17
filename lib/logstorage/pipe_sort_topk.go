@@ -355,6 +355,8 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := ptp.shards.Get(workerID)
 
+	shard.writeBlock(br)
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
 		if !ptp.mem.reserve(stateSizeBudgetChunk) {
@@ -366,8 +368,6 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(br)
 }
 
 func (ptp *pipeTopkProcessor) flush() error {

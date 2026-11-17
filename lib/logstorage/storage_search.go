@@ -387,17 +387,6 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservat
 		}
 
 		shard := shards.Get(workerID)
-		for shard.stateSizeBudget < 0 {
-			// steal some budget for the state size from the global budget.
-			if !mem.reserve(stateSizeBudgetChunk) {
-				// The query memory limiter is exhausted. Stop the query in order to avoid OOM crash.
-				memReserveFailed.Store(true)
-				cancel()
-				return
-			}
-			shard.stateSizeBudget += stateSizeBudgetChunk
-		}
-
 		cs := br.getColumns()
 		columnNames := make([]string, len(cs))
 		for i := range cs {
@@ -427,6 +416,17 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservat
 
 			shard.rows = append(shard.rows, fields)
 			shard.stateSizeBudget -= int(unsafe.Sizeof(fields))
+		}
+
+		for shard.stateSizeBudget < 0 {
+			// steal some budget for the state size from the global budget.
+			if !mem.reserve(stateSizeBudgetChunk) {
+				// The query memory limiter is exhausted. Stop the query in order to avoid OOM crash.
+				memReserveFailed.Store(true)
+				cancel()
+				return
+			}
+			shard.stateSizeBudget += stateSizeBudgetChunk
 		}
 	}
 
