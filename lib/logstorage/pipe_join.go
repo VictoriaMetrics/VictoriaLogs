@@ -98,14 +98,13 @@ func (pj *pipeJoin) visitSubqueries(visitFunc func(q *Query)) {
 	}
 }
 
-func (pj *pipeJoin) initJoinMap(getJoinRows getJoinRowsFunc) (pipe, uint64, error) {
-	var mem uint64
+func (pj *pipeJoin) initJoinMap(getJoinRows getJoinRowsFunc) (pipe, error) {
 	rows := pj.rows
 	if rows == nil {
 		var err error
-		rows, mem, err = getJoinRows(pj.q)
+		rows, err = getJoinRows(pj.q)
 		if err != nil {
-			return nil, 0, fmt.Errorf("cannot execute query at pipe [%s]: %w", pj, err)
+			return nil, fmt.Errorf("cannot execute query at pipe [%s]: %w", pj, err)
 		}
 	}
 
@@ -144,7 +143,7 @@ func (pj *pipeJoin) initJoinMap(getJoinRows getJoinRowsFunc) (pipe, uint64, erro
 	pjNew.q = nil
 	pjNew.rows = rows
 	pjNew.m = m
-	return &pjNew, mem, nil
+	return &pjNew, nil
 }
 
 func (pj *pipeJoin) updateNeededFields(pf *prefixfilter.Filter) {

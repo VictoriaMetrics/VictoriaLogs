@@ -216,9 +216,10 @@ func (s *Storage) RunQuery(qctx *QueryContext, writeBlock WriteDataBlockFunc) er
 type runQueryFunc func(qctx *QueryContext, writeBlock writeBlockResultFunc) error
 
 func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
-	qNew, memReserved, err := initSubqueries(qctx, s.runQuery, false)
-	// Release the reserved memory even on error, since initSubqueries may reserve some before failing.
-	defer getQueryMemoryLimiter().Put(memReserved)
+	var mem memoryReservation
+	defer mem.release()
+
+	qNew, err := initSubqueries(qctx, s.runQuery, false, &mem)
 	if err != nil {
 		return err
 	}
@@ -365,13 +366,9 @@ func (s *Storage) GetFieldNames(qctx *QueryContext, filter string) ([]ValueWithH
 	return s.runValuesWithHitsQuery(qctxNew)
 }
 
-// getRows runs runQuery and returns its rows along with the memory reserved for holding them.
-//
-// The reserved memory is taken from the global query memory limiter. The caller owns it and must
-// release it via getQueryMemoryLimiter().Put once the rows are no longer needed. On error getRows
-// releases the reservation itself and returns 0.
-func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, uint64, error) {
-	var memReserved atomic.Uint64
+// getRows reserves the memory for the returned rows via mem,
+// so mem must be released only after the rows are no longer used.
+func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *memoryReservation) ([][]Field, error) {
 	var memReserveFailed atomic.Bool
 
 	type rowsShard struct {
@@ -387,14 +384,13 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, uint64, erro
 
 		shard := shards.Get(workerID)
 		for shard.stateSizeBudget < 0 {
-			// Reserve more budget for the state size from the global query memory limiter.
-			if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+			// steal some budget for the state size from the global budget.
+			if !mem.reserve(stateSizeBudgetChunk) {
 				// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
 				memReserveFailed.Store(true)
 				return
 			}
 			shard.stateSizeBudget += stateSizeBudgetChunk
-			memReserved.Add(stateSizeBudgetChunk)
 		}
 
 		cs := br.getColumns()
@@ -430,14 +426,11 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, uint64, erro
 	}
 
 	if err := runQuery(qctx, writeBlockResult); err != nil {
-		getQueryMemoryLimiter().Put(memReserved.Load())
-		return nil, 0, err
+		return nil, err
 	}
 
-	mem := memReserved.Load()
 	if memReserveFailed.Load() {
-		getQueryMemoryLimiter().Put(mem)
-		return nil, 0, fmt.Errorf("cannot load rows for [%s]: not enough memory in the shared query memory pool", qctx.Query)
+		return nil, fmt.Errorf("cannot load rows for [%s]: not enough memory in the shared query memory pool", qctx.Query)
 	}
 
 	var rows [][]Field
@@ -445,7 +438,7 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, uint64, erro
 		rows = append(rows, shard.rows...)
 	}
 
-	return rows, mem, nil
+	return rows, nil
 }
 
 func marshalStrings(dst []byte, a []string) []byte {
@@ -795,46 +788,37 @@ func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, e
 	return results, nil
 }
 
-// initSubqueries initializes the join, union and in(...) subqueries at qctx.Query and returns the updated query.
-//
-// The returned uint64 is the amount of memory reserved from the global query memory limiter for the
-// initialized subqueries. The caller must release it via getQueryMemoryLimiter().Put after the query
-// finishes, even on error, since some memory may already be reserved when initialization fails.
-func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool) (*Query, uint64, error) {
-	var memReserved uint64
-	var mem uint64
-
+// initSubqueries reserves the memory for the rows of join and union subqueries via mem,
+// so mem must be released only after the returned query is no longer used.
+func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool, mem *memoryReservation) (*Query, error) {
 	getFieldValues := func(q *Query, fieldName string) ([]string, error) {
 		qctxLocal := qctx.WithQuery(q)
 		return getFieldValuesGeneric(qctxLocal, runQuery, fieldName)
 	}
 	qNew, err := initFilterInValues(qctx.Query, getFieldValues)
 	if err != nil {
-		return nil, memReserved, fmt.Errorf("cannot initialize `in` subqueries: %w", err)
+		return nil, fmt.Errorf("cannot initialize `in` subqueries: %w", err)
 	}
 
-	getJoinRows := func(q *Query) ([][]Field, uint64, error) {
+	getJoinRows := func(q *Query) ([][]Field, error) {
 		qctxLocal := qctx.WithQuery(q)
-		return getRows(qctxLocal, runQuery)
+		return getRows(qctxLocal, runQuery, mem)
 	}
-	qNew, mem, err = initJoinMaps(qNew, getJoinRows)
-	memReserved += mem
+	qNew, err = initJoinMaps(qNew, getJoinRows)
 	if err != nil {
-		return nil, memReserved, fmt.Errorf("cannot initialize `join` subqueries: %w", err)
+		return nil, fmt.Errorf("cannot initialize `join` subqueries: %w", err)
 	}
 
 	runUnionQuery := func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error {
 		qctxLocal := qctx.WithContextAndQuery(ctx, q)
 		return runQuery(qctxLocal, writeBlock)
 	}
-	qNew, mem, err = initUnionQueries(qctx, qNew, runUnionQuery, eagerExecute)
-	memReserved += mem
+	qNew, err = initUnionQueries(qctx, qNew, runUnionQuery, eagerExecute, mem)
 	if err != nil {
-		return nil, memReserved, fmt.Errorf("cannot initialize 'union' subqueries: %w", err)
+		return nil, fmt.Errorf("cannot initialize 'union' subqueries: %w", err)
 	}
 
-	qNew, err = initStreamContextPipes(qctx, qNew, runQuery)
-	return qNew, memReserved, err
+	return initStreamContextPipes(qctx, qNew, runQuery)
 }
 
 func initStreamContextPipes(qctx *QueryContext, q *Query, runQuery runQueryFunc) (*Query, error) {
@@ -912,27 +896,19 @@ type inValuesCache struct {
 
 type runUnionQueryFunc func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error
 
-// initUnionQueries initializes the union subqueries at q and returns the updated query
-// along with the memory reserved for them from the global query memory limiter.
-//
-// On error the returned reserved-memory amount may still be greater than 0, so the caller
-// must release it via getQueryMemoryLimiter().Put in all cases.
-func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool) (*Query, uint64, error) {
+func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool, mem *memoryReservation) (*Query, error) {
 	if !hasUnionPipes(q.pipes) {
-		return q, 0, nil
+		return q, nil
 	}
 
-	var memReserved uint64
 	pipesNew := make([]pipe, len(q.pipes))
 	for i, p := range q.pipes {
 		if pu, ok := p.(*pipeUnion); ok {
 			var err error
-			var mem uint64
-			p, mem, err = pu.initUnionQuery(qctx, runUnionQuery, eagerExecute)
+			p, err = pu.initUnionQuery(qctx, runUnionQuery, eagerExecute, mem)
 			if err != nil {
-				return nil, memReserved, err
+				return nil, err
 			}
-			memReserved += mem
 		}
 		pipesNew[i] = p
 	}
@@ -940,7 +916,7 @@ func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryF
 	qNew := q.cloneShallow()
 	qNew.pipes = pipesNew
 
-	return qNew, memReserved, nil
+	return qNew, nil
 }
 
 func hasUnionPipes(pipes []pipe) bool {
@@ -952,23 +928,21 @@ func hasUnionPipes(pipes []pipe) bool {
 	return false
 }
 
-type getJoinRowsFunc func(q *Query) ([][]Field, uint64, error)
+type getJoinRowsFunc func(q *Query) ([][]Field, error)
 
-func initJoinMaps(q *Query, getJoinRows getJoinRowsFunc) (*Query, uint64, error) {
+func initJoinMaps(q *Query, getJoinRows getJoinRowsFunc) (*Query, error) {
 	if !hasJoinPipes(q.pipes) {
-		return q, 0, nil
+		return q, nil
 	}
 
-	var memReserved uint64
 	pipesNew := make([]pipe, len(q.pipes))
 	for i, p := range q.pipes {
 		if pj, ok := p.(*pipeJoin); ok {
-			pNew, mem, err := pj.initJoinMap(getJoinRows)
+			pNew, err := pj.initJoinMap(getJoinRows)
 			if err != nil {
-				return nil, memReserved, err
+				return nil, err
 			}
 			p = pNew
-			memReserved += mem
 		}
 		pipesNew[i] = p
 	}
@@ -976,7 +950,7 @@ func initJoinMaps(q *Query, getJoinRows getJoinRowsFunc) (*Query, uint64, error)
 	qNew := q.cloneShallow()
 	qNew.pipes = pipesNew
 
-	return qNew, memReserved, nil
+	return qNew, nil
 }
 
 func hasJoinPipes(pipes []pipe) bool {

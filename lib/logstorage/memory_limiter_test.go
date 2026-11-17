@@ -54,3 +54,37 @@ func TestMemoryLimiter(t *testing.T) {
 		t.Fatalf("unexpected usage; got %d; want %d", ml.usage, 0)
 	}
 }
+
+func TestMemoryReservation(t *testing.T) {
+	// This test mutates the process-global query memory limiter, so it cannot run in parallel.
+	ml := getQueryMemoryLimiter()
+	origMaxSize := ml.MaxSize
+	ml.MaxSize = 100
+	defer func() {
+		ml.MaxSize = origMaxSize
+	}()
+
+	var mem memoryReservation
+	if !mem.reserve(30) {
+		t.Fatalf("cannot reserve 30 out of %d bytes", ml.MaxSize)
+	}
+	if !mem.reserve(70) {
+		t.Fatalf("cannot reserve 70 out of 70 bytes")
+	}
+	if n := ml.getUsage(); n != 100 {
+		t.Fatalf("unexpected usage; got %d; want %d", n, 100)
+	}
+
+	// A denied reservation must not be accounted
+	if mem.reserve(1) {
+		t.Fatalf("unexpected reservation of 1 byte from the exhausted limiter")
+	}
+	if n := mem.usage.Load(); n != 100 {
+		t.Fatalf("unexpected reserved size; got %d; want %d", n, 100)
+	}
+
+	mem.release()
+	if n := ml.getUsage(); n != 0 {
+		t.Fatalf("unexpected usage after release; got %d; want %d", n, 0)
+	}
+}

@@ -126,7 +126,7 @@ type pipeFacetsProcessor struct {
 
 	shards atomicutil.Slice[pipeFacetsProcessorShard]
 
-	memReserved      atomic.Int64
+	mem              memoryReservation
 	memReserveFailed atomic.Bool
 }
 
@@ -328,8 +328,8 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := pfp.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		// Reserve more budget for the state size from the global query memory limiter.
-		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+		// steal some budget for the state size from the global budget.
+		if !pfp.mem.reserve(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
 			if pfp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
@@ -337,7 +337,6 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 			}
 			return
 		}
-		pfp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -345,9 +344,7 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 }
 
 func (pfp *pipeFacetsProcessor) flush() error {
-	defer func() {
-		getQueryMemoryLimiter().Put(uint64(pfp.memReserved.Load()))
-	}()
+	defer pfp.mem.release()
 
 	if pfp.memReserveFailed.Load() {
 		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pfp.pf.String())

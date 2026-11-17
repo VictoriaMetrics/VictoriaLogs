@@ -39,7 +39,7 @@ type pipeTopkProcessor struct {
 
 	shards atomicutil.Slice[pipeTopkProcessorShard]
 
-	memReserved      atomic.Int64
+	mem              memoryReservation
 	memReserveFailed atomic.Bool
 }
 
@@ -356,8 +356,8 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 	shard := ptp.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		// Reserve more budget for the state size from the global query memory limiter.
-		if !getQueryMemoryLimiter().Get(stateSizeBudgetChunk) {
+		// steal some budget for the state size from the global budget.
+		if !ptp.mem.reserve(stateSizeBudgetChunk) {
 			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
 			if ptp.memReserveFailed.CompareAndSwap(false, true) {
 				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
@@ -365,7 +365,6 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 			}
 			return
 		}
-		ptp.memReserved.Add(stateSizeBudgetChunk)
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
 
@@ -373,9 +372,7 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 }
 
 func (ptp *pipeTopkProcessor) flush() error {
-	defer func() {
-		getQueryMemoryLimiter().Put(uint64(ptp.memReserved.Load()))
-	}()
+	defer ptp.mem.release()
 
 	if ptp.memReserveFailed.Load() {
 		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", ptp.ps.String())

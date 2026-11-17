@@ -120,13 +120,17 @@ type pipeStreamContextProcessor struct {
 
 	shards atomicutil.Slice[pipeStreamContextProcessorShard]
 
-	memReserved      atomic.Int64
+	// mem holds the memory for the matching rows collected at writeBlock.
+	mem memoryReservation
+
+	// streamMem holds the memory for fetching the surrounding logs of the stream processed at flush.
+	streamMem memoryReservation
+
 	memReserveFailed atomic.Bool
 }
 
-func (pcp *pipeStreamContextProcessor) reserveMemory(n int) bool {
-	if getQueryMemoryLimiter().Get(uint64(n)) {
-		pcp.memReserved.Add(int64(n))
+func (pcp *pipeStreamContextProcessor) reserveMemory(mem *memoryReservation, n int) bool {
+	if mem.reserve(uint64(n)) {
 		return true
 	}
 	// The limiter is exhausted. Stop processing data in order to avoid OOM crash.
@@ -150,7 +154,7 @@ type timeRange struct {
 func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRows []streamContextRow) ([][]*streamContextRow, error) {
 	neededTimestamps := make([]int64, len(neededRows))
 	memUsed := int(unsafe.Sizeof(neededTimestamps[0])) * len(neededTimestamps)
-	if !pcp.reserveMemory(memUsed) {
+	if !pcp.reserveMemory(&pcp.streamMem, memUsed) {
 		return nil, pcp.memoryLimitError()
 	}
 
@@ -192,7 +196,7 @@ func (pcp *pipeStreamContextProcessor) getTimeRangesForStreamRowss(streamID stri
 
 	trs := make([]timeRange, len(rowss))
 	newStateSize := int(unsafe.Sizeof(trs[0])) * len(rowss)
-	if !pcp.reserveMemory(newStateSize) {
+	if !pcp.reserveMemory(&pcp.streamMem, newStateSize) {
 		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 	for i, rows := range rowss {
@@ -338,7 +342,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 
 		stateSizeBudget -= stateSize
 		for stateSizeBudget < 0 {
-			if !pcp.reserveMemory(stateSizeBudgetChunk) {
+			if !pcp.reserveMemory(&pcp.streamMem, stateSizeBudgetChunk) {
 				cancel()
 				return
 			}
@@ -641,7 +645,7 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 	shard := pcp.shards.Get(workerID)
 
 	for shard.stateSizeBudget < 0 {
-		if !pcp.reserveMemory(stateSizeBudgetChunk) {
+		if !pcp.reserveMemory(&pcp.mem, stateSizeBudgetChunk) {
 			pcp.cancel()
 			return
 		}
@@ -652,12 +656,8 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 }
 
 func (pcp *pipeStreamContextProcessor) flush() error {
-	// Return all the memory still reserved from the query memory pool on exit.
-	// This covers the matching rows accumulated during writeBlock plus any per-stream
-	// memory not released yet when flush returns early on an error.
-	defer func() {
-		getQueryMemoryLimiter().Put(uint64(pcp.memReserved.Load()))
-	}()
+	defer pcp.mem.release()
+	defer pcp.streamMem.release()
 
 	if pcp.memReserveFailed.Load() {
 		return pcp.memoryLimitError()
@@ -699,8 +699,6 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 	// write output contexts in the ascending order of rows
 	streamIDs := getStreamIDsSortedByMinRowTimestamp(m)
 	for _, streamID := range streamIDs {
-		budgetBefore := pcp.memReserved.Load()
-
 		rows := m[streamID]
 		if len(rows) > pipeStreamContextMaxRowsPerStream {
 			return fmt.Errorf("too many logs from a single stream passed to 'stream_context': %d; the maximum supported number of logs, which can be passed to 'stream_context' is %d; "+
@@ -727,11 +725,9 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 			}
 		}
 
-		// Return the memory reserved for fetching the surrounding logs of this stream,
+		// Release the memory reserved for fetching the surrounding logs of this stream,
 		// since these logs are already written to the output and aren't needed anymore.
-		streamBudget := pcp.memReserved.Load() - budgetBefore
-		getQueryMemoryLimiter().Put(uint64(streamBudget))
-		pcp.memReserved.Add(-streamBudget)
+		pcp.streamMem.release()
 	}
 
 	wctx.flush()

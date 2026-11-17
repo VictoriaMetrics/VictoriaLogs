@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
@@ -69,4 +70,24 @@ func getQueryMemoryLimiter() *memoryLimiter {
 		queryMemoryLimiter.MaxSize = uint64(float64(memory.Allowed()) * 0.5)
 	})
 	return &queryMemoryLimiter
+}
+
+// memoryReservation tracks the memory reserved from the global query memory limiter.
+//
+// reserve can be called from concurrently running goroutines.
+type memoryReservation struct {
+	usage atomic.Uint64
+}
+
+func (mr *memoryReservation) reserve(n uint64) bool {
+	if !getQueryMemoryLimiter().Get(n) {
+		return false
+	}
+	mr.usage.Add(n)
+	return true
+}
+
+// release releases all the memory reserved via mr.
+func (mr *memoryReservation) release() {
+	getQueryMemoryLimiter().Put(mr.usage.Swap(0))
 }
