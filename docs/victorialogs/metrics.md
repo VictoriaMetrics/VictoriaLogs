@@ -328,7 +328,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_query_memory_usage_bytes
 **Type:** Gauge
 
-**Description:** Current amount of memory used by the running queries for their execution state. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
+**Description:** Current amount of memory reserved by the running queries for their execution state. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
 
 ### vl_concurrent_internalselect_requests_wait_duration
 **Type:** Summary
