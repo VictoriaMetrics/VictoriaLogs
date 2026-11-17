@@ -318,17 +318,17 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_query_memory_limit_reached_total
 **Type:** Counter
 
-**Description:** Memory reservation attempts rejected because the shared query memory pool is full. Indicates concurrently executed heavy queries have reached the shared memory limit and are failing with an error instead of risking an out-of-memory crash. A single rejected query may increment this more than once, since its workers keep retrying until the query stops.
+**Description:** Number of times queries couldn't obtain memory because of the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit. Such queries fail with an error instead of risking an out-of-memory crash. A single failed query may increase it more than once.
 
 ### vl_query_memory_limit_bytes
 **Type:** Gauge
 
-**Description:** Maximum amount of memory all concurrently executed queries may use together for their execution state. It is set to half of the memory available to VictoriaLogs, which is in turn controlled by `-memory.allowedPercent`. Queries are rejected once their combined reserved memory would exceed this limit.
+**Description:** Maximum amount of memory all concurrently executed queries may use together for their execution state. It is set to half of the memory available to VictoriaLogs, which is controlled by `-memory.allowedPercent` or `-memory.allowedBytes` command-line flags. Queries fail once their combined memory would exceed this limit.
 
 ### vl_query_memory_usage_bytes
 **Type:** Gauge
 
-**Description:** Current amount of memory reserved from the shared query memory pool by the running queries. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
+**Description:** Current amount of memory used by the running queries for their execution state. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
 
 ### vl_concurrent_internalselect_requests_wait_duration
 **Type:** Summary

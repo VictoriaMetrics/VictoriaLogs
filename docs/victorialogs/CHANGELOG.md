@@ -23,7 +23,7 @@ according to the following docs:
 
 ## tip
 
-* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): protect VictoriaLogs from out-of-memory crashes when many heavy queries run at the same time by limiting the total memory they may use together. A query that exceeds this shared limit now fails with an error instead of risking a crash. See [#1551](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1551).
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): reduce the risk of out-of-memory crashes when many heavy queries run at the same time by limiting the total memory they may use together. A query, which cannot obtain more memory because of this limit, now fails with an error instead of risking a crash. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits) and [#1551](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1551).
 
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 

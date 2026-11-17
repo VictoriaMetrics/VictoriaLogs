@@ -1189,6 +1189,12 @@ VictoriaLogs provides the following options to limit resource usage by the execu
   since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`
   before returning errors to queries, which cannot be executed because `-search.maxConcurrentRequests` limit is reached.
 
+- The total memory, which concurrently executed queries may use for [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) such as `stats`, `sort`, `uniq` or `join`,
+  is limited to half of the memory available to VictoriaLogs (see `-memory.allowedPercent` and `-memory.allowedBytes` command-line flags).
+  A query, which cannot obtain the needed memory, fails with an error showing how much memory it reserved. If it reserved most of the limit,
+  then narrow down the query or add more RAM. Otherwise retry it later or lower `-search.maxConcurrentRequests`.
+  See [`vl_query_memory_usage_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_usage_bytes) metric.
+
 ## Web UI
 
 VictoriaLogs provides Web UI for logs [querying](https://docs.victoriametrics.com/victorialogs/logsql/) and exploration
