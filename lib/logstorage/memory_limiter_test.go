@@ -55,7 +55,7 @@ func TestMemoryLimiter(t *testing.T) {
 	}
 }
 
-func TestMemoryReservation(t *testing.T) {
+func TestQueryMemoryReservation(t *testing.T) {
 	// This test mutates the process-global query memory limiter, so it cannot run in parallel.
 	ml := getQueryMemoryLimiter()
 	origMaxSize := ml.MaxSize
@@ -64,7 +64,7 @@ func TestMemoryReservation(t *testing.T) {
 		ml.MaxSize = origMaxSize
 	}()
 
-	var mem memoryReservation
+	var mem queryMemoryReservation
 	if !mem.reserve(30) {
 		t.Fatalf("cannot reserve 30 out of %d bytes", ml.MaxSize)
 	}

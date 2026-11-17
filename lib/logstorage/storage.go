@@ -1007,7 +1007,7 @@ func (s *Storage) processDeleteTask(ctx context.Context, dt *DeleteTask) bool {
 	var qs QueryStats
 	qctx := NewQueryContext(ctx, &qs, dt.TenantIDs, q, false, nil)
 
-	var mem memoryReservation
+	var mem queryMemoryReservation
 	defer mem.release()
 
 	// Initialize subqueries

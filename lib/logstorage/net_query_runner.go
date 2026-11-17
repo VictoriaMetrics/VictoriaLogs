@@ -59,7 +59,7 @@ func NewNetQueryRunner(qctx *QueryContext, runNetQuery RunNetQueryFunc, writeNet
 func (nqr *NetQueryRunner) Run(ctx context.Context, concurrency int, netSearch func(stopCh <-chan struct{}, q *Query, writeBlock WriteDataBlockFunc) error) error {
 	qctx := nqr.qctx.WithContext(ctx)
 
-	var mem memoryReservation
+	var mem queryMemoryReservation
 	defer mem.release()
 
 	// Eagerly execute all the subqueries for the remote query

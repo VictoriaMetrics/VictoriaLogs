@@ -30,7 +30,7 @@ type pipeUnion struct {
 	runQuery runUnionQueryFunc
 }
 
-func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool, mem *memoryReservation) (pipe, error) {
+func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (pipe, error) {
 	rows := pu.rows
 	if eagerExecute && rows == nil {
 		qctxLocal := qctx.WithQuery(pu.q)

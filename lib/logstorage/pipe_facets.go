@@ -126,7 +126,7 @@ type pipeFacetsProcessor struct {
 
 	shards atomicutil.Slice[pipeFacetsProcessorShard]
 
-	mem              memoryReservation
+	mem              queryMemoryReservation
 	memReserveFailed atomic.Bool
 }
 
@@ -346,7 +346,7 @@ func (pfp *pipeFacetsProcessor) flush() error {
 	defer pfp.mem.release()
 
 	if pfp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pfp.pf.String())
+		return fmt.Errorf("cannot calculate [%s]: %w", pfp.pf.String(), pfp.mem.limitError())
 	}
 
 	// merge state across shards

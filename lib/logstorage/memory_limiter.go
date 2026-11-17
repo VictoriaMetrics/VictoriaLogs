@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -86,22 +87,29 @@ func UpdateQueryMemoryStats(s *QueryMemoryStats) {
 	ml.mu.Unlock()
 }
 
-// memoryReservation tracks the memory reserved from the global query memory limiter.
+// queryMemoryReservation tracks the memory reserved from the global query memory limiter.
 //
 // reserve can be called from concurrently running goroutines.
-type memoryReservation struct {
+type queryMemoryReservation struct {
 	usage atomic.Uint64
 }
 
-func (mr *memoryReservation) reserve(n uint64) bool {
+func (qmr *queryMemoryReservation) reserve(n uint64) bool {
 	if !getQueryMemoryLimiter().Get(n) {
 		return false
 	}
-	mr.usage.Add(n)
+	qmr.usage.Add(n)
 	return true
 }
 
-// release releases all the memory reserved via mr.
-func (mr *memoryReservation) release() {
-	getQueryMemoryLimiter().Put(mr.usage.Swap(0))
+// release releases all the memory reserved via qmr.
+func (qmr *queryMemoryReservation) release() {
+	getQueryMemoryLimiter().Put(qmr.usage.Swap(0))
+}
+
+// limitError returns an error for the case when qmr cannot reserve more memory.
+func (qmr *queryMemoryReservation) limitError() error {
+	return fmt.Errorf("not enough memory: %dMB reserved here out of %dMB shared by all the running queries; "+
+		"possible solutions: narrow down the time range or add filters; retry when fewer heavy queries are running; "+
+		"increase -memory.allowedPercent or -memory.allowedBytes", qmr.usage.Load()>>20, getQueryMemoryLimiter().MaxSize>>20)
 }

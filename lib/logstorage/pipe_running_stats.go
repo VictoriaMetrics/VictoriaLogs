@@ -148,7 +148,7 @@ type pipeRunningStatsProcessor struct {
 
 	shards atomicutil.Slice[pipeRunningStatsProcessorShard]
 
-	mem              memoryReservation
+	mem              queryMemoryReservation
 	memReserveFailed atomic.Bool
 }
 
@@ -214,7 +214,7 @@ func (psp *pipeRunningStatsProcessor) flush() error {
 	defer psp.mem.release()
 
 	if psp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", psp.ps.String())
+		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), psp.mem.limitError())
 	}
 
 	getKeyForRow := func(row []Field) string {

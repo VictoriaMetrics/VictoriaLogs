@@ -108,7 +108,7 @@ type pipeUniqProcessor struct {
 
 	shards atomicutil.Slice[pipeUniqProcessorShard]
 
-	mem              memoryReservation
+	mem              queryMemoryReservation
 	memReserveFailed atomic.Bool
 }
 
@@ -259,7 +259,7 @@ func (pup *pipeUniqProcessor) flush() error {
 	defer pup.mem.release()
 
 	if pup.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pup.pu.String())
+		return fmt.Errorf("cannot calculate [%s]: %w", pup.pu.String(), pup.mem.limitError())
 	}
 
 	// merge state across shards in parallel

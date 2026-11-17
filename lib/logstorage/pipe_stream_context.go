@@ -121,15 +121,15 @@ type pipeStreamContextProcessor struct {
 	shards atomicutil.Slice[pipeStreamContextProcessorShard]
 
 	// mem holds the memory for the matching rows collected at writeBlock.
-	mem memoryReservation
+	mem queryMemoryReservation
 
 	// streamMem holds the memory for fetching the surrounding logs of the stream processed at flush.
-	streamMem memoryReservation
+	streamMem queryMemoryReservation
 
 	memReserveFailed atomic.Bool
 }
 
-func (pcp *pipeStreamContextProcessor) reserveMemory(mem *memoryReservation, n int) bool {
+func (pcp *pipeStreamContextProcessor) reserveMemory(mem *queryMemoryReservation, n int) bool {
 	if mem.reserve(uint64(n)) {
 		return true
 	}
@@ -138,12 +138,12 @@ func (pcp *pipeStreamContextProcessor) reserveMemory(mem *memoryReservation, n i
 	return false
 }
 
-func (pcp *pipeStreamContextProcessor) memoryLimitError() error {
-	return fmt.Errorf("cannot calculate [%s]: not enough memory in the shared query memory pool", pcp.pc.String())
+func (pcp *pipeStreamContextProcessor) memoryLimitError(mem *queryMemoryReservation) error {
+	return fmt.Errorf("cannot calculate [%s]: %w", pcp.pc.String(), mem.limitError())
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitForSurroundingLogsError(n int) error {
-	return fmt.Errorf("not enough memory in the shared query memory pool for fetching surrounding logs of %d matching logs", n)
+	return fmt.Errorf("cannot fetch the surrounding logs for %d matching logs: %w", n, pcp.streamMem.limitError())
 }
 
 type timeRange struct {
@@ -155,7 +155,7 @@ func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRow
 	neededTimestamps := make([]int64, len(neededRows))
 	memUsed := int(unsafe.Sizeof(neededTimestamps[0])) * len(neededTimestamps)
 	if !pcp.reserveMemory(&pcp.streamMem, memUsed) {
-		return nil, pcp.memoryLimitError()
+		return nil, pcp.memoryLimitError(&pcp.streamMem)
 	}
 
 	for i := range neededRows {
@@ -660,7 +660,7 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 	defer pcp.streamMem.release()
 
 	if pcp.memReserveFailed.Load() {
-		return pcp.memoryLimitError()
+		return pcp.memoryLimitError(&pcp.mem)
 	}
 
 	// merge state across shards

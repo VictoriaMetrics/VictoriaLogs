@@ -1785,7 +1785,7 @@ func TestStorageRunQueryMemoryLimiter(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expecting non-nil error for query [%s]", query)
 			}
-			if !strings.Contains(err.Error(), "not enough memory in the shared query memory pool") {
+			if !strings.Contains(err.Error(), "not enough memory:") {
 				t.Fatalf("unexpected error for query [%s]: %s", query, err)
 			}
 		}
@@ -1822,12 +1822,12 @@ func TestGetRowsMemoryLimitExceeded(t *testing.T) {
 	}
 
 	qctx := newTestQueryContext(nil, mustParseQuery("*"))
-	var mem memoryReservation
+	var mem queryMemoryReservation
 	_, err := getRows(qctx, runQuery, &mem)
 	if err == nil {
 		t.Fatalf("expecting non-nil error")
 	}
-	if !strings.Contains(err.Error(), "not enough memory in the shared query memory pool") {
+	if !strings.Contains(err.Error(), "not enough memory:") {
 		t.Fatalf("unexpected error: %s", err)
 	}
 	if blocksWritten == blocksCount {

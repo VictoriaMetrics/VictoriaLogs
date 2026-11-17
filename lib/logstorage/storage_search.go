@@ -216,7 +216,7 @@ func (s *Storage) RunQuery(qctx *QueryContext, writeBlock WriteDataBlockFunc) er
 type runQueryFunc func(qctx *QueryContext, writeBlock writeBlockResultFunc) error
 
 func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
-	var mem memoryReservation
+	var mem queryMemoryReservation
 	defer mem.release()
 
 	qNew, err := initSubqueries(qctx, s.runQuery, false, &mem)
@@ -368,7 +368,7 @@ func (s *Storage) GetFieldNames(qctx *QueryContext, filter string) ([]ValueWithH
 
 // getRows reserves the memory for the returned rows via mem,
 // so mem must be released only after the rows are no longer used.
-func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *memoryReservation) ([][]Field, error) {
+func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservation) ([][]Field, error) {
 	ctx, cancel := context.WithCancel(qctx.Context)
 	defer cancel()
 	qctx = qctx.WithContext(ctx)
@@ -434,7 +434,7 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *memoryReservation) 
 
 	// Check memReserveFailed before err, since the query canceled above may return an error.
 	if memReserveFailed.Load() {
-		return nil, fmt.Errorf("cannot load rows for [%s]: not enough memory in the shared query memory pool", qctx.Query)
+		return nil, fmt.Errorf("cannot load rows for [%s]: %w", qctx.Query, mem.limitError())
 	}
 	if err != nil {
 		return nil, err
@@ -797,7 +797,7 @@ func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, e
 
 // initSubqueries reserves the memory for the rows of join and union subqueries via mem,
 // so mem must be released only after the returned query is no longer used.
-func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool, mem *memoryReservation) (*Query, error) {
+func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (*Query, error) {
 	getFieldValues := func(q *Query, fieldName string) ([]string, error) {
 		qctxLocal := qctx.WithQuery(q)
 		return getFieldValuesGeneric(qctxLocal, runQuery, fieldName)
@@ -903,7 +903,7 @@ type inValuesCache struct {
 
 type runUnionQueryFunc func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error
 
-func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool, mem *memoryReservation) (*Query, error) {
+func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (*Query, error) {
 	if !hasUnionPipes(q.pipes) {
 		return q, nil
 	}
