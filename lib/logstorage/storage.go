@@ -268,7 +268,8 @@ func (s *Storage) PartitionAttach(name string) error {
 		return fmt.Errorf("cannot attach the partition %q, because there is no the corresponding directory %q", name, partitionPath)
 	}
 	if err := checkReadOnlyPartitionDir(partitionPath); err != nil {
-		return fmt.Errorf("cannot attach the partition %q in read-only mode: %w", name, err)
+		return fmt.Errorf("cannot attach the partition %q in read-only mode, since it cannot be opened without modification: %w; "+
+			"the partition directory must be an unmodified copy of the partition such as a snapshot; see https://docs.victoriametrics.com/victorialogs/#read-only-partitions", name, err)
 	}
 
 	pt := mustOpenPartition(s, partitionPath, true)

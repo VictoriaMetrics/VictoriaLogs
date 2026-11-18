@@ -375,20 +375,92 @@ func TestStoragePartitionAttachReadOnlyInvalidDir(t *testing.T) {
 	t.Parallel()
 
 	path := t.TempDir()
-	s := MustOpenStorage(path, &StorageConfig{})
 
-	partitionName := getPartitionNameFromDay(time.Now().UnixNano() / nsecsPerDay)
-	partitionPath := filepath.Join(path, partitionsDirname, partitionName)
-	fs.MustMkdirFailIfExist(partitionPath)
-	fs.MustMkdirFailIfExist(filepath.Join(partitionPath, indexdbDirname))
-	fs.MustMkdirFailIfExist(filepath.Join(partitionPath, datadbDirname))
-
-	// The partition without parts.json files cannot be attached in read-only mode, since it cannot be fixed without modification.
-	if err := s.PartitionAttach(partitionName); err == nil {
-		t.Fatalf("expecting non-nil error when attaching partition without %s files", partsFilename)
+	cfg := &StorageConfig{
+		Retention: 365 * 24 * time.Hour,
 	}
-	if pis := s.PartitionList(); len(pis) != 0 {
-		t.Fatalf("unexpected partitions attached: %v", pis)
+	s := MustOpenStorage(path, cfg)
+
+	// Create a valid partition and keep its pristine copy.
+	ts := time.Now().UTC().UnixNano()
+	partitionName := getPartitionNameFromDay(ts / nsecsPerDay)
+	partitionPath := filepath.Join(path, partitionsDirname, partitionName)
+
+	lr := GetLogRows([]string{"stream"}, nil, nil, nil, "")
+	lr.mustAdd(TenantID{}, ts, []Field{
+		{
+			Name:  "stream",
+			Value: "same_stream",
+		},
+		{
+			Name:  "_msg",
+			Value: "msg",
+		},
+	})
+	s.MustAddRows(lr)
+	PutLogRows(lr)
+	s.DebugFlush()
+
+	if err := s.PartitionDetach(partitionName); err != nil {
+		t.Fatalf("cannot detach partition %q: %s", partitionName, err)
+	}
+	pristinePath := filepath.Join(t.TempDir(), partitionName)
+	if err := os.CopyFS(pristinePath, os.DirFS(partitionPath)); err != nil {
+		t.Fatalf("cannot copy partition: %s", err)
+	}
+
+	indexdbPath := filepath.Join(partitionPath, indexdbDirname)
+	datadbPath := filepath.Join(partitionPath, datadbDirname)
+
+	f := func(name string, corrupt func()) {
+		t.Helper()
+
+		// Restore the pristine partition copy and corrupt it in the given way.
+		fs.MustRemoveDir(partitionPath)
+		if err := os.CopyFS(partitionPath, os.DirFS(pristinePath)); err != nil {
+			t.Fatalf("cannot restore partition: %s", err)
+		}
+		corrupt()
+
+		// The partition cannot be attached in read-only mode, since it cannot be opened without modification.
+		if err := s.PartitionAttach(partitionName); err == nil {
+			t.Fatalf("expecting non-nil error when attaching read-only partition: %s", name)
+		}
+		if pis := s.PartitionList(); len(pis) != 0 {
+			t.Fatalf("unexpected partitions attached: %v", pis)
+		}
+	}
+
+	f("missing indexdb directory", func() {
+		fs.MustRemoveDir(indexdbPath)
+	})
+	f("missing datadb parts.json", func() {
+		if err := os.Remove(filepath.Join(datadbPath, partsFilename)); err != nil {
+			t.Fatalf("cannot remove %s: %s", partsFilename, err)
+		}
+	})
+	f("malformed indexdb parts.json", func() {
+		fs.MustWriteSync(filepath.Join(indexdbPath, partsFilename), []byte("foobar"))
+	})
+	f("unlisted indexdb directory", func() {
+		fs.MustMkdirFailIfExist(filepath.Join(indexdbPath, "txn"))
+	})
+	f("unlisted datadb directory", func() {
+		fs.MustMkdirFailIfExist(filepath.Join(datadbPath, "0123456789ABCDEF"))
+	})
+	f("missing datadb part listed in parts.json", func() {
+		partNames := mustReadPartNames(datadbPath)
+		partNames = append(partNames, "0123456789ABCDEF")
+		mustWritePartNames(datadbPath, partNames)
+	})
+
+	// The pristine partition must be attached successfully.
+	fs.MustRemoveDir(partitionPath)
+	if err := os.CopyFS(partitionPath, os.DirFS(pristinePath)); err != nil {
+		t.Fatalf("cannot restore partition: %s", err)
+	}
+	if err := s.PartitionAttach(partitionName); err != nil {
+		t.Fatalf("cannot attach pristine partition %q: %s", partitionName, err)
 	}
 
 	s.MustClose()
@@ -517,6 +589,7 @@ func TestStorageReadOnlyPartitionMaxDiskSpaceUsage(t *testing.T) {
 }
 
 // mustReadDirTree returns contents of all the files under dir keyed by their paths relative to dir.
+// Directories are included with the trailing slash in the key and an empty value.
 func mustReadDirTree(t *testing.T, dir string) map[string]string {
 	t.Helper()
 
@@ -525,14 +598,17 @@ func mustReadDirTree(t *testing.T, dir string) map[string]string {
 		if err != nil {
 			return err
 		}
-		if de.IsDir() {
-			return nil
-		}
-		data, err := os.ReadFile(path)
+		relPath, err := filepath.Rel(dir, path)
 		if err != nil {
 			return err
 		}
-		relPath, err := filepath.Rel(dir, path)
+		if de.IsDir() {
+			if relPath != "." {
+				m[relPath+"/"] = ""
+			}
+			return nil
+		}
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}

@@ -319,6 +319,11 @@ are read-only{{% available_from "#" %}}. VictoriaLogs never modifies read-only p
 This allows attaching partitions located on read-only filesystems, verifying [restored backups](https://docs.victoriametrics.com/victorialogs/#backup-and-restore)
 and sharing a single copy of historical partitions between multiple VictoriaLogs instances.
 
+The attached partition directory must be an unmodified copy of the partition such as a [snapshot](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle):
+it must contain `parts.json` files in the `indexdb` and `datadb` subdirectories and exactly the parts listed in them.
+VictoriaLogs automatically fixes inconsistent partitions when it opens them in read-write mode (for example, it removes the directories left after unclean shutdown),
+while read-only partitions must be left intact, so `/internal/partition/attach` rejects inconsistent partitions.
+
 Read-only partitions remain read-only after VictoriaLogs restart. Their names are stored in the `<-storageDataPath>/readonly_partitions.json` file.
 The partition is opened in read-write mode after VictoriaLogs restart if it is detached via `/internal/partition/detach` before the restart
 and its directory is left at `<-storageDataPath>/partitions/`.
@@ -521,8 +526,9 @@ The following steps must be performed for restoring the partition data from back
 
 1. To start VictoriaLogs instance or to attach the restored partition to the running VictoriaLogs instance via `/internal/partition/attach?name=YYYYMMDD` HTTP endpoint
    according to [these docs](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle).
-   Note that the attached partition is [read-only](https://docs.victoriametrics.com/victorialogs/#read-only-partitions). Restart VictoriaLogs instance
-   if the restored partition must accept new logs.
+   Note that the attached partition is [read-only](https://docs.victoriametrics.com/victorialogs/#read-only-partitions), and it remains read-only after VictoriaLogs restart.
+   If the restored partition must accept new logs, then either restore it while VictoriaLogs instance is stopped,
+   or detach the attached partition via `/internal/partition/detach?name=YYYYMMDD` and restart VictoriaLogs instance.
 
 It is also possible to use **the disk snapshot** feature provided by the operating system or cloud provider in order to perform a backup.
 

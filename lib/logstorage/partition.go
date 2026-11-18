@@ -1,7 +1,9 @@
 package logstorage
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -132,21 +134,57 @@ func mustOpenPartition(s *Storage, path string, isReadOnly bool) *partition {
 	return pt
 }
 
-// checkReadOnlyPartitionDir verifies that the partition directory at the given path can be opened in read-only mode.
+// checkReadOnlyPartitionDir verifies that the partition directory at the given path can be opened in read-only mode,
+// e.g. without any modification.
 //
-// Partitions opened in read-write mode automatically fix the missing files and directories listed below,
-// while read-only partitions must be left intact, so the fix cannot be applied to them.
+// Partitions opened in read-write mode automatically fix the issues detected here - they create the missing directories
+// and parts.json files and remove the directories, which aren't listed in parts.json files. Read-only partitions must be left intact,
+// so these fixes cannot be applied to them.
 func checkReadOnlyPartitionDir(path string) error {
-	indexdbPath := filepath.Join(path, indexdbDirname)
-	datadbPath := filepath.Join(path, datadbDirname)
-	for _, p := range []string{
-		indexdbPath,
-		filepath.Join(indexdbPath, partsFilename),
-		datadbPath,
-		filepath.Join(datadbPath, partsFilename),
-	} {
-		if !fs.IsPathExist(p) {
-			return fmt.Errorf("missing %s", p)
+	for _, dirname := range []string{indexdbDirname, datadbDirname} {
+		if err := checkReadOnlyPartsDir(filepath.Join(path, dirname)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkReadOnlyPartsDir verifies that the directory at the given path contains parts.json file
+// and exactly the part directories listed in it.
+func checkReadOnlyPartsDir(path string) error {
+	if !fs.IsPathExist(path) {
+		return fmt.Errorf("missing directory %s", path)
+	}
+
+	partsPath := filepath.Join(path, partsFilename)
+	data, err := os.ReadFile(partsPath)
+	if err != nil {
+		return fmt.Errorf("cannot read %s: %w", partsPath, err)
+	}
+	var partNames []string
+	if err := json.Unmarshal(data, &partNames); err != nil {
+		return fmt.Errorf("cannot parse %s: %w", partsPath, err)
+	}
+
+	m := make(map[string]struct{}, len(partNames))
+	for _, partName := range partNames {
+		partPath := filepath.Join(path, partName)
+		if !fs.IsPathExist(partPath) {
+			return fmt.Errorf("part %s is listed in %s, but is missing on disk", partPath, partsPath)
+		}
+		m[partName] = struct{}{}
+	}
+
+	des, err := os.ReadDir(path)
+	if err != nil {
+		return fmt.Errorf("cannot read directory %s: %w", path, err)
+	}
+	for _, de := range des {
+		if !fs.IsDirOrSymlink(de) {
+			continue
+		}
+		if _, ok := m[de.Name()]; !ok {
+			return fmt.Errorf("directory %s isn't listed in %s", filepath.Join(path, de.Name()), partsPath)
 		}
 	}
 	return nil
