@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [partitions lifecycle](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle): attach partitions via `/internal/partition/attach` in [read-only mode](https://docs.victoriametrics.com/victorialogs/#read-only-partitions). Read-only partitions can be queried, but they don't accept new logs, aren't merged in background and aren't modified on disk in any other way, so they can be located on read-only filesystems. They remain read-only after VictoriaLogs restart. Read-only partitions are detached instead of being deleted when they go outside the [retention](https://docs.victoriametrics.com/victorialogs/#retention). Previously attached partitions were merged in background and accepted new logs, so VictoriaLogs could crash when the attached partition was located on a read-only filesystem. The `/internal/partition/list?details=1` endpoint returns the mode per every partition. The number of read-only partitions is exposed via the `vl_read_only_partitions` metric. See [#1744](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1744).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13
