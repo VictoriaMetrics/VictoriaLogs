@@ -453,6 +453,25 @@ func TestStoragePartitionAttachReadOnlyInvalidDir(t *testing.T) {
 		partNames = append(partNames, "0123456789ABCDEF")
 		mustWritePartNames(datadbPath, partNames)
 	})
+	f("datadb part name pointing outside datadb directory", func() {
+		partNames := mustReadPartNames(datadbPath)
+		partNames = append(partNames, "../"+indexdbDirname)
+		mustWritePartNames(datadbPath, partNames)
+	})
+	f("datadb part listed in parts.json is a regular file", func() {
+		partNames := mustReadPartNames(datadbPath)
+		partNames = append(partNames, "0123456789ABCDEF")
+		mustWritePartNames(datadbPath, partNames)
+		fs.MustWriteSync(filepath.Join(datadbPath, "0123456789ABCDEF"), []byte("foobar"))
+	})
+	f("datadb part listed twice in parts.json", func() {
+		partNames := mustReadPartNames(datadbPath)
+		if len(partNames) == 0 {
+			t.Fatalf("expecting at least a single part in %s", datadbPath)
+		}
+		partNames = append(partNames, partNames[0])
+		mustWritePartNames(datadbPath, partNames)
+	})
 
 	// The pristine partition must be attached successfully.
 	fs.MustRemoveDir(partitionPath)

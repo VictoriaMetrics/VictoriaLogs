@@ -137,9 +137,9 @@ func mustOpenPartition(s *Storage, path string, isReadOnly bool) *partition {
 // checkReadOnlyPartitionDir verifies that the partition directory at the given path can be opened in read-only mode,
 // e.g. without any modification.
 //
-// Partitions opened in read-write mode automatically fix the issues detected here - they create the missing directories
-// and parts.json files and remove the directories, which aren't listed in parts.json files. Read-only partitions must be left intact,
-// so these fixes cannot be applied to them.
+// Partitions opened in read-write mode automatically fix some of the issues detected here - they create the missing
+// parts.json files and remove the directories, which aren't listed in parts.json files. Read-only partitions must be left intact,
+// so these fixes cannot be applied to them. The remaining issues, such as invalid contents of parts.json, cannot be fixed automatically.
 func checkReadOnlyPartitionDir(path string) error {
 	for _, dirname := range []string{indexdbDirname, datadbDirname} {
 		if err := checkReadOnlyPartsDir(filepath.Join(path, dirname)); err != nil {
@@ -168,9 +168,23 @@ func checkReadOnlyPartsDir(path string) error {
 
 	m := make(map[string]struct{}, len(partNames))
 	for _, partName := range partNames {
+		// The part name must be a single path component, so it cannot point outside the path.
+		if partName == "." || partName == ".." || filepath.Base(partName) != partName {
+			return fmt.Errorf("invalid part name %q in %s", partName, partsPath)
+		}
+		if _, ok := m[partName]; ok {
+			return fmt.Errorf("part %q is listed more than once in %s", partName, partsPath)
+		}
 		partPath := filepath.Join(path, partName)
-		if !fs.IsPathExist(partPath) {
-			return fmt.Errorf("part %s is listed in %s, but is missing on disk", partPath, partsPath)
+		fi, err := os.Stat(partPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("part %s is listed in %s, but is missing on disk", partPath, partsPath)
+			}
+			return fmt.Errorf("cannot access part %s listed in %s: %w", partPath, partsPath, err)
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("part %s listed in %s isn't a directory", partPath, partsPath)
 		}
 		m[partName] = struct{}{}
 	}

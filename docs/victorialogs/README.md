@@ -321,7 +321,7 @@ and sharing a single copy of historical partitions between multiple VictoriaLogs
 
 The attached partition directory must be an unmodified copy of the partition such as a [snapshot](https://docs.victoriametrics.com/victorialogs/#partitions-lifecycle):
 it must contain `parts.json` files in the `indexdb` and `datadb` subdirectories and exactly the parts listed in them.
-VictoriaLogs automatically fixes inconsistent partitions when it opens them in read-write mode (for example, it removes the directories left after unclean shutdown),
+VictoriaLogs automatically fixes some inconsistencies when it opens partitions in read-write mode (for example, it removes the directories left after unclean shutdown),
 while read-only partitions must be left intact, so `/internal/partition/attach` rejects inconsistent partitions.
 
 Read-only partitions remain read-only after VictoriaLogs restart. Their names are stored in the `<-storageDataPath>/readonly_partitions.json` file.
