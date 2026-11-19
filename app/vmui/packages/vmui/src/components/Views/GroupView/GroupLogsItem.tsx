@@ -7,7 +7,8 @@ import classNames from "classnames";
 import { useLogsState } from "../../../state/logsPanel/LogsStateContext";
 import { useTimeState } from "../../../state/time/TimeStateContext";
 import { useSearchParams } from "react-router-dom";
-import { LOGS_DATE_FORMAT, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { LOGS_DATE_FORMAT, LOGS_DISPLAY_FIELDS, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { MSG_FIELD } from "../../../constants/logFields";
 import { parseAnsiToHtml } from "../../../utils/ansiParser";
 import GroupLogsFields from "./GroupLogsFields";
 import { useLocalStorageBoolean } from "../../../hooks/useLocalStorageBoolean";
@@ -30,6 +31,10 @@ interface Props {
   className?: string;
   onItemClick?: (log: Logs) => void;
 }
+
+const renderFieldName = (field: string) => (
+  <span className="vm-group-logs-row-content__field-name">{field}: </span>
+);
 
 const GroupLogsItem: FC<Props> = ({
   log,
@@ -74,22 +79,24 @@ const GroupLogsItem: FC<Props> = ({
   }, [log._time, timezone]);
 
   const formattedMarkdown = useMemo(() => {
-    if (!markdownParsing || !log._msg || !displayFields.includes("_msg")) return "";
+    if (!markdownParsing || !log._msg || !displayFields.includes(MSG_FIELD)) return "";
     return log._msg.replace(/```/g, "\n```\n");
   }, [log._msg, markdownParsing, displayFields]);
 
   const hasFields = Object.keys(log).length > 0;
 
   const displayMessage = useMemo(() => {
-    const values: (string | ReactNode)[] = [];
+    if (!hasFields) return ["—"];
 
-    if (!hasFields) {
-      values.push("-");
-    } else if (displayFields.some(field => log[field])) {
-      displayFields.filter(field => log[field]).forEach((field) => {
+    const fieldsWithValues = displayFields.filter(field => log[field]);
+
+    if (fieldsWithValues.length) {
+      const values: (string | ReactNode)[] = [];
+
+      fieldsWithValues.forEach((field) => {
         let value: string | ReactNode[] = log[field];
 
-        const isMessageField = field === "_msg";
+        const isMessageField = field === MSG_FIELD;
 
         if (isMessageField && ansiParsing) {
           value = parseAnsiToHtml(log[field]);
@@ -103,26 +110,19 @@ const GroupLogsItem: FC<Props> = ({
 
         // _msg carries no prefix: it is the field almost every entry displays,
         // and labelling it adds noise without adding information
-        if (isMessageField) {
-          values.push(value);
-        } else {
-          values.push(
-            <>
-              <span className="vm-group-logs-row-content__field-name">{field}: </span>
-              {value}
-            </>
-          );
-        }
+        values.push(isMessageField ? value : <>{renderFieldName(field)}{value}</>);
       });
-    } else if (displayFields.length) {
-      values.push("—");
-    } else {
-      Object.entries(log).forEach(([key, value]) => {
-        values.push(`${key}: ${value}`);
-      });
+
+      return values;
     }
 
-    return values;
+    const isDefaultDisplay = displayFields.length === 1 && displayFields[0] === LOGS_DISPLAY_FIELDS;
+    const hasDefaultField = Object.prototype.hasOwnProperty.call(log, LOGS_DISPLAY_FIELDS);
+    if (displayFields.length && (!isDefaultDisplay || hasDefaultField)) {
+      return ["—"];
+    }
+
+    return Object.entries(log).map(([key, value]) => <>{renderFieldName(key)}{value}</>);
   }, [log, hasFields, displayFields, ansiParsing, markdownParsing]);
 
   const [disabledHovers] = useLocalStorageBoolean("LOGS_DISABLED_HOVERS");

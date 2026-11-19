@@ -5,7 +5,7 @@ import EmptyLogs from "../../EmptyLogs/EmptyLogs";
 
 const MemoizedGroupLogs = memo(GroupLogs);
 
-const GroupView: FC<ViewProps> = ({ data, settingsRef }) => {
+const GroupView: FC<ViewProps> = ({ data, settingsRef, period }) => {
   if (!data.length) return <EmptyLogs />;
 
   return (
@@ -13,6 +13,7 @@ const GroupView: FC<ViewProps> = ({ data, settingsRef }) => {
       <MemoizedGroupLogs
         logs={data}
         settingsRef={settingsRef}
+        period={period}
       />
     </>
   );

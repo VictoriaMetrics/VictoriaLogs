@@ -81,7 +81,7 @@ func (pt *pipeTop) canLiveTail() bool {
 	return false
 }
 
-func (pt *pipeTop) canReturnLastNResults() bool {
+func (pt *pipeTop) canReturnTimeSortedNResults() bool {
 	return false
 }
 

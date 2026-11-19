@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/preact";
 import Table from "./Table";
 import { Column } from "./types";
+import { TIME_FIELD } from "../../constants/logFields";
 
 vi.mock("./hooks/useTableColumnPrefs", () => ({
   useTableColumnPrefs: () => ({
@@ -15,7 +16,7 @@ vi.mock("./hooks/useTableColumnPrefs", () => ({
 type Row = { _time: string; msg: string };
 
 const columns: Column<Row>[] = [
-  { key: "_time", title: "_time", options: { sortable: false, resizable: false, draggable: false, menuEnabled: false } },
+  { key: TIME_FIELD, title: "_time", options: { sortable: false, resizable: false, draggable: false, menuEnabled: false } },
   { key: "msg", title: "msg", options: { sortable: false, resizable: false, draggable: false, menuEnabled: false } },
 ];
 const rows: Row[] = [{ _time: "1", msg: "hello" }];

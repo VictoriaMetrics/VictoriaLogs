@@ -57,8 +57,8 @@ func (pu *pipeUnpackLogfmt) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackLogfmt) canReturnLastNResults() bool {
-	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
+func (pu *pipeUnpackLogfmt) canReturnTimeSortedNResults() bool {
+	return canReturnTimeSortedNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
 func (pu *pipeUnpackLogfmt) isFixedOutputFieldsOrder() bool {

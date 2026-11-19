@@ -66,8 +66,8 @@ func (pu *pipeUnpackJSON) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackJSON) canReturnLastNResults() bool {
-	return canReturnLastNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
+func (pu *pipeUnpackJSON) canReturnTimeSortedNResults() bool {
+	return canReturnTimeSortedNResultsAfterUnpack(pu.fieldFilters, pu.resultPrefix, pu.keepOriginalFields)
 }
 
 func (pu *pipeUnpackJSON) isFixedOutputFieldsOrder() bool {

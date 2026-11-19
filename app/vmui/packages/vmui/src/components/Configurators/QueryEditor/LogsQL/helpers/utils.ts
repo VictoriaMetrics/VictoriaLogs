@@ -1,10 +1,11 @@
 import { ContextData } from "../types";
+import { MSG_FIELD, STREAM_FIELD, STREAM_ID_FIELD, TIME_FIELD } from "../../../../../constants/logFields";
 
 const getStreamFieldQuery = (valueContext: string) => {
   if (valueContext.includes("=")) {
     const [fieldName, fieldValue] = valueContext.split("=");
     if (fieldValue) {
-      return `_stream:${fieldName}=~${fieldValue}.*"}`;
+      return `${STREAM_FIELD}:${fieldName}=~${fieldValue}.*"}`;
     }
   }
 
@@ -47,11 +48,11 @@ const getDateQuery = (contextData: ContextData) => {
  */
 export const generateQuery = (contextData: ContextData): string => {
   let fieldQuery = `${contextData.filterName}:${contextData.valueContext}*`;
-  if (!contextData.filterName || !contextData.query || ["_msg", "_stream_id"].includes(contextData.filterName)) {
+  if (!contextData.filterName || !contextData.query || [MSG_FIELD, STREAM_ID_FIELD].includes(contextData.filterName)) {
     fieldQuery = "*";
-  } else if ("_stream" === contextData.filterName) {
+  } else if (STREAM_FIELD === contextData.filterName) {
     fieldQuery = getStreamFieldQuery(contextData.valueContext);
-  } else if ("_time" === contextData.filterName) {
+  } else if (TIME_FIELD === contextData.filterName) {
     fieldQuery = getDateQuery(contextData);
   }
 

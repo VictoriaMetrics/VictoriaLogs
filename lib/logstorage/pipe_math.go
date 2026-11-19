@@ -81,7 +81,7 @@ func (pm *pipeMath) canLiveTail() bool {
 	return true
 }
 
-func (pm *pipeMath) canReturnLastNResults() bool {
+func (pm *pipeMath) canReturnTimeSortedNResults() bool {
 	for _, e := range pm.entries {
 		if e.resultField == "_time" {
 			return false

@@ -1,6 +1,7 @@
 import { expect } from "vitest";
 import { generateQuery } from "./utils";
 import { ContextType } from "../types";
+import { MSG_FIELD, STREAM_FIELD, STREAM_ID_FIELD, TIME_FIELD } from "../../../../../constants/logFields";
 
 describe("utils", () => {
   describe("_time", () => {
@@ -8,7 +9,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "_stream:{type=\"WatchEvent\"}",
         contextType: ContextType.FilterValue,
-        filterName: "_time",
+        filterName: TIME_FIELD,
         query: "_stream:{type=\"WatchEvent\"} _time:2025-04-1",
         valueAfterCursor: "",
         valueBeforeCursor: "_time=2025-04-1",
@@ -20,7 +21,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "_stream:{type=\"WatchEvent\"}",
         contextType: ContextType.FilterValue,
-        filterName: "_time",
+        filterName: TIME_FIELD,
         query: "_stream:{type=\"WatchEvent\"} _time:2025-04-10T23:45:5",
         valueAfterCursor: "",
         valueBeforeCursor: "_time=2025-04-10T23:45:5",
@@ -32,7 +33,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "_stream:{type=\"WatchEvent\"}",
         contextType: ContextType.FilterValue,
-        filterName: "_time",
+        filterName: TIME_FIELD,
         query: "_stream:{type=\"WatchEvent\"} _time:202",
         valueAfterCursor: "",
         valueBeforeCursor: "_time=202",
@@ -46,7 +47,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "",
         contextType: ContextType.FilterValue,
-        filterName: "_stream",
+        filterName: STREAM_FIELD,
         query: "_stream:{type=\"WatchEve",
         valueAfterCursor: "",
         valueBeforeCursor: "_stream:{type=\"WatchEve",
@@ -58,7 +59,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "",
         contextType: ContextType.FilterValue,
-        filterName: "_stream",
+        filterName: STREAM_FIELD,
         query: "_stream:{type=\"WatchEve\"}",
         valueAfterCursor: "",
         valueBeforeCursor: "_stream:{type=\"WatchEve",
@@ -70,7 +71,7 @@ describe("utils", () => {
       expect(generateQuery({
         queryBeforeIncompleteFilter: "",
         contextType: ContextType.FilterValue,
-        filterName: "_stream",
+        filterName: STREAM_FIELD,
         query: "_stream:{type=",
         valueAfterCursor: "",
         valueBeforeCursor: "_stream:{type=",
@@ -83,7 +84,7 @@ describe("utils", () => {
     expect(generateQuery({
       queryBeforeIncompleteFilter: "_stream:{type=\"WatchEvent\"}",
       contextType: ContextType.FilterValue,
-      filterName: "_msg",
+      filterName: MSG_FIELD,
       query: "_stream:{type=\"WatchEvent\"} _msg:453",
       valueAfterCursor: "",
       valueBeforeCursor: "_msg:453",
@@ -95,7 +96,7 @@ describe("utils", () => {
     expect(generateQuery({
       queryBeforeIncompleteFilter: "_stream:{type=\"WatchEvent\"}",
       contextType: ContextType.FilterValue,
-      filterName: "_stream_id",
+      filterName: STREAM_ID_FIELD,
       query: "_stream:{type=\"WatchEvent\"} _stream_id:453",
       valueAfterCursor: "",
       valueBeforeCursor: "_stream_id:453",

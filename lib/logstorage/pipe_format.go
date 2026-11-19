@@ -58,7 +58,7 @@ func (pf *pipeFormat) canLiveTail() bool {
 	return true
 }
 
-func (pf *pipeFormat) canReturnLastNResults() bool {
+func (pf *pipeFormat) canReturnTimeSortedNResults() bool {
 	return pf.resultField != "_time"
 }
 

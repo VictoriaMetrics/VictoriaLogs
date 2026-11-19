@@ -57,8 +57,8 @@ and unpack it. It contains a single `victoria-logs-prod` binary.
 For example, on Linux with `amd64` architecture:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.53.0/victoria-logs-linux-amd64-v1.53.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.53.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.54.0/victoria-logs-linux-amd64-v1.54.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.54.0.tar.gz
 ```
 
 The binary is self-contained and requires no installation - it is ready to run as is.
@@ -180,8 +180,8 @@ Just download the archive for the needed operating system and architecture, unpa
 For example, the following commands download VictoriaLogs archive for Linux/amd64, unpack and run it:
 
 ```sh
-curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.53.0/victoria-logs-linux-amd64-v1.53.0.tar.gz
-tar xzf victoria-logs-linux-amd64-v1.53.0.tar.gz
+curl -L -O https://github.com/VictoriaMetrics/VictoriaLogs/releases/download/v1.54.0/victoria-logs-linux-amd64-v1.54.0.tar.gz
+tar xzf victoria-logs-linux-amd64-v1.54.0.tar.gz
 ./victoria-logs-prod -storageDataPath=victoria-logs-data
 ```
 
@@ -204,10 +204,10 @@ Here is the command to run VictoriaLogs in a Docker container:
 
 ```sh
 docker run --rm -it -p 9428:9428 -v ./victoria-logs-data:/victoria-logs-data \
-  docker.io/victoriametrics/victoria-logs:v1.53.0 -storageDataPath=victoria-logs-data
+  docker.io/victoriametrics/victoria-logs:v1.54.0 -storageDataPath=victoria-logs-data
 ```
 
-The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "#" %}} for Docker `HEALTHCHECK` instead.
+The Docker image doesn't contain `curl` or `wget`. Use the `-healthcheck` command-line flag{{% available_from "v1.54.0" %}} for Docker `HEALTHCHECK` instead.
 It checks that the running VictoriaLogs accepts connections at `-httpListenAddr` and exits with non-zero code if the check fails.
 Pass the same `-httpListenAddr` as the checked process has. For example, in Docker Compose:
 
@@ -219,6 +219,16 @@ healthcheck:
 If VictoriaLogs is configured via [environment variables](https://docs.victoriametrics.com/victorialogs/#environment-variables),
 then add `-envflag.enable` to the healthcheck command, so it reads the same environment variables.
 The same flag is supported by [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/) at `/vlagent-prod`.
+
+The `-healthcheck` flag doesn't request the `/health` page. It only checks that the process accepts connections.
+This is why it works with any `-tls` and `-mtls` settings.
+
+The check passes in the following cases, while the `/health` page doesn't return `OK`:
+
+- The process accepts connections, but doesn't respond.
+- The process is shutting down, but still serves requests during `-http.shutdownDelay`.
+
+Request the `/health` page over HTTP if you need to catch these cases.
 
 See also:
 

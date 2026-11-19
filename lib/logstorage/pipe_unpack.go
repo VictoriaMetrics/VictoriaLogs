@@ -9,7 +9,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
 
-func canReturnLastNResultsAfterUnpack(fieldFilters []string, resultPrefix string, keepOriginalFields bool) bool {
+func canReturnTimeSortedNResultsAfterUnpack(fieldFilters []string, resultPrefix string, keepOriginalFields bool) bool {
 	if keepOriginalFields {
 		return true
 	}
