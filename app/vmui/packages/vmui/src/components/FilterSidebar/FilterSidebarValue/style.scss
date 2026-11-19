@@ -17,6 +17,10 @@ $padding-smaller: calc($padding-small / 2);
     background-color: $color-hover-black;
   }
 
+  &_any {
+    color: $color-text-secondary;
+  }
+
   &_empty {
     color: $color-text-secondary;
   }

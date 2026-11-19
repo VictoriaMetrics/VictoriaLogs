@@ -63,6 +63,7 @@ const FilterSidebarValue: FC<Props> = ({
         "vm-filter-sidebar-value": true,
         "vm-filter-sidebar-value_active": hasFilter,
         "vm-filter-sidebar-value_empty": !field.hits && !isAnyValueFilter,
+        "vm-filter-sidebar-value_any": isAnyValueFilter,
       })}
       onClick={handleToggleFilter}
     >

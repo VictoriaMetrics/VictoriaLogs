@@ -88,10 +88,13 @@ $icon-width: 14px;
     gap: 2px;
     padding: $padding-smaller;
 
-    &__divider {
-      width: 100%;
-      height: $border-divider-width;
-      background-color: $border-divider-color;
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-inline: calc($padding-small / 2) $padding-small;
+      padding-block: $padding-small;
+      border-bottom: $border-divider;
     }
   }
 }

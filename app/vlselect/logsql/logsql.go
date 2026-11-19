@@ -40,7 +40,7 @@ var (
 		"from the -storageNode list are unavailable for querying. This flag works only for cluster setup of VictoriaLogs. "+
 		"See https://docs.victoriametrics.com/victorialogs/querying/#partial-responses")
 
-	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum query length in bytes, which can be passed to /select/* endpoints")
+	maxQueryLen = flagutil.NewBytes("search.maxQueryLen", 16*1024, "The maximum length in bytes of 'query', 'extra_filters' and 'extra_stream_filters' query args, which can be passed to /select/* endpoints")
 )
 
 // ProcessQueryTimeRangeRequest handles /select/logsql/query_time_range request.
@@ -895,32 +895,32 @@ func (tp *tailProcessor) getTailRows() ([][]logstorage.Field, error) {
 func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	ca, err := parseCommonArgs(r)
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
 	// Obtain step
 	step, err := parseDuration(r, "step", "")
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 	if step <= 0 {
 		err := fmt.Errorf("'step' must be bigger than zero")
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
 	// Obtain offset
 	offset, err := parseDuration(r, "offset", "0s")
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
 	labelFields, err := ca.q.GetStatsLabelsAddGroupingByTime(step, offset)
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
@@ -1027,7 +1027,7 @@ func ProcessStatsQueryRangeRequest(ctx context.Context, w http.ResponseWriter, r
 	startTime := time.Now()
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
 		err = fmt.Errorf("cannot execute query [%s]: %w", ca.q, err)
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
@@ -1073,13 +1073,13 @@ type statsPoint struct {
 func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	ca, err := parseCommonArgs(r)
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
 	labelFields, err := ca.q.GetStatsLabels()
 	if err != nil {
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
@@ -1163,7 +1163,7 @@ func ProcessStatsQueryRequest(ctx context.Context, w http.ResponseWriter, r *htt
 	startTime := time.Now()
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
 		err = fmt.Errorf("cannot execute query [%s]: %w", ca.q, err)
-		httpserver.SendPrometheusError(w, r, err)
+		sendPrometheusError(w, r, err)
 		return
 	}
 
@@ -1693,6 +1693,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
 	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
+	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
 	}
@@ -1722,6 +1725,9 @@ func parseExtraFilters(s string) (*logstorage.Filter, error) {
 func parseExtraStreamFilters(s string) (*logstorage.Filter, error) {
 	if s == "" {
 		return nil, nil
+	}
+	if len(s) > maxQueryLen.IntN() {
+		return nil, fmt.Errorf("the `extra_stream_filters` arg length cannot exceed -search.maxQueryLen=%d bytes; the current length is %d bytes", maxQueryLen.IntN(), len(s))
 	}
 	if !strings.HasPrefix(s, `{"`) {
 		return logstorage.ParseFilter(s)
@@ -1886,4 +1892,10 @@ func parseDuration(r *http.Request, argName, defaultValue string) (int64, error)
 		return 0, fmt.Errorf("cannot parse duration from the arg '%s=%s'", argName, s)
 	}
 	return nsecs, nil
+}
+
+// sendPrometheusError logs err and sends it to w in Prometheus querying API response format.
+func sendPrometheusError(w http.ResponseWriter, r *http.Request, err error) {
+	httpserver.LogHTTPError(r, err.Error())
+	httpserver.SendPrometheusError(w, r, err)
 }

@@ -1,6 +1,6 @@
-import { FC, useRef } from "preact/compat";
+import { FC } from "preact/compat";
 import classNames from "classnames";
-import GlobalSettings, { GlobalSettingsHandle } from "../../components/Configurators/GlobalSettings/GlobalSettings";
+import GlobalSettings from "../../components/Configurators/GlobalSettings/GlobalSettings";
 import { ControlsProps } from "../Header/HeaderControls/HeaderControls";
 import { TimeSelector } from "../../components/Configurators/TimeRangeSettings/TimeSelector/TimeSelector";
 import Tenants from "../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
@@ -11,10 +11,15 @@ import { KeyboardIcon, MoreIcon } from "../../components/Main/Icons";
 import useBoolean from "../../hooks/useBoolean";
 import Modal from "../../components/Main/Modal/Modal";
 import TimeZonePreview from "../../components/Configurators/GlobalSettings/TimeZonePreview/TimeZonePreview";
+import { useAppDispatch } from "../../state/common/StateContext";
 
 const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
   const appModeEnable = getAppModeEnable();
-  const settingsRef = useRef<GlobalSettingsHandle>(null);
+  const dispatch = useAppDispatch();
+
+  const handleOpenSettings = () => {
+    dispatch({ type: "OPEN_SETTINGS" });
+  };
 
   const {
     value: openList,
@@ -26,7 +31,7 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
     return (
       <>
         <div className="vm-header-controls">
-          {headerSetup?.timeSelector && <TimeSelector onOpenSettings={() => settingsRef.current?.open()}/>}
+          {headerSetup?.timeSelector && <TimeSelector onOpenSettings={handleOpenSettings}/>}
           <Button
             className="vm-header-button"
             startIcon={<MoreIcon/>}
@@ -45,8 +50,8 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
         >
           <div className="vm-header-controls_mobile">
             {headerSetup?.tenant && <Tenants/>}
-            {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
-            <GlobalSettings ref={settingsRef}/>
+            {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={handleOpenSettings}/>}
+            <GlobalSettings/>
           </div>
         </Modal>
       </>
@@ -56,9 +61,9 @@ const ControlsLogsLayout: FC<ControlsProps> = ({ isMobile, headerSetup }) => {
   return (
     <div className="vm-header-controls">
       {headerSetup?.tenant && <Tenants/>}
-      {headerSetup?.timeSelector && <TimeSelector onOpenSettings={() => settingsRef.current?.open()}/>}
-      {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={() => settingsRef.current?.open()}/>}
-      <GlobalSettings ref={settingsRef}/>
+      {headerSetup?.timeSelector && <TimeSelector onOpenSettings={handleOpenSettings}/>}
+      {headerSetup?.timeSelector && <TimeZonePreview onOpenSettings={handleOpenSettings}/>}
+      <GlobalSettings/>
       <ShortcutKeys>
         <Button
           className={appModeEnable ? "" : "vm-header-button"}
