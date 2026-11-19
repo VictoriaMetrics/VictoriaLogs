@@ -122,80 +122,69 @@ exporters:
 
 ## Field names
 
-By default, VictoriaLogs stores resource attributes, log record attributes and fields of a key-value log body without a prefix.
-For example, the `service.name` resource attribute is stored in the `service.name` field. This keeps field names short, but it causes two problems:
+By default, VictoriaLogs stores OpenTelemetry attributes without a prefix. This works well in most cases,
+but attributes from different sources may cause field name collisions. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
+So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "#" %}} for new installations.
+The flag is disabled by default for compatibility with already ingested logs, since it changes field names.
 
-- the same attribute may have different names in VictoriaLogs, VictoriaMetrics and VictoriaTraces, so it is harder to correlate logs with metrics and traces;
-- attributes from different sources may have the same name. For example, a resource attribute, a log record attribute and a log body field
-  may all be named `service.name`, or a log record attribute may be named `trace_id` like the built-in `trace_id` field.
-  Then some of these values are lost. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
-
-The `-opentelemetry.consistentPrefix`{{% available_from "#" %}} command-line flag solves both problems for logs ingested via `/insert/opentelemetry/v1/logs`.
-It adds a prefix to every attribute name, so the field name shows where the attribute comes from:
-
-- resource attributes are stored as `resource.attribute.<key>` instead of `<key>`;
-- scope attributes are stored as `scope.attribute.<key>` instead of `scope.attributes.<key>`;
-- log record attributes are stored as `log.attribute.<key>` instead of `<key>`;
-- fields of a key-value log body are stored as `body.<key>` instead of `<key>`.
-
-VictoriaMetrics and VictoriaTraces don't support this flag yet. They will use the same field names when they add support for this flag.
-
-The flag doesn't change the names of the fields that VictoriaLogs creates from the built-in OpenTelemetry fields,
-such as `scope.name`, `scope.version`, `trace_id`, `span_id`, `severity_number`, `severity_text` and `event_name`.
-Other log body values, such as strings, are still used as the [log message](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field).
-
-For example, the following log record (shown in the OTLP JSON format for readability):
+For example, the following OpenTelemetry log record (shown in JSON format for readability):
 
 ```json
 {
   "resourceLogs": [{
-    "resource": {
-      "attributes": [{"key": "service.name", "value": {"stringValue": "checkout"}}]
-    },
+    "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "checkout"}}]},
     "scopeLogs": [{
-      "scope": {
-        "name": "payment",
-        "version": "2.4.1",
-        "attributes": [{"key": "version", "value": {"stringValue": "1.0"}}]
-      },
+      "scope": {"name": "payment", "version": "2.4.1", "attributes": [{"key": "lib.language", "value": {"stringValue": "go"}}]},
       "logRecords": [{
         "severityNumber": 17,
         "severityText": "ERROR",
+        "traceId": "5b8efff798038103d269b633813fc60c",
+        "spanId": "eee19b7ec3c1b174",
         "body": {"stringValue": "payment failed"},
-        "attributes": [{"key": "service.name", "value": {"stringValue": "payment-lib"}}]
+        "attributes": [{"key": "http.method", "value": {"stringValue": "POST"}}]
       }]
     }]
   }]
 }
 ```
 
-is stored with the following fields when `-opentelemetry.consistentPrefix` is set:
+is stored with the following fields by default:
+
+```json
+{
+  "service.name": "checkout",
+  "scope.name": "payment",
+  "scope.version": "2.4.1",
+  "scope.attributes.lib.language": "go",
+  "_msg": "payment failed",
+  "http.method": "POST",
+  "trace_id": "5b8efff798038103d269b633813fc60c",
+  "span_id": "eee19b7ec3c1b174",
+  "severity_number": "17",
+  "severity_text": "ERROR"
+}
+```
+
+and with the following fields when `-opentelemetry.consistentPrefix` is set:
 
 ```json
 {
   "resource.attribute.service.name": "checkout",
   "scope.name": "payment",
   "scope.version": "2.4.1",
-  "scope.attribute.version": "1.0",
+  "scope.attribute.lib.language": "go",
   "_msg": "payment failed",
-  "log.attribute.service.name": "payment-lib",
+  "log.attribute.http.method": "POST",
+  "trace_id": "5b8efff798038103d269b633813fc60c",
+  "span_id": "eee19b7ec3c1b174",
   "severity_number": "17",
   "severity_text": "ERROR"
 }
 ```
 
-It is recommended to set the flag before ingesting OpenTelemetry logs, since it changes field names, including the names of
-[log stream fields](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields). Logs ingested before that keep the old field names,
-so queries over both old and new logs must use both names. If you use `VL-Stream-Fields`, `VL-Msg-Field`, `VL-Ignore-Fields`
-or `VL-Decolorize-Fields` [HTTP headers](https://docs.victoriametrics.com/victorialogs/data-ingestion/#http-headers),
-then update them to the new field names, for example `VL-Stream-Fields: resource.attribute.service.name` or `VL-Msg-Field: log.attribute.msg,body.msg,body`.
+Fields of a key-value log body are stored as `<key>` by default and as `body.<key>` with the flag.
 
-The prefixes make field names longer. Note that VictoriaLogs drops log entries with field names longer than 128 bytes,
-see [these docs](https://docs.victoriametrics.com/victorialogs/faq/#what-is-the-maximum-supported-field-name-length).
-
-Set the flag on every component that accepts OpenTelemetry data: single-node VictoriaLogs, all the `vlinsert` nodes
-in [VictoriaLogs cluster](https://docs.victoriametrics.com/victorialogs/cluster/) and [vlagent](https://docs.victoriametrics.com/victorialogs/vlagent/).
-If some of these components run without the flag, then the stored field names depend on which component receives the logs.
+The flag also helps to align field names with VictoriaMetrics and VictoriaTraces later, when they follow the same naming convention for OpenTelemetry data. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11542).
 
 See also:
 
