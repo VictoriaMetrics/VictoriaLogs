@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): prevent from unbounded memory usage and a crash when the `extra_filters` or `extra_stream_filters` [query arg](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) contains a [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries), for example `extra_filters=x:in(* | keep x)`. See [#1902](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1902).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13
