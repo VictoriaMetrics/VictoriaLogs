@@ -47,6 +47,7 @@ type pipe interface {
 	// It is OK to continue processing pipeProcessor calls if they take less than a few milliseconds.
 	//
 	// The returned pipeProcessor may call cancel() at any time in order to notify the caller to stop sending new data to it.
+	// cancel() may be called multiple times from concurrently running goroutines.
 	newPipeProcessor(concurrency int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor
 
 	// hasFilterInWithQuery must return true of pipe contains 'in(subquery)' filter (recursively).

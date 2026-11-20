@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): reduce the risk of out-of-memory crashes when many heavy queries run at the same time by limiting the total memory they may use together. A query, which cannot obtain more memory because of this limit, now fails with an error instead of risking a crash. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits) and [#1551](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1551).
+
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): prevent from unbounded memory usage and a crash when the `extra_filters` or `extra_stream_filters` [query arg](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) contains a [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries), for example `extra_filters=x:in(* | keep x)`. See [#1902](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1902).
 
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)

@@ -17,7 +17,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -217,7 +216,10 @@ func (s *Storage) RunQuery(qctx *QueryContext, writeBlock WriteDataBlockFunc) er
 type runQueryFunc func(qctx *QueryContext, writeBlock writeBlockResultFunc) error
 
 func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
-	qNew, err := initSubqueries(qctx, s.runQuery, false)
+	var mem queryMemoryReservation
+	defer mem.release()
+
+	qNew, err := initSubqueries(qctx, s.runQuery, false, &mem)
 	if err != nil {
 		return err
 	}
@@ -364,10 +366,14 @@ func (s *Storage) GetFieldNames(qctx *QueryContext, filter string) ([]ValueWithH
 	return s.runValuesWithHitsQuery(qctxNew)
 }
 
-func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, error) {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.2)
-	var stateSizeBudget atomic.Int64
-	stateSizeBudget.Add(maxStateSize)
+// getRows reserves the memory for the returned rows via mem,
+// so mem must be released only after the rows are no longer used.
+func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservation) ([][]Field, error) {
+	ctx, cancel := context.WithCancel(qctx.Context)
+	defer cancel()
+	qctx = qctx.WithContext(ctx)
+
+	var memReserveFailed atomic.Bool
 
 	type rowsShard struct {
 		rows            [][]Field
@@ -381,16 +387,6 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, error) {
 		}
 
 		shard := shards.Get(workerID)
-		if shard.stateSizeBudget <= 0 {
-			// steal some budget for the state size from the global budget.
-			remaining := stateSizeBudget.Add(-stateSizeBudgetChunk)
-			if remaining < 0 {
-				// The state size is too big. Stop processing data in order to avoid OOM crash.
-				return
-			}
-			shard.stateSizeBudget += stateSizeBudgetChunk
-		}
-
 		cs := br.getColumns()
 		columnNames := make([]string, len(cs))
 		for i := range cs {
@@ -421,14 +417,27 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc) ([][]Field, error) {
 			shard.rows = append(shard.rows, fields)
 			shard.stateSizeBudget -= int(unsafe.Sizeof(fields))
 		}
+
+		for shard.stateSizeBudget < 0 {
+			// steal some budget for the state size from the global budget.
+			if !mem.reserve(stateSizeBudgetChunk) {
+				// The query memory limiter is exhausted. Stop the query in order to avoid OOM crash.
+				memReserveFailed.Store(true)
+				cancel()
+				return
+			}
+			shard.stateSizeBudget += stateSizeBudgetChunk
+		}
 	}
 
-	if err := runQuery(qctx, writeBlockResult); err != nil {
+	err := runQuery(qctx, writeBlockResult)
+
+	// Check memReserveFailed before err, since the query canceled above may return an error.
+	if memReserveFailed.Load() {
+		return nil, fmt.Errorf("cannot load rows for [%s]: %w", qctx.Query, mem.limitError())
+	}
+	if err != nil {
 		return nil, err
-	}
-
-	if stateSizeBudget.Load() < 0 {
-		return nil, fmt.Errorf("cannot load rows for [%s] because they occupy more than %dMB of memory", qctx.Query, maxStateSize/(1<<20))
 	}
 
 	var rows [][]Field
@@ -786,7 +795,9 @@ func (s *Storage) runValuesWithHitsQuery(qctx *QueryContext) ([]ValueWithHits, e
 	return results, nil
 }
 
-func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool) (*Query, error) {
+// initSubqueries reserves the memory for the rows of join and union subqueries via mem,
+// so mem must be released only after the returned query is no longer used.
+func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (*Query, error) {
 	getFieldValues := func(q *Query, fieldName string) ([]string, error) {
 		qctxLocal := qctx.WithQuery(q)
 		return getFieldValuesGeneric(qctxLocal, runQuery, fieldName)
@@ -798,7 +809,7 @@ func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool
 
 	getJoinRows := func(q *Query) ([][]Field, error) {
 		qctxLocal := qctx.WithQuery(q)
-		return getRows(qctxLocal, runQuery)
+		return getRows(qctxLocal, runQuery, mem)
 	}
 	qNew, err = initJoinMaps(qNew, getJoinRows)
 	if err != nil {
@@ -809,7 +820,7 @@ func initSubqueries(qctx *QueryContext, runQuery runQueryFunc, eagerExecute bool
 		qctxLocal := qctx.WithContextAndQuery(ctx, q)
 		return runQuery(qctxLocal, writeBlock)
 	}
-	qNew, err = initUnionQueries(qctx, qNew, runUnionQuery, eagerExecute)
+	qNew, err = initUnionQueries(qctx, qNew, runUnionQuery, eagerExecute, mem)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize 'union' subqueries: %w", err)
 	}
@@ -892,7 +903,7 @@ type inValuesCache struct {
 
 type runUnionQueryFunc func(ctx context.Context, q *Query, writeBlock writeBlockResultFunc) error
 
-func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool) (*Query, error) {
+func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (*Query, error) {
 	if !hasUnionPipes(q.pipes) {
 		return q, nil
 	}
@@ -901,7 +912,7 @@ func initUnionQueries(qctx *QueryContext, q *Query, runUnionQuery runUnionQueryF
 	for i, p := range q.pipes {
 		if pu, ok := p.(*pipeUnion); ok {
 			var err error
-			p, err = pu.initUnionQuery(qctx, runUnionQuery, eagerExecute)
+			p, err = pu.initUnionQuery(qctx, runUnionQuery, eagerExecute, mem)
 			if err != nil {
 				return nil, err
 			}
