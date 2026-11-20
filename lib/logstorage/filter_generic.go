@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -262,7 +263,25 @@ func quoteFieldNameIfNeeded(s string) string {
 	if isMsgFieldName(s) {
 		return ""
 	}
+	if isSpecialFilterFieldNameAnyCase(s) {
+		// The parser recognizes unquoted _time, _stream and _stream_id in front of ':' case-insensitively
+		// as the corresponding special filters, while quoted names are treated specially only on exact match.
+		// So an ordinary field such as "_TIME" must stay quoted in order to be parsed back to the same filter.
+		return strconv.Quote(s) + ":"
+	}
 	return quoteTokenIfNeeded(s) + ":"
+}
+
+// isSpecialFilterFieldNameAnyCase returns true if s matches _time, _stream or _stream_id after strings.ToLower, but not exactly.
+//
+// It must use the same case normalization as lexer.isKeywordAny, since names such as "_tİme" are lowercased to "_time".
+func isSpecialFilterFieldNameAnyCase(s string) bool {
+	switch s {
+	case "_time", "_stream", "_stream_id":
+		return false
+	}
+	sLower := strings.ToLower(s)
+	return sLower == "_time" || sLower == "_stream" || sLower == "_stream_id"
 }
 
 func isMsgFieldName(fieldName string) bool {
