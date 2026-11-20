@@ -27,7 +27,11 @@ services:
       options:
         splunk-url: http://victorialogs:9428
         splunk-token: any-token
+        splunk-verify-connection: "false"
 ```
+
+The `splunk-verify-connection: "false"` option is required, since the Docker Splunk driver expects `200 OK` for the `OPTIONS` request
+it sends on startup, while VictoriaLogs responds with `204 No Content`.
 
 ## Time field
 
