@@ -1,26 +1,9 @@
 package logstorage
 
 import (
-	"sync"
-
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 )
-
-func getArena() *arena {
-	v := arenaPool.Get()
-	if v == nil {
-		return &arena{}
-	}
-	return v.(*arena)
-}
-
-func putArena(a *arena) {
-	a.reset()
-	arenaPool.Put(a)
-}
-
-var arenaPool sync.Pool
 
 type arena struct {
 	b []byte

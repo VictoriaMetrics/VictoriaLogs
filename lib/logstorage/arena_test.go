@@ -9,8 +9,8 @@ import (
 func TestArena(t *testing.T) {
 	values := []string{"foo", "bar", "", "adsfjkljsdfdsf", "dsfsopq", "io234"}
 
+	a := &arena{}
 	for range 10 {
-		a := getArena()
 		if n := len(a.b); n != 0 {
 			t.Fatalf("unexpected non-zero length of empty arena: %d", n)
 		}
@@ -81,6 +81,6 @@ func TestArena(t *testing.T) {
 			}
 		}
 
-		putArena(a)
+		a.reset()
 	}
 }
