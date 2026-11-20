@@ -579,7 +579,11 @@ for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) o
 and the given optional timezone offset specified in the `<offset>`.
 The stats is returned in the format compatible with [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries).
 
-The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned interval can be smaller than the `<start>`.
+Every returned point at the timestamp `T` contains the stats for logs with the [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field in the `[T, T+step)` interval.
+The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned point can have a timestamp smaller than the `<start>`.
+
+Note that Prometheus and VictoriaMetrics return the stats for every interval at its end, not at its start.
+Move every returned timestamp one `<step>` forward if you need to compare or combine these stats with the data from Prometheus or VictoriaMetrics.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
