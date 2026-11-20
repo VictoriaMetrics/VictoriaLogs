@@ -10,7 +10,8 @@ func TestArena(t *testing.T) {
 	values := []string{"foo", "bar", "", "adsfjkljsdfdsf", "dsfsopq", "io234"}
 
 	a := &arena{}
-	for range 10 {
+	expectedCap := 0
+	for range 2 {
 		if n := len(a.b); n != 0 {
 			t.Fatalf("unexpected non-zero length of empty arena: %d", n)
 		}
@@ -81,6 +82,16 @@ func TestArena(t *testing.T) {
 			}
 		}
 
+		n := a.sizeBytes()
+		if expectedCap == 0 {
+			expectedCap = n
+		} else if n != expectedCap {
+			t.Fatalf("unexpected arena capacity after reuse; got %d; want %d", n, expectedCap)
+		}
+
 		a.reset()
+		if n := a.sizeBytes(); n != expectedCap {
+			t.Fatalf("unexpected arena capacity after reset; got %d; want %d", n, expectedCap)
+		}
 	}
 }
