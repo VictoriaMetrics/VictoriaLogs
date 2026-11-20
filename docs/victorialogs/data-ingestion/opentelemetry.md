@@ -120,6 +120,72 @@ exporters:
       VL-Ignore-Fields: foo,bar
 ```
 
+## Field names
+
+By default, VictoriaLogs stores resource attributes and log record attributes without a prefix. This works well in most cases,
+but attributes from different sources may cause field name collisions. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
+So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "#" %}} for new installations.
+The flag is disabled by default for compatibility with already ingested logs, since it changes field names.
+
+For example, the following OpenTelemetry log record (shown in JSON format for readability):
+
+```json
+{
+  "resourceLogs": [{
+    "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "checkout"}}]},
+    "scopeLogs": [{
+      "scope": {"name": "payment", "version": "2.4.1", "attributes": [{"key": "lib.language", "value": {"stringValue": "go"}}]},
+      "logRecords": [{
+        "severityNumber": 17,
+        "severityText": "ERROR",
+        "traceId": "5b8efff798038103d269b633813fc60c",
+        "spanId": "eee19b7ec3c1b174",
+        "body": {"stringValue": "payment failed"},
+        "attributes": [{"key": "http.method", "value": {"stringValue": "POST"}}]
+      }]
+    }]
+  }]
+}
+```
+
+is stored with the following fields by default:
+
+```json
+{
+  "service.name": "checkout",
+  "scope.name": "payment",
+  "scope.version": "2.4.1",
+  "scope.attributes.lib.language": "go",
+  "_msg": "payment failed",
+  "http.method": "POST",
+  "trace_id": "5b8efff798038103d269b633813fc60c",
+  "span_id": "eee19b7ec3c1b174",
+  "severity_number": "17",
+  "severity_text": "ERROR"
+}
+```
+
+and with the following fields when `-opentelemetry.consistentPrefix` is set:
+
+```json
+{
+  "resource.attribute.service.name": "checkout",
+  "scope.name": "payment",
+  "scope.version": "2.4.1",
+  "scope.attribute.lib.language": "go",
+  "_msg": "payment failed",
+  "log.attribute.http.method": "POST",
+  "trace_id": "5b8efff798038103d269b633813fc60c",
+  "span_id": "eee19b7ec3c1b174",
+  "severity_number": "17",
+  "severity_text": "ERROR"
+}
+```
+
+Fields of a key-value log body are stored as `<key>` by default and as `body.<key>` with the flag.
+
+The flag also helps to align field names with VictoriaMetrics and VictoriaTraces later, when they follow the same naming convention for OpenTelemetry data. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11542).
+
 See also:
 
 * [Data ingestion troubleshooting](https://docs.victoriametrics.com/victorialogs/data-ingestion/#troubleshooting).
