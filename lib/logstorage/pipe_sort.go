@@ -13,7 +13,6 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/stringsutil"
 	"github.com/valyala/quicktemplate"
 
@@ -172,20 +171,15 @@ func (ps *pipeSort) addPartitionByTime(step int64) {
 }
 
 func newPipeSortProcessor(ps *pipeSort, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.2)
-
 	psp := &pipeSortProcessor{
 		ps:     ps,
 		stopCh: stopCh,
 		cancel: cancel,
 		ppNext: ppNext,
-
-		maxStateSize: maxStateSize,
 	}
 	psp.shards.Init = func(shard *pipeSortProcessorShard) {
 		shard.ps = ps
 	}
-	psp.stateSizeBudget.Store(maxStateSize)
 
 	return psp
 }
@@ -198,8 +192,8 @@ type pipeSortProcessor struct {
 
 	shards atomicutil.Slice[pipeSortProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	mem              queryMemoryReservation
+	memReserveFailed atomic.Bool
 }
 
 type pipeSortProcessorShard struct {
@@ -456,26 +450,26 @@ func (psp *pipeSortProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := psp.shards.Get(workerID)
 
+	shard.writeBlock(br)
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
-		remaining := psp.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
-				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-				psp.cancel()
-			}
+		if !psp.mem.reserve(stateSizeBudgetChunk) {
+			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
+			psp.memReserveFailed.Store(true)
+			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+			psp.cancel()
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(br)
 }
 
 func (psp *pipeSortProcessor) flush() error {
-	if n := psp.stateSizeBudget.Load(); n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", psp.ps.String(), psp.maxStateSize/(1<<20))
+	defer psp.mem.release()
+
+	if psp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), psp.mem.limitError())
 	}
 
 	if needStop(psp.stopCh) {
