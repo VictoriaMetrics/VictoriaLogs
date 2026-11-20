@@ -13,26 +13,20 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/stringsutil"
 )
 
 func newPipeTopkProcessor(ps *pipeSort, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.2)
-
 	ptp := &pipeTopkProcessor{
 		ps:     ps,
 		stopCh: stopCh,
 		cancel: cancel,
 		ppNext: ppNext,
-
-		maxStateSize: maxStateSize,
 	}
 	ptp.shards.Init = func(shard *pipeTopkProcessorShard) {
 		shard.ps = ps
 	}
-	ptp.stateSizeBudget.Store(maxStateSize)
 
 	return ptp
 }
@@ -45,8 +39,8 @@ type pipeTopkProcessor struct {
 
 	shards atomicutil.Slice[pipeTopkProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	mem              queryMemoryReservation
+	memReserveFailed atomic.Bool
 }
 
 type pipeTopkProcessorShard struct {
@@ -361,26 +355,26 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard := ptp.shards.Get(workerID)
 
+	shard.writeBlock(br)
+
 	for shard.stateSizeBudget < 0 {
 		// steal some budget for the state size from the global budget.
-		remaining := ptp.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
-				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-				ptp.cancel()
-			}
+		if !ptp.mem.reserve(stateSizeBudgetChunk) {
+			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
+			ptp.memReserveFailed.Store(true)
+			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+			ptp.cancel()
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(br)
 }
 
 func (ptp *pipeTopkProcessor) flush() error {
-	if n := ptp.stateSizeBudget.Load(); n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", ptp.ps.String(), ptp.maxStateSize/(1<<20))
+	defer ptp.mem.release()
+
+	if ptp.memReserveFailed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", ptp.ps.String(), ptp.mem.limitError())
 	}
 
 	if needStop(ptp.stopCh) {

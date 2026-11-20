@@ -58,7 +58,7 @@ func (pe *pipeExtractRegexp) canLiveTail() bool {
 	return true
 }
 
-func (pe *pipeExtractRegexp) canReturnLastNResults() bool {
+func (pe *pipeExtractRegexp) canReturnTimeSortedNResults() bool {
 	if pe.keepOriginalFields {
 		return true
 	}

@@ -45,7 +45,7 @@ func (pu *pipeUnpackWords) canLiveTail() bool {
 	return true
 }
 
-func (pu *pipeUnpackWords) canReturnLastNResults() bool {
+func (pu *pipeUnpackWords) canReturnTimeSortedNResults() bool {
 	return pu.dstField != "_time"
 }
 

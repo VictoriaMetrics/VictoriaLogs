@@ -36,7 +36,7 @@ func (pp *pipePackLogfmt) canLiveTail() bool {
 	return true
 }
 
-func (pp *pipePackLogfmt) canReturnLastNResults() bool {
+func (pp *pipePackLogfmt) canReturnTimeSortedNResults() bool {
 	return pp.resultField != "_time"
 }
 

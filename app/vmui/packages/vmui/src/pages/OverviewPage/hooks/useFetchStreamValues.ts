@@ -9,6 +9,7 @@ interface FetchOptions {
   query?: string;
   field: string;
   extraParams?: URLSearchParams;
+  filter?: string;
 }
 
 const MAX_CACHE_SIZE = 10;
@@ -25,7 +26,7 @@ export const useFetchStreamValues = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | string>("");
 
-  const fetchStreamValues = useCallback(async (options: FetchOptions): Promise<void> => {
+  const fetchStreamValues = useCallback(async (options: FetchOptions): Promise<LogsFieldValues[] | undefined> => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     const { signal } = abortRef.current;
@@ -41,6 +42,8 @@ export const useFetchStreamValues = () => {
     });
 
     options.extraParams?.forEach((v, k) => params.append(k, v));
+    const filter = options.filter?.trim();
+    if (filter) params.set("filter", filter);
 
     const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
     const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
@@ -50,7 +53,9 @@ export const useFetchStreamValues = () => {
       cacheRef.current.delete(cacheKey);
       cacheRef.current.set(cacheKey, cacheValue); // LRU cache update
       setStreamValues(cacheValue);
-      return;
+      setError("");
+      setLoading(false);
+      return cacheValue;
     }
 
     setLoading(true);
@@ -74,6 +79,7 @@ export const useFetchStreamValues = () => {
       }
 
       const data: { values: LogsFieldValues[] } = await response.json();
+      if (signal.aborted) return;
       setStreamValues(data.values);
 
       cacheRef.current.set(cacheKey, data.values);
@@ -82,12 +88,13 @@ export const useFetchStreamValues = () => {
         const firstKey = cacheRef.current.keys().next().value;
         if (firstKey !== undefined) cacheRef.current.delete(firstKey);
       }
+      return data.values;
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : String(err));
       console.error(err);
     } finally {
-      setLoading(false);
+      if (abortRef.current?.signal === signal) setLoading(false);
     }
   }, [serverUrl, tenant]);
 
@@ -96,7 +103,7 @@ export const useFetchStreamValues = () => {
   }, []);
 
   return {
-    abort: () => abortRef.current?.abort(),
+    abort: useCallback(() => abortRef.current?.abort(), []),
     streamValues,
     loading,
     error,

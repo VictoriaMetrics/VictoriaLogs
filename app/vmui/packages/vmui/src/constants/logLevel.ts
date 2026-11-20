@@ -19,6 +19,11 @@ export const LOG_LEVEL_ABBREVIATIONS: Partial<Record<keyof typeof LOG_LEVEL_COLO
   emergency: "emerg",
 };
 
+// OTLP severity levels in ascending order of severity. Each level spans four consecutive
+// severity numbers: 1-4 trace, 5-8 debug, 9-12 info, 13-16 warn, 17-20 error, 21-24 fatal.
+// See https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-severitynumber
+export const OTLP_SEVERITY_LEVELS = ["trace", "debug", "info", "warn", "error", "fatal"] as const;
+
 export const LOG_LEVEL_FIELDS = [
   "level",
   "lvl",

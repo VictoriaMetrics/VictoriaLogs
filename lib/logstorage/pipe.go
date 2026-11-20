@@ -28,10 +28,10 @@ type pipe interface {
 	// See https://docs.victoriametrics.com/victorialogs/querying/#live-tailing
 	canLiveTail() bool
 
-	// canReturnLastNResults must return true if the given pipe can return last N results ordered by _time desc
+	// canReturnTimeSortedNResults must return true if the given pipe can return N results sorted by _time in either direction.
 	//
-	// The pipe can return last N results if it doesn't modify the _time field.
-	canReturnLastNResults() bool
+	// The pipe can return time-sorted N results if it keeps the _time field and doesn't change the order of its values.
+	canReturnTimeSortedNResults() bool
 
 	// isFixedOutputFieldsOrder must return true if the pipe returns the output log fields in a fixed order.
 	isFixedOutputFieldsOrder() bool
@@ -47,6 +47,7 @@ type pipe interface {
 	// It is OK to continue processing pipeProcessor calls if they take less than a few milliseconds.
 	//
 	// The returned pipeProcessor may call cancel() at any time in order to notify the caller to stop sending new data to it.
+	// cancel() may be called multiple times from concurrently running goroutines.
 	newPipeProcessor(concurrency int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor
 
 	// hasFilterInWithQuery must return true of pipe contains 'in(subquery)' filter (recursively).

@@ -1,4 +1,4 @@
-import { createPortal, FC, useCallback, useEffect, useMemo, useState, RefObject } from "preact/compat";
+import { createPortal, FC, useEffect, useMemo, useState, RefObject } from "preact/compat";
 import "./style.scss";
 import { Logs } from "../../../api/types";
 import { groupByMultipleKeys } from "../../../utils/array";
@@ -11,25 +11,27 @@ import { getStreamPairs } from "../../../utils/logs";
 import GroupLogsConfigurators
   from "./GroupLogsConfigurators/GroupLogsConfigurators";
 import GroupLogsHeader from "./GroupLogsHeader";
-import { LOGS_DISPLAY_FIELDS, LOGS_GROUP_BY, LOGS_URL_PARAMS } from "../../../constants/logs";
+import { LOGS_DISPLAY_FIELDS, LOGS_GROUP_BY, LOGS_URL_PARAMS, WITHOUT_GROUPING } from "../../../constants/logs";
 import Pagination from "../../Main/Pagination/Pagination";
 import SelectLimit from "../../Main/Pagination/SelectLimit/SelectLimit";
 import { usePaginateGroups } from "./hooks/usePaginateGroups";
 import { GroupLogsType } from "../../../types";
 import useDeviceDetect from "../../../hooks/useDeviceDetect";
 import GroupLogsItemWrapper from "./GroupLogsItemWrapper";
+import { TimeParams } from "../../../types";
+import { useGroupExpansion } from "./hooks/useGroupExpansion";
 
 interface Props {
   logs: Logs[];
   settingsRef: RefObject<HTMLElement>;
+  period: TimeParams;
 }
 
-const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
+const GroupLogs: FC<Props> = ({ logs, settingsRef, period }) => {
   const { isMobile } = useDeviceDetect();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
-  const [expandGroups, setExpandGroups] = useState<boolean[]>([]);
 
   const groupBy = searchParams.get(LOGS_URL_PARAMS.GROUP_BY) || LOGS_GROUP_BY;
   const displayFieldsString = searchParams.get(LOGS_URL_PARAMS.DISPLAY_FIELDS) || LOGS_DISPLAY_FIELDS;
@@ -39,8 +41,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   const rowsPerPageNum = rowsPerPageRaw ? Number(rowsPerPageRaw) : 100;
   const rowsPerPage = isNaN(rowsPerPageNum) ? 0 : rowsPerPageNum;
 
-  const expandAll = useMemo(() => expandGroups.every(Boolean), [expandGroups]);
-
   const groupData: GroupLogsType[] = useMemo(() => {
     return groupByMultipleKeys(logs, [groupBy]).map((item) => {
       const streamValue = item.values[0]?.[groupBy] || "";
@@ -49,7 +49,7 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
 
       return {
         keys: item.keys,
-        keysString: item.keys.join(""),
+        keysString: JSON.stringify(item.keys),
         values,
         pairs,
         total: values.length,
@@ -57,19 +57,15 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
     }).sort((a, b) => b.total - a.total); // groups sorting
   }, [logs, groupBy]);
 
+  const {
+    allCollapsed,
+    collapsedGroups,
+    allGroupsExpanded,
+    handleChangeExpand,
+    handleToggleExpandAll,
+  } = useGroupExpansion(groupData);
+
   const paginatedGroups = usePaginateGroups(groupData, page, rowsPerPage);
-
-  const handleToggleExpandAll = useCallback(() => {
-    setExpandGroups(new Array(groupData.length).fill(!expandAll));
-  }, [expandAll, groupData.length]);
-
-  const handleChangeExpand = useCallback((i: number) => (value: boolean) => {
-    setExpandGroups((prev) => {
-      const newExpandGroups = [...prev];
-      newExpandGroups[i] = value;
-      return newExpandGroups;
-    });
-  }, []);
 
   const handleSetRowsPerPage = (limit?: number) => {
     if (limit) {
@@ -87,13 +83,6 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
   };
 
   useEffect(() => {
-    setExpandGroups(prev => {
-      const keepClosed = (prev.every(v => !v) && prev.length) || isMobile;
-      return new Array(groupData.length).fill(!keepClosed);
-    });
-  }, [groupData]);
-
-  useEffect(() => {
     setPage(1);
   }, [rowsPerPage, groupData]);
 
@@ -107,8 +96,8 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
           >
             <GroupLogsItemWrapper
               groupBy={groupBy}
-              expand={expandGroups[groupN]}
-              onExpandChange={handleChangeExpand(groupN)}
+              expand={!allCollapsed && !collapsedGroups.has(group.keysString)}
+              onExpandChange={handleChangeExpand(group.keysString)}
               header={(
                 <GroupLogsHeader
                   group={group}
@@ -153,15 +142,20 @@ const GroupLogs: FC<Props> = ({ logs, settingsRef }) => {
               onChange={handleSetRowsPerPage}
             />
           </div>
-          <Tooltip title={expandAll ? "Collapse All" : "Expand All"}>
-            <Button
-              variant="text"
-              startIcon={expandAll ? <CollapseIcon/> : <ExpandIcon/>}
-              onClick={handleToggleExpandAll}
-              aria-label={expandAll ? "Collapse All" : "Expand All"}
-            />
-          </Tooltip>
-          <GroupLogsConfigurators logs={logs}/>
+          {groupBy !== WITHOUT_GROUPING && (
+            <Tooltip title={allGroupsExpanded ? "Collapse All" : "Expand All"}>
+              <Button
+                variant="text"
+                startIcon={allGroupsExpanded ? <CollapseIcon/> : <ExpandIcon/>}
+                onClick={handleToggleExpandAll}
+                aria-label={allGroupsExpanded ? "Collapse All" : "Expand All"}
+              />
+            </Tooltip>
+          )}
+          <GroupLogsConfigurators
+            logs={logs}
+            period={period}
+          />
         </div>
       ), settingsRef.current)}
     </>

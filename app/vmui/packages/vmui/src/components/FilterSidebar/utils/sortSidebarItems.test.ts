@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LogsFieldValues } from "../../../api/types";
 import { sortSidebarItems } from "./sortSidebarItems";
+import { SortOptions } from "../types";
 
 const items: LogsFieldValues[] = [
   { value: "host-10", hits: 10 },
@@ -43,5 +44,25 @@ describe("sortSidebarItems", () => {
     );
 
     expect(getValues(result)).toEqual(["host-10", "database", "host-2"]);
+  });
+
+  it.each<{ sort: SortOptions; expected: string[] }>([
+    { sort: { by: "name", direction: "asc" }, expected: ["a", "c", "b", "d"] },
+    { sort: { by: "name", direction: "desc" }, expected: ["c", "a", "d", "b"] },
+    { sort: { by: "hits", direction: "asc" }, expected: ["c", "a", "d", "b"] },
+    { sort: { by: "hits", direction: "desc" }, expected: ["a", "c", "b", "d"] },
+  ])("sorts within both groups for $sort.by $sort.direction without mutating input", ({ sort, expected }) => {
+    const groupedItems = [
+      { value: "d", hits: 20 },
+      { value: "c", hits: 10 },
+      { value: "b", hits: 40 },
+      { value: "a", hits: 30 },
+    ];
+    const original = structuredClone(groupedItems);
+
+    const result = sortSidebarItems(groupedItems, sort, new Set(["a", "c"]));
+
+    expect(getValues(result)).toEqual(expected);
+    expect(groupedItems).toEqual(original);
   });
 });

@@ -30,15 +30,16 @@ type pipeUnion struct {
 	runQuery runUnionQueryFunc
 }
 
-func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool) (pipe, error) {
+func (pu *pipeUnion) initUnionQuery(qctx *QueryContext, runQuery runUnionQueryFunc, eagerExecute bool, mem *queryMemoryReservation) (pipe, error) {
 	rows := pu.rows
 	if eagerExecute && rows == nil {
 		qctxLocal := qctx.WithQuery(pu.q)
+		runSubquery := func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
+			return runQuery(qctx.Context, qctx.Query, writeBlock)
+		}
 
 		var err error
-		rows, err = getRows(qctxLocal, func(qctx *QueryContext, writeBlock writeBlockResultFunc) error {
-			return runQuery(qctx.Context, qctx.Query, writeBlock)
-		})
+		rows, err = getRows(qctxLocal, runSubquery, mem)
 		if err != nil {
 			return nil, fmt.Errorf("cannot execute query at pipe [%s]: %w", pu, err)
 		}
@@ -77,7 +78,7 @@ func (pu *pipeUnion) canLiveTail() bool {
 	return false
 }
 
-func (pu *pipeUnion) canReturnLastNResults() bool {
+func (pu *pipeUnion) canReturnTimeSortedNResults() bool {
 	return false
 }
 

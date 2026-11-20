@@ -19,9 +19,11 @@ import { WITHOUT_GROUPING } from "../../../constants/logs";
 import BarHitsIterativeWarning
   from "../../../components/Chart/BarHitsChart/BarHitsIterativeWarning/BarHitsIterativeWarning";
 import { getHitsTimeParams } from "../../../utils/logs";
+import { useAppDispatch } from "../../../state/common/StateContext";
 
 interface Props {
   query: string;
+  loadedFieldNames?: string[];
   logHits: LogHits[];
   durationMs?: number;
   period: TimeParams;
@@ -32,11 +34,23 @@ interface Props {
   isIterative?: boolean;
 }
 
-const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error, isLoading, isOverview, isIterative }) => {
+const HitsPanel: FC<Props> = ({
+  query,
+  loadedFieldNames,
+  logHits,
+  durationMs,
+  period,
+  step,
+  error,
+  isLoading,
+  isOverview,
+  isIterative
+}) => {
   const { isMobile } = useDeviceDetect();
   const { setPeriod } = useTimePeriod();
   const [hideChart] = useHideChart();
   const { incrementalTimeoutLabel } = useIncrementalTimeout();
+  const dispatch = useAppDispatch();
 
   const { step: fallbackStep } = getHitsTimeParams(period);
 
@@ -108,8 +122,25 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
     setPeriod({ nextPeriod });
   };
 
+  const handleOpenSettings = () => {
+    dispatch({ type: "OPEN_SETTINGS" });
+  };
+
   return (
     <>
+      {isIterative && isLoading && (
+      <Alert
+        variant="info"
+        title={`Switching to incremental loading with step=${step || fallbackStep}`}
+      >
+        The query didn’t finish within <b>{incrementalTimeoutLabel}</b>. You can change this timeout in <button
+          className="vm-link vm-link_colored"
+          onClick={handleOpenSettings}
+        >Settings</button>.
+        Select a range or click a bar on the Hits chart to cancel the current query and search within that time range.
+      </Alert>
+      )}
+
       <section
         className={classNames({
           "vm-query-page-chart": true,
@@ -126,6 +157,7 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
             logHits={logHits}
             durationMs={durationMs}
             query={query}
+            loadedFieldNames={loadedFieldNames}
             data={data}
             period={period}
             setPeriod={handleSetPeriod}
@@ -133,13 +165,6 @@ const HitsPanel: FC<Props> = ({ query, logHits, durationMs, period, step, error,
           />
         )}
       </section>
-
-      {isIterative && isLoading && (
-        <Alert variant="info">
-          The chart couldn&rsquo;t load in full within {incrementalTimeoutLabel}.
-          Switching to incremental loading with step={step || fallbackStep}.
-        </Alert>
-      )}
 
       {isIterative && !isLoading && isGroupEnable && (
         <BarHitsIterativeWarning/>

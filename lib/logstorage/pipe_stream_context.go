@@ -14,7 +14,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/contextutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/memory"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
 )
@@ -66,7 +65,7 @@ func (pc *pipeStreamContext) canLiveTail() bool {
 	return false
 }
 
-func (pc *pipeStreamContext) canReturnLastNResults() bool {
+func (pc *pipeStreamContext) canReturnTimeSortedNResults() bool {
 	return false
 }
 
@@ -100,20 +99,15 @@ func (pc *pipeStreamContext) visitSubqueries(_ func(q *Query)) {
 }
 
 func (pc *pipeStreamContext) newPipeProcessor(_ int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
-	maxStateSize := int64(float64(memory.Allowed()) * 0.2)
-
 	pcp := &pipeStreamContextProcessor{
 		pc:     pc,
 		stopCh: stopCh,
 		cancel: cancel,
 		ppNext: ppNext,
-
-		maxStateSize: maxStateSize,
 	}
 	pcp.shards.Init = func(shard *pipeStreamContextProcessorShard) {
 		shard.pc = pc
 	}
-	pcp.stateSizeBudget.Store(maxStateSize)
 
 	return pcp
 }
@@ -126,8 +120,30 @@ type pipeStreamContextProcessor struct {
 
 	shards atomicutil.Slice[pipeStreamContextProcessorShard]
 
-	maxStateSize    int64
-	stateSizeBudget atomic.Int64
+	// mem holds the memory for the matching rows collected at writeBlock.
+	mem queryMemoryReservation
+
+	// streamMem holds the memory for fetching the surrounding logs of the stream processed at flush.
+	streamMem queryMemoryReservation
+
+	memReserveFailed atomic.Bool
+}
+
+func (pcp *pipeStreamContextProcessor) reserveMemory(mem *queryMemoryReservation, n int) bool {
+	if mem.reserve(uint64(n)) {
+		return true
+	}
+	// The limiter is exhausted. Stop processing data in order to avoid OOM crash.
+	pcp.memReserveFailed.Store(true)
+	return false
+}
+
+func (pcp *pipeStreamContextProcessor) memoryLimitError(mem *queryMemoryReservation) error {
+	return fmt.Errorf("cannot calculate [%s]: %w", pcp.pc.String(), mem.limitError())
+}
+
+func (pcp *pipeStreamContextProcessor) memoryLimitForSurroundingLogsError(n int) error {
+	return fmt.Errorf("cannot fetch the surrounding logs for %d matching logs: %w", n, pcp.streamMem.limitError())
 }
 
 type timeRange struct {
@@ -135,21 +151,24 @@ type timeRange struct {
 	end   int64
 }
 
-func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRows []streamContextRow, stateSizeBudget int) ([][]*streamContextRow, error) {
+func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRows []streamContextRow) ([][]*streamContextRow, error) {
 	neededTimestamps := make([]int64, len(neededRows))
-	stateSizeBudget -= int(unsafe.Sizeof(neededTimestamps[0])) * len(neededTimestamps)
+	memUsed := int(unsafe.Sizeof(neededTimestamps[0])) * len(neededTimestamps)
+	if !pcp.reserveMemory(&pcp.streamMem, memUsed) {
+		return nil, pcp.memoryLimitError(&pcp.streamMem)
+	}
+
 	for i := range neededRows {
 		neededTimestamps[i] = neededRows[i].timestamp
 	}
 	slices.Sort(neededTimestamps)
 
-	trs, stateSize, err := pcp.getTimeRangesForStreamRowss(streamID, neededTimestamps, stateSizeBudget)
+	trs, err := pcp.getTimeRangesForStreamRowss(streamID, neededTimestamps)
 	if err != nil {
 		return nil, fmt.Errorf("cannot obtain time ranges for the needed timestamps: %w", err)
 	}
-	stateSizeBudget -= stateSize
 
-	rowss, err := pcp.getStreamRowssByTimeRanges(streamID, neededTimestamps, trs, stateSizeBudget)
+	rowss, err := pcp.getStreamRowssByTimeRanges(streamID, neededTimestamps, trs)
 	if err != nil {
 		return nil, fmt.Errorf("cannot obtain stream rows for the selected time ranges: %w", err)
 	}
@@ -164,21 +183,21 @@ func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRow
 	return rowss, nil
 }
 
-func (pcp *pipeStreamContextProcessor) getTimeRangesForStreamRowss(streamID string, neededTimestamps []int64, stateSizeBudget int) ([]timeRange, int, error) {
+func (pcp *pipeStreamContextProcessor) getTimeRangesForStreamRowss(streamID string, neededTimestamps []int64) ([]timeRange, error) {
 	// construct the query for selecting only timestamps across all the logs for the given streamID
 	tr := pcp.getTimeRangeForNeededTimestamps(neededTimestamps)
 	timeFilter := getTimeFilter(tr.start, tr.end)
 	qStr := fmt.Sprintf("_stream_id:%s %s | fields _time", streamID, timeFilter)
 
-	rowss, stateSize, err := pcp.executeQuery(streamID, qStr, neededTimestamps, stateSizeBudget)
+	rowss, err := pcp.executeQuery(streamID, qStr, neededTimestamps)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	trs := make([]timeRange, len(rowss))
 	newStateSize := int(unsafe.Sizeof(trs[0])) * len(rowss)
-	if stateSize+newStateSize > stateSizeBudget {
-		return nil, 0, fmt.Errorf("more than %dMB of memory is needed for fetching the surrounding logs for %d matching logs", stateSizeBudget/(1<<20), len(neededTimestamps))
+	if !pcp.reserveMemory(&pcp.streamMem, newStateSize) {
+		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 	for i, rows := range rowss {
 		if len(rows) == 0 {
@@ -203,7 +222,7 @@ func (pcp *pipeStreamContextProcessor) getTimeRangesForStreamRowss(streamID stri
 			end:   maxTimestamp,
 		}
 	}
-	return trs, newStateSize, nil
+	return trs, nil
 }
 
 func (pcp *pipeStreamContextProcessor) getTimeRangeForNeededTimestamps(neededTimestamps []int64) timeRange {
@@ -226,7 +245,7 @@ func (pcp *pipeStreamContextProcessor) getTimeRangeForNeededTimestamps(neededTim
 	return tr
 }
 
-func (pcp *pipeStreamContextProcessor) getStreamRowssByTimeRanges(streamID string, neededTimestamps []int64, trs []timeRange, stateSizeBudget int) ([][]*streamContextRow, error) {
+func (pcp *pipeStreamContextProcessor) getStreamRowssByTimeRanges(streamID string, neededTimestamps []int64, trs []timeRange) ([][]*streamContextRow, error) {
 	// construct the query for selecting rows on the given tr for the given streamID
 	qStr := "_stream_id:" + streamID
 	minTimestamp := int64(math.MaxInt64)
@@ -252,7 +271,7 @@ func (pcp *pipeStreamContextProcessor) getStreamRowssByTimeRanges(streamID strin
 	}
 	qStr += toFieldsFilters(pcp.pc.fieldsFilter)
 
-	rowss, _, err := pcp.executeQuery(streamID, qStr, neededTimestamps, stateSizeBudget)
+	rowss, err := pcp.executeQuery(streamID, qStr, neededTimestamps)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +284,7 @@ func getTimeFilter(start, end int64) string {
 	return fmt.Sprintf("_time:[%s, %s]", startStr, endStr)
 }
 
-func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neededTimestamps []int64, stateSizeBudget int) ([][]*streamContextRow, int, error) {
+func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neededTimestamps []int64) ([][]*streamContextRow, error) {
 	q, err := ParseQuery(qStr)
 	if err != nil {
 		logger.Panicf("BUG: cannot parse query [%s]: %s", qStr, err)
@@ -283,7 +302,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		}
 	}
 
-	stateSize := 0
+	stateSizeBudget := 0
 
 	ctxWithCancel, cancel := contextutil.NewStopChanContext(pcp.stopCh)
 	defer cancel()
@@ -292,11 +311,12 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		mu.Lock()
 		defer mu.Unlock()
 
-		if stateSize > stateSizeBudget {
+		if pcp.memReserveFailed.Load() {
 			cancel()
 			return
 		}
 
+		stateSize := 0
 		for i := range contextRows {
 			if needStop(pcp.stopCh) {
 				return
@@ -319,6 +339,15 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 				stateSize += contextRows[i].update(br, j, timestamp)
 			}
 		}
+
+		stateSizeBudget -= stateSize
+		for stateSizeBudget < 0 {
+			if !pcp.reserveMemory(&pcp.streamMem, stateSizeBudgetChunk) {
+				cancel()
+				return
+			}
+			stateSizeBudget += stateSizeBudgetChunk
+		}
 	}
 
 	tenantID, ok := getTenantIDFromStreamIDString(streamID)
@@ -329,10 +358,10 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 	qctxOrig := pcp.pc.qctx
 	qctx := NewQueryContext(ctxWithCancel, qctxOrig.QueryStats, []TenantID{tenantID}, q, qctxOrig.AllowPartialResponse, qctxOrig.HiddenFieldsFilters)
 	if err := pcp.pc.runQuery(qctx, writeBlock); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	if stateSize > stateSizeBudget {
-		return nil, 0, fmt.Errorf("more than %dMB of memory is needed for fetching the surrounding logs for %d matching logs", stateSizeBudget/(1<<20), len(neededTimestamps))
+	if pcp.memReserveFailed.Load() {
+		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 
 	rowss := make([][]*streamContextRow, len(contextRows))
@@ -342,7 +371,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		rows = append(rows, ctx.rowsAfter...)
 		rowss[i] = rows
 	}
-	return rowss, stateSize, nil
+	return rowss, nil
 }
 
 func deduplicateStreamRowss(streamRowss [][]*streamContextRow) [][]*streamContextRow {
@@ -615,32 +644,24 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 
 	shard := pcp.shards.Get(workerID)
 
+	shard.writeBlock(pcp, br)
+
 	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		remaining := pcp.stateSizeBudget.Add(-stateSizeBudgetChunk)
-		if remaining < 0 {
-			// The state size is too big. Stop processing data in order to avoid OOM crash.
-			if remaining+stateSizeBudgetChunk >= 0 {
-				// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-				pcp.cancel()
-			}
+		if !pcp.reserveMemory(&pcp.mem, stateSizeBudgetChunk) {
+			pcp.cancel()
 			return
 		}
 		shard.stateSizeBudget += stateSizeBudgetChunk
 	}
-
-	shard.writeBlock(pcp, br)
 }
 
 func (pcp *pipeStreamContextProcessor) flush() error {
-	n := pcp.stateSizeBudget.Load()
-	if n <= 0 {
-		return fmt.Errorf("cannot calculate [%s], since it requires more than %dMB of memory", pcp.pc.String(), pcp.maxStateSize/(1<<20))
+	defer pcp.mem.release()
+	defer pcp.streamMem.release()
+
+	if pcp.memReserveFailed.Load() {
+		return pcp.memoryLimitError(&pcp.mem)
 	}
-	if n > math.MaxInt {
-		logger.Panicf("BUG: stateSizeBudget shouldn't exceed math.MaxInt=%v; got %d", math.MaxInt, n)
-	}
-	stateSizeBudget := int(n)
 
 	// merge state across shards
 	shards := pcp.shards.All()
@@ -684,7 +705,7 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 				"narrow down the matching logs with additional filters according to https://docs.victoriametrics.com/victorialogs/logsql/#filters",
 				len(rows), pipeStreamContextMaxRowsPerStream)
 		}
-		streamRowss, err := pcp.getStreamRowss(streamID, rows, stateSizeBudget)
+		streamRowss, err := pcp.getStreamRowss(streamID, rows)
 		if err != nil {
 			return err
 		}
@@ -703,6 +724,10 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 				wctx.writeRow(fields)
 			}
 		}
+
+		// Release the memory reserved for fetching the surrounding logs of this stream,
+		// since these logs are already written to the output and aren't needed anymore.
+		pcp.streamMem.release()
 	}
 
 	wctx.flush()
