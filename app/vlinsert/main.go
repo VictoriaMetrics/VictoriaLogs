@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	disableInsert         = flag.Bool("insert.disable", false, "Whether to disable both /insert/* and /internal/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
-	disableInternalInsert = flag.Bool("internalinsert.disable", false, "Whether to disable /internal/insert HTTP endpoint. See also -insert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableInsert         = flag.Bool("insert.disable", false, "Whether to disable both /insert/* and /internal/rpc/insert HTTP endpoints. Useful for dedicated vlselect nodes. See also -internalinsert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
+	disableInternalInsert = flag.Bool("internalinsert.disable", false, "Whether to disable /internal/rpc/insert HTTP endpoint. See also -insert.disable. See https://docs.victoriametrics.com/victorialogs/cluster/#security")
 )
 
 // Init initializes vlinsert
@@ -51,9 +51,11 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) bool {
 		return insertHandler(w, r, path)
 	}
 
-	if path == "/internal/insert" {
+	// Accept requests to the deprecated /internal/insert path
+	// for backwards compatibility with the previous release.
+	if path == "/internal/rpc/insert" || path == "/internal/insert" {
 		if *disableInternalInsert || *disableInsert {
-			httpserver.Errorf(w, r, "requests to /internal/insert are disabled with -internalinsert.disable or -insert.disable command-line flag")
+			httpserver.Errorf(w, r, "requests to /internal/rpc/insert are disabled with -internalinsert.disable or -insert.disable command-line flag")
 			return true
 		}
 		internalinsert.RequestHandler(w, r)
