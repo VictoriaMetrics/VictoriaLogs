@@ -1240,43 +1240,13 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 		}
 		ca.q.AddPipeOffsetLimit(uint64(offset), uint64(limit))
 	}
+	defer ca.updatePerQueryStatsMetrics()
 
+	startTime := time.Now()
 	var csvHeader []byte
-	if format == "csv" {
-		fields, ok := ca.q.GetFixedFields()
-		if !ok {
-			// Slow path - detect the fields by scanning the logs for the given query.
-			qctx := ca.newQueryContext(ctx)
-			fieldNames, err := vlstorage.GetFieldNames(qctx, "")
-			if err != nil {
-				httpserver.Errorf(w, r, "cannot obtain field names for returning query results in csv format: %s", err)
-				return
-			}
-			fields = make([]string, len(fieldNames))
-			for i, fieldName := range fieldNames {
-				fields[i] = fieldName.Value
-			}
-			sort.Strings(fields)
-			ca.q.AddPipeFields(fields)
-		}
-		csvHeader = appendCSVLine(nil, fields)
-	}
-
 	sw := &syncWriter{
 		w: w,
 	}
-
-	var bwShards atomicutil.Slice[bytesutil.ByteBuffer]
-	defer func() {
-		shards := bwShards.All()
-		for _, shard := range shards {
-			if len(shard.B) > 0 {
-				_, _ = sw.Write(shard.B)
-			}
-		}
-	}()
-
-	startTime := time.Now()
 	writeResponseHeadersOnce := sync.OnceFunc(func() {
 		// Write response headers
 		h := w.Header()
@@ -1292,6 +1262,40 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 			_, _ = sw.Write(csvHeader)
 		}
 	})
+
+	if format == "csv" {
+		fields, ok := ca.q.GetFixedFields()
+		if !ok {
+			// Slow path - detect the fields by scanning the logs for the given query.
+			qctx := ca.newQueryContext(ctx)
+			fieldNames, err := vlstorage.GetFieldNames(qctx, "")
+			if err != nil {
+				httpserver.Errorf(w, r, "cannot obtain field names for returning query results in csv format: %s", err)
+				return
+			}
+			fields = make([]string, len(fieldNames))
+			for i, fieldName := range fieldNames {
+				fields[i] = fieldName.Value
+			}
+			sort.Strings(fields)
+			if len(fields) == 0 {
+				writeResponseHeadersOnce()
+				return
+			}
+			ca.q.AddPipeFields(fields)
+		}
+		csvHeader = appendCSVLine(nil, fields)
+	}
+
+	var bwShards atomicutil.Slice[bytesutil.ByteBuffer]
+	defer func() {
+		shards := bwShards.All()
+		for _, shard := range shards {
+			if len(shard.B) > 0 {
+				_, _ = sw.Write(shard.B)
+			}
+		}
+	}()
 
 	var appendRow func(dst []byte, columns []logstorage.BlockColumn, rowIdx int) []byte
 
@@ -1325,7 +1329,6 @@ func ProcessQueryRequest(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 
 	qctx := ca.newQueryContext(ctx)
-	defer ca.updatePerQueryStatsMetrics()
 
 	// Execute the query
 	if err := vlstorage.RunQuery(qctx, writeBlock); err != nil {
