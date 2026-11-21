@@ -2,8 +2,9 @@ package logstorage
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -395,10 +396,16 @@ func addFieldIfNeeded(dst []Field, pf *prefixfilter.Filter, name, value string) 
 	return dst
 }
 
+func fieldsAreSorted(fields []Field) bool {
+	return slices.IsSortedFunc(fields, compareFieldsByName)
+}
+
 func sortFieldsByName(fields []Field) {
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i].Name < fields[j].Name
-	})
+	slices.SortStableFunc(fields, compareFieldsByName)
+}
+
+func compareFieldsByName(a, b Field) int {
+	return strings.Compare(a.Name, b.Name)
 }
 
 // Fields holds a slice of Field items

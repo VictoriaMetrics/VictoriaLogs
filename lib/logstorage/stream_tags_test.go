@@ -87,6 +87,9 @@ func TestStreamTagsNormalize(t *testing.T) {
 	f(`{c="d",a="b"}`, `c=d x=y a=c`, `{a="c",c="d"}`, true)
 
 	// multiple fields with the same name
-	f(`{a="b"}`, `a=b x=y a=c`, `{a="c"}`, true)
+	f(`{a="b"}`, `a=b x=y a=c`, `{a="b"}`, false)
 	f(`{a="b",q="w"}`, `a=c a=c q=w`, `{a="c",q="w"}`, true)
+
+	// ignore empty fields with empty values
+	f(`{a="x"}`, `a= a=b`, `{a="b"}`, true)
 }

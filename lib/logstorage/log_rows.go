@@ -40,6 +40,9 @@ type LogRows struct {
 	// streamFields contains names for stream fields
 	streamFields []string
 
+	// streamFieldsBuf holds temporary names for stream fields when MustAdd called with streamFieldsLen >= 0.
+	streamFieldsBuf []string
+
 	// ignoreFields is a filter for fields, which must be ignored during data ingestion
 	ignoreFields prefixfilter.Filter
 
@@ -71,9 +74,6 @@ type logRows struct {
 
 	// rows holds fields for rows added to logRows.
 	rows [][]Field
-
-	// sf is a helper for sorting fields in every added row
-	sf sortedFields
 }
 
 func (lr *logRows) reset() {
@@ -95,8 +95,6 @@ func (lr *logRows) reset() {
 
 	clear(lr.rows)
 	lr.rows = lr.rows[:0]
-
-	lr.sf = nil
 }
 
 // needFlush returns true if lr contains too much data, so it must be flushed to the storage.
@@ -186,27 +184,14 @@ func (lr *logRows) Swap(i, j int) {
 	*fieldsA, *fieldsB = *fieldsB, *fieldsA
 }
 
-func (lr *logRows) sortFieldsInRows() {
+func (lr *logRows) ensureSorted() {
 	for _, row := range lr.rows {
-		lr.sf = row
-		sort.Sort(&lr.sf)
+		// Fields are likely already and sorted by Name at the ingestion side.
+		// This is a cheap fallback check to ensure data is sorted.
+		if !fieldsAreSorted(row) {
+			sortFieldsByName(row)
+		}
 	}
-}
-
-type sortedFields []Field
-
-func (sf *sortedFields) Len() int {
-	return len(*sf)
-}
-
-func (sf *sortedFields) Less(i, j int) bool {
-	a := *sf
-	return a[i].Name < a[j].Name
-}
-
-func (sf *sortedFields) Swap(i, j int) {
-	a := *sf
-	a[i], a[j] = a[j], a[i]
 }
 
 func getLogRows() *logRows {
@@ -292,6 +277,9 @@ func (lr *LogRows) ResetKeepSettings() {
 
 	clear(lr.rows)
 	lr.rows = lr.rows[:0]
+
+	clear(lr.streamFieldsBuf)
+	lr.streamFieldsBuf = lr.streamFieldsBuf[:0]
 }
 
 // NeedFlush returns true if lr contains too much data, so it must be flushed to the storage.
@@ -360,8 +348,11 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 	// Compose StreamTags from fields
 	st := GetStreamTags()
 	if streamFieldsLen >= 0 {
-		// Compose StreamTags from fields[:streamFieldsLen] and ignore lr.streamFields with lr.extraStreamFields.
-		for _, f := range fields[:streamFieldsLen] {
+		// Compose StreamTags from streamFields and ignore lr.streamFields with lr.extraStreamFields.
+		clear(lr.streamFieldsBuf)
+		streamFields := lr.streamFieldsBuf[:0]
+		for i := range fields[:streamFieldsLen] {
+			f := &fields[i]
 			fieldName := getCanonicalFieldName(f.Name)
 
 			if err := CheckStreamFieldName(fieldName); err != nil {
@@ -371,15 +362,31 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 			}
 
 			if !lr.ignoreFields.MatchString(fieldName) {
-				st.Add(fieldName, f.Value)
+				streamFields = append(streamFields, fieldName)
+			}
+		}
+		lr.streamFieldsBuf = streamFields
+
+		// Sort and remove duplicates.
+		slices.Sort(streamFields)
+		streamFields = slices.Compact(streamFields)
+
+		for _, streamField := range streamFields {
+			// Get the first non-empty field value, according to data model.
+			// See https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+			value := getFirstNonEmptyFieldValueByNameCanonical(fields, streamField)
+			if value != "" {
+				st.Add(streamField, value)
 			}
 		}
 	} else if len(lr.streamFields) > 0 || len(lr.extraStreamFields) > 0 {
 		// Compose StreamTags from lr.streamFields and lr.extraStreamFields.
-		for _, f := range fields {
-			fieldName := getCanonicalFieldName(f.Name)
-			if slices.Contains(lr.streamFields, fieldName) {
-				st.Add(fieldName, f.Value)
+		for _, streamField := range lr.streamFields {
+			// Get the first non-empty field value, according to data model.
+			// See https://docs.victoriametrics.com/victorialogs/keyconcepts/#data-model
+			value := getFirstNonEmptyFieldValueByNameCanonical(fields, streamField)
+			if value != "" {
+				st.Add(streamField, value)
 			}
 		}
 		for _, f := range lr.extraStreamFields {
@@ -390,10 +397,16 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 		// Extract StreamTags from _stream field.
 		// This can be used when importing the raw logs in JSON line format
 		// received from /select/logsql/query endpoint.
+		streamExtracted := false
 		for i := range fields {
 			f := &fields[i]
 			switch f.Name {
 			case "_stream":
+				if streamExtracted {
+					// It is a duplicated _stream, remove it.
+					f.Value = ""
+					continue
+				}
 				if err := st.unmarshalStringInplace(f.Value); err != nil {
 					line := MarshalFieldsToJSON(nil, fields)
 					invalidStreamTagsLogger.Warnf("cannot parse _stream=%s: %s; skipping the log entry; log entry: %s", f.Value, err, line)
@@ -402,6 +415,7 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 				st.normalize(fields)
 				// Remove _stream field, since it is re-generated from st below.
 				f.Value = ""
+				streamExtracted = true
 			case "_stream_id":
 				// Remove _stream_id field, since it is re-generated from st below.
 				f.Value = ""
@@ -423,6 +437,46 @@ func (lr *LogRows) MustAdd(tenantID TenantID, timestamp int64, fields []Field, s
 	streamTagsCanonical := bytesutil.ToUnsafeString(bb.B)
 	lr.mustAddInternal(sid, timestamp, fields, streamTagsCanonical)
 	bbPool.Put(bb)
+}
+
+// getFirstNonEmptyFieldValueByNameCanonical returns the value of the first field with the given name and a non-empty value.
+//
+// Field names are compared in the canonical form, so "_msg" matches "".
+func getFirstNonEmptyFieldValueByNameCanonical(fields []Field, name string) string {
+	name = getCanonicalFieldName(name)
+	for j := range fields {
+		f := &fields[j]
+
+		if f.Value == "" {
+			continue
+		}
+
+		fieldName := getCanonicalFieldName(f.Name)
+		if fieldName == name {
+			return f.Value
+		}
+	}
+	return ""
+}
+
+// deduplicateSortedFields removes fields with duplicate Names, keeping the first occurrence of each name.
+// fields must already be sorted by Name.
+//
+// The result is written into fields in-place and returned as a reslice.
+func deduplicateSortedFields(sf []Field) []Field {
+	if len(sf) < 2 {
+		return sf
+	}
+
+	i := 1
+	for j := 1; j < len(sf); j++ {
+		if sf[j].Name == sf[i-1].Name {
+			continue
+		}
+		sf[i] = sf[j]
+		i++
+	}
+	return sf[:i]
 }
 
 func (lr *LogRows) mustAddInternal(sid streamID, timestamp int64, fields []Field, streamTagsCanonical string) {
@@ -477,6 +531,13 @@ func (lr *LogRows) mustAddInternal(sid streamID, timestamp int64, fields []Field
 
 	// Add log row fields to lr.rows
 	row := lr.fieldsBuf[fieldsLen:]
+
+	// Deduplicate fields
+	if !fieldsAreSorted(row) {
+		sortFieldsByName(row)
+	}
+	row = deduplicateSortedFields(row)
+
 	lr.rows = append(lr.rows, row)
 }
 
@@ -655,9 +716,17 @@ func GetLogRows(streamFields, ignoreFields, decolorizeFields []string, extraFiel
 			lr.streamFields = append(lr.streamFields, f)
 		}
 	}
+	// Sort and remove duplicates.
+	slices.Sort(lr.streamFields)
+	lr.streamFields = slices.Compact(lr.streamFields)
+
+	// Initialize extraFields
+	lr.extraFields = append(lr.extraFields, extraFields...)
+	sortFieldsByName(lr.extraFields)
+	lr.extraFields = deduplicateSortedFields(lr.extraFields)
 
 	// Initialize extraStreamFields
-	for _, f := range extraFields {
+	for _, f := range lr.extraFields {
 		fieldName := getCanonicalFieldName(f.Name)
 		if slices.Contains(streamFields, fieldName) {
 			lr.extraStreamFields = append(lr.extraStreamFields, f)
@@ -665,7 +734,6 @@ func GetLogRows(streamFields, ignoreFields, decolorizeFields []string, extraFiel
 		}
 	}
 
-	lr.extraFields = extraFields
 	lr.defaultMsgValue = defaultMsgValue
 
 	return lr
