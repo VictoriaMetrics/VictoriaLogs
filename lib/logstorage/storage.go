@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -1019,6 +1020,11 @@ func (s *Storage) offloadPartition(lptw *partitionWrapper) error {
 	if err := s.sc.Sync(pt.path, partitionPath); err != nil {
 		return fmt.Errorf("cannot sync partition %q to %s, skipping: %w", pt.name, remotePath, err)
 	}
+	for _, dbDirname := range []string{datadbDirname, indexdbDirname} {
+		if err := s.uploadPartsFile(filepath.Join(pt.path, dbDirname), filepath.Join(partitionPath, dbDirname)); err != nil {
+			return fmt.Errorf("cannot offload partition %q: %w", pt.name, err)
+		}
+	}
 	if err := s.sc.CreateFile(partitionReadyFile, nil); err != nil {
 		return fmt.Errorf("failed to create readiness marker for partition %q: %w", pt.name, err)
 	}
@@ -1041,6 +1047,37 @@ func (s *Storage) offloadPartition(lptw *partitionWrapper) error {
 
 	lptw.mustDrop.Store(true)
 	lptw.releaseRefs()
+	return nil
+}
+
+// uploadPartsFile uploads parts.json from localPath to remotePath and verifies that every part it lists exists at remotePath.
+//
+// Sync doesn't re-upload a file whose remote size matches. parts.json is rewritten on every offload attempt,
+// since the forced merge renames parts, but its size stays the same while the number of parts doesn't change.
+// So after a failed attempt Sync may keep the previous parts.json, which lists parts it has just deleted.
+func (s *Storage) uploadPartsFile(localPath, remotePath string) error {
+	localPartsFile := filepath.Join(localPath, partsFilename)
+	data, err := os.ReadFile(localPartsFile)
+	if err != nil {
+		return fmt.Errorf("cannot read %s: %w", localPartsFile, err)
+	}
+	var partNames []string
+	if err := json.Unmarshal(data, &partNames); err != nil {
+		return fmt.Errorf("cannot parse %s: %w", localPartsFile, err)
+	}
+
+	remotePartsFile := filepath.Join(remotePath, partsFilename)
+	if err := s.sc.CreateFile(remotePartsFile, data); err != nil {
+		return fmt.Errorf("cannot upload %s: %w", s.sc.GetPath(remotePartsFile), err)
+	}
+
+	remoteFiles, err := s.sc.ListFiles(remotePath)
+	if err != nil {
+		return fmt.Errorf("cannot list files at %s: %w", s.sc.GetPath(remotePath), err)
+	}
+	if missing := getMissingRemoteParts(remoteFiles, partNames); len(missing) > 0 {
+		return fmt.Errorf("parts %q listed in %s are missing in object storage", missing, s.sc.GetPath(remotePartsFile))
+	}
 	return nil
 }
 

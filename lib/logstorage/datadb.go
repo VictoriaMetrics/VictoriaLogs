@@ -244,6 +244,11 @@ func mustOpenRemoteDatadb(pt *partition, path string) *datadb {
 	if err := json.Unmarshal(bb.B, &partNames); err != nil {
 		logger.Panicf("FATAL: cannot parse %q: %s", sc.GetPath(partsFile), err)
 	}
+	if missing := getMissingRemoteParts(allDataFiles, partNames); len(missing) > 0 {
+		logger.Panicf("FATAL: parts %q are listed in %q, but are missing in object storage; ensure %q contents is not corrupted; "+
+			"remove the missing parts from %q in order to fix this error",
+			missing, sc.GetPath(partsFile), sc.GetPath(partsFile), sc.GetPath(partsFile))
+	}
 
 	var smallParts []*partWrapper
 	var bigParts []*partWrapper
@@ -1603,4 +1608,15 @@ func appendAllPartsForMergeLocked(dst, src []*partWrapper) []*partWrapper {
 		}
 	}
 	return dst
+}
+
+// getMissingRemoteParts returns partNames without metadata.json in files, which must be listed at the db path in object storage.
+func getMissingRemoteParts(files map[string]uint64, partNames []string) []string {
+	var missing []string
+	for _, partName := range partNames {
+		if _, ok := files[filepath.Join(partName, metadataFilename)]; !ok {
+			missing = append(missing, partName)
+		}
+	}
+	return missing
 }
