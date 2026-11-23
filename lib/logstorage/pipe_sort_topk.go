@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -39,8 +38,7 @@ type pipeTopkProcessor struct {
 
 	shards atomicutil.Slice[pipeTopkProcessorShard]
 
-	mem              queryMemoryReservation
-	memReserveFailed atomic.Bool
+	mem queryMemoryReservation
 }
 
 type pipeTopkProcessorShard struct {
@@ -357,24 +355,17 @@ func (ptp *pipeTopkProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard.writeBlock(br)
 
-	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		if !ptp.mem.reserve(stateSizeBudgetChunk) {
-			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			ptp.memReserveFailed.Store(true)
-			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-			ptp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !ptp.mem.refill(&shard.stateSizeBudget) {
+		// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+		ptp.cancel()
 	}
 }
 
 func (ptp *pipeTopkProcessor) flush() error {
 	defer ptp.mem.release()
 
-	if ptp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: %w", ptp.ps.String(), ptp.mem.limitError())
+	if ptp.mem.failed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", ptp.ps.String(), queryMemoryLimitError())
 	}
 
 	if needStop(ptp.stopCh) {

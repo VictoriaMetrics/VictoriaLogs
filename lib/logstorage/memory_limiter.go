@@ -89,16 +89,39 @@ func UpdateQueryMemoryStats(s *QueryMemoryStats) {
 
 // queryMemoryReservation tracks the memory reserved from the global query memory limiter.
 //
-// reserve can be called from concurrently running goroutines.
+// reserve and refill can be called concurrently.
 type queryMemoryReservation struct {
 	usage atomic.Uint64
+
+	// failed is set when reserve fails. release doesn't reset it.
+	failed atomic.Bool
 }
 
 func (qmr *queryMemoryReservation) reserve(n uint64) bool {
 	if !getQueryMemoryLimiter().Get(n) {
+		qmr.failed.Store(true)
 		return false
 	}
 	qmr.usage.Add(n)
+	return true
+}
+
+// Bigger chunks lock the limiter less often, but leave more unused memory reserved per worker.
+const queryMemoryChunkSize = 1 << 20
+
+// refill reserves queryMemoryChunkSize chunks until the budget becomes non-negative, or returns false if it cannot.
+func (qmr *queryMemoryReservation) refill(budget *int) bool {
+	if *budget >= 0 {
+		return true
+	}
+
+	// Round the negative budget up to whole chunks.
+	chunks := (-*budget + queryMemoryChunkSize - 1) / queryMemoryChunkSize
+	size := chunks * queryMemoryChunkSize
+	if !qmr.reserve(uint64(size)) {
+		return false
+	}
+	*budget += size
 	return true
 }
 
@@ -107,9 +130,9 @@ func (qmr *queryMemoryReservation) release() {
 	getQueryMemoryLimiter().Put(qmr.usage.Swap(0))
 }
 
-// limitError returns an error for the case when qmr cannot reserve more memory.
-func (qmr *queryMemoryReservation) limitError() error {
-	return fmt.Errorf("not enough memory: %dMB reserved here out of %dMB shared by all the running queries; "+
-		"possible solutions: narrow down the time range or add filters; retry when fewer heavy queries are running; "+
-		"increase -memory.allowedPercent or -memory.allowedBytes", qmr.usage.Load()>>20, getQueryMemoryLimiter().MaxSize>>20)
+// queryMemoryLimitError returns an error for the case when a query cannot reserve more memory.
+func queryMemoryLimitError() error {
+	return fmt.Errorf("not enough memory: the running queries may use up to %dMB together; possible solutions: retry the query later; "+
+		"if it fails even when it runs alone, then narrow down the time range or add filters, or increase -memory.allowedPercent or -memory.allowedBytes",
+		getQueryMemoryLimiter().MaxSize>>20)
 }

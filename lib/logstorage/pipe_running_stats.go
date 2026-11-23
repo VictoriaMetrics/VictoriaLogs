@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -148,8 +147,7 @@ type pipeRunningStatsProcessor struct {
 
 	shards atomicutil.Slice[pipeRunningStatsProcessorShard]
 
-	mem              queryMemoryReservation
-	memReserveFailed atomic.Bool
+	mem queryMemoryReservation
 }
 
 type pipeRunningStatsProcessorShard struct {
@@ -197,24 +195,17 @@ func (psp *pipeRunningStatsProcessor) writeBlock(workerID uint, br *blockResult)
 
 	shard.writeBlock(br)
 
-	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		if !psp.mem.reserve(stateSizeBudgetChunk) {
-			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			psp.memReserveFailed.Store(true)
-			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-			psp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !psp.mem.refill(&shard.stateSizeBudget) {
+		// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+		psp.cancel()
 	}
 }
 
 func (psp *pipeRunningStatsProcessor) flush() error {
 	defer psp.mem.release()
 
-	if psp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), psp.mem.limitError())
+	if psp.mem.failed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), queryMemoryLimitError())
 	}
 
 	getKeyForRow := func(row []Field) string {

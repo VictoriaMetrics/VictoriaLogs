@@ -90,6 +90,9 @@ func TestQueryMemoryReservation(t *testing.T) {
 	if n := ml.getUsage(); n != 100 {
 		t.Fatalf("unexpected usage; got %d; want %d", n, 100)
 	}
+	if mem.failed.Load() {
+		t.Fatalf("unexpected failed reservation")
+	}
 
 	// A denied reservation must not be counted
 	if mem.reserve(1) {
@@ -98,18 +101,66 @@ func TestQueryMemoryReservation(t *testing.T) {
 	if n := mem.usage.Load(); n != 100 {
 		t.Fatalf("unexpected reserved size; got %d; want %d", n, 100)
 	}
+	if !mem.failed.Load() {
+		t.Fatalf("the denied reservation must be marked as failed")
+	}
 
 	mem.release()
 	if n := ml.getUsage(); n != 0 {
 		t.Fatalf("unexpected usage after release; got %d; want %d", n, 0)
 	}
+	if !mem.failed.Load() {
+		t.Fatalf("release must not reset the failed reservation")
+	}
+}
+
+func TestQueryMemoryReservationRefill(t *testing.T) {
+	// This test changes the global query memory limiter, so it must not run in parallel.
+	ml := getQueryMemoryLimiter()
+	origMaxSize := ml.MaxSize
+	ml.MaxSize = 2 * queryMemoryChunkSize
+	defer func() {
+		ml.MaxSize = origMaxSize
+	}()
+
+	f := func(budget int, resultExpected bool, budgetExpected int, usageExpected uint64) {
+		t.Helper()
+
+		var mem queryMemoryReservation
+		defer mem.release()
+
+		result := mem.refill(&budget)
+		if result != resultExpected {
+			t.Fatalf("unexpected result; got %v; want %v", result, resultExpected)
+		}
+		if budget != budgetExpected {
+			t.Fatalf("unexpected budget; got %d; want %d", budget, budgetExpected)
+		}
+		if n := mem.usage.Load(); n != usageExpected {
+			t.Fatalf("unexpected reserved size; got %d; want %d", n, usageExpected)
+		}
+		if failed := mem.failed.Load(); failed == resultExpected {
+			t.Fatalf("unexpected failed state; got %v; want %v", failed, !resultExpected)
+		}
+	}
+
+	// non-negative budget
+	f(0, true, 0, 0)
+
+	// the shortage is rounded up to whole chunks
+	f(-1, true, queryMemoryChunkSize-1, queryMemoryChunkSize)
+	f(-queryMemoryChunkSize, true, 0, queryMemoryChunkSize)
+	f(-queryMemoryChunkSize-1, true, queryMemoryChunkSize-1, 2*queryMemoryChunkSize)
+
+	// nothing is reserved if the limiter cannot provide all the needed chunks
+	f(-2*queryMemoryChunkSize-1, false, -2*queryMemoryChunkSize-1, 0)
 }
 
 func TestPipesQueryMemoryLimit(t *testing.T) {
 	// This test changes the global query memory limiter, so it must not run in parallel.
 	ml := getQueryMemoryLimiter()
 	origMaxSize := ml.MaxSize
-	ml.MaxSize = stateSizeBudgetChunk
+	ml.MaxSize = queryMemoryChunkSize
 	defer func() {
 		ml.MaxSize = origMaxSize
 	}()
