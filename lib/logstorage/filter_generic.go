@@ -179,10 +179,30 @@ func (fg *filterGeneric) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 		}
 	}
 
-	csh := bs.getColumnsHeader()
+	isMultiTenant := bs.bsw.pso.isMultiTenant
+	if isMultiTenant {
+		for _, cc := range tenantColumns {
+			if !strings.HasPrefix(cc, prefix) {
+				continue
+			}
+			if bs.isHiddenField(cc) {
+				continue
+			}
+			bmTmp.copyFrom(bmResult)
+			fg.f.applyToBlockSearchByField(bs, bmTmp, cc)
+			bmResult.andNot(bmTmp)
+			if bmResult.isZero() {
+				return
+			}
+		}
+	}
 
+	csh := bs.getColumnsHeader()
 	for _, cc := range csh.constColumns {
 		if isSpecialColumn(cc.Name) {
+			continue
+		}
+		if isMultiTenant && isTenantColumn(cc.Name) {
 			continue
 		}
 		if !strings.HasPrefix(cc.Name, prefix) {
@@ -204,6 +224,9 @@ func (fg *filterGeneric) applyToBlockSearch(bs *blockSearch, bm *bitmap) {
 	for i := range chs {
 		ch := &chs[i]
 		if isSpecialColumn(ch.name) {
+			continue
+		}
+		if isMultiTenant && isTenantColumn(ch.name) {
 			continue
 		}
 		if !strings.HasPrefix(ch.name, prefix) {
