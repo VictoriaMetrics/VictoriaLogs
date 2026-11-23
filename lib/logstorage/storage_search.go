@@ -391,8 +391,8 @@ func moveTenantStreamFilters(f filter) filter {
 				}
 				filters = append(filters, newFilterStream(sf))
 			}
-			// do not wrap a single filter into AND,
-			// so !{vl_account_id="12"} is recognized as a tenant filter
+			// do not wrap a single filter into AND, so `!{vl_account_id="12"}` becomes `!vl_account_id:=12`.
+			// getTenantFilter understands only this form of NOT filters, and uses it for skipping the tenant 12.
 			if len(filters) == 1 {
 				orFilters = append(orFilters, filters[0])
 			} else {

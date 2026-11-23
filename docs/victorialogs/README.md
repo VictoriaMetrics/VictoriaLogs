@@ -532,6 +532,12 @@ The `vl_account_id` and `vl_project_id` fields are generated from tenant IDs dur
 They are returned in query results unless they are removed by LogsQL pipes such as [`fields`](https://docs.victoriametrics.com/victorialogs/logsql/#fields-pipe) or [`delete`](https://docs.victoriametrics.com/victorialogs/logsql/#delete-pipe).
 They can also be used in LogsQL filters for selecting the needed tenants.
 
+During multitenant querying, the [`_stream`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields) field also has `vl_account_id` and `vl_project_id` labels.
+This helps to tell apart streams with the same labels from different tenants.
+For example, `/select/multitenant/logsql/streams` returns the `{app="nginx"}` stream from the `(AccountID=12, ProjectID=34)` tenant
+as `{app="nginx",vl_account_id="12",vl_project_id="34"}`.
+`/select/multitenant/logsql/stream_field_names` and `/select/multitenant/logsql/stream_field_values` return `vl_account_id` and `vl_project_id` like other stream fields.
+
 Tenant filters apply only to the query or [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries) they are written in, like any other LogsQL filter.
 Use [`global_filter`](https://docs.victoriametrics.com/victorialogs/logsql/#global_filter-query-option) query option
 or [`extra_filters`](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) query arg for applying them to all the subqueries.

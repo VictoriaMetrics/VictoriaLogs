@@ -197,6 +197,18 @@ func TestStorageRunQuery(t *testing.T) {
 						panic(fmt.Errorf("unexpected tenant for the query [%s]; got %s; want %s", q, tenantID, tenantIDExpected))
 					}
 				}
+
+				// Verify that _stream contains the tenant of every row.
+				streams := db.GetColumnByName("_stream")
+				if streams == nil {
+					panic(fmt.Errorf("missing _stream column for the query [%s]", q))
+				}
+				for i, stream := range streams.Values {
+					suffix := fmt.Sprintf(`,job="foobar",vl_account_id="%s",vl_project_id="%s"}`, accountIDs.Values[i], projectIDs.Values[i])
+					if !strings.HasSuffix(stream, suffix) {
+						panic(fmt.Errorf("unexpected _stream for the query [%s]; got %s; want it to end with %s", q, stream, suffix))
+					}
+				}
 			}
 			if err := s.RunQuery(qctx, writeBlock); err != nil {
 				t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)

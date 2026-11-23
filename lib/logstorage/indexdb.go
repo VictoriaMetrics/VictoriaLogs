@@ -137,7 +137,7 @@ func (idb *indexdb) updateStats(d *IndexdbStats) {
 	d.IndexdbInmemoryItemsMerged += tm.InmemoryItemsMerged
 }
 
-func (idb *indexdb) appendStreamString(dst []byte, sid *streamID) []byte {
+func (idb *indexdb) appendStreamString(dst []byte, sid *streamID, addTenantTags bool) []byte {
 	bb := bbPool.Get()
 	defer bbPool.Put(bb)
 
@@ -153,6 +153,11 @@ func (idb *indexdb) appendStreamString(dst []byte, sid *streamID) []byte {
 	st := GetStreamTags()
 	streamTagsCanonical := bytesutil.ToUnsafeString(bb.B)
 	mustUnmarshalStreamTagsInplace(st, streamTagsCanonical)
+	if addTenantTags {
+		st.Add("vl_account_id", sid.tenantID.accountIDString())
+		st.Add("vl_project_id", sid.tenantID.projectIDString())
+		sort.Sort(st)
+	}
 	dst = st.marshalString(dst)
 	PutStreamTags(st)
 

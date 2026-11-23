@@ -329,7 +329,7 @@ func (bsm *blockStreamMerger) setStreamID(sid streamID) {
 	bsm.streamID = sid
 
 	if bsm.needDropRows(&bsm.streamID, math.MinInt64, math.MaxInt64) {
-		bsm.streamBuf = bsm.idb.appendStreamString(bsm.streamBuf[:0], &bsm.streamID)
+		bsm.streamBuf = bsm.idb.appendStreamString(bsm.streamBuf[:0], &bsm.streamID, false)
 		bsm.streamIDBuf = sid.marshalString(bsm.streamIDBuf[:0])
 	}
 }
