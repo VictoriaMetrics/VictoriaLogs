@@ -7,6 +7,10 @@ export const escapeForLogsQLString = (s: string) => {
   return JSON.stringify(s).slice(1,-1);
 };
 
+export const quoteFieldName = (field: string) => {
+  return JSON.stringify(field);
+};
+
 export const hasUnclosedQuotes = (str: string) => {
   const matches = str.match(/["`']/g);
   return matches ? matches.length % 2 !== 0 : false;

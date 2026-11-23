@@ -1,5 +1,5 @@
 import { ExtraFilter, ExtraFilterOperator } from "../types";
-import { escapeForLogsQLString } from "../../../utils/regexp";
+import { escapeForLogsQLString, quoteFieldName } from "../../../utils/regexp";
 import { isStreamFilter } from "./isStreamFilter";
 import { STREAM_FIELD, TIME_FIELD } from "../../../constants/logFields";
 
@@ -9,6 +9,7 @@ type BuildExprOptions = {
   field: string;
   operator: ExtraFilterOperator;
   filters: ExtraFilter[];
+  quoteField?: boolean;
 };
 
 
@@ -18,7 +19,8 @@ enum FieldType {
   Time
 }
 
-const buildFilterExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOptions) => {
+const buildFilterExpr: ExprBuilder = ({ field, operator, filters, quoteField }: BuildExprOptions) => {
+  const fld = quoteField ? quoteFieldName(field) : field;
   const normalValues: string[] = [];
   const specialValues: string[] = [];
   if (filters.length === 0) return "";
@@ -39,10 +41,10 @@ const buildFilterExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOpt
   if (normalValues.length) {
     if (isRegexOp) {
       // (field:~"v1" OR field:~"v2")
-      expr = `(${normalValues.map(v => `${field}:~${v}`).join(" OR ")})`;
+      expr = `(${normalValues.map(v => `${fld}:~${v}`).join(" OR ")})`;
     } else {
       // field:in("v1","v2")
-      expr = `${field}:in(${normalValues.join(", ")})`;
+      expr = `${fld}:in(${normalValues.join(", ")})`;
     }
   }
 
@@ -51,7 +53,7 @@ const buildFilterExpr: ExprBuilder = ({ field, operator, filters }: BuildExprOpt
       console.warn(`${operator} operator is not supported for ${specialValues.join(" and ")} values.`);
     }
 
-    const specialExpr = specialValues.map(v => `${field}:${v}`).join(" OR ");
+    const specialExpr = specialValues.map(v => `${fld}:${v}`).join(" OR ");
     expr = (expr ? `${expr} OR ` : "") + specialExpr;
   }
 
@@ -133,8 +135,8 @@ export const getExprBuilder = (filter: ExtraFilter): ExprBuilder => {
   }
 };
 
-export const filterToExpr = (filter: ExtraFilter) => {
+export const filterToExpr = (filter: ExtraFilter, opts?: { quoteField?: boolean }) => {
   const { field, operator } = filter;
   const buildExpr = getExprBuilder(filter);
-  return buildExpr({ field, operator, filters: [filter] });
+  return buildExpr({ field, operator, filters: [filter], quoteField: opts?.quoteField });
 };

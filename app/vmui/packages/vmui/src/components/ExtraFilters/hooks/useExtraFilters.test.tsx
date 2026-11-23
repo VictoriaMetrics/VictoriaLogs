@@ -208,3 +208,31 @@ describe("filterToExpr", () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("filterToExpr with quoteField opt-in", () => {
+  it("quotes the field name for the field-existence filter", () => {
+    const expr = filterToExpr(
+      { field: "Log entry ID", operator: ExtraFilterOperator.Equals, value: "*" } satisfies ExtraFilter,
+      { quoteField: true },
+    );
+
+    expect(expr).toBe("\"Log entry ID\":*");
+  });
+
+  it("quotes the field name for :in() filters", () => {
+    const expr = filterToExpr(
+      { field: "Type d'audit", operator: ExtraFilterOperator.Equals, value: "login" } satisfies ExtraFilter,
+      { quoteField: true },
+    );
+
+    expect(expr).toBe("\"Type d'audit\":in(\"login\")");
+  });
+
+  it("preserves unquoted output when the option is omitted", () => {
+    const expr = filterToExpr(
+      { field: "level", operator: ExtraFilterOperator.Equals, value: "info" } satisfies ExtraFilter,
+    );
+
+    expect(expr).toBe("level:in(\"info\")");
+  });
+});
