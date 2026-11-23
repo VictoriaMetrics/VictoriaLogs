@@ -234,15 +234,15 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 		if n < 0 {
 			return fmt.Errorf("cannot find `=` char for label value at %s", s)
 		}
-		name := s[:n]
-		s = s[n+1:]
+		name := trimWhitespace(s[:n])
+		s = trimWhitespace(s[n+1:])
 
 		// Parse label value
 		qs, err := strconv.QuotedPrefix(s)
 		if err != nil {
 			return fmt.Errorf("cannot parse value for label %q at %s: %w", name, s, err)
 		}
-		s = s[len(qs):]
+		s = trimWhitespace(s[len(qs):])
 		value, err := strconv.Unquote(qs)
 		if err != nil {
 			return fmt.Errorf("cannot unquote value %q for label %q: %w", qs, name, err)
@@ -258,8 +258,25 @@ func parsePromLabels(fs *logstorage.Fields, s string) error {
 		if !strings.HasPrefix(s, ",") {
 			return fmt.Errorf("missing `,` char at %s", s)
 		}
-		s = s[1:]
-		s = strings.TrimPrefix(s, " ")
+		s = trimWhitespace(s[1:])
 	}
 	return nil
+}
+
+// trimWhitespace removes leading and trailing whitespace from s.
+//
+// It treats ' ', '\t', '\n' and '\r' as whitespace, the same chars as the PromQL lexer
+// that Loki uses for parsing stream labels.
+func trimWhitespace(s string) string {
+	for len(s) > 0 && isWhitespace(s[0]) {
+		s = s[1:]
+	}
+	for len(s) > 0 && isWhitespace(s[len(s)-1]) {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+func isWhitespace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
