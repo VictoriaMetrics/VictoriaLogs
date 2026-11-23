@@ -176,7 +176,6 @@ func TestStorageRunQuery(t *testing.T) {
 			t.Helper()
 
 			q := mustParseQuery(query)
-			q.MoveTenantStreamFilters()
 			qs := &QueryStats{}
 			qctx := NewQueryContext(context.Background(), qs, nil, true, q, false, nil)
 
@@ -262,6 +261,10 @@ func TestStorageRunQuery(t *testing.T) {
 		f(t, `{vl_account_id=~"1|2",instance=~"host-[01]:234" or vl_project_id="31"}`, 4*rowsPerTenantStream+rowsPerTenant)
 		f(t, `{vl_account_id="1",instance="host-0:234" or vl_account_id="1",instance="host-1:234"} error`, 0)
 		f(t, `{vl_account_id="1",instance="host-0:234" or vl_account_id="1",instance="host-1:234"} "log message"`, 2*rowsPerTenantStream)
+
+		// vl_account_id in stream filters inside subqueries
+		f(t, `{vl_account_id="2"} _msg:in({vl_account_id="3"} | fields _msg)`, rowsPerTenant)
+		f(t, `{vl_account_id="2"} _msg:in({vl_account_id="12345"} | fields _msg)`, 0)
 	})
 	t.Run("matching-in-filter", func(t *testing.T) {
 		q := mustParseQuery(`source-file:in(foobar,/foo/bar/baz)`)
@@ -1847,16 +1850,19 @@ func TestStorageGetFieldNamesMultitenant(t *testing.T) {
 	}
 }
 
-func TestQueryMoveTenantStreamFilters(t *testing.T) {
+func TestInitTenantStreamFilters(t *testing.T) {
 	t.Parallel()
 
 	f := func(query, resultExpected string) {
 		t.Helper()
 
 		q := mustParseQuery(query)
-		q.MoveTenantStreamFilters()
-		if result := q.String(); result != resultExpected {
+		qStr := q.String()
+		if result := initTenantStreamFilters(q).String(); result != resultExpected {
 			t.Fatalf("unexpected result for query [%s]\ngot\n%s\nwant\n%s", query, result, resultExpected)
+		}
+		if s := q.String(); s != qStr {
+			t.Fatalf("the original query must not be modified\ngot\n%s\nwant\n%s", s, qStr)
 		}
 	}
 
@@ -1866,7 +1872,7 @@ func TestQueryMoveTenantStreamFilters(t *testing.T) {
 	f(`!{vl_account_id="12"}`, `!vl_account_id:=12`)
 	f(`{vl_account_id in ("12","13")}`, `vl_account_id:~"^(?:12|13)$"`)
 	f(`{vl_account_id="12" or app="nginx"}`, `vl_account_id:=12 or {app="nginx"}`)
-	f(`{vl_account_id="12"} x:in({vl_account_id="13"} | fields x)`, `vl_account_id:=12 x:in(vl_account_id:=13 | fields x)`)
+	f(`{vl_account_id="12"} x:in({vl_account_id="13"} | fields x)`, `vl_account_id:=12 x:in({vl_account_id="13"} | fields x)`)
 	f(`options(global_filter=({vl_account_id="12"})) error`, `options(global_filter=(vl_account_id:=12)) error`)
 
 	// vl_account_id and vl_project_id in both stream filters and field filters

@@ -239,6 +239,9 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 		return err
 	}
 	q := qNew
+	if qctx.IsMultiTenant {
+		q = initTenantStreamFilters(q)
+	}
 
 	// Multitenant queries search the tenants matching the query filter.
 	// If TenantIDs is already set, then search only these tenants.
@@ -333,34 +336,48 @@ func getTenantFilter(q *Query) filter {
 	return f
 }
 
-// MoveTenantStreamFilters replaces vl_account_id and vl_project_id filters inside stream filters at q and its subqueries with field filters.
+// initTenantStreamFilters returns q with vl_account_id and vl_project_id filters moved from stream filters into field filters.
 //
-// Multitenant queries must call it, since stored log streams do not contain these labels.
+// This is needed for multitenant queries, since stored log streams do not contain these labels.
 // For example, `{app="nginx",vl_account_id="12"}` is replaced with `vl_account_id:=12 {app="nginx"}`.
-func (q *Query) MoveTenantStreamFilters() {
-	q.visitSubqueries(func(sq *Query) {
-		sq.f = moveTenantStreamFilters(sq.f)
-		if sq.opts.globalFilter != nil {
-			sq.opts.globalFilter = moveTenantStreamFilters(sq.opts.globalFilter)
+//
+// Subqueries aren't touched, since they are processed when they are executed via Storage.runQuery.
+//
+// q isn't modified. It is returned as is if its stream filters have no such labels.
+func initTenantStreamFilters(q *Query) *Query {
+	if !hasTenantStreamFilter(q.opts.globalFilter) && !hasTenantStreamFilter(q.f) {
+		return q
+	}
+
+	qNew := q.cloneShallow()
+	qNew.opts.globalFilter = moveTenantStreamFilters(q.opts.globalFilter)
+	qNew.f = moveTenantStreamFilters(q.f)
+	return qNew
+}
+
+// isTenantStreamFilter returns true if f is a stream filter with vl_account_id or vl_project_id labels.
+func isTenantStreamFilter(f filter) bool {
+	fs, ok := f.(*filterStream)
+	if !ok {
+		return false
+	}
+	for _, af := range fs.f.orFilters {
+		for _, tf := range af.tagFilters {
+			if isTenantColumn(tf.tagName) {
+				return true
+			}
 		}
-	})
+	}
+	return false
+}
+
+func hasTenantStreamFilter(f filter) bool {
+	return f != nil && visitFilterRecursive(f, isTenantStreamFilter)
 }
 
 func moveTenantStreamFilters(f filter) filter {
-	// find stream filters with vl_account_id or vl_project_id labels
-	visitFunc := func(f filter) bool {
-		fs, ok := f.(*filterStream)
-		if !ok {
-			return false
-		}
-		for _, af := range fs.f.orFilters {
-			for _, tf := range af.tagFilters {
-				if isTenantColumn(tf.tagName) {
-					return true
-				}
-			}
-		}
-		return false
+	if !hasTenantStreamFilter(f) {
+		return f
 	}
 
 	// move tenant labels out of every OR branch into field filters
@@ -408,7 +425,7 @@ func moveTenantStreamFilters(f filter) filter {
 		return newFilterOr(orFilters), nil
 	}
 
-	fNew, err := copyFilter(f, visitFunc, copyFunc)
+	fNew, err := copyFilter(f, isTenantStreamFilter, copyFunc)
 	if err != nil {
 		logger.Panicf("BUG: unexpected error: %s", err)
 	}
