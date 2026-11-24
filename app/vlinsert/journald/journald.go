@@ -179,7 +179,8 @@ var (
 )
 
 func processStreamInternal(streamName string, r io.Reader, remoteIP string, lmp insertutil.LogMessageProcessor, cp *insertutil.CommonParams) error {
-	lr := insertutil.NewLineReader("journald", r)
+	lr := insertutil.GetLineReader("journald", r)
+	defer insertutil.PutLineReader(lr)
 
 	for {
 		err := readJournaldLogEntry(streamName, lr, remoteIP, lmp, cp)

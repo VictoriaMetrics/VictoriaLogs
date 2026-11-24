@@ -14,7 +14,8 @@ func TestLineReader_Success(t *testing.T) {
 		t.Helper()
 
 		r := bytes.NewBufferString(data)
-		lr := NewLineReader("foo", r)
+		lr := GetLineReader("foo", r)
+		defer PutLineReader(lr)
 		var lines []string
 		for lr.NextLine() {
 			lines = append(lines, string(lr.Line))
@@ -50,7 +51,8 @@ func TestLineReader_SkipUntilNextLine(t *testing.T) {
 		t.Helper()
 
 		r := bytes.NewBufferString(data)
-		lr := NewLineReader("foo", r)
+		lr := GetLineReader("foo", r)
+		defer PutLineReader(lr)
 		var lines []string
 		for lr.NextLine() {
 			lines = append(lines, string(lr.Line))
@@ -106,7 +108,8 @@ func TestLineReader_SkipUntilNextLineDataWithEOF(t *testing.T) {
 		// iotest.DataErrReader returns the last chunk of data together with io.EOF, as HTTP request body readers may do.
 		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1827
 		r := iotest.DataErrReader(bytes.NewBufferString(data))
-		lr := NewLineReader("foo", r)
+		lr := GetLineReader("foo", r)
+		defer PutLineReader(lr)
 		var lines []string
 		for lr.NextLine() {
 			lines = append(lines, string(lr.Line))
@@ -144,7 +147,8 @@ func TestLineReader_Failure(t *testing.T) {
 		fr := &failureReader{
 			r: bytes.NewBufferString(data),
 		}
-		lr := NewLineReader("foo", fr)
+		lr := GetLineReader("foo", fr)
+		defer PutLineReader(lr)
 		var lines []string
 		for lr.NextLine() {
 			lines = append(lines, string(lr.Line))

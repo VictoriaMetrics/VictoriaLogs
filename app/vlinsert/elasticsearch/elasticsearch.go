@@ -153,7 +153,8 @@ func readBulkRequest(streamName string, r io.Reader, encoding string, timeFields
 	}
 	defer protoparserutil.PutUncompressedReader(reader)
 
-	lr := insertutil.NewLineReader(streamName, reader)
+	lr := insertutil.GetLineReader(streamName, reader)
+	defer insertutil.PutLineReader(lr)
 
 	n := 0
 	for {
