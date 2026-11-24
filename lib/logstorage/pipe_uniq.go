@@ -241,7 +241,8 @@ func (pup *pipeUniqProcessor) writeBlock(workerID uint, br *blockResult) {
 	}
 
 	if !pup.mem.refill(&shard.stateSizeBudget) {
-		// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
 		pup.cancel()
 	}
 }

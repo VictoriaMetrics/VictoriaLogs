@@ -631,6 +631,8 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 	shard.writeBlock(pcp, br)
 
 	if !pcp.mem.refill(&shard.stateSizeBudget) {
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
 		pcp.cancel()
 	}
 }
