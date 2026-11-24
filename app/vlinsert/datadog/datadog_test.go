@@ -26,6 +26,9 @@ func TestReadLogsRequestFailure(t *testing.T) {
 	f(`["create":{}]`)
 	f(`{"create":{}}
 foobar`)
+
+	// Unsupported lambda label value
+	f(`[{"message":{"message":"foo","lambda":{"arn":{"a":"b"}}}}]`)
 }
 
 func TestReadLogsRequestSuccess(t *testing.T) {
@@ -110,4 +113,7 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 
 	// Lambda labels from object message
 	f(`[{"message":{"message":"foo","status":"info","lambda":{"arn":"a","request_id":"r"}}}]`, []int64{123}, `{"_msg":"foo","status":"info","arn":"a","request_id":"r"}`)
+
+	// Lambda labels with null, bool and number values must not drop the fields after them
+	f(`[{"message":{"message":"foo","lambda":{"arn":"a","request_id":null,"durable_function.first_invocation":true,"n":12},"status":"info"}}]`, []int64{123}, `{"_msg":"foo","arn":"a","durable_function.first_invocation":"true","n":"12","status":"info"}`)
 }

@@ -113,9 +113,9 @@ var (
 //   - regular log message with string text
 //   - nested json format for serverless plugins
 //     which has the following format:
-//     {"message": {"message": "text","lambda": {"arn": "string","requestID": "string"}, "timestamp": int64} }
+//     {"message": {"message": "text","lambda": {"arn": "string","request_id": "string"}, "timestamp": int64} }
 //
-// See https://github.com/DataDog/datadog-lambda-extension/blob/28b90c7e4e985b72d60b5f5a5147c69c7ac693c4/bottlecap/src/logs/lambda/mod.rs#L24
+// See https://github.com/DataDog/datadog-lambda-extension/blob/2c240b0d5d7f648747f1fda4ef385f6541b14c71/bottlecap/src/logs/lambda/mod.rs#L43
 func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage.Field, error) {
 	switch v.Type() {
 	case fastjson.TypeString:
@@ -153,18 +153,29 @@ func appendMsgFields(fields []logstorage.Field, v *fastjson.Value) ([]logstorage
 					if firstErr != nil {
 						return
 					}
-					val, err := v.StringBytes()
-					if err != nil {
-						firstErr = fmt.Errorf("unexpected lambda label value type for %q:%q; want string", k, v)
-						return
+					switch v.Type() {
+					case fastjson.TypeNull:
+						// Skip missing values. For example, `"request_id": null` is sent for logs outside invocations.
+					case fastjson.TypeString:
+						fields = append(fields, logstorage.Field{
+							Name:  bytesutil.ToUnsafeString(k),
+							Value: bytesutil.ToUnsafeString(v.GetStringBytes()),
+						})
+					case fastjson.TypeNumber, fastjson.TypeTrue, fastjson.TypeFalse:
+						// For example, `"durable_function.first_invocation": true`.
+						fields = append(fields, logstorage.Field{
+							Name:  bytesutil.ToUnsafeString(k),
+							Value: v.String(),
+						})
+					default:
+						firstErr = fmt.Errorf("unexpected lambda label value type for %q:%q; want string, number or bool", k, v)
 					}
-					fields = append(fields, logstorage.Field{
-						Name:  bytesutil.ToUnsafeString(k),
-						Value: bytesutil.ToUnsafeString(val),
-					})
 				})
 			}
 		})
+		if firstErr != nil {
+			return fields, firstErr
+		}
 	default:
 		return fields, fmt.Errorf("unsupported message type %q", v.Type().String())
 	}
