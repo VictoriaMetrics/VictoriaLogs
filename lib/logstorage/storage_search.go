@@ -1119,7 +1119,7 @@ func (db *DataBlock) Reset() {
 
 // RowsCount returns the number of rows in db.
 //
-// It returns 0 if db has no columns, since there is nothing to process in such a block.
+// It returns 0 if db has no columns, even if it contains rows for pipes, which depend only on the number of rows.
 func (db *DataBlock) RowsCount() int {
 	columns := db.columns
 	if len(columns) > 0 {
