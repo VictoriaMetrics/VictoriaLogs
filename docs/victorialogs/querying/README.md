@@ -579,7 +579,11 @@ for the given [`query`](https://docs.victoriametrics.com/victorialogs/logsql/) o
 and the given optional timezone offset specified in the `<offset>`.
 The stats is returned in the format compatible with [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/#range-queries).
 
-The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned interval can be smaller than the `<start>`.
+Every returned point at the timestamp `T` contains the stats for logs with the [`_time`](https://docs.victoriametrics.com/victorialogs/keyconcepts/#time-field) field in the `[T, T+step)` interval.
+The returned timestamps are aligned to the `<step>` at the given timezone `<offset>`, so the first returned point can have a timestamp smaller than the `<start>`.
+
+Note that Prometheus and VictoriaMetrics return the stats for every interval at its end, not at its start.
+Move every returned timestamp one `<step>` forward if you need to compare or combine these stats with the data from Prometheus or VictoriaMetrics.
 
 The `<start>` and `<end>` args can contain values in [any supported format](https://docs.victoriametrics.com/victoriametrics/single-server-victoriametrics/#timestamp-formats).
 If `<start>` is missing, then it equals to the minimum timestamp across logs stored in VictoriaLogs.
@@ -1188,6 +1192,12 @@ VictoriaLogs provides the following options to limit resource usage by the execu
 - `-search.maxConcurrentRequests` command-line flag limits the number of concurrently executed queries. It isn't recommended setting it to too big values,
   since this usually results in the increased RAM usage and slowdown for the concurrently executed queries. VictoriaLogs waits for up to `-search.maxQueueDuration`
   before returning errors to queries, which cannot be executed because `-search.maxConcurrentRequests` limit is reached.
+
+- The total memory, which concurrently executed queries may use for [pipes](https://docs.victoriametrics.com/victorialogs/logsql/#pipes) such as `stats`, `sort`, `uniq` or `join`,
+  is limited to half of the memory available to VictoriaLogs (see `-memory.allowedPercent` and `-memory.allowedBytes` command-line flags).
+  A query, which cannot obtain the needed memory, fails with an error showing how much memory it reserved. If it reserved most of the limit,
+  then narrow down the query or add more RAM. Otherwise retry it later or lower `-search.maxConcurrentRequests`.
+  See [`vl_query_memory_usage_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_usage_bytes) metric.
 
 ## Web UI
 

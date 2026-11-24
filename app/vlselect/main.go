@@ -5,6 +5,7 @@ import (
 	"embed"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -72,10 +73,17 @@ func Init() {
 	vmalertproxy.Init(*vmalertProxyURL)
 
 	internalselect.Init(*logSlowQueryDuration)
+
+	queryMemoryMetrics = metrics.NewSet()
+	queryMemoryMetrics.RegisterMetricsWriter(writeQueryMemoryMetrics)
+	metrics.RegisterSet(queryMemoryMetrics)
 }
 
 // Stop stops vlselect
 func Stop() {
+	metrics.UnregisterSet(queryMemoryMetrics, true)
+	queryMemoryMetrics = nil
+
 	internalselect.Stop()
 
 	concurrencyLimitCh = nil
@@ -94,6 +102,17 @@ var (
 		return float64(len(concurrencyLimitCh))
 	})
 )
+
+var queryMemoryMetrics *metrics.Set
+
+func writeQueryMemoryMetrics(w io.Writer) {
+	var s logstorage.QueryMemoryStats
+	logstorage.UpdateQueryMemoryStats(&s)
+
+	metrics.WriteGaugeUint64(w, `vl_query_memory_limit_bytes`, s.MaxSize)
+	metrics.WriteGaugeUint64(w, `vl_query_memory_usage_bytes`, s.Usage)
+	metrics.WriteCounterUint64(w, `vl_query_memory_limit_reached_total`, s.LimitReached)
+}
 
 //go:embed vmui
 var vmuiFiles embed.FS

@@ -315,6 +315,21 @@ These metrics follow the Prometheus exposition format and can be used for monito
 
 **Description:** Current number of queries actively executing. Real-time query processing load when the system approaches the `-search.maxConcurrentRequests` capacity limit.
 
+### vl_query_memory_limit_reached_total
+**Type:** Counter
+
+**Description:** Number of times queries couldn't obtain memory because of the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit. Such queries fail with an error instead of risking an out-of-memory crash. A single failed query may increase it more than once.
+
+### vl_query_memory_limit_bytes
+**Type:** Gauge
+
+**Description:** Maximum amount of memory all concurrently executed queries may use together for their execution state. It is set to half of the memory available to VictoriaLogs, which is controlled by `-memory.allowedPercent` or `-memory.allowedBytes` command-line flags. Queries fail once their combined memory would exceed this limit.
+
+### vl_query_memory_usage_bytes
+**Type:** Gauge
+
+**Description:** Current amount of memory reserved by the running queries for their execution state. Real-time query memory load when the system approaches the [`vl_query_memory_limit_bytes`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_query_memory_limit_bytes) limit.
+
 ### vl_concurrent_internalselect_requests_wait_duration
 **Type:** Summary
 
