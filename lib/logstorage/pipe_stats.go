@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
@@ -424,8 +423,6 @@ func (ps *pipeStats) initRateFuncsFromTimeBucket() bool {
 	return false
 }
 
-const stateSizeBudgetChunk = 1 << 20
-
 func (ps *pipeStats) newPipeProcessor(concurrency int, stopCh <-chan struct{}, cancel func(), ppNext pipeProcessor) pipeProcessor {
 	psp := &pipeStatsProcessor{
 		ps:          ps,
@@ -451,8 +448,7 @@ type pipeStatsProcessor struct {
 
 	shards atomicutil.Slice[pipeStatsProcessorShard]
 
-	mem              queryMemoryReservation
-	memReserveFailed atomic.Bool
+	mem queryMemoryReservation
 
 	errLock sync.Mutex
 	err     error
@@ -1102,16 +1098,10 @@ func (psp *pipeStatsProcessor) writeBlock(workerID uint, br *blockResult) {
 		shard.writeBlockDefault(br)
 	}
 
-	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		if !psp.mem.reserve(stateSizeBudgetChunk) {
-			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			psp.memReserveFailed.Store(true)
-			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-			psp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !psp.mem.refill(&shard.stateSizeBudget) {
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
+		psp.cancel()
 	}
 }
 
@@ -1122,8 +1112,8 @@ func (psp *pipeStatsProcessor) flush() error {
 		return psp.err
 	}
 
-	if psp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), psp.mem.limitError())
+	if psp.mem.failed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", psp.ps.String(), queryMemoryLimitError())
 	}
 
 	// Merge states across shards in parallel

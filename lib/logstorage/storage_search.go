@@ -373,8 +373,6 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservat
 	defer cancel()
 	qctx = qctx.WithContext(ctx)
 
-	var memReserveFailed atomic.Bool
-
 	type rowsShard struct {
 		rows            [][]Field
 		stateSizeBudget int
@@ -418,23 +416,17 @@ func getRows(qctx *QueryContext, runQuery runQueryFunc, mem *queryMemoryReservat
 			shard.stateSizeBudget -= int(unsafe.Sizeof(fields))
 		}
 
-		for shard.stateSizeBudget < 0 {
-			// steal some budget for the state size from the global budget.
-			if !mem.reserve(stateSizeBudgetChunk) {
-				// The query memory limiter is exhausted. Stop the query in order to avoid OOM crash.
-				memReserveFailed.Store(true)
-				cancel()
-				return
-			}
-			shard.stateSizeBudget += stateSizeBudgetChunk
+		if !mem.refill(&shard.stateSizeBudget) {
+			// Stop the subquery, since it fails anyway.
+			cancel()
 		}
 	}
 
 	err := runQuery(qctx, writeBlockResult)
 
-	// Check memReserveFailed before err, since the query canceled above may return an error.
-	if memReserveFailed.Load() {
-		return nil, fmt.Errorf("cannot load rows for [%s]: %w", qctx.Query, mem.limitError())
+	// Check mem.failed first, since the canceled query may return an error.
+	if mem.failed.Load() {
+		return nil, fmt.Errorf("cannot load rows for [%s]: %w", qctx.Query, queryMemoryLimitError())
 	}
 	if err != nil {
 		return nil, err

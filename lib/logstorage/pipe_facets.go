@@ -5,7 +5,6 @@ import (
 	"math"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -126,8 +125,7 @@ type pipeFacetsProcessor struct {
 
 	shards atomicutil.Slice[pipeFacetsProcessorShard]
 
-	mem              queryMemoryReservation
-	memReserveFailed atomic.Bool
+	mem queryMemoryReservation
 }
 
 type pipeFacetsProcessorShard struct {
@@ -329,24 +327,18 @@ func (pfp *pipeFacetsProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard.writeBlock(br)
 
-	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		if !pfp.mem.reserve(stateSizeBudgetChunk) {
-			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			pfp.memReserveFailed.Store(true)
-			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-			pfp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !pfp.mem.refill(&shard.stateSizeBudget) {
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
+		pfp.cancel()
 	}
 }
 
 func (pfp *pipeFacetsProcessor) flush() error {
 	defer pfp.mem.release()
 
-	if pfp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: %w", pfp.pf.String(), pfp.mem.limitError())
+	if pfp.mem.failed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", pfp.pf.String(), queryMemoryLimitError())
 	}
 
 	// merge state across shards

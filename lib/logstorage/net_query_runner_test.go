@@ -168,12 +168,12 @@ func TestNetQueryRunnerQueryMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if usageAtSearch <= stateSizeBudgetChunk {
-		t.Fatalf("the join rows must reserve more than %d bytes; got %d bytes", stateSizeBudgetChunk, usageAtSearch)
+	if usageAtSearch <= queryMemoryChunkSize {
+		t.Fatalf("the join rows must reserve more than %d bytes; got %d bytes", queryMemoryChunkSize, usageAtSearch)
 	}
 
 	// The join rows don't fit the limit.
-	_, err = f(stateSizeBudgetChunk)
+	_, err = f(queryMemoryChunkSize)
 	if err == nil || !strings.Contains(err.Error(), "not enough memory:") {
 		t.Fatalf("unexpected error; got %v; want the query memory limit error", err)
 	}

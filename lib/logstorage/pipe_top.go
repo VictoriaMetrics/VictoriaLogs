@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -128,8 +127,7 @@ type pipeTopProcessor struct {
 
 	shards atomicutil.Slice[pipeTopProcessorShard]
 
-	mem              queryMemoryReservation
-	memReserveFailed atomic.Bool
+	mem queryMemoryReservation
 }
 
 type pipeTopProcessorShard struct {
@@ -274,24 +272,18 @@ func (ptp *pipeTopProcessor) writeBlock(workerID uint, br *blockResult) {
 
 	shard.writeBlock(br)
 
-	for shard.stateSizeBudget < 0 {
-		// steal some budget for the state size from the global budget.
-		if !ptp.mem.reserve(stateSizeBudgetChunk) {
-			// The query memory limiter is exhausted. Stop processing data in order to avoid OOM crash.
-			ptp.memReserveFailed.Store(true)
-			// Notify worker goroutines to stop calling writeBlock() in order to save CPU time.
-			ptp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !ptp.mem.refill(&shard.stateSizeBudget) {
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
+		ptp.cancel()
 	}
 }
 
 func (ptp *pipeTopProcessor) flush() error {
 	defer ptp.mem.release()
 
-	if ptp.memReserveFailed.Load() {
-		return fmt.Errorf("cannot calculate [%s]: %w", ptp.pt.String(), ptp.mem.limitError())
+	if ptp.mem.failed.Load() {
+		return fmt.Errorf("cannot calculate [%s]: %w", ptp.pt.String(), queryMemoryLimitError())
 	}
 
 	// merge state across shards in parallel

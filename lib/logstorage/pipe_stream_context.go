@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/atomicutil"
@@ -125,25 +124,14 @@ type pipeStreamContextProcessor struct {
 
 	// streamMem holds the memory for fetching the surrounding logs of the stream processed at flush.
 	streamMem queryMemoryReservation
-
-	memReserveFailed atomic.Bool
 }
 
-func (pcp *pipeStreamContextProcessor) reserveMemory(mem *queryMemoryReservation, n int) bool {
-	if mem.reserve(uint64(n)) {
-		return true
-	}
-	// The limiter is exhausted. Stop processing data in order to avoid OOM crash.
-	pcp.memReserveFailed.Store(true)
-	return false
-}
-
-func (pcp *pipeStreamContextProcessor) memoryLimitError(mem *queryMemoryReservation) error {
-	return fmt.Errorf("cannot calculate [%s]: %w", pcp.pc.String(), mem.limitError())
+func (pcp *pipeStreamContextProcessor) memoryLimitError() error {
+	return fmt.Errorf("cannot calculate [%s]: %w", pcp.pc.String(), queryMemoryLimitError())
 }
 
 func (pcp *pipeStreamContextProcessor) memoryLimitForSurroundingLogsError(n int) error {
-	return fmt.Errorf("cannot fetch the surrounding logs for %d matching logs: %w", n, pcp.streamMem.limitError())
+	return fmt.Errorf("cannot fetch the surrounding logs for %d matching logs: %w", n, queryMemoryLimitError())
 }
 
 type timeRange struct {
@@ -154,8 +142,8 @@ type timeRange struct {
 func (pcp *pipeStreamContextProcessor) getStreamRowss(streamID string, neededRows []streamContextRow) ([][]*streamContextRow, error) {
 	neededTimestamps := make([]int64, len(neededRows))
 	memUsed := int(unsafe.Sizeof(neededTimestamps[0])) * len(neededTimestamps)
-	if !pcp.reserveMemory(&pcp.streamMem, memUsed) {
-		return nil, pcp.memoryLimitError(&pcp.streamMem)
+	if !pcp.streamMem.reserve(uint64(memUsed)) {
+		return nil, pcp.memoryLimitError()
 	}
 
 	for i := range neededRows {
@@ -196,7 +184,7 @@ func (pcp *pipeStreamContextProcessor) getTimeRangesForStreamRowss(streamID stri
 
 	trs := make([]timeRange, len(rowss))
 	newStateSize := int(unsafe.Sizeof(trs[0])) * len(rowss)
-	if !pcp.reserveMemory(&pcp.streamMem, newStateSize) {
+	if !pcp.streamMem.reserve(uint64(newStateSize)) {
 		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 	for i, rows := range rowss {
@@ -311,7 +299,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		mu.Lock()
 		defer mu.Unlock()
 
-		if pcp.memReserveFailed.Load() {
+		if pcp.streamMem.failed.Load() {
 			cancel()
 			return
 		}
@@ -341,12 +329,8 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 		}
 
 		stateSizeBudget -= stateSize
-		for stateSizeBudget < 0 {
-			if !pcp.reserveMemory(&pcp.streamMem, stateSizeBudgetChunk) {
-				cancel()
-				return
-			}
-			stateSizeBudget += stateSizeBudgetChunk
+		if !pcp.streamMem.refill(&stateSizeBudget) {
+			cancel()
 		}
 	}
 
@@ -360,7 +344,7 @@ func (pcp *pipeStreamContextProcessor) executeQuery(streamID, qStr string, neede
 	if err := pcp.pc.runQuery(qctx, writeBlock); err != nil {
 		return nil, err
 	}
-	if pcp.memReserveFailed.Load() {
+	if pcp.streamMem.failed.Load() {
 		return nil, pcp.memoryLimitForSurroundingLogsError(len(neededTimestamps))
 	}
 
@@ -646,12 +630,10 @@ func (pcp *pipeStreamContextProcessor) writeBlock(workerID uint, br *blockResult
 
 	shard.writeBlock(pcp, br)
 
-	for shard.stateSizeBudget < 0 {
-		if !pcp.reserveMemory(&pcp.mem, stateSizeBudgetChunk) {
-			pcp.cancel()
-			return
-		}
-		shard.stateSizeBudget += stateSizeBudgetChunk
+	if !pcp.mem.refill(&shard.stateSizeBudget) {
+		// Stop processing new blocks, so the state doesn't grow further.
+		// flush() will return the query memory limit error.
+		pcp.cancel()
 	}
 }
 
@@ -659,8 +641,8 @@ func (pcp *pipeStreamContextProcessor) flush() error {
 	defer pcp.mem.release()
 	defer pcp.streamMem.release()
 
-	if pcp.memReserveFailed.Load() {
-		return pcp.memoryLimitError(&pcp.mem)
+	if pcp.mem.failed.Load() {
+		return pcp.memoryLimitError()
 	}
 
 	// merge state across shards
