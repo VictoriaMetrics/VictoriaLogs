@@ -140,7 +140,7 @@ func (lr *logRows) mustAddRow(streamID streamID, timestamp int64, fields []Field
 
 		dstField := &dstFields[i]
 		if fieldsBufLen >= len(fields) {
-			fPrev := &fieldsBuf[fieldsBufLen-len(fields)]
+			fPrev := &fieldsBuf[fieldsBufLen-len(fields)+i]
 			if fPrev.Name == fieldName {
 				dstField.Name = fPrev.Name
 			} else {
