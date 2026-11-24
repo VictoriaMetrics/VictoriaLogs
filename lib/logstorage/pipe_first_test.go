@@ -199,6 +199,10 @@ func TestPipeFirstUpdateNeededFields(t *testing.T) {
 		expectPipeNeededFields(t, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected)
 	}
 
+	// no needed fields
+	f("first 3 by(s1,s2)", "", "", "", "")
+	f("first 3 by(s1,s2) partition by (x,y)", "", "", "x,y", "")
+
 	// all the needed fields
 	f("first", "*", "", "*", "")
 	f("first rank x", "*", "", "*", "")

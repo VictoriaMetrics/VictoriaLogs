@@ -373,6 +373,11 @@ func TestPipeSortUpdateNeededFields(t *testing.T) {
 		expectPipeNeededFields(t, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected)
 	}
 
+	// no needed fields
+	f("sort by(s1,s2)", "", "", "", "")
+	f("sort by(s1,s2) limit 1", "", "", "", "")
+	f("sort by(s1,s2) limit 1 partition by (x,y) rank as x", "", "", "x,y", "")
+
 	// all the needed fields
 	f("sort", "*", "", "*", "")
 	f("sort rank x", "*", "", "*", "")

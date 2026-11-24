@@ -199,6 +199,10 @@ func TestPipeLastUpdateNeededFields(t *testing.T) {
 		expectPipeNeededFields(t, s, allowFilters, denyFilters, allowFiltersExpected, denyFiltersExpected)
 	}
 
+	// no needed fields
+	f("last 3 by(s1,s2)", "", "", "", "")
+	f("last 3 by(s1,s2) partition by (x,y)", "", "", "x,y", "")
+
 	// all the needed fields
 	f("last", "*", "", "*", "")
 	f("last rank x", "*", "", "*", "")

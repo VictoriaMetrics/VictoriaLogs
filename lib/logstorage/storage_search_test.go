@@ -708,6 +708,55 @@ func TestStorageRunQuery(t *testing.T) {
 		assertRowsEqual(t, resultRows, rowsExpected)
 	}
 
+	// fNet runs the query in the same way as the cluster does: the remote part of the query is executed at the storage,
+	// the results are marshaled and unmarshaled, and then the local part of the query is executed on the unmarshaled results.
+	fNet := func(t *testing.T, query string, rowsExpected [][]Field) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		qctx := newTestQueryContext(allTenantIDs, q)
+		var resultRowsLock sync.Mutex
+		var resultRows [][]Field
+		writeBlock := func(_ uint, db *DataBlock) {
+			columns := db.GetColumns(false)
+			for i := range db.RowsCount() {
+				row := make([]Field, len(columns))
+				for j, bc := range columns {
+					row[j] = Field{
+						Name:  strings.Clone(bc.Name),
+						Value: strings.Clone(bc.Values[i]),
+					}
+				}
+				resultRowsLock.Lock()
+				resultRows = append(resultRows, row)
+				resultRowsLock.Unlock()
+			}
+		}
+		runNetQuery := func(qctx *QueryContext, writeBlock WriteDataBlockFunc) error {
+			var mu sync.Mutex
+			return s.RunQuery(qctx, func(workerID uint, db *DataBlock) {
+				mu.Lock()
+				defer mu.Unlock()
+
+				data := db.Marshal(nil)
+				var dbRemote DataBlock
+				if _, _, err := dbRemote.UnmarshalInplace(data, nil); err != nil {
+					panic(fmt.Errorf("cannot unmarshal data block: %w", err))
+				}
+				writeBlock(workerID, &dbRemote)
+			})
+		}
+		netSearch := func(_ <-chan struct{}, qRemote *Query, writeBlock WriteDataBlockFunc) error {
+			return runNetQuery(qctx.WithQuery(qRemote), writeBlock)
+		}
+		nqr := NewNetQueryRunner(qctx, runNetQuery, writeBlock)
+		if err := nqr.Run(context.Background(), 1, netSearch); err != nil {
+			t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)
+		}
+
+		assertRowsEqual(t, resultRows, rowsExpected)
+	}
+
 	t.Run("stats-count-total", func(t *testing.T) {
 		f(t, `* | stats count() rows`, [][]Field{
 			{
@@ -831,6 +880,43 @@ func TestStorageRunQuery(t *testing.T) {
 				{"rows_total", "1155"},
 				{"rows_nonzero", "105"},
 				{"rows_zero", "0"},
+			},
+		})
+	})
+	t.Run("sort-partition-limit-stats-count", func(t *testing.T) {
+		f(t, `* | sort by (_time desc) partition by (tenant.id) limit 1 | stats count() rows`, [][]Field{
+			{
+				{"rows", "11"},
+			},
+		})
+	})
+	t.Run("net-stats-count-without-columns", func(t *testing.T) {
+		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1956
+		for _, query := range []string{
+			`* | limit 2 | stats count() rows`,
+			`* | fields x | limit 2 | stats count() rows`,
+			`* | delete _time | limit 2 | stats count() rows`,
+			`* | rename _time as t | limit 2 | stats count() rows`,
+		} {
+			fNet(t, query, [][]Field{
+				{
+					{"rows", "2"},
+				},
+			})
+		}
+		fNet(t, `* | offset 1150 | stats count() rows`, [][]Field{
+			{
+				{"rows", "5"},
+			},
+		})
+		fNet(t, `* | sort by (_time desc) partition by (tenant.id) limit 1 | stats count() rows`, [][]Field{
+			{
+				{"rows", "11"},
+			},
+		})
+		fNet(t, `* | stats count() rows`, [][]Field{
+			{
+				{"rows", "1155"},
 			},
 		})
 	})
@@ -1516,6 +1602,12 @@ func TestDataBlock_MarshalUnmarshal(t *testing.T) {
 
 	// empty DataBlock
 	db = &DataBlock{}
+	f(db)
+
+	// Non-zero rows, zero columns
+	db = &DataBlock{
+		rowsCount: 3,
+	}
 	f(db)
 
 	// Zero rows, non-zero columns

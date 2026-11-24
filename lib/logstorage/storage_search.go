@@ -197,7 +197,7 @@ type writeBlockResultFunc func(workerID uint, br *blockResult)
 func (f writeBlockResultFunc) newDataBlockWriter() WriteDataBlockFunc {
 	var brs atomicutil.Slice[blockResult]
 	return func(workerID uint, db *DataBlock) {
-		if db.RowsCount() == 0 {
+		if db.rowsLen() == 0 {
 			return
 		}
 		br := brs.Get(workerID)
@@ -1103,21 +1103,38 @@ type BlockColumn struct {
 type DataBlock struct {
 	// columns represents columns in the data block.
 	columns []BlockColumn
+
+	// rowsCount is the number of rows in the data block if it has no columns.
+	//
+	// Such blocks are needed for pipes, which depend only on the number of rows. For example, '| limit 2 | stats count()'.
+	rowsCount int
 }
 
 // Reset resets db
 func (db *DataBlock) Reset() {
 	clear(db.columns)
 	db.columns = db.columns[:0]
+	db.rowsCount = 0
 }
 
 // RowsCount returns the number of rows in db.
+//
+// It returns 0 if db has no columns, since there is nothing to process in such a block.
 func (db *DataBlock) RowsCount() int {
 	columns := db.columns
 	if len(columns) > 0 {
 		return len(columns[0].Values)
 	}
 	return 0
+}
+
+// rowsLen returns the number of rows in db, including the case when db has no columns.
+func (db *DataBlock) rowsLen() int {
+	columns := db.columns
+	if len(columns) > 0 {
+		return len(columns[0].Values)
+	}
+	return db.rowsCount
 }
 
 // GetColumns returns columns from db.
@@ -1166,7 +1183,7 @@ func (db *DataBlock) GetColumnByName(name string) *BlockColumn {
 
 // Marshal appends marshaled db to dst and returns the result.
 func (db *DataBlock) Marshal(dst []byte) []byte {
-	rowsCount := db.RowsCount()
+	rowsCount := db.rowsLen()
 	dst = encoding.MarshalVarUint64(dst, uint64(rowsCount))
 
 	columns := db.columns
@@ -1280,6 +1297,9 @@ func (db *DataBlock) UnmarshalInplace(src []byte, valuesBuf []string) ([]byte, [
 		}
 	}
 	db.columns = columns
+	if len(columns) == 0 {
+		db.rowsCount = rowsCount
+	}
 
 	return src, valuesBuf, nil
 }
@@ -1294,6 +1314,9 @@ func (db *DataBlock) mustInitFromBlockResult(br *blockResult) {
 			Name:   c.name,
 			Values: values,
 		})
+	}
+	if len(cs) == 0 {
+		db.rowsCount = br.rowsLen
 	}
 }
 

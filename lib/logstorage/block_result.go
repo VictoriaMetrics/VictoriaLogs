@@ -233,7 +233,7 @@ func (br *blockResult) sizeBytes() int {
 func (br *blockResult) mustInitFromDataBlock(db *DataBlock) {
 	br.reset()
 
-	br.rowsLen = db.RowsCount()
+	br.rowsLen = db.rowsLen()
 
 	columns := db.columns
 	for i := range columns {

@@ -120,6 +120,8 @@ func (ps *pipeSort) adjustResultFieldsOrder(fields []string) []string {
 func (ps *pipeSort) updateNeededFields(pf *prefixfilter.Filter) {
 	if pf.MatchNothing() {
 		// There is no need in fetching any fields, since all of them are ignored by the caller.
+		// But partitionByFields must be fetched, since they affect the number of returned rows.
+		pf.AddAllowFilters(ps.partitionByFields)
 		return
 	}
 
