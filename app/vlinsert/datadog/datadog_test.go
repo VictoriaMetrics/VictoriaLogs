@@ -107,4 +107,7 @@ func TestReadLogsRequestSuccess(t *testing.T) {
 	// The timestamp of the previous log mustn't be used for the next log without timestamp
 	f(`[{"message":"foo","timestamp":1000},{"message":"bar"}]`, []int64{1000 * 1e6, 123}, `{"_msg":"foo"}
 {"_msg":"bar"}`)
+
+	// Lambda labels from object message
+	f(`[{"message":{"message":"foo","status":"info","lambda":{"arn":"a","request_id":"r"}}}]`, []int64{123}, `{"_msg":"foo","status":"info","arn":"a","request_id":"r"}`)
 }

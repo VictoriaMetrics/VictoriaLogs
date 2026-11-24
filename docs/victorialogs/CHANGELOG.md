@@ -27,6 +27,7 @@ according to the following docs:
 
 * FEATURE: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): add `-opentelemetry.consistentPrefix` command-line flag, which adds the source to the names of fields. See [OpenTelemetry field names](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#field-names). This prevents field name collisions between attributes from different sources, see [#1371](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371), and helps to align field names with VictoriaMetrics and VictoriaTraces, see [VictoriaMetrics#11542](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11542).
 
+* BUGFIX: [DataDog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/): properly ingest `lambda` labels from object `message` field. Previously, they were dropped because of a typo in the field name. See [#1949](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1949).
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): prevent from unbounded memory usage and a crash when the `extra_filters` or `extra_stream_filters` [query arg](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) contains a [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries), for example `extra_filters=x:in(* | keep x)`. See [#1902](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1902).
 
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
