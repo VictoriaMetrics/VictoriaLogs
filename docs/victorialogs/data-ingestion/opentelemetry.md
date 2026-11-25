@@ -124,7 +124,8 @@ exporters:
 
 By default, VictoriaLogs stores resource attributes and log record attributes without a prefix. This works well in most cases,
 but attributes from different sources may cause field name collisions. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
-So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "#" %}} for new installations.
+So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "#" %}} for new installations
+at every component, which accepts OpenTelemetry data (VictoriaLogs, `vlinsert` or `vlagent`).
 The flag is disabled by default for compatibility with already ingested logs, since it changes field names.
 
 For example, the following OpenTelemetry log record (shown in JSON format for readability):
@@ -183,6 +184,9 @@ and with the following fields when `-opentelemetry.consistentPrefix` is set:
 ```
 
 Fields of a key-value log body are stored as `<key>` by default and as `body.<key>` with the flag.
+
+When the flag is set, HTTP headers such as `VL-Stream-Fields`, `VL-Msg-Field` and `VL-Ignore-Fields` must refer to the prefixed field names,
+for example `VL-Msg-Field: log.attribute.msg,body`.
 
 The flag also helps to align field names with VictoriaMetrics and VictoriaTraces later, when they follow the same naming convention for OpenTelemetry data. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11542).
 

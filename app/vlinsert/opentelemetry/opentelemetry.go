@@ -17,7 +17,7 @@ import (
 
 var (
 	maxRequestSize   = flagutil.NewBytes("opentelemetry.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single OpenTelemetry request")
-	consistentPrefix = flag.Bool("opentelemetry.consistentPrefix", false, "Whether to prefix OpenTelemetry attribute names with their source for the logs ingested via OpenTelemetry protocol. "+
+	consistentPrefix = flag.Bool("opentelemetry.consistentPrefix", false, "Whether to prefix the names of OpenTelemetry attributes and key-value log body fields with their source for the logs ingested via OpenTelemetry protocol. "+
 		"This prevents field name collisions and helps to align field names with VictoriaMetrics and VictoriaTraces; see https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#field-names")
 )
 
