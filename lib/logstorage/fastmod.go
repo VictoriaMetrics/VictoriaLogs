@@ -10,7 +10,7 @@ import (
 // "Faster remainder by direct computation" (2019): h % d = ((m*h mod 2^128) * d) >> 128.
 // The result is exactly h % d for every 64-bit h and every d > 1.
 //
-// A 64-bit DIV costs tens of cycles, while mod needs 3 multiplications.
+// A 64-bit DIV costs tens of cycles, while mod needs 4 multiplications (3 of them 64x64->128-bit).
 // It pays off when many values are divided by the same d, as in initBloomFilter.
 type fastMod struct {
 	mHi, mLo uint64
