@@ -1386,7 +1386,14 @@ contains the following [phrases](https://docs.victoriametrics.com/victorialogs/l
 - uppercase and lowercase phrases
 - individual phrases where every uppercase letter is independently replaced with the corresponding lowercase letter
 
-For example, `_msg:contains_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+For example, `_msg:contains_common_case("Error")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
+contains at least one of the following [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
+
+- Error
+- ERROR
+- error
+
+And `_msg:contains_common_case("VictoriaMetrics")` finds logs where the [`_msg` field](https://docs.victoriametrics.com/victorialogs/keyconcepts/#message-field)
 contains at least one of the following [words](https://docs.victoriametrics.com/victorialogs/logsql/#word):
 
 - VictoriaMetrics
