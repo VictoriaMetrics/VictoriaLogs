@@ -22,7 +22,7 @@ func TestHits(t *testing.T) {
 	sut.ForceFlush(t)
 
 	query := `*`
-	responseExpected := `{"hits":[{"fields":{"hits":"bar"},"timestamps":["2026-03-27T11:50:00Z","2026-03-27T11:55:00Z"],"values":[0,1],"total":1},{"fields":{"hits":"foo"},"timestamps":["2026-03-27T11:50:00Z","2026-03-27T11:55:00Z"],"values":[1,1],"total":2}]}`
+	responseExpected := `{"hits":[{"fields":{"hits":"bar"},"timestamps":["2026-03-27T11:50:00.000000000Z","2026-03-27T11:55:00.000000000Z"],"values":[0,1],"total":1},{"fields":{"hits":"foo"},"timestamps":["2026-03-27T11:50:00.000000000Z","2026-03-27T11:55:00.000000000Z"],"values":[1,1],"total":2}]}`
 
 	queryOpts := apptest.HitsOpts{
 		Start: "2026-03-27T11:50:00Z",
@@ -52,7 +52,7 @@ func TestVlclusterHits(t *testing.T) {
 	sut.ForceFlush(t)
 
 	query := `*`
-	responseExpected := `{"hits":[{"fields":{"hits":"bar"},"timestamps":["2026-03-27T11:50:00Z","2026-03-27T11:55:00Z"],"values":[0,1],"total":1},{"fields":{"hits":"foo"},"timestamps":["2026-03-27T11:50:00Z","2026-03-27T11:55:00Z"],"values":[1,1],"total":2}]}`
+	responseExpected := `{"hits":[{"fields":{"hits":"bar"},"timestamps":["2026-03-27T11:50:00.000000000Z","2026-03-27T11:55:00.000000000Z"],"values":[0,1],"total":1},{"fields":{"hits":"foo"},"timestamps":["2026-03-27T11:50:00.000000000Z","2026-03-27T11:55:00.000000000Z"],"values":[1,1],"total":2}]}`
 
 	queryOpts := apptest.HitsOpts{
 		Start: "2026-03-27T11:50:00Z",

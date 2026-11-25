@@ -19,11 +19,11 @@ func TestVlsingleTimeSortedNResultsOptimization(t *testing.T) {
 	sut := tc.MustStartDefaultVlsingle()
 
 	ingestRecords := []string{
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:00.000000000Z"}`,
 	}
 	sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
 	sut.ForceFlush(t)
@@ -114,7 +114,7 @@ func TestVlsingleTimeSortedNResultsOptimization_IdenticalTimestamps(t *testing.T
 
 		var logLines []string
 		for _, timestamp := range wantTimestamps {
-			logLines = append(logLines, fmt.Sprintf(`{"_time":%q}`, timestamp.Format(time.RFC3339Nano)))
+			logLines = append(logLines, fmt.Sprintf(`{"_time":%q}`, timestamp.Format("2006-01-02T15:04:05.000000000Z07:00")))
 		}
 		wantResponse := &apptest.LogsQLQueryResponse{
 			LogLines: logLines,
@@ -179,11 +179,11 @@ func TestVlsingleTimeSortedNResultsOptimization_SortDirection(t *testing.T) {
 	sut := tc.MustStartDefaultVlsingle()
 
 	ingestRecords := []string{
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:01Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:02Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:03Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:04Z"}`,
-		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:05Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:01.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:02.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:03.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:04.000000000Z"}`,
+		`{"_msg":"Hello, VictoriaLogs!", "_time":"2025-01-01T01:00:05.000000000Z"}`,
 	}
 	sut.JSONLineWrite(t, ingestRecords, apptest.IngestOpts{})
 	sut.ForceFlush(t)

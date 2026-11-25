@@ -381,7 +381,7 @@ func TestInsertRow_MarshalJSON(t *testing.T) {
 	}
 
 	// empty fields
-	f(0, nil, `{"_time":"1970-01-01T00:00:00Z"}`)
+	f(0, nil, `{"_time":"1970-01-01T00:00:00.000000000Z"}`)
 
 	// non-empty fields
 	f(123456789, []Field{

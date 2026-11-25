@@ -20,7 +20,7 @@ func TestVlsingleLiveTailing_Success(t *testing.T) {
 	ingest := func(msg string) string {
 		t.Helper()
 
-		ts := time.Now().UTC().Format(time.RFC3339Nano)
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z07:00")
 		sut.JSONLineWrite(t, []string{fmt.Sprintf(`{"_msg":%q,"_time":%q}`, msg, ts)}, apptest.IngestOpts{})
 		sut.ForceFlush(t)
 		return fmt.Sprintf(`{"_time":%q,"_msg":%q}`, ts, msg)
@@ -64,7 +64,7 @@ func TestVlclusterLiveTailing_Success(t *testing.T) {
 	ingest := func(msg string) string {
 		t.Helper()
 
-		ts := time.Now().UTC().Format(time.RFC3339Nano)
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z07:00")
 		sut.JSONLineWrite(t, []string{fmt.Sprintf(`{"_msg":%q,"_time":%q}`, msg, ts)}, apptest.IngestOpts{})
 		sut.ForceFlush(t)
 		return fmt.Sprintf(`{"_time":%q,"_msg":%q}`, ts, msg)
