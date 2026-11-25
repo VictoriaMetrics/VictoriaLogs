@@ -53,9 +53,8 @@ func newHashTokenizer() *hashTokenizer {
 
 func (t *hashTokenizer) reset() {
 	if t.bm.onesCount() <= len(t.buckets)/4 {
-		t.bm.forEachSetBit(func(idx int) bool {
+		t.bm.forEachSetBitClear(func(idx int) {
 			t.buckets[idx].reset()
-			return false
 		})
 	} else {
 		buckets := t.buckets[:]

@@ -152,6 +152,28 @@ func (bm *bitmap) forEachSetBit(f func(idx int) bool) {
 	}
 }
 
+// forEachSetBitClear calls f for each set bit and then clears all the bits.
+//
+// It visits only the set bits, so it is faster than forEachSetBit for sparse bitmaps,
+// but slower for dense ones.
+func (bm *bitmap) forEachSetBitClear(f func(idx int)) {
+	a := bm.a
+	bitsLen := bm.bitsLen
+	for i, word := range a {
+		if word == 0 {
+			continue
+		}
+		for w := word; w != 0; w &= w - 1 {
+			idx := i*64 + bits.TrailingZeros64(w)
+			if idx >= bitsLen {
+				break
+			}
+			f(idx)
+		}
+		a[i] = 0
+	}
+}
+
 // forEachSetBitReadonly calls f for each set bit
 func (bm *bitmap) forEachSetBitReadonly(f func(idx int)) {
 	if bm.areAllBitsSet() {

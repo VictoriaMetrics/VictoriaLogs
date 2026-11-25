@@ -1,6 +1,7 @@
 package logstorage
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -123,5 +124,29 @@ func TestBitmap(t *testing.T) {
 		}
 
 		putBitmap(bm)
+	}
+}
+
+func TestBitmapForEachSetBitClear(t *testing.T) {
+	for _, bitsLen := range []int{0, 1, 63, 64, 65, 1000, 1024} {
+		for _, step := range []int{1, 2, 7, 64, 100} {
+			var bm bitmap
+			bm.init(bitsLen)
+			var want []int
+			for i := 0; i < bitsLen; i += step {
+				bm.setBit(i)
+				want = append(want, i)
+			}
+			var got []int
+			bm.forEachSetBitClear(func(idx int) {
+				got = append(got, idx)
+			})
+			if !slices.Equal(got, want) {
+				t.Fatalf("bitsLen=%d, step=%d: unexpected bits visited\ngot\n%v\nwant\n%v", bitsLen, step, got, want)
+			}
+			if !bm.isZero() {
+				t.Fatalf("bitsLen=%d, step=%d: the bitmap must be cleared", bitsLen, step)
+			}
+		}
 	}
 }
