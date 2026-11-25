@@ -17,6 +17,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/cgroup"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/encoding"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/regexutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/slicesutil"
 
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/prefixfilter"
@@ -238,6 +239,9 @@ func (s *Storage) runQuery(qctx *QueryContext, writeBlock writeBlockResultFunc) 
 		return err
 	}
 	q := qNew
+	if qctx.IsMultiTenant {
+		q = initTenantStreamFilters(q)
+	}
 
 	// Multitenant queries search the tenants matching the query filter.
 	// If TenantIDs is already set, then search only these tenants.
@@ -329,6 +333,120 @@ func getTenantFilter(q *Query) filter {
 		logger.Panicf("BUG: unexpected error: %s", err)
 	}
 
+	return f
+}
+
+// initTenantStreamFilters returns q with vl_account_id and vl_project_id filters moved from stream filters into field filters.
+//
+// This is needed for multitenant queries, since stored log streams do not contain these labels.
+// For example, `{app="nginx",vl_account_id="12"}` is replaced with `vl_account_id:=12 {app="nginx"}`.
+//
+// Subqueries aren't touched, since they are processed when they are executed via Storage.runQuery.
+//
+// q isn't modified. It is returned as is if its stream filters have no such labels.
+func initTenantStreamFilters(q *Query) *Query {
+	if !hasTenantStreamFilter(q.opts.globalFilter) && !hasTenantStreamFilter(q.f) {
+		return q
+	}
+
+	qNew := q.cloneShallow()
+	qNew.opts.globalFilter = moveTenantStreamFilters(q.opts.globalFilter)
+	qNew.f = moveTenantStreamFilters(q.f)
+	return qNew
+}
+
+// isTenantStreamFilter returns true if f is a stream filter with vl_account_id or vl_project_id labels.
+func isTenantStreamFilter(f filter) bool {
+	fs, ok := f.(*filterStream)
+	if !ok {
+		return false
+	}
+	for _, af := range fs.f.orFilters {
+		for _, tf := range af.tagFilters {
+			if isTenantColumn(tf.tagName) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasTenantStreamFilter(f filter) bool {
+	return f != nil && visitFilterRecursive(f, isTenantStreamFilter)
+}
+
+func moveTenantStreamFilters(f filter) filter {
+	if !hasTenantStreamFilter(f) {
+		return f
+	}
+
+	// move tenant labels out of every OR branch into field filters
+	// e.g., `{vl_account_id="12",app="nginx" or job="api"}` -> `vl_account_id:=12 {app="nginx"} or {job="api"}`.
+	copyFunc := func(f filter) (filter, error) {
+		fs := f.(*filterStream)
+		orFilters := make([]filter, 0, len(fs.f.orFilters))
+		for _, af := range fs.f.orFilters {
+			// split tenant labels from other labels
+			var filters []filter
+			var tagFilters []*streamTagFilter
+			for _, tf := range af.tagFilters {
+				if isTenantColumn(tf.tagName) {
+					filters = append(filters, newFieldFilterFromStreamTagFilter(tf))
+				} else {
+					tagFilters = append(tagFilters, tf)
+				}
+			}
+
+			// keep other labels as a stream filter
+			if len(tagFilters) > 0 {
+				sf := &StreamFilter{
+					orFilters: []*andStreamFilter{
+						{
+							tagFilters: tagFilters,
+						},
+					},
+				}
+				filters = append(filters, newFilterStream(sf))
+			}
+			// do not wrap a single filter into AND, so `!{vl_account_id="12"}` becomes `!vl_account_id:=12`.
+			// getTenantFilter understands only this form of NOT filters, and uses it for skipping the tenant 12.
+			if len(filters) == 1 {
+				orFilters = append(orFilters, filters[0])
+			} else {
+				orFilters = append(orFilters, newFilterAnd(filters))
+			}
+		}
+
+		if len(orFilters) == 1 {
+			// do not wrap a single filter into OR,
+			// so the remaining stream filter can be used for searching streamIDs in the index.
+			return orFilters[0], nil
+		}
+		return newFilterOr(orFilters), nil
+	}
+
+	fNew, err := copyFilter(f, isTenantStreamFilter, copyFunc)
+	if err != nil {
+		logger.Panicf("BUG: unexpected error: %s", err)
+	}
+	return optimizeFilters(fNew)
+}
+
+func newFieldFilterFromStreamTagFilter(tf *streamTagFilter) filter {
+	var f filter
+	if tf.op == "=" || tf.op == "!=" {
+		f = newFilterExact(tf.tagName, tf.value)
+	} else {
+		// stream filter regexps must match the whole value, while field filter regexps match any substring.
+		re, err := regexutil.NewRegex("^(?:" + tf.value + ")$")
+		if err != nil {
+			logger.Panicf("BUG: cannot parse regexp %q, which has been already parsed in the stream filter: %s", tf.value, err)
+		}
+		f = newFilterRegexp(tf.tagName, re)
+	}
+	if tf.op == "!=" || tf.op == "!~" {
+		f = newFilterNot(f)
+	}
 	return f
 }
 

@@ -149,7 +149,9 @@ type blockSearch struct {
 	// seenStreams contains seen streamIDs for the recent searches.
 	//
 	// It is used for speeding up fetching _stream column.
-	seenStreams map[u128]string
+	//
+	// It is keyed by stream + tenant, since a multitenant query can search multiple tenants.
+	seenStreams map[streamID]string
 }
 
 func (bs *blockSearch) reset() {
@@ -613,7 +615,7 @@ func (ih *indexBlockHeader) mustReadBlockHeaders(dst []blockHeader, p *part, qs 
 
 // getStreamStr returns _stream value for the given block at bs.
 func (bs *blockSearch) getStreamStr() string {
-	sid := bs.bsw.bh.streamID.id
+	sid := bs.bsw.bh.streamID
 	streamStr := bs.seenStreams[sid]
 	if streamStr != "" {
 		// Fast path - streamStr is found in the seenStreams.
@@ -628,7 +630,7 @@ func (bs *blockSearch) getStreamStr() string {
 			bs.seenStreams = nil
 		}
 		if bs.seenStreams == nil {
-			bs.seenStreams = make(map[u128]string)
+			bs.seenStreams = make(map[streamID]string)
 		}
 		bs.seenStreams[sid] = streamStr
 	}
@@ -639,7 +641,7 @@ func (bs *blockSearch) getStreamStrSlow() string {
 	bb := bbPool.Get()
 	defer bbPool.Put(bb)
 
-	bb.B = bs.bsw.p.pt.idb.appendStreamString(bb.B[:0], &bs.bsw.bh.streamID)
+	bb.B = bs.bsw.p.pt.idb.appendStreamString(bb.B[:0], &bs.bsw.bh.streamID, bs.bsw.pso.isMultiTenant)
 
 	return string(bb.B)
 }

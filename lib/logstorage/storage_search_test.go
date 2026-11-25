@@ -196,6 +196,18 @@ func TestStorageRunQuery(t *testing.T) {
 						panic(fmt.Errorf("unexpected tenant for the query [%s]; got %s; want %s", q, tenantID, tenantIDExpected))
 					}
 				}
+
+				// Verify that _stream contains the tenant of every row.
+				streams := db.GetColumnByName("_stream")
+				if streams == nil {
+					panic(fmt.Errorf("missing _stream column for the query [%s]", q))
+				}
+				for i, stream := range streams.Values {
+					suffix := fmt.Sprintf(`,job="foobar",vl_account_id="%s",vl_project_id="%s"}`, accountIDs.Values[i], projectIDs.Values[i])
+					if !strings.HasSuffix(stream, suffix) {
+						panic(fmt.Errorf("unexpected _stream for the query [%s]; got %s; want it to end with %s", q, stream, suffix))
+					}
+				}
 			}
 			if err := s.RunQuery(qctx, writeBlock); err != nil {
 				t.Fatalf("unexpected error returned from the query [%s]: %s", q, err)
@@ -213,6 +225,46 @@ func TestStorageRunQuery(t *testing.T) {
 		f(t, `vl_account_id:2 AND _stream:{job="foobar",instance="host-1:234"}`, rowsPerTenantStream)
 		f(t, `vl_account_id:2 OR vl_project_id:31`, 2*rowsPerTenant)
 		f(t, `!vl_account_id:2`, rowsTotal-rowsPerTenant)
+
+		// vl_account_id and vl_project_id in stream filters
+		f(t, `{vl_account_id="2",instance="host-1:234"}`, rowsPerTenantStream)
+		f(t, `{vl_account_id=~"1"}`, rowsPerTenant)
+		f(t, `{vl_account_id="2" or vl_project_id="31"}`, 2*rowsPerTenant)
+		f(t, `{vl_account_id!="2"}`, rowsTotal-rowsPerTenant)
+		f(t, `!{vl_account_id="2"}`, rowsTotal-rowsPerTenant)
+
+		// vl_account_id and vl_project_id in both stream filters and field filters
+		f(t, `{vl_account_id="2"} vl_project_id:=21`, rowsPerTenant)
+		f(t, `{vl_account_id="2"} vl_project_id:=31`, 0)
+		f(t, `{vl_account_id=~"1|2"} vl_project_id:=11`, rowsPerTenant)
+		f(t, `{vl_account_id="2"} or vl_project_id:=31`, 2*rowsPerTenant)
+		f(t, `{instance="host-1:234"} vl_account_id:in(1,2)`, 2*rowsPerTenantStream)
+		f(t, `{vl_account_id="2"} stream-id:="stream_id=1"`, rowsPerTenantStream)
+		f(t, `{vl_account_id="2"} !{instance="host-1:234"}`, rowsPerTenant-rowsPerTenantStream)
+
+		// regexp, in and not_in in stream filters must match the whole tenant value.
+		// The stored tenants have vl_account_id from 0 to 10 and vl_project_id=10*vl_account_id+1.
+		f(t, `{vl_account_id=~"0"}`, rowsPerTenant)
+		f(t, `{vl_account_id=~"1.*"}`, 2*rowsPerTenant)
+		f(t, `{vl_account_id!~"1|2"}`, rowsTotal-2*rowsPerTenant)
+		f(t, `{vl_account_id!~"1.*"}`, rowsTotal-2*rowsPerTenant)
+		f(t, `{vl_project_id=~"[12]1"}`, 2*rowsPerTenant)
+		f(t, `{vl_account_id in (1,2)}`, 2*rowsPerTenant)
+		f(t, `{vl_account_id not_in (1,2)}`, rowsTotal-2*rowsPerTenant)
+		f(t, `{vl_account_id in (*)}`, rowsTotal)
+		f(t, `{vl_account_id not_in (*)}`, 0)
+		f(t, `{vl_account_id=~"1|2",instance=~"host-[01]:234"}`, 4*rowsPerTenantStream)
+
+		// stream filters with multiple OR branches
+		f(t, `{vl_account_id="1",instance="host-0:234" or vl_account_id="2",instance="host-1:234"}`, 2*rowsPerTenantStream)
+		f(t, `{vl_account_id="1" or vl_account_id="2",instance="host-1:234"}`, rowsPerTenant+rowsPerTenantStream)
+		f(t, `{vl_account_id=~"1|2",instance=~"host-[01]:234" or vl_project_id="31"}`, 4*rowsPerTenantStream+rowsPerTenant)
+		f(t, `{vl_account_id="1",instance="host-0:234" or vl_account_id="1",instance="host-1:234"} error`, 0)
+		f(t, `{vl_account_id="1",instance="host-0:234" or vl_account_id="1",instance="host-1:234"} "log message"`, 2*rowsPerTenantStream)
+
+		// vl_account_id in stream filters inside subqueries
+		f(t, `{vl_account_id="2"} _msg:in({vl_account_id="3"} | fields _msg)`, rowsPerTenant)
+		f(t, `{vl_account_id="2"} _msg:in({vl_account_id="12345"} | fields _msg)`, 0)
 	})
 	t.Run("matching-in-filter", func(t *testing.T) {
 		q := mustParseQuery(`source-file:in(foobar,/foo/bar/baz)`)
@@ -1796,6 +1848,50 @@ func TestStorageGetFieldNamesMultitenant(t *testing.T) {
 	if !reflect.DeepEqual(results, resultsExpected) {
 		t.Fatalf("unexpected result; got\n%v\nwant\n%v", results, resultsExpected)
 	}
+}
+
+func TestInitTenantStreamFilters(t *testing.T) {
+	t.Parallel()
+
+	f := func(query, resultExpected string) {
+		t.Helper()
+
+		q := mustParseQuery(query)
+		qStr := q.String()
+		if result := initTenantStreamFilters(q).String(); result != resultExpected {
+			t.Fatalf("unexpected result for query [%s]\ngot\n%s\nwant\n%s", query, result, resultExpected)
+		}
+		if s := q.String(); s != qStr {
+			t.Fatalf("the original query must not be modified\ngot\n%s\nwant\n%s", s, qStr)
+		}
+	}
+
+	f(`{app="nginx"} error`, `{app="nginx"} error`)
+	f(`{vl_account_id="12",app="nginx"} error`, `{app="nginx"} vl_account_id:=12 error`)
+	f(`{vl_account_id!="12"}`, `!vl_account_id:=12`)
+	f(`!{vl_account_id="12"}`, `!vl_account_id:=12`)
+	f(`{vl_account_id in ("12","13")}`, `vl_account_id:~"^(?:12|13)$"`)
+	f(`{vl_account_id="12" or app="nginx"}`, `vl_account_id:=12 or {app="nginx"}`)
+	f(`{vl_account_id="12"} x:in({vl_account_id="13"} | fields x)`, `vl_account_id:=12 x:in({vl_account_id="13"} | fields x)`)
+	f(`options(global_filter=({vl_account_id="12"})) error`, `options(global_filter=(vl_account_id:=12)) error`)
+
+	// vl_account_id and vl_project_id in both stream filters and field filters
+	f(`{vl_account_id="12",app="nginx"} vl_project_id:=34`, `{app="nginx"} vl_account_id:=12 vl_project_id:=34`)
+	f(`{vl_account_id="12"} or vl_project_id:=34`, `vl_account_id:=12 or vl_project_id:=34`)
+	f(`vl_account_id:=12 {vl_project_id="34"} error`, `vl_project_id:=34 vl_account_id:=12 error`)
+
+	// regexp, in and not_in in stream filters
+	f(`{vl_account_id=~"1.*"}`, `vl_account_id:~"^(?:1.*)$"`)
+	f(`{vl_account_id!~"1|2"}`, `!vl_account_id:~"^(?:1|2)$"`)
+	f(`{vl_account_id not_in ("12","13")}`, `!vl_account_id:~"^(?:12|13)$"`)
+	f(`{vl_account_id in (*)}`, `vl_account_id:~"^(?:.*)$"`)
+	f(`{vl_account_id=~"1",app=~"ng.*"}`, `{app=~"ng.*"} vl_account_id:~"^(?:1)$"`)
+
+	// stream filters with multiple OR branches
+	f(`{vl_account_id="12",app="nginx" or vl_account_id="13",app="apache"} error`, `(vl_account_id:=12 {app="nginx"} or vl_account_id:=13 {app="apache"}) error`)
+	f(`{vl_account_id="12" or vl_account_id="13",app="nginx" or job="x"}`, `vl_account_id:=12 or vl_account_id:=13 {app="nginx"} or {job="x"}`)
+	f(`{vl_account_id="12",vl_project_id="34",app="nginx" or vl_project_id!="35"} error`, `(vl_account_id:=12 vl_project_id:=34 {app="nginx"} or !vl_project_id:=35) error`)
+	f(`!{vl_account_id="12",app="nginx" or vl_account_id="13"}`, `!(vl_account_id:=12 {app="nginx"} or vl_account_id:=13)`)
 }
 
 func TestGetTenantFilter(t *testing.T) {
