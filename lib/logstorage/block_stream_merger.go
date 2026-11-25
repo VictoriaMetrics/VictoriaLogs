@@ -258,7 +258,7 @@ func (bsm *blockStreamMerger) mustWriteBlockData(bd *blockData) {
 		if hasOnlyTimeFilters(df.filter) && td.minTimestamp >= df.minTimestamp && td.maxTimestamp <= df.maxTimestamp {
 			// Fast path: drop the whole bd, since all its rows match the dropFilter.
 			// This path occurs when the dropFilter contains only stream filter - '{...}' - and time filters (delete query always contains time filter).
-			// The stream filter goes to dropFilter.streamFilter, while time filters stay in dropFilter.filter.
+			// The stream filter is resolved into dropFilter.tenantIDs/streamIDs, while time filters stay in dropFilter.filter.
 			return
 		}
 		// Slow path - unpack bd and drop the needed rows before the merge.
