@@ -151,7 +151,9 @@ func appendHashesHashes(dst, hashes []uint64) []uint64 {
 	dst = slicesutil.SetLength(dst, dstLen+hashesCount)
 	out := dst[dstLen:]
 
-	for _, h := range hashes {
+	n := initHashesHashesSIMD(out, hashes)
+	out = out[n*bloomFilterHashesCount:]
+	for _, h := range hashes[n:] {
 		o := out[:bloomFilterHashesCount]
 		for k := range o {
 			o[k] = hashUint64(h + uint64(k))
