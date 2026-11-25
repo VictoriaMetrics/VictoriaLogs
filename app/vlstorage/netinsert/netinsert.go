@@ -47,6 +47,10 @@ type Storage struct {
 
 	pendingDataBuffers chan *bytesutil.ByteBuffer
 
+	// freeSlotCh is notified when a slot in storageNode.concurrencyCh is freed, so a data block waiting
+	// in mustSendInsertRequest can take the slot before newly flushed data blocks do.
+	freeSlotCh chan struct{}
+
 	stopCh chan struct{}
 
 	sendCtx    context.Context
@@ -242,17 +246,17 @@ func (sn *storageNode) mustSendInsertRequest(pendingData *bytesutil.ByteBuffer) 
 		logger.Warnf("%s; re-routing the data block to the remaining nodes", err)
 	}
 	for !sn.s.sendInsertRequestToAnyNode(pendingData) {
-		logger.Errorf("cannot send pending data to storage nodes, since all of them are unavailable or overloaded; re-trying to send the data in a second")
-
 		t := timerpool.Get(time.Second)
 		select {
+		case <-sn.s.freeSlotCh:
+		case <-t.C:
+			logger.Errorf("cannot send pending data to storage nodes during the last second, since all of them are unavailable or overloaded; re-trying to send the data")
 		case <-sn.s.sendCtx.Done():
 			timerpool.Put(t)
 			logger.Errorf("dropping %d bytes of data, since all storage nodes are unavailable or overloaded", pendingData.Len())
 			return
-		case <-t.C:
-			timerpool.Put(t)
 		}
+		timerpool.Put(t)
 	}
 }
 
@@ -276,6 +280,19 @@ func (sn *storageNode) sendInsertRequest(pendingData *bytesutil.ByteBuffer) erro
 	}
 	defer func() {
 		<-sn.concurrencyCh
+
+		// Notify that a slot in concurrencyCh is freed. The cases are:
+		// - If a data block is waiting, the channel is empty, and Go hands the notification directly
+		//   to the waiting goroutine without putting it into the channel.
+		// - If no data block is waiting:
+		//   - If the channel is full, skip the notification. The pending notification already wakes up
+		//     the next waiting data block, which retries all the storage nodes and finds this slot too.
+		//   - If the channel is empty, keep the notification in the channel. A data block that has just
+		//     failed to find a free slot, but hasn't started waiting yet, receives it and doesn't miss this slot.
+		select {
+		case sn.s.freeSlotCh <- struct{}{}:
+		default:
+		}
 	}()
 
 	var body io.Reader
@@ -369,6 +386,7 @@ func NewStorage(addrs []string, authCfgs []*promauth.Config, isTLSs []bool, conc
 		disableCompression: disableCompression,
 		drainTimeout:       drainTimeout,
 		pendingDataBuffers: pendingDataBuffers,
+		freeSlotCh:         make(chan struct{}, 1),
 		stopCh:             make(chan struct{}),
 	}
 	s.sendCtx, s.sendCancel = context.WithCancel(context.Background())
