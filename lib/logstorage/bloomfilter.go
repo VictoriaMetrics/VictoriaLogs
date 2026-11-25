@@ -3,7 +3,6 @@ package logstorage
 import (
 	"fmt"
 	"sync"
-	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -130,14 +129,10 @@ func appendTokensHashes(dst []uint64, tokens []string) []uint64 {
 	dst = slicesutil.SetLength(dst, dstLen+hashesCount)
 	dst = dst[:dstLen]
 
-	var buf [8]byte
-	hp := (*uint64)(unsafe.Pointer(&buf[0]))
 	for _, token := range tokens {
-		*hp = xxhash.Sum64(bytesutil.ToUnsafeBytes(token))
-		for range bloomFilterHashesCount {
-			h := xxhash.Sum64(buf[:])
-			(*hp)++
-			dst = append(dst, h)
+		h := xxhash.Sum64(bytesutil.ToUnsafeBytes(token))
+		for k := range uint64(bloomFilterHashesCount) {
+			dst = append(dst, hashUint64(h+k))
 		}
 	}
 	return dst
@@ -154,17 +149,14 @@ func appendHashesHashes(dst, hashes []uint64) []uint64 {
 	hashesCount := len(hashes) * bloomFilterHashesCount
 
 	dst = slicesutil.SetLength(dst, dstLen+hashesCount)
-	dst = dst[:dstLen]
+	out := dst[dstLen:]
 
-	var buf [8]byte
-	hp := (*uint64)(unsafe.Pointer(&buf[0]))
 	for _, h := range hashes {
-		*hp = h
-		for range bloomFilterHashesCount {
-			h := xxhash.Sum64(buf[:])
-			(*hp)++
-			dst = append(dst, h)
+		o := out[:bloomFilterHashesCount]
+		for k := range o {
+			o[k] = hashUint64(h + uint64(k))
 		}
+		out = out[bloomFilterHashesCount:]
 	}
 	return dst
 }
