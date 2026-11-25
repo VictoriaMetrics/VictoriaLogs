@@ -52,12 +52,12 @@ func RequestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request,
 
 		// Log slow queries executed by this vlstorage node without counting the time spent in the queue.
 		if strings.HasPrefix(path, "/internal/select/") && logSlowQueryDuration > 0 {
-			d := time.Since(startTime.Add(waitDuration))
-			if d >= logSlowQueryDuration {
+			executionDuration := time.Since(startTime.Add(waitDuration))
+			if executionDuration >= logSlowQueryDuration {
 				remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 				requestURI := httpserver.GetRequestURI(r)
 				logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, executionDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
-					logSlowQueryDuration, remoteAddr, d.Seconds(), waitDuration.Seconds(), requestURI)
+					logSlowQueryDuration, remoteAddr, executionDuration.Seconds(), waitDuration.Seconds(), requestURI)
 				metrics.GetOrCreateCounter(`vl_slow_queries_total`).Inc()
 			}
 		}
