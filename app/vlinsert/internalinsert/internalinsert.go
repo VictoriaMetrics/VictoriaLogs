@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	maxRequestSize = flagutil.NewBytes("internalinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /internal/insert HTTP endpoint")
+	maxRequestSize = flagutil.NewBytes("internalinsert.maxRequestSize", 64*1024*1024, "The maximum size in bytes of a single request, which can be accepted at /internal/rpc/insert HTTP endpoint")
 )
 
-// RequestHandler processes /internal/insert requests.
+// RequestHandler processes /internal/rpc/insert requests.
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	if r.Method != "POST" {
@@ -46,30 +46,30 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if cp.TenantID.AccountID != 0 || cp.TenantID.ProjectID != 0 {
-		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting tenantID via AccountID and ProjectID request headers; "+
+		unsupportedOptionsLogger.Warnf("/internal/rpc/insert endpoint doesn't support setting tenantID via AccountID and ProjectID request headers; "+
 			"ignoring it; tenantID=%q", cp.TenantID)
 		cp.TenantID = logstorage.TenantID{}
 	}
 
 	if cp.IsTimeFieldSet {
-		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; "+
+		unsupportedOptionsLogger.Warnf("/internal/rpc/insert endpoint doesn't support setting time fields via _time_field query arg and via VL-Time-Field request header; "+
 			"ignoring them; timeFields=%q", cp.TimeFields)
 	}
 	// Unconditionally reset cp.TimeFields, since the code below shouldn't depend on this field.
 	cp.TimeFields = nil
 
 	if len(cp.MsgFields) > 0 {
-		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; "+
+		unsupportedOptionsLogger.Warnf("/internal/rpc/insert endpoint doesn't support setting msg fields via _msg_field query arg and via VL-Msg-Field request header; "+
 			"ignoring them; msgFields=%q", cp.MsgFields)
 		cp.MsgFields = nil
 	}
 	if len(cp.StreamFields) > 0 {
-		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting stream fields via _stream_fields query arg and via VL-Stream-Fields request header; "+
+		unsupportedOptionsLogger.Warnf("/internal/rpc/insert endpoint doesn't support setting stream fields via _stream_fields query arg and via VL-Stream-Fields request header; "+
 			"ignoring them; streamFields=%q", cp.StreamFields)
 		cp.StreamFields = nil
 	}
 	if len(cp.DecolorizeFields) > 0 {
-		unsupportedOptionsLogger.Warnf("/internal/insert endpoint doesn't support setting decolorize_fields query arg and VL-Decolorize-Fields request header; "+
+		unsupportedOptionsLogger.Warnf("/internal/rpc/insert endpoint doesn't support setting decolorize_fields query arg and VL-Decolorize-Fields request header; "+
 			"ignoring them; decolorizeFields=%q", cp.DecolorizeFields)
 		cp.DecolorizeFields = nil
 	}
@@ -114,8 +114,8 @@ func parseData(irp insertutil.InsertRowProcessor, data []byte) error {
 }
 
 var (
-	requestsTotal = metrics.NewCounter(`vl_http_requests_total{path="/internal/insert"}`)
-	errorsTotal   = metrics.NewCounter(`vl_http_errors_total{path="/internal/insert"}`)
+	requestsTotal = metrics.NewCounter(`vl_http_requests_total{path="/internal/rpc/insert"}`)
+	errorsTotal   = metrics.NewCounter(`vl_http_errors_total{path="/internal/rpc/insert"}`)
 
-	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/internal/insert"}`)
+	requestDuration = metrics.NewSummary(`vl_http_request_duration_seconds{path="/internal/rpc/insert"}`)
 )
