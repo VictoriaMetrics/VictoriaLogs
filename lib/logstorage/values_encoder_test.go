@@ -146,6 +146,13 @@ func TestTryParseIPv4_Failure(t *testing.T) {
 	f("127.-1.127.127")
 	f("127.127.-1.127")
 	f("127.127.127.-1")
+
+	// Two-char octets with invalid second char
+	f("127.0.0.1x")
+	f("127.0.1x.0")
+	f("127.1x.0.0")
+	f("1x.0.0.0")
+	f("127.0.0.1:")
 }
 
 func TestTryParseTimestampRFC3339NanoString_Success(t *testing.T) {
@@ -242,6 +249,14 @@ func TestTryParseTimestampRFC3339Nano_Failure(t *testing.T) {
 
 	// invalid second
 	f("2023-01-23T23:33:ssZ")
+
+	// invalid second char in two-digit parts
+	f("2023-0M-11T23:47:17Z")
+	f("2023-01-1DT23:47:17Z")
+	f("2023-01-23T2h:47:17Z")
+	f("2023-01-23T23:4m:17Z")
+	f("2023-01-23T23:33:1sZ")
+	f("2023-01-23T23:33:17.1xZ")
 }
 
 func TestTryParseTimestampISO8601String_Success(t *testing.T) {
@@ -316,6 +331,10 @@ func TestTryParseTimestampISO8601_Failure(t *testing.T) {
 
 	// invalid second
 	f("2023-01-23T23:33:ss.123Z")
+
+	// invalid second char in two-digit parts
+	f("2023-01-23T23:4m:17.123Z")
+	f("2023-01-23T23:33:1s.123Z")
 }
 
 func TestTryParseDuration_Success(t *testing.T) {
