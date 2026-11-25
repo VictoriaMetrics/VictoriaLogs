@@ -475,6 +475,8 @@ The following steps must be performed to make a backup of the given `YYYYMMDD` p
 1. To remove the snapshot with `/internal/partition/snapshot/delete?path=<path-to-snapshot>` endpoint.
    See also [other ways to remove snapshots](https://docs.victoriametrics.com/victorialogs/#how-to-remove-snapshots).
    It is important to remove unneeded snapshots in order to free up storage space.
+   The number of existing snapshots is exposed via the `vl_snapshots` [metric](https://docs.victoriametrics.com/victorialogs/metrics/#vl_snapshots).
+   If it keeps growing, then some snapshots aren't removed after backups.
 
 The following steps must be performed for restoring the partition data from backup:
 
