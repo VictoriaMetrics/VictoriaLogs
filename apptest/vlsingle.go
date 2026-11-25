@@ -156,7 +156,7 @@ func (app *Vlsingle) LogsQLQueryRaw(t *testing.T, query string, opts QueryOpts) 
 	values := opts.asURLValues()
 	values.Add("query", query)
 
-	url := fmt.Sprintf("http://%s/select/logsql/query", app.node.httpListenAddr)
+	url := fmt.Sprintf("http://%s%s", app.node.httpListenAddr, opts.queryPath())
 	return app.node.cli.PostFormWithTenant(t, opts.AccountID, opts.ProjectID, url, values)
 }
 
