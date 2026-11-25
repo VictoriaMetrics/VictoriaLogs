@@ -261,19 +261,20 @@ func selectHandler(w http.ResponseWriter, r *http.Request, path string) bool {
 	defer decRequestConcurrency()
 
 	waitDuration := time.Since(startTime)
+	executionStartTime := time.Now()
 
 	ok := processSelectRequest(ctxWithTimeout, w, r, path)
 	if !ok {
 		return false
 	}
 
-	// Log slow queries
+	// Log slow queries without counting the time spent in the queue.
 	if *logSlowQueryDuration > 0 {
-		d := time.Since(startTime)
+		d := time.Since(executionStartTime)
 		if d >= *logSlowQueryDuration {
 			remoteAddr := httpserver.GetQuotedRemoteAddr(r)
 			requestURI := httpserver.GetRequestURI(r)
-			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, totalDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
+			logger.Warnf("slow query according to -search.logSlowQueryDuration=%s: remoteAddr=%s, executionDuration=%.3f seconds, waitDuration=%.3f seconds; requestURI: %q",
 				*logSlowQueryDuration, remoteAddr, d.Seconds(), waitDuration.Seconds(), requestURI)
 			slowQueries.Inc()
 		}

@@ -290,7 +290,7 @@ These metrics follow the Prometheus exposition format and can be used for monito
 ### vl_slow_queries_total
 **Type:** Counter
 
-**Description:** The number of queries logged as slow because they took longer than `-search.logSlowQueryDuration` including the time spent waiting in the queue. In [cluster](https://docs.victoriametrics.com/victorialogs/cluster/) `vlstorage` nodes expose this metric too, which helps finding the slow node.
+**Description:** The number of queries logged as slow because their execution took longer than `-search.logSlowQueryDuration`. In [cluster](https://docs.victoriametrics.com/victorialogs/cluster/) `vlstorage` nodes expose this metric too, which helps finding the slow node.
 
 
 ## Concurrency and Resource Metrics
