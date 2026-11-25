@@ -52,8 +52,7 @@ func TestBlockDataCopyFrom(t *testing.T) {
 	f := func(bd *blockData) {
 		t.Helper()
 
-		a := getArena()
-		defer putArena(a)
+		a := &arena{}
 
 		var bd2 blockData
 		bd2.copyFrom(a, bd)
