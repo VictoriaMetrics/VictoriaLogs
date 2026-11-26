@@ -20,11 +20,11 @@ export const useFetchTotals = () => {
   const [totalsPrev, setTotalsPrev] = useState<Logs>();
   const [periods, setPeriods] = useState<{curr: TimeParams, prev: TimeParams}>();
 
-  const { isLoading, error, fetchLogs, abort } = useFetchLogs();
+  const currentRequest = useFetchLogs();
+  const previousRequest = useFetchLogs();
 
   useEffect(() => {
     let isCurrent = true;
-    abort();
     setTotals(undefined);
     setTotalsPrev(undefined);
 
@@ -33,8 +33,8 @@ export const useFetchTotals = () => {
         const prevPeriod = getPreviousRange(period);
 
         const [currRes, prevRes] = await Promise.all([
-          fetchLogs({ query, limit: 1, period, extraParams }),
-          fetchLogs({ query, limit: 1, period: prevPeriod, extraParams }),
+          currentRequest.fetchLogs({ query, limit: 1, period, extraParams }),
+          previousRequest.fetchLogs({ query, limit: 1, period: prevPeriod, extraParams }),
         ]);
         if (!isCurrent) return;
 
@@ -53,7 +53,8 @@ export const useFetchTotals = () => {
 
     return () => {
       isCurrent = false;
-      abort();
+      currentRequest.abort();
+      previousRequest.abort();
     };
   }, [period, extraParams.toString(), tenantRequestKey]);
 
@@ -61,7 +62,7 @@ export const useFetchTotals = () => {
     totals,
     totalsPrev,
     periods,
-    isLoading,
-    error,
+    isLoading: currentRequest.isLoading || previousRequest.isLoading,
+    error: currentRequest.error || previousRequest.error,
   };
 };
