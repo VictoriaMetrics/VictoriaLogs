@@ -27,8 +27,6 @@
   }
 
   &-details {
-    //display: grid;
-    //grid-template-columns: auto 1fr;
     margin-top: $padding-small;
     grid-column: 1/span 2;
     font-size: $font-size-small;
@@ -37,6 +35,13 @@
     border-radius: $border-radius-medium;
     border: $border-divider;
     overflow: hidden;
+
+    &__title {
+      font-weight: bold;
+      color: $color-text-secondary;
+      padding: $padding-small $padding-global;
+      font-size: $font-size-small;
+    }
 
     &-list {
       &__item {

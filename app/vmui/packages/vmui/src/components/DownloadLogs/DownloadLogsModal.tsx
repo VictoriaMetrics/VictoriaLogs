@@ -99,7 +99,7 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
               <div className="vm-download-logs-details">
                 <Accordion
                   defaultExpanded={false}
-                  title={<div className="vm-timezones-list-group__title">Export details</div>}
+                  title={<div className="vm-download-logs-details__title">Export details</div>}
                 >
                   <div className="vm-download-logs-details-list">
                     <div className="vm-download-logs-details-list__item">
