@@ -41,6 +41,7 @@ var (
 		"See https://docs.victoriametrics.com/victorialogs/data-ingestion/journald/#multitenancy")
 	journaldIncludeEntryMetadata = flag.Bool("journald.includeEntryMetadata", false, "Include Journald fields with double underscore prefixes")
 	journaldUseRemoteIP          = flag.Bool("journald.useRemoteIP", false, "Whether to add the remote IP address as the remote_ip log field for ingested journald messages.")
+	journaldMaxFieldSize         = flagutil.NewBytes("journald.maxFieldSize", 64*1024*1024, "The maximum size in bytes of a single binary field value in Journald upload requests")
 )
 
 var tenantID logstorage.TenantID
@@ -304,6 +305,9 @@ func readJournaldLogEntry(streamName string, lr *insertutil.LineReader, remoteIP
 				}
 			}
 			size := binary.LittleEndian.Uint64(fb.value[:8])
+			if maxSize := uint64(journaldMaxFieldSize.IntN()); size > maxSize {
+				return fmt.Errorf("binary field %q declared size %d bytes exceeds -journald.maxFieldSize=%d", fb.name, size, maxSize)
+			}
 
 			// Read the value until its length exceeds the given size - the last char in the read value will always be '\n'
 			// because it is appended by appendNextLineToValue().
