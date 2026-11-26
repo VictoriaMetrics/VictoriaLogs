@@ -37,17 +37,17 @@ const Checkbox: FC<CheckboxProps> = ({
   });
 
   return (
-    <div
+    <span
       className={checkboxClasses}
       onClick={toggleCheckbox}
     >
-      <div className="vm-checkbox-track">
-        <div className="vm-checkbox-track__thumb">
+      <span className="vm-checkbox-track">
+        <span className="vm-checkbox-track__thumb">
           {customIcon || <DoneIcon/>}
-        </div>
-      </div>
+        </span>
+      </span>
       {label && <span className="vm-checkbox__label">{label}</span>}
-    </div>
+    </span>
   );
 };
 

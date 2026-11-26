@@ -69,7 +69,8 @@ const TenantsSelect: FC<Props> = ({
         })}
       >
         {!search.value && isMultitenantMode && (
-          <div
+          <button
+            type="button"
             className={classNames({
               "vm-tenant-input-list-item": true,
               "vm-tenant-input-list-item_all": true,
@@ -84,11 +85,12 @@ const TenantsSelect: FC<Props> = ({
               color="primary"
             />
             Select all
-          </div>
+          </button>
         )}
 
         {tenants.map(id => (
-          <div
+          <button
+            type="button"
             className={classNames({
               "vm-tenant-input-list-item": true,
               "vm-list-item": true,
@@ -111,7 +113,7 @@ const TenantsSelect: FC<Props> = ({
                 <span className="vm-tenant-input-list-item__missing">unavailable</span>
               </Tooltip>
             )}
-          </div>
+          </button>
         ))}
       </div>
     </div>

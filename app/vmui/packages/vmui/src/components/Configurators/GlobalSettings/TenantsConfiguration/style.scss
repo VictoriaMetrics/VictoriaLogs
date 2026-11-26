@@ -54,6 +54,11 @@
     }
 
     &-item {
+      &:focus-visible {
+        outline: revert;
+        outline-offset: -2px;
+      }
+
       &_all {
         color: $color-text-secondary;
       }
