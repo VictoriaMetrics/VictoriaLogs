@@ -513,7 +513,9 @@ By default, VictoriaLogs queries a single tenant per request. The requested tena
 
 It is also possible to query multiple tenants in a single request via `/select/multitenant/logsql/*` endpoints.
 These endpoints are disabled by default and can be enabled by passing `-multitenantselect.enable` command-line flag to VictoriaLogs or `vlselect`.
-Requests to `/select/multitenant/logsql/*` endpoints must not contain `AccountID` and `ProjectID` request headers.
+If `/select/multitenant/logsql/*` requests contain `AccountID` and `ProjectID` request headers, then the query is limited to the given tenant.
+A missing `AccountID` or `ProjectID` header means `0`, like for other endpoints. For example, `AccountID: 12` limits the query to the `(AccountID=12, ProjectID=0)` tenant.
+The `AccountID: multitenant` request header doesn't limit the query to any tenant.
 
 Use `vl_account_id` and `vl_project_id` fields in LogsQL filters for limiting the query to the needed tenants.
 If the query has no filters on these fields, then it searches all the tenants.

@@ -130,10 +130,47 @@ func testMultitenantQuery(t *testing.T, sut multitenantQueryApp) {
 		}
 	}
 
-	// AccountID and ProjectID headers aren't allowed
-	fError(`vl_account_id:1`, apptest.QueryOpts{
+	fHeaders := func(query, accountID, projectID string, extraFilters []string, responseExpected []string) {
+		t.Helper()
+
+		got := sut.LogsQLQuery(t, query+" | keep _msg, vl_account_id, vl_project_id", apptest.QueryOpts{
+			MultiTenant:  true,
+			AccountID:    accountID,
+			ProjectID:    projectID,
+			ExtraFilters: extraFilters,
+		})
+		wantResponse := &apptest.LogsQLQueryResponse{
+			LogLines: responseExpected,
+		}
+		assertLogsQLResponseEqual(t, got, wantResponse)
+	}
+
+	// `AccountID: multitenant` header doesn't limit the query to any tenant
+	fHeaders(`*`, "multitenant", "", nil, []string{
+		`{"_msg":"a1","vl_account_id":"1","vl_project_id":"11"}`,
+		`{"_msg":"a2","vl_account_id":"1","vl_project_id":"11"}`,
+		`{"_msg":"b1","vl_account_id":"1","vl_project_id":"12"}`,
+		`{"_msg":"c1","vl_account_id":"2","vl_project_id":"21"}`,
+	})
+
+	// AccountID and ProjectID headers limit the query to the given tenant
+	fHeaders(`*`, "1", "12", nil, []string{
+		`{"_msg":"b1","vl_account_id":"1","vl_project_id":"12"}`,
+	})
+
+	// AccountID and ProjectID headers are intersected with extra_filters
+	fHeaders(`*`, "1", "11", []string{`vl_account_id:in(1,2)`}, []string{
+		`{"_msg":"a1","vl_account_id":"1","vl_project_id":"11"}`,
+		`{"_msg":"a2","vl_account_id":"1","vl_project_id":"11"}`,
+	})
+	fHeaders(`*`, "1", "11", []string{`vl_account_id:2`}, nil)
+
+	// AccountID and ProjectID headers apply to subqueries
+	fHeaders(`user:in(_msg:a1 | fields user)`, "2", "21", nil, nil)
+
+	// invalid AccountID header
+	fError(`*`, apptest.QueryOpts{
 		MultiTenant: true,
-		AccountID:   "1",
-		ProjectID:   "11",
-	}, "AccountID and ProjectID request headers must not be set")
+		AccountID:   "foo",
+	}, "cannot obtain tenantID")
 }

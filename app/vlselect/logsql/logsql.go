@@ -1501,12 +1501,15 @@ func parseCommonArgs(r *http.Request, isMultiTenant bool) (*commonArgs, error) {
 // This is used by live tailing, since it processes only newly ingested logs
 // and doesn't scan historical data even if the query contains a wide time filter.
 func parseCommonArgsExt(r *http.Request, isMultiTenant, skipMaxQueryTimeRangeCheck bool) (*commonArgs, error) {
-	// Multitenant requests select tenants via vl_account_id and vl_project_id filters in the query,
-	// so they must not contain AccountID and ProjectID headers.
+	// AccountID and ProjectID headers limit multitenant requests to the given tenant, unless AccountID is `multitenant`.
 	var tenantIDs []logstorage.TenantID
 	if isMultiTenant {
-		if logstorage.HasTenantIDFromRequest(r) {
-			return nil, fmt.Errorf("AccountID and ProjectID request headers must not be set for /select/multitenant/logsql/* requests")
+		if logstorage.HasTenantIDFromRequest(r) && r.Header.Get("AccountID") != "multitenant" {
+			tenantID, err := logstorage.GetTenantIDFromRequest(r)
+			if err != nil {
+				return nil, fmt.Errorf("cannot obtain tenantID: %w", err)
+			}
+			tenantIDs = []logstorage.TenantID{tenantID}
 		}
 	} else {
 		tenantID, err := logstorage.GetTenantIDFromRequest(r)
