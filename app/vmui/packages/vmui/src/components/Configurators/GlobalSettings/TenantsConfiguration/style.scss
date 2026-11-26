@@ -3,38 +3,118 @@
 .vm-tenant-input {
   position: relative;
 
+  &__alert {
+    padding: $padding-small;
+    max-width: 300px;
+  }
+
+  &__empty,
+  &__loading {
+    color: $color-text-secondary;
+    font-size: $font-size-small;
+    padding: $padding-global;
+  }
+
+  &__loading {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    align-items: center;
+    justify-content: center;
+    gap: $padding-small;
+  }
+
+  &__search {
+    padding: 2px $padding-small;
+
+    input::placeholder {
+      font-size: $font-size-small;
+    }
+  }
+
+  &__fields {
+    display: grid;
+    gap: calc($padding-small / 2);
+    padding: $padding-global;
+  }
+
   &-list {
+    min-width: 280px;
     max-height: 300px;
     overflow: auto;
     overscroll-behavior: none;
     border-radius: $border-radius-medium;
 
     &_mobile {
-      max-height: calc(($vh * 100) - 70px);
+      max-height: none;
+      overscroll-behavior: auto;
     }
 
     &_mobile &__search {
       padding: 0 $padding-global $padding-small;
     }
 
-    &__fields {
-      display: grid;
-      gap: calc($padding-small/2);
-      padding: $padding-global;
+    &-item {
+      &_all {
+        color: $color-text-secondary;
+      }
+
+      &_missing {
+        color: $color-text-secondary;
+      }
+
+      &__missing {
+        flex-grow: 1;
+        text-align: right;
+      }
+    }
+  }
+
+  &__buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: $padding-small;
+    padding: $padding-small;
+    border-top: $border-divider;
+  }
+
+  &-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $padding-global;
+    padding-block: calc($padding-small / 2);
+    padding-inline: $padding-small calc($padding-small / 2);
+    border-bottom: $border-divider;
+
+    &_mobile {
+      margin-top: calc(-1 * $padding-global);
     }
 
-    &__search {
-      position: sticky;
-      top: 0;
-      padding: $padding-small $padding-global;
-      background-color: $color-background-block;
-    }
-
-    &__buttons {
+    &-mode {
       display: flex;
-      justify-content: space-between;
+      align-items: center;
       gap: $padding-small;
-      padding: $padding-small;
+
+      svg {
+        width: 16px;
+        color: $color-primary;
+      }
+
+      &-option {
+        display: flex;
+        flex-direction: column;
+        gap: $padding-small;
+
+        &__label {
+          text-transform: capitalize;
+        }
+
+        &__info {
+          font-size: $font-size-small;
+          color: $color-text-secondary;
+          text-wrap: balance;
+        }
+      }
     }
   }
 }

@@ -7,9 +7,9 @@ import { useTimePeriod } from "../../../../../pages/QueryPage/hooks/useTimePerio
 import { AUTOCOMPLETE_LIMITS } from "../../../../../constants/queryAutocomplete";
 import { LogsFieldValues } from "../../../../../api/types";
 import { useLogsDispatch, useLogsState } from "../../../../../state/logsPanel/LogsStateContext";
-import { useTenant } from "../../../../../hooks/useTenant";
 import { generateQuery } from "../helpers/utils";
 import { DEFAULT_QUERY } from "../../../../../pages/QueryPage/hooks/useQueryController";
+import { useFetchWithTenants } from "../../../../../hooks/useFetchWithTenants";
 
 type UseLogsQLFetchOptions = {
   contextData?: ContextData;
@@ -37,7 +37,7 @@ export const useLogsQLFetchOptions = ({ contextData, extraParams }: UseLogsQLFet
   const { period: { start, end } } = useTimePeriod();
   const { autocompleteCache } = useLogsState();
   const dispatch = useLogsDispatch();
-  const tenant = useTenant();
+  const { fetchWithTenants, tenantRequestKey } = useFetchWithTenants();
 
   const [loading, setLoading] = useState(false);
 
@@ -77,8 +77,7 @@ export const useLogsQLFetchOptions = ({ contextData, extraParams }: UseLogsQLFet
     const requestId = ++requestIdRef.current;
     const isLatestRequest = () => requestIdRef.current === requestId;
 
-    const tenantString = new URLSearchParams(tenant).toString();
-    const key = `${urlSuffix}?${params?.toString()}&${tenantString}`;
+    const key = `${urlSuffix}?${params?.toString()}&${tenantRequestKey}`;
 
     setLoading(true);
 
@@ -89,10 +88,9 @@ export const useLogsQLFetchOptions = ({ contextData, extraParams }: UseLogsQLFet
         return;
       }
 
-      const response = await fetch(`${serverUrl}/select/logsql/${urlSuffix}`, {
+      const response = await fetchWithTenants(`${serverUrl}/select/logsql/${urlSuffix}`, {
         signal,
         method: "POST",
-        headers: { ...tenant },
         body: params,
       });
 

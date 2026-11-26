@@ -6,6 +6,7 @@ import { getPreviousRange } from "../../../../utils/time";
 import { Logs } from "../../../../api/types";
 import { TimeParams } from "../../../../types";
 import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
+import { useFetchWithTenants } from "../../../../hooks/useFetchWithTenants";
 
 const statsParts = explorerTotals.map(t => t.statsExpr);
 const query = `* | ${statsParts.join(", ")}`;
@@ -13,6 +14,7 @@ const query = `* | ${statsParts.join(", ")}`;
 export const useFetchTotals = () => {
   const { period } = useTimePeriod();
   const { extraParams } = useExtraFilters();
+  const { tenantRequestKey } = useFetchWithTenants();
 
   const [totals, setTotals] = useState<Logs>();
   const [totalsPrev, setTotalsPrev] = useState<Logs>();
@@ -21,6 +23,7 @@ export const useFetchTotals = () => {
   const { isLoading, error, fetchLogs, abort } = useFetchLogs();
 
   useEffect(() => {
+    let isCurrent = true;
     abort();
     setTotals(undefined);
     setTotalsPrev(undefined);
@@ -33,6 +36,7 @@ export const useFetchTotals = () => {
           fetchLogs({ query, limit: 1, period, extraParams }),
           fetchLogs({ query, limit: 1, period: prevPeriod, extraParams }),
         ]);
+        if (!isCurrent) return;
 
         const [curr] = currRes.data ?? [];
         const [prev] = prevRes.data ?? [];
@@ -47,8 +51,11 @@ export const useFetchTotals = () => {
 
     void fetchTotals();
 
-    return () => abort();
-  }, [period, extraParams.toString()]);
+    return () => {
+      isCurrent = false;
+      abort();
+    };
+  }, [period, extraParams.toString(), tenantRequestKey]);
 
   return {
     totals,

@@ -3,11 +3,11 @@ import { ErrorTypes } from "../../../types";
 import { Logs } from "../../../api/types";
 import { useAppState } from "../../../state/common/StateContext";
 import useBoolean from "../../../hooks/useBoolean";
-import { useTenant } from "../../../hooks/useTenant";
 import { LogFlowAnalyzer } from "./utils";
 import useStateSearchParams from "../../../hooks/useStateSearchParams";
 import { LIVE_TAILING_OFFSET_PARAM } from "./constants";
 import { useExtraFilters } from "../../ExtraFilters/hooks/useExtraFilters";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 /**
  * Defines the log's threshold, after which will be shown a warning notification
@@ -104,10 +104,10 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
   const [offset] = useStateSearchParams(5, LIVE_TAILING_OFFSET_PARAM);
   const { extraParams } = useExtraFilters();
   const extraParamsString = extraParams.toString();
+  const { fetchWithTenants } = useFetchWithTenants();
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const { value: isPaused, setTrue: pauseLiveTailing, setFalse: resumeLiveTailing } = useBoolean(false);
-  const tenant = useTenant();
   const [error, setError] = useState<ErrorTypes | string>();
   const [isLimitedLogsPerUpdate, setIsLimitedLogsPerUpdate] = useState(false);
 
@@ -153,12 +153,9 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
         body.append(key, value);
       });
 
-      const response = await fetch(`${serverUrl}/select/logsql/tail`, {
+      const response = await fetchWithTenants(`${serverUrl}/select/logsql/tail`, {
         signal,
         method: "POST",
-        headers: {
-          ...tenant,
-        },
         body,
       });
 
@@ -188,7 +185,7 @@ export const useLiveTailingLogs = (query: string, limit: number) => {
       }
       return false;
     }
-  }, [query, stopLiveTailing, offset, extraParamsString]);
+  }, [query, stopLiveTailing, offset, extraParamsString, fetchWithTenants]);
 
   useEffect(() => {
     if (isPaused) {

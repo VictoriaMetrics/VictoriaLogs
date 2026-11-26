@@ -19,17 +19,10 @@ vi.mock("../state/common/StateContext", () => ({
   useAppState: () => ({ serverUrl: "http://localhost:8080" }),
 }));
 
-vi.mock("./useTenant", () => {
-  const tenant = { AccountID: "0", ProjectID: "0" };
-  return { useTenant: () => tenant };
-});
-
 vi.mock("../components/ExtraFilters/hooks/useExtraFilters", () => {
   const extraParams = new URLSearchParams();
   return { useExtraFilters: () => ({ extraParams }) };
 });
-
-const tenant = { AccountID: "0", ProjectID: "0" };
 
 const defaultPeriod = { start: BigInt(0), end: BigInt(3600) };
 
@@ -59,7 +52,8 @@ describe("useGroupByFields", () => {
       resolveFetch = (values) => resolve(jsonResponse(values));
     }));
     vi.stubGlobal("fetch", fetchMock);
-    addRecentGroupByField(tenant, "level");
+    routerMock.search = "tenant=0:0";
+    addRecentGroupByField("0:0", "level");
 
     const { result } = renderHook(() => useGroupByFields({ query: "error", period: defaultPeriod, loadedFieldNames: ["host"] }), { wrapper });
 
@@ -77,7 +71,7 @@ describe("useGroupByFields", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.options).toEqual([WITHOUT_GROUPING, "level", "app", "host"]);
 
-    const body = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as URLSearchParams;
+    const body = (fetchMock.mock.calls[0] as unknown as [URL, RequestInit])[1].body as URLSearchParams;
     expect(body.get("query")).toBe("error");
   });
 

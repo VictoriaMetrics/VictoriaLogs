@@ -26,12 +26,37 @@
     margin-block: calc($padding-global / 2);
   }
 
-  &__description {
+  &-details {
+    //display: grid;
+    //grid-template-columns: auto 1fr;
     margin-top: $padding-small;
     grid-column: 1/span 2;
     font-size: $font-size-small;
     color: $color-text-secondary;
     line-height: 130%;
+    border-radius: $border-radius-medium;
+    border: $border-divider;
+    overflow: hidden;
+
+    &-list {
+      &__item {
+        padding: $padding-small $padding-global;
+        overflow-wrap: anywhere;
+
+        &:first-child {
+          border-top: $border-divider;
+        }
+
+        &:not(:last-child) {
+          border-bottom: $border-divider-width dashed $border-divider-color;
+        }
+
+        b {
+          display: block;
+          margin-bottom: calc($padding-small / 2);
+        }
+      }
+    }
   }
 
   &-footer {

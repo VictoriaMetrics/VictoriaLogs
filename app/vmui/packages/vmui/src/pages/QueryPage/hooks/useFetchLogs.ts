@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "preact/compat
 import { getLogsUrl } from "../../../api/logs";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { Logs } from "../../../api/types";
-import { useTenant } from "../../../hooks/useTenant";
+import { useTenants } from "../../../hooks/useTenants";
 import { useSearchParams } from "react-router-dom";
 import { useAppState } from "../../../state/common/StateContext";
 import { mergeSearchParams } from "../../../utils/query-string";
 import { TenantType } from "../../../components/Configurators/GlobalSettings/TenantsConfiguration/Tenants";
 import { nanosToIsoString, secondsToMilliseconds } from "../../../utils/time";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
+import { DEFAULT_TENANT_ID } from "../../../constants/logs";
 
 export interface FetchLogsParams {
   query: string;
@@ -37,8 +39,14 @@ export type FetchLogsResult = {
 
 export const useFetchLogs = () => {
   const { serverUrl } = useAppState();
-  const tenant = useTenant();
+  const { fetchWithTenants } = useFetchWithTenants();
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
+
+  const { tenants, tenantsKey } = useTenants();
+  const tenantsKeyRef = useRef(tenantsKey);
+  tenantsKeyRef.current = tenantsKey;
 
   const [logs, setLogs] = useState<Logs[]>([]);
   const [queryParams, setQueryParams] = useState<Record<string, string>>({});
@@ -72,28 +80,28 @@ export const useFetchLogs = () => {
     return body;
   };
 
-  const buildOptions = ({ signal }: { signal: AbortSignal }): RequestInit => {
+  const buildOptions = ({ signal }: { signal: AbortSignal }) => {
     return {
       signal,
-      method: "POST",
+      method: "POST" as const,
       headers: {
-        ...tenant,
         Accept: "application/stream+json",
       },
     };
   };
 
-  const updateTenant = ({ accountId, projectId }: Partial<TenantType>) => {
-    if (accountId === undefined && projectId === undefined) return;
-
-    setSearchParams(prev => {
+  const updateTenant = ({ accountId, projectId }: TenantType) => {
+    setSearchParamsRef.current(prev => {
       const next = new URLSearchParams(prev);
 
-      if (accountId) next.set("accountID", accountId);
-      if (projectId) next.set("projectID", projectId);
+      // remove legacy accountID and projectID params, and set the new tenant param
+      next.delete("accountID");
+      next.delete("projectID");
+
+      next.set("tenant", `${accountId}:${projectId}`);
 
       return next;
-    });
+    }, { replace: true });
   };
 
   const fetchLogs = useCallback(async ({
@@ -139,21 +147,27 @@ export const useFetchLogs = () => {
       setError(undefined);
 
       onStart?.();
-      const response = await fetch(url, { body, ...options });
+      const response = await fetchWithTenants(url, { body, ...options });
 
       if (isDownload) {
         return { response, status: response.ok ? "success" : "error", limit: effectiveLimit };
       }
 
-      const uiAccountId = (options.headers as Record<string, string>)?.AccountID;
-      const vlAccountId = response.headers.get("AccountID");
-      const changedAccountId = vlAccountId && vlAccountId !== uiAccountId;
-      if (changedAccountId) updateTenant({ accountId: vlAccountId });
+      // Sync the tenant from response headers, keeping the requested ID for any missing component.
+      const responseAccountId = response.headers.get("AccountID");
+      const responseProjectId = response.headers.get("ProjectID");
+      const responseHasTenant = (responseAccountId !== null || responseProjectId !== null);
+      if (!signal.aborted && tenantsKeyRef.current === tenantsKey && responseHasTenant) {
+        const [accountId, projectId] = (tenants[0] || DEFAULT_TENANT_ID).split(":");
 
-      const uiProjectId = (options.headers as Record<string, string>)?.ProjectID;
-      const vlProjectId = response.headers.get("ProjectID");
-      const changedProjectId = vlProjectId && vlProjectId !== uiProjectId;
-      if (changedProjectId) updateTenant({ projectId: vlProjectId });
+        const hasTenantChanged = (accountId !== responseAccountId || projectId !== responseProjectId);
+        if (hasTenantChanged) {
+          updateTenant({
+            accountId: responseAccountId ?? accountId,
+            projectId: responseProjectId ?? projectId,
+          });
+        }
+      }
 
       const duration = response.headers.get("vl-request-duration-seconds");
       setDurationMs(duration ? secondsToMilliseconds(Number(duration)) : undefined);
@@ -191,7 +205,7 @@ export const useFetchLogs = () => {
       });
 
     }
-  }, [url, tenant]);
+  }, [url, tenantsKey, fetchWithTenants]);
 
   const resetLogs = () => {
     setLogs([]);

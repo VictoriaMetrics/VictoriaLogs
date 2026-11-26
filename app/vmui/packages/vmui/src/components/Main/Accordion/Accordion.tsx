@@ -41,9 +41,14 @@ const Accordion: FC<AccordionProps> = ({
         onClick={toggleOpen}
       >
         {title}
-        <div className={`vm-accordion-header__arrow ${isOpen && "vm-accordion-header__arrow_open"}`}>
-          <ArrowDownIcon />
-        </div>
+        <button
+          type="button"
+          className={`vm-accordion-header__arrow ${isOpen ? "vm-accordion-header__arrow_open" : ""}`}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? "Collapse" : "Expand"}
+        >
+          <span aria-hidden="true"><ArrowDownIcon /></span>
+        </button>
       </header>
       {isOpen && (
         <section

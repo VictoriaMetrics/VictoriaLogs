@@ -1,7 +1,7 @@
 import { FC } from "preact/compat";
 import { LOGS_DOCS_URL } from "../../../../../constants/logs";
 import Button from "../../../../Main/Button/Button";
-import { OpenNewIcon, PlayIcon } from "../../../../Main/Icons";
+import { ExternalLinkIcon, PlayIcon } from "../../../../Main/Icons";
 import Tooltip from "../../../../Main/Tooltip/Tooltip";
 import { QueryExample } from "../types";
 
@@ -24,7 +24,7 @@ const QueryExamplesItemControls: FC<Props> = ({ example, onApply }) => {
         href={url}
         target="_blank"
         rel="noreferrer"
-        startIcon={<OpenNewIcon/>}
+        startIcon={<ExternalLinkIcon/>}
         variant="text"
         size="small"
         color="gray"

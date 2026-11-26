@@ -2,12 +2,16 @@ import { act, renderHook } from "@testing-library/preact";
 import { useLiveTailingLogs } from "./useLiveTailingLogs";
 import { vi } from "vitest";
 
+const { mockFetchWithTenants } = vi.hoisted(() => ({
+  mockFetchWithTenants: vi.fn(),
+}));
+
 vi.mock("../../../state/common/StateContext", () => ({
   useAppState: () => ({ serverUrl: "http://localhost:8080" }),
 }));
 
-vi.mock("../../../hooks/useTenant", () => ({
-  useTenant: () => ({}),
+vi.mock("../../../hooks/useFetchWithTenants", () => ({
+  useFetchWithTenants: () => ({ fetchWithTenants: mockFetchWithTenants }),
 }));
 
 vi.mock("../../../hooks/useStateSearchParams",
@@ -19,10 +23,6 @@ vi.mock("../../../hooks/useStateSearchParams",
 vi.mock("../../ExtraFilters/hooks/useExtraFilters", () => ({
   useExtraFilters: () =>  ({ extraParams: new URLSearchParams() }),
 }));
-
-// Mock dependencies
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
 
 const createMockStreamResponse = (logs: string[], sendCount: number = 1) => ({
   ok: true,
@@ -52,16 +52,16 @@ describe("useLiveTailingLogs", () => {
     const limit = 10;
     const { result } = renderHook(() => useLiveTailingLogs(query, limit));
 
-    mockFetch.mockResolvedValue(createMockStreamResponse(["{\"logs\":\"test log\"}"]));
+    mockFetchWithTenants.mockResolvedValue(createMockStreamResponse(["{\"logs\":\"test log\"}"]));
 
     await act(async () => {
       const started = await result.current.startLiveTailing();
       expect(started).toBe(true);
     });
 
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetchWithTenants).toHaveBeenCalledTimes(1);
 
-    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const [url, init] = mockFetchWithTenants.mock.calls[0] as [string, RequestInit];
 
     expect(url).toBe("http://localhost:8080/select/logsql/tail");
     expect(init).toEqual(
@@ -121,7 +121,7 @@ describe("useLiveTailingLogs", () => {
     const limit = 10;
     const { result } = renderHook(() => useLiveTailingLogs(query, limit));
 
-    mockFetch.mockRejectedValue(new Error("Network error"));
+    mockFetchWithTenants.mockRejectedValue(new Error("Network error"));
 
     await act(async () => {
       const started = await result.current.startLiveTailing();
@@ -141,7 +141,7 @@ describe("useLiveTailingLogs", () => {
     const logs = Array.from({ length: logCount }, (_, i) => `{"log": "log message ${i}"}`);
     const { result } = renderHook(() => useLiveTailingLogs(query, limit));
 
-    mockFetch.mockResolvedValue(createMockStreamResponse(logs, 7));
+    mockFetchWithTenants.mockResolvedValue(createMockStreamResponse(logs, 7));
 
     await act(async () => {
       const started = await result.current.startLiveTailing();

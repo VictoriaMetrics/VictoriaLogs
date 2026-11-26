@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import { ErrorTypes, TimeParams } from "../../../types";
 import { LogHits } from "../../../api/types";
-import { useTenant } from "../../../hooks/useTenant";
 import { useHideChart } from "../HitsPanel/hooks/useHideChart";
 import { useAppState } from "../../../state/common/StateContext";
 import { GRAPH_QUERY_MODE } from "../../../components/Chart/BarHitsChart/types";
-import { buildHitsRequestHeaders, buildHitsRequestParams } from "../utils/buildHitsRequest";
+import { buildHitsRequestParams } from "../utils/buildHitsRequest";
 import { fetchHitsStats } from "../utils/fetchHitsStats";
 import { fetchHitsOnce } from "../utils/fetchHitsOnce";
 import { fetchHitsIterative } from "../utils/fetchHitsIterative";
 import { mergeLogHits } from "../utils/mergeLogHits";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 export interface FetchHitsParams {
   query: string;
@@ -30,7 +30,7 @@ export type FetchHitsResult = "success" | "error" | "aborted";
 
 export const useFetchHits = () => {
   const { serverUrl } = useAppState();
-  const tenant = useTenant();
+  const { fetchWithTenants } = useFetchWithTenants();
   const [hideChart] = useHideChart();
 
   const [logHits, setLogHits] = useState<LogHits[]>([]);
@@ -56,9 +56,8 @@ export const useFetchHits = () => {
   const getOptions = ({ signal, ...params }: OptionsParams) => {
     return {
       signal,
-      method: "POST",
+      method: "POST" as const,
       body: buildHitsRequestParams(params),
-      headers: buildHitsRequestHeaders({ tenant }),
     };
   };
 
@@ -108,6 +107,7 @@ export const useFetchHits = () => {
         await fetchHitsIterative({
           ...init,
           isPausedRef,
+          fetchWithTenants,
           onUpdateLoading: (hit) => {
             if (loadController.signal.aborted) return;
             handleUpdateLoadingHits(hit);
@@ -119,7 +119,7 @@ export const useFetchHits = () => {
         });
       } else {
         const fetchFunc = isStatsMode ? fetchHitsStats : fetchHitsOnce;
-        const { hits, durationMs } = await fetchFunc(init);
+        const { hits, durationMs } = await fetchFunc(init, fetchWithTenants);
 
         if (loadController.signal.aborted) return "aborted";
 
@@ -151,7 +151,7 @@ export const useFetchHits = () => {
         updatePaused(false);
       }
     }
-  }, [serverUrl, tenant]);
+  }, [serverUrl, fetchWithTenants]);
 
   const resetHits = () => {
     setLogHits([]);

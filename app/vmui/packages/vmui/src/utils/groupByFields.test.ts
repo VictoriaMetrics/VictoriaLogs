@@ -9,8 +9,8 @@ import { GROUP_BY_RECENT_LIMIT, WITHOUT_GROUPING } from "../constants/logs";
 
 const STORAGE_KEY = "VLUI:LOGS_GROUP_BY_RECENT";
 
-const tenant = { AccountID: "0", ProjectID: "0" };
-const otherTenant = { AccountID: "1", ProjectID: "2" };
+const tenant = "0:0";
+const otherTenant = "1:2";
 
 describe("recent group by fields", () => {
   beforeEach(() => {

@@ -2,18 +2,19 @@ import { getLogHitsUrl } from "../../../api/logs";
 import { getResponseError } from "./getResponseError";
 import { processHits } from "./processHits";
 import { getResponseDurationMs } from "./getResponseDurationMs";
+import { FetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 export type FetchHitsOptions = {
   url: string;
   body: URLSearchParams;
-  headers: HeadersInit;
+  headers?: HeadersInit;
   signal: AbortSignal;
-  method: string;
+  method: "POST";
 }
 
-export const fetchHitsOnce = async ({ url, ...init }: FetchHitsOptions) => {
+export const fetchHitsOnce = async ({ url, ...init }: FetchHitsOptions, fetchWithTenants: FetchWithTenants) => {
   const serverUrl = getLogHitsUrl(url);
-  const response = await fetch(serverUrl, init);
+  const response = await fetchWithTenants(serverUrl, init);
 
   if (!response.ok || !response.body) {
     throw new Error(await getResponseError(response));

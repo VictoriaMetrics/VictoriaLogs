@@ -99,7 +99,11 @@ export const SelectLimit = <T extends string | number>(props: SelectLimitProps<T
         placement="bottom-right"
         buttonRef={buttonRef}
       >
-        <div className="vm-select-limits">
+        <div
+          className="vm-select-limits"
+          onMouseUp={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
+        >
           {isLoading && (
             <Button
               disabled

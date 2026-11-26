@@ -8,17 +8,22 @@
   align-items: center;
 
   &__arrow {
+    color: inherit;
     display: flex;
     align-items: center;
     justify-content: center;
     position: absolute;
     right: 14px;
     top: auto;
-    transform: rotate(0);
+    transform: rotate(90deg);
     transition: transform 200ms ease-in-out;
 
+    &:focus-visible {
+      outline: revert;
+    }
+
     &_open {
-      transform: rotate(180deg);
+      transform: rotate(0deg);
     }
 
     svg {

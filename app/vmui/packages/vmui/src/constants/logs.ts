@@ -46,3 +46,6 @@ export const DEFAULT_STREAM_FIELDS = [STREAM_FIELD];
 // Hits chart labels.
 export const OTHER_HITS_LABEL = "other fields";
 export const LOADING_HITS_LABEL = "__vmui_loading_hits__";
+
+// Default tenant ID for single-tenant mode.
+export const DEFAULT_TENANT_ID = "0:0";

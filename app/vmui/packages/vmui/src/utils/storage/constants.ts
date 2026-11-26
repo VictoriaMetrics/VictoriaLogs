@@ -24,6 +24,7 @@ export const ALL_STORAGE_KEYS = [
   "LOGS_GROUP_BY_RECENT",
   "GROUP_EXPANSION",
   "GROUP_ALL_COLLAPSED",
+  "TENANT_MODE"
 ] as const;
 
 export const TABLE_KEYS = {

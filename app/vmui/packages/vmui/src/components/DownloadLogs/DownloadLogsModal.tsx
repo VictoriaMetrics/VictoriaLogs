@@ -11,6 +11,8 @@ import Alert from "../Main/Alert/Alert";
 import useDownloadLogs from "./useDownloadLogs";
 import Select from "../Main/Select/Select";
 import { vmDate } from "../../utils/time";
+import { useFetchWithTenants } from "../../hooks/useFetchWithTenants";
+import Accordion from "../Main/Accordion/Accordion";
 
 type Props = {
   children: ReactNode;
@@ -27,6 +29,7 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   } = useBoolean(false);
 
   const { downloadLogs, error, setError, isLoading } = useDownloadLogs();
+  const { tenantRequestKey } = useFetchWithTenants();
 
   const [filename, setFilename] = useState("vmui_logs_export");
   const [fileExtension, setFileExtension] = useState("jsonl");
@@ -41,10 +44,14 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
   }, [queryParams?.start, queryParams?.end]);
 
   const tenant = useMemo(() => {
-    if (!queryParams) return "";
-    const { AccountID, ProjectID } = queryParams;
-    return `${AccountID}:${ProjectID}`;
-  }, [queryParams?.AccountID, queryParams?.ProjectID]);
+    const index = tenantRequestKey.indexOf(":");
+    if (index === -1) return null;
+
+    return {
+      label: tenantRequestKey.slice(0, index).trim(),
+      value: tenantRequestKey.slice(index + 1).trim()
+    };
+  }, [tenantRequestKey]);
 
   const handleDownload = useCallback(async () => {
     const safeName = filename.trim() || "vmui_logs_export";
@@ -89,8 +96,23 @@ const DownloadLogsModal: FC<Props> = ({ children, queryParams }) => {
                 />
               </div>
 
-              <div className="vm-download-logs__description">
-                This will download all logs for {period} using your current query for tenant {tenant}.
+              <div className="vm-download-logs-details">
+                <Accordion
+                  defaultExpanded={false}
+                  title={<div className="vm-timezones-list-group__title">Export details</div>}
+                >
+                  <div className="vm-download-logs-details-list">
+                    <div className="vm-download-logs-details-list__item">
+                      <b>Query</b> <div><code>{queryParams?.query}</code></div>
+                    </div>
+                    <div className="vm-download-logs-details-list__item">
+                      <b>{tenant?.label}</b> <div><code>{tenant?.value}</code></div>
+                    </div>
+                    <div className="vm-download-logs-details-list__item">
+                      <b>Time range</b> <div><code>{period}</code></div>
+                    </div>
+                  </div>
+                </Accordion>
               </div>
             </div>
 

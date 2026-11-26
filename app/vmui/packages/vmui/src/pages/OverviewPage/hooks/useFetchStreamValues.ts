@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "preact/hooks";
 import { useAppState } from "../../../state/common/StateContext";
 import { LogsFieldValues } from "../../../api/types";
-import { useTenant } from "../../../hooks/useTenant";
 import { TimeParams } from "../../../types";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 interface FetchOptions {
   period: TimeParams;
@@ -16,7 +16,7 @@ const MAX_CACHE_SIZE = 10;
 
 export const useFetchStreamValues = () => {
   const { serverUrl } = useAppState();
-  const tenant = useTenant();
+  const { fetchWithTenants, tenantRequestKey } = useFetchWithTenants();
 
   const cacheRef = useRef<Map<string, LogsFieldValues[]>>(new Map());
 
@@ -45,8 +45,7 @@ export const useFetchStreamValues = () => {
     const filter = options.filter?.trim();
     if (filter) params.set("filter", filter);
 
-    const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
-    const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
+    const cacheKey = `${serverUrl}|${params.toString()}|${tenantRequestKey}`;
 
     const cacheValue = cacheRef.current.get(cacheKey);
     if (cacheValue !== undefined) {
@@ -63,9 +62,8 @@ export const useFetchStreamValues = () => {
 
     try {
       const url = `${serverUrl}/select/logsql/stream_field_values`;
-      const response = await fetch(url, {
+      const response = await fetchWithTenants(url, {
         method: "POST",
-        headers: { ...tenant },
         body: params,
         signal
       });
@@ -96,7 +94,7 @@ export const useFetchStreamValues = () => {
     } finally {
       if (abortRef.current?.signal === signal) setLoading(false);
     }
-  }, [serverUrl, tenant]);
+  }, [serverUrl, tenantRequestKey, fetchWithTenants]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();

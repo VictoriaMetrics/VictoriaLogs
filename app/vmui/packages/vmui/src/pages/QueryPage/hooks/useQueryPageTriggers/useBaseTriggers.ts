@@ -1,16 +1,16 @@
 import { useMemo } from "preact/compat";
 import { useAppState } from "../../../../state/common/StateContext";
-import { useTenant } from "../../../../hooks/useTenant";
 import { useExtraFilters } from "../../../../components/ExtraFilters/hooks/useExtraFilters";
 import { useQueryState } from "../../../../state/query/QueryStateContext";
 import { useTimePeriod } from "../useTimePeriod";
 import { QueryControllerOptions } from "../useQueryPageController/types";
+import { useFetchWithTenants } from "../../../../hooks/useFetchWithTenants";
 
 export const useBaseTriggers = (props: QueryControllerOptions) => {
   const { query } = props;
 
   const { serverUrl } = useAppState();
-  const tenant = useTenant();
+  const { tenantRequestKey } = useFetchWithTenants();
   const { period, getCurrentPeriod, setPeriod } = useTimePeriod();
   const { executeQueryTrigger } = useQueryState();
 
@@ -18,7 +18,6 @@ export const useBaseTriggers = (props: QueryControllerOptions) => {
   const extraParamsKey = extraParams.toString();
 
   return useMemo(() => ({
-    tenant,
     serverUrl,
     executeQueryTrigger,
     query,
@@ -26,5 +25,15 @@ export const useBaseTriggers = (props: QueryControllerOptions) => {
     getCurrentPeriod,
     setPeriod,
     extraParams: new URLSearchParams(extraParamsKey),
-  }), [query, period.start, period.end, extraParamsKey, tenant, serverUrl, executeQueryTrigger, getCurrentPeriod, setPeriod]);
+  }), [
+    query,
+    period.start,
+    period.end,
+    extraParamsKey,
+    tenantRequestKey,
+    serverUrl,
+    executeQueryTrigger,
+    getCurrentPeriod,
+    setPeriod,
+  ]);
 };

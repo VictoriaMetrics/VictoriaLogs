@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/compat";
-import { useTenant } from "./useTenant";
+import { useTenants } from "./useTenants";
 import { useExtraFilters } from "../components/ExtraFilters/hooks/useExtraFilters";
 import { useHitsChartConfig } from "../pages/QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { getFieldNamesCacheKey, useFetchFieldNames } from "../pages/OverviewPage/hooks/useFetchFieldNames";
@@ -7,6 +7,7 @@ import { useOverviewState } from "../state/overview/OverviewStateContext";
 import useEventListener from "./useEventListener";
 import { addRecentGroupByField, buildGroupByOptions, getRecentGroupByFields } from "../utils/groupByFields";
 import { TimeParams } from "../types";
+import { useFetchWithTenants } from "./useFetchWithTenants";
 
 interface Options {
   query?: string;
@@ -18,7 +19,9 @@ interface Options {
 const EMPTY_FIELDS: string[] = [];
 
 export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELDS }: Options) => {
-  const tenant = useTenant();
+  const { tenantsKey } = useTenants();
+  const { tenantRequestKey } = useFetchWithTenants();
+
   const { extraParams } = useExtraFilters();
   const { start, end } = period;
   const { groupFieldHits: { value: groupBy, set: setGroupBy } } = useHitsChartConfig();
@@ -26,13 +29,13 @@ export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELD
   const { fieldNamesCache } = useOverviewState();
 
   // Use only the cache entry for the current params, so a response for other params can't appear.
-  const cachedFieldNames = fieldNamesCache.get(getFieldNamesCacheKey({ period: { start, end }, query, extraParams }, tenant));
+  const cachedFieldNames = fieldNamesCache.get(getFieldNamesCacheKey({ period: { start, end }, query, extraParams }, tenantRequestKey));
 
-  const [recentFields, setRecentFields] = useState<string[]>(() => getRecentGroupByFields(tenant));
+  const [recentFields, setRecentFields] = useState<string[]>(() => getRecentGroupByFields(tenantsKey));
 
   const refreshRecentFields = useCallback(() => {
-    setRecentFields(getRecentGroupByFields(tenant));
-  }, [tenant]);
+    setRecentFields(getRecentGroupByFields(tenantsKey));
+  }, [tenantsKey]);
 
   useEffect(refreshRecentFields, [refreshRecentFields]);
   useEventListener("storage", refreshRecentFields);
@@ -44,8 +47,8 @@ export const useGroupByFields = ({ query, period, loadedFieldNames = EMPTY_FIELD
 
   const selectField = useCallback((field: string) => {
     setGroupBy(field);
-    setRecentFields(addRecentGroupByField(tenant, field));
-  }, [tenant, setGroupBy]);
+    setRecentFields(addRecentGroupByField(tenantsKey, field));
+  }, [tenantsKey, setGroupBy]);
 
   const options = useMemo(() => {
     const fetchedFields = cachedFieldNames?.map(f => f.value) ?? EMPTY_FIELDS;

@@ -5,8 +5,8 @@ import {
   useOverviewDispatch,
   useOverviewState
 } from "../../../state/overview/OverviewStateContext";
-import { useTenant } from "../../../hooks/useTenant";
 import { TimeParams } from "../../../types";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 interface FetchOptions {
   period: TimeParams;
@@ -22,7 +22,7 @@ export const useFetchStreamFieldNames = () => {
     streamsFieldNamesParamsKey
   } = useOverviewState();
   const dispatch = useOverviewDispatch();
-  const tenant = useTenant();
+  const { fetchWithTenants, tenantRequestKey } = useFetchWithTenants();
 
   const cacheRef = useRef({
     state: streamsFieldNamesState,
@@ -64,8 +64,7 @@ export const useFetchStreamFieldNames = () => {
         params.set("filter", options.filter.trim());
       }
 
-      const tenantKey = `tenant=${tenant.AccountID}:${tenant.ProjectID}`;
-      const cacheKey = `${serverUrl}|${params.toString()}|${tenantKey}`;
+      const cacheKey = `${serverUrl}|${params.toString()}|${tenantRequestKey}`;
 
       if (cacheRef.current.key === cacheKey) {
         setStreamFieldNames(cacheRef.current.state);
@@ -73,9 +72,8 @@ export const useFetchStreamFieldNames = () => {
       }
 
       const url = `${serverUrl}/select/logsql/stream_field_names`;
-      const response = await fetch(url, {
+      const response = await fetchWithTenants(url, {
         method: "POST",
-        headers: { ...tenant },
         body: params,
         signal
       });
@@ -107,7 +105,7 @@ export const useFetchStreamFieldNames = () => {
     } finally {
       if (abortRef.current?.signal === signal) setLoading(false);
     }
-  }, [serverUrl, tenant, dispatch]);
+  }, [serverUrl, tenantRequestKey, dispatch, fetchWithTenants]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();

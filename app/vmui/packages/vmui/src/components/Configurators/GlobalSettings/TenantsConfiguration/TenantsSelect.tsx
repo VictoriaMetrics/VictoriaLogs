@@ -1,78 +1,118 @@
-import { FC, useMemo } from "preact/compat";
+import { FC, useCallback } from "preact/compat";
 import useDeviceDetect from "../../../../hooks/useDeviceDetect";
 import classNames from "classnames";
 import TextField from "../../../Main/TextField/TextField";
-import { TenantType } from "./Tenants";
-import Button from "../../../Main/Button/Button";
-import { LOGS_DOCS_URL } from "../../../../constants/logs";
+import TenantsSelectHeader from "./TenantsSelectHeader";
+import { SearchIcon } from "../../../Main/Icons";
+import Checkbox from "../../../Main/Checkbox/Checkbox";
+import { TenantMode } from "./hooks/useTenantMode";
+import "./style.scss";
+import Tooltip from "../../../Main/Tooltip/Tooltip";
 
-interface Props extends TenantType {
-  accountIds: string[];
-  tenantId: string;
-  search: string;
-  onSearch: (value: string) => void;
-  onChange: (tenant: Partial<TenantType>) => void;
+interface Props {
+  tenants: string[];
+  missingTenants: string[];
+  selectedTenants: string[];
+  search: {
+    show: boolean;
+    value: string;
+    onChange: (value: string) => void;
+  };
+  mode: {
+    value: TenantMode;
+    onChange: (mode: TenantMode) => void;
+  }
+  onSelectAll: () => void;
+  onToggleTenant: (tenant: string, mode: TenantMode) => void;
 }
 
-const TenantsSelect: FC<Props> = ({ accountIds, tenantId, search, onSearch, onChange }) => {
+const TenantsSelect: FC<Props> = ({
+  tenants,
+  missingTenants,
+  selectedTenants,
+  search,
+  mode,
+  onSelectAll,
+  onToggleTenant,
+}) => {
   const { isMobile } = useDeviceDetect();
+  const isMultitenantMode = mode.value === "multitenant";
 
-  const accountIdsFiltered = useMemo(() => {
-    if (!search) return accountIds;
-    try {
-      const regexp = new RegExp(search, "i");
-      const found = accountIds.filter((item) => regexp.test(item));
-      return found.sort((a,b) => (a.match(regexp)?.index || 0) - (b.match(regexp)?.index || 0));
-    } catch (e) {
-      return [];
-    }
-  }, [search, accountIds]);
-
-  const createHandlerChange = (value: string) => () => {
-    const [accountId, projectId] = value.split(":");
-    onChange({ accountId, projectId });
-  };
+  const createHandlerChange = useCallback((value: string) => () => {
+    onToggleTenant(value, mode.value);
+  }, [onToggleTenant, mode.value]);
 
   return (
-    <div
-      className={classNames({
-        "vm-list vm-tenant-input-list": true,
-        "vm-list vm-tenant-input-list_mobile": isMobile,
-      })}
-    >
-      <div className="vm-tenant-input-list__search">
-        <TextField
-          autofocus
-          label="Search"
-          value={search}
-          onChange={onSearch}
-          type="search"
-        />
-      </div>
-      {accountIdsFiltered.map(id => (
-        <div
-          className={classNames({
-            "vm-list-item": true,
-            "vm-list-item_mobile": isMobile,
-            "vm-list-item_active": id === tenantId
-          })}
-          key={id}
-          onClick={createHandlerChange(id)}
-        >
-          {id}
+    <div className="vm-tenant-input-popper">
+      <TenantsSelectHeader
+        tenantMode={mode.value}
+        onChange={mode.onChange}
+      />
+
+      {search.show && (
+        <div className="vm-tenant-input__search">
+          <TextField
+            autofocus
+            placeholder="Search tenants..."
+            value={search.value}
+            onChange={search.onChange}
+            type="search"
+            startIcon={<SearchIcon />}
+          />
         </div>
-      ))}
-      <div className="vm-tenant-input-list__buttons">
-        <Button
-          as="a"
-          href={`${LOGS_DOCS_URL}/#multitenancy`}
-          target="_blank"
-          rel="help noreferrer"
-          variant="text"
-          color="primary"
-        >
-          Multitenancy docs
-        </Button>
+      )}
+
+      <div
+        className={classNames({
+          "vm-list vm-tenant-input-list": true,
+          "vm-list vm-tenant-input-list_mobile": isMobile,
+        })}
+      >
+        {!search.value && isMultitenantMode && (
+          <div
+            className={classNames({
+              "vm-tenant-input-list-item": true,
+              "vm-tenant-input-list-item_all": true,
+              "vm-list-item": true,
+              "vm-list-item_mobile": isMobile,
+              "vm-list-item_active": !selectedTenants.length
+            })}
+            onClick={onSelectAll}
+          >
+            <Checkbox
+              checked={!selectedTenants.length}
+              color="primary"
+            />
+            Select all
+          </div>
+        )}
+
+        {tenants.map(id => (
+          <div
+            className={classNames({
+              "vm-tenant-input-list-item": true,
+              "vm-list-item": true,
+              "vm-list-item_mobile": isMobile,
+              "vm-list-item_active": selectedTenants.includes(id),
+              "vm-tenant-input-list-item_missing": missingTenants.includes(id),
+            })}
+            key={id}
+            onClick={createHandlerChange(id)}
+          >
+            {isMultitenantMode && (
+              <Checkbox
+                checked={selectedTenants.includes(id)}
+                color="primary"
+              />
+            )}
+            {id}
+            {missingTenants.includes(id) && (
+              <Tooltip title="This tenant was not found in the selected time range. It remains selected">
+                <span className="vm-tenant-input-list-item__missing">unavailable</span>
+              </Tooltip>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

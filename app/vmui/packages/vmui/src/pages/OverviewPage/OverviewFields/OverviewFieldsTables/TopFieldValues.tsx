@@ -17,6 +17,7 @@ import TopRowMenu from "../FieldRowMenu/TopRowMenu";
 import { altKeyLabel, ctrlKeyLabel } from "../../../../utils/keyboard";
 import { OrderDir } from "../../../../types";
 import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
+import { useFetchWithTenants } from "../../../../hooks/useFetchWithTenants";
 
 const MODE_CONFIG = {
   top: {
@@ -49,6 +50,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
   const { streamFieldFilter, streamFieldValueFilters, toggleStreamFieldValueFilter } = useStreamFieldFilter();
   const { totalLogs } = useOverviewState();
   const copyToClipboard = useCopyToClipboard();
+  const { tenantRequestKey } = useFetchWithTenants();
 
   const isFieldScope = scope === "field";
   const selectedKey = isFieldScope ? fieldFilter : streamFieldFilter;
@@ -108,7 +110,7 @@ const TopFieldValues: FC<Props> = ({ scope }) => {
     void fetchLogs({ period, extraParams, limit, query });
 
     return () => abort();
-  }, [period, extraParams.toString(), selectedKey, limit, mode]);
+  }, [period, extraParams.toString(), selectedKey, limit, mode, tenantRequestKey]);
 
   const TableAction = (row: LogsFieldValues) => {
     const menu = [

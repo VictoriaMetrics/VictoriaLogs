@@ -5,6 +5,7 @@ import { useExtraFilters } from "../../../components/ExtraFilters/hooks/useExtra
 import { useHitsChartConfig } from "../../QueryPage/HitsPanel/hooks/useHitsChartConfig";
 import { useHideChart } from "../../QueryPage/HitsPanel/hooks/useHideChart";
 import { TimeParams } from "../../../types";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 interface Props {
   period: TimeParams;
@@ -22,6 +23,7 @@ const OverviewHits: FC<Props> = ({ period }) => {
 
   const { extraParams } = useExtraFilters();
   const { fetchHits, ...dataLogHits } = useFetchHits();
+  const { tenantRequestKey } = useFetchWithTenants();
 
   useEffect(() => {
     if (hideChart) return;
@@ -35,7 +37,7 @@ const OverviewHits: FC<Props> = ({ period }) => {
       fieldsLimit: topHits,
     });
 
-  }, [hideChart, period, extraParams.toString(), step, topHits, groupFieldHits]);
+  }, [hideChart, period, extraParams.toString(), step, topHits, groupFieldHits, tenantRequestKey]);
 
   return (
     <div>

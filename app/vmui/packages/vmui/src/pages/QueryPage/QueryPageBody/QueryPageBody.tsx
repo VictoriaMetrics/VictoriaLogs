@@ -25,6 +25,7 @@ import Button from "../../../components/Main/Button/Button";
 import { useSearchParams } from "react-router-dom";
 import DownloadLogsModal from "../../../components/DownloadLogs/DownloadLogsModal";
 import { TimeParams } from "../../../types";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 interface Props {
   data: Logs[];
@@ -51,6 +52,7 @@ const tabs = [
 
 const QueryPageBody: FC<Props> = ({ data, queryParams, period, isLoading, isPending, isPreview }) => {
   const { isMobile } = useDeviceDetect();
+  const { tenantRequestKey } = useFetchWithTenants();
   const { setSearchParamsFromKeys } = useSearchParamsFromObject();
   const [activeTab, setActiveTab] = useStateSearchParams(DisplayType.group, "view");
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -113,15 +115,17 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, period, isLoading, isPend
           })}
         >
           <div ref={settingsRef}/>
-          <DownloadLogsModal queryParams={queryParams}>
-            <Tooltip title="Download Logs">
-              <Button
-                variant="text"
-                startIcon={<DownloadIcon/>}
-                aria-label="Download Logs"
-              />
-            </Tooltip>
-          </DownloadLogsModal>
+          {!isPreview && (
+            <DownloadLogsModal queryParams={queryParams}>
+              <Tooltip title="Download Logs">
+                <Button
+                  variant="text"
+                  startIcon={<DownloadIcon/>}
+                  aria-label="Download Logs"
+                />
+              </Tooltip>
+            </DownloadLogsModal>
+          )}
           <Tooltip title={hideLogs ? "Show Logs" : "Hide Logs"}>
             <Button
               variant="text"
@@ -158,6 +162,7 @@ const QueryPageBody: FC<Props> = ({ data, queryParams, period, isLoading, isPend
 
         {showContent && !showWaiting && (
           <ActiveTabComponent
+            key={isLiveTailing ? tenantRequestKey : undefined} // Reset the Live view when the tenant scope changes.
             data={data}
             settingsRef={settingsRef}
             period={period}

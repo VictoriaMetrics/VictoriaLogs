@@ -10,6 +10,7 @@ import { useOverviewState } from "../../../../state/overview/OverviewStateContex
 import { cardinalityConfig } from "./cardinalityConfig";
 import Tooltip from "../../../../components/Main/Tooltip/Tooltip";
 import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
+import { useFetchWithTenants } from "../../../../hooks/useFetchWithTenants";
 
 type Props = {
   scope: "field" | "stream";
@@ -21,6 +22,7 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
   const { streamFieldFilter } = useStreamFieldFilter();
   const field = scope === "field" ? fieldFilter : streamFieldFilter;
   const fieldNameList = scope === "field" ? fieldNames : streamsFieldNames;
+  const { tenantRequestKey } = useFetchWithTenants();
 
   const { period } = useTimePeriod();
   const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
@@ -45,7 +47,7 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
     void fetchLogs({ period, extraParams, query });
 
     return () => abort();
-  }, [period, extraParams.toString(), field, scope]);
+  }, [period, extraParams.toString(), field, scope, tenantRequestKey]);
 
   if (!field) return null;
 

@@ -1,6 +1,6 @@
 import { FC } from "preact/compat";
 import { NavLink, useSearchParams } from "react-router-dom";
-import { getTenantSearchParams } from "../../../hooks/useTenant";
+import { getTenantSearchParams } from "../../../hooks/useTenants";
 import classNames from "classnames";
 import { NavigationItemType } from "../../../router/navigation";
 

@@ -4,12 +4,10 @@ import { useFetchLogs } from "./useFetchLogs";
 import type { FetchLogsResult } from "./useFetchLogs";
 
 const mocks = vi.hoisted(() => ({
-  tenant: { AccountID: "0", ProjectID: "0" },
   searchParams: new URLSearchParams(),
   setSearchParams: vi.fn(),
 }));
 
-vi.mock("../../../hooks/useTenant", () => ({ useTenant: () => mocks.tenant }));
 vi.mock("../../../state/common/StateContext", () => ({
   useAppState: () => ({ serverUrl: "http://localhost:9428" }),
 }));

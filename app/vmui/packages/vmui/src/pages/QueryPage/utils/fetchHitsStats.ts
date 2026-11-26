@@ -4,10 +4,11 @@ import { getResponseError } from "./getResponseError";
 import { LOGS_LIMIT_HITS } from "../../../constants/logs";
 import { processStatsQueryRange } from "./processStatsQueryRange";
 import { getResponseDurationMs } from "./getResponseDurationMs";
+import { FetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
-export const fetchHitsStats = async ({ url, ...init }: FetchHitsOptions) => {
+export const fetchHitsStats = async ({ url, ...init }: FetchHitsOptions, fetchWithTenants: FetchWithTenants) => {
   const serverUrl = getStatsQueryRangeUrl(url);
-  const response = await fetch(serverUrl, init);
+  const response = await fetchWithTenants(serverUrl, init);
 
   if (!response.ok || !response.body) {
     throw new Error(await getResponseError(response));

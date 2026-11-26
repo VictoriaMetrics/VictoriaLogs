@@ -1,4 +1,3 @@
-
 export const LogoLogsIcon = () => (
   <svg
     viewBox="0 0 85 38"
@@ -63,6 +62,33 @@ export const InfoIcon = () => (
     fill="currentColor"
   >
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>
+  </svg>
+);
+
+export const InfoOutlineIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+  >
+    <circle
+      cx="12"
+      cy="12"
+      r="10"
+      strokeWidth="2"
+      stroke="currentColor"
+    />
+    <path
+      d="M12 17V11"
+      strokeWidth="2"
+      strokeLinecap="round"
+      stroke="currentColor"
+    />
+    <circle
+      cx="12"
+      cy="8"
+      r="1"
+      fill="currentColor"
+    />
   </svg>
 );
 
@@ -546,14 +572,18 @@ export const ContextIcon = () => (
   </svg>
 );
 
-export const OpenNewIcon = () => (
+export const ExternalLinkIcon = () => (
   <svg
     viewBox="0 0 24 24"
-    fill="currentColor"
+    fill="none"
   >
     <path
-      d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3z"
-    ></path>
+      d="M12.9734 11.0271L21.7295 2.271M21.7295 7.46993V2.271H16.5306M21.7295 12C21.7295 16.5863 21.7295 18.8794 20.3047 20.3042C18.8799 21.729 16.5868 21.729 12.0005 21.729C7.41419 21.729 5.12104 21.729 3.69626 20.3042C2.27148 18.8794 2.27148 16.5863 2.27148 12C2.27148 7.4137 2.27148 5.12056 3.69626 3.69578C5.12104 2.271 7.41419 2.271 12.0005 2.271"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      stroke="currentColor"
+    />
   </svg>
 );
 

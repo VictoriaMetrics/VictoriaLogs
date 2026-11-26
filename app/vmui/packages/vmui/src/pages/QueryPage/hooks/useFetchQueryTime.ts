@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "preact/compat";
 import { ErrorTypes, TimeParams, TimePeriod } from "../../../types";
-import { useTenant } from "../../../hooks/useTenant";
 import { useAppState } from "../../../state/common/StateContext";
 import { TIME_FIELD } from "../../../constants/logFields";
 import {
@@ -27,7 +26,6 @@ const hasTimeFilter = (expr?: string) => {
 
 export const useFetchQueryTime = (defaultQuery?: string) => {
   const { serverUrl } = useAppState();
-  const tenant = useTenant();
 
   const [serverPeriod, setServerPeriod] = useState<ServerTimeParams | null>(null);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -63,7 +61,6 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
       const url = `${serverUrl}/select/logsql/query_time_range`;
       const response = await fetch(url, {
         method: "POST",
-        headers: { ...tenant },
         body: params,
         signal,
       });
@@ -101,7 +98,7 @@ export const useFetchQueryTime = (defaultQuery?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [defaultQuery, serverUrl, tenant]);
+  }, [defaultQuery, serverUrl]);
 
 
   return {

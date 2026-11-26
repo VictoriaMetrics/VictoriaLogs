@@ -4,15 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useFetchFieldNames } from "./useFetchFieldNames";
 import { OverviewStateProvider } from "../../../state/overview/OverviewStateContext";
 import { TimeParams } from "../../../types";
+import type { FetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 vi.mock("../../../state/common/StateContext", () => ({
   useAppState: () => ({ serverUrl: "http://localhost:8080" }),
 }));
 
-vi.mock("../../../hooks/useTenant", () => {
-  // The real hook memoizes the tenant.
-  const tenant = { AccountID: "0", ProjectID: "0" };
-  return { useTenant: () => tenant };
+vi.mock("../../../hooks/useFetchWithTenants", () => {
+  const fetchWithTenants: FetchWithTenants = (input, init) => fetch(input, init);
+  return { useFetchWithTenants: () => ({ fetchWithTenants, tenantRequestKey: "Tenant: 0:0" }) };
 });
 
 const wrapper: FC = ({ children }) => <OverviewStateProvider>{children}</OverviewStateProvider>;

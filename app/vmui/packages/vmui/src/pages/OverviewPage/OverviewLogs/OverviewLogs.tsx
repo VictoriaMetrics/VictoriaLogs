@@ -10,15 +10,16 @@ import SelectLimit from "../../../components/Main/Pagination/SelectLimit/SelectL
 import "./style.scss";
 import { Link, useSearchParams } from "react-router-dom";
 import Button from "../../../components/Main/Button/Button";
-import { CopyIcon, DoneIcon, OpenNewIcon } from "../../../components/Main/Icons";
+import { CopyIcon, DoneIcon, ExternalLinkIcon } from "../../../components/Main/Icons";
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
-import { getTenantSearchParams } from "../../../hooks/useTenant";
+import { getTenantSearchParams } from "../../../hooks/useTenants";
 import { escapeForLogsQLString } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 import { TimeParams, TimePeriod } from "../../../types";
 import { timeParamsToDateRange } from "../../../utils/time";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 const operator = ExtraFilterOperator.Equals;
 
@@ -35,10 +36,11 @@ const OverviewLogs: FC<Props> = ({ period }) => {
   const [searchParams] = useSearchParams();
 
   const { relativeTime, getUrlParams } = useTimePeriod();
-  const { logs, isLoading, error, fetchLogs, abort } = useFetchLogs();
+  const { logs, isLoading, error, fetchLogs, abort, queryParams } = useFetchLogs();
   const { extraParams } = useExtraFilters();
   const { fieldFilter, fieldValueFilters } = useFieldFilter();
   const { streamFieldFilter, streamFieldValueFilters } = useStreamFieldFilter();
+  const { tenantRequestKey } = useFetchWithTenants();
   const copyToClipboard = useCopyToClipboard();
 
   const [copied, setCopied] = useState<boolean>(false);
@@ -85,7 +87,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
       params.set(key, value);
     });
 
-    getTenantSearchParams(searchParams).forEach((val, key) => params.set(key, val));
+    getTenantSearchParams(searchParams).forEach((val, key) => params.append(key, val));
 
     return `${router.home}?${params.toString()}`;
   }, [query, period, relativeTime, searchParams]);
@@ -99,7 +101,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
     abort();
     if (hidePreviewLogs) return;
     void fetchLogs({ query, period, limit });
-  }, [query, period, limit, hidePreviewLogs]);
+  }, [query, period, limit, hidePreviewLogs, tenantRequestKey]);
 
   useEffect(() => {
     if (copied === null) return;
@@ -137,7 +139,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
             <Button
               size="small"
               variant="text"
-              startIcon={<OpenNewIcon/>}
+              startIcon={<ExternalLinkIcon/>}
             >
               Open query
             </Button>
@@ -157,6 +159,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
           <QueryPageBody
             isPreview
             data={logs}
+            queryParams={queryParams}
             period={period}
             isLoading={isLoading}
           />

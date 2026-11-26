@@ -2,11 +2,13 @@ import { LogHits } from "../../../api/types";
 import { fetchHitsOnce, FetchHitsOptions } from "./fetchHitsOnce";
 import { getHitsTimeRanges } from "./getHitsTimeRanges";
 import { MutableRef } from "preact/hooks";
+import { FetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 type FetchHitsIterativeOptions = FetchHitsOptions & {
   isPausedRef: MutableRef<boolean>
   onUpdateLoading: (hit: LogHits) => void;
   onUpdate: (hits: LogHits[], durationMs?: number) => void;
+  fetchWithTenants: FetchWithTenants;
 };
 
 export const fetchHitsIterative = async ({
@@ -14,6 +16,7 @@ export const fetchHitsIterative = async ({
   url,
   onUpdate,
   onUpdateLoading,
+  fetchWithTenants,
   ...init
 }: FetchHitsIterativeOptions) => {
   const body = new URLSearchParams(init.body);
@@ -40,7 +43,7 @@ export const fetchHitsIterative = async ({
     // Create a placeholder bar to indicate loading status.
     onUpdateLoading(createPlaceholderHit(range.start));
 
-    const { hits, durationMs } = await fetchHitsOnce({ ...init, url, body });
+    const { hits, durationMs } = await fetchHitsOnce({ ...init, url, body }, fetchWithTenants);
 
     init.signal.throwIfAborted();
 

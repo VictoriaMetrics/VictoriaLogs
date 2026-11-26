@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* FEATURE: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): add a Multitenant mode to the tenant picker so users can query logs from multiple tenants at once. See [#1931](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1931).
+
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
 Released at 2026-11-13

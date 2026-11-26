@@ -2,9 +2,9 @@ import { useState, useCallback, useEffect, useRef } from "preact/hooks";
 import { useAppState } from "../../../state/common/StateContext";
 import { LogsFieldValues } from "../../../api/types";
 import { useOverviewDispatch, useOverviewState } from "../../../state/overview/OverviewStateContext";
-import { useTenant } from "../../../hooks/useTenant";
 import { TimeParams } from "../../../types";
 import { NOISE_FIELDS, STREAM_FIELDS } from "../../../constants/logFields";
+import { useFetchWithTenants } from "../../../hooks/useFetchWithTenants";
 
 interface FetchOptions {
   period: TimeParams;
@@ -27,15 +27,15 @@ const getFieldNamesParams = ({ period, query, extraParams }: FieldNamesParamsOpt
   return new URLSearchParams([...baseParams, ...(extraParams ?? [])]);
 };
 
-export const getFieldNamesCacheKey = (options: FieldNamesParamsOptions, tenant: Record<string, string>) => {
-  return getFieldNamesParams(options).toString() + JSON.stringify(tenant);
+export const getFieldNamesCacheKey = (options: FieldNamesParamsOptions, tenantsKey: string) => {
+  return getFieldNamesParams(options).toString() + tenantsKey;
 };
 
 export const useFetchFieldNames = () => {
   const { serverUrl } = useAppState();
   const { fieldNamesCache, fieldNamesParamsKey } = useOverviewState();
   const dispatch = useOverviewDispatch();
-  const tenant = useTenant();
+  const { fetchWithTenants, tenantRequestKey } = useFetchWithTenants();
 
   const [fieldNames, setFieldNames] = useState<LogsFieldValues[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,8 +71,7 @@ export const useFetchFieldNames = () => {
 
     try {
       const params = getFieldNamesParams(options);
-      const headers = { ...tenant };
-      const cacheKey = getFieldNamesCacheKey(options, tenant);
+      const cacheKey = getFieldNamesCacheKey(options, tenantRequestKey);
       const updateLatest = options.updateLatest ?? true;
       const { fieldNamesCache, fieldNamesParamsKey } = cacheStateRef.current;
 
@@ -89,10 +88,9 @@ export const useFetchFieldNames = () => {
       }
 
       const url = `${serverUrl}/select/logsql/field_names`;
-      const response = await fetch(url, {
+      const response = await fetchWithTenants(url, {
         signal,
         method: "POST",
-        headers,
         body: params,
       });
 
@@ -119,7 +117,7 @@ export const useFetchFieldNames = () => {
     } finally {
       if (isLatestRequest()) setLoading(false);
     }
-  }, [serverUrl, tenant, dispatch]);
+  }, [serverUrl, tenantRequestKey, dispatch, fetchWithTenants]);
 
   useEffect(() => {
     return () => abortControllerRef.current.abort();
