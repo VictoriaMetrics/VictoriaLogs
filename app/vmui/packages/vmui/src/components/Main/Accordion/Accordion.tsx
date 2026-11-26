@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, ReactNode } from "preact/compat";
+import { FC, useState, useEffect, ReactNode, useId } from "preact/compat";
 import { ArrowDownIcon } from "../Icons";
 import "./style.scss";
 
@@ -16,6 +16,7 @@ const Accordion: FC<AccordionProps> = ({
   children
 }) => {
   const [isOpen, setIsOpen] = useState(defaultExpanded);
+  const titleId = useId();
 
   const toggleOpen = () => {
     const selection = window.getSelection();
@@ -39,13 +40,14 @@ const Accordion: FC<AccordionProps> = ({
       <header
         className={`vm-accordion-header ${isOpen && "vm-accordion-header_open"}`}
         onClick={toggleOpen}
+        id={titleId}
       >
         {title}
         <button
           type="button"
           className={`vm-accordion-header__arrow ${isOpen ? "vm-accordion-header__arrow_open" : ""}`}
           aria-expanded={isOpen}
-          aria-label={isOpen ? "Collapse" : "Expand"}
+          aria-labelledby={titleId}
         >
           <span aria-hidden="true"><ArrowDownIcon /></span>
         </button>
