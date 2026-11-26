@@ -79,7 +79,8 @@ const Tenants: FC = () => {
     const isSelected = selectedTenants.includes(tenant);
 
     if (mode === "single") {
-      !isSelected && handleSetTenants([tenant]);
+      if (!isSelected) handleSetTenants([tenant]);
+      handleClosePopup();
       return;
     }
 
