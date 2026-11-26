@@ -27,6 +27,7 @@ export const useFetchTenants = () => {
     abortControllerRef.current?.abort();
 
     if (lastRequestKey.current === fetchUrl) return;
+    lastRequestKey.current = undefined;
 
     setIsLoading(true);
 
@@ -40,6 +41,7 @@ export const useFetchTenants = () => {
       if (!response.ok) {
         const message = (await response.text()).trim();
         setError(message || `HTTP ${response.status}`);
+        setTenants([]);
         return;
       }
 
@@ -51,6 +53,7 @@ export const useFetchTenants = () => {
     } catch (e) {
       if (!currentAbortController.signal.aborted && e instanceof Error) {
         setError(`${e.name}: ${e.message}`);
+        setTenants([]);
       }
     } finally {
       if (abortControllerRef.current === currentAbortController) {

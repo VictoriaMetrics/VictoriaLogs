@@ -165,15 +165,17 @@ const Tenants: FC = () => {
         buttonRef={buttonRef}
         title={isMobile ? "Define Tenant ID" : undefined}
       >
-        <TenantsSelect
-          tenants={limitedTenants}
-          missingTenants={missingTenants}
-          selectedTenants={selectedTenants}
-          search={{ show: showSearchInput, value: search, onChange: setSearch }}
-          mode={{ value: tenantMode, onChange: setTenantMode }}
-          onSelectAll={handleSelectAll}
-          onToggleTenant={handleToggleTenant}
-        />
+        {!isLoading && (
+          <TenantsSelect
+            tenants={limitedTenants}
+            missingTenants={missingTenants}
+            selectedTenants={selectedTenants}
+            search={{ show: showSearchInput, value: search, onChange: setSearch }}
+            mode={{ value: tenantMode, onChange: setTenantMode }}
+            onSelectAll={handleSelectAll}
+            onToggleTenant={handleToggleTenant}
+          />
+        )}
 
         {isReadyTenants && !hasTenants && (
           <div className="vm-tenant-input__empty">
@@ -181,7 +183,7 @@ const Tenants: FC = () => {
           </div>
         )}
 
-        {limitedTenants.length < filteredTenants.length && (
+        {isReadyTenants && (limitedTenants.length < filteredTenants.length) && (
           <div className="vm-tenant-input__alert">
             <Alert
               title="Too many tenants"
