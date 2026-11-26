@@ -1903,7 +1903,7 @@
             "type": "prometheus",
             "uid": "$DS_PROMETHEUS"
           },
-          "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.\n\n- throttled: The percentage of time the process was throttled by the [cgroup CPU controller](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpu-interface-files) because it ran out of its CPU quota. If it stays above zero, consider increasing the CPU limit.",
+          "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.\n\n- throttled: The time per second the container (cgroup) was throttled by the [cgroup CPU controller](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpu-interface-files) because it used up its CPU quota. If it stays above zero, consider increasing the CPU limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
