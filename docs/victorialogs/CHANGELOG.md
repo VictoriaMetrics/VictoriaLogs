@@ -23,6 +23,10 @@ according to the following docs:
 
 ## tip
 
+## [v1.55.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.55.0)
+
+Released at 2026-11-27
+
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): log a query as slow according to `-search.logSlowQueryDuration` only when its execution takes longer than this value, without the time spent waiting in the queue. Previously, many queries could be logged as slow only because they waited in the queue when the server was busy. The `totalDuration` field in the slow query log is renamed to `executionDuration`, while `waitDuration` still shows the time spent in the queue. The [`vl_slow_queries_total`](https://docs.victoriametrics.com/victorialogs/metrics/#vl_slow_queries_total) metric counts slow queries in the same way. See [VictoriaMetrics#11814](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11814).
 * FEATURE: [querying](https://docs.victoriametrics.com/victorialogs/querying/): reduce the risk of out-of-memory crashes when many heavy queries run at the same time by limiting the total memory they may use together. A query, which cannot obtain more memory because of this limit, now fails with an error instead of risking a crash. See [these docs](https://docs.victoriametrics.com/victorialogs/querying/#resource-usage-limits) and [#1551](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1551).
 * FEATURE: [OpenTelemetry data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/): add `-opentelemetry.consistentPrefix` command-line flag, which adds the source to the names of fields created from OpenTelemetry attributes and key-value log bodies. See [OpenTelemetry field names](https://docs.victoriametrics.com/victorialogs/data-ingestion/opentelemetry/#field-names). This prevents field name collisions between attributes from different sources, see [#1371](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371), and helps to align field names with VictoriaMetrics and VictoriaTraces, see [VictoriaMetrics#11542](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/11542).
