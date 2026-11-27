@@ -1,5 +1,5 @@
 import FileSystemHandle, { FileSystemHandleAdapter } from "./FileSystemHandle";
-import FileSystemWritableFileStream from "./FileSystemWritableFileStream";
+import FileSystemWritableFileStream, { hasWritableStream } from "./FileSystemWritableFileStream";
 import "./createWritable";
 
 // Options for createWritable: union of spec plus adapter's size hint
@@ -30,6 +30,10 @@ class FileSystemFileHandle extends FileSystemHandle {
 
   // Create a writable stream to this file.
   async createWritable(options: FileSystemCreateWritableOptions = {}): Promise<FileSystemWritableFileStream> {
+    if (!hasWritableStream) {
+      throw new Error("Log downloads require WritableStream support.");
+    }
+
     const impl = await this[kAdapter].createWritable(options);
     return new FileSystemWritableFileStream(impl);
   }

@@ -22,7 +22,11 @@ export type UnderlyingWritableLike<T> =
   | UnderlyingSink<T>
   | WritableStreamDefaultWriter<unknown>;
 
-class FileSystemWritableFileStream extends WritableStreamBase {
+export const hasWritableStream = typeof WritableStreamBase === "function";
+
+class FileSystemWritableFileStream extends (
+  WritableStreamBase ?? (class {} as WritableStreamCtor<Chunk>)
+) {
   private _closed = false;
 
   constructor(writer: UnderlyingWritableLike<Chunk>) {
@@ -83,7 +87,7 @@ Object.defineProperties(FileSystemWritableFileStream.prototype, {
     FileSystemFileHandle?: { prototype: { createWritable?: unknown } };
     FileSystemWritableFileStream?: typeof FileSystemWritableFileStream;
   };
-  if (g.FileSystemFileHandle &&
+  if (hasWritableStream && g.FileSystemFileHandle &&
     !g.FileSystemFileHandle.prototype.createWritable &&
     !g.FileSystemWritableFileStream) {
     g.FileSystemWritableFileStream = FileSystemWritableFileStream;
