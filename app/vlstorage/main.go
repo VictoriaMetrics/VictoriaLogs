@@ -566,8 +566,9 @@ func RunQuery(qctx *logstorage.QueryContext, writeBlock logstorage.WriteDataBloc
 		// See https://github.com/VictoriaMetrics/VictoriaLogs/issues/1602
 		qOpt, offset, limit, isDesc := qctx.Query.GetTimeSortedNResultsQuery()
 		if qOpt != nil {
+			fixedFields, _ := qctx.Query.GetFixedFields()
 			qctxOpt := qctx.WithQuery(qOpt)
-			return runOptimizedTimeSortedNResultsQuery(localStorage, qctxOpt, offset, limit, isDesc, writeBlock)
+			return runOptimizedTimeSortedNResultsQuery(localStorage, qctxOpt, offset, limit, isDesc, fixedFields, writeBlock)
 		}
 
 		return localStorage.RunQuery(qctx, writeBlock)

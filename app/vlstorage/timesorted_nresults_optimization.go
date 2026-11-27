@@ -12,8 +12,8 @@ import (
 	"github.com/VictoriaMetrics/VictoriaLogs/lib/logstorage"
 )
 
-func runOptimizedTimeSortedNResultsQuery(s *logstorage.Storage, qctx *logstorage.QueryContext, offset, limit uint64, isDesc bool, writeBlock logstorage.WriteDataBlockFunc) error {
-	rows, err := getTimeSortedNQueryResults(s, qctx, offset+limit, isDesc)
+func runOptimizedTimeSortedNResultsQuery(s *logstorage.Storage, qctx *logstorage.QueryContext, offset, limit uint64, isDesc bool, fixedFields []string, writeBlock logstorage.WriteDataBlockFunc) error {
+	rows, err := getTimeSortedNQueryResults(s, qctx, offset+limit, isDesc, fixedFields)
 	if err != nil {
 		return err
 	}
@@ -39,13 +39,13 @@ func runOptimizedTimeSortedNResultsQuery(s *logstorage.Storage, qctx *logstorage
 	return nil
 }
 
-func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, limit uint64, isDesc bool) ([]logRow, error) {
+func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, limit uint64, isDesc bool, fixedFields []string) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 
 	q := qctx.Query.Clone(timestamp)
 	q.AddPipeOffsetLimit(0, 2*limit)
 	qctxLocal := qctx.WithQuery(q)
-	rows, err := getQueryResults(s, qctxLocal)
+	rows, err := getQueryResults(s, qctxLocal, fixedFields)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 			} else {
 				end = maxEnd
 			}
-			rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n)
+			rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n, fixedFields)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +89,7 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 		q = qctx.Query.CloneWithTimeFilter(timestamp, start, end-1)
 		q.AddPipeOffsetLimit(0, 2*n)
 		qctxLocal := qctx.WithQuery(q)
-		rows, err := getQueryResults(s, qctxLocal)
+		rows, err := getQueryResults(s, qctxLocal, fixedFields)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func getTimeSortedNQueryResults(s *logstorage.Storage, qctx *logstorage.QueryCon
 			// The current time range contains at least 2*n rows, so narrow it down.
 			if !logstorage.CanApplyTimeSortedNResultsOptimization(start, end) {
 				// It is faster obtaining the N logs as is on such a small time range instead of using binary search.
-				rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n)
+				rows, err := getLogRowsTimeSortedN(s, qctx, start, end-1, isDesc, n, fixedFields)
 				if err != nil {
 					return nil, err
 				}
@@ -145,16 +145,16 @@ func nextTimeRange(start, end int64, isDesc bool) (int64, int64) {
 
 // getLogRowsTimeSortedN returns up to n rows with the biggest timestamps on the [start ... end] time range if isDesc is true,
 // otherwise up to n rows with the smallest timestamps.
-func getLogRowsTimeSortedN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64) ([]logRow, error) {
+func getLogRowsTimeSortedN(s *logstorage.Storage, qctx *logstorage.QueryContext, start, end int64, isDesc bool, n uint64, fixedFields []string) ([]logRow, error) {
 	timestamp := qctx.Query.GetTimestamp()
 	q := qctx.Query.CloneWithTimeFilter(timestamp, start, end)
 	q.AddPipeSortByTime(isDesc)
 	q.AddPipeOffsetLimit(0, n)
 	qctxLocal := qctx.WithQuery(q)
-	return getQueryResults(s, qctxLocal)
+	return getQueryResults(s, qctxLocal, fixedFields)
 }
 
-func getQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext) ([]logRow, error) {
+func getQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext, fixedFields []string) ([]logRow, error) {
 	var rowsLock sync.Mutex
 	var rows []logRow
 
@@ -162,7 +162,7 @@ func getQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext) ([]lo
 	var errLocalLock sync.Mutex
 
 	writeBlock := func(_ uint, db *logstorage.DataBlock) {
-		rowsLocal, err := getLogRowsFromDataBlock(db)
+		rowsLocal, err := getLogRowsFromDataBlock(db, fixedFields)
 		if err != nil {
 			errLocalLock.Lock()
 			errLocal = err
@@ -182,7 +182,7 @@ func getQueryResults(s *logstorage.Storage, qctx *logstorage.QueryContext) ([]lo
 	return rows, err
 }
 
-func getLogRowsFromDataBlock(db *logstorage.DataBlock) ([]logRow, error) {
+func getLogRowsFromDataBlock(db *logstorage.DataBlock, fixedFields []string) ([]logRow, error) {
 	timestamps, ok := db.GetTimestamps(nil)
 	if !ok {
 		return nil, fmt.Errorf("missing _time field in the query results")
@@ -190,6 +190,41 @@ func getLogRowsFromDataBlock(db *logstorage.DataBlock) ([]logRow, error) {
 
 	// There is no need to sort columns here, since they will be sorted by the caller.
 	columns := db.GetColumns(false)
+
+	if len(fixedFields) > 0 {
+		colIdxs := make([]int, len(fixedFields))
+		for k, fieldName := range fixedFields {
+			idx := -1
+			for j := range columns {
+				if columns[j].Name == fieldName {
+					idx = j
+					break
+				}
+			}
+			colIdxs[k] = idx
+		}
+
+		lrs := make([]logRow, 0, len(timestamps))
+		fieldsBuf := make([]logstorage.Field, 0, len(fixedFields)*len(timestamps))
+		for i, timestamp := range timestamps {
+			fieldsBufLen := len(fieldsBuf)
+			for k, fieldName := range fixedFields {
+				v := ""
+				if idx := colIdxs[k]; idx >= 0 {
+					v = strings.Clone(columns[idx].Values[i])
+				}
+				fieldsBuf = append(fieldsBuf, logstorage.Field{
+					Name:  fieldName,
+					Value: v,
+				})
+			}
+			lrs = append(lrs, logRow{
+				timestamp: timestamp,
+				fields:    fieldsBuf[fieldsBufLen:],
+			})
+		}
+		return lrs, nil
+	}
 
 	columnNames := make([]string, len(columns))
 	var timestampsColumn logstorage.BlockColumn
