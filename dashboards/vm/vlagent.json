@@ -1904,7 +1904,7 @@
             "type": "victoriametrics-metrics-datasource",
             "uid": "$DS_PROMETHEUS"
           },
-          "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.",
+          "description": "Shows CPU pressure based on [Pressure Stall Information](https://docs.kernel.org/accounting/psi.html).\n\nThe lower the better.\n\n- throttled: The time per second the container (cgroup) was throttled by the [cgroup CPU controller](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpu-interface-files) because it used up its CPU quota. If it stays above zero, consider increasing the CPU limit.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1940,7 +1940,6 @@
                   "mode": "line"
                 }
               },
-              "decimals": 0,
               "links": [],
               "mappings": [],
               "min": 0,
@@ -2012,9 +2011,24 @@
               "legendFormat": "{{instance}} - stalled",
               "range": true,
               "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "victoriametrics-metrics-datasource",
+                "uid": "$DS_PROMETHEUS"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(process_cgroup_cpu_throttled_seconds_total{job=~\"$job\"}[$__rate_interval])) by (job, instance)",
+              "format": "time_series",
+              "hide": false,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{instance}} - throttled",
+              "range": true,
+              "refId": "C"
             }
           ],
-          "title": "CPU pressure",
+          "title": "CPU pressure and throttling",
           "type": "timeseries"
         },
         {
