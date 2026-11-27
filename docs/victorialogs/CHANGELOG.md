@@ -138,6 +138,18 @@ Released at 2026-10-01
 * BUGFIX: [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files): incomplete last log lines are no longer joined with the first line of the rotated file. They are dropped with a warning instead. This matches the behavior of other log collectors. See [#1819](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1819).
 * BUGFIX: [File Collector](https://docs.victoriametrics.com/victorialogs/vlagent/#collect-logs-from-files): drop the incomplete last log line with a warning when the log file is deleted. Previously, `vlagent` treated this case as a bug and panicked. See [#1552](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1552).
 
+## [v1.52.3](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.3)
+
+Released at 2026-11-27
+
+**v1.52.x is a line of [LTS releases](https://docs.victoriametrics.com/victorialogs/lts-releases/). It contains important up-to-date bugfixes for [VictoriaLogs enterprise](https://docs.victoriametrics.com/victoriametrics/enterprise/).
+All these fixes are also included in [the latest community release](https://github.com/VictoriaMetrics/VictoriaLogs/releases/latest).
+The v1.52.x line will be supported for at least 12 months since [v1.52.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.0) release**
+
+* BUGFIX: [DataDog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/): properly ingest `lambda` labels from object `message` field. Previously, they were dropped because of a typo in the field name. See [#1949](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1949).
+* BUGFIX: [Loki data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/): accept whitespace around label names, values and commas in labels received via the Loki protobuf API, like Loki does. Such whitespace could become part of the label name or cause the whole request to be rejected. See [#1666](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1666).
+* BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): prevent from unbounded memory usage and a crash when the `extra_filters` or `extra_stream_filters` [query arg](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) contains a [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries), for example `extra_filters=x:in(* | keep x)`. See [#1902](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1902).
+
 ## [v1.52.2](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.52.2)
 
 Released at 2026-11-13
