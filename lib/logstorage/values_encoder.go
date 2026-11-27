@@ -598,7 +598,7 @@ func tryParseDateUint64(s string) (uint64, bool) {
 
 	if len(s) == 2 {
 		// fast path for two-digit number, which is used in hours, minutes and seconds
-		if s[0] < '0' || s[0] > '9' {
+		if s[0] < '0' || s[0] > '9' || s[1] < '0' || s[1] > '9' {
 			return 0, false
 		}
 		n := 10*uint64(s[0]-'0') + uint64(s[1]-'0')
