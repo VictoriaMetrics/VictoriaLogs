@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/VictoriaMetrics/metrics"
 
@@ -39,13 +40,37 @@ type LineReader struct {
 	eofReached bool
 }
 
-// NewLineReader returns LineReader for r.
-func NewLineReader(name string, r io.Reader) *LineReader {
-	return &LineReader{
-		name: name,
-		r:    r,
+func (lr *LineReader) reset() {
+	buf := lr.buf[:0]
+	*lr = LineReader{
+		buf: buf,
 	}
 }
+
+// GetLineReader obtains LineReader for r from the pool.
+func GetLineReader(name string, r io.Reader) *LineReader {
+	v := lineReaderPool.Get()
+	if v == nil {
+		return &LineReader{
+			name: name,
+			r:    r,
+		}
+	}
+	lr := v.(*LineReader)
+	lr.r = r
+	lr.name = name
+	return lr
+}
+
+// PutLineReader returns lr to the pool.
+//
+// lr and lr.Line cannot be used after returning to the pool.
+func PutLineReader(lr *LineReader) {
+	lr.reset()
+	lineReaderPool.Put(lr)
+}
+
+var lineReaderPool sync.Pool
 
 // NextLine reads the next line from the underlying reader.
 //

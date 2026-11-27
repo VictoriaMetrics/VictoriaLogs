@@ -66,7 +66,8 @@ func RequestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func processStreamInternal(streamName string, r io.Reader, timeFields, msgFields, preserveKeys []string, lmp insertutil.LogMessageProcessor) error {
-	lr := insertutil.NewLineReader(streamName, r)
+	lr := insertutil.GetLineReader(streamName, r)
+	defer insertutil.PutLineReader(lr)
 
 	n := 0
 	errors := 0
