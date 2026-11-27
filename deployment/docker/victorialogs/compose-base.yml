@@ -1,7 +1,7 @@
 services:
   # meta service will be ignored by compose
   .victorialogs:
-    image: docker.io/victoriametrics/victoria-logs:v1.54.0
+    image: docker.io/victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
@@ -43,7 +43,7 @@ services:
       replicas: 1
 
   vlagent:
-    image: victoriametrics/vlagent:v1.54.0
+    image: victoriametrics/vlagent:v1.55.0
     healthcheck:
       test: ["CMD", "/vlagent-prod", "-healthcheck"]
     volumes:

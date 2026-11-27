@@ -36,7 +36,7 @@ services:
     restart: always
 
   vlinsert:
-    image: victoriametrics/victoria-logs:v1.54.0
+    image: victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
@@ -45,7 +45,7 @@ services:
     restart: always
 
   vlselect-1:
-    image: victoriametrics/victoria-logs:v1.54.0
+    image: victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
@@ -53,7 +53,7 @@ services:
       - "--storageNode=vlstorage-2:9428"
     restart: always
   vlselect-2:
-    image: victoriametrics/victoria-logs:v1.54.0
+    image: victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
@@ -62,7 +62,7 @@ services:
     restart: always
 
   vlstorage-1:
-    image: victoriametrics/victoria-logs:v1.54.0
+    image: victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:
@@ -71,7 +71,7 @@ services:
       - vldata-1:/vlogs
     restart: always
   vlstorage-2:
-    image: victoriametrics/victoria-logs:v1.54.0
+    image: victoriametrics/victoria-logs:v1.55.0
     healthcheck:
       test: ["CMD", "/victoria-logs-prod", "-healthcheck"]
     command:

@@ -314,7 +314,7 @@ spec:
       serviceAccountName: vlagent
       containers:
         - name: vlagent
-          image: victoriametrics/vlagent:v1.54.0
+          image: victoriametrics/vlagent:v1.55.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
