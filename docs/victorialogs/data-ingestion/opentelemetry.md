@@ -124,7 +124,7 @@ exporters:
 
 By default, VictoriaLogs stores resource attributes and log record attributes without a prefix. This works well in most cases,
 but attributes from different sources may cause field name collisions. See [this issue](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1371).
-So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "#" %}} for new installations
+So it is recommended to set the `-opentelemetry.consistentPrefix` command-line flag{{% available_from "v1.55.0" %}} for new installations
 at every component, which accepts OpenTelemetry data (VictoriaLogs, `vlinsert` or `vlagent`).
 The flag is disabled by default for compatibility with already ingested logs, since it changes field names.
 
