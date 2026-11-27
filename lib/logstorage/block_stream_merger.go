@@ -254,10 +254,11 @@ func (bsm *blockStreamMerger) mustWriteBlockData(bd *blockData) {
 
 	td := &bd.timestampsData
 	if bsm.needDropRows(&bd.streamID, td.minTimestamp, td.maxTimestamp) {
-		if _, ok := bsm.dropFilter.filter.(*filterNoop); ok {
-			// Fast path - drop the whole bd.
-			// This path occurs when the dropFilter contains only stream filter - '{...}'.
-			// The stream filter goes to dropFilter.streamFilter, while dropFilter.filter becomes noop.
+		df := bsm.dropFilter
+		if hasOnlyTimeFilters(df.filter) && td.minTimestamp >= df.minTimestamp && td.maxTimestamp <= df.maxTimestamp {
+			// Fast path: drop the whole bd, since all its rows match the dropFilter.
+			// This path occurs when the dropFilter contains only stream filter - '{...}' - and time filters (delete query always contains time filter).
+			// The stream filter is resolved into dropFilter.tenantIDs/streamIDs, while time filters stay in dropFilter.filter.
 			return
 		}
 		// Slow path - unpack bd and drop the needed rows before the merge.

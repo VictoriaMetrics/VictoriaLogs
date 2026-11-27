@@ -884,6 +884,25 @@ func getFilterTimeRange(f filter) (int64, int64) {
 	return math.MinInt64, math.MaxInt64
 }
 
+// hasOnlyTimeFilters returns true if f contains only top-level time filters joined with AND.
+//
+// The time range for such f is returned by getFilterTimeRange.
+func hasOnlyTimeFilters(f filter) bool {
+	switch t := f.(type) {
+	case *filterNoop, *filterTime:
+		return true
+	case *filterAnd:
+		for _, f := range t.filters {
+			if _, ok := f.(*filterTime); !ok {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
 // AddTimeFilter adds global filter _time:[start ... end] to q.
 func (q *Query) AddTimeFilter(start, end int64) {
 	q.visitSubqueries(func(q *Query) {
