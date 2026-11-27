@@ -96,7 +96,7 @@ type blockStreamMerger struct {
 	// rowsTmp is temporary storage for log entries during merge.
 	rowsTmp rows
 
-	// uncompressedRowsSizeBytes is the current size of uncompressed rows.
+	// uncompressedRowsSizeBytes is the current size of uncompressed rows, including the rows dropped by dropFilter.
 	//
 	// It is used for flushing rows to blocks when their size reaches maxUncompressedBlockSize
 	uncompressedRowsSizeBytes uint64
@@ -312,13 +312,15 @@ func (bsm *blockStreamMerger) mustUnmarshalRows(bd *blockData) {
 		logger.Panicf("FATAL: cannot merge %s: cannot unmarshal log entries from blockData: %s", bsm.ReadersPaths(), err)
 	}
 
+	// Count the dropped rows too, since their data stays in bsm.sbu until the rows are flushed.
+	// Otherwise bsm.sbu grows without limits when all the rows of a long stream are dropped.
+	bsm.uncompressedRowsSizeBytes += uncompressedRowsSizeBytes(bsm.rows.rows[rowsLen:])
+
 	td := &bd.timestampsData
 	if bsm.needDropRows(&bd.streamID, td.minTimestamp, td.maxTimestamp) {
 		stream, streamID := bsm.getStreamAndStreamID()
 		bsm.rows.skipRowsByDropFilter(bsm.dropFilter, &bsm.dropFilterFields, rowsLen, stream, streamID)
 	}
-
-	bsm.uncompressedRowsSizeBytes += uncompressedRowsSizeBytes(bsm.rows.rows[rowsLen:])
 }
 
 func (bsm *blockStreamMerger) needDropRows(sid *streamID, minTimestamp, maxTimestamp int64) bool {
