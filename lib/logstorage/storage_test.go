@@ -448,6 +448,26 @@ func TestStorageProcessDeleteTaskRelativeTimeUsesTaskStartTime(t *testing.T) {
 	s.MustClose()
 }
 
+func TestStorageProcessDeleteTaskInvalidFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	cfg := &StorageConfig{
+		Retention: 30 * 24 * time.Hour,
+	}
+	s := MustOpenStorage(t.TempDir(), cfg)
+
+	// The filter could be stored by the previous version of VictoriaLogs, which didn't quote _TIME field name.
+	// The task must be dropped instead of panicking.
+	dt := newDeleteTask("task_id_invalid_filter", time.Now().UnixNano(), []TenantID{{}}, `_TIME:=foo`)
+	if !s.processDeleteTask(ctx, dt) {
+		t.Fatalf("expecting the delete task with invalid filter to be dropped")
+	}
+
+	s.MustClose()
+}
+
 func TestStorageHiddenFieldsWithFieldNamesPipe(t *testing.T) {
 	t.Parallel()
 
