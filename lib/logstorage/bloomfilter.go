@@ -107,16 +107,18 @@ func bloomFilterAddHashes(bits, hashes []uint64) {
 }
 
 func initBloomFilter(bits, hashes []uint64) {
+	if len(bits) == 0 {
+		// newFastMod needs a non-zero divisor
+		return
+	}
 	maxBits := uint64(len(bits)) * 64
+	fm := newFastMod(maxBits)
 	for _, h := range hashes {
-		idx := h % maxBits
+		idx := fm.mod(h)
 		i := idx / 64
 		j := idx % 64
 		mask := uint64(1) << j
-		w := bits[i]
-		if (w & mask) == 0 {
-			bits[i] = w | mask
-		}
+		bits[i] |= mask
 	}
 }
 
