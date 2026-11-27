@@ -126,6 +126,11 @@ func (lr *logRows) mustAddRow(streamID streamID, timestamp int64, fields []Field
 	lr.streamIDs = append(lr.streamIDs, streamID)
 	lr.timestamps = append(lr.timestamps, timestamp)
 
+	var prevRow []Field
+	if len(lr.rows) > 0 {
+		prevRow = lr.rows[len(lr.rows)-1]
+	}
+
 	fieldsBuf := lr.fieldsBuf
 	fieldsBufLen := len(fieldsBuf)
 	fieldsBuf = slicesutil.SetLength(fieldsBuf, fieldsBufLen+len(fields))
@@ -138,21 +143,21 @@ func (lr *logRows) mustAddRow(streamID streamID, timestamp int64, fields []Field
 
 		fieldName := getCanonicalFieldName(f.Name)
 
+		var prevField *Field
+		if i < len(prevRow) {
+			prevField = &prevRow[i]
+		}
+
 		dstField := &dstFields[i]
-		if len(fieldsBuf) >= len(fields) {
-			fPrev := &fieldsBuf[len(fieldsBuf)-len(fields)]
-			if fPrev.Name == fieldName {
-				dstField.Name = fPrev.Name
-			} else {
-				dstField.Name = lr.a.copyString(fieldName)
-			}
-			if fPrev.Value == f.Value {
-				dstField.Value = fPrev.Value
-			} else {
-				dstField.Value = lr.a.copyString(f.Value)
-			}
+		if prevField != nil && prevField.Name == fieldName {
+			dstField.Name = prevField.Name
 		} else {
 			dstField.Name = lr.a.copyString(fieldName)
+			prevRow = nil
+		}
+		if prevField != nil && prevField.Value == f.Value {
+			dstField.Value = prevField.Value
+		} else {
 			dstField.Value = lr.a.copyString(f.Value)
 		}
 	}
