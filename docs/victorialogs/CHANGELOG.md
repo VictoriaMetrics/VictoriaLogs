@@ -23,7 +23,7 @@ according to the following docs:
 
 ## tip
 
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix downloading logs  from a tab that was opened before a VictoriaLogs upgrade. Previously the download could fail with `error loading dynamically imported module` until the page was reloaded. See [#1893](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1893).
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix downloading logs from a tab that was opened before a VictoriaLogs upgrade. Previously the download could fail with `error loading dynamically imported module` until the page was reloaded. See [#1893](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1893).
 
 ## [v1.55.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.55.0)
 
