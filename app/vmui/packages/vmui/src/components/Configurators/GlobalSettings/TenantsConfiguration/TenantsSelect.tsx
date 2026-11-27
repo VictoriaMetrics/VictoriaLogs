@@ -71,6 +71,7 @@ const TenantsSelect: FC<Props> = ({
         {!search.value && isMultitenantMode && (
           <button
             type="button"
+            aria-pressed={!selectedTenants.length}
             className={classNames({
               "vm-tenant-input-list-item": true,
               "vm-tenant-input-list-item_all": true,
@@ -91,6 +92,7 @@ const TenantsSelect: FC<Props> = ({
         {tenants.map(id => (
           <button
             type="button"
+            aria-pressed={selectedTenants.includes(id)}
             className={classNames({
               "vm-tenant-input-list-item": true,
               "vm-list-item": true,
