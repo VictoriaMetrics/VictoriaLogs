@@ -1,4 +1,5 @@
-import type FileSystemFileHandle from "./FileSystemFileHandle";
+import { FileSystemFileHandle } from "./FileSystemFileHandle";
+import { FileHandle } from "./adapters/downloader";
 
 // File type filter entry (WICG File System Access spec compatible).
 interface FilePickerAcceptType {
@@ -31,13 +32,7 @@ async function showSaveFilePicker(options: ShowSaveFilePickerOptions = {}): Prom
     options.suggestedName = options._name;
   }
 
-  const mod = (await import("./FileSystemFileHandle")) as typeof import("./FileSystemFileHandle");
-  const { FileSystemFileHandle: FileSystemFileHandleClass } = mod;
-
-  const down = (await import("./adapters/downloader")) as typeof import("./adapters/downloader");
-  const { FileHandle } = down;
-
-  return new FileSystemFileHandleClass(new FileHandle(options.suggestedName));
+  return new FileSystemFileHandle(new FileHandle(options.suggestedName));
 }
 
 export default showSaveFilePicker;
