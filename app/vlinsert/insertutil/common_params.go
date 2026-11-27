@@ -72,7 +72,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	}
 
 	debug := false
-	if dv := httputil.GetRequestValue(r, "debug", "VL-Debug"); dv != "" {
+	if dv := httputil.GetQueryArgOrHeader(r, "debug", "VL-Debug"); dv != "" {
 		debug, err = strconv.ParseBool(dv)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse debug=%q: %w", dv, err)
@@ -81,7 +81,7 @@ func GetCommonParams(r *http.Request) (*CommonParams, error) {
 	debugRequestURI := ""
 	debugRemoteAddr := ""
 	if debug {
-		debugRequestURI = httpserver.GetRequestURI(r)
+		debugRequestURI = r.RequestURI
 		debugRemoteAddr = httpserver.GetQuotedRemoteAddr(r)
 	}
 
@@ -125,7 +125,7 @@ func getExtraFields(r *http.Request) ([]logstorage.Field, error) {
 }
 
 func getArray(r *http.Request, argKey, headerKey string) []string {
-	a := httputil.GetArray(r, argKey, headerKey)
+	a := httputil.GetQueryArgOrHeaderArray(r, argKey, headerKey)
 	return removeEmptyTokens(a)
 }
 
