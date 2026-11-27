@@ -10,6 +10,7 @@ import { useOverviewState } from "../../../../state/overview/OverviewStateContex
 import { cardinalityConfig } from "./cardinalityConfig";
 import Tooltip from "../../../../components/Main/Tooltip/Tooltip";
 import { useTimePeriod } from "../../../QueryPage/hooks/useTimePeriod";
+import { quoteFieldName } from "../../../../utils/regexp";
 
 type Props = {
   scope: "field" | "stream";
@@ -41,7 +42,7 @@ const FieldCardinalityCard: FC<Props> = ({ scope }) => {
   useEffect(() => {
     if (!field) return;
 
-    const query = `${field}:* | stats count_uniq(${field}) as distinct`;
+    const query = `${quoteFieldName(field)}:* | stats count_uniq(${quoteFieldName(field)}) as distinct`;
     void fetchLogs({ period, extraParams, query });
 
     return () => abort();

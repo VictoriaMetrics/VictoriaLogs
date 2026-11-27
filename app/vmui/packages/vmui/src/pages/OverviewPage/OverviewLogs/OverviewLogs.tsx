@@ -14,7 +14,7 @@ import { CopyIcon, DoneIcon, OpenNewIcon } from "../../../components/Main/Icons"
 import useCopyToClipboard from "../../../hooks/useCopyToClipboard";
 import router from "../../../router";
 import { getTenantSearchParams } from "../../../hooks/useTenant";
-import { escapeForLogsQLString } from "../../../utils/regexp";
+import { escapeForLogsQLString, quoteFieldName } from "../../../utils/regexp";
 import { filterToExpr } from "../../../components/ExtraFilters/utils/buildExprFromExtraFilters";
 import { useTimePeriod } from "../../QueryPage/hooks/useTimePeriod";
 import { TimeParams, TimePeriod } from "../../../types";
@@ -24,7 +24,7 @@ const operator = ExtraFilterOperator.Equals;
 
 const getQueryFromArray = (field: string, values: string[]) => {
   const escapeValues = values.map(v => `"${escapeForLogsQLString(v)}"`);
-  return `${field}:in(\n${escapeValues.join(",\n")}\n)`;
+  return `${quoteFieldName(field)}:in(\n${escapeValues.join(",\n")}\n)`;
 };
 
 interface Props {
@@ -52,7 +52,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
       const filterByStream = getQueryFromArray(streamFieldFilter, streamFieldValueFilters);
       queryParts.push(filterByStream);
     } else if (streamFieldFilter) {
-      const filterByStream = filterToExpr({ field: streamFieldFilter, value: "*", operator });
+      const filterByStream = filterToExpr({ field: streamFieldFilter, value: "*", operator }, { quoteField: true });
       queryParts.push(filterByStream);
     }
 
@@ -60,7 +60,7 @@ const OverviewLogs: FC<Props> = ({ period }) => {
       const filterByField = getQueryFromArray(fieldFilter, fieldValueFilters);
       queryParts.push(filterByField);
     } else if (fieldFilter) {
-      const filterByField = filterToExpr({ field: fieldFilter, value: "*", operator });
+      const filterByField = filterToExpr({ field: fieldFilter, value: "*", operator }, { quoteField: true });
       queryParts.push(filterByField);
     }
 
