@@ -65,42 +65,51 @@ func TestRunOptimizedTimeSortedNResultsPreservesFixedFieldsOrder(t *testing.T) {
 		return colNames, gotRows
 	}
 
+	wantMsgTimeDesc := [][]string{
+		{"message-6", "2025-06-07T14:30:19Z"},
+		{"message-5", "2025-06-06T14:30:19Z"},
+		{"message-4", "2025-06-05T14:30:19Z"},
+		{"message-3", "2025-06-04T14:30:19Z"},
+		{"message-2", "2025-06-03T14:30:19Z"},
+	}
+
 	cols, rows := runQuery("* | sort by (_time desc) limit 5 | fields _msg, _time")
 	if !reflect.DeepEqual(cols, []string{"_msg", "_time"}) {
 		t.Fatalf("unexpected columns order; got %v; want [_msg _time]", cols)
 	}
-	if len(rows) != 5 {
-		t.Fatalf("unexpected row count; got %d; want 5", len(rows))
-	}
-	wantFirst := []string{"message-6", "2025-06-07T14:30:19Z"}
-	if !reflect.DeepEqual(rows[0], wantFirst) {
-		t.Fatalf("unexpected first row; got %v; want %v", rows[0], wantFirst)
+	if !reflect.DeepEqual(rows, wantMsgTimeDesc) {
+		t.Fatalf("unexpected rows; got %v; want %v", rows, wantMsgTimeDesc)
 	}
 
 	cols, rows = runQuery("* | sort by (_time desc) offset 2 limit 3 | fields _msg, _time")
 	if !reflect.DeepEqual(cols, []string{"_msg", "_time"}) {
 		t.Fatalf("unexpected columns order for offset+limit; got %v; want [_msg _time]", cols)
 	}
-	wantOffsetFirst := []string{"message-4", "2025-06-05T14:30:19Z"}
-	if len(rows) != 3 || !reflect.DeepEqual(rows[0], wantOffsetFirst) {
-		t.Fatalf("unexpected rows for offset+limit; got %v (len=%d); want first %v", rows, len(rows), wantOffsetFirst)
+	if !reflect.DeepEqual(rows, wantMsgTimeDesc[2:]) {
+		t.Fatalf("unexpected rows for offset+limit; got %v; want %v", rows, wantMsgTimeDesc[2:])
 	}
 
 	cols, rows = runQuery("* | fields _msg, _time | sort by (_time desc) limit 5")
 	if !reflect.DeepEqual(cols, []string{"_time", "_msg"}) {
 		t.Fatalf("unexpected columns order when fields precedes sort; got %v; want [_time _msg]", cols)
 	}
-	wantPrecedingFirst := []string{"2025-06-07T14:30:19Z", "message-6"}
-	if len(rows) != 5 || !reflect.DeepEqual(rows[0], wantPrecedingFirst) {
-		t.Fatalf("unexpected rows when fields precedes sort; got %v; want first %v", rows, wantPrecedingFirst)
+	wantTimeMsgDesc := [][]string{
+		{"2025-06-07T14:30:19Z", "message-6"},
+		{"2025-06-06T14:30:19Z", "message-5"},
+		{"2025-06-05T14:30:19Z", "message-4"},
+		{"2025-06-04T14:30:19Z", "message-3"},
+		{"2025-06-03T14:30:19Z", "message-2"},
+	}
+	if !reflect.DeepEqual(rows, wantTimeMsgDesc) {
+		t.Fatalf("unexpected rows when fields precedes sort; got %v; want %v", rows, wantTimeMsgDesc)
 	}
 
 	cols, rows = runQuery("* | sort by (_time desc) limit 2 | fields _msg, _time")
 	if !reflect.DeepEqual(cols, []string{"_msg", "_time"}) {
 		t.Fatalf("unexpected columns order for binary-search path; got %v; want [_msg _time]", cols)
 	}
-	if len(rows) != 2 || !reflect.DeepEqual(rows[0], wantFirst) {
-		t.Fatalf("unexpected rows for binary-search path; got %v; want first %v", rows, wantFirst)
+	if !reflect.DeepEqual(rows, wantMsgTimeDesc[:2]) {
+		t.Fatalf("unexpected rows for binary-search path; got %v; want %v", rows, wantMsgTimeDesc[:2])
 	}
 
 	cols, _ = runQuery("* | sort by (_time desc) limit 5")
