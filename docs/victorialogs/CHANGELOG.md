@@ -23,6 +23,8 @@ according to the following docs:
 
 ## tip
 
+* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix a dynamic import error that could prevent log downloads from an already open tab after a VictoriaLogs upgrade. See [#1893](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1893).
+
 ## [v1.55.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.55.0)
 
 Released at 2026-11-27
@@ -35,7 +37,6 @@ Released at 2026-11-27
 * BUGFIX: [DataDog data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/datadog-agent/): properly ingest `lambda` labels from object `message` field. Previously, they were dropped because of a typo in the field name. See [#1949](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1949).
 * BUGFIX: [Loki data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/promtail/): accept whitespace around label names, values and commas in labels received via the Loki protobuf API, like Loki does. Such whitespace could become part of the label name or cause the whole request to be rejected. See [#1666](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1666).
 * BUGFIX: [querying](https://docs.victoriametrics.com/victorialogs/querying/): prevent from unbounded memory usage and a crash when the `extra_filters` or `extra_stream_filters` [query arg](https://docs.victoriametrics.com/victorialogs/querying/#extra-filters) contains a [subquery](https://docs.victoriametrics.com/victorialogs/logsql/#subqueries), for example `extra_filters=x:in(* | keep x)`. See [#1902](https://github.com/VictoriaMetrics/VictoriaLogs/pull/1902).
-* BUGFIX: [web UI](https://docs.victoriametrics.com/victorialogs/querying/#web-ui): fix a dynamic import error that could prevent log downloads from an already open tab after a VictoriaLogs upgrade. See [#1893](https://github.com/VictoriaMetrics/VictoriaLogs/issues/1893).
 
 ## [v1.54.0](https://github.com/VictoriaMetrics/VictoriaLogs/releases/tag/v1.54.0)
 
